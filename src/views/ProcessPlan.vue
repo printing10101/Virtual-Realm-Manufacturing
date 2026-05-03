@@ -126,7 +126,57 @@ import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { RefreshLeft } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
+import { API_ENDPOINTS, DEFAULT_SETTINGS } from '@/constants'
+import { buildApiUrl } from '@/utils/api'
 import axios from 'axios'
+import { handleError } from '@/utils/errorHandler'
+import { useSettingsStore } from '@/stores/settingsStore'
+
+const settingsStore = useSettingsStore()
+
+interface ProcessParam {
+  material?: string
+  part_type?: string
+  tolerance?: string
+  surface_roughness?: string
+}
+
+interface ProcessRouteStep {
+  step: number
+  operation: string
+  machine: string
+  description: string
+}
+
+interface CuttingParameter {
+  step: number
+  operation: string
+  v: string
+  f: string
+  ap: string
+  n: string
+}
+
+interface VerificationIssue {
+  type: string
+  description: string
+  severity: 'high' | 'medium' | 'low'
+}
+
+interface VerificationResult {
+  summary: string
+  is_valid: boolean
+  issues?: VerificationIssue[]
+}
+
+interface WorkflowResult {
+  extracted_params: ProcessParam
+  process_route: ProcessRouteStep[]
+  cutting_parameters: { parameters: CuttingParameter[] }
+  nc_code: string
+  verification_result: VerificationResult
+  repair_suggestions?: string
+}
 
 const { t } = useI18n()
 
@@ -137,7 +187,7 @@ const form = reactive({
 const isGenerating = ref(false)
 const currentStep = ref(0)
 const progressPercent = ref(0)
-const workflowResult = ref<any>(null)
+const workflowResult = ref<WorkflowResult | null>(null)
 
 const progressStatus = computed(() => {
   if (progressPercent.value >= 100) return 'success'
@@ -157,7 +207,10 @@ const handleGenerate = async () => {
   workflowResult.value = null
 
   try {
-    const response = await axios.post('http://127.0.0.1:8765/api/workflow/process-plan', {
+    const response = await axios.post(buildApiUrl(
+      API_ENDPOINTS.WORKFLOW.PROCESS_PLAN,
+      settingsStore.settings.python_backend_url || DEFAULT_SETTINGS.PYTHON_BACKEND_URL
+    ), {
       user_input: form.userInput
     })
 
@@ -169,8 +222,8 @@ const handleGenerate = async () => {
     } else {
       ElMessage.error(response.data.message || t('processPlan.generateFailed'))
     }
-  } catch (error: any) {
-    ElMessage.error(`${t('processPlan.generateFailed')}: ${error.message}`)
+  } catch (error) {
+    handleError(error)
   } finally {
     isGenerating.value = false
   }
@@ -204,7 +257,7 @@ const resetForm = () => {
       margin-top: 30px;
       padding: 20px;
       background-color: #f5f7fa;
-      border-radius: 8px;
+      border-radius: var(--lj-module-radius);
 
       h3 {
         margin-bottom: 16px;
@@ -230,7 +283,7 @@ const resetForm = () => {
       background-color: #1e1e1e;
       color: #d4d4d4;
       padding: 16px;
-      border-radius: 8px;
+      border-radius: var(--lj-module-radius);
       font-family: 'Consolas', 'Courier New', monospace;
       font-size: 13px;
       line-height: 1.5;

@@ -4,8 +4,18 @@ export default {
     workspace: 'Workspace',
     multiViewTo3D: 'Multi-View to 3D',
     processPlan: 'Process Planning',
+    validation: 'Validation',
+    experience: 'Experience',
     settings: 'Settings',
-    about: 'About'
+    about: 'About',
+    retry: 'Retry'
+  },
+  viewer: {
+    wireframeMode: 'Wireframe',
+    solidMode: 'Solid',
+    hideGrid: 'Hide Grid',
+    showGrid: 'Show Grid',
+    resetCamera: 'Reset Camera'
   },
   home: {
     welcome: 'Welcome to Lingjing Manufacturing',
@@ -76,7 +86,15 @@ export default {
     settingsSaved: 'Settings saved',
     generalSettings: 'General Settings',
     darkMode: 'Dark Mode',
-    lightMode: 'Light Mode'
+    lightMode: 'Light Mode',
+    pythonBackendUrl: 'Python Backend URL',
+    ollamaUrlLabel: 'Ollama URL',
+    autoSave: 'Auto Save',
+    createFailed: 'Create Failed',
+    saveFailed: 'Save Failed',
+    noInstalledModels: 'No installed models',
+    noRecommendedModels: 'No recommended models',
+    noGpuDetected: 'No GPU detected'
   },
   workspace: {
     title: 'Workspace',
@@ -103,7 +121,9 @@ export default {
     createSuccess: 'Project created successfully',
     confirmDelete: 'Confirm delete project',
     warning: 'Warning',
-    deleteSuccess: 'Project deleted successfully'
+    deleteSuccess: 'Project deleted successfully',
+    deleteFailed: 'Project delete failed',
+    createFailed: 'Project create failed'
   },
   about: {
     title: 'About Lingjing Manufacturing',

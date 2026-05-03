@@ -1,0 +1,24 @@
+{
+  "cost_parameters": {
+    "machine_hourly_rate": 120.0,
+    "tool_cost_per_edge": 25.0,
+    "setup_cost": 80.0,
+    "material_cost_per_kg": {
+      "AL6061": 25.0,
+      "AL7075": 45.0,
+      "ABS": 35.0,
+      "PC": 50.0
+    }
+  },
+  "time_estimation": {
+    "setup_time_minutes": 20,
+    "tool_change_time_minutes": 3,
+    "measurement_time_minutes": 15
+  },
+  "cost_formula": {
+    "machining_cost": "machine_hourly_rate * machining_time_hours",
+    "tool_cost": "tool_cost_per_edge * tool_changes",
+    "material_cost": "material_cost_per_kg * material_weight_kg",
+    "total_cost": "setup_cost + machining_cost + tool_cost + material_cost"
+  }
+}

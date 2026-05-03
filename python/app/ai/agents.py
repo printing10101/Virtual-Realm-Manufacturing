@@ -2,9 +2,12 @@ import json
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 from pydantic import BaseModel
+from fastapi import APIRouter
 
 from app.ai.llm_client import get_llm_client
 from app.rag.knowledge_base import get_knowledge_base
+
+router = APIRouter(prefix="/api/agents", tags=["AI Agents"])
 
 
 class AgentContext(BaseModel):
@@ -442,3 +445,16 @@ class RepairAgent(BaseAgent):
         context.stage_status = "completed"
 
         return context
+
+
+@router.get("/info")
+async def get_agents_info():
+    agents = [
+        {"name": "UnderstandingAgent", "description": "负责理解用户需求，提取关键制造参数"},
+        {"name": "PlanningAgent", "description": "负责制定加工工艺路线"},
+        {"name": "ParameterAgent", "description": "负责计算切削参数"},
+        {"name": "NCAgent", "description": "负责生成NC代码"},
+        {"name": "VerificationAgent", "description": "负责验证工艺合理性"},
+        {"name": "RepairAgent", "description": "负责根据验证结果优化工艺方案"}
+    ]
+    return {"code": 200, "data": {"agents": agents}, "message": "success"}

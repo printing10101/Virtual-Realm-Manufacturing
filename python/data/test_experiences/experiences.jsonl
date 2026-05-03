@@ -1,0 +1,1 @@
+{"experience_id": "45f3fc94-9a89-49dd-95a1-36629e070fbd", "status": "success", "scenario": "test_scenario", "material": "45钢", "tool": "硬质合金", "operation": "车削", "params": {"v_c": 150, "f": 0.2}, "results": {"cutting_force": 400}, "feedback": "加工成功", "extracted_rules": ["45钢车削时v_c不宜超过200m/min"], "similarity_key": "45钢 硬质合金 车削 中等参数", "created_at": "2026-05-03T02:07:42.172052"}

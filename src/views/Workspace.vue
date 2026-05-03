@@ -40,7 +40,7 @@
                   <p class="project-desc">{{ project.description || t('workspace.noDescription') }}</p>
                   <div class="project-meta">
                     <el-tag size="small" :type="getStatusType(project.status)">{{ project.status }}</el-tag>
-                    <span class="update-time">{{ project.updatedAt }}</span>
+                    <span class="update-time">{{ formatTime(project.updated_at) }}</span>
                   </div>
                 </div>
                 <div class="project-actions">
@@ -84,26 +84,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Plus, Files } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useProjectStore } from '@/stores/projectStore'
+import { handleError } from '@/utils/errorHandler'
+import type { ProjectMeta } from '@/types/persistence'
 
 const { t } = useI18n()
+const projectStore = useProjectStore()
 
 const activeTab = ref('all')
 const searchQuery = ref('')
 const showCreateDialog = ref(false)
 
-interface Project {
-  id: string
-  name: string
-  description: string
-  status: string
-  updatedAt: string
-}
-
-const projects = ref<Project[]>([])
+const projects = computed(() => projectStore.projects)
 
 const newProject = ref({
   name: '',
@@ -126,44 +122,59 @@ function getStatusType(status: string) {
   return map[status] || 'info'
 }
 
+function formatTime(timeStr?: string) {
+  if (!timeStr) return ''
+  try {
+    const date = new Date(timeStr)
+    return date.toLocaleDateString()
+  } catch {
+    return timeStr
+  }
+}
+
 function handleCreateProject() {
   newProject.value = { name: '', description: '' }
   showCreateDialog.value = true
 }
 
-function confirmCreateProject() {
+async function confirmCreateProject() {
   if (!newProject.value.name.trim()) {
     ElMessage.warning(t('workspace.nameRequired'))
     return
   }
   
-  const project: Project = {
-    id: Date.now().toString(),
-    name: newProject.value.name,
-    description: newProject.value.description,
-    status: 'draft',
-    updatedAt: new Date().toLocaleDateString()
+  try {
+    await projectStore.createProject(newProject.value.name, newProject.value.description)
+    showCreateDialog.value = false
+    ElMessage.success(t('workspace.createSuccess'))
+  } catch (error) {
+    handleError(error)
   }
-  
-  projects.value.unshift(project)
-  showCreateDialog.value = false
-  ElMessage.success(t('workspace.createSuccess'))
 }
 
-function handleOpenProject(project: Project) {
+function handleOpenProject(project: ProjectMeta) {
+  projectStore.selectProject(project)
   ElMessage.info(`${t('workspace.open')}: ${project.name}`)
 }
 
-function handleDeleteProject(project: Project) {
+async function handleDeleteProject(project: ProjectMeta) {
   ElMessageBox.confirm(
     `${t('workspace.confirmDelete')} ${project.name}?`,
     t('workspace.warning'),
     { type: 'warning' }
-  ).then(() => {
-    projects.value = projects.value.filter(p => p.id !== project.id)
-    ElMessage.success(t('workspace.deleteSuccess'))
+  ).then(async () => {
+    try {
+      await projectStore.deleteProject(project.id)
+      ElMessage.success(t('workspace.deleteSuccess'))
+    } catch (error) {
+      handleError(error)
+    }
   }).catch(() => {})
 }
+
+onMounted(async () => {
+  await projectStore.loadProjects()
+})
 </script>
 
 <style scoped lang="scss">
@@ -201,7 +212,7 @@ function handleDeleteProject(project: Project) {
       align-items: center;
       justify-content: center;
       background-color: #f5f7fa;
-      border-radius: 4px;
+      border-radius: var(--lj-module-radius);
       margin-bottom: 12px;
     }
     

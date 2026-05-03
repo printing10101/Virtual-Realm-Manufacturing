@@ -34,6 +34,16 @@
       <template #title>{{ t('common.processPlan') }}</template>
     </el-menu-item>
     
+    <el-menu-item index="/validation">
+      <el-icon><DataAnalysis /></el-icon>
+      <template #title>仿真验证</template>
+    </el-menu-item>
+    
+    <el-menu-item index="/experience">
+      <el-icon><Collection /></el-icon>
+      <template #title>{{ t('common.experience') }}</template>
+    </el-menu-item>
+    
     <el-menu-item index="/settings">
       <el-icon><Setting /></el-icon>
       <template #title>{{ t('common.settings') }}</template>
@@ -63,7 +73,9 @@ import {
   Setting,
   InfoFilled,
   Fold,
-  Expand
+  Expand,
+  DataAnalysis,
+  Collection
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

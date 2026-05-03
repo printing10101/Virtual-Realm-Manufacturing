@@ -1,7 +1,25 @@
+import { DEFAULT_URLS, API_ENDPOINTS, POLLING_CONFIG } from '@/constants'
+import axios from 'axios'
+
 export interface ApiResult<T> {
   code: number
   message: string
   data: T
+}
+
+export interface TaskStatus {
+  status: string
+  progress: number
+  error_message?: string
+}
+
+export interface PollerCallbacks {
+  onProgress: (data: TaskStatus) => void
+  onComplete: (data: TaskStatus) => void
+  onFailed: (data: TaskStatus) => void
+  onError: (error: Error) => void
+  intervalMs?: number
+  timeoutMs?: number
 }
 
 export class ApiError extends Error {
@@ -17,6 +35,65 @@ export class ApiError extends Error {
 }
 
 const DEFAULT_TIMEOUT = 30000
+
+export function buildApiUrl(endpoint: string, baseUrl: string = DEFAULT_URLS.PYTHON_BACKEND): string {
+  return `${baseUrl.replace(/\/$/, '')}${endpoint}`
+}
+
+export function createTaskPoller(
+  taskId: string,
+  callbacks: PollerCallbacks,
+  baseUrl?: string
+): () => void {
+  const { onProgress, onComplete, onFailed, onError, intervalMs = POLLING_CONFIG.INTERVAL_MS, timeoutMs = POLLING_CONFIG.TIMEOUT_MS } = callbacks
+  
+  let isStopped = false
+  
+  const timeoutId = setTimeout(() => {
+    if (!isStopped) {
+      isStopped = true
+      onError(new Error('任务超时'))
+      clearInterval(intervalId)
+    }
+  }, timeoutMs)
+  
+  const intervalId = setInterval(async () => {
+    if (isStopped) return
+    
+    try {
+      const endpoint = typeof API_ENDPOINTS.CAD.TASK_STATUS === 'function'
+        ? API_ENDPOINTS.CAD.TASK_STATUS(taskId)
+        : `${API_ENDPOINTS.CAD.TASK_STATUS}/${taskId}`
+      
+      const response = await axios.get(buildApiUrl(endpoint, baseUrl))
+      
+      if (response.data.code === 0) {
+        const data: TaskStatus = response.data.data
+        onProgress(data)
+        
+        if (data.status === 'completed') {
+          isStopped = true
+          clearInterval(intervalId)
+          clearTimeout(timeoutId)
+          onComplete(data)
+        } else if (data.status === 'failed') {
+          isStopped = true
+          clearInterval(intervalId)
+          clearTimeout(timeoutId)
+          onFailed(data)
+        }
+      }
+    } catch (error) {
+      onError(error as Error)
+    }
+  }, intervalMs)
+  
+  return () => {
+    isStopped = true
+    clearInterval(intervalId)
+    clearTimeout(timeoutId)
+  }
+}
 
 export async function apiRequest<T>(
   url: string,

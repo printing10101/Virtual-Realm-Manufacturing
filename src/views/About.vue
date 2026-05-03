@@ -129,7 +129,7 @@ const features = [
         gap: 12px;
         padding: 12px 16px;
         background-color: #f5f7fa;
-        border-radius: 8px;
+        border-radius: var(--lj-module-radius);
         margin-bottom: 12px;
         
         span {

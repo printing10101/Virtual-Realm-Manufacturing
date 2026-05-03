@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -13,8 +14,17 @@ class AIMode(str, Enum):
 class TaskStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
-    COMPLETED = "completed"
+    SUCCESS = "success"
     FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class TaskType(str, Enum):
+    PROCESS_GENERATION = "process_generation"
+    REPORT_GENERATION = "report_generation"
+    SIMULATION_VALIDATION = "simulation_validation"
+    CAD_GENERATION = "cad_generation"
+    WORKFLOW_EXECUTION = "workflow_execution"
 
 
 class AISettings(BaseModel):
@@ -136,3 +146,9 @@ class KnowledgeResponse(BaseModel):
 class KnowledgeHealthResponse(BaseModel):
     status: str = Field(description="知识库状态")
     count: int = Field(description="知识条目数量")
+
+
+class CreateTaskRequest(BaseModel):
+    task_type: TaskType = Field(description="任务类型")
+    params: Optional[dict] = Field(default=None, description="任务参数")
+    timeout: Optional[float] = Field(default=None, description="超时时间（秒）")

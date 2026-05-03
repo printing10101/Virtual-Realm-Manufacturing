@@ -1,6 +1,6 @@
 {
   "productName": "灵境制造",
-  "version": "1.0.0.0",
+  "version": "1.0.0",
   "identifier": "com.lingjing.manufacturing",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msix", "msi", "nsis"],
+    "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

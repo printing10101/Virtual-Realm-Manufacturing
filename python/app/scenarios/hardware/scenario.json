@@ -1,0 +1,10 @@
+{
+  "id": "hardware",
+  "name": "小批量五金加工件",
+  "description": "门锁五金、家具五金、卫浴五金等小批量五金零件的加工工艺",
+  "supported_operations": ["milling", "turning", "drilling", "threading"],
+  "supported_materials": ["45钢", "SS304", "SS316", "H59黄铜", "AL6061"],
+  "supported_tools": ["carbide_3flute", "hss_2flute", "carbide_insert_turning"],
+  "priority_objectives": ["dimensional_accuracy", "tool_life", "cost_efficiency"],
+  "version": "1.0.0"
+}

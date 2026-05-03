@@ -24,6 +24,7 @@ impl Default for AppSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct CloudApiSettings {
     pub api_key: String,
     pub base_url: String,

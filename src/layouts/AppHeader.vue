@@ -5,6 +5,13 @@
       <span class="page-title">{{ currentRouteTitle }}</span>
     </div>
     <div class="header-right">
+      <el-tooltip content="任务面板" placement="bottom">
+        <div class="action-item task-panel-toggle" @click="toggleTaskPanel">
+          <el-icon><Tickets /></el-icon>
+          <span v-if="runningTaskCount > 0" class="task-badge">{{ runningTaskCount }}</span>
+        </div>
+      </el-tooltip>
+      
       <el-dropdown @command="handleLanguageChange">
         <span class="action-item">
           <el-icon><Translate /></el-icon>
@@ -32,29 +39,41 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowDown, Moon, Sunny, Fold, Connection as Translate } from '@element-plus/icons-vue'
+import { ArrowDown, Moon, Sunny, Fold, Connection as Translate, Tickets } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { useTaskList } from '@/services/taskService'
 
 const route = useRoute()
 const { locale, t } = useI18n()
 const appStore = useAppStore()
+const settingsStore = useSettingsStore()
+const { tasks } = useTaskList()
 
 const currentRouteTitle = computed(() => route.meta.title as string || '')
-const currentLanguage = computed(() => appStore.currentLanguage)
-const isDark = computed(() => appStore.currentTheme === 'dark')
+const currentLanguage = computed(() => settingsStore.settings.language)
+const isDark = computed(() => settingsStore.settings.theme === 'dark')
 const isMobile = ref(false)
+
+const runningTaskCount = computed(() => {
+  return tasks.value.filter(t => t.status === 'running').length
+})
 
 const handleLanguageChange = (lang: string) => {
   locale.value = lang
-  appStore.setLanguage(lang)
+  settingsStore.updateSetting('language', lang)
 }
 
 const toggleTheme = () => {
-  appStore.toggleTheme()
+  settingsStore.updateSetting('theme', isDark.value ? 'light' : 'dark')
 }
 
 const toggleSidebar = () => {
   appStore.toggleSidebar()
+}
+
+const toggleTaskPanel = () => {
+  appStore.toggleTaskPanel()
 }
 </script>
 
@@ -138,6 +157,27 @@ const toggleSidebar = () => {
         
         .el-icon {
           font-size: 18px;
+        }
+      }
+      
+      &.task-panel-toggle {
+        position: relative;
+        padding: 8px;
+        
+        .task-badge {
+          position: absolute;
+          top: 2px;
+          right: 2px;
+          min-width: 16px;
+          height: 16px;
+          padding: 0 4px;
+          background: #ff4d4f;
+          color: #fff;
+          font-size: 10px;
+          line-height: 16px;
+          text-align: center;
+          border-radius: 8px;
+          transform: scale(0.8);
         }
       }
     }

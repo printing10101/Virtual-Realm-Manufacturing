@@ -42,6 +42,18 @@ const routes: RouteRecordRaw[] = [
         name: 'About',
         component: () => import('@/views/About.vue'),
         meta: { title: '关于' }
+      },
+      {
+        path: 'validation',
+        name: 'Validation',
+        component: () => import('@/views/ValidationView.vue'),
+        meta: { title: '仿真验证' }
+      },
+      {
+        path: 'experience',
+        name: 'Experience',
+        component: () => import('@/views/ExperienceView.vue'),
+        meta: { title: '经验回放' }
       }
     ]
   }

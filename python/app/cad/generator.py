@@ -11,7 +11,8 @@ from fastapi.responses import FileResponse
 
 from app.core.response import success, error, ErrorCode
 from app.core.exceptions import CADGenerationError
-from app.models.schemas import TaskStatus, ThreeViewTaskRequest, CadQueryRequest
+from app.core.task_manager import task_manager, TaskType
+from app.models.schemas import ThreeViewTaskRequest, CadQueryRequest
 from app.cad.task_db import task_db
 from app.cad.cadquery_gen import CadQueryGenerator
 from app.config import config
@@ -52,14 +53,15 @@ async def three_view_to_3d(
         'left': str(left_path)
     }
     
-    task_id = task_db.create_task("three_view", views)
+    task_id = task_manager.create_task(TaskType.CAD_GENERATION, {"views": views, "output_format": output_format})
+    task_db.create_task("three_view", views)
     
     asyncio.create_task(process_three_view_task(task_id, views, output_format))
     
     return success(
         data={
             "task_id": task_id,
-            "status": TaskStatus.PENDING,
+            "status": "pending",
             "message": "三视图转3D任务已创建"
         }
     )
@@ -67,7 +69,8 @@ async def three_view_to_3d(
 
 @router.post("/cadquery")
 async def cadquery_generate(request: CadQueryRequest):
-    task_id = task_db.create_task("cadquery", {})
+    task_id = task_manager.create_task(TaskType.CAD_GENERATION, {"script": request.script, "output_format": request.output_format})
+    task_db.create_task("cadquery", {})
     
     task_db.update_task_status(
         task_id, 
@@ -81,7 +84,7 @@ async def cadquery_generate(request: CadQueryRequest):
     return success(
         data={
             "task_id": task_id,
-            "status": TaskStatus.PENDING,
+            "status": "pending",
             "message": "CadQuery 生成已加入队列"
         }
     )
@@ -90,23 +93,28 @@ async def cadquery_generate(request: CadQueryRequest):
 @router.get("/tasks/{task_id}")
 async def get_task_status(task_id: str):
     task = task_db.get_task(task_id)
-    if not task:
+    tm_task = task_manager.get_task(task_id)
+    
+    if not task and not tm_task:
         return error(
             code=ErrorCode.FILE_NOT_FOUND,
             message="任务不存在",
             detail=f"Task ID: {task_id}"
         )
     
+    result_task = tm_task if tm_task else task
+    
     return success(data={
-        "task_id": task['task_id'],
-        "status": task['status'],
-        "progress": task['progress'],
-        "task_type": task['task_type'],
-        "model_path": task.get('model_path'),
-        "model_format": task.get('model_format'),
-        "error_message": task.get('error_message'),
-        "created_at": task['created_at'],
-        "completed_at": task.get('completed_at')
+        "task_id": result_task.task_id if hasattr(result_task, 'task_id') else task['task_id'],
+        "status": result_task.status.value if hasattr(result_task, 'status') else task['status'],
+        "progress": result_task.progress if hasattr(result_task, 'progress') else task['progress'],
+        "task_type": result_task.task_type.value if hasattr(result_task, 'task_type') else task.get('task_type'),
+        "message": result_task.message if hasattr(result_task, 'message') else '',
+        "model_path": task.get('model_path') if task else None,
+        "model_format": task.get('model_format') if task else None,
+        "error_message": result_task.error if hasattr(result_task, 'error') else (task.get('error_message') if task else None),
+        "created_at": result_task.created_at if hasattr(result_task, 'created_at') else task['created_at'],
+        "completed_at": task.get('completed_at') if task else None
     })
 
 
@@ -161,13 +169,17 @@ async def download_model(task_id: str):
 
 async def process_three_view_task(task_id: str, views: dict, output_format: str):
     try:
+        await task_manager.update_progress(task_id, 10.0, "正在初始化任务...")
         task_db.update_task_status(task_id, status='running', progress=10.0)
         
         await asyncio.sleep(0.5)
+        await task_manager.update_progress(task_id, 20.0, "正在加载视图文件...")
         task_db.update_task_status(task_id, status='running', progress=20.0)
         
+        await task_manager.update_progress(task_id, 30.0, "正在解析几何参数...")
         params = await cadquery_gen.extract_geometry_params_from_views(views)
         
+        await task_manager.update_progress(task_id, 40.0, "已提取参数，正在搜索模型库...")
         task_db.update_task_status(
             task_id,
             status='running',
@@ -176,12 +188,15 @@ async def process_three_view_task(task_id: str, views: dict, output_format: str)
         )
         
         await asyncio.sleep(0.5)
+        await task_manager.update_progress(task_id, 50.0, "正在匹配模型库...")
         task_db.update_task_status(task_id, status='running', progress=50.0)
         
         library_matches = task_db.search_model_library(params.get('shape_type', 'unknown'))
         
+        await task_manager.update_progress(task_id, 60.0, "正在生成 CadQuery 脚本...")
         script = await cadquery_gen.generate_script_from_params(params, library_matches)
         
+        await task_manager.update_progress(task_id, 70.0, "脚本生成完成，正在执行...")
         task_db.update_task_status(
             task_id,
             status='running',
@@ -190,6 +205,7 @@ async def process_three_view_task(task_id: str, views: dict, output_format: str)
         )
         
         await asyncio.sleep(0.5)
+        await task_manager.update_progress(task_id, 80.0, "正在导出模型...")
         task_db.update_task_status(task_id, status='running', progress=80.0)
         
         model_path = await cadquery_gen.execute_and_export(script, task_id, output_format)
@@ -200,6 +216,12 @@ async def process_three_view_task(task_id: str, views: dict, output_format: str)
             cadquery_script=script
         )
         
+        await task_manager.complete_task(task_id, {
+            "model_path": str(model_path),
+            "model_format": output_format,
+            "params": params
+        })
+        
         task_db.update_task_status(
             task_id,
             status='completed',
@@ -208,7 +230,10 @@ async def process_three_view_task(task_id: str, views: dict, output_format: str)
             model_format=output_format
         )
         
+    except asyncio.CancelledError:
+        await task_manager.cancel_task(task_id)
     except Exception as e:
+        await task_manager.fail_task(task_id, str(e))
         task_db.update_task_status(
             task_id,
             status='failed',
@@ -219,12 +244,21 @@ async def process_three_view_task(task_id: str, views: dict, output_format: str)
 
 async def process_cadquery_task(task_id: str, script: str, output_format: str):
     try:
+        await task_manager.update_progress(task_id, 10.0, "正在初始化 CadQuery 任务...")
         task_db.update_task_status(task_id, status='running', progress=50.0)
         
+        await task_manager.update_progress(task_id, 50.0, "正在执行脚本...")
         await asyncio.sleep(0.5)
+        
+        await task_manager.update_progress(task_id, 70.0, "正在导出模型...")
         task_db.update_task_status(task_id, status='running', progress=70.0)
         
         model_path = await cadquery_gen.execute_and_export(script, task_id, output_format)
+        
+        await task_manager.complete_task(task_id, {
+            "model_path": str(model_path),
+            "model_format": output_format
+        })
         
         task_db.update_task_status(
             task_id,
@@ -234,7 +268,10 @@ async def process_cadquery_task(task_id: str, script: str, output_format: str):
             model_format=output_format
         )
         
+    except asyncio.CancelledError:
+        await task_manager.cancel_task(task_id)
     except Exception as e:
+        await task_manager.fail_task(task_id, str(e))
         task_db.update_task_status(
             task_id,
             status='failed',

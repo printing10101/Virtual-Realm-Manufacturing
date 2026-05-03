@@ -1,0 +1,10 @@
+{
+  "id": "consumer_electronics",
+  "name": "消费电子定制配件",
+  "description": "键帽、手机支架、外壳等消费电子配件的加工工艺",
+  "supported_operations": ["milling", "drilling", "engraving"],
+  "supported_materials": ["AL6061", "AL7075", "ABS", "PC"],
+  "supported_tools": ["carbide_3flute", "carbide_ballnose"],
+  "priority_objectives": ["surface_quality", "dimensional_accuracy", "tool_life"],
+  "version": "1.0.0"
+}

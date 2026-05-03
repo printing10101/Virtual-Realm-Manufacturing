@@ -189,7 +189,7 @@ function navigateTo(path: string) {
         gap: 12px;
         padding: 16px 20px;
         background-color: #f5f7fa;
-        border-radius: 8px;
+        border-radius: var(--lj-module-radius);
         cursor: pointer;
         transition: all 0.3s;
         margin-bottom: 12px;

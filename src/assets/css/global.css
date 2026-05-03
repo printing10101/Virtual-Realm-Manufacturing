@@ -12,6 +12,7 @@
   --lj-border: #dcdfe6;
   --lj-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   --lj-radius: 8px;
+  --lj-module-radius: 11px;
 }
 
 * {
@@ -91,4 +92,22 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.dark .el-tag {
+  border-color: var(--lj-border);
+}
+
+.dark .el-card {
+  border-radius: var(--lj-module-radius) !important;
+}
+
+.welcome-card,
+.workspace-card,
+.about-card,
+.settings-card,
+.view-card,
+.feature-card,
+.project-card {
+  border-radius: var(--lj-module-radius) !important;
 }

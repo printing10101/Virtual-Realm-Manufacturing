@@ -4,8 +4,18 @@ export default {
     workspace: '工作台',
     multiViewTo3D: '三视图生成',
     processPlan: '工艺规划',
+    validation: '仿真验证',
+    experience: '经验回放',
     settings: '设置',
-    about: '关于'
+    about: '关于',
+    retry: '重试'
+  },
+  viewer: {
+    wireframeMode: '线框模式',
+    solidMode: '实体模式',
+    hideGrid: '隐藏网格',
+    showGrid: '显示网格',
+    resetCamera: '重置视角'
   },
   home: {
     welcome: '欢迎使用灵境制造',
@@ -63,8 +73,6 @@ export default {
     downloadComplete: '下载完成',
     downloadSuccess: '下载成功',
     downloadFailed: '下载失败',
-    deleteSuccess: '删除成功',
-    deleteFailed: '删除失败',
     cloudApiSettings: '云端 API 设置',
     cloudApiKey: 'API 密钥',
     cloudApiKeyPlaceholder: '请输入 API 密钥',
@@ -76,7 +84,16 @@ export default {
     settingsSaved: '设置已保存',
     generalSettings: '通用设置',
     darkMode: '深色模式',
-    lightMode: '浅色模式'
+    lightMode: '浅色模式',
+    pythonBackendUrl: 'Python后端地址',
+    ollamaUrlLabel: 'Ollama地址',
+    autoSave: '自动保存',
+    createFailed: '创建失败',
+    deleteFailed: '删除失败',
+    saveFailed: '保存失败',
+    noInstalledModels: '暂无已安装模型',
+    noRecommendedModels: '暂无推荐模型',
+    noGpuDetected: '未检测到GPU'
   },
   workspace: {
     title: '工作台',
@@ -103,7 +120,9 @@ export default {
     createSuccess: '项目创建成功',
     confirmDelete: '确认删除项目',
     warning: '警告',
-    deleteSuccess: '项目删除成功'
+    deleteSuccess: '项目删除成功',
+    deleteFailed: '项目删除失败',
+    createFailed: '项目创建失败'
   },
   about: {
     title: '关于灵境制造',

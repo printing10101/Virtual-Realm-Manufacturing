@@ -2,10 +2,17 @@ import uvicorn
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 from app.config import config
 from app.core.response import success, error, ErrorCode
 from app.core.exceptions import app_exception_handler, general_exception_handler, AppException
+from app.core.exception_handler import (
+    validation_exception_handler,
+    pydantic_validation_exception_handler
+)
+from app.core.container import container
 from app.models.schemas import HealthResponse, AIStatusResponse, AIMode
 from app.ai.llm_client import get_llm_client
 
@@ -15,6 +22,13 @@ from app.ai.workflow_routes import router as workflow_router
 from app.cad.generator import router as cad_router
 from app.cad.process_router import router as process_router
 from app.rag.routes import router as knowledge_router
+from app.api.sse_router import router as sse_router
+from app.api.v1.tasks import router as tasks_router
+from app.api.v1.reports import router as reports_router
+from app.api.v1.validation import router as validation_router
+from app.api.v1.traces import router as traces_router
+from app.api.v1.experiences import router as experiences_router
+from app.api.v1.scenarios import router as scenarios_router
 
 
 def create_app() -> FastAPI:
@@ -34,6 +48,10 @@ def create_app() -> FastAPI:
 
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(Exception, general_exception_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(ValidationError, pydantic_validation_exception_handler)
+
+    container.initialize()
 
     app.include_router(ai_router)
     app.include_router(ollama_router)
@@ -41,6 +59,13 @@ def create_app() -> FastAPI:
     app.include_router(cad_router)
     app.include_router(process_router)
     app.include_router(knowledge_router)
+    app.include_router(sse_router)
+    app.include_router(tasks_router)
+    app.include_router(reports_router)
+    app.include_router(validation_router)
+    app.include_router(traces_router)
+    app.include_router(experiences_router)
+    app.include_router(scenarios_router)
 
     @app.get("/health", response_model=HealthResponse, tags=["System"])
     async def health_check():

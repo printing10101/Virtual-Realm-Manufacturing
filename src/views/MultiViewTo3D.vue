@@ -11,15 +11,15 @@
       </template>
       
       <el-row :gutter="20">
-        <el-col :xs="24" :sm="8">
+        <el-col v-for="view in (['front', 'top', 'left'] as const)" :key="view" :xs="24" :sm="8">
           <div class="upload-section">
-            <h3>{{ t('multiView.frontView') }}</h3>
+            <h3>{{ t(viewLabels[view]) }}</h3>
             <el-upload
               class="upload-area"
               drag
               accept="image/*"
               :auto-upload="false"
-              :on-change="(file: any) => handleFileChange(file, 'front')"
+              :on-change="(file: { raw: File }) => handleFileChange(file, view)"
               :show-file-list="false"
             >
               <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
@@ -27,54 +27,14 @@
                 {{ t('multiView.dragOrClick') }}<em>{{ t('multiView.clickToUpload') }}</em>
               </div>
             </el-upload>
-            <img v-if="previewUrls.front" :src="previewUrls.front" class="preview-img" />
-          </div>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <div class="upload-section">
-            <h3>{{ t('multiView.topView') }}</h3>
-            <el-upload
-              class="upload-area"
-              drag
-              accept="image/*"
-              :auto-upload="false"
-              :on-change="(file: any) => handleFileChange(file, 'top')"
-              :show-file-list="false"
-            >
-              <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-              <div class="el-upload__text">
-                {{ t('multiView.dragOrClick') }}<em>{{ t('multiView.clickToUpload') }}</em>
-              </div>
-            </el-upload>
-            <img v-if="previewUrls.top" :src="previewUrls.top" class="preview-img" />
-          </div>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <div class="upload-section">
-            <h3>{{ t('multiView.leftView') }}</h3>
-            <el-upload
-              class="upload-area"
-              drag
-              accept="image/*"
-              :auto-upload="false"
-              :on-change="(file: any) => handleFileChange(file, 'left')"
-              :show-file-list="false"
-            >
-              <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-              <div class="el-upload__text">
-                {{ t('multiView.dragOrClick') }}<em>{{ t('multiView.clickToUpload') }}</em>
-              </div>
-            </el-upload>
-            <img v-if="previewUrls.left" :src="previewUrls.left" class="preview-img" />
+            <img v-if="previewUrls[view]" :src="previewUrls[view]" class="preview-img" />
           </div>
         </el-col>
       </el-row>
 
       <div class="actions">
         <el-select v-model="outputFormat" :placeholder="t('multiView.outputFormat')" style="width: 150px; margin-right: 16px;">
-          <el-option label="STL" value="stl" />
-          <el-option label="OBJ" value="obj" />
-          <el-option label="GLTF" value="gltf" />
+          <el-option v-for="fmt in supportedFormats" :key="fmt" :label="fmt.toUpperCase()" :value="fmt" />
         </el-select>
         <el-button 
           type="primary" 
@@ -116,22 +76,42 @@ import { ref, computed, onUnmounted } from 'vue'
 import { UploadFilled, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import { API_ENDPOINTS, POLLING_CONFIG, DEFAULT_SETTINGS } from '@/constants'
+import { buildApiUrl, createTaskPoller } from '@/utils/api'
 import ThreeViewer from '@/components/three/ThreeViewer.vue'
 import axios from 'axios'
+import { handleError } from '@/utils/errorHandler'
+import { useSettingsStore } from '@/stores/settingsStore'
+
+const settingsStore = useSettingsStore()
+
+type ViewType = 'front' | 'top' | 'left'
 
 const { t } = useI18n()
 
-const frontFile = ref<File | null>(null)
-const topFile = ref<File | null>(null)
-const leftFile = ref<File | null>(null)
+const supportedFormats = ['stl', 'obj', 'gltf'] as const
 
-const previewUrls = ref({
-  front: '',
-  top: '',
-  left: ''
-})
+const viewLabels: Record<string, string> = {
+  front: 'multiView.frontView',
+  top: 'multiView.topView',
+  left: 'multiView.leftView',
+}
 
-const outputFormat = ref('stl')
+interface ViewFiles {
+  front: File | null
+  top: File | null
+  left: File | null
+}
+
+interface PreviewUrls {
+  front: string
+  top: string
+  left: string
+}
+
+const uploadedFiles = ref<ViewFiles>({ front: null, top: null, left: null })
+const previewUrls = ref<PreviewUrls>({ front: '', top: '', left: '' })
+const outputFormat = ref<string>('stl')
 const isGenerating = ref(false)
 const taskStatus = ref<string | null>(null)
 const taskId = ref<string | null>(null)
@@ -139,10 +119,10 @@ const progress = ref(0)
 const modelUrl = ref<string | null>(null)
 const errorMessage = ref('')
 
-let pollingTimer: number | null = null
+let pollerCleanup: (() => void) | null = null
 
 const canGenerate = computed(() => {
-  return frontFile.value && topFile.value && leftFile.value
+  return uploadedFiles.value.front && uploadedFiles.value.top && uploadedFiles.value.left
 })
 
 const progressStatus = computed(() => {
@@ -151,19 +131,20 @@ const progressStatus = computed(() => {
   return undefined
 })
 
-function handleFileChange(file: any, view: 'front' | 'top' | 'left') {
-  const rawFile = file.raw as File
-  if (!rawFile) return
+function handleFileChange(file: { raw: File }, view: ViewType) {
+  if (!file.raw) return
 
-  if (view === 'front') frontFile.value = rawFile
-  else if (view === 'top') topFile.value = rawFile
-  else leftFile.value = rawFile
+  uploadedFiles.value[view] = file.raw
 
   const reader = new FileReader()
   reader.onload = (e) => {
     previewUrls.value[view] = e.target?.result as string
   }
-  reader.readAsDataURL(rawFile)
+  reader.readAsDataURL(file.raw)
+}
+
+function getPythonBaseUrl(): string {
+  return settingsStore.settings.python_backend_url || DEFAULT_SETTINGS.PYTHON_BACKEND_URL
 }
 
 async function startGeneration() {
@@ -180,70 +161,59 @@ async function startGeneration() {
 
   try {
     const formData = new FormData()
-    formData.append('front_view', frontFile.value!)
-    formData.append('top_view', topFile.value!)
-    formData.append('left_view', leftFile.value!)
+    formData.append('front_view', uploadedFiles.value.front!)
+    formData.append('top_view', uploadedFiles.value.top!)
+    formData.append('left_view', uploadedFiles.value.left!)
     formData.append('output_format', outputFormat.value)
 
-    const response = await axios.post('/api/cad/three-view-to-3d', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const response = await axios.post(
+      buildApiUrl(API_ENDPOINTS.CAD.THREE_VIEW_TO_3D, getPythonBaseUrl()),
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
 
     if (response.data.code === 0) {
       taskId.value = response.data.data.task_id
       ElMessage.success(t('multiView.taskCreated'))
-      startPolling()
+      startPolling(response.data.data.task_id)
     } else {
       throw new Error(response.data.message)
     }
-  } catch (error: any) {
-    ElMessage.error(`${t('multiView.taskFailed')}: ${error.message}`)
+  } catch (error) {
+    handleError(error)
     isGenerating.value = false
   }
 }
 
-function startPolling() {
-  if (pollingTimer) clearInterval(pollingTimer)
-  
-  pollingTimer = window.setInterval(async () => {
-    if (!taskId.value) return
-
-    try {
-      const response = await axios.get(`/api/cad/tasks/${taskId.value}`)
-      
-      if (response.data.code === 0) {
-        const data = response.data.data
-        taskStatus.value = data.status
-        progress.value = Math.round(data.progress)
-
-        if (data.status === 'completed') {
-          stopPolling()
-          isGenerating.value = false
-          modelUrl.value = `/api/cad/models/${taskId.value}/download`
-          ElMessage.success(t('multiView.generateSuccess'))
-        } else if (data.status === 'failed') {
-          stopPolling()
-          isGenerating.value = false
-          errorMessage.value = data.error_message || t('multiView.generateFailed')
-          ElMessage.error(errorMessage.value)
-        }
-      }
-    } catch (error) {
-      console.error('Polling failed:', error)
-    }
-  }, 2000)
-}
-
-function stopPolling() {
-  if (pollingTimer) {
-    clearInterval(pollingTimer)
-    pollingTimer = null
-  }
+function startPolling(id: string) {
+  const cleanup = createTaskPoller(id, {
+    onProgress: (data) => {
+      taskStatus.value = data.status
+      progress.value = Math.round(data.progress)
+    },
+    onComplete: (data) => {
+      taskStatus.value = 'completed'
+      progress.value = 100
+      isGenerating.value = false
+      modelUrl.value = buildApiUrl(API_ENDPOINTS.CAD.MODEL_DOWNLOAD(id), getPythonBaseUrl())
+      ElMessage.success(t('multiView.generateSuccess'))
+    },
+    onFailed: (data) => {
+      taskStatus.value = 'failed'
+      isGenerating.value = false
+      errorMessage.value = data.error_message || t('multiView.generateFailed')
+      ElMessage.error(errorMessage.value)
+    },
+    onError: () => {},
+    intervalMs: POLLING_CONFIG.INTERVAL_MS,
+    timeoutMs: POLLING_CONFIG.TIMEOUT_MS,
+  }, getPythonBaseUrl())
+  pollerCleanup = cleanup
 }
 
 function downloadModel() {
   if (!taskId.value) return
-  const url = `/api/cad/models/${taskId.value}/download`
+  const url = buildApiUrl(API_ENDPOINTS.CAD.MODEL_DOWNLOAD(taskId.value), getPythonBaseUrl())
   const a = document.createElement('a')
   a.href = url
   a.download = `model_${taskId.value}.${outputFormat.value}`
@@ -253,7 +223,7 @@ function downloadModel() {
 }
 
 onUnmounted(() => {
-  stopPolling()
+  pollerCleanup?.()
 })
 </script>
 

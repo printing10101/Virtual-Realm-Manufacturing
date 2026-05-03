@@ -2,7 +2,9 @@ import chromadb
 from chromadb.config import Settings
 from typing import Optional
 import uuid
+import json
 from datetime import datetime
+from pathlib import Path
 
 
 class KnowledgeBase:
@@ -111,6 +113,53 @@ class KnowledgeBase:
                 )
             except Exception:
                 pass
+
+    def load_rag_json_knowledge(self, json_path: str = None) -> dict:
+        if json_path is None:
+            project_root = Path(__file__).parent.parent.parent.parent
+            json_path = project_root / "docs" / "RAG知识库.json"
+        
+        json_path = str(json_path)
+        
+        if not Path(json_path).exists():
+            raise FileNotFoundError(f"找不到 RAG 知识库 JSON 文件: {json_path}")
+        
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        entries = data.get('knowledge_base', [])
+        stats = {'total': len(entries), 'success': 0, 'skipped': 0, 'errors': 0}
+        
+        for entry in entries:
+            try:
+                doc_id = entry.get('id', str(uuid.uuid4()))
+                text = entry.get('text', '')
+                category = entry.get('category', '未分类')
+                subcategory = entry.get('subcategory', '')
+                tags = entry.get('tags', [])
+                
+                metadata = {
+                    'category': category,
+                    'subcategory': subcategory,
+                    'tags': json.dumps(tags),
+                    'source': 'RAG知识库.json',
+                    'version': data.get('metadata', {}).get('version', '1.0')
+                }
+                
+                try:
+                    self.add_knowledge(
+                        document=text,
+                        metadata=metadata,
+                        doc_id=doc_id
+                    )
+                    stats['success'] += 1
+                except Exception:
+                    stats['skipped'] += 1
+                    
+            except Exception:
+                stats['errors'] += 1
+        
+        return stats
 
 
 _knowledge_base: Optional[KnowledgeBase] = None

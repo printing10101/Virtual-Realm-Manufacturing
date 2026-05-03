@@ -66,3 +66,21 @@ async def init_default_knowledge():
         return success(data={"count": kb.count()}, message="默认知识库加载完成")
     except Exception as e:
         return error(code=ErrorCode.INTERNAL_ERROR, message=f"加载默认知识失败: {str(e)}")
+
+
+@router.post("/import-json")
+async def import_rag_json():
+    try:
+        kb = get_knowledge_base()
+        stats = kb.load_rag_json_knowledge()
+        return success(
+            data={
+                "count": kb.count(),
+                "stats": stats
+            },
+            message=f"RAG知识库导入完成: 成功 {stats['success']}, 跳过 {stats['skipped']}, 错误 {stats['errors']}"
+        )
+    except FileNotFoundError as e:
+        return error(code=ErrorCode.NOT_FOUND, message=str(e))
+    except Exception as e:
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"导入RAG知识库失败: {str(e)}")

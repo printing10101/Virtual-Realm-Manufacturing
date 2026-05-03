@@ -9,30 +9,34 @@
         <router-view />
       </main>
     </div>
+    <TaskPanel />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, watch, onMounted } from 'vue'
 import { useAppStore } from '@/stores/app'
+import { useSettingsStore } from '@/stores/settingsStore'
 import Sidebar from './Sidebar.vue'
 import AppHeader from './AppHeader.vue'
+import TaskPanel from '@/components/tasks/TaskPanel.vue'
 
 const appStore = useAppStore()
+const settingsStore = useSettingsStore()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
-const isDark = computed(() => appStore.currentTheme === 'dark')
+const isDark = computed(() => settingsStore.settings.theme === 'dark')
 
 onMounted(() => {
   applyTheme()
 })
 
-watch(() => appStore.currentTheme, () => {
+watch(() => settingsStore.settings.theme, () => {
   applyTheme()
 })
 
 function applyTheme() {
-  if (appStore.currentTheme === 'dark') {
+  if (settingsStore.settings.theme === 'dark') {
     document.documentElement.classList.add('dark')
     document.body.style.backgroundColor = 'var(--lj-bg-dark)'
   } else {

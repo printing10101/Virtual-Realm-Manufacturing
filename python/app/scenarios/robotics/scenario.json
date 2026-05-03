@@ -1,0 +1,10 @@
+{
+  "id": "robotics",
+  "name": "机械竞赛非标零件",
+  "description": "机器人竞赛、机械创新设计大赛等非标精密零件的加工工艺",
+  "supported_operations": ["milling", "turning", "drilling", "boring", "engraving"],
+  "supported_materials": ["AL7075", "AL6061", "45钢", "POM", "ABS"],
+  "supported_tools": ["carbide_3flute", "carbide_ballnose", "hss_2flute"],
+  "priority_objectives": ["dimensional_accuracy", "surface_quality", "machining_speed"],
+  "version": "1.0.0"
+}
