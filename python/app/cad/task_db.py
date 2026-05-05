@@ -1,9 +1,8 @@
 import sqlite3
 import uuid
-from pathlib import Path
-from typing import Optional
-from datetime import datetime
 from contextlib import contextmanager
+from datetime import datetime
+from pathlib import Path
 
 from app.config import config
 
@@ -65,14 +64,15 @@ class TaskDatabase:
                 )
             """)
 
-    def create_task(self, task_type: str, views: dict) -> str:
-        task_id = str(uuid.uuid4())
+    def create_task(self, task_type: str, views: dict, task_id: str | None = None) -> str:
+        if task_id is None:
+            task_id = str(uuid.uuid4())
         now = datetime.now().isoformat()
-        
+
         with self.get_connection() as conn:
             conn.execute("""
-                INSERT INTO tasks 
-                (task_id, status, progress, task_type, front_view_path, top_view_path, 
+                INSERT INTO tasks
+                (task_id, status, progress, task_type, front_view_path, top_view_path,
                  left_view_path, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
@@ -80,19 +80,19 @@ class TaskDatabase:
                 views.get('front'), views.get('top'), views.get('left'),
                 now, now
             ))
-        
+
         return task_id
 
-    def update_task_status(self, task_id: str, status: str, progress: float = None,
-                          error_message: str = None, extracted_params: str = None,
-                          cadquery_script: str = None, model_path: str = None,
-                          model_format: str = None):
+    def update_task_status(self, task_id: str, status: str, progress: float | None = None,
+                          error_message: str | None = None, extracted_params: str | None = None,
+                          cadquery_script: str | None = None, model_path: str | None = None,
+                          model_format: str | None = None):
         now = datetime.now().isoformat()
-        
+
         with self.get_connection() as conn:
             if status == 'completed':
                 conn.execute("""
-                    UPDATE tasks 
+                    UPDATE tasks
                     SET status=?, updated_at=?, completed_at=?,
                         progress=?, error_message=?, extracted_params=?,
                         cadquery_script=?, model_path=?, model_format=?
@@ -101,20 +101,20 @@ class TaskDatabase:
                       extracted_params, cadquery_script, model_path, model_format, task_id))
             elif status == 'failed':
                 conn.execute("""
-                    UPDATE tasks 
+                    UPDATE tasks
                     SET status=?, updated_at=?, progress=?, error_message=?
                     WHERE task_id=?
                 """, (status, now, progress or 0.0, error_message, task_id))
             else:
                 conn.execute("""
-                    UPDATE tasks 
+                    UPDATE tasks
                     SET status=?, updated_at=?, progress=?,
                         extracted_params=?, cadquery_script=?
                     WHERE task_id=?
                 """, (status, now, progress or 0.0, extracted_params,
                       cadquery_script, task_id))
 
-    def get_task(self, task_id: str) -> Optional[dict]:
+    def get_task(self, task_id: str) -> dict | None:
         with self.get_connection() as conn:
             cursor = conn.execute("SELECT * FROM tasks WHERE task_id=?", (task_id,))
             row = cursor.fetchone()
