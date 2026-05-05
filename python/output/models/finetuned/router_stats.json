@@ -1,0 +1,321 @@
+{
+  "total_calls": 52,
+  "local_calls": 14,
+  "cloud_calls": 28,
+  "fallback_calls": 10,
+  "avg_duration_ms": 0.0684215472294734,
+  "route_history": [
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:49:31.163396"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:49:31.186448"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:49:31.245989"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:49:31.325336"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:50:08.890386"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:50:08.907207"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:50:08.949858"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:50:09.007359"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:53:21.060117"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:53:21.083557"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:53:21.099141"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:53:21.112353"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:53:21.189573"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:53:53.178270"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:53:53.196810"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:53:53.206514"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:53:53.217328"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.5040168762207031,
+      "timestamp": "2026-05-05T12:53:53.287952"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:54:41.201603"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:54:41.226720"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:54:41.239102"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:54:41.253801"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:54:41.337336"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:56:26.164947"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:56:26.182246"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:56:26.191960"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:56:26.203155"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:56:26.296155"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 1.0013580322265625,
+      "timestamp": "2026-05-05T12:58:13.556512"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:58:13.627822"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:58:13.643103"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:58:13.656924"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:58:13.757903"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T12:58:35.397776"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:00:04.373107"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.5235671997070312,
+      "timestamp": "2026-05-05T13:00:04.395184"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:00:04.405407"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:00:04.417051"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:00:04.477149"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:00:25.959660"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:00:49.157493"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:00:49.183748"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:00:49.197465"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.5123615264892578,
+      "timestamp": "2026-05-05T13:00:49.211037"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:00:49.300663"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:01:10.922533"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:02:21.996520"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:02:22.016459"
+    },
+    {
+      "decision": "cloud",
+      "model": "gpt-4o",
+      "duration_ms": 1.0166168212890625,
+      "timestamp": "2026-05-05T13:02:22.026769"
+    },
+    {
+      "decision": "local_with_fallback",
+      "model": "gpt-4o",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:02:22.036488"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:02:22.098713"
+    },
+    {
+      "decision": "local",
+      "model": "qwen2.5:7b",
+      "duration_ms": 0.0,
+      "timestamp": "2026-05-05T13:02:43.564308"
+    }
+  ]
+}
