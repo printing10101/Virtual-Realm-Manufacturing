@@ -42,6 +42,9 @@ fn main() {
       commands::get_projects,
       commands::add_project_cmd,
       commands::delete_project_cmd,
+      commands::proxy_http_request,
+      commands::proxy_batch_request,
+      commands::proxy_health_check,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
