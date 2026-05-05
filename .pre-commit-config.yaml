@@ -1,0 +1,67 @@
+# Pre-commit configuration for Python code
+# Install: pip install pre-commit && pre-commit install
+# Skip: git commit --no-verify
+
+repos:
+  # Python code formatting
+  - repo: https://github.com/psf/black
+    rev: 24.2.0
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: [--line-length=88]
+        files: ^python/
+
+  # Python linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^python/
+
+  # Rust formatting
+  - repo: local
+    hooks:
+      - id: rustfmt
+        name: rustfmt
+        entry: cargo fmt --
+        language: system
+        types: [rust]
+        files: ^src-tauri/
+        pass_filenames: false
+
+  # TypeScript type checking
+  - repo: local
+    hooks:
+      - id: tsc
+        name: tsc
+        entry: pnpm exec vue-tsc --noEmit
+        language: system
+        files: \.ts$
+        pass_filenames: false
+
+  # YAML formatting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [-d, '{extends: relaxed, rules: {line-length: disable}}']
+
+  # Check for merge conflicts
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=10240']
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+
+  # Secret detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
