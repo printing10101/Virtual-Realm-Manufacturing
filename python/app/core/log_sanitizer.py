@@ -1,0 +1,196 @@
+import re
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass
+class SanitizationRule:
+    name: str
+    pattern: re.Pattern | None = None
+    keys: list[str] | None = None
+    handler: callable | None = None
+
+
+class LogSanitizer:
+    PROCESS_PARAM_KEYS = [
+        "cutting_speed", "feed_rate", "spindle_speed", "depth_of_cut",
+        "v_c", "f", "a_p", "n", "ap", "ae", "vf", "fz",
+        "切削速度", "进给量", "主轴转速", "切削深度", "进给速度"
+    ]
+
+    PROCESS_PARAM_PATTERNS = [
+        r'(切削速度[:\s]*)(\d+\.?\d*)\s*(rpm|m/min)',
+        r'(进给量[:\s]*)(\d+\.?\d*)\s*(mm/rev|mm/min)',
+        r'(主轴转速[:\s]*)(\d+\.?\d*)\s*(rpm)',
+        r'(切削深度[:\s]*)(\d+\.?\d*)\s*(mm)',
+        r'(进给速度[:\s]*)(\d+\.?\d*)\s*(mm/min)',
+        r'(spindle\s*speed[:\s]*)(\d+\.?\d*)\s*(rpm)',
+        r'(cutting\s*speed[:\s]*)(\d+\.?\d*)\s*(m/min)',
+        r'(feed\s*rate[:\s]*)(\d+\.?\d*)\s*(mm/rev|mm/min)',
+        r'(depth\s*of\s*cut[:\s]*)(\d+\.?\d*)\s*(mm)',
+    ]
+
+    FILE_CONTENT_KEYS = [
+        "file_content", "cad_content", "nc_code", "gcode", "model_data",
+        "binary_data", "upload_data", "file_data", "image_data",
+        "design_content", "drawing_content", "program_content",
+        "文件内容", "cad数据", "nc程序", "加工代码"
+    ]
+
+    USER_INPUT_KEYS = [
+        "description", "comment", "remark", "note", "user_input",
+        "feedback", "suggestion", "detail", "memo",
+        "描述", "备注", "评论", "说明", "用户输入", "反馈", "建议"
+    ]
+
+    API_KEY_KEYS = [
+        "api_key", "token", "secret", "credential", "access_key",
+        "secret_key", "auth_token", "api_secret", "password",
+        "authorization", "bearer_token", "api_token",
+        "密钥", "令牌", "访问令牌", "授权码", "凭证"
+    ]
+
+    API_KEY_PATTERNS = [
+        r'(sk_[a-zA-Z0-9]{8})[a-zA-Z0-9]+',
+        r'(key-[a-zA-Z0-9]{8})[a-zA-Z0-9]+',
+        r'(ghp_[a-zA-Z0-9]{8})[a-zA-Z0-9]+',
+        r'(xox[bapsr]-[a-zA-Z0-9]{8})[a-zA-Z0-9]+',
+        r'(Bearer\s+)[a-zA-Z0-9_.-]+',
+        r'(Authorization:\s*)[a-zA-Z0-9_.-]+',
+    ]
+
+    USER_INPUT_MAX_LENGTH = 50
+
+    def __init__(self):
+        self._compiled_patterns = []
+        for pattern in self.PROCESS_PARAM_PATTERNS:
+            self._compiled_patterns.append(re.compile(pattern, re.IGNORECASE))
+
+        self._api_key_compiled_patterns = []
+        for pattern in self.API_KEY_PATTERNS:
+            self._api_key_compiled_patterns.append(re.compile(pattern))
+
+    def sanitize(self, data: Any) -> Any:
+        if data is None:
+            return None
+        if isinstance(data, dict):
+            return self._sanitize_dict(data)
+        elif isinstance(data, list):
+            return [self.sanitize(item) for item in data]
+        elif isinstance(data, str):
+            return self._sanitize_string(data)
+        elif isinstance(data, (int, float, bool)):
+            return data
+        else:
+            return str(data)
+
+    def _sanitize_dict(self, data: dict) -> dict:
+        sanitized = {}
+        for key, value in data.items():
+            if self._is_process_param_key(key):
+                sanitized[key] = self._sanitize_process_param_value(key, value)
+            elif self._is_file_content_key(key):
+                sanitized[key] = self._sanitize_file_content(key, value)
+            elif self._is_api_key_key(key):
+                sanitized[key] = self._sanitize_api_key(value)
+            elif self._is_user_input_key(key):
+                sanitized[key] = self._sanitize_user_input(value)
+            else:
+                sanitized[key] = self.sanitize(value)
+        return sanitized
+
+    def _sanitize_string(self, text: str) -> str:
+        text = self._sanitize_process_param_patterns(text)
+        text = self._sanitize_api_key_patterns(text)
+        return text
+
+    def _is_process_param_key(self, key: str) -> bool:
+        key_lower = key.lower()
+        return key_lower in [k.lower() for k in self.PROCESS_PARAM_KEYS]
+
+    def _is_file_content_key(self, key: str) -> bool:
+        key_lower = key.lower()
+        return key_lower in [k.lower() for k in self.FILE_CONTENT_KEYS]
+
+    def _is_api_key_key(self, key: str) -> bool:
+        key_lower = key.lower()
+        return key_lower in [k.lower() for k in self.API_KEY_KEYS]
+
+    def _is_user_input_key(self, key: str) -> bool:
+        key_lower = key.lower()
+        return key_lower in [k.lower() for k in self.USER_INPUT_KEYS]
+
+    def _sanitize_process_param_value(self, key: str, value: Any) -> Any:
+        if isinstance(value, dict):
+            sanitized = {}
+            for k, v in value.items():
+                if isinstance(v, (int, float)):
+                    sanitized[k] = "[工艺参数已脱敏]"
+                else:
+                    sanitized[k] = v
+            return sanitized
+        elif isinstance(value, (int, float)):
+            return "[工艺参数已脱敏]"
+        elif isinstance(value, str):
+            return self._sanitize_process_param_patterns(value)
+        else:
+            return value
+
+    def _sanitize_process_param_patterns(self, text: str) -> str:
+        for pattern in self._compiled_patterns:
+            match = pattern.search(text)
+            while match:
+                prefix = match.group(1)
+                unit = match.group(3) if len(match.groups()) >= 3 else ""
+                replacement = f"{prefix}[工艺参数已脱敏]"
+                if unit:
+                    replacement += f" {unit}"
+                text = text[:match.start()] + replacement + text[match.end():]
+                match = pattern.search(text)
+        return text
+
+    def _sanitize_file_content(self, key: str, value: Any) -> str:
+        if isinstance(value, str):
+            length = len(value)
+            return f"[文件内容已脱敏 - 长度: {length}字符]"
+        elif isinstance(value, bytes):
+            length = len(value)
+            return f"[文件内容已脱敏 - 长度: {length}字节]"
+        elif isinstance(value, dict):
+            file_type = value.get("type", value.get("file_type", "unknown"))
+            file_size = value.get("size", value.get("file_size", "unknown"))
+            file_format = value.get("format", value.get("file_format", "unknown"))
+            return f"[文件内容已脱敏 - 类型: {file_type}, 大小: {file_size}, 格式: {file_format}]"
+        else:
+            return "[文件内容已脱敏]"
+
+    def _sanitize_user_input(self, value: Any) -> str:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            if len(value) > self.USER_INPUT_MAX_LENGTH:
+                return value[:self.USER_INPUT_MAX_LENGTH] + "..."
+            return value
+        return str(value)
+
+    def _sanitize_api_key(self, value: Any) -> str:
+        if isinstance(value, str):
+            if len(value) <= 4:
+                return "[已脱敏]"
+            return f"[已脱敏]{value[-4:]}"
+        return "[已脱敏]"
+
+    def _sanitize_api_key_patterns(self, text: str) -> str:
+        for pattern in self._api_key_compiled_patterns:
+            match = pattern.search(text)
+            while match:
+                prefix = match.group(1)
+                full_match = match.group(0)
+                masked_value = full_match[len(prefix):]
+                if len(masked_value) > 4:
+                    masked_value = "[已脱敏]" + masked_value[-4:]
+                else:
+                    masked_value = "[已脱敏]"
+                text = text[:match.start()] + prefix + masked_value + text[match.end():]
+                match = pattern.search(text)
+        return text

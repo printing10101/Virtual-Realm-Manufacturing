@@ -38,6 +38,23 @@ class DatabaseConfig:
 
 
 @dataclass
+class ModelRouterSettings:
+    local_model: str = field(default_factory=lambda: env("LOCAL_MODEL", "qwen2.5:7b"))
+    cloud_provider: str = field(default_factory=lambda: env("CLOUD_PROVIDER", "openai"))
+    cloud_model: str = field(default_factory=lambda: env("CLOUD_MODEL_ROUTER", "gpt-4o"))
+    fallback_threshold: int = field(default_factory=lambda: int(env("FALLBACK_THRESHOLD", "3")))
+    local_timeout: int = field(default_factory=lambda: int(env("LOCAL_TIMEOUT", "30")))
+
+
+@dataclass
+class FineTuneSettings:
+    finetune_auto_trigger: bool = field(default_factory=lambda: env("FINETUNE_AUTO_TRIGGER", "false").lower() == "true")
+    finetune_min_samples: int = field(default_factory=lambda: int(env("FINETUNE_MIN_SAMPLES", "50")))
+    finetune_interval_days: int = field(default_factory=lambda: int(env("FINETUNE_INTERVAL_DAYS", "7")))
+    finetune_output_dir: str = field(default_factory=lambda: env("FINETUNE_OUTPUT_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "models", "finetuned")))
+
+
+@dataclass
 class SecurityConfig:
     cors_origins: list[str] = field(default_factory=lambda: [
         origin.strip() for origin in env("CORS_ORIGINS", "*").split(",") if origin.strip()
@@ -49,12 +66,20 @@ class SecurityConfig:
 
 
 @dataclass
+class EnvironmentConfig:
+    environment: str = field(default_factory=lambda: env("ENVIRONMENT", "development").lower())
+
+
+@dataclass
 class AppConfig:
     app_name: str = field(default_factory=lambda: env("APP_NAME", "灵境制造"))
-    app_version: str = field(default_factory=lambda: env("APP_VERSION", "4.0.0"))
+    app_version: str = field(default_factory=lambda: env("APP_VERSION", "1.2.0"))
     offline_mode: bool = field(default_factory=lambda: env("OFFLINE_MODE", "false").lower() == "true")
+    environment: EnvironmentConfig = field(default_factory=EnvironmentConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
     ai: AIConfig = field(default_factory=AIConfig)
+    model_router: ModelRouterSettings = field(default_factory=ModelRouterSettings)
+    finetune: FineTuneSettings = field(default_factory=FineTuneSettings)
     storage: StorageConfig = field(default_factory=StorageConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
