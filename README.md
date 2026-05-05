@@ -1,0 +1,7 @@
+# Virtual-Realm-Manufacturing
+
+[![Lint](https://github.com/username/Virtual-Realm-Manufacturing/actions/workflows/lint.yml/badge.svg)](https://github.com/username/Virtual-Realm-Manufacturing/actions/workflows/lint.yml)
+[![Test](https://github.com/username/Virtual-Realm-Manufacturing/actions/workflows/test.yml/badge.svg)](https://github.com/username/Virtual-Realm-Manufacturing/actions/workflows/test.yml)
+[![Build](https://github.com/username/Virtual-Realm-Manufacturing/actions/workflows/build.yml/badge.svg)](https://github.com/username/Virtual-Realm-Manufacturing/actions/workflows/build.yml)
+
+灵境制造是一款面向制造行业的 AI 驱动桌面应用，致力于打通"三视图→3D模型→工艺规划→NC代码"的全流程智能化。产品以 "数据不出本地设备" 为核心原则，集成 Ollama 本地大模型与数学规划求解器，在保障企业专有工艺数据绝对安全的前提下，提供高精度的 3D 重建与可落地的加工方案。通过将前沿论文成果转化为工业级工具，灵境制造旨在降低中小型制造企业的智能化门槛，让 AI 真正服务于车间一线。
