@@ -1,14 +1,23 @@
 <template>
   <div class="home-view">
-    <el-card class="welcome-card" shadow="hover">
+    <el-card
+      class="welcome-card"
+      shadow="hover"
+    >
       <template #header>
         <div class="card-header">
           <div class="header-content">
             <h1>{{ t('home.welcome') }}</h1>
-            <p class="subtitle">{{ t('home.subtitle') }}</p>
+            <p class="subtitle">
+              {{ t('home.subtitle') }}
+            </p>
           </div>
           <div class="header-actions">
-            <el-button type="primary" size="large" @click="navigateTo('/workspace')">
+            <el-button
+              type="primary"
+              size="large"
+              @click="navigateTo('/workspace')"
+            >
               <el-icon><Monitor /></el-icon>
               {{ t('home.startNow') }}
             </el-button>
@@ -16,42 +25,86 @@
         </div>
       </template>
       
-      <p class="description">{{ t('home.description') }}</p>
+      <p class="description">
+        {{ t('home.description') }}
+      </p>
       
       <div class="features-grid">
         <el-row :gutter="20">
-          <el-col :xs="24" :sm="12" :md="8">
-            <el-card shadow="hover" class="feature-card card-hover" @click="navigateTo('/multi-view-to-3d')">
+          <el-col
+            :xs="24"
+            :sm="12"
+            :md="8"
+          >
+            <el-card
+              shadow="hover"
+              class="feature-card card-hover"
+              @click="navigateTo('/multi-view-to-3d')"
+            >
               <div class="feature-icon icon-3d">
-                <el-icon size="48"><Box /></el-icon>
+                <el-icon size="48">
+                  <Box />
+                </el-icon>
               </div>
               <h3>{{ t('home.feature3d.title') }}</h3>
               <p>{{ t('home.feature3d.desc') }}</p>
-              <el-button text type="primary" class="link-btn">
+              <el-button
+                text
+                type="primary"
+                class="link-btn"
+              >
                 {{ t('home.tryNow') }} <el-icon><ArrowRight /></el-icon>
               </el-button>
             </el-card>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
-            <el-card shadow="hover" class="feature-card card-hover" @click="navigateTo('/process-plan')">
+          <el-col
+            :xs="24"
+            :sm="12"
+            :md="8"
+          >
+            <el-card
+              shadow="hover"
+              class="feature-card card-hover"
+              @click="navigateTo('/process-plan')"
+            >
               <div class="feature-icon icon-process">
-                <el-icon size="48"><Document /></el-icon>
+                <el-icon size="48">
+                  <Document />
+                </el-icon>
               </div>
               <h3>{{ t('home.featureProcess.title') }}</h3>
               <p>{{ t('home.featureProcess.desc') }}</p>
-              <el-button text type="primary" class="link-btn">
+              <el-button
+                text
+                type="primary"
+                class="link-btn"
+              >
                 {{ t('home.tryNow') }} <el-icon><ArrowRight /></el-icon>
               </el-button>
             </el-card>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
-            <el-card shadow="hover" class="feature-card card-hover" @click="navigateTo('/workspace')">
+          <el-col
+            :xs="24"
+            :sm="12"
+            :md="8"
+          >
+            <el-card
+              shadow="hover"
+              class="feature-card card-hover"
+              @click="navigateTo('/workspace')"
+            >
               <div class="feature-icon icon-workspace">
-                <el-icon size="48"><Monitor /></el-icon>
+                <el-icon size="48">
+                  <Monitor />
+                </el-icon>
               </div>
               <h3>{{ t('home.featureWorkspace.title') }}</h3>
               <p>{{ t('home.featureWorkspace.desc') }}</p>
-              <el-button text type="primary" class="link-btn">
+              <el-button
+                text
+                type="primary"
+                class="link-btn"
+              >
                 {{ t('home.tryNow') }} <el-icon><ArrowRight /></el-icon>
               </el-button>
             </el-card>
@@ -62,11 +115,27 @@
       <el-divider />
 
       <div class="quick-stats">
-        <h3 class="section-title">{{ t('home.quickStart') }}</h3>
+        <h3 class="section-title">
+          {{ t('home.quickStart') }}
+        </h3>
         <el-row :gutter="20">
-          <el-col :xs="24" :sm="12" :md="6" v-for="item in quickLinks" :key="item.path">
-            <div class="stat-item" @click="navigateTo(item.path)">
-              <el-icon :size="32" :color="item.color"><component :is="item.icon" /></el-icon>
+          <el-col
+            v-for="item in quickLinks"
+            :key="item.path"
+            :xs="24"
+            :sm="12"
+            :md="6"
+          >
+            <div
+              class="stat-item"
+              @click="navigateTo(item.path)"
+            >
+              <el-icon
+                :size="32"
+                :color="item.color"
+              >
+                <component :is="item.icon" />
+              </el-icon>
               <span>{{ item.label }}</span>
             </div>
           </el-col>
@@ -77,12 +146,16 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Box, Document, Monitor, Setting, InfoFilled, ArrowRight } from '@element-plus/icons-vue'
+import { preloadRoutes } from '@/router'
 
 const router = useRouter()
 const { t } = useI18n()
+
+let preloadTimer: ReturnType<typeof setTimeout> | null = null
 
 const quickLinks = [
   { path: '/multi-view-to-3d', label: t('common.multiViewTo3D'), icon: Box, color: '#409eff' },
@@ -94,6 +167,19 @@ const quickLinks = [
 function navigateTo(path: string) {
   router.push(path)
 }
+
+onMounted(() => {
+  preloadTimer = setTimeout(() => {
+    preloadRoutes(['Workspace', 'ProcessPlan', 'Validation'])
+  }, 1500)
+})
+
+onUnmounted(() => {
+  if (preloadTimer) {
+    clearTimeout(preloadTimer)
+    preloadTimer = null
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -189,7 +275,7 @@ function navigateTo(path: string) {
         gap: 12px;
         padding: 16px 20px;
         background-color: #f5f7fa;
-        border-radius: 8px;
+        border-radius: var(--lj-module-radius);
         cursor: pointer;
         transition: all 0.3s;
         margin-bottom: 12px;

@@ -4,17 +4,36 @@
       <template #header>
         <div class="card-header">
           <h2>{{ t('settings.title') }}</h2>
+          <el-button
+            :loading="isSaving"
+            @click="handleSaveAll"
+          >
+            {{ t('settings.save') }}
+          </el-button>
         </div>
       </template>
 
       <el-tabs v-model="activeTab">
-        <el-tab-pane :label="t('settings.aiMode')" name="ai">
-          <el-form :model="aiForm" label-width="140px" class="ai-form">
+        <el-tab-pane
+          :label="t('settings.aiMode')"
+          name="ai"
+        >
+          <el-form
+            :model="aiForm"
+            label-width="140px"
+            class="ai-form"
+          >
             <el-form-item :label="t('settings.aiMode')">
-              <el-radio-group v-model="aiForm.mode" @change="handleAiModeChange">
-                <el-radio-button value="local">{{ t('settings.localModel') }}</el-radio-button>
-                <el-radio-button value="cloud">{{ t('settings.cloudModel') }}</el-radio-button>
-                <el-radio-button value="rule">{{ t('settings.offlineMode') }}</el-radio-button>
+              <el-radio-group v-model="aiForm.mode">
+                <el-radio-button value="local">
+                  {{ t('settings.localModel') }}
+                </el-radio-button>
+                <el-radio-button value="cloud">
+                  {{ t('settings.cloudModel') }}
+                </el-radio-button>
+                <el-radio-button value="rule">
+                  {{ t('settings.offlineMode') }}
+                </el-radio-button>
               </el-radio-group>
             </el-form-item>
 
@@ -34,17 +53,37 @@
               />
 
               <el-form-item :label="t('settings.installedModels')">
-                <el-table :data="installedModels" style="width: 100%" empty-text="暂无已安装模型">
-                  <el-table-column prop="name" :label="t('settings.modelName')" />
-                  <el-table-column prop="size" :label="t('settings.modelSize')" width="120" />
-                  <el-table-column :label="t('settings.actions')" width="120">
+                <el-table
+                  :data="installedModels"
+                  style="width: 100%"
+                  :empty-text="t('settings.noInstalledModels')"
+                >
+                  <el-table-column
+                    prop="name"
+                    :label="t('settings.modelName')"
+                  />
+                  <el-table-column
+                    prop="size"
+                    :label="t('settings.modelSize')"
+                    width="120"
+                  />
+                  <el-table-column
+                    :label="t('settings.actions')"
+                    width="120"
+                  >
                     <template #default="scope">
                       <el-popconfirm
-                        :title="`${t('settings.confirmDelete')}${scope.row.name}?`"
+                        :title="`${t('settings.confirmDelete')} ${scope.row.name}?`"
                         @confirm="handleDeleteModel(scope.row.name)"
                       >
                         <template #reference>
-                          <el-button type="danger" size="small">{{ t('settings.delete') }}</el-button>
+                          <el-button
+                            type="danger"
+                            size="small"
+                            :disabled="isDeleting"
+                          >
+                            {{ t('settings.delete') }}
+                          </el-button>
                         </template>
                       </el-popconfirm>
                     </template>
@@ -53,11 +92,29 @@
               </el-form-item>
 
               <el-form-item :label="t('settings.recommendedModels')">
-                <el-table :data="recommendedModels" style="width: 100%" empty-text="暂无推荐模型">
-                  <el-table-column prop="name" :label="t('settings.modelName')" />
-                  <el-table-column prop="size" :label="t('settings.modelSize')" width="120" />
-                  <el-table-column prop="category" :label="t('settings.modelCategory')" width="100" />
-                  <el-table-column :label="t('settings.actions')" width="140">
+                <el-table
+                  :data="recommendedModels"
+                  style="width: 100%"
+                  :empty-text="t('settings.noRecommendedModels')"
+                >
+                  <el-table-column
+                    prop="name"
+                    :label="t('settings.modelName')"
+                  />
+                  <el-table-column
+                    prop="size"
+                    :label="t('settings.modelSize')"
+                    width="120"
+                  />
+                  <el-table-column
+                    prop="category"
+                    :label="t('settings.modelCategory')"
+                    width="100"
+                  />
+                  <el-table-column
+                    :label="t('settings.actions')"
+                    width="140"
+                  >
                     <template #default="scope">
                       <el-button
                         type="primary"
@@ -72,9 +129,12 @@
                 </el-table>
               </el-form-item>
 
-              <div v-if="downloadProgress !== null" class="download-progress">
+              <div
+                v-if="downloadProgress !== null"
+                class="download-progress"
+              >
                 <el-progress
-                  :percentage="Math.round(downloadProgress * 100)"
+                  :percentage="Math.min(100, Math.round((downloadProgress ?? 0) * 100))"
                   :status="downloadProgress >= 1 ? 'success' : undefined"
                 />
                 <span class="progress-text">{{ downloadStatusText }}</span>
@@ -83,17 +143,44 @@
               <el-divider>{{ t('settings.gpuInfo') }}</el-divider>
 
               <el-form-item :label="t('settings.gpuInfo')">
-                <div v-if="gpuInfo" class="gpu-info">
+                <div
+                  v-if="gpuInfo"
+                  class="gpu-info"
+                >
                   <el-tag>{{ t('settings.ollamaVersion') }}: {{ gpuInfo.ollama_version }}</el-tag>
                   <el-tag>{{ t('settings.gpuCount') }}: {{ gpuInfo.gpu_count }}</el-tag>
-                  <el-table :data="gpuInfo.gpus" style="width: 100%; margin-top: 10px" empty-text="未检测到 GPU">
-                    <el-table-column prop="index" :label="t('settings.gpuIndex')" width="80" />
-                    <el-table-column prop="name" :label="t('settings.gpuName')" />
-                    <el-table-column prop="memory_total" :label="t('settings.gpuMemoryTotal')" width="140" />
-                    <el-table-column prop="memory_free" :label="t('settings.gpuMemoryFree')" width="140" />
+                  <el-table
+                    :data="gpuInfo.gpus"
+                    style="width: 100%; margin-top: 10px"
+                    :empty-text="t('settings.noGpuDetected')"
+                  >
+                    <el-table-column
+                      prop="index"
+                      :label="t('settings.gpuIndex')"
+                      width="80"
+                    />
+                    <el-table-column
+                      prop="name"
+                      :label="t('settings.gpuName')"
+                    />
+                    <el-table-column
+                      prop="memory_total"
+                      :label="t('settings.gpuMemoryTotal')"
+                      width="140"
+                    />
+                    <el-table-column
+                      prop="memory_free"
+                      :label="t('settings.gpuMemoryFree')"
+                      width="140"
+                    />
                   </el-table>
                 </div>
-                <el-button @click="loadGpuInfo">{{ t('settings.refreshGpuInfo') }}</el-button>
+                <el-button
+                  :loading="isLoadingGpu"
+                  @click="loadGpuInfo"
+                >
+                  {{ t('settings.refreshGpuInfo') }}
+                </el-button>
               </el-form-item>
             </div>
 
@@ -132,19 +219,31 @@
                 show-icon
               />
             </div>
-
-            <el-form-item>
-              <el-button type="primary" @click="handleSaveAiSettings">{{ t('settings.save') }}</el-button>
-            </el-form-item>
           </el-form>
         </el-tab-pane>
 
-        <el-tab-pane :label="t('settings.generalSettings')" name="general">
-          <el-form :model="settingsForm" label-width="140px" class="general-form">
+        <el-tab-pane
+          :label="t('settings.generalSettings')"
+          name="general"
+        >
+          <el-form
+            :model="settingsForm"
+            label-width="140px"
+            class="general-form"
+          >
             <el-form-item :label="t('settings.language')">
-              <el-select v-model="settingsForm.language" @change="handleLanguageChange">
-                <el-option label="中文" value="zh-CN" />
-                <el-option label="English" value="en-US" />
+              <el-select
+                v-model="settingsForm.language"
+                @change="handleLanguageChange"
+              >
+                <el-option
+                  label="中文"
+                  value="zh-CN"
+                />
+                <el-option
+                  label="English"
+                  value="en-US"
+                />
               </el-select>
             </el-form-item>
 
@@ -153,6 +252,28 @@
                 v-model="settingsForm.darkMode"
                 :active-text="t('settings.darkMode')"
                 :inactive-text="t('settings.lightMode')"
+                @change="handleThemeChange"
+              />
+            </el-form-item>
+
+            <el-form-item :label="t('settings.pythonBackendUrl')">
+              <el-input
+                v-model="settingsForm.pythonBackendUrl"
+                @blur="handlePythonBackendUrlChange"
+              />
+            </el-form-item>
+
+            <el-form-item :label="t('settings.ollamaUrl')">
+              <el-input
+                v-model="settingsForm.ollamaUrl"
+                @blur="handleOllamaUrlChange"
+              />
+            </el-form-item>
+
+            <el-form-item :label="t('settings.autoSave')">
+              <el-switch
+                v-model="settingsForm.autoSave"
+                @change="handleAutoSaveChange"
               />
             </el-form-item>
           </el-form>
@@ -163,42 +284,50 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { ElMessage } from 'element-plus'
 import * as ollama from '@/services/ollama'
+import { DEFAULT_SETTINGS } from '@/constants'
+import { handleError } from '@/utils/errorHandler'
 
 const { t, locale } = useI18n()
-const appStore = useAppStore()
 const settingsStore = useSettingsStore()
 
 const activeTab = ref('ai')
+const isSaving = ref(false)
+const isDeleting = ref(false)
+const isLoadingGpu = ref(false)
 
-const settingsForm = reactive({
-  language: 'zh-CN',
-  darkMode: false,
-  autoSave: true,
-  pythonBackendUrl: 'http://localhost:8000',
-  ollamaUrl: 'http://localhost:11434',
-  defaultModel: 'qwen2.5-coder:7b'
+interface SettingsForm {
+  language: string
+  darkMode: boolean
+  autoSave: boolean
+  pythonBackendUrl: string
+  ollamaUrl: string
+}
+
+const settingsForm = reactive<SettingsForm>({
+  language: DEFAULT_SETTINGS.LANGUAGE,
+  darkMode: (DEFAULT_SETTINGS.THEME as string) === 'dark',
+  autoSave: DEFAULT_SETTINGS.AUTO_SAVE,
+  pythonBackendUrl: DEFAULT_SETTINGS.PYTHON_BACKEND_URL,
+  ollamaUrl: DEFAULT_SETTINGS.OLLAMA_URL
 })
 
-watch(() => settingsStore.settings, (newSettings) => {
-  settingsForm.language = newSettings.language
-  settingsForm.darkMode = newSettings.theme === 'dark'
-  settingsForm.autoSave = newSettings.auto_save
-  settingsForm.pythonBackendUrl = newSettings.python_backend_url
-  settingsForm.ollamaUrl = newSettings.ollama_url
-  settingsForm.defaultModel = newSettings.default_model
-}, { deep: true, immediate: true })
+interface AiForm {
+  mode: 'local' | 'cloud' | 'rule'
+  cloud_api_key: string
+  cloud_base_url: string
+  cloud_model: string
+}
 
-const aiForm = reactive({
+const aiForm = reactive<AiForm>({
   mode: 'local',
   cloud_api_key: '',
-  cloud_base_url: 'https://api.openai.com/v1',
-  cloud_model: 'gpt-3.5-turbo',
+  cloud_base_url: DEFAULT_SETTINGS.CLOUD_BASE_URL,
+  cloud_model: DEFAULT_SETTINGS.CLOUD_MODEL,
 })
 
 const ollamaStatus = ref<ollama.OllamaStatus | null>(null)
@@ -209,18 +338,34 @@ const downloadingModel = ref<string | null>(null)
 const downloadProgress = ref<number | null>(null)
 const downloadStatusText = ref('')
 
-const isModelInstalled = (modelName: string) => {
-  return installedModels.value.some(m => m.name === modelName)
+onMounted(async () => {
+  await loadSettingsToForm()
+  await Promise.allSettled([
+    loadOllamaStatus(),
+    loadInstalledModels(),
+    loadRecommendedModels(),
+  ])
+})
+
+async function loadSettingsToForm() {
+  await settingsStore.loadSettings()
+  settingsForm.language = settingsStore.settings.language
+  settingsForm.darkMode = settingsStore.settings.theme === 'dark'
+  settingsForm.autoSave = settingsStore.settings.auto_save
+  settingsForm.pythonBackendUrl = settingsStore.settings.python_backend_url
+  settingsForm.ollamaUrl = settingsStore.settings.ollama_url
+}
+
+const isModelInstalled = (modelName: string): boolean => {
+  return installedModels.value.some(m => m.name === modelName || m.name.startsWith(`${modelName}:`))
 }
 
 const handleLanguageChange = (lang: string) => {
   locale.value = lang
-  appStore.setLanguage(lang)
   settingsStore.updateSetting('language', lang)
 }
 
 const handleThemeChange = (darkMode: boolean) => {
-  appStore.currentTheme = darkMode ? 'dark' : 'light'
   settingsStore.updateSetting('theme', darkMode ? 'dark' : 'light')
 }
 
@@ -228,16 +373,13 @@ const handleAutoSaveChange = (autoSave: boolean) => {
   settingsStore.updateSetting('auto_save', autoSave)
 }
 
-const handlePythonBackendUrlChange = (url: string) => {
-  settingsStore.updateSetting('python_backend_url', url)
+const handlePythonBackendUrlChange = () => {
+  settingsStore.updateSetting('python_backend_url', settingsForm.pythonBackendUrl)
 }
 
-const handleOllamaUrlChange = (url: string) => {
-  settingsStore.updateSetting('ollama_url', url)
-}
-
-const handleDefaultModelChange = (model: string) => {
-  settingsStore.updateSetting('default_model', model)
+const handleOllamaUrlChange = async () => {
+  settingsStore.updateSetting('ollama_url', settingsForm.ollamaUrl)
+  await loadOllamaStatus()
 }
 
 const loadOllamaStatus = async () => {
@@ -267,11 +409,14 @@ const loadRecommendedModels = async () => {
 }
 
 const loadGpuInfo = async () => {
+  isLoadingGpu.value = true
   try {
     gpuInfo.value = await ollama.getGpuInfo()
-  } catch {
+  } catch (error) {
     gpuInfo.value = null
-    ElMessage.error(t('settings.gpuInfoLoadFailed'))
+    handleError(error)
+  } finally {
+    isLoadingGpu.value = false
   }
 }
 
@@ -291,9 +436,9 @@ const handlePullModel = async (modelName: string) => {
       }
     })
     ElMessage.success(`${modelName} ${t('settings.downloadSuccess')}`)
-    await loadInstalledModels()
-  } catch (e: any) {
-    ElMessage.error(`${t('settings.downloadFailed')}: ${e.message}`)
+    await Promise.allSettled([loadInstalledModels(), loadRecommendedModels()])
+  } catch (error) {
+    handleError(error)
   } finally {
     downloadingModel.value = null
     downloadProgress.value = null
@@ -302,37 +447,43 @@ const handlePullModel = async (modelName: string) => {
 }
 
 const handleDeleteModel = async (modelName: string) => {
+  isDeleting.value = true
   try {
     await ollama.deleteModel(modelName)
     ElMessage.success(`${modelName} ${t('settings.deleteSuccess')}`)
-    await loadInstalledModels()
-  } catch (e: any) {
-    ElMessage.error(`${t('settings.deleteFailed')}: ${e.message}`)
+    await Promise.allSettled([loadInstalledModels(), loadRecommendedModels()])
+  } catch (error) {
+    handleError(error)
+  } finally {
+    isDeleting.value = false
   }
 }
 
-const handleAiModeChange = () => {
+const handleSaveAll = async () => {
+  isSaving.value = true
+  try {
+    await settingsStore.saveSettings()
+    ElMessage.success(t('settings.settingsSaved'))
+  } catch (error) {
+    handleError(error)
+  } finally {
+    isSaving.value = false
+  }
 }
-
-const handleSaveAiSettings = () => {
-  ElMessage.success(t('settings.settingsSaved'))
-}
-
-onMounted(async () => {
-  await settingsStore.loadSettings()
-  await loadOllamaStatus()
-  await loadInstalledModels()
-  await loadRecommendedModels()
-  await loadGpuInfo()
-})
 </script>
 
 <style scoped lang="scss">
 .settings-view {
   .settings-card {
     .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
       h2 {
         margin: 0;
+        font-size: 20px;
+        color: #303133;
       }
     }
   }
@@ -349,7 +500,7 @@ onMounted(async () => {
     margin: 16px 0;
     padding: 12px;
     background-color: #f5f7fa;
-    border-radius: 4px;
+    border-radius: 8px;
 
     .progress-text {
       display: block;
@@ -363,6 +514,18 @@ onMounted(async () => {
     .el-tag {
       margin-right: 8px;
       margin-bottom: 8px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-view {
+    .settings-card {
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
     }
   }
 }

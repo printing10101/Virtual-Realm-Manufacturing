@@ -2,15 +2,16 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import type { AppSettings } from '@/types/persistence'
 import { getSettings, saveSettings } from '@/services/settings'
+import { DEFAULT_SETTINGS } from '@/constants'
 
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<AppSettings>({
-    python_backend_url: 'http://localhost:8000',
-    ollama_url: 'http://localhost:11434',
-    default_model: 'qwen2.5-coder:7b',
-    theme: 'light',
-    auto_save: true,
-    language: 'zh-CN'
+    python_backend_url: DEFAULT_SETTINGS.PYTHON_BACKEND_URL,
+    ollama_url: DEFAULT_SETTINGS.OLLAMA_URL,
+    default_model: DEFAULT_SETTINGS.DEFAULT_MODEL,
+    theme: DEFAULT_SETTINGS.THEME,
+    auto_save: DEFAULT_SETTINGS.AUTO_SAVE,
+    language: DEFAULT_SETTINGS.LANGUAGE
   })
   const isLoaded = ref(false)
 
@@ -48,6 +49,12 @@ export const useSettingsStore = defineStore('settings', () => {
     isLoaded,
     loadSettings,
     saveSettings: saveSettingsFn,
-    updateSetting
+    updateSetting,
+    get pythonBackendUrl() { return settings.value.python_backend_url },
+    get ollamaUrl() { return settings.value.ollama_url },
+    get defaultModel() { return settings.value.default_model },
+    get theme() { return settings.value.theme },
+    get autoSave() { return settings.value.auto_save },
+    get language() { return settings.value.language }
   }
 })

@@ -10,41 +10,122 @@
     router
   >
     <div class="logo-container">
-      <h2 v-if="!collapsed" class="logo-text">灵境制造</h2>
-      <span v-else class="logo-icon">LJ</span>
+      <h2
+        v-if="!collapsed"
+        class="logo-text"
+      >
+        灵境制造
+      </h2>
+      <span
+        v-else
+        class="logo-icon"
+      >LJ</span>
     </div>
     
-    <el-menu-item index="/home">
+    <el-menu-item
+      index="/home"
+      @mouseenter="handleMenuHover('/home')"
+    >
       <el-icon><HomeFilled /></el-icon>
-      <template #title>{{ t('common.home') }}</template>
+      <template #title>
+        {{ t('common.home') }}
+      </template>
     </el-menu-item>
     
-    <el-menu-item index="/workspace">
+    <el-menu-item
+      index="/workspace"
+      @mouseenter="handleMenuHover('/workspace')"
+    >
       <el-icon><Monitor /></el-icon>
-      <template #title>{{ t('common.workspace') }}</template>
+      <template #title>
+        {{ t('common.workspace') }}
+      </template>
     </el-menu-item>
     
-    <el-menu-item index="/multi-view-to-3d">
+    <el-menu-item
+      index="/multi-view-to-3d"
+      @mouseenter="handleMenuHover('/multi-view-to-3d')"
+    >
       <el-icon><Box /></el-icon>
-      <template #title>{{ t('common.multiViewTo3D') }}</template>
+      <template #title>
+        {{ t('common.multiViewTo3D') }}
+      </template>
     </el-menu-item>
     
-    <el-menu-item index="/process-plan">
+    <el-menu-item
+      index="/process-plan"
+      @mouseenter="handleMenuHover('/process-plan')"
+    >
       <el-icon><Document /></el-icon>
-      <template #title>{{ t('common.processPlan') }}</template>
+      <template #title>
+        {{ t('common.processPlan') }}
+      </template>
     </el-menu-item>
     
-    <el-menu-item index="/settings">
+    <el-menu-item
+      index="/validation"
+      @mouseenter="handleMenuHover('/validation')"
+    >
+      <el-icon><DataAnalysis /></el-icon>
+      <template #title>
+        仿真验证
+      </template>
+    </el-menu-item>
+    
+    <el-menu-item
+      index="/experience"
+      @mouseenter="handleMenuHover('/experience')"
+    >
+      <el-icon><Collection /></el-icon>
+      <template #title>
+        {{ t('common.experience') }}
+      </template>
+    </el-menu-item>
+    
+    <el-menu-item
+      index="/models"
+      @mouseenter="handleMenuHover('/models')"
+    >
+      <el-icon><Cpu /></el-icon>
+      <template #title>
+        模型管理
+      </template>
+    </el-menu-item>
+    
+    <el-menu-item
+      index="/comparison"
+      @mouseenter="handleMenuHover('/comparison')"
+    >
+      <el-icon><DataBoard /></el-icon>
+      <template #title>
+        {{ t('common.comparison') }}
+      </template>
+    </el-menu-item>
+    
+    <el-menu-item
+      index="/settings"
+      @mouseenter="handleMenuHover('/settings')"
+    >
       <el-icon><Setting /></el-icon>
-      <template #title>{{ t('common.settings') }}</template>
+      <template #title>
+        {{ t('common.settings') }}
+      </template>
     </el-menu-item>
     
-    <el-menu-item index="/about">
+    <el-menu-item
+      index="/about"
+      @mouseenter="handleMenuHover('/about')"
+    >
       <el-icon><InfoFilled /></el-icon>
-      <template #title>{{ t('common.about') }}</template>
+      <template #title>
+        {{ t('common.about') }}
+      </template>
     </el-menu-item>
     
-    <div class="collapse-btn" @click="toggleCollapse">
+    <div
+      class="collapse-btn"
+      @click="toggleCollapse"
+    >
       <el-icon><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
     </div>
   </el-menu>
@@ -55,6 +136,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
+import { preloadRoute } from '@/router'
 import {
   HomeFilled,
   Monitor,
@@ -63,7 +145,11 @@ import {
   Setting,
   InfoFilled,
   Fold,
-  Expand
+  Expand,
+  DataAnalysis,
+  Collection,
+  Cpu,
+  DataBoard
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -72,6 +158,28 @@ const appStore = useAppStore()
 
 const activeMenu = computed(() => route.path)
 const collapsed = computed(() => appStore.sidebarCollapsed)
+
+// 路由名称映射表
+const routeNameMap: Record<string, string> = {
+  '/home': 'Home',
+  '/workspace': 'Workspace',
+  '/multi-view-to-3d': 'MultiViewTo3D',
+  '/process-plan': 'ProcessPlan',
+  '/validation': 'Validation',
+  '/experience': 'Experience',
+  '/models': 'Models',
+  '/comparison': 'Comparison',
+  '/settings': 'Settings',
+  '/about': 'About',
+}
+
+// 鼠标悬停时预加载
+function handleMenuHover(path: string) {
+  const routeName = routeNameMap[path]
+  if (routeName) {
+    preloadRoute(routeName)
+  }
+}
 
 function toggleCollapse() {
   appStore.toggleSidebar()
