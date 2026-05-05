@@ -1,18 +1,22 @@
 import time
-from typing import Callable
+from collections.abc import Callable
+
 from app.ai.agents import (
     AgentContext,
-    UnderstandingAgent,
-    PlanningAgent,
-    ParameterAgent,
     NCAgent,
+    ParameterAgent,
+    PlanningAgent,
+    RepairAgent,
+    UnderstandingAgent,
     VerificationAgent,
-    RepairAgent
 )
+from app.ai.workflow_parallel import parallel_orchestrator
+from app.core.task_manager import TaskStatus, TaskType, task_manager
 
 
 class WorkflowOrchestrator:
-    def __init__(self):
+    def __init__(self, use_parallel: bool = True):
+        self.use_parallel = use_parallel
         self.agents = {
             "understanding": UnderstandingAgent(),
             "planning": PlanningAgent(),
@@ -31,7 +35,14 @@ class WorkflowOrchestrator:
             "repair"
         ]
 
-    async def execute_workflow(self, user_input: str, progress_callback: Callable = None) -> dict:
+    async def execute_workflow(self, user_input: str, progress_callback: Callable | None = None) -> dict:
+        if self.use_parallel:
+            try:
+                return await parallel_orchestrator.execute_workflow(user_input, progress_callback)
+            except Exception as e:
+                logger.warning(f"并行工作流执行失败，回退到串行模式: {e}")
+                self.use_parallel = False
+
         context = AgentContext(user_input=user_input)
         stage_results = {}
         total_stages = len(self.workflow_stages)
@@ -70,7 +81,7 @@ class WorkflowOrchestrator:
 
             except Exception as e:
                 stage_results[stage_name] = {
-                    "status": f"failed: {str(e)}",
+                    "status": f"failed: {e!s}",
                     "elapsed_seconds": round(time.time() - start_time, 2),
                     "error": str(e)
                 }
@@ -81,7 +92,7 @@ class WorkflowOrchestrator:
                         "stage_index": idx + 1,
                         "total_stages": total_stages,
                         "progress": ((idx + 1) / total_stages) * 100,
-                        "status": f"failed: {str(e)}"
+                        "status": f"failed: {e!s}"
                     })
 
                 break
@@ -124,5 +135,83 @@ class WorkflowOrchestrator:
         }
         return summaries.get(stage_name, {})
 
+    async def execute_workflow_with_task(self, user_input: str, task_id: str | None = None) -> dict:
+        if self.use_parallel:
+            try:
+                return await parallel_orchestrator.execute_workflow_with_task(user_input, task_id)
+            except Exception as e:
+                logger.warning(f"并行工作流执行失败，回退到串行模式: {e}")
+                self.use_parallel = False
 
-orchestrator = WorkflowOrchestrator()
+        if not task_id:
+            task_id = task_manager.create_task(TaskType.WORKFLOW_EXECUTION, {"user_input": user_input})
+
+        await task_manager.update_progress(task_id, 0, "正在初始化工作流...")
+
+        async def _run_workflow():
+            context = AgentContext(user_input=user_input)
+            stage_results = {}
+            total_stages = len(self.workflow_stages)
+
+            for idx, stage_name in enumerate(self.workflow_stages):
+                task = task_manager.get_task(task_id)
+                if task and task.status == TaskStatus.CANCELLED:
+                    return {"cancelled": True, "stage_results": stage_results}
+
+                agent = self.agents[stage_name]
+                progress = (idx / total_stages) * 100
+                await task_manager.update_progress(task_id, progress, f"正在执行: {stage_name}...")
+
+                start_time = time.time()
+                try:
+                    context = await agent.execute(context)
+                    elapsed = time.time() - start_time
+
+                    stage_results[stage_name] = {
+                        "status": context.stage_status,
+                        "elapsed_seconds": round(elapsed, 2),
+                        "output_summary": self._get_stage_summary(stage_name, context)
+                    }
+
+                    await task_manager.update_progress(
+                        task_id,
+                        ((idx + 1) / total_stages) * 100,
+                        f"完成: {stage_name}"
+                    )
+
+                except Exception as e:
+                    stage_results[stage_name] = {
+                        "status": f"failed: {e!s}",
+                        "elapsed_seconds": round(time.time() - start_time, 2),
+                        "error": str(e)
+                    }
+                    raise
+
+            return {
+                "user_input": context.user_input,
+                "extracted_params": context.extracted_params,
+                "process_route": context.process_route,
+                "cutting_parameters": context.cutting_parameters,
+                "nc_code": context.nc_code,
+                "verification_result": context.verification_result,
+                "repair_suggestions": context.repair_suggestions,
+                "stage_results": stage_results,
+                "total_stages": total_stages,
+                "completed_stages": len([s for s in stage_results.values() if "failed" not in s["status"]])
+            }
+
+        try:
+            await task_manager.update_progress(task_id, 5, "开始执行工作流...")
+            result = await task_manager.run_with_timeout(task_id, _run_workflow())
+
+            if result.get("cancelled"):
+                await task_manager.cancel_task(task_id)
+                return result
+
+            await task_manager.complete_task(task_id, result)
+            return result
+        except Exception as e:
+            await task_manager.fail_task(task_id, str(e))
+            raise
+
+orchestrator = WorkflowOrchestrator(use_parallel=True)
