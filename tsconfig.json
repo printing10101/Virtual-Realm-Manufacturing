@@ -14,11 +14,20 @@
     "noEmit": true,
     "jsx": "preserve",
 
-    /* Linting */
+    /* Linting - Strict Mode */
     "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
+    "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
 
     /* Path aliases */
     "baseUrl": ".",
