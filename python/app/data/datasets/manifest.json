@@ -1,0 +1,37 @@
+{
+  "datasets": [
+    {
+      "name": "nasa_milling_sample",
+      "display_name": "NASA Milling Dataset",
+      "description": "NASA 铣削数据集样本，包含切削力、振动、声发射信号",
+      "source": "NASA Prognostics Center of Excellence",
+      "sample_count": 15,
+      "materials": ["45钢", "6061铝合金"],
+      "operations": ["milling"],
+      "metrics": ["F_c", "vibration", "AE"],
+      "file": "nasa_milling_sample.csv"
+    },
+    {
+      "name": "phm2010_sample",
+      "display_name": "PHM 2010 刀具磨损竞赛数据",
+      "description": "PHM 2010 竞赛数据样本，刀具磨损实验数据",
+      "source": "PHM Society Conference 2010",
+      "sample_count": 15,
+      "materials": ["45钢", "铸铁"],
+      "operations": ["turning"],
+      "metrics": ["V_b", "F_c", "T"],
+      "file": "phm2010_sample.csv"
+    },
+    {
+      "name": "qit_cemc_sample",
+      "display_name": "QIT-CEMC 切削数据库样本",
+      "description": "多种工况切削参数数据库样本",
+      "source": "QIT-CEMC Database",
+      "sample_count": 15,
+      "materials": ["45钢", "6061铝合金", "不锈钢304", "钛合金TC4"],
+      "operations": ["turning", "milling", "drilling"],
+      "metrics": ["F_c", "R_a", "T"],
+      "file": "qit_cemc_sample.csv"
+    }
+  ]
+}

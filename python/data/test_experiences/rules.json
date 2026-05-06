@@ -1,0 +1,11 @@
+{
+  "test_scenario": [
+    {
+      "rule": "45钢车削时v_c不宜超过200m/min",
+      "source_experience_id": "45f3fc94-9a89-49dd-95a1-36629e070fbd",
+      "status": "success",
+      "created_at": "2026-05-03T02:07:42.172052",
+      "enabled": true
+    }
+  ]
+}

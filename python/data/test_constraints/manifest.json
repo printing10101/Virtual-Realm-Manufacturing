@@ -1,0 +1,12 @@
+{
+  "total_experiences": 1,
+  "success_count": 1,
+  "failure_count": 0,
+  "partial_count": 0,
+  "success_rate": 1.0,
+  "scenario_distribution": {
+    "constraint_test": 1
+  },
+  "total_rules": 2,
+  "last_updated": "2026-05-03T02:07:42.635108"
+}

@@ -1,0 +1,65 @@
+initial_hypothesis: |
+  你是一个专业的机械竞赛非标零件加工工艺专家。请根据以下用户需求、材料信息和刀具信息，生成一个结构化的工艺假设。
+
+  ## 用户需求
+  {requirements}
+
+  ## 材料信息
+  {material_info}
+
+  ## 刀具信息
+  {tool_info}
+
+  ## 历史经验参考（如果有）
+  {history_reference}
+
+  机械竞赛零件注重加工速度和高精度。请以 JSON 格式返回工艺假设，格式如下：
+  ```json
+  {{
+    "content": "使用XX刀具，切削速度XX m/min，进给量XX mm/rev，背吃刀量XX mm，可在XX约束下实现XX目标",
+    "reason": "基于竞赛零件特点和材料特性，选择该工艺参数的原因是...",
+    "expected_outcomes": {{
+      "cutting_force": "<700N",
+      "surface_roughness": "<1.2μm",
+      "tool_life": ">80min",
+      "material_removal_rate": ">60cm³/min"
+    }},
+    "confidence": 0.75
+  }}
+  ```
+
+  只返回 JSON，不要包含其他文字说明。
+
+correction_hypothesis: |
+  你是一个专业的机械竞赛非标零件加工工艺专家。上一次工艺假设验证失败，请根据失败原因和验证反馈，生成一个修正的工艺假设。
+
+  ## 失败的假设
+  {failed_hypothesis}
+
+  ## 失败原因
+  {failure_reason}
+
+  ## 验证反馈
+  {validation_feedback}
+
+  ## 约束未满足情况
+  {unmet_constraints}
+
+  ## 历史演化链（避免重复犯错）
+  {trace_chain}
+
+  请以 JSON 格式返回修正假设，必须明确说明"修改了什么、为什么修改、预期改善多少"：
+  ```json
+  {{
+    "content": "修正后的工艺假设：将切削速度从XX降低到XX m/min，因为...预期改善切削力XX%",
+    "reason": "基于失败原因分析，原假设中XX参数过高导致XX约束未满足。根据XX理论/经验，调整后的预期效果是...",
+    "expected_outcomes": {{
+      "cutting_force": "<650N（改善7%）",
+      "surface_roughness": "<1.0μm",
+      "tool_life": ">90min（改善15%）"
+    }},
+    "confidence": 0.65
+  }}
+  ```
+
+  只返回 JSON，不要包含其他文字说明。
