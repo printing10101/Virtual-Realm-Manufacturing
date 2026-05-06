@@ -14,7 +14,6 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
-from app.ai.llm_client import get_llm_client
 from app.config import config
 from app.core.input_validator import (
     MaterialValidator,
@@ -123,9 +122,21 @@ class BaseAgent(ABC):
     def __init__(self, name: str, description: str) -> None:
         self.name = name
         self.description = description
-        self.llm_client = get_llm_client()
         self.knowledge_base = get_knowledge_base()
         self._model_router: Any = None
+        self._llm_client: Any = None
+
+    async def _get_llm_client(self) -> Any:
+        """获取或创建 LLM 客户端（懒加载并缓存）"""
+        if self._llm_client is None:
+            from app.ai.llm_client import CloudLLMClient
+            self._llm_client = CloudLLMClient(
+                api_key=config.ai.cloud_api_key,
+                base_url=config.ai.cloud_base_url,
+                model=config.ai.cloud_model,
+                timeout=config.ai.timeout
+            )
+        return self._llm_client
 
     async def _get_model_router(self) -> Any:
         """获取模型路由器"""
@@ -145,6 +156,60 @@ class BaseAgent(ABC):
     def get_system_prompt(self) -> str:
         """获取系统提示词"""
         return f"你是{self.name}，{self.description}"
+
+    async def _search_knowledge(self, query: str, n_results: int = 5) -> list[dict]:
+        """增强版知识检索
+
+        先从知识库检索相关条目，对 bosch_cnc 来源的条目特别标注为"真实工业数据参考"。
+        """
+        try:
+            raw = self.knowledge_base.query(query_text=query, n_results=n_results * 2)
+        except Exception as e:
+            logger.warning("[%s] 知识检索失败: %s", self.name, e)
+            return []
+
+        if not raw or not raw.get("documents"):
+            return []
+
+        docs_list = raw["documents"]
+        if not docs_list or len(docs_list[0]) == 0:
+            return []
+
+        results: list[dict] = []
+        docs = docs_list[0] or []
+        metas = (raw.get("metadatas", [[]])[0] or []) if raw.get("metadatas") else []
+        ids = (raw.get("ids", [[]])[0] or []) if raw.get("ids") else []
+        distances = (raw.get("distances", [[]])[0] or []) if raw.get("distances") else []
+
+        for i, doc in enumerate(docs):
+            try:
+                meta = metas[i] if i < len(metas) else {}
+                doc_id = ids[i] if i < len(ids) else ""
+                dist = distances[i] if i < len(distances) else 0.0
+
+                source = meta.get("source", "unknown")
+                entry = {
+                    "id": doc_id,
+                    "content": doc,
+                    "metadata": meta,
+                    "relevance": round(1.0 - float(dist), 4) if dist else 1.0,
+                    "source": source,
+                }
+
+                if source == "bosch_cnc":
+                    entry["reference_type"] = "真实工业数据参考 (Bosch CNC)"
+                    entry["priority"] = "high"
+                else:
+                    entry["reference_type"] = "通用知识"
+                    entry["priority"] = "normal"
+
+                results.append(entry)
+            except Exception as e:
+                logger.warning("[%s] 处理文档 %d 失败: %s", self.name, i, e)
+                continue
+
+        results.sort(key=lambda x: x["relevance"], reverse=True)
+        return results[:n_results]
 
     async def _call_llm_via_router(
         self,
@@ -191,22 +256,45 @@ class BaseAgent(ABC):
                 )
                 return response
             except Exception as e:
-                logger.warning(f"[{self.name}] 模型路由调用失败: {e!s}，降级到直接LLM调用")
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        response = await self.llm_client.chat_completion(messages, max_tokens, temperature, model)
-                        return response
-                    except Exception as retry_e:
-                        if attempt < max_retries - 1:
-                            wait_time = 1.0 * (2 ** attempt)
-                            logger.warning(f"[{self.name}] 降级调用失败 (尝试 {attempt + 1}/{max_retries}): {retry_e!s}，{wait_time}秒后重试")
-                            await asyncio.sleep(wait_time)
-                        else:
-                            logger.error(f"[{self.name}] 降级调用最终失败: {retry_e!s}")
-                            raise
+                logger.warning(f"[{self.name}] 模型路由调用失败: {e!s}，尝试降级到直接 LLM 调用")
+                try:
+                    return await self._call_llm_direct(
+                        messages, max_tokens, temperature, system_prompt
+                    )
+                except Exception as fallback_e:
+                    logger.error(f"[{self.name}] 降级 LLM 调用也失败: {fallback_e!s}")
+                    raise
         else:
-            return await self.llm_client.chat_completion(messages, max_tokens, temperature, model)
+            logger.warning(f"[{self.name}] 模型路由器未初始化，使用直接 LLM 调用")
+            return await self._call_llm_direct(
+                messages, max_tokens, temperature,
+                messages[0]["content"] if messages and messages[0]["role"] == "system" else None
+            )
+
+    async def _call_llm_direct(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        system_prompt: str | None = None
+    ) -> dict[str, Any]:
+        """降级 LLM 调用：直接调用云端 LLM"""
+        client = await self._get_llm_client()
+
+        for attempt in range(config.ai.max_retries):
+            try:
+                response = await client.chat_completion(
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    model=config.ai.cloud_model
+                )
+                return response
+            except Exception as e:
+                if attempt < config.ai.max_retries - 1:
+                    await asyncio.sleep(1.0 * (2 ** attempt))
+                else:
+                    raise RuntimeError(f"[{self.name}] 降级 LLM 调用失败: {e!s}")
 
 
 class UnderstandingAgent(BaseAgent):
@@ -750,15 +838,17 @@ async def ai_chat(request: ChatRequest) -> dict[str, Any]:
                 )
 
     try:
-        llm_client = get_llm_client()
-        response: dict[str, Any] = await llm_client.chat_completion(
+        agent = UnderstandingAgent()
+        response = await agent._call_llm_via_router(
             messages=cleaned_messages,
             max_tokens=2048,
-            temperature=0.7
+            temperature=0.7,
         )
-
         return success(
-            data={"response": response},
+            data={
+                "content": response.get("content", ""),
+                "model": response.get("model", ""),
+            },
             message="对话成功"
         )
     except Exception as e:

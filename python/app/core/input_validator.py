@@ -486,20 +486,56 @@ class InputValidationMiddleware:
 
         if scope.get("method") in ("POST", "PUT", "PATCH"):
             body = await receive()
-            if body.get("type") == "http.request":
-                body_bytes = body.get("body", b"")
 
-                try:
-                    import json
-                    if body_bytes:
-                        body_str = body_bytes.decode("utf-8")
-                        if len(body_str) > self.max_length * 10:
+            if body.get("type") != "http.request":
+                async def wrapped_receive():
+                    return body
+                await self.app(scope, wrapped_receive, send)
+                return
+
+            body_bytes = body.get("body", b"")
+
+            async def new_receive():
+                return {
+                    "type": "http.request",
+                    "body": body_bytes,
+                    "more_body": False,
+                }
+
+            try:
+                import json
+                if body_bytes:
+                    body_str = body_bytes.decode("utf-8")
+                    if len(body_str) > self.max_length * 10:
+                        response = JSONResponse(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            content=error(
+                                code=ErrorCode.INVALID_REQUEST,
+                                message="请求体过大",
+                                suggestion="请减小请求数据大小"
+                            )
+                        )
+                        await send({
+                            "type": "http.response.start",
+                            "status": response.status_code,
+                            "headers": response.raw_headers,
+                        })
+                        await send({
+                            "type": "http.response.body",
+                            "body": response.body,
+                        })
+                        return
+
+                    try:
+                        data = json.loads(body_str)
+                        validation_errors = self._validate_json(data)
+                        if validation_errors:
                             response = JSONResponse(
                                 status_code=status.HTTP_400_BAD_REQUEST,
                                 content=error(
                                     code=ErrorCode.INVALID_REQUEST,
-                                    message="请求体过大",
-                                    suggestion="请减小请求数据大小"
+                                    message=f"输入验证失败: {validation_errors[0]['message']}",
+                                    detail=validation_errors[0].to_response()
                                 )
                             )
                             await send({
@@ -512,43 +548,13 @@ class InputValidationMiddleware:
                                 "body": response.body,
                             })
                             return
+                    except json.JSONDecodeError:
+                        pass
+            except Exception as e:
+                logger.warning(f"输入验证中间件异常: {e!s}")
 
-                        try:
-                            data = json.loads(body_str)
-                            validation_errors = self._validate_json(data)
-                            if validation_errors:
-                                response = JSONResponse(
-                                    status_code=status.HTTP_400_BAD_REQUEST,
-                                    content=error(
-                                        code=ErrorCode.INVALID_REQUEST,
-                                        message=f"输入验证失败: {validation_errors[0]['message']}",
-                                        detail=validation_errors[0].to_response()
-                                    )
-                                )
-                                await send({
-                                    "type": "http.response.start",
-                                    "status": response.status_code,
-                                    "headers": response.raw_headers,
-                                })
-                                await send({
-                                    "type": "http.response.body",
-                                    "body": response.body,
-                                })
-                                return
-                        except json.JSONDecodeError:
-                            pass
-                except Exception as e:
-                    logger.warning(f"输入验证中间件异常: {e!s}")
-
-                async def new_receive():
-                    return {
-                        "type": "http.request",
-                        "body": body_bytes,
-                        "more_body": False,
-                    }
-
-                await self.app(scope, new_receive, send)
-                return
+            await self.app(scope, new_receive, send)
+            return
 
         await self.app(scope, receive, send)
 

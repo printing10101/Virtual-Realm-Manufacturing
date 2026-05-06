@@ -25,3 +25,8 @@ pytest-benchmark>=4.0.0
 factory-boy>=3.3.0
 
 sqlalchemy>=2.0.0
+
+# Bosch CNC dataset & ML dependencies
+h5py>=3.10.0
+scikit-learn>=1.3.0
+xgboost>=2.0.0

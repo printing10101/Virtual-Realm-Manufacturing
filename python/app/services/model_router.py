@@ -36,6 +36,14 @@ class ComplexityEvaluator:
         "复杂刀具": 5, "定制刀具": 5
     }
 
+    DIAGNOSIS_SCORES = {
+        "振动分析": 3,
+        "异常诊断": 4,
+        "刀具磨损": 3,
+        "预防性维护": 5,
+        "工序对比": 2,
+    }
+
     @classmethod
     def evaluate(cls, input_data: dict[str, Any]) -> dict[str, Any]:
         score = 0
@@ -74,6 +82,11 @@ class ComplexityEvaluator:
         if history_score > 0:
             reasons.append(f"历史经验复杂度（+{history_score}）")
 
+        diagnosis_score = cls._evaluate_diagnosis_scenario(input_data)
+        score += diagnosis_score
+        if diagnosis_score > 0:
+            reasons.append(f"工艺诊断场景（+{diagnosis_score}）")
+
         decision = cls._map_score_to_decision(score)
 
         return {
@@ -85,7 +98,8 @@ class ComplexityEvaluator:
                 "tool": tool_score,
                 "constraints": constraint_score,
                 "geometry": geometry_score,
-                "history": history_score
+                "history": history_score,
+                "diagnosis": diagnosis_score,
             }
         }
 
@@ -131,6 +145,32 @@ class ComplexityEvaluator:
         elif avg_iterations > 3:
             return 1
         return 0
+
+    @classmethod
+    def _evaluate_diagnosis_scenario(cls, input_data: dict[str, Any]) -> int:
+        operation_type = input_data.get("operation_type", "")
+        task_description = input_data.get("task_description", "")
+        prompt = input_data.get("prompt", "")
+        tags = input_data.get("tags", [])
+
+        text_to_check = f"{operation_type} {task_description} {prompt}"
+        score = 0
+
+        for keyword, keyword_score in cls.DIAGNOSIS_SCORES.items():
+            if keyword in text_to_check:
+                score = max(score, keyword_score)
+
+        if isinstance(tags, list):
+            for tag in tags:
+                if isinstance(tag, str) and tag in cls.DIAGNOSIS_SCORES:
+                    score = max(score, cls.DIAGNOSIS_SCORES[tag])
+
+        if "振动" in text_to_check or "异常" in text_to_check:
+            score = max(score, 3)
+        if "维护" in text_to_check or "预测" in text_to_check:
+            score = max(score, 4)
+
+        return min(5, score)
 
     @classmethod
     def _map_score_to_decision(cls, score: int) -> RouteDecision:

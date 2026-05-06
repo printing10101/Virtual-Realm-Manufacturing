@@ -26,6 +26,28 @@ from app.core.repository.exceptions import (
     ValidationError,
 )
 
+LOCK_TIMEOUT = 2.0  # 锁获取超时时间（秒）
+
+
+class _LockContext:
+    """上下文管理器，简化锁获取/释放，支持超时。"""
+    def __init__(self, lock: threading.RLock, timeout: float, repo_type: str = "json"):
+        self._lock = lock
+        self._timeout = timeout
+        self._repo_type = repo_type
+        self._acquired = False
+
+    def __enter__(self):
+        self._acquired = self._lock.acquire(timeout=self._timeout)
+        if not self._acquired:
+            raise StorageError("获取锁超时", repository_type=self._repo_type)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._acquired and self._lock._is_owned():
+            self._lock.release()
+        return False
+
 
 class JsonRepository(Repository):
     """
@@ -42,7 +64,7 @@ class JsonRepository(Repository):
         self._version_file = Path(self._config.data_directory) / f"{store_name}_versions.jsonl"
         self._data: dict[str, Any] = {}
         self._current_version = 0
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._load_data()
 
     def _lock_file(self, f, exclusive=True):
@@ -53,52 +75,61 @@ class JsonRepository(Repository):
         if HAS_FCNTL:
             fcntl.flock(f, fcntl.LOCK_UN)
 
+    def _lock_acquired(self):
+        """获取带超时的锁，使用上下文管理器风格。"""
+        return _LockContext(self._lock, LOCK_TIMEOUT, "json")
+
     def _load_data(self) -> None:
         if self._store_file.exists():
             try:
-                with self._lock:
-                    with open(self._store_file, encoding="utf-8") as f:
-                        self._lock_file(f, exclusive=False)
-                        try:
-                            self._data = json.load(f)
-                            self._current_version = self._data.get("_version", 0)
-                        finally:
-                            self._unlock_file(f)
+                with open(self._store_file, encoding="utf-8") as f:
+                    self._lock_file(f, exclusive=False)
+                    try:
+                        data = json.load(f)
+                    finally:
+                        self._unlock_file(f)
+                with self._lock_acquired():
+                    self._data = data
+                    self._current_version = self._data.get("_version", 0)
             except (OSError, json.JSONDecodeError):
-                self._data = {}
-                self._current_version = 0
+                with self._lock_acquired():
+                    self._data = {}
+                    self._current_version = 0
         else:
-            self._data = {"_version": 0}
+            with self._lock_acquired():
+                self._data = {"_version": 0}
 
     def _save_data(self) -> None:
-        self._current_version += 1
-        self._data["_version"] = self._current_version
-        self._data["_updated_at"] = datetime.utcnow().isoformat()
+        with self._lock_acquired():
+            self._current_version += 1
+            self._data["_version"] = self._current_version
+            self._data["_updated_at"] = datetime.utcnow().isoformat()
 
-        Path(self._store_file).parent.mkdir(parents=True, exist_ok=True)
+            Path(self._store_file).parent.mkdir(parents=True, exist_ok=True)
 
-        with self._lock, open(self._store_file, "w", encoding="utf-8") as f:
-            self._lock_file(f, exclusive=True)
-            try:
-                json.dump(self._data, f, ensure_ascii=False, indent=2)
-            finally:
-                self._unlock_file(f)
+            with open(self._store_file, "w", encoding="utf-8") as f:
+                self._lock_file(f, exclusive=True)
+                try:
+                    json.dump(self._data, f, ensure_ascii=False, indent=2)
+                finally:
+                    self._unlock_file(f)
 
         if self._config.version_control:
             self._append_version_log()
 
     def _append_version_log(self) -> None:
-        log_entry = {
-            "version": self._current_version,
-            "timestamp": datetime.utcnow().isoformat(),
-            "record_count": len([k for k in self._data if k != "_version" and k != "_updated_at"]),
-        }
-        with self._lock, open(self._version_file, "a", encoding="utf-8") as f:
-            self._lock_file(f, exclusive=True)
-            try:
-                f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
-            finally:
-                self._unlock_file(f)
+        with self._lock_acquired():
+            log_entry = {
+                "version": self._current_version,
+                "timestamp": datetime.utcnow().isoformat(),
+                "record_count": len([k for k in self._data if k != "_version" and k != "_updated_at"]),
+            }
+            with open(self._version_file, "a", encoding="utf-8") as f:
+                self._lock_file(f, exclusive=True)
+                try:
+                    f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+                finally:
+                    self._unlock_file(f)
 
     def _get_record_data(self) -> dict[str, Any]:
         return {k: v for k, v in self._data.items() if k not in ("_version", "_updated_at")}
@@ -109,8 +140,9 @@ class JsonRepository(Repository):
 
     def _do_commit(self) -> None:
         if hasattr(self, "_transaction_snapshot"):
-            self._save_data()
-            del self._transaction_snapshot
+            with self._lock_acquired():
+                self._save_data()
+                del self._transaction_snapshot
 
     def _do_rollback(self) -> None:
         if hasattr(self, "_transaction_snapshot"):
@@ -120,87 +152,97 @@ class JsonRepository(Repository):
 
     def create(self, data: dict[str, Any]) -> dict[str, Any]:
         try:
-            record_id = data.get("id")
-            if record_id is None:
-                raise ValidationError("Data must contain 'id' field", repository_type="json")
+            with self._lock_acquired():
+                record_id = data.get("id")
+                if record_id is None:
+                    raise ValidationError("Data must contain 'id' field", repository_type="json")
 
-            if record_id in self._get_record_data():
-                raise ValueError(f"Record already exists: {record_id}")
+                if record_id in self._get_record_data():
+                    raise ValueError(f"Record already exists: {record_id}")
 
-            record = dict(data)
-            record["_created_at"] = datetime.utcnow().isoformat()
-            record["_updated_at"] = record["_created_at"]
+                record = dict(data)
+                record["_created_at"] = datetime.utcnow().isoformat()
+                record["_updated_at"] = record["_created_at"]
 
-            self._data[record_id] = record
-            if not self._in_transaction:
-                self._save_data()
+                self._data[record_id] = record
+                if not self._in_transaction:
+                    self._save_data()
 
-            return dict(record)
-        except (ValueError, ValidationError):
+                return dict(record)
+        except (ValueError, ValidationError, StorageError):
             raise
         except Exception as e:
             raise StorageError(str(e), repository_type="json", detail=str(e))
 
     def read(self, id: str) -> dict[str, Any] | None:
-        record = self._data.get(id)
-        if record is None:
-            return None
-        return dict(record)
+        with self._lock_acquired():
+            record = self._data.get(id)
+            if record is None:
+                return None
+            return dict(record)
 
     def update(self, id: str, data: dict[str, Any]) -> dict[str, Any]:
         try:
-            if id not in self._get_record_data():
-                raise RecordNotFoundError(id, repository_type="json")
+            with self._lock_acquired():
+                if id not in self._get_record_data():
+                    raise RecordNotFoundError(id, repository_type="json")
 
-            record = self._data[id]
-            record.update(data)
-            record["_updated_at"] = datetime.utcnow().isoformat()
+                record = self._data[id]
+                record.update(data)
+                record["_updated_at"] = datetime.utcnow().isoformat()
 
-            if not self._in_transaction:
-                self._save_data()
+                if not self._in_transaction:
+                    self._save_data()
 
-            return dict(record)
-        except RecordNotFoundError:
+                return dict(record)
+        except (RecordNotFoundError, StorageError):
             raise
         except Exception as e:
             raise StorageError(str(e), repository_type="json", detail=str(e))
 
     def delete(self, id: str) -> bool:
         try:
-            if id not in self._get_record_data():
-                return False
+            with self._lock_acquired():
+                if id not in self._get_record_data():
+                    return False
 
-            del self._data[id]
-            if not self._in_transaction:
-                self._save_data()
+                del self._data[id]
+                if not self._in_transaction:
+                    self._save_data()
 
-            return True
+                return True
+        except StorageError:
+            raise
         except Exception as e:
             raise StorageError(str(e), repository_type="json", detail=str(e))
 
     def list(self, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        records = []
-        for _key, value in self._get_record_data().items():
-            if filters:
-                match = all(value.get(k) == v for k, v in filters.items())
-                if match:
+        with self._lock_acquired():
+            records = []
+            for _key, value in self._get_record_data().items():
+                if filters:
+                    match = all(value.get(k) == v for k, v in filters.items())
+                    if match:
+                        records.append(dict(value))
+                else:
                     records.append(dict(value))
-            else:
-                records.append(dict(value))
-        return records
+            return records
 
     def get_version(self) -> int:
         return self._current_version
 
     def get_version_history(self) -> builtins.list[dict[str, Any]]:
-        history = []
-        if self._version_file.exists():
-            with open(self._version_file, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        history.append(json.loads(line))
-        return history
+        with self._lock_acquired():
+            history = []
+            if self._version_file.exists():
+                with open(self._version_file, encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            history.append(json.loads(line))
+            return history
+        finally:
+            self._lock.release()
 
     def close(self) -> None:
         pass

@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Callable
 
@@ -11,7 +12,10 @@ from app.ai.agents import (
     VerificationAgent,
 )
 from app.ai.workflow_parallel import parallel_orchestrator
-from app.core.task_manager import TaskStatus, TaskType, task_manager
+
+logger = logging.getLogger(__name__)
+
+from app.core.task_manager import task_manager, TaskStatus
 
 
 class WorkflowOrchestrator:
@@ -135,7 +139,16 @@ class WorkflowOrchestrator:
         }
         return summaries.get(stage_name, {})
 
+    def _is_task_cancelled(self, task_id: str) -> bool:
+        """检查任务是否已取消"""
+        try:
+            task = task_manager.get_task(task_id)
+            return task is not None and task.status == TaskStatus.CANCELLED
+        except Exception:
+            return False
+
     async def execute_workflow_with_task(self, user_input: str, task_id: str | None = None) -> dict:
+        """执行工作流并关联任务ID"""
         if self.use_parallel:
             try:
                 return await parallel_orchestrator.execute_workflow_with_task(user_input, task_id)
@@ -143,75 +156,66 @@ class WorkflowOrchestrator:
                 logger.warning(f"并行工作流执行失败，回退到串行模式: {e}")
                 self.use_parallel = False
 
-        if not task_id:
-            task_id = task_manager.create_task(TaskType.WORKFLOW_EXECUTION, {"user_input": user_input})
+        if task_id:
+            if self._is_task_cancelled(task_id):
+                return {"cancelled": True, "stage_results": {}}
 
-        await task_manager.update_progress(task_id, 0, "正在初始化工作流...")
+        context = AgentContext(user_input=user_input)
+        stage_results = {}
+        total_stages = len(self.workflow_stages)
 
-        async def _run_workflow():
-            context = AgentContext(user_input=user_input)
-            stage_results = {}
-            total_stages = len(self.workflow_stages)
+        for idx, stage_name in enumerate(self.workflow_stages):
+            agent = self.agents[stage_name]
 
-            for idx, stage_name in enumerate(self.workflow_stages):
-                task = task_manager.get_task(task_id)
-                if task and task.status == TaskStatus.CANCELLED:
-                    return {"cancelled": True, "stage_results": stage_results}
+            start_time = time.time()
+            try:
+                context = await agent.execute(context)
+                elapsed = time.time() - start_time
 
-                agent = self.agents[stage_name]
-                progress = (idx / total_stages) * 100
-                await task_manager.update_progress(task_id, progress, f"正在执行: {stage_name}...")
+                stage_results[stage_name] = {
+                    "status": context.stage_status,
+                    "elapsed_seconds": round(elapsed, 2),
+                    "output_summary": self._get_stage_summary(stage_name, context)
+                }
 
-                start_time = time.time()
-                try:
-                    context = await agent.execute(context)
-                    elapsed = time.time() - start_time
+            except Exception as e:
+                stage_results[stage_name] = {
+                    "status": f"failed: {e!s}",
+                    "elapsed_seconds": round(time.time() - start_time, 2),
+                    "error": str(e)
+                }
+                break
 
-                    stage_results[stage_name] = {
-                        "status": context.stage_status,
-                        "elapsed_seconds": round(elapsed, 2),
-                        "output_summary": self._get_stage_summary(stage_name, context)
+        if task_id:
+            try:
+                task_manager.update_task_status(
+                    task_id,
+                    TaskStatus.COMPLETED,
+                    result={
+                        "user_input": context.user_input,
+                        "extracted_params": context.extracted_params,
+                        "process_route": context.process_route,
+                        "cutting_parameters": context.cutting_parameters,
+                        "nc_code": context.nc_code,
+                        "verification_result": context.verification_result,
+                        "repair_suggestions": context.repair_suggestions,
+                        "stage_results": stage_results,
                     }
+                )
+            except Exception:
+                pass
 
-                    await task_manager.update_progress(
-                        task_id,
-                        ((idx + 1) / total_stages) * 100,
-                        f"完成: {stage_name}"
-                    )
-
-                except Exception as e:
-                    stage_results[stage_name] = {
-                        "status": f"failed: {e!s}",
-                        "elapsed_seconds": round(time.time() - start_time, 2),
-                        "error": str(e)
-                    }
-                    raise
-
-            return {
-                "user_input": context.user_input,
-                "extracted_params": context.extracted_params,
-                "process_route": context.process_route,
-                "cutting_parameters": context.cutting_parameters,
-                "nc_code": context.nc_code,
-                "verification_result": context.verification_result,
-                "repair_suggestions": context.repair_suggestions,
-                "stage_results": stage_results,
-                "total_stages": total_stages,
-                "completed_stages": len([s for s in stage_results.values() if "failed" not in s["status"]])
-            }
-
-        try:
-            await task_manager.update_progress(task_id, 5, "开始执行工作流...")
-            result = await task_manager.run_with_timeout(task_id, _run_workflow())
-
-            if result.get("cancelled"):
-                await task_manager.cancel_task(task_id)
-                return result
-
-            await task_manager.complete_task(task_id, result)
-            return result
-        except Exception as e:
-            await task_manager.fail_task(task_id, str(e))
-            raise
+        return {
+            "user_input": context.user_input,
+            "extracted_params": context.extracted_params,
+            "process_route": context.process_route,
+            "cutting_parameters": context.cutting_parameters,
+            "nc_code": context.nc_code,
+            "verification_result": context.verification_result,
+            "repair_suggestions": context.repair_suggestions,
+            "stage_results": stage_results,
+            "total_stages": total_stages,
+            "completed_stages": len([s for s in stage_results.values() if "failed" not in s["status"]])
+        }
 
 orchestrator = WorkflowOrchestrator(use_parallel=True)

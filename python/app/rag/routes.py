@@ -547,3 +547,79 @@ async def get_evaluation_query(query_id: str):
         return success(data=query.to_dict())
     except Exception as e:
         return error(code=ErrorCode.INTERNAL_ERROR, message=f"获取评估查询失败: {e!s}")
+
+
+@router.post("/bosch/build")
+async def build_bosch_knowledge(data_dir: str = Form(default="python/data/datasets/bosch_cnc")):
+    try:
+        kb = get_knowledge_base()
+
+        from app.rag.bosch_knowledge_builder import BoschKnowledgeBuilder
+
+        builder = BoschKnowledgeBuilder(data_dir=data_dir, knowledge_base=kb)
+        result = builder.build_all()
+
+        return success(
+            data={
+                **result,
+                "knowledge_base_count": kb.count(),
+            },
+            message=f"Bosch工艺知识构建完成：共 {result['total_entries']} 条知识条目"
+        )
+    except Exception as e:
+        logger.exception("Failed to build Bosch knowledge")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"构建Bosch知识失败: {e!s}"
+        )
+
+
+@router.get("/bosch/stats")
+async def get_bosch_knowledge_stats():
+    try:
+        kb = get_knowledge_base()
+        all_data = kb.collection.get(include=["metadatas"])
+
+        bosch_entries = []
+        for i, meta in enumerate(all_data["metadatas"]):
+            if meta.get("source") == "bosch_cnc":
+                bosch_entries.append({
+                    "id": all_data["ids"][i],
+                    "type": meta.get("type", "unknown"),
+                    "machine": meta.get("machine", ""),
+                    "process": meta.get("process", ""),
+                    "category": meta.get("category", "unknown"),
+                })
+
+        type_counts: dict[str, int] = {}
+        machine_counts: dict[str, int] = {}
+        for e in bosch_entries:
+            t = e["type"]
+            type_counts[t] = type_counts.get(t, 0) + 1
+            m = e["machine"]
+            if m:
+                machine_counts[m] = machine_counts.get(m, 0) + 1
+
+        return success(data={
+            "bosch_total": len(bosch_entries),
+            "by_type": type_counts,
+            "by_machine": machine_counts,
+            "entries": bosch_entries[:50],
+        })
+    except Exception as e:
+        logger.exception("Failed to get Bosch stats")
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"获取Bosch统计失败: {e!s}")
+
+
+@router.delete("/bosch")
+async def delete_bosch_knowledge():
+    try:
+        kb = get_knowledge_base()
+        deleted = kb.delete_by_source("bosch_cnc")
+        return success(
+            data={"deleted_count": deleted, "remaining_total": kb.count()},
+            message=f"已清除 {deleted} 条 Bosch 知识条目"
+        )
+    except Exception as e:
+        logger.exception("Failed to delete Bosch knowledge")
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"清除Bosch知识失败: {e!s}")

@@ -1,5 +1,8 @@
+import logging
 import math
 from typing import Any
+
+import numpy as np
 
 from app.models.validation import (
     AdjustmentSuggestion,
@@ -95,6 +98,10 @@ class ToolWearPredictor:
         self.material_params = MATERIAL_PARAMS
         self.tool_params = TOOL_PARAMS
         self.default_replacement_threshold = 0.3
+        self._bosch_model: Any | None = None
+        self._bosch_scaler: Any | None = None
+        self._bosch_feature_loader: Any | None = None
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     def _get_material_params(self, material_type: str) -> MaterialParams:
         mat_key = material_type.lower().replace(" ", "_").replace("-", "_")
@@ -435,6 +442,278 @@ class ToolWearPredictor:
             "deviation_percent": round(deviation_percent, 2),
             "correction_factor": round(correction_factor, 3),
             "calibrated_curve": recalibrated_curve.to_dict()
+        }
+
+    def train_with_bosch_data(
+        self,
+        data_dir: str = "python/data/datasets/bosch_cnc",
+        machines: list[str] | None = None,
+        processes: list[str] | None = None,
+        test_size: float = 0.2,
+        model_type: str = "random_forest",
+    ) -> dict:
+        try:
+            import sklearn
+            from packaging import version
+
+            sklearn_version = version.parse(sklearn.__version__)
+            min_version = version.parse("1.0.0")
+            if sklearn_version < min_version:
+                self._logger.error(
+                    "scikit-learn 版本过低 (%s < 1.0.0)，不兼容当前训练逻辑",
+                    sklearn.__version__
+                )
+                return {
+                    "error": f"scikit-learn 版本过低 ({sklearn.__version__} < 1.0.0)，请升级: pip install 'scikit-learn>=1.0.0'",
+                    "accuracy": 0.0,
+                    "precision": 0.0,
+                    "recall": 0.0,
+                    "f1": 0.0,
+                    "confusion_matrix": [],
+                    "feature_importance": [],
+                }
+
+            from sklearn.ensemble import RandomForestClassifier
+            from sklearn.metrics import (
+                accuracy_score,
+                confusion_matrix,
+                f1_score,
+                precision_score,
+                recall_score,
+            )
+            from sklearn.model_selection import train_test_split
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.svm import SVC
+        except ImportError:
+            self._logger.error("机器学习依赖未安装，请安装 scikit-learn 等包")
+            return {
+                "error": "机器学习依赖未安装，请运行: pip install scikit-learn",
+                "accuracy": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "confusion_matrix": [],
+                "feature_importance": [],
+            }
+
+        from app.data.bosch_cnc_loader import BoschCNCDataLoader
+
+        loader = BoschCNCDataLoader(data_dir=data_dir)
+        self._bosch_feature_loader = loader
+
+        X, y, _metadata_list = loader.get_feature_dataset(
+            machines=machines, processes=processes
+        )
+
+        unique, counts = np.unique(y, return_counts=True)
+        self._logger.info(
+            "Dataset loaded: %d samples, label distribution: %s",
+            len(y), dict(zip(unique.astype(str).tolist(), counts.tolist()))
+        )
+
+        if len(unique) < 2:
+            return {
+                "error": "Dataset must contain both good and bad samples for training",
+                "accuracy": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "confusion_matrix": [],
+                "feature_importance": [],
+            }
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=42, stratify=y
+        )
+
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+        self._bosch_scaler = scaler
+
+        if model_type == "random_forest":
+            model = RandomForestClassifier(
+                n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
+            )
+        elif model_type == "xgboost":
+            try:
+                from xgboost import XGBClassifier
+                model = XGBClassifier(
+                    n_estimators=100, max_depth=6, learning_rate=0.1,
+                    random_state=42, n_jobs=-1, eval_metric="logloss"
+                )
+            except ImportError:
+                self._logger.warning("XGBoost not installed, falling back to RandomForest")
+                model = RandomForestClassifier(
+                    n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
+                )
+                model_type = "random_forest"
+        elif model_type == "svm":
+            model = SVC(kernel="rbf", probability=True, random_state=42)
+        else:
+            raise ValueError(f"Unsupported model_type: {model_type}")
+
+        model.fit(X_train_scaled, y_train)
+        self._bosch_model = model
+
+        y_pred = model.predict(X_test_scaled)
+
+        accuracy = round(float(accuracy_score(y_test, y_pred)), 4)
+        precision = round(float(precision_score(y_test, y_pred, zero_division=0)), 4)
+        recall = round(float(recall_score(y_test, y_pred, zero_division=0)), 4)
+        f1 = round(float(f1_score(y_test, y_pred, zero_division=0)), 4)
+        cm = confusion_matrix(y_test, y_pred).tolist()
+
+        feature_importance: list[dict] = []
+        if model_type in ("random_forest", "xgboost") and hasattr(model, "feature_importances_"):
+            feature_keys = sorted(loader.extract_features(np.zeros((100, 3))).keys())
+            importances = model.feature_importances_.tolist()
+            feature_importance = sorted(
+                [
+                    {"feature": feature_keys[i] if i < len(feature_keys) else f"f{i}", "importance": round(imp, 6)}
+                    for i, imp in enumerate(importances)
+                ],
+                key=lambda x: x["importance"],
+                reverse=True,
+            )[:20]
+
+        self._logger.info(
+            "Training complete: model=%s, accuracy=%.4f, f1=%.4f",
+            model_type, accuracy, f1
+        )
+
+        return {
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "confusion_matrix": cm,
+            "feature_importance": feature_importance,
+            "model_type": model_type,
+            "train_samples": len(X_train),
+            "test_samples": len(X_test),
+        }
+
+    def predict_vibration_anomaly(
+        self,
+        vibration_data: np.ndarray,
+    ) -> dict:
+        if self._bosch_model is None or self._bosch_scaler is None:
+            return {
+                "prediction": "unknown",
+                "confidence": 0.0,
+                "features": {},
+                "explanation": "Model not trained. Call train_with_bosch_data() first.",
+            }
+
+        if self._bosch_feature_loader is None:
+            from app.data.bosch_cnc_loader import BoschCNCDataLoader
+            self._bosch_feature_loader = BoschCNCDataLoader()
+
+        features = self._bosch_feature_loader.extract_features(vibration_data)
+        feature_keys = sorted(features.keys())
+        X = np.array([[features[k] for k in feature_keys]], dtype=np.float64)
+        X_scaled = self._bosch_scaler.transform(X)
+
+        proba = self._bosch_model.predict_proba(X_scaled)[0]
+        pred_class = int(self._bosch_model.predict(X_scaled)[0])
+        label = "bad" if pred_class == 1 else "good"
+        confidence = round(float(max(proba)), 4)
+
+        explanation_parts: list[str] = []
+        rms_values = {ax: features.get(f"time_{ax}_rms", 0) for ax in ["x", "y", "z"]}
+        max_rms_axis = max(rms_values, key=rms_values.get)
+        explanation_parts.append(
+            f"RMS峰值出现在{max_rms_axis.upper()}轴 ({rms_values[max_rms_axis]:.4f}g)"
+        )
+
+        dom_freqs = {ax: features.get(f"freq_{ax}_dominant_freq", 0) for ax in ["x", "y", "z"]}
+        max_freq_axis = max(dom_freqs, key=dom_freqs.get)
+        explanation_parts.append(
+            f"主频{dom_freqs[max_freq_axis]:.1f}Hz ({max_freq_axis.upper()}轴)"
+        )
+
+        if label == "bad":
+            explanation_parts.append("检测到异常振动模式，建议检查刀具状态")
+        else:
+            explanation_parts.append("振动模式正常")
+
+        return {
+            "prediction": label,
+            "confidence": confidence,
+            "features": {k: round(v, 6) for k, v in features.items()},
+            "explanation": "；".join(explanation_parts),
+        }
+
+    def get_process_baseline(self, process: str, machine: str = "M01") -> dict:
+        from app.data.bosch_cnc_loader import BoschCNCDataLoader
+
+        loader = BoschCNCDataLoader()
+        samples = loader.load_dataset(
+            machines=[machine], processes=[process], labels=["good"]
+        )
+
+        if not samples:
+            return {
+                "process": process,
+                "machine": machine,
+                "rms_ranges": {},
+                "dominant_frequencies": {},
+                "energy_distribution": {},
+                "sample_count": 0,
+                "warning": f"No good samples found for {machine}/{process}",
+            }
+
+        axis_data: dict[str, list[float]] = {"x_rms": [], "y_rms": [], "z_rms": []}
+        axis_dom_freqs: dict[str, list[float]] = {
+            "x_dom_freq": [], "y_dom_freq": [], "z_dom_freq": []
+        }
+        axis_energies: dict[str, list[float]] = {
+            "x_energy_ratio": [], "y_energy_ratio": [], "z_energy_ratio": []
+        }
+
+        for sample in samples:
+            feats = loader.extract_features(sample["data"])
+            for ax in ["x", "y", "z"]:
+                axis_data[f"{ax}_rms"].append(feats.get(f"time_{ax}_rms", 0))
+                axis_dom_freqs[f"{ax}_dom_freq"].append(feats.get(f"freq_{ax}_dominant_freq", 0))
+                axis_energies[f"{ax}_energy_ratio"].append(feats.get(f"cross_{ax}_energy_ratio", 0))
+
+        rms_ranges = {}
+        for key, values in axis_data.items():
+            if values:
+                rms_ranges[key] = {
+                    "min": round(float(np.min(values)), 6),
+                    "max": round(float(np.max(values)), 6),
+                    "mean": round(float(np.mean(values)), 6),
+                    "std": round(float(np.std(values)), 6),
+                }
+
+        dominant_frequencies = {}
+        for key, values in axis_dom_freqs.items():
+            if values:
+                dominant_frequencies[key] = {
+                    "min": round(float(np.min(values)), 2),
+                    "max": round(float(np.max(values)), 2),
+                    "mean": round(float(np.mean(values)), 2),
+                }
+
+        energy_distribution = {}
+        for key, values in axis_energies.items():
+            if values:
+                energy_distribution[key] = {
+                    "min": round(float(np.min(values)), 6),
+                    "max": round(float(np.max(values)), 6),
+                    "mean": round(float(np.mean(values)), 6),
+                }
+
+        return {
+            "process": process,
+            "machine": machine,
+            "rms_ranges": rms_ranges,
+            "dominant_frequencies": dominant_frequencies,
+            "energy_distribution": energy_distribution,
+            "sample_count": len(samples),
         }
 
     def get_supported_models(self) -> list[dict[str, Any]]:

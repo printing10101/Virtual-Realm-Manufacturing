@@ -2,13 +2,10 @@ import logging
 
 import uvicorn
 from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import ValidationError
 
 from app.ai.agents import router as ai_router
 from app.ai.agents import router_chat as ai_chat_router
-from app.ai.llm_client import get_llm_client
 from app.ai.ollama_routes import router as ollama_router
 from app.ai.workflow_routes import router as workflow_router
 from app.api.batch import router as batch_router
@@ -18,6 +15,7 @@ from app.api.v1.backup import router as backup_router
 from app.api.v1.comparisons import router as comparisons_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.experiences import router as experiences_router
+from app.api.v1.ground_truth import router as ground_truth_router
 from app.api.v1.models import router as models_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.scenarios import router as scenarios_router
@@ -30,15 +28,6 @@ from app.cad.generator import router as cad_router
 from app.cad.process_router import router as process_router
 from app.config import config
 from app.core.container import container
-from app.core.exception_handler import (
-    pydantic_validation_exception_handler,
-    validation_exception_handler,
-)
-from app.core.exceptions import (
-    AppException,
-    app_exception_handler,
-    general_exception_handler,
-)
 from app.core.input_validator import InputValidationMiddleware
 from app.core.response import success
 from app.models.schemas import AIStatusResponse, HealthResponse
@@ -189,11 +178,6 @@ def create_app() -> FastAPI:
         enabled=True
     )
 
-    app.add_exception_handler(AppException, app_exception_handler)
-    app.add_exception_handler(Exception, general_exception_handler)
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(ValidationError, pydantic_validation_exception_handler)
-
     container.initialize()
 
     app.include_router(ai_router)
@@ -209,6 +193,7 @@ def create_app() -> FastAPI:
     app.include_router(validation_router)
     app.include_router(traces_router)
     app.include_router(experiences_router)
+    app.include_router(ground_truth_router)
     app.include_router(scenarios_router)
     app.include_router(models_router)
     app.include_router(comparisons_router)
@@ -222,8 +207,19 @@ def create_app() -> FastAPI:
 
     @app.get("/health", response_model=HealthResponse, tags=["System"])
     async def health_check():
-        ai_client = get_llm_client()
-        ai_available = await ai_client.is_available()
+        ai_available = False
+        try:
+            import httpx
+            if config.ai.mode == "local":
+                async with httpx.AsyncClient(timeout=3) as client:
+                    response = await client.get(f"{config.ai.ollama_base_url}/api/tags")
+                    ai_available = response.status_code == 200
+            else:
+                async with httpx.AsyncClient(timeout=3) as client:
+                    response = await client.get(f"{config.ai.cloud_base_url}/health")
+                    ai_available = response.status_code == 200
+        except Exception:
+            ai_available = False
 
         ai_status = AIStatusResponse(
             mode=config.ai.mode,

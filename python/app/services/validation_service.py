@@ -1,6 +1,7 @@
 import asyncio
 from typing import Any
 
+from app.core.physical_models import KienzleModel, TaylorModel, SurfaceRoughnessModel
 from app.core.task_manager import TaskManager
 from app.core.workflow_logger import AIWorkflowLogger, StepType
 
@@ -139,33 +140,64 @@ class SimulationValidationService:
         v_c = params.get("v_c", 150.0)
         f = params.get("f", 0.20)
         a_p = params.get("a_p", 2.0)
-        params.get("material", "45钢")
+        material = params.get("material", "45钢")
 
-        kc_base = 1800.0
-        f_ref = 0.1
-        exponent = -0.25
-        kc = kc_base * ((f / f_ref) ** exponent)
-        fc = kc * a_p * f
+        if not isinstance(v_c, (int, float)) or v_c <= 0:
+            return {
+                "status": "failed",
+                "metrics": {},
+                "details": f"切削速度 v_c 无效: {v_c}，必须为正数"
+            }
+        if not isinstance(f, (int, float)) or f <= 0:
+            return {
+                "status": "failed",
+                "metrics": {},
+                "details": f"进给量 f 无效: {f}，必须为正数"
+            }
+        if not isinstance(a_p, (int, float)) or a_p <= 0:
+            return {
+                "status": "failed",
+                "metrics": {},
+                "details": f"切深 a_p 无效: {a_p}，必须为正数"
+            }
+        if not isinstance(material, str) or not material.strip():
+            return {
+                "status": "failed",
+                "metrics": {},
+                "details": f"材料名称无效: {material}"
+            }
 
-        n = 0.25
-        c = 350.0
-        t = (c / (v_c ** (1 - n))) ** (1 / n)
+        try:
+            kc_result = KienzleModel.calculate_specific_cutting_force(f, material)
+            fc_result = KienzleModel.calculate_cutting_force(v_c, f, a_p, material)
+            fc = fc_result["cutting_force_N"]
+            kc = kc_result
 
-        re = params.get("nose_radius", 0.8)
-        ra = (f ** 2) / (8 * re) * 1000
+            t = TaylorModel.calculate_tool_life(v_c, material)
 
-        calc_results = {
-            "kienzle": {"cutting_force_N": fc, "specific_cutting_force_Nmm2": kc},
-            "taylor": {"tool_life_min": t, "tool_life_hours": t / 60, "taylor_exponent": n},
-            "surface_roughness": {"predicted_ra_um": ra}
-        }
+            re = params.get("nose_radius", 0.8)
+            if not isinstance(re, (int, float)) or re <= 0:
+                re = 0.8
+            ra = SurfaceRoughnessModel.calculate_ra(f, re)
 
-        return {
-            "status": "passed",
-            "metrics": {"fc": fc, "t": t, "ra": ra},
-            "details": "公式计算完成",
-            "calc_results": calc_results
-        }
+            calc_results = {
+                "kienzle": {"cutting_force_N": fc, "specific_cutting_force_Nmm2": kc},
+                "taylor": {"tool_life_min": t, "tool_life_hours": t / 60, "taylor_exponent": TaylorModel.get_params(material).n},
+                "surface_roughness": {"predicted_ra_um": ra}
+            }
+
+            return {
+                "status": "passed",
+                "metrics": {"fc": fc, "t": t, "ra": ra},
+                "details": "公式计算完成",
+                "calc_results": calc_results
+            }
+        except Exception as e:
+            return {
+                "status": "failed",
+                "metrics": {},
+                "details": f"物理模型计算失败: {e!s}"
+            }
 
     async def _stage_metric_evaluation(self, params: dict, calc_results: dict) -> dict:
 

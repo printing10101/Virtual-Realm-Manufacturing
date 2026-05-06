@@ -8,6 +8,7 @@ from typing import Any
 
 from app.config import config
 from app.core.workflow_logger import AIWorkflowLogger, StepType
+from app.services.bosch_finetune_builder import BoschFinetuneBuilder
 
 
 class DataSanitizer:
@@ -323,3 +324,145 @@ class FineTuneManager:
             "message": "LoRA 微调已模拟完成。实际部署需要：1) 安装 unsloth 或 llama.cpp 2) 配置 GPU 环境 3) 执行真实微调流程",
             "note": "当前为框架实现，生产环境可集成 unsloth 的 LoRA 训练脚本"
         }
+
+    def prepare_bosch_finetune_data(
+        self,
+        data_dir: str = "python/app/data/datasets/bosch_cnc",
+        categories: list[str] | None = None,
+    ) -> dict:
+        """准备 Bosch 微调数据
+        categories: ["diagnosis", "parameter_optimization", "comparison", "maintenance"]
+        返回：{sample_counts, output_path, dataset_info}
+        """
+        valid_categories = {"diagnosis", "parameter_optimization", "comparison", "maintenance"}
+        if categories:
+            invalid = [cat for cat in categories if cat not in valid_categories]
+            if invalid:
+                return {
+                    "status": "error",
+                    "message": f"无效类别: {invalid}，有效类别为: {sorted(valid_categories)}",
+                    "valid_categories": sorted(valid_categories),
+                    "sample_counts": {},
+                    "output_path": None,
+                }
+
+        builder = BoschFinetuneBuilder(data_dir=data_dir)
+        output_dir = str(self.output_dir / "bosch_finetune")
+        output_dir_path = Path(output_dir)
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+
+        all_samples: list[dict] = []
+
+        if categories is None or "diagnosis" in categories:
+            all_samples.extend(builder.generate_diagnosis_samples())
+        if categories is None or "parameter_optimization" in categories:
+            all_samples.extend(builder.generate_parameter_optimization_samples())
+        if categories is None or "comparison" in categories:
+            all_samples.extend(builder.generate_comparison_samples())
+        if categories is None or "maintenance" in categories:
+            all_samples.extend(builder.generate_preventive_maintenance_samples())
+
+        if not all_samples:
+            return {
+                "status": "no_samples",
+                "message": "未生成任何样本，请检查数据目录和类别设置",
+                "sample_counts": {},
+                "output_path": None,
+            }
+
+        category_counts = {}
+        for sample in all_samples:
+            cat = sample.get("category", "unknown")
+            category_counts[cat] = category_counts.get(cat, 0) + 1
+
+        train_path = output_dir_path / "train.jsonl"
+        with open(train_path, "w", encoding="utf-8") as f:
+            for sample in all_samples:
+                f.write(json.dumps(sample, ensure_ascii=False) + "\n")
+
+        ollama_path = output_dir_path / "ollama_format.jsonl"
+        ollama_samples = []
+        for sample in all_samples:
+            ollama_samples.append({
+                "messages": [
+                    {"role": "user", "content": sample["instruction"] + "\n\n" + sample["input"]},
+                    {"role": "assistant", "content": sample["output"]},
+                ],
+                "source": sample.get("source", {}),
+                "category": sample.get("category", "unknown"),
+            })
+        with open(ollama_path, "w", encoding="utf-8") as f:
+            for sample in ollama_samples:
+                f.write(json.dumps(sample, ensure_ascii=False) + "\n")
+
+        dataset_info = {
+            "total_samples": len(all_samples),
+            "categories": category_counts,
+            "created_at": datetime.now().isoformat(),
+            "data_dir": data_dir,
+        }
+        info_path = output_dir_path / "dataset_info.json"
+        with open(info_path, "w", encoding="utf-8") as f:
+            json.dump(dataset_info, f, ensure_ascii=False, indent=2)
+
+        return {
+            "status": "success",
+            "sample_counts": category_counts,
+            "total_samples": len(all_samples),
+            "output_path": str(output_dir),
+            "train_path": str(train_path),
+            "ollama_path": str(ollama_path),
+            "dataset_info": dataset_info,
+        }
+
+    def start_finetune_with_bosch_data(
+        self,
+        task_id: str,
+        base_model: str = "qwen2.5:7b",
+        categories: list[str] | None = None,
+        epochs: int = 3,
+        learning_rate: float = 2e-4,
+    ) -> str:
+        """使用 Bosch 数据集微调模型
+        返回微调任务 ID
+        """
+        prepare_result = self.prepare_bosch_finetune_data(categories=categories)
+        if prepare_result["status"] != "success":
+            raise ValueError(f"准备 Bosch 微调数据失败：{prepare_result.get('message', '未知错误')}")
+
+        self._update_status("running", {
+            "task_id": task_id,
+            "started_at": datetime.now().isoformat(),
+            "base_model": base_model,
+            "epochs": epochs,
+            "learning_rate": learning_rate,
+            "dataset_size": prepare_result["total_samples"],
+            "dataset_path": prepare_result["output_path"],
+            "categories": categories,
+        })
+
+        try:
+            dataset_path = prepare_result["ollama_path"]
+            result = {
+                "method": "qlora_simulation",
+                "dataset_path": dataset_path,
+                "samples_used": prepare_result["total_samples"],
+                "base_model": base_model,
+                "epochs": epochs,
+                "learning_rate": learning_rate,
+                "categories": categories,
+                "message": "QloRA 微调已模拟完成。实际部署需要：1) 安装 unsloth 2) 配置 GPU 环境 3) 执行真实微调流程",
+                "note": "当前为框架实现，生产环境可集成 unsloth 的 QLoRA 训练脚本"
+            }
+            self._update_status("completed", {
+                "completed_at": datetime.now().isoformat(),
+                "result": result
+            })
+            self._update_last_finetune_date()
+            return task_id
+        except Exception as e:
+            self._update_status("failed", {
+                "failed_at": datetime.now().isoformat(),
+                "error": str(e)
+            })
+            raise
