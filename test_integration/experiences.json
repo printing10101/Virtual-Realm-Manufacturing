@@ -1,0 +1,22 @@
+{
+  "experiences": {
+    "exp-20260506200209-t1": {
+      "experience_id": "exp-20260506200209-t1",
+      "task_id": "t1",
+      "process": "machining",
+      "parameters": {
+        "cutting_speed": 100
+      },
+      "metrics": {
+        "cutting_speed": 100
+      },
+      "validation_result": {},
+      "ground_truth_validation": {},
+      "metadata": {},
+      "created_at": "2026-05-06T20:02:09.622406",
+      "updated_at": "2026-05-06T20:02:09.622406"
+    }
+  },
+  "validation_history": {},
+  "updated_at": "2026-05-06T20:02:09.622406"
+}

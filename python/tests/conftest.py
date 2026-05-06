@@ -4,6 +4,7 @@
 包括LLM客户端模拟、知识库模拟、AgentContext工厂等。
 """
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -13,7 +14,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.ai.agents import AgentContext, UnderstandingAgent
+try:
+    from app.ai.agents import AgentContext, UnderstandingAgent
+    _AI_MODULES_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    _AI_MODULES_AVAILABLE = False
 
 
 @pytest.fixture
@@ -201,6 +206,8 @@ def agent_context():
     Returns:
         AgentContext: 初始状态的AgentContext实例
     """
+    if not _AI_MODULES_AVAILABLE:
+        pytest.skip("AI模块不可用")
     return AgentContext(
         user_input="我需要加工一批45钢的轴类零件，长度100mm，直径50mm，精度IT7",
         extracted_params={},
@@ -223,6 +230,8 @@ def agent_context_complex():
     Returns:
         AgentContext: 包含复杂需求的AgentContext实例
     """
+    if not _AI_MODULES_AVAILABLE:
+        pytest.skip("AI模块不可用")
     return AgentContext(
         user_input="""
         需要加工以下零件：
@@ -251,6 +260,8 @@ def agent_context_boundary():
     Returns:
         AgentContext: 包含边界条件的AgentContext实例
     """
+    if not _AI_MODULES_AVAILABLE:
+        pytest.skip("AI模块不可用")
     return AgentContext(
         user_input="",
         extracted_params={},
@@ -278,6 +289,8 @@ def understanding_agent_instance(mock_llm_client, mock_knowledge_base):
     Returns:
         UnderstandingAgent: 配置了mock依赖的UnderstandingAgent实例
     """
+    if not _AI_MODULES_AVAILABLE:
+        pytest.skip("AI模块不可用")
     agent = UnderstandingAgent()
     agent.llm_client = mock_llm_client
     agent.knowledge_base = mock_knowledge_base
@@ -345,3 +358,243 @@ def patch_container_model_router(mock_model_router):
     """
     with patch("app.core.container.container.get_service", return_value=mock_model_router) as mock:
         yield mock
+
+
+# ==================== Bosch CNC 集成测试fixtures ====================
+
+import numpy as np
+
+TEST_RANDOM_SEED = 42
+np.random.seed(TEST_RANDOM_SEED)
+
+
+@pytest.fixture(scope="session")
+def bosch_test_data_dir():
+    """提供Bosch CNC测试样本数据目录路径。
+
+    Returns:
+        str: Bosch CNC测试样本数据的绝对路径
+    """
+    test_data_path = Path(__file__).parent / "data" / "bosch_test_samples"
+    if not test_data_path.exists():
+        pytest.skip("测试样本数据不存在，请先运行 generate_test_data.py 生成测试数据")
+    return str(test_data_path.resolve())
+
+
+@pytest.fixture(scope="session")
+def sample_vibration_data():
+    """提供标准样本振动数据。
+
+    Returns:
+        np.ndarray: 形状为(500, 3)的三轴振动数据 (x, y, z)
+    """
+    rng = np.random.RandomState(TEST_RANDOM_SEED)
+    t = np.arange(500) / 2000
+
+    x = 0.1 * np.sin(2 * np.pi * 50 * t) + 0.05 * rng.randn(500)
+    y = 0.08 * np.sin(2 * np.pi * 60 * t + 0.5) + 0.05 * rng.randn(500)
+    z = 0.05 * np.sin(2 * np.pi * 70 * t + 1.0) + 0.05 * rng.randn(500)
+
+    return np.column_stack([x, y, z]).astype(np.float64)
+
+
+@pytest.fixture(scope="session")
+def abnormal_vibration_data():
+    """提供异常振动数据样本。
+
+    Returns:
+        np.ndarray: 形状为(500, 3)的异常三轴振动数据
+    """
+    rng = np.random.RandomState(TEST_RANDOM_SEED + 1)
+    t = np.arange(500) / 2000
+
+    x = 0.5 * np.sin(2 * np.pi * 50 * t) + 0.3 * rng.randn(500)
+    y = 0.4 * np.sin(2 * np.pi * 60 * t + 0.5) + 0.3 * rng.randn(500)
+    z = 0.25 * np.sin(2 * np.pi * 70 * t + 1.0) + 0.3 * rng.randn(500)
+
+    return np.column_stack([x, y, z]).astype(np.float64)
+
+
+@pytest.fixture
+def temp_chroma_dir():
+    """创建临时ChromaDB目录用于Bosch知识库测试。
+
+    测试完成后自动清理。在Windows上处理文件锁定问题。
+
+    Yields:
+        str: 临时数据库目录路径
+    """
+    import shutil
+    
+    temp_dir = tempfile.mkdtemp()
+    try:
+        yield temp_dir
+    finally:
+        # Windows上ChromaDB可能保持文件打开,需要延迟清理
+        import gc
+        gc.collect()  # 强制垃圾回收释放文件句柄
+        import time
+        time.sleep(0.1)  # 短暂等待文件释放
+        
+        if os.path.exists(temp_dir):
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except Exception:
+                pass  # 忽略清理错误
+
+
+@pytest.fixture
+def temp_rules_file():
+    """创建临时验证规则文件用于测试。
+
+    Yields:
+        Path: 临时规则文件路径
+    """
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        f.write("{}")
+        rules_path = Path(f.name)
+    try:
+        yield rules_path
+    finally:
+        if rules_path.exists():
+            rules_path.unlink()
+
+
+@pytest.fixture
+def temp_experience_dir():
+    """创建临时经验存储目录用于测试。
+
+    Yields:
+        str: 临时经验存储目录路径
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield temp_dir
+
+
+@pytest.fixture
+def temp_finetune_output_dir():
+    """创建临时微调输出目录用于测试。
+
+    Yields:
+        str: 临时微调输出目录路径
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield temp_dir
+
+
+@pytest.fixture
+def mock_knowledge_base_bosch(temp_chroma_dir):
+    """创建模拟知识库用于Bosch测试。
+
+    使用临时ChromaDB目录，确保测试隔离。
+
+    Returns:
+        KnowledgeBase: 初始化的知识库实例
+    """
+    from app.rag.knowledge_base import KnowledgeBase
+
+    kb = KnowledgeBase(
+        persist_directory=temp_chroma_dir,
+        collection_name="test_knowledge"
+    )
+    return kb
+
+
+@pytest.fixture
+def sample_process_features():
+    """提供标准工艺特征数据用于测试。
+
+    Returns:
+        dict: 包含18种特征的标准特征字典
+    """
+    return {
+        "time_x_rms": 0.1234,
+        "time_x_peak": 0.2345,
+        "time_x_peak_to_peak": 0.3456,
+        "time_x_mean": 0.0012,
+        "time_x_std": 0.0456,
+        "time_x_skewness": 0.123,
+        "time_x_kurtosis": 2.345,
+        "time_y_rms": 0.0987,
+        "time_y_peak": 0.1876,
+        "time_y_peak_to_peak": 0.2765,
+        "time_y_mean": -0.0008,
+        "time_y_std": 0.0387,
+        "time_y_skewness": -0.089,
+        "time_y_kurtosis": 2.567,
+        "time_z_rms": 0.0654,
+        "time_z_peak": 0.1234,
+        "time_z_peak_to_peak": 0.1876,
+        "time_z_mean": 0.0003,
+        "time_z_std": 0.0256,
+        "time_z_skewness": 0.045,
+        "time_z_kurtosis": 2.789,
+        "freq_x_dominant_freq": 50.0,
+        "freq_x_spectral_centroid": 120.5,
+        "freq_x_spectral_bandwidth": 45.6,
+        "freq_y_dominant_freq": 60.0,
+        "freq_y_spectral_centroid": 135.2,
+        "freq_y_spectral_bandwidth": 52.3,
+        "freq_z_dominant_freq": 70.0,
+        "freq_z_spectral_centroid": 150.8,
+        "freq_z_spectral_bandwidth": 58.9,
+        "cross_x_y_correlation": 0.765,
+        "cross_x_z_correlation": 0.654,
+        "cross_y_z_correlation": 0.543,
+        "cross_x_energy_ratio": 0.456,
+        "cross_y_energy_ratio": 0.345,
+        "cross_z_energy_ratio": 0.199,
+    }
+
+
+@pytest.fixture
+def sample_ground_truth_record():
+    """提供标准ground truth记录用于测试。
+
+    Returns:
+        dict: 包含所有必需字段的ground truth记录
+    """
+    return {
+        "experience_id": "exp-test-001",
+        "task_id": "task-test-001",
+        "process": "OP00",
+        "parameters": {
+            "cutting_speed": 150.0,
+            "feed_rate": 0.2,
+            "depth_of_cut": 1.5,
+        },
+        "metrics": {
+            "vibration": 0.123,
+            "temperature": 450.0,
+            "force": 1200.0,
+        },
+        "validation_result": {
+            "is_valid": True,
+            "checks": [],
+        },
+        "metadata": {
+            "machine": "M01",
+            "timeframe": "Oct_2018",
+        },
+    }
+
+
+@pytest.fixture
+def sample_finetune_sample():
+    """提供标准微调样本用于测试。
+
+    Returns:
+        dict: 包含instruction/input/output的微调样本
+    """
+    return {
+        "instruction": "分析以下OP00工序的振动数据，判断是否存在异常并给出可能原因。",
+        "input": "工序：OP00（端面铣削），机床：M01\n振动数据特征：\n- X轴 RMS: 0.1234g\n- Y轴 RMS: 0.0987g\n- Z轴 RMS: 0.0654g\n状态标注：正常",
+        "output": "诊断结果：正常\n\n分析：三轴振动幅值均在正常范围内，建议继续维持当前加工参数。",
+        "source": {
+            "machine": "M01",
+            "process": "OP00",
+            "timeframe": "Oct_2018",
+            "label": "good",
+        },
+        "category": "diagnosis",
+    }

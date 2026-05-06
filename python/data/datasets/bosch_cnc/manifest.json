@@ -1,0 +1,11 @@
+{
+  "source": "boschresearch/CNC_Machining",
+  "license": "CC-BY-4.0",
+  "description": "CNC铣床振动数据集，3台机床(M01-M03)，15种工序(OP00-OP14)，正常/异常标注",
+  "data_format": "HDF5 (.h5)，三轴加速度数据，采样率2kHz",
+  "timeframes": ["Oct_2018", "Apr_2019", "Aug_2019", "Feb_2020", "Aug_2020", "Feb_2021"],
+  "machines": ["M01", "M02", "M03"],
+  "processes": ["OP00", "OP01", "OP02", "OP03", "OP04", "OP05", "OP06", "OP07", "OP08", "OP09", "OP10", "OP11", "OP12", "OP13", "OP14"],
+  "labels": ["good", "bad"],
+  "citation": "Tnani, Mohamed-Ali; Feil, Michael; Diepold, Klaus. Smart Data Collection System for Brownfield CNC Milling Machines. Procedia CIRP 2022, 107, 131-136."
+}
