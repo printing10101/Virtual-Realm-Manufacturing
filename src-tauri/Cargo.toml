@@ -4,6 +4,10 @@ version = "1.2.0"
 description = "灵境制造 V4 - AI驱动的3D建模与工艺规划系统"
 edition = "2021"
 
+[package.metadata.tauri-winres]
+ProductName = "灵境制造"
+FileDescription = "灵境制造 V4"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

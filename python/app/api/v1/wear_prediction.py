@@ -167,3 +167,49 @@ async def calibrate_prediction(request: CalibrateRequest):
         return success(data=result, message="Prediction calibrated successfully")
     except Exception as e:
         return error(code=ErrorCode.INTERNAL_ERROR, message=f"Calibration failed: {e!s}")
+
+
+@router.post("/train-uniwear")
+async def train_uniwear_model(
+    data_dir: str = "python/data/uniwear",
+    model_type: str = "random_forest",
+):
+    try:
+        result = predictor.train_with_uniwear_data(
+            data_dir=data_dir, model_type=model_type
+        )
+        return success(data=result, message="Uniwear model training completed")
+    except Exception as e:
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Uniwear training failed: {e!s}")
+
+
+@router.post("/predict-from-signals")
+async def predict_wear_from_signal_features(
+    features: dict[str, float],
+    material: str = "tc4",
+):
+    try:
+        result = predictor.predict_wear_from_signals(
+            signal_features=features, material=material
+        )
+        return success(data=result, message="Wear predicted from signal features")
+    except Exception as e:
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Signal prediction failed: {e!s}")
+
+
+@router.get("/cross-dataset-analysis")
+async def get_cross_dataset_analysis():
+    try:
+        analysis = predictor.cross_dataset_analysis()
+        return success(data=analysis, message="Cross-dataset analysis completed")
+    except Exception as e:
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Cross-dataset analysis failed: {e!s}")
+
+
+@router.get("/uniwear-materials")
+async def get_uniwear_materials():
+    try:
+        materials = predictor.get_uniwear_material_params()
+        return success(data=materials, message="Uniwear material parameters retrieved")
+    except Exception as e:
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get uniwear materials: {e!s}")

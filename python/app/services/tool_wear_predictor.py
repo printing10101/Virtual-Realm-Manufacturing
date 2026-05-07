@@ -50,9 +50,17 @@ MATERIAL_PARAMS = {
         taylor_n=0.18, taylor_C=180.0, usui_A=0.018, usui_B=750.0,
         hardness_factor=1.4, name="Stainless Steel 316"
     ),
+    "stainless_hrc52": MaterialParams(
+        taylor_n=0.17, taylor_C=160.0, usui_A=0.020, usui_B=720.0,
+        hardness_factor=1.6, name="Stainless Steel HRC52"
+    ),
     "titanium_ti64": MaterialParams(
         taylor_n=0.15, taylor_C=120.0, usui_A=0.025, usui_B=650.0,
         hardness_factor=1.8, name="Titanium Ti-6Al-4V"
+    ),
+    "titanium_tc4": MaterialParams(
+        taylor_n=0.14, taylor_C=110.0, usui_A=0.028, usui_B=620.0,
+        hardness_factor=1.85, name="Titanium TC4 (Uniwear-NUAA)"
     ),
     "inconel_718": MaterialParams(
         taylor_n=0.12, taylor_C=90.0, usui_A=0.035, usui_B=600.0,
@@ -101,6 +109,9 @@ class ToolWearPredictor:
         self._bosch_model: Any | None = None
         self._bosch_scaler: Any | None = None
         self._bosch_feature_loader: Any | None = None
+        self._uniwear_models: dict[str, Any] = {}
+        self._uniwear_scalers: dict[str, Any] = {}
+        self._uniwear_loader: Any | None = None
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def _get_material_params(self, material_type: str) -> MaterialParams:
@@ -737,3 +748,215 @@ class ToolWearPredictor:
                 "description": "自适应权重混合模型，根据当前磨损量动态调整两模型权重"
             }
         ]
+
+    def get_uniwear_material_params(self) -> dict:
+        return {
+            "tc4": {
+                "taylor_n": 0.14, "taylor_C": 110.0,
+                "usui_A": 0.028, "usui_B": 620.0,
+                "hardness_factor": 1.85,
+                "name": "Titanium TC4 (Uniwear-NUAA)",
+                "dataset": "nuaa",
+                "experiments": ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"],
+            },
+            "hrc52": {
+                "taylor_n": 0.17, "taylor_C": 160.0,
+                "usui_A": 0.020, "usui_B": 720.0,
+                "hardness_factor": 1.6,
+                "name": "Stainless Steel HRC52 (Uniwear-PHM2010)",
+                "dataset": "phm2010",
+                "experiments": ["c1", "c4", "c6"],
+            },
+        }
+
+    def train_with_uniwear_data(
+        self,
+        data_dir: str = "python/data/uniwear",
+        model_type: str = "random_forest",
+        test_size: float = 0.2,
+    ) -> dict:
+        try:
+            from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+            from sklearn.linear_model import LinearRegression
+            from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+            from sklearn.model_selection import train_test_split
+            from sklearn.preprocessing import StandardScaler
+        except ImportError:
+            self._logger.error("机器学习依赖未安装，请安装 scikit-learn")
+            return {"error": "scikit-learn not installed"}
+
+        from app.data.uniwear_loader import UniwearDataLoader, UniwearDataset, NUAA_SIGNAL_COLUMNS, PHM2010_SIGNAL_COLUMNS
+
+        loader = UniwearDataLoader(data_dir=data_dir)
+        self._uniwear_loader = loader
+
+        results: dict = {"datasets": {}}
+
+        ds_configs = [
+            (UniwearDataset.NUAA, NUAA_SIGNAL_COLUMNS, "tc4"),
+            (UniwearDataset.PHM2010, PHM2010_SIGNAL_COLUMNS, "hrc52"),
+        ]
+
+        for ds, signal_cols, material_key in ds_configs:
+            try:
+                df = loader.load_dataset(ds)
+
+                if "tool_wear" not in df.columns:
+                    results["datasets"][ds.value] = {"error": "No tool_wear column"}
+                    continue
+
+                feature_cols = [c for c in signal_cols if c in df.columns and c != "timestamp"]
+                if not feature_cols:
+                    results["datasets"][ds.value] = {"error": "No valid feature columns"}
+                    continue
+
+                df_clean = df.dropna(subset=feature_cols + ["tool_wear"])
+                X = df_clean[feature_cols].values.astype(np.float64)
+                y = df_clean["tool_wear"].values.astype(np.float64)
+
+                if len(X) < 10:
+                    results["datasets"][ds.value] = {
+                        "error": f"Insufficient samples: {len(X)}"
+                    }
+                    continue
+
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=test_size, random_state=42
+                )
+
+                scaler = StandardScaler()
+                X_train_scaled = scaler.fit_transform(X_train)
+                X_test_scaled = scaler.transform(X_test)
+
+                if model_type == "random_forest":
+                    model = RandomForestRegressor(
+                        n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
+                    )
+                elif model_type == "gradient_boosting":
+                    model = GradientBoostingRegressor(
+                        n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42
+                    )
+                elif model_type == "linear":
+                    model = LinearRegression()
+                else:
+                    raise ValueError(f"Unsupported model_type: {model_type}")
+
+                model.fit(X_train_scaled, y_train)
+                y_pred = model.predict(X_test_scaled)
+
+                mae = round(float(mean_absolute_error(y_test, y_pred)), 6)
+                rmse = round(float(np.sqrt(mean_squared_error(y_test, y_pred))), 6)
+                r2 = round(float(r2_score(y_test, y_pred)), 4)
+
+                self._uniwear_models[material_key] = model
+                self._uniwear_scalers[material_key] = scaler
+
+                feature_importance = []
+                if hasattr(model, "feature_importances_"):
+                    importances = model.feature_importances_.tolist()
+                    feature_importance = sorted(
+                        [
+                            {"feature": feature_cols[i] if i < len(feature_cols) else f"f{i}",
+                             "importance": round(imp, 6)}
+                            for i, imp in enumerate(importances)
+                        ],
+                        key=lambda x: x["importance"],
+                        reverse=True,
+                    )[:15]
+
+                results["datasets"][ds.value] = {
+                    "material": material_key,
+                    "model_type": model_type,
+                    "train_samples": len(X_train),
+                    "test_samples": len(X_test),
+                    "features": len(feature_cols),
+                    "mae": mae,
+                    "rmse": rmse,
+                    "r2": r2,
+                    "feature_importance": feature_importance,
+                }
+
+                self._logger.info(
+                    "Uniwear %s training: MAE=%.6f, RMSE=%.6f, R²=%.4f",
+                    ds.value, mae, rmse, r2,
+                )
+            except Exception as e:
+                self._logger.error("Uniwear training failed for %s: %s", ds.value, e)
+                results["datasets"][ds.value] = {"error": str(e)}
+
+        return results
+
+    def predict_wear_from_signals(
+        self,
+        signal_features: dict[str, float],
+        material: str = "tc4",
+    ) -> dict:
+        model = self._uniwear_models.get(material)
+        scaler = self._uniwear_scalers.get(material)
+
+        if model is None or scaler is None:
+            return {
+                "error": f"Model not trained for {material}. Call train_with_uniwear_data() first.",
+                "predicted_wear": None,
+                "confidence": 0.0,
+            }
+
+        feature_order = list(signal_features.keys())
+        X = np.array([[signal_features[k] for k in feature_order]], dtype=np.float64)
+        X_scaled = scaler.transform(X)
+
+        predicted = float(model.predict(X_scaled)[0])
+
+        if hasattr(model, "predict_proba"):
+            confidence = float(np.max(model.predict_proba(X_scaled)))
+        else:
+            confidence = max(0.6, min(0.95, 1.0 - abs(predicted) * 0.1))
+
+        return {
+            "predicted_wear": round(predicted, 6),
+            "confidence": round(confidence, 4),
+            "material": material,
+            "features_used": feature_order,
+        }
+
+    def cross_dataset_analysis(self) -> dict:
+        if not self._bosch_model:
+            bosch_status = "not_trained"
+        else:
+            bosch_status = "trained"
+
+        uniwear_status = {
+            k: "trained" for k in self._uniwear_models
+        } if self._uniwear_models else {"tc4": "not_trained", "hrc52": "not_trained"}
+
+        analysis = {
+            "bosch_cnc": {"status": bosch_status, "data_type": "vibration_classification"},
+            "uniwear": {
+                "status": uniwear_status,
+                "data_type": "wear_regression",
+                "materials": {
+                    "tc4": {
+                        "source": "NUAA",
+                        "experiment_count": 9,
+                        "signal_types": "force/vibration/power",
+                    },
+                    "hrc52": {
+                        "source": "PHM2010",
+                        "experiment_count": 3,
+                        "signal_types": "force/vibration/acoustic_emission",
+                    },
+                },
+            },
+            "cross_validation_strategy": [
+                "Use Bosch vibration features with Uniwear wear regression to estimate wear",
+                "Cross-validate Bosch good/bad labels against Uniwear predicted wear thresholds",
+                "Use Uniwear TC4/HRC52 models for material-specific wear predictions in Bosch data",
+            ],
+            "material_specific_thresholds": {
+                "tc4": self.get_replacement_threshold("titanium_tc4"),
+                "hrc52": self.get_replacement_threshold("stainless_hrc52"),
+                "default": self.default_replacement_threshold,
+            },
+        }
+
+        return analysis

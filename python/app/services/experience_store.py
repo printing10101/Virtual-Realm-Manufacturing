@@ -5,6 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 
@@ -257,6 +259,142 @@ class ExperienceStore:
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
+    def import_uniwear_experiments(
+        self,
+        data_dir: str = "python/data/uniwear",
+    ) -> dict:
+        from app.data.uniwear_loader import (
+            UniwearDataLoader,
+            UniwearDataset,
+            NUAA_MATERIAL,
+            NUAA_MATERIAL_FULL,
+            PHM2010_MATERIAL,
+            PHM2010_MATERIAL_FULL,
+        )
+
+        loader = UniwearDataLoader(data_dir=data_dir)
+        imported: dict[str, list[str]] = {"nuaa": [], "phm2010": []}
+
+        ds_configs = [
+            (UniwearDataset.NUAA, NUAA_MATERIAL, NUAA_MATERIAL_FULL),
+            (UniwearDataset.PHM2010, PHM2010_MATERIAL, PHM2010_MATERIAL_FULL),
+        ]
+
+        for ds, material, material_full in ds_configs:
+            experiments = loader.get_experiment_tags(ds)
+            for exp in experiments:
+                try:
+                    stats = loader.compute_statistics(ds, experiment_tag=exp)
+                    df = loader.load_dataset(ds)
+                    exp_df = df[df["experiment_tag"] == exp]
+
+                    wear_stats = stats.get("wear_stats", {})
+                    signal_stats = stats.get("signal_stats", {})
+
+                    cutting_params: dict = {}
+                    for meta_col in ["feed_per_tooth", "spindle_speed", "axial_cutting_depth"]:
+                        if meta_col in exp_df.columns:
+                            vals = exp_df[meta_col].dropna().values
+                            if len(vals) > 0:
+                                cutting_params[meta_col] = float(vals[0])
+
+                    experience_data = {
+                        "parameters": {
+                            "material": material,
+                            "material_full": material_full,
+                            "dataset": ds.value,
+                            "experiment_tag": exp,
+                            "sample_count": len(exp_df),
+                            **cutting_params,
+                        },
+                        "metrics": {
+                            "initial_wear": wear_stats.get("initial_wear", 0),
+                            "final_wear": wear_stats.get("final_wear", 0),
+                            "max_wear": wear_stats.get("max_wear", 0),
+                            "mean_wear_rate": wear_stats.get("mean_wear_rate", 0),
+                            "total_wear_increment": wear_stats.get("total_wear_increment", 0),
+                        },
+                        "validation_result": {
+                            "source": "uniwear",
+                            "dataset": ds.value,
+                            "is_consistent": True,
+                            "notes": f"Uniwear {ds.value.upper()} 实验数据 {exp}",
+                        },
+                        "metadata": {
+                            "source": "uniwear",
+                            "material": material,
+                            "material_full": material_full,
+                            "dataset": ds.value,
+                            "experiment_tag": exp,
+                            "signal_types": list(signal_stats.keys()),
+                        },
+                    }
+
+                    result = self.save_experience(
+                        task_id=f"uniwear_{ds.value}_{exp}",
+                        experience=experience_data,
+                        process=f"uniwear_{ds.value}_{exp}",
+                    )
+                    imported[ds.value].append(result["experience_id"])
+                except Exception as e:
+                    logger.warning("Failed to import uniwear experiment %s/%s: %s", ds.value, exp, e)
+
+        total = sum(len(v) for v in imported.values())
+        logger.info("Imported %d uniwear experiments as structured experiences", total)
+        return {
+            "imported_count": total,
+            "by_dataset": {
+                "nuaa": len(imported["nuaa"]),
+                "phm2010": len(imported["phm2010"]),
+            },
+            "experience_ids": imported,
+        }
+
+    def search_by_material(self, material: str, limit: int = 20) -> list[dict]:
+        results = []
+        for exp in self._experiences.values():
+            exp_material = exp.parameters.get("material", "").upper()
+            exp_material_full = exp.parameters.get("material_full", "").lower()
+            query_material = material.upper()
+
+            if query_material in exp_material or query_material.lower() in exp_material_full:
+                results.append(asdict(exp))
+                if len(results) >= limit:
+                    break
+        return results
+
+    def get_material_statistics(self) -> dict:
+        stats: dict = {}
+        for exp in self._experiences.values():
+            material = exp.parameters.get("material", "unknown")
+            if material not in stats:
+                stats[material] = {
+                    "count": 0,
+                    "total_samples": 0,
+                    "wear_rates": [],
+                    "datasets": set(),
+                }
+            stats[material]["count"] += 1
+            stats[material]["total_samples"] += exp.parameters.get("sample_count", 0)
+            wear_rate = exp.metrics.get("mean_wear_rate", 0)
+            if wear_rate > 0:
+                stats[material]["wear_rates"].append(wear_rate)
+            stats[material]["datasets"].add(exp.parameters.get("dataset", "unknown"))
+
+        result: dict = {}
+        for mat, mat_stats in stats.items():
+            wear_rates = mat_stats["wear_rates"]
+            result[mat] = {
+                "experience_count": mat_stats["count"],
+                "total_samples": mat_stats["total_samples"],
+                "avg_wear_rate": round(float(np.mean(wear_rates)) if wear_rates else 0, 8),
+                "min_wear_rate": round(float(np.min(wear_rates)) if wear_rates else 0, 8),
+                "max_wear_rate": round(float(np.max(wear_rates)) if wear_rates else 0, 8),
+                "datasets": sorted(mat_stats["datasets"]),
+            }
+
+        return result
+
     def _load_experiences(self):
         file_path = self.storage_dir / "experiences.json"
         if not file_path.exists():
@@ -274,3 +412,147 @@ class ExperienceStore:
             logger.info("Loaded %d experiences from disk", len(self._experiences))
         except Exception as e:
             logger.warning("Failed to load experiences: %s", e)
+
+    def import_from_uniwear(
+        self,
+        uniwear_data_dir: str = "python/data/uniwear",
+    ) -> dict:
+        from app.data.uniwear_loader import (
+            UniwearDataLoader,
+            UniwearDataset,
+            NUAA_MATERIAL,
+            NUAA_MATERIAL_FULL,
+            PHM2010_MATERIAL,
+            PHM2010_MATERIAL_FULL,
+        )
+
+        loader = UniwearDataLoader(data_dir=uniwear_data_dir)
+        imported: dict = {"nuaa": [], "phm2010": [], "total": 0}
+
+        ds_configs = [
+            (UniwearDataset.NUAA, "nuaa", NUAA_MATERIAL, NUAA_MATERIAL_FULL),
+            (UniwearDataset.PHM2010, "phm2010", PHM2010_MATERIAL, PHM2010_MATERIAL_FULL),
+        ]
+
+        for ds, ds_key, material, material_full in ds_configs:
+            experiments = loader.get_experiment_tags(ds)
+            for exp in experiments:
+                try:
+                    stats = loader.compute_statistics(ds, experiment_tag=exp)
+                    wear_df = loader.get_wear_data(ds, experiment_tag=exp)
+
+                    wear_stats = stats.get("wear_stats", {})
+                    signal_stats = stats.get("signal_stats", {})
+
+                    process_name = f"{ds_key.upper()}正交切削" if ds_key == "nuaa" else f"{ds_key.upper()}全寿命切削"
+
+                    experience_data = {
+                        "parameters": {
+                            "material": material,
+                            "material_full": material_full,
+                            "experiment": exp,
+                            "dataset": ds_key,
+                            "process": process_name,
+                        },
+                        "metrics": {
+                            "initial_wear": wear_stats.get("initial_wear", 0),
+                            "final_wear": wear_stats.get("final_wear", 0),
+                            "max_wear": wear_stats.get("max_wear", 0),
+                            "mean_wear_rate": wear_stats.get("mean_wear_rate", 0),
+                            "total_wear_increment": wear_stats.get("total_wear_increment", 0),
+                            "sample_count": wear_stats.get("sample_count", 0),
+                        },
+                        "signal_summary": {
+                            col: {
+                                "rms": s.get("rms", 0),
+                                "mean": s.get("mean", 0),
+                                "std": s.get("std", 0),
+                            }
+                            for col, s in signal_stats.items()
+                        },
+                        "validation_result": {
+                            "is_valid": True,
+                            "source": f"uniwear-{ds_key}",
+                            "experiment": exp,
+                        },
+                        "metadata": {
+                            "source": f"uniwear-{ds_key}",
+                            "material": material,
+                            "experiment": exp,
+                            "wear_curve_length": len(wear_df),
+                        },
+                    }
+
+                    result = self.save_experience(
+                        task_id=f"uniwear-{ds_key}-{exp}",
+                        experience=experience_data,
+                        process=process_name,
+                    )
+                    imported[ds_key].append(result.get("experience_id", ""))
+                    imported["total"] += 1
+
+                    logger.info(
+                        "Imported uniwear experience: %s/%s (material=%s)",
+                        ds_key, exp, material,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to import uniwear experience %s/%s: %s",
+                        ds_key, exp, e,
+                    )
+
+        return {
+            "imported_count": imported["total"],
+            "nuaa_experiences": len(imported["nuaa"]),
+            "phm2010_experiences": len(imported["phm2010"]),
+            "experience_ids": imported,
+        }
+
+    def query_by_material(self, material: str, limit: int = 20) -> list[dict]:
+        results = []
+        for exp in self._experiences.values():
+            exp_params = exp.parameters if isinstance(exp.parameters, dict) else {}
+            exp_meta = exp.metadata if isinstance(exp.metadata, dict) else {}
+            material_match = (
+                exp_params.get("material", "").upper() == material.upper()
+                or exp_meta.get("material", "").upper() == material.upper()
+            )
+            if material_match:
+                results.append(asdict(exp))
+                if len(results) >= limit:
+                    break
+        return results
+
+    def get_material_wear_summary(self) -> dict:
+        materials: dict = {}
+        for exp in self._experiences.values():
+            params = exp.parameters if isinstance(exp.parameters, dict) else {}
+            material = params.get("material", "unknown")
+
+            if material not in materials:
+                materials[material] = []
+
+            metrics = exp.metrics if isinstance(exp.metrics, dict) else {}
+            materials[material].append({
+                "experience_id": exp.experience_id,
+                "experiment": params.get("experiment", "unknown"),
+                "mean_wear_rate": metrics.get("mean_wear_rate", 0),
+                "final_wear": metrics.get("final_wear", 0),
+            })
+
+        summary = {}
+        for mat, exps in materials.items():
+            wear_rates = [
+                e["mean_wear_rate"]
+                for e in exps
+                if e["mean_wear_rate"] and e["mean_wear_rate"] > 0
+            ]
+            summary[mat] = {
+                "experiment_count": len(exps),
+                "avg_wear_rate": round(float(np.mean(wear_rates)), 8) if wear_rates else 0,
+                "max_wear_rate": round(float(np.max(wear_rates)), 8) if wear_rates else 0,
+                "min_wear_rate": round(float(np.min(wear_rates)), 8) if wear_rates else 0,
+                "experiments": exps,
+            }
+
+        return summary

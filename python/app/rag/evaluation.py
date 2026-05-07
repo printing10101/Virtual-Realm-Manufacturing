@@ -226,12 +226,17 @@ class RetrievalEvaluator:
 
         if self.reranker_service and raw_results.get("documents"):
             formatted_results = []
-            for i, doc in enumerate(raw_results["documents"]):
+            docs = raw_results["documents"][0] if raw_results["documents"] and isinstance(raw_results["documents"][0], list) else raw_results["documents"]
+            metas = raw_results["metadatas"][0] if raw_results["metadatas"] and isinstance(raw_results["metadatas"][0], list) else raw_results["metadatas"]
+            dists = raw_results["distances"][0] if raw_results["distances"] and isinstance(raw_results["distances"][0], list) else raw_results["distances"]
+            ids = raw_results["ids"][0] if raw_results["ids"] and isinstance(raw_results["ids"][0], list) else raw_results["ids"]
+            
+            for i, doc in enumerate(docs):
                 formatted_results.append({
-                    "id": raw_results["ids"][i],
+                    "id": ids[i],
                     "document": doc,
-                    "metadata": raw_results["metadatas"][i],
-                    "distance": raw_results["distances"][i]
+                    "metadata": metas[i],
+                    "distance": dists[i]
                 })
 
             reranked_results = self.reranker_service.rerank(

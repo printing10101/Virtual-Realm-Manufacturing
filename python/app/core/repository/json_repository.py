@@ -241,8 +241,6 @@ class JsonRepository(Repository):
                         if line:
                             history.append(json.loads(line))
             return history
-        finally:
-            self._lock.release()
 
     def close(self) -> None:
         pass

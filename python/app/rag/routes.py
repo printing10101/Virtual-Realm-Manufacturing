@@ -1,5 +1,6 @@
 import contextlib
 import json
+import logging
 import os
 import tempfile
 
@@ -17,6 +18,8 @@ from app.rag.knowledge_base import get_knowledge_base
 from app.rag.reranker import RerankerService
 
 router = APIRouter(prefix="/api/knowledge", tags=["Knowledge"])
+
+logger = logging.getLogger(__name__)
 
 _reranker_service = None
 _document_import_service = None
@@ -623,3 +626,143 @@ async def delete_bosch_knowledge():
     except Exception as e:
         logger.exception("Failed to delete Bosch knowledge")
         return error(code=ErrorCode.INTERNAL_ERROR, message=f"清除Bosch知识失败: {e!s}")
+
+
+@router.post("/uniwear/build")
+async def build_uniwear_knowledge(
+    data_dir: str = Form(default="python/data/uniwear"),
+):
+    try:
+        kb = get_knowledge_base()
+
+        from app.rag.uniwear_knowledge_builder import UniwearKnowledgeBuilder
+
+        builder = UniwearKnowledgeBuilder(knowledge_base=kb, data_dir=data_dir)
+        result = builder.build_all()
+
+        return success(
+            data={
+                **result,
+                "knowledge_base_count": kb.count(),
+            },
+            message=f"Uniwear知识构建完成：共 {result['total_entries']} 条知识条目"
+        )
+    except ImportError:
+        return error(code=ErrorCode.INTERNAL_ERROR, message="Uniwear知识构建模块未安装，请确保 pandas 可用")
+    except Exception as e:
+        logger.exception("Failed to build Uniwear knowledge")
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"构建Uniwear知识失败: {e!s}")
+
+
+@router.get("/uniwear/stats")
+async def get_uniwear_knowledge_stats():
+    try:
+        kb = get_knowledge_base()
+        all_data = kb.collection.get(include=["metadatas"])
+
+        uniwear_sources = [
+            "uniwear", "uniwear-nuaa", "uniwear-phm2010", "cross_source"
+        ]
+        uniwear_entries = []
+        for i, meta in enumerate(all_data["metadatas"]):
+            if meta.get("source") in uniwear_sources:
+                uniwear_entries.append({
+                    "id": all_data["ids"][i],
+                    "type": meta.get("type", "unknown"),
+                    "source": meta.get("source", "unknown"),
+                    "material": meta.get("material", ""),
+                    "experiment": meta.get("experiment", ""),
+                    "category": meta.get("category", "unknown"),
+                })
+
+        source_counts: dict[str, int] = {}
+        material_counts: dict[str, int] = {}
+        for e in uniwear_entries:
+            s = e["source"]
+            source_counts[s] = source_counts.get(s, 0) + 1
+            m = e["material"]
+            if m:
+                material_counts[m] = material_counts.get(m, 0) + 1
+
+        return success(data={
+            "uniwear_total": len(uniwear_entries),
+            "by_source": source_counts,
+            "by_material": material_counts,
+            "entries": uniwear_entries[:50],
+        })
+    except Exception as e:
+        logger.exception("Failed to get Uniwear stats")
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"获取Uniwear统计失败: {e!s}")
+
+
+@router.post("/uniwear/retrieval")
+async def uniwear_retrieval(
+    query: str = Form(..., description="检索查询文本"),
+    material: str | None = Form(default=None, description="材料筛选：TC4 或 HRC52"),
+    signal_type: str | None = Form(default=None, description="信号类型筛选：vibration, force, acoustic_emission"),
+    n_results: int = Form(default=5, ge=1, le=20),
+):
+    try:
+        kb = get_knowledge_base()
+        from app.rag.rag_retrieval import RagRetrievalEngine
+
+        engine = RagRetrievalEngine(knowledge_base=kb)
+
+        if material:
+            result = engine.retrieve_by_material(
+                material=material, query=query, n_results=n_results
+            )
+        elif signal_type:
+            result = engine.retrieve_by_signal_type(
+                signal_type=signal_type, query=query, n_results=n_results
+            )
+        else:
+            result = engine.retrieve(query=query, n_results=n_results)
+
+        return success(data=result, message=f"检索完成：命中 {result['results_returned']} 条")
+    except Exception as e:
+        logger.exception("Uniwear retrieval failed")
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Uniwear检索失败: {e!s}")
+
+
+@router.post("/uniwear/cross-source")
+async def cross_source_retrieval(
+    query: str = Form(..., description="检索查询文本"),
+    sources: str | None = Form(default=None, description="数据源列表，逗号分隔"),
+    n_results: int = Form(default=10, ge=1, le=20),
+):
+    try:
+        kb = get_knowledge_base()
+        from app.rag.rag_retrieval import RagRetrievalEngine
+
+        engine = RagRetrievalEngine(knowledge_base=kb)
+
+        source_list = None
+        if sources:
+            source_list = [s.strip() for s in sources.split(",")]
+
+        result = engine.retrieve_cross_source(
+            query=query, sources=source_list, n_results=n_results
+        )
+
+        return success(data=result, message=f"跨源检索完成：搜索 {len(result['sources_queried'])} 个数据源，命中 {result['results_returned']} 条")
+    except Exception as e:
+        logger.exception("Cross-source retrieval failed")
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"跨源检索失败: {e!s}")
+
+
+@router.delete("/uniwear")
+async def delete_uniwear_knowledge():
+    try:
+        kb = get_knowledge_base()
+        total_deleted = 0
+        for source in ["uniwear", "uniwear-nuaa", "uniwear-phm2010", "cross_source"]:
+            deleted = kb.delete_by_source(source)
+            total_deleted += deleted
+        return success(
+            data={"deleted_count": total_deleted, "remaining_total": kb.count()},
+            message=f"已清除 {total_deleted} 条 Uniwear 知识条目"
+        )
+    except Exception as e:
+        logger.exception("Failed to delete Uniwear knowledge")
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"清除Uniwear知识失败: {e!s}")

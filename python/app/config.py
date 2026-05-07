@@ -71,6 +71,17 @@ class EnvironmentConfig:
 
 
 @dataclass
+class PathsConfig:
+    backup_dir: str = field(default_factory=lambda: env("BACKUP_DIR", "./backups"))
+    db_path: str = field(default_factory=lambda: env("DB_PATH", "./data/app.db"))
+    vector_db_path: str = field(default_factory=lambda: env("VECTOR_DB_PATH", "./data/chroma_db"))
+    config_path: str = field(default_factory=lambda: env("CONFIG_PATH", "./config.json"))
+
+    def get(self, key: str, default: str = "") -> str:
+        return getattr(self, key, default)
+
+
+@dataclass
 class AppConfig:
     app_name: str = field(default_factory=lambda: env("APP_NAME", "灵境制造"))
     app_version: str = field(default_factory=lambda: env("APP_VERSION", "1.2.0"))
@@ -83,6 +94,7 @@ class AppConfig:
     storage: StorageConfig = field(default_factory=StorageConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
+    paths: PathsConfig = field(default_factory=PathsConfig)
 
 
 config = AppConfig()

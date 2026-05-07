@@ -29,6 +29,27 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/agents", tags=["AI Agents"])
 
 
+def _flatten_documents(documents: Any) -> list[str]:
+    """将 knowledge_base.query() 返回的 documents 扁平化为字符串列表。
+
+    兼容两种输入格式：
+      - ChromaDB 嵌套格式:  [[doc1, doc2]]  →  ["doc1", "doc2"]
+      - 扁平格式（mock/边界）: [doc1, doc2]   →  ["doc1", "doc2"]
+
+    边界处理：
+      - 输入非 list 或空 list  →  返回 []
+      - 嵌套列表内层空列表     →  返回 []
+      - 元素非 str 类型        →  自动调用 str() 转换
+    """
+    if not isinstance(documents, list) or not documents:
+        return []
+    if isinstance(documents[0], list):
+        return [str(d) for d in documents[0]]
+    if isinstance(documents[0], str):
+        return [str(d) for d in documents]
+    return [str(d) for d in documents]
+
+
 class ProcessStep(TypedDict, total=False):
     """工艺步骤类型"""
     step: int
@@ -315,9 +336,8 @@ class UnderstandingAgent(BaseAgent):
             n_results=3
         )
 
-        relevant_knowledge: str = ""
-        if knowledge_results.get("documents"):
-            relevant_knowledge = "\n".join(knowledge_results["documents"])
+        docs_flat = _flatten_documents(knowledge_results.get("documents", []))
+        relevant_knowledge = "\n".join(docs_flat) if docs_flat else ""
 
         system_prompt: str = f"""你是一个制造工艺专家，负责从用户输入中提取关键参数。
 参考知识：
@@ -418,9 +438,9 @@ class KnowledgeFetchAgent(BaseAgent):
 
     async def _query_knowledge(self, key: str, query: str, n_results: int) -> str:
         results: dict[str, Any] = self.knowledge_base.query(query_text=query, n_results=n_results)
-        docs: list[str] = results.get("documents", [])
-        if docs:
-            return "\n".join(docs)
+        docs_flat: list[str] = _flatten_documents(results.get("documents", []))
+        if docs_flat:
+            return "\n".join(docs_flat)
         return ""
 
 
@@ -444,8 +464,8 @@ class PlanningAgent(BaseAgent):
                 query_text="加工工艺路线规划",
                 n_results=5
             )
-            docs: list[str] = knowledge_results.get("documents", [])
-            relevant_knowledge = "\n".join(docs) if docs else ""
+            docs_flat: list[Any] = _flatten_documents(knowledge_results.get("documents", []))
+            relevant_knowledge = "\n".join(docs_flat) if docs_flat else ""
 
         params: ExtractedParams = context.extracted_params
         material: str = params.get("material", "45钢")
@@ -522,8 +542,8 @@ class ParameterAgent(BaseAgent):
                 query_text="切削参数 切削速度 进给量",
                 n_results=5
             )
-            docs: list[str] = knowledge_results.get("documents", [])
-            relevant_knowledge = "\n".join(docs) if docs else ""
+            docs_flat: list[str] = _flatten_documents(knowledge_results.get("documents", []))
+            relevant_knowledge = "\n".join(docs_flat) if docs_flat else ""
 
         params: ExtractedParams = context.extracted_params
         material: str = params.get("material", "45钢")
@@ -596,8 +616,8 @@ class NCAgent(BaseAgent):
             query_text="G代码 M代码 数控编程",
             n_results=5
         )
-        docs: list[str] = knowledge_results.get("documents", [])
-        relevant_knowledge: str = "\n".join(docs) if docs else ""
+        docs_flat: list[str] = _flatten_documents(knowledge_results.get("documents", []))
+        relevant_knowledge: str = "\n".join(docs_flat) if docs_flat else ""
 
         system_prompt: str = f"""你是一个NC编程专家。
 

@@ -4,6 +4,7 @@
 """
 import os
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -125,7 +126,7 @@ def test_knowledge_base_operations():
     print("测试四：知识库操作功能")
     print("=" * 60)
 
-    kb = KnowledgeBase(persist_dir="./test_chroma_db")
+    kb = KnowledgeBase(persist_directory="./test_chroma_db")
 
     print(f"初始知识数量: {kb.count()}")
 
@@ -213,7 +214,7 @@ def test_end_to_end():
     print("测试七：端到端集成测试")
     print("=" * 60)
 
-    kb = KnowledgeBase(persist_dir="./test_chroma_db_e2e")
+    kb = KnowledgeBase(persist_directory="./test_chroma_db_e2e")
 
     extended = get_extended_knowledge()
     success_count = 0
@@ -248,8 +249,6 @@ def test_end_to_end():
 
 
 if __name__ == "__main__":
-    import tempfile
-
     print("开始RAG知识库优化功能验证...")
     print()
 

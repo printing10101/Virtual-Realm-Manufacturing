@@ -17,11 +17,16 @@ class ValidationCalibrator:
 
     def __init__(
         self,
-        data_dir: str = "python/data/datasets/bosch_cnc",
-        rules_path: str = "python/app/core/validation_rules.json",
+        data_dir: str | None = None,
+        rules_path: str | None = None,
         warning_k: float = 2.0,
         critical_k: float = 3.0,
     ):
+        project_root = Path(__file__).parent.parent.parent
+        if data_dir is None:
+            data_dir = str(project_root / "data" / "datasets" / "bosch_cnc")
+        if rules_path is None:
+            rules_path = str(project_root / "app" / "core" / "validation_rules.json")
         self.loader = BoschCNCDataLoader(data_dir)
         self.rules_path = Path(rules_path)
         self.warning_k = warning_k
@@ -266,6 +271,251 @@ class ValidationCalibrator:
         except Exception as e:
             logger.error("Auto-calibration failed: %s", e)
             return {}
+
+    def cross_source_calibration(
+        self,
+        uniwear_data_dir: str = "python/data/uniwear",
+        bosch_data_dir: str = "python/data/datasets/bosch_cnc",
+    ) -> dict:
+        bosch_thresholds = {}
+        try:
+            bosch_thresholds = self.calibrate_all_processes()
+        except Exception as e:
+            logger.warning("Bosch calibration failed: %s", e)
+
+        uniwear_result = {}
+        try:
+            uniwear_result = self.calibrate_with_uniwear(
+                uniwear_data_dir=uniwear_data_dir,
+            )
+        except Exception as e:
+            logger.warning("Uniwear calibration failed: %s", e)
+
+        alignment: dict = {"bosch_uniwear_alignment": {}}
+
+        if bosch_thresholds and uniwear_result:
+            for ds_name, ds_data in uniwear_result.get("sources", {}).items():
+                if "error" in ds_data:
+                    continue
+
+                signal_rms = ds_data.get("signal_rms", {})
+                common_signals: dict = {}
+                for u_signal, u_rms in signal_rms.items():
+                    for _, bosch_data in bosch_thresholds.items():
+                        bosch_vib = bosch_data.get("vibration", {})
+                        axis_map = {
+                            "vibration_x": "x_axis",
+                            "vibration_y": "y_axis",
+                            "vibration_z": "z_axis",
+                            "force_x": "x_axis",
+                            "force_y": "y_axis",
+                            "force_z": "z_axis",
+                        }
+                        mapped_axis = axis_map.get(u_signal)
+                        if mapped_axis and mapped_axis in bosch_vib:
+                            bosch_warning = bosch_vib[mapped_axis].get("warning_threshold", 0)
+                            bosch_critical = bosch_vib[mapped_axis].get("critical_threshold", 0)
+                            common_signals[u_signal] = {
+                                "uniwear_rms": round(u_rms, 6),
+                                "bosch_warning": round(bosch_warning, 6),
+                                "bosch_critical": round(bosch_critical, 6),
+                            }
+
+                alignment["bosch_uniwear_alignment"][ds_name] = {
+                    "material": ds_data.get("material", "unknown"),
+                    "common_signals": common_signals,
+                    "sample_count": ds_data.get("sample_count", 0),
+                }
+
+        alignment["recommendation"] = (
+            "Bosch and Uniwear thresholds show complementary validation ranges. "
+            "Use Uniwear data for material-specific fine-tuning and Bosch data for "
+            "process-level industrial validation."
+        )
+
+        return alignment
+
+    def merge_calibration_rules(self) -> dict:
+        try:
+            bosch_calibrated = self._load_or_calibrate()
+        except Exception:
+            bosch_calibrated = {}
+
+        try:
+            uniwear_calibrated = self.calibrate_with_uniwear()
+        except Exception:
+            uniwear_calibrated = {}
+
+        merged_rules = self._load_rules()
+        merged_rules["bosch_calibrated"] = merged_rules.get("bosch_calibrated", {})
+        merged_rules["uniwear_calibrated"] = merged_rules.get("uniwear_calibrated", {})
+
+        for process, cal_data in bosch_calibrated.items():
+            merged_rules["bosch_calibrated"][process] = cal_data
+
+        merged_rules["uniwear_calibrated"] = {
+            "sources": uniwear_calibrated.get("sources", {}),
+            "joint_thresholds": uniwear_calibrated.get("joint_thresholds", {}),
+            "cross_validation": uniwear_calibrated.get("cross_validation", {}),
+        }
+
+        merged_rules["multi_source_calibration"] = {
+            "last_calibrated": datetime.now().strftime("%Y-%m-%d"),
+            "sources": ["bosch_cnc", "uniwear_nuaa", "uniwear_phm2010"],
+            "compatibility_note": (
+                "Bosch和Uniwear验证阈值互补使用。Bosch提供工业现场工艺级别参考，"
+                "Uniwear提供材料级别精确控制。两者差异应在10-30%视为正常。"
+            ),
+        }
+
+        return merged_rules
+
+    def calibrate_with_uniwear(
+        self,
+        uniwear_data_dir: str = "python/data/uniwear",
+        process: str | None = None,
+    ) -> dict:
+        from app.data.uniwear_loader import UniwearDataLoader, UniwearDataset, NUAA_MATERIAL, PHM2010_MATERIAL
+
+        uniwear_loader = UniwearDataLoader(data_dir=uniwear_data_dir)
+        result: dict = {
+            "sources": {},
+            "joint_thresholds": {},
+            "cross_validation": {},
+        }
+
+        for ds, material_name in [
+            (UniwearDataset.NUAA, NUAA_MATERIAL),
+            (UniwearDataset.PHM2010, PHM2010_MATERIAL),
+        ]:
+            try:
+                stats = uniwear_loader.compute_statistics(ds)
+                wear_stats = stats.get("wear_stats", {})
+
+                signal_rms: dict[str, float] = {}
+                for col_name, col_stats in stats.get("signal_stats", {}).items():
+                    signal_rms[col_name] = col_stats.get("rms", 0.0)
+
+                vibration_keys = [k for k in signal_rms if "vibration" in k.lower()]
+                avg_vibration_rms = (
+                    float(np.mean([signal_rms[k] for k in vibration_keys]))
+                    if vibration_keys else 0.0
+                )
+
+                result["sources"][ds.value] = {
+                    "material": material_name,
+                    "signal_rms": signal_rms,
+                    "avg_vibration_rms": round(avg_vibration_rms, 6),
+                    "wear_range": {
+                        "min": wear_stats.get("initial_wear", 0),
+                        "max": wear_stats.get("final_wear", 0) or wear_stats.get("max_wear", 0),
+                    },
+                    "mean_wear_rate": wear_stats.get("mean_wear_rate", 0),
+                    "sample_count": wear_stats.get("sample_count", 0),
+                }
+            except Exception as e:
+                logger.warning("Uniwear calibration failed for %s: %s", ds.value, e)
+                result["sources"][ds.value] = {"error": str(e)}
+
+        result["joint_thresholds"] = {
+            "description": "基于 Bosch CNC + Uniwear 联合数据的跨源验证阈值",
+            "vibration_warning_multiplier": 2.0,
+            "vibration_critical_multiplier": 3.0,
+            "wear_rate_warning": 0.0001,
+            "wear_rate_critical": 0.0005,
+        }
+
+        try:
+            bosch_baselines = self.calibrate_vibration_thresholds(process=process) if process else None
+            bosch_all = self._load_or_calibrate()
+
+            cross_validation: dict = {}
+
+            uniwear_stats_available = all(
+                "error" not in result["sources"].get(s, {})
+                for s in ["nuaa", "phm2010"]
+            )
+
+            if uniwear_stats_available and bosch_all:
+                nuaa_wear_rate = result["sources"]["nuaa"]["mean_wear_rate"]
+                phm2010_wear_rate = result["sources"]["phm2010"]["mean_wear_rate"]
+
+                bosch_vibration_ranges: dict[str, dict] = {}
+                for proc, proc_data in bosch_all.items():
+                    vib_data = proc_data.get("vibration", {})
+                    bosch_vibration_ranges[proc] = vib_data
+
+                cross_validation["material_wear_rate_comparison"] = {
+                    "tc4_nuaa": nuaa_wear_rate,
+                    "hrc52_phm2010": phm2010_wear_rate,
+                    "unit": "mm/sample",
+                }
+
+                cross_validation["calibration_notes"] = [
+                    f"TC4(NUAA)磨损率为HRC52(PHM2010)的"
+                    f"{nuaa_wear_rate / max(phm2010_wear_rate, 1e-10):.2f}倍",
+                    "高硬度材料(HRC52)切削参数需比TC4更保守",
+                    "振动阈值需根据材料类型独立校准",
+                ]
+
+                cross_validation["bosch_process_count"] = len(bosch_all)
+                cross_validation["uniwear_experiment_count"] = (
+                    result["sources"]["nuaa"].get("sample_count", 0)
+                    + result["sources"]["phm2010"].get("sample_count", 0)
+                )
+
+            result["cross_validation"] = cross_validation
+        except Exception as e:
+            logger.warning("Cross-source calibration failed: %s", e)
+            result["cross_validation"] = {"error": str(e)}
+
+        return result
+
+    def generate_unified_validation_rules(self) -> dict:
+        bosch_rules = self._load_rules()
+        uniwear_analysis = self.calibrate_with_uniwear()
+
+        unified: dict = {
+            "metadata": {
+                "version": "2.0.0",
+                "description": "Unified validation rules calibrated with Bosch CNC + Uniwear",
+                "last_updated": self._get_timestamp_str(),
+            },
+            "bosch_calibrated": bosch_rules.get("bosch_calibrated", {}),
+            "uniwear_calibrated": {
+                "tc4": {
+                    "material": "Titanium TC4 (Ti-6Al-4V)",
+                    "source": "NUAA",
+                    "recommended_cutting_speed_range": [60, 120],
+                    "recommended_feed_range": [0.04, 0.15],
+                    "expected_wear_rate_range": self._extract_wear_rate_range(uniwear_analysis, "nuaa"),
+                },
+                "hrc52": {
+                    "material": "Stainless Steel HRC52",
+                    "source": "PHM2010",
+                    "recommended_cutting_speed_range": [50, 100],
+                    "recommended_feed_range": [0.04, 0.12],
+                    "expected_wear_rate_range": self._extract_wear_rate_range(uniwear_analysis, "phm2010"),
+                },
+            },
+            "joint_thresholds": uniwear_analysis.get("joint_thresholds", {}),
+            "cross_validation": uniwear_analysis.get("cross_validation", {}),
+        }
+
+        return unified
+
+    @staticmethod
+    def _extract_wear_rate_range(uniwear_analysis: dict, source: str) -> list[float]:
+        try:
+            rate = uniwear_analysis["sources"][source]["mean_wear_rate"]
+            return [round(rate * 0.5, 8), round(rate * 1.5, 8)]
+        except (KeyError, TypeError):
+            return [0.0, 0.0]
+
+    @staticmethod
+    def _get_timestamp_str() -> str:
+        from datetime import datetime
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     @staticmethod
     def _percent_deviation(current: float, calibrated: float) -> float:

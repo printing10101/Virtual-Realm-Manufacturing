@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 
 @dataclass
@@ -8,7 +8,7 @@ class SanitizationRule:
     name: str
     pattern: re.Pattern | None = None
     keys: list[str] | None = None
-    handler: callable | None = None
+    handler: Callable | None = None
 
 
 class LogSanitizer:
