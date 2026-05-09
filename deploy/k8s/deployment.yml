@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lnn-api
+  labels:
+    app: lnn-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: lnn-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: lnn-api
+    spec:
+      containers:
+        - name: lnn-api
+          image: lnn-api:latest
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: APP_ENV
+              value: "production"
+            - name: PORT
+              value: "8000"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: lnn-config
+                  key: redis-url
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: lnn-secrets
+                  key: db-url
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "4"
+              memory: "4Gi"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: models-volume
+              mountPath: /app/models/lnn
+            - name: logs-volume
+              mountPath: /app/logs
+      volumes:
+        - name: models-volume
+          persistentVolumeClaim:
+            claimName: lnn-models-pvc
+        - name: logs-volume
+          persistentVolumeClaim:
+            claimName: lnn-logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lnn-api-service
+spec:
+  type: ClusterIP
+  selector:
+    app: lnn-api
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP
+      name: http
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lnn-config
+data:
+  redis-url: "redis://redis-service:6379/0"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lnn-models-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lnn-logs-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

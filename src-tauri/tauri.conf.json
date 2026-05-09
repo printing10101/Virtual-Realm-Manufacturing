@@ -1,6 +1,6 @@
 {
   "productName": "灵境制造",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "identifier": "com.lingjing.manufacturing",
   "build": {
     "beforeDevCommand": "pnpm dev",

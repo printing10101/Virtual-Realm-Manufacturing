@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from typing import Any
 
@@ -39,7 +38,114 @@ def _classify_error(status_code: int, body: str) -> LLMError:
     return LLMError(f"API error: {status_code} - {body}")
 
 
-class OllamaClient:
+class BaseLLMClient:
+    """Base class for LLM clients with shared retry logic."""
+
+    def __init__(
+        self,
+        timeout: int = 60,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> None:
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+
+    async def _build_payload(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        model: str | None,
+    ) -> tuple[dict[str, Any], dict[str, str] | None, str]:
+        raise NotImplementedError
+
+    def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
+        raise NotImplementedError
+
+    def _default_model(self) -> str:
+        """Return the default model name for this client."""
+        raise NotImplementedError
+
+    @staticmethod
+    def _validate_inputs(
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+    ) -> None:
+        if not messages:
+            raise ValueError("messages must not be empty")
+        if max_tokens < 1:
+            raise ValueError(f"max_tokens must be >= 1, got {max_tokens}")
+        if not (0.0 <= temperature <= 2.0):
+            raise ValueError(f"temperature must be in [0.0, 2.0], got {temperature}")
+
+    @staticmethod
+    def _safe_parse(parser, response_data: dict[str, Any], model: str) -> dict[str, Any]:
+        try:
+            return parser(response_data, model)
+        except (LLMError, InvalidResponseError):
+            raise
+        except Exception as e:
+            raise InvalidResponseError(
+                f"Failed to parse response from {model}: {e}"
+            ) from e
+
+    async def chat_completion(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        model: str | None = None,
+    ) -> dict[str, Any]:
+        """Call LLM chat completion API with retry logic."""
+        self._validate_inputs(messages, max_tokens, temperature)
+
+        payload, headers, endpoint = self._build_payload(messages, max_tokens, temperature, model)
+        target_model = model or self._default_model()
+
+        last_error: Exception | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(
+                        endpoint,
+                        headers=headers,
+                        json=payload,
+                    )
+                if response.status_code != 200:
+                    raise _classify_error(response.status_code, response.text)
+                return self._safe_parse(self._parse_response, response.json(), target_model)
+            except httpx.TimeoutException as e:
+                last_error = e
+                logger.warning(
+                    "%s API timeout (attempt %d/%d): %s",
+                    type(self).__name__, attempt, self.max_retries, e,
+                )
+            except httpx.NetworkError as e:
+                last_error = e
+                logger.warning(
+                    "%s API network error (attempt %d/%d): %s",
+                    type(self).__name__, attempt, self.max_retries, e,
+                )
+            except (ServiceUnavailableError, RateLimitError) as e:
+                last_error = e
+                logger.warning(
+                    "%s API %s (attempt %d/%d): %s",
+                    type(self).__name__, type(e).__name__, attempt, self.max_retries, e,
+                )
+            except (LLMError, InvalidResponseError):
+                raise
+
+            if attempt < self.max_retries:
+                await asyncio.sleep(self.retry_delay * attempt)
+
+        raise ServiceUnavailableError(
+            f"{type(self).__name__} API call failed after {self.max_retries} retries"
+        ) from last_error
+
+
+class OllamaClient(BaseLLMClient):
     """Client for Ollama API."""
 
     def __init__(
@@ -50,20 +156,20 @@ class OllamaClient:
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
+        super().__init__(timeout=timeout, max_retries=max_retries, retry_delay=retry_delay)
         self.base_url = base_url.rstrip("/")
         self.model = model
-        self.timeout = timeout
-        self.max_retries = max_retries
-        self.retry_delay = retry_delay
 
-    async def chat_completion(
+    def _default_model(self) -> str:
+        return self.model
+
+    async def _build_payload(
         self,
         messages: list[dict[str, str]],
-        max_tokens: int = 2048,
-        temperature: float = 0.7,
-        model: str | None = None,
-    ) -> dict[str, Any]:
-        """Call Ollama chat completion API."""
+        max_tokens: int,
+        temperature: float,
+        model: str | None,
+    ) -> tuple[dict[str, Any], dict[str, str] | None, str]:
         target_model = model or self.model
         payload = {
             "model": target_model,
@@ -74,54 +180,19 @@ class OllamaClient:
                 "num_predict": max_tokens,
             },
         }
+        endpoint = f"{self.base_url}/api/chat"
+        return payload, None, endpoint
 
-        last_error: Exception | None = None
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    response = await client.post(
-                        f"{self.base_url}/api/chat",
-                        json=payload,
-                    )
-                if response.status_code != 200:
-                    raise _classify_error(response.status_code, response.text)
-                data = response.json()
-                return {
-                    "content": data.get("message", {}).get("content", ""),
-                    "model": target_model,
-                    "finish_reason": "stop",
-                    "usage": data.get("usage", {}),
-                }
-            except httpx.TimeoutException as e:
-                last_error = e
-                logger.warning(
-                    "Ollama API timeout (attempt %d/%d): %s",
-                    attempt, self.max_retries, e,
-                )
-            except httpx.NetworkError as e:
-                last_error = e
-                logger.warning(
-                    "Ollama API network error (attempt %d/%d): %s",
-                    attempt, self.max_retries, e,
-                )
-            except (ServiceUnavailableError, RateLimitError) as e:
-                last_error = e
-                logger.warning(
-                    "Ollama API %s (attempt %d/%d): %s",
-                    type(e).__name__, attempt, self.max_retries, e,
-                )
-            except LLMError:
-                raise
-
-            if attempt < self.max_retries:
-                await asyncio.sleep(self.retry_delay * attempt)
-
-        raise ServiceUnavailableError(
-            f"Ollama API call failed after {self.max_retries} retries"
-        ) from last_error
+    def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
+        return {
+            "content": data.get("message", {}).get("content", ""),
+            "model": model,
+            "finish_reason": "stop",
+            "usage": data.get("usage", {}),
+        }
 
 
-class CloudLLMClient:
+class CloudLLMClient(BaseLLMClient):
     """Client for cloud LLM providers (OpenAI-compatible API)."""
 
     def __init__(
@@ -133,21 +204,21 @@ class CloudLLMClient:
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
+        super().__init__(timeout=timeout, max_retries=max_retries, retry_delay=retry_delay)
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
-        self.timeout = timeout
-        self.max_retries = max_retries
-        self.retry_delay = retry_delay
 
-    async def chat_completion(
+    def _default_model(self) -> str:
+        return self.model
+
+    async def _build_payload(
         self,
         messages: list[dict[str, str]],
-        max_tokens: int = 2048,
-        temperature: float = 0.7,
-        model: str | None = None,
-    ) -> dict[str, Any]:
-        """Call cloud LLM chat completion API."""
+        max_tokens: int,
+        temperature: float,
+        model: str | None,
+    ) -> tuple[dict[str, Any], dict[str, str] | None, str]:
         target_model = model or self.model
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -159,54 +230,18 @@ class CloudLLMClient:
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
+        endpoint = f"{self.base_url}/chat/completions"
+        return payload, headers, endpoint
 
-        last_error: Exception | None = None
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    response = await client.post(
-                        f"{self.base_url}/chat/completions",
-                        headers=headers,
-                        json=payload,
-                    )
-                if response.status_code != 200:
-                    raise _classify_error(response.status_code, response.text)
-                data = response.json()
-                choices = data.get("choices", [])
-                if not choices:
-                    raise InvalidResponseError("No choices returned from API")
-                choice = choices[0]
-                message = choice.get("message", {})
-                return {
-                    "content": message.get("content", ""),
-                    "model": target_model,
-                    "finish_reason": choice.get("finish_reason", "stop"),
-                    "usage": data.get("usage", {}),
-                }
-            except httpx.TimeoutException as e:
-                last_error = e
-                logger.warning(
-                    "Cloud API timeout (attempt %d/%d): %s",
-                    attempt, self.max_retries, e,
-                )
-            except httpx.NetworkError as e:
-                last_error = e
-                logger.warning(
-                    "Cloud API network error (attempt %d/%d): %s",
-                    attempt, self.max_retries, e,
-                )
-            except (ServiceUnavailableError, RateLimitError) as e:
-                last_error = e
-                logger.warning(
-                    "Cloud API %s (attempt %d/%d): %s",
-                    type(e).__name__, attempt, self.max_retries, e,
-                )
-            except LLMError:
-                raise
-
-            if attempt < self.max_retries:
-                await asyncio.sleep(self.retry_delay * attempt)
-
-        raise ServiceUnavailableError(
-            f"Cloud API call failed after {self.max_retries} retries"
-        ) from last_error
+    def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
+        choices = data.get("choices", [])
+        if not choices:
+            raise InvalidResponseError("No choices returned from API")
+        choice = choices[0]
+        message = choice.get("message", {})
+        return {
+            "content": message.get("content", ""),
+            "model": model,
+            "finish_reason": choice.get("finish_reason", "stop"),
+            "usage": data.get("usage", {}),
+        }

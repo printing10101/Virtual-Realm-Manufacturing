@@ -31,11 +31,13 @@ async def get_ollama_status() -> dict[str, Any]:
                     "models": [m.get("name", "unknown") for m in models]
                 })
             else:
+                logger.warning("Ollama returned status %d", response.status_code)
                 return error(
                     code=ErrorCode.SERVICE_UNAVAILABLE,
                     message=f"Ollama returned status {response.status_code}"
                 )
     except Exception as e:
+        logger.error("Ollama status check failed: %s", e)
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
             message=f"Ollama service unavailable: {e!s}"
@@ -62,11 +64,13 @@ async def list_ollama_models() -> dict[str, Any]:
                     ]
                 })
             else:
+                logger.warning("Ollama returned status %d for model listing", response.status_code)
                 return error(
                     code=ErrorCode.SERVICE_UNAVAILABLE,
                     message=f"Ollama returned status {response.status_code}"
                 )
     except Exception as e:
+        logger.error("Failed to list Ollama models: %s", e)
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
             message=f"Failed to list Ollama models: {e!s}"

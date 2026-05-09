@@ -1,13 +1,12 @@
-import requests
-import time
 import sys
 
+import requests
+
 BASE_URL = "http://localhost:8765"
-TEST_RESULTS = []
+TEST_RESULTS: list[bool] = []
 
 
 def test_health_check():
-    """Test health check endpoint"""
     try:
         response = requests.get(f"{BASE_URL}/health", timeout=5)
         if response.status_code == 200:
@@ -19,7 +18,6 @@ def test_health_check():
 
 
 def test_ollama_status():
-    """Test Ollama service status endpoint"""
     try:
         response = requests.get(f"{BASE_URL}/api/ollama/status", timeout=10)
         if response.status_code == 200:
@@ -32,7 +30,6 @@ def test_ollama_status():
 
 
 def test_knowledge_base():
-    """Test knowledge base status endpoint"""
     try:
         response = requests.get(f"{BASE_URL}/api/knowledge/health", timeout=10)
         if response.status_code == 200:
@@ -44,7 +41,6 @@ def test_knowledge_base():
 
 
 def test_workflow_lifecycle():
-    """Test workflow complete lifecycle"""
     try:
         start_payload = {
             "user_input": "请为45钢轴类零件制定加工工艺方案，零件直径50mm，长度100mm"
@@ -61,7 +57,6 @@ def test_workflow_lifecycle():
         data = start_response.json()
         result_data = data.get("data", {})
 
-        # Verify understanding stage completed successfully
         stage_results = result_data.get("stage_results", {})
         understanding = stage_results.get("understanding", {})
         if understanding.get("status") == "completed":
@@ -78,7 +73,6 @@ def test_workflow_lifecycle():
 
 
 def main():
-    """Execute all tests and output results"""
     tests = [
         test_health_check,
         test_ollama_status,

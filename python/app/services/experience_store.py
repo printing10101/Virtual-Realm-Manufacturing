@@ -141,26 +141,31 @@ class ExperienceStore:
 
         ground_truth_context = {}
         if include_ground_truth and query.get("process"):
-            from app.services.ground_truth_adapter import BoschGroundTruthAdapter
-            gt_adapter = BoschGroundTruthAdapter()
-            gt_adapter.load_ground_truth()
+            try:
+                from app.services.ground_truth_adapter import BoschGroundTruthAdapter
+                gt_adapter = BoschGroundTruthAdapter()
+                gt_adapter.load_ground_truth()
 
-            success_rate = gt_adapter.get_process_success_rate(
-                process=query["process"],
-                machine=query.get("machine"),
-            )
-
-            similar_cases = []
-            if query.get("vibration_features"):
-                similar_cases = gt_adapter.find_similar_cases(
-                    query_features=query["vibration_features"],
-                    top_k=3,
+                success_rate = gt_adapter.get_process_success_rate(
+                    process=query["process"],
+                    machine=query.get("machine"),
                 )
 
-            ground_truth_context = {
-                "process_success_rate": success_rate,
-                "similar_ground_truth_cases": similar_cases,
-            }
+                similar_cases = []
+                if query.get("vibration_features"):
+                    similar_cases = gt_adapter.find_similar_cases(
+                        query_features=query["vibration_features"],
+                        top_k=3,
+                    )
+
+                ground_truth_context = {
+                    "process_success_rate": success_rate,
+                    "similar_ground_truth_cases": similar_cases,
+                }
+            except ImportError:
+                logger.warning("ground_truth_adapter 模块不可用，跳过地面真实验证")
+            except Exception as e:
+                logger.warning("地面真实验证失败: %s", e)
 
         return {
             "experiences": top_experiences,
@@ -263,136 +268,39 @@ class ExperienceStore:
         self,
         data_dir: str = "python/data/uniwear",
     ) -> dict:
-        from app.data.uniwear_loader import (
-            UniwearDataLoader,
-            UniwearDataset,
-            NUAA_MATERIAL,
-            NUAA_MATERIAL_FULL,
-            PHM2010_MATERIAL,
-            PHM2010_MATERIAL_FULL,
-        )
-
-        loader = UniwearDataLoader(data_dir=data_dir)
-        imported: dict[str, list[str]] = {"nuaa": [], "phm2010": []}
-
-        ds_configs = [
-            (UniwearDataset.NUAA, NUAA_MATERIAL, NUAA_MATERIAL_FULL),
-            (UniwearDataset.PHM2010, PHM2010_MATERIAL, PHM2010_MATERIAL_FULL),
-        ]
-
-        for ds, material, material_full in ds_configs:
-            experiments = loader.get_experiment_tags(ds)
-            for exp in experiments:
-                try:
-                    stats = loader.compute_statistics(ds, experiment_tag=exp)
-                    df = loader.load_dataset(ds)
-                    exp_df = df[df["experiment_tag"] == exp]
-
-                    wear_stats = stats.get("wear_stats", {})
-                    signal_stats = stats.get("signal_stats", {})
-
-                    cutting_params: dict = {}
-                    for meta_col in ["feed_per_tooth", "spindle_speed", "axial_cutting_depth"]:
-                        if meta_col in exp_df.columns:
-                            vals = exp_df[meta_col].dropna().values
-                            if len(vals) > 0:
-                                cutting_params[meta_col] = float(vals[0])
-
-                    experience_data = {
-                        "parameters": {
-                            "material": material,
-                            "material_full": material_full,
-                            "dataset": ds.value,
-                            "experiment_tag": exp,
-                            "sample_count": len(exp_df),
-                            **cutting_params,
-                        },
-                        "metrics": {
-                            "initial_wear": wear_stats.get("initial_wear", 0),
-                            "final_wear": wear_stats.get("final_wear", 0),
-                            "max_wear": wear_stats.get("max_wear", 0),
-                            "mean_wear_rate": wear_stats.get("mean_wear_rate", 0),
-                            "total_wear_increment": wear_stats.get("total_wear_increment", 0),
-                        },
-                        "validation_result": {
-                            "source": "uniwear",
-                            "dataset": ds.value,
-                            "is_consistent": True,
-                            "notes": f"Uniwear {ds.value.upper()} 实验数据 {exp}",
-                        },
-                        "metadata": {
-                            "source": "uniwear",
-                            "material": material,
-                            "material_full": material_full,
-                            "dataset": ds.value,
-                            "experiment_tag": exp,
-                            "signal_types": list(signal_stats.keys()),
-                        },
-                    }
-
-                    result = self.save_experience(
-                        task_id=f"uniwear_{ds.value}_{exp}",
-                        experience=experience_data,
-                        process=f"uniwear_{ds.value}_{exp}",
-                    )
-                    imported[ds.value].append(result["experience_id"])
-                except Exception as e:
-                    logger.warning("Failed to import uniwear experiment %s/%s: %s", ds.value, exp, e)
-
-        total = sum(len(v) for v in imported.values())
-        logger.info("Imported %d uniwear experiments as structured experiences", total)
+        result = self.import_from_uniwear(uniwear_data_dir=data_dir)
         return {
-            "imported_count": total,
+            "imported_count": result["imported_count"],
             "by_dataset": {
-                "nuaa": len(imported["nuaa"]),
-                "phm2010": len(imported["phm2010"]),
+                "nuaa": result["nuaa_experiences"],
+                "phm2010": result["phm2010_experiences"],
             },
-            "experience_ids": imported,
+            "experience_ids": result["experience_ids"],
         }
 
     def search_by_material(self, material: str, limit: int = 20) -> list[dict]:
-        results = []
-        for exp in self._experiences.values():
-            exp_material = exp.parameters.get("material", "").upper()
-            exp_material_full = exp.parameters.get("material_full", "").lower()
-            query_material = material.upper()
-
-            if query_material in exp_material or query_material.lower() in exp_material_full:
-                results.append(asdict(exp))
-                if len(results) >= limit:
-                    break
-        return results
+        return self.query_by_material(material, limit=limit, fuzzy=True)
 
     def get_material_statistics(self) -> dict:
-        stats: dict = {}
-        for exp in self._experiences.values():
-            material = exp.parameters.get("material", "unknown")
-            if material not in stats:
-                stats[material] = {
-                    "count": 0,
-                    "total_samples": 0,
-                    "wear_rates": [],
-                    "datasets": set(),
-                }
-            stats[material]["count"] += 1
-            stats[material]["total_samples"] += exp.parameters.get("sample_count", 0)
-            wear_rate = exp.metrics.get("mean_wear_rate", 0)
-            if wear_rate > 0:
-                stats[material]["wear_rates"].append(wear_rate)
-            stats[material]["datasets"].add(exp.parameters.get("dataset", "unknown"))
-
-        result: dict = {}
-        for mat, mat_stats in stats.items():
-            wear_rates = mat_stats["wear_rates"]
+        summary = self.get_material_wear_summary()
+        result = {}
+        for mat, mat_data in summary.items():
             result[mat] = {
-                "experience_count": mat_stats["count"],
-                "total_samples": mat_stats["total_samples"],
-                "avg_wear_rate": round(float(np.mean(wear_rates)) if wear_rates else 0, 8),
-                "min_wear_rate": round(float(np.min(wear_rates)) if wear_rates else 0, 8),
-                "max_wear_rate": round(float(np.max(wear_rates)) if wear_rates else 0, 8),
-                "datasets": sorted(mat_stats["datasets"]),
+                "experience_count": mat_data["experiment_count"],
+                "total_samples": sum(
+                    e.get("sample_count", 0)
+                    for e in mat_data.get("experiments", [])
+                    if isinstance(e, dict) and "sample_count" in e
+                ),
+                "avg_wear_rate": mat_data["avg_wear_rate"],
+                "min_wear_rate": mat_data["min_wear_rate"],
+                "max_wear_rate": mat_data["max_wear_rate"],
+                "datasets": sorted({
+                    e.get("dataset", "unknown")
+                    for e in mat_data.get("experiments", [])
+                    if isinstance(e, dict)
+                }),
             }
-
         return result
 
     def _load_experiences(self):
@@ -412,6 +320,12 @@ class ExperienceStore:
             logger.info("Loaded %d experiences from disk", len(self._experiences))
         except Exception as e:
             logger.warning("Failed to load experiences: %s", e)
+            backup_path = file_path.with_suffix(".json.bak")
+            try:
+                file_path.rename(backup_path)
+                logger.warning("Corrupted experiences file backed up to %s", backup_path)
+            except Exception as be:
+                logger.error("Failed to backup corrupted experiences file: %s", be)
 
     def import_from_uniwear(
         self,
@@ -508,15 +422,26 @@ class ExperienceStore:
             "experience_ids": imported,
         }
 
-    def query_by_material(self, material: str, limit: int = 20) -> list[dict]:
+    def query_by_material(self, material: str, limit: int = 20, fuzzy: bool = False) -> list[dict]:
         results = []
         for exp in self._experiences.values():
             exp_params = exp.parameters if isinstance(exp.parameters, dict) else {}
             exp_meta = exp.metadata if isinstance(exp.metadata, dict) else {}
-            material_match = (
-                exp_params.get("material", "").upper() == material.upper()
-                or exp_meta.get("material", "").upper() == material.upper()
-            )
+            if fuzzy:
+                exp_material = exp_params.get("material", "").upper()
+                exp_material_full = exp_params.get("material_full", "").lower()
+                exp_meta_material = exp_meta.get("material", "").upper()
+                query_material = material.upper()
+                material_match = (
+                    query_material in exp_material
+                    or query_material.lower() in exp_material_full
+                    or query_material in exp_meta_material
+                )
+            else:
+                material_match = (
+                    exp_params.get("material", "").upper() == material.upper()
+                    or exp_meta.get("material", "").upper() == material.upper()
+                )
             if material_match:
                 results.append(asdict(exp))
                 if len(results) >= limit:

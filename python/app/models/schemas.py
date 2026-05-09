@@ -46,3 +46,107 @@ class HealthResponse(BaseModel):
     status: str = Field(default="healthy", description="服务状态")
     version: str = Field(default="", description="版本号")
     ai_status: AIStatusResponse | None = Field(default=None, description="AI状态")
+
+
+class LNNHyperparameters(BaseModel):
+    learning_rate: float = Field(
+        ...,
+        description="学习率",
+        gt=0,
+        lt=1,
+    )
+    epochs: int = Field(
+        ...,
+        description="训练轮数",
+        ge=1,
+    )
+    batch_size: int = Field(
+        ...,
+        description="批次大小",
+        ge=1,
+    )
+    optimizer: str = Field(
+        ...,
+        description="优化器类型",
+        pattern="^(adam|sgd|rmsprop)$",
+    )
+
+
+class LNNPredictRequest(BaseModel):
+    input_data: list[float] = Field(
+        ...,
+        description="预测输入数据数组",
+    )
+    model_name: str = Field(
+        ...,
+        description="要使用的模型名称",
+        min_length=1,
+    )
+    return_confidence: bool = Field(
+        default=False,
+        description="是否返回预测置信度",
+    )
+
+
+class LNNTrainRequest(BaseModel):
+    model_name: str = Field(
+        ...,
+        description="训练模型的名称",
+        min_length=1,
+    )
+    data_path: str = Field(
+        ...,
+        description="训练数据集的存储路径",
+        min_length=1,
+    )
+    hyperparameters: LNNHyperparameters = Field(
+        ...,
+        description="训练超参数集合",
+    )
+
+
+class LNNModelInfo(BaseModel):
+    name: str = Field(..., description="模型名称")
+    version: str = Field(..., description="模型版本")
+    last_updated: str = Field(..., description="最后更新时间，ISO 8601格式")
+
+
+class LNNPredictResponse(BaseModel):
+    value: float | list[float] = Field(
+        ...,
+        description="预测结果值",
+    )
+    confidence: float | None = Field(
+        default=None,
+        description="预测置信度，范围[0, 1]",
+        ge=0,
+        le=1,
+    )
+    inference_time: float = Field(
+        ...,
+        description="推理耗时，单位毫秒",
+    )
+    model_info: LNNModelInfo = Field(
+        ...,
+        description="模型信息",
+    )
+
+
+class LNNTrainMetrics(BaseModel):
+    accuracy: float = Field(..., description="准确率", ge=0, le=1)
+    loss: float = Field(..., description="损失值", ge=0)
+    training_time: float = Field(..., description="训练总耗时，单位秒", ge=0)
+    epochs_completed: int = Field(..., description="实际完成的训练轮数", ge=0)
+
+
+class LNNTrainResponse(BaseModel):
+    status: str = Field(
+        ...,
+        description="训练状态",
+        pattern="^(success|failed|in_progress)$",
+    )
+    message: str = Field(..., description="训练状态描述信息")
+    metrics: LNNTrainMetrics | None = Field(
+        default=None,
+        description="训练指标，仅当status为success时返回",
+    )

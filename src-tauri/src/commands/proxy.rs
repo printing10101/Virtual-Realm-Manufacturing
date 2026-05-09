@@ -1,6 +1,7 @@
 use reqwest::{Client, Method, header::HeaderName};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use once_cell::sync::Lazy;
 use tracing::{info, error};
@@ -14,6 +15,9 @@ static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
         .build()
         .expect("Failed to create HTTP client")
 });
+
+const MAX_CONCURRENT_BATCH_REQUESTS: usize = 10;
+static ACTIVE_BATCH_REQUESTS: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Deserialize)]
 pub struct ProxyRequest {
@@ -75,8 +79,9 @@ pub async fn proxy_http_request(request: ProxyRequest) -> Result<ProxyResponse, 
         req_builder = req_builder.json(body);
     }
 
+    let request_timeout = Duration::from_millis(request.timeout_ms);
     let client = Client::builder()
-        .timeout(Duration::from_millis(request.timeout_ms))
+        .timeout(request_timeout)
         .connect_timeout(Duration::from_secs(10))
         .build()
         .map_err(|e| ProxyError {
@@ -146,18 +151,24 @@ pub async fn proxy_http_request(request: ProxyRequest) -> Result<ProxyResponse, 
 #[tauri::command]
 pub async fn proxy_batch_request(batch: BatchRequest) -> Result<BatchResponse, ProxyError> {
     info!("Processing batch of {} requests", batch.requests.len());
-    let start = std::time::Instant::now();
 
-    let mut futures = Vec::new();
-    for request in batch.requests {
-        futures.push(async move {
-            match proxy_single_request(request).await {
-                Ok(resp) => Ok(resp),
-                Err(err) => Err(err),
-            }
+    let current = ACTIVE_BATCH_REQUESTS.fetch_add(1, Ordering::SeqCst);
+    if current >= MAX_CONCURRENT_BATCH_REQUESTS {
+        ACTIVE_BATCH_REQUESTS.fetch_sub(1, Ordering::SeqCst);
+        return Err(ProxyError {
+            code: "TOO_MANY_REQUESTS".to_string(),
+            message: format!(
+                "Too many concurrent batch requests (max {})",
+                MAX_CONCURRENT_BATCH_REQUESTS
+            ),
+            status: Some(429),
         });
     }
 
+    let _decrement = DecrementOnDrop;
+    let start = std::time::Instant::now();
+
+    let futures = batch.requests.into_iter().map(proxy_single_request);
     let responses = futures::future::join_all(futures).await;
 
     let total_duration = start.elapsed().as_millis();
@@ -169,11 +180,18 @@ pub async fn proxy_batch_request(batch: BatchRequest) -> Result<BatchResponse, P
     })
 }
 
+struct DecrementOnDrop;
+impl Drop for DecrementOnDrop {
+    fn drop(&mut self) {
+        ACTIVE_BATCH_REQUESTS.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 async fn proxy_single_request(request: ProxyRequest) -> Result<ProxyResponse, ProxyError> {
     let start = std::time::Instant::now();
 
     let method = parse_method(&request.method)?;
-    let mut req_builder = HTTP_CLIENT.request(method.clone(), &request.url);
+    let mut req_builder = HTTP_CLIENT.request(method, &request.url);
 
     for (key, value) in &request.headers {
         if let Ok(header_name) = HeaderName::try_from(key) {
@@ -181,14 +199,13 @@ async fn proxy_single_request(request: ProxyRequest) -> Result<ProxyResponse, Pr
         }
     }
 
-    if request.method.to_uppercase() == "GET" {
-        // GET requests typically don't have body
-    } else if let Some(ref body) = request.body {
+    if let Some(ref body) = request.body {
         req_builder = req_builder.json(body);
     }
 
+    let request_timeout = Duration::from_millis(request.timeout_ms);
     let client = Client::builder()
-        .timeout(Duration::from_millis(request.timeout_ms))
+        .timeout(request_timeout)
         .connect_timeout(Duration::from_secs(10))
         .build()
         .map_err(|e| ProxyError {

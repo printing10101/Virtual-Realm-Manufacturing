@@ -2,7 +2,7 @@ import asyncio
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'python'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.services.incremental_solver import IncrementalSCIPSolver, SolverPhase, SolverState
 from app.core.alternating_validator import AlternatingValidator, ValidationStrategy

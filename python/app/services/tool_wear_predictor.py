@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 
@@ -106,12 +106,12 @@ class ToolWearPredictor:
         self.material_params = MATERIAL_PARAMS
         self.tool_params = TOOL_PARAMS
         self.default_replacement_threshold = 0.3
-        self._bosch_model: Any | None = None
-        self._bosch_scaler: Any | None = None
-        self._bosch_feature_loader: Any | None = None
+        self._bosch_model: Optional[Any] = None
+        self._bosch_scaler: Optional[Any] = None
+        self._bosch_feature_loader: Optional[Any] = None
         self._uniwear_models: dict[str, Any] = {}
         self._uniwear_scalers: dict[str, Any] = {}
-        self._uniwear_loader: Any | None = None
+        self._uniwear_loader: Optional[Any] = None
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def _get_material_params(self, material_type: str) -> MaterialParams:
@@ -173,7 +173,7 @@ class ToolWearPredictor:
         else:
             return WearPhase.ACCELERATED
 
-    def _compute_confidence(self, current_wear: float | None,
+    def _compute_confidence(self, current_wear: Optional[float],
                             cutting_speed: float,
                             material: MaterialParams) -> float:
         confidence = 0.85
@@ -186,6 +186,10 @@ class ToolWearPredictor:
         elif material.hardness_factor > 1.2:
             confidence -= 0.05
         if current_wear is not None:
+            if current_wear > 0.2:
+                confidence -= 0.08
+            elif current_wear > 0.1:
+                confidence -= 0.03
             confidence += 0.05
         return max(0.5, min(0.98, confidence))
 
@@ -274,13 +278,9 @@ class ToolWearPredictor:
 
     def predict_remaining_life(self, current_wear: float,
                                input_parameters: dict) -> float:
-        input_parameters.get("cutting_speed", 150.0)
-        input_parameters.get("feed_rate", 0.2)
-        input_parameters.get("depth_of_cut", 1.5)
         material_type = input_parameters.get("material_type", "steel_45")
         tool_type = input_parameters.get("tool_type", "carbide")
 
-        self._get_material_params(material_type)
         tool = self._get_tool_params(tool_type)
         wear_threshold = tool.get("max_vb", self.default_replacement_threshold)
 
@@ -302,7 +302,7 @@ class ToolWearPredictor:
 
         return max(0.0, round(simulated_curve.time_to_threshold - elapsed, 2))
 
-    def get_replacement_threshold(self, material_type: str | None = None) -> float:
+    def get_replacement_threshold(self, material_type: Optional[str] = None) -> float:
         if material_type is None:
             return self.default_replacement_threshold
 
@@ -418,14 +418,7 @@ class ToolWearPredictor:
     def calibrate_with_measurement(self, measured_wear: float,
                                    elapsed_time: float,
                                    input_parameters: dict) -> dict[str, Any]:
-        input_parameters.get("cutting_speed", 150.0)
-        input_parameters.get("feed_rate", 0.2)
-        input_parameters.get("depth_of_cut", 1.5)
         material_type = input_parameters.get("material_type", "steel_45")
-        tool_type = input_parameters.get("tool_type", "carbide")
-
-        self._get_material_params(material_type)
-        self._get_tool_params(tool_type)
 
         predicted_curve = self.predict_wear_curve(input_parameters)
         predicted_at_time = None
@@ -455,11 +448,25 @@ class ToolWearPredictor:
             "calibrated_curve": recalibrated_curve.to_dict()
         }
 
+    def _get_bosch_loader(self, data_dir: str = "python/data/datasets/bosch_cnc"):
+        if self._bosch_feature_loader is not None:
+            return self._bosch_feature_loader
+        try:
+            from app.data.bosch_cnc_loader import BoschCNCDataLoader
+            loader = BoschCNCDataLoader(data_dir=data_dir)
+            self._bosch_feature_loader = loader
+            return loader
+        except ImportError:
+            self._logger.error(
+                "bosch_cnc_loader 模块不存在。Bosch CNC 数据处理功能不可用。"
+            )
+            return None
+
     def train_with_bosch_data(
         self,
         data_dir: str = "python/data/datasets/bosch_cnc",
-        machines: list[str] | None = None,
-        processes: list[str] | None = None,
+        machines: Optional[list[str]] = None,
+        processes: Optional[list[str]] = None,
         test_size: float = 0.2,
         model_type: str = "random_forest",
     ) -> dict:
@@ -507,10 +514,17 @@ class ToolWearPredictor:
                 "feature_importance": [],
             }
 
-        from app.data.bosch_cnc_loader import BoschCNCDataLoader
-
-        loader = BoschCNCDataLoader(data_dir=data_dir)
-        self._bosch_feature_loader = loader
+        loader = self._get_bosch_loader(data_dir=data_dir)
+        if loader is None:
+            return {
+                "error": "bosch_cnc_loader 模块不可用，Bosch CNC 数据处理功能需要此模块支持",
+                "accuracy": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "confusion_matrix": [],
+                "feature_importance": [],
+            }
 
         X, y, _metadata_list = loader.get_feature_dataset(
             machines=machines, processes=processes
@@ -618,8 +632,14 @@ class ToolWearPredictor:
             }
 
         if self._bosch_feature_loader is None:
-            from app.data.bosch_cnc_loader import BoschCNCDataLoader
-            self._bosch_feature_loader = BoschCNCDataLoader()
+            loader = self._get_bosch_loader()
+            if loader is None:
+                return {
+                    "prediction": "unknown",
+                    "confidence": 0.0,
+                    "features": {},
+                    "explanation": "bosch_cnc_loader 模块不可用。",
+                }
 
         features = self._bosch_feature_loader.extract_features(vibration_data)
         feature_keys = sorted(features.keys())
@@ -657,9 +677,17 @@ class ToolWearPredictor:
         }
 
     def get_process_baseline(self, process: str, machine: str = "M01") -> dict:
-        from app.data.bosch_cnc_loader import BoschCNCDataLoader
-
-        loader = BoschCNCDataLoader()
+        loader = self._get_bosch_loader()
+        if loader is None:
+            return {
+                "process": process,
+                "machine": machine,
+                "rms_ranges": {},
+                "dominant_frequencies": {},
+                "energy_distribution": {},
+                "sample_count": 0,
+                "warning": "bosch_cnc_loader 模块不可用",
+            }
         samples = loader.load_dataset(
             machines=[machine], processes=[process], labels=["good"]
         )

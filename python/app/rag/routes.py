@@ -12,10 +12,8 @@ from app.models.schemas import (
     KnowledgeDeleteRequest,
     KnowledgeQueryRequest,
 )
-from app.rag.document_importer import DocumentImportService
 from app.rag.evaluation import RetrievalEvaluator
 from app.rag.knowledge_base import get_knowledge_base
-from app.rag.reranker import RerankerService
 
 router = APIRouter(prefix="/api/knowledge", tags=["Knowledge"])
 
@@ -26,22 +24,24 @@ _document_import_service = None
 _evaluator = None
 
 
-def get_reranker_service() -> RerankerService:
+def get_reranker_service():
     global _reranker_service
     if _reranker_service is None:
+        from app.rag.reranker import RerankerService
         _reranker_service = RerankerService(enable_cross_encoder=False)
     return _reranker_service
 
 
-def get_document_import_service() -> DocumentImportService:
+def get_document_import_service():
     global _document_import_service
     if _document_import_service is None:
+        from app.rag.document_importer import DocumentImportService
         kb = get_knowledge_base()
         _document_import_service = DocumentImportService(knowledge_base=kb)
     return _document_import_service
 
 
-def get_evaluator() -> RetrievalEvaluator:
+def get_evaluator():
     global _evaluator
     if _evaluator is None:
         kb = get_knowledge_base()

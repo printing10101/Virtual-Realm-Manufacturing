@@ -140,12 +140,21 @@ class LLMResponse(TypedDict, total=False):
 class BaseAgent(ABC):
     """Agent 基类"""
 
-    def __init__(self, name: str, description: str) -> None:
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        task_router: Any = None,
+        rule_weight: float = 0.4,
+        ml_weight: float = 0.6,
+    ) -> None:
         self.name = name
         self.description = description
         self.knowledge_base = get_knowledge_base()
-        self._model_router: Any = None
+        self._model_router: Any = task_router
         self._llm_client: Any = None
+        self._rule_weight = rule_weight
+        self._ml_weight = ml_weight
 
     async def _get_llm_client(self) -> Any:
         """获取或创建 LLM 客户端（懒加载并缓存）"""
@@ -160,13 +169,17 @@ class BaseAgent(ABC):
         return self._llm_client
 
     async def _get_model_router(self) -> Any:
-        """获取模型路由器"""
-        if self._model_router is None:
-            try:
-                from app.core.container import container
-                self._model_router = container.get_service("model_router")
-            except Exception:
-                self._model_router = None
+        """获取模型路由器，优先使用注入实例"""
+        if self._model_router is not None:
+            return self._model_router
+        try:
+            from app.ai.lnn.router.task_router import TaskRouter
+            self._model_router = TaskRouter(
+                rule_weight=self._rule_weight,
+                ml_weight=self._ml_weight,
+            )
+        except Exception:
+            self._model_router = None
         return self._model_router
 
     @abstractmethod

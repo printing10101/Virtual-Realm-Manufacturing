@@ -28,6 +28,17 @@ pub struct AppSettings {
     pub max_file_size: u64,
 }
 
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            theme: "light".to_string(),
+            language: "zh-CN".to_string(),
+            auto_save: true,
+            max_file_size: 10 * 1024 * 1024,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppInfo {
     pub name: String,

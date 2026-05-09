@@ -2,16 +2,21 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export const useAppStore = defineStore('app', () => {
-  const count = ref(0)
-  const theme = ref('light')
+  const theme = ref<'light' | 'dark'>('light')
+  const sidebarCollapsed = ref(false)
+  const currentTaskId = ref<string | null>(null)
 
-  function increment() {
-    count.value++
-  }
-
-  function setTheme(newTheme: string) {
+  function setTheme(newTheme: 'light' | 'dark') {
     theme.value = newTheme
   }
 
-  return { count, theme, increment, setTheme }
+  function toggleSidebar() {
+    sidebarCollapsed.value = !sidebarCollapsed.value
+  }
+
+  function setCurrentTask(id: string | null) {
+    currentTaskId.value = id
+  }
+
+  return { theme, sidebarCollapsed, currentTaskId, setTheme, toggleSidebar, setCurrentTask }
 })

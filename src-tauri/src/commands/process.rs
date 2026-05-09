@@ -1,8 +1,12 @@
 use crate::models::SidecarStatus;
 use crate::state::AppState;
+use std::sync::Mutex;
 use tauri::State;
 use std::process::{Command, Stdio};
 use chrono::Utc;
+use tracing::{info, warn};
+
+static START_TIME: Mutex<Option<String>> = Mutex::new(None);
 
 #[derive(Debug, serde::Serialize)]
 pub struct ProcessResult {
@@ -25,17 +29,26 @@ pub fn start_sidecar(state: State<AppState>) -> Result<ProcessResult, String> {
         });
     }
 
+    let port = std::env::var("SIDECAR_PORT").unwrap_or_else(|_| "8000".to_string());
+
     let child = Command::new("python")
         .arg("-m")
         .arg("http.server")
-        .arg("8000")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .arg(&port)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .spawn()
         .map_err(|e| format!("Failed to start sidecar: {}", e))?;
 
     let pid = child.id();
     *process = Some(child);
+
+    let start_time = Utc::now().to_rfc3339();
+    if let Ok(mut st) = START_TIME.lock() {
+        *st = Some(start_time.clone());
+    }
+
+    info!("Sidecar started with PID {} on port {}", pid, port);
 
     Ok(ProcessResult {
         success: true,
@@ -51,13 +64,17 @@ pub fn stop_sidecar(state: State<AppState>) -> Result<ProcessResult, String> {
     })?;
 
     if let Some(mut child) = process.take() {
-        child.kill().map_err(|e| {
-            format!("Failed to stop sidecar: {}", e)
-        })?;
-        
-        child.wait().map_err(|e| {
-            format!("Failed to wait for sidecar: {}", e)
-        })?;
+        if let Err(e) = child.kill() {
+            warn!("Failed to kill sidecar process: {}", e);
+        }
+
+        if let Err(e) = child.wait() {
+            warn!("Failed to wait for sidecar: {}", e);
+        }
+
+        if let Ok(mut st) = START_TIME.lock() {
+            *st = None;
+        }
 
         Ok(ProcessResult {
             success: true,
@@ -80,10 +97,11 @@ pub fn check_sidecar_status(state: State<AppState>) -> Result<SidecarStatus, Str
     })?;
 
     if let Some(child) = process.as_ref() {
+        let start_time = START_TIME.lock().ok().and_then(|st| st.clone());
         Ok(SidecarStatus {
             running: true,
             pid: Some(child.id()),
-            start_time: Some(Utc::now().to_rfc3339()),
+            start_time,
         })
     } else {
         Ok(SidecarStatus {
