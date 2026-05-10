@@ -1,0 +1,52 @@
+{
+  "zh": {
+    "common": {
+      "enabled": "启用",
+      "on": "开",
+      "off": "关"
+    },
+    "lod": {
+      "distanceThresholds": "距离阈值",
+      "highPrecision": "高精度",
+      "mediumPrecision": "中精度",
+      "lowPrecision": "低精度",
+      "simplification": "简化程度",
+      "mediumSimplification": "中精度简化",
+      "lowSimplification": "低精度简化",
+      "performance": "性能监控",
+      "fps": "帧率",
+      "currentLevel": "当前层级",
+      "distance": "相机距离",
+      "vertices": "顶点数",
+      "improvement": "性能提升"
+    },
+    "viewer": {
+      "loading": "加载中..."
+    }
+  },
+  "en": {
+    "common": {
+      "enabled": "Enabled",
+      "on": "ON",
+      "off": "OFF"
+    },
+    "lod": {
+      "distanceThresholds": "Distance Thresholds",
+      "highPrecision": "High Precision",
+      "mediumPrecision": "Medium Precision",
+      "lowPrecision": "Low Precision",
+      "simplification": "Simplification",
+      "mediumSimplification": "Medium Simplification",
+      "lowSimplification": "Low Simplification",
+      "performance": "Performance Monitor",
+      "fps": "FPS",
+      "currentLevel": "Current Level",
+      "distance": "Distance",
+      "vertices": "Vertices",
+      "improvement": "Performance Improvement"
+    },
+    "viewer": {
+      "loading": "Loading..."
+    }
+  }
+}

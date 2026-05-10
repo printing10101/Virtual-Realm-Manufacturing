@@ -1,0 +1,612 @@
+"""
+Model Registry
+
+Manages model metadata, version control, and validation.
+Provides a centralized registry for all LNN models with predefined model support.
+"""
+import os
+import json
+import time
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Type
+from dataclasses import dataclass, field
+
+from app.ai.lnn.core import ModelConfig, ModelType
+from app.ai.lnn.models.base_lnn import BaseLNNModel
+from app.ai.lnn.models.cfc_model import CFCModel
+from app.ai.lnn.models.ltc_model import LTCModel
+from app.ai.lnn.models.hybrid_lnn import HybridLNNModel
+
+
+class BaseModelRegistry(ABC):
+    """Abstract base class for model registries.
+    
+    Defines the minimal interface required for model loading.
+    All registry implementations should inherit from this class.
+    """
+    
+    @abstractmethod
+    def get(self, model_name: str) -> Any:
+        """Get a model instance by name.
+        
+        Args:
+            model_name: Unique model identifier
+            
+        Returns:
+            Model instance
+            
+        Raises:
+            KeyError: If model not found
+        """
+        ...
+
+
+def is_quantized_model(model_name: str) -> bool:
+    """Check if a model name refers to a quantized model."""
+    return model_name.endswith("_int8")
+
+
+def get_base_model_name(model_name: str) -> str:
+    """Get the base model name from a quantized model name."""
+    if is_quantized_model(model_name):
+        return model_name[:-5]
+    return model_name
+
+
+def get_quantized_model_name(model_name: str) -> str:
+    """Get the quantized model name from a base model name."""
+    if not is_quantized_model(model_name):
+        return f"{model_name}_int8"
+    return model_name
+
+
+@dataclass
+class ModelInfo:
+    """Model information dataclass with validation"""
+    name: str
+    model_type: str
+    model_path: str
+    input_features: List[str]
+    output_features: List[str]
+    version: str = "1.0.0"
+
+    def __post_init__(self):
+        """Validate required fields"""
+        if not self.name:
+            raise ValueError("Model name cannot be empty")
+        if not self.model_type:
+            raise ValueError("Model type cannot be empty")
+        if not self.model_path:
+            raise ValueError("Model path cannot be empty")
+        if not self.input_features:
+            raise ValueError("Input features cannot be empty")
+        if not self.output_features:
+            raise ValueError("Output features cannot be empty")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dictionary"""
+        return {
+            "name": self.name,
+            "model_type": self.model_type,
+            "model_path": self.model_path,
+            "input_features": self.input_features,
+            "output_features": self.output_features,
+            "version": self.version,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ModelInfo":
+        """Deserialize from dictionary"""
+        return cls(
+            name=data["name"],
+            model_type=data["model_type"],
+            model_path=data["model_path"],
+            input_features=data.get("input_features", []),
+            output_features=data.get("output_features", []),
+            version=data.get("version", "1.0.0"),
+        )
+
+
+@dataclass
+class ModelEntry:
+    """Model registry entry"""
+    config: Optional[ModelConfig] = None
+    info: Optional[ModelInfo] = None
+    model: Optional[BaseLNNModel] = None
+    is_loaded: bool = False
+    last_accessed: float = 0.0
+    access_count: int = 0
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class LNNModelRegistry(BaseModelRegistry):
+    """
+    LNN Model Registry with predefined models and validation support.
+
+    Features:
+    - Predefined models: cutting_force, wear_prediction, surface_roughness, temperature
+    - Model registration with duplicate checking
+    - Exact and fuzzy model lookup
+    - Model file existence and structure validation
+    """
+
+    PREDEFINED_MODELS = {
+        "cutting_force": ModelInfo(
+            name="cutting_force",
+            model_type="CFC",
+            model_path="models/cutting_force.pt",
+            input_features=["force_x", "force_y", "force_z", "spindle_speed", "feed_rate"],
+            output_features=["predicted_cutting_force"],
+            version="1.0.0",
+        ),
+        "wear_prediction": ModelInfo(
+            name="wear_prediction",
+            model_type="LTC",
+            model_path="models/wear_prediction.pt",
+            input_features=["vb", "time", "spindle_speed", "feed_rate", "depth_of_cut"],
+            output_features=["predicted_wear"],
+            version="1.0.0",
+        ),
+        "surface_roughness": ModelInfo(
+            name="surface_roughness",
+            model_type="HybridLNN",
+            model_path="models/surface_roughness.pt",
+            input_features=["roughness_ra", "cutting_speed", "feed_rate", "tool_wear"],
+            output_features=["predicted_surface_roughness"],
+            version="1.0.0",
+        ),
+        "temperature": ModelInfo(
+            name="temperature",
+            model_type="CFC",
+            model_path="models/temperature.pt",
+            input_features=["temp_zone1", "temp_zone2", "coolant_flow", "cutting_time"],
+            output_features=["predicted_temperature"],
+            version="1.0.0",
+        ),
+    }
+
+    MODEL_CLASS_MAP: Dict[str, Type[BaseLNNModel]] = {
+        "CFC": CFCModel,
+        "LTC": LTCModel,
+        "HybridLNN": HybridLNNModel,
+    }
+
+    def __init__(self, cache_size: int = 10, model_dir: Optional[str] = None):
+        self.cache_size = cache_size
+        self.model_dir = model_dir
+        self.registry: Dict[str, ModelEntry] = {}
+        self.cache_hits = 0
+        self.cache_misses = 0
+        self._register_predefined_models()
+
+    def _register_predefined_models(self) -> None:
+        """Register all predefined models"""
+        for name, info in self.PREDEFINED_MODELS.items():
+            if self.model_dir:
+                model_path = os.path.join(self.model_dir, os.path.basename(info.model_path))
+                info.model_path = model_path
+            entry = ModelEntry(info=info)
+            self.registry[name] = entry
+
+    def get_model_info(
+        self,
+        model_name: str,
+        fuzzy_match: bool = False,
+    ) -> Optional[ModelInfo]:
+        if not fuzzy_match:
+            entry = self.registry.get(model_name)
+            return entry.info if entry else None
+
+        matches = [name for name in self.registry.keys() if model_name.lower() in name.lower()]
+        if matches:
+            return self.registry[matches[0]].info
+        return None
+
+    def list_models(self, return_objects: bool = False) -> List[Any]:
+        if return_objects:
+            return [entry.info for entry in self.registry.values()]
+        return list(self.registry.keys())
+
+    def register_model(self, model_info: ModelInfo) -> bool:
+        if model_info.name in self.registry:
+            return False
+        entry = ModelEntry(info=model_info)
+        self.registry[model_info.name] = entry
+        return True
+
+    def register_quantized_model(
+        self,
+        base_model_name: str,
+        quantized_model_path: str,
+        quantization_type: str = "dynamic",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        quantized_name = f"{base_model_name}_int8" if not base_model_name.endswith("_int8") else base_model_name
+
+        if quantized_name in self.registry:
+            return False
+
+        base_entry = self.registry.get(base_model_name)
+        if base_entry:
+            model_type = base_entry.info.model_type
+            input_features = base_entry.info.input_features
+            output_features = base_entry.info.output_features
+        else:
+            model_type = "CFC"
+            input_features = []
+            output_features = []
+
+        quantized_info = ModelInfo(
+            name=quantized_name,
+            model_type=model_type,
+            model_path=quantized_model_path,
+            input_features=input_features,
+            output_features=output_features,
+            version="1.0.0-int8",
+        )
+
+        quant_meta = metadata or {}
+        quant_meta.update({
+            "is_quantized": True,
+            "quantization_type": quantization_type,
+            "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "base_model": base_model_name,
+        })
+
+        entry = ModelEntry(info=quantized_info, metadata=quant_meta)
+        self.registry[quantized_name] = entry
+        return True
+
+    def validate_model(self, model_name: str, model_path: Optional[str] = None) -> Dict[str, Any]:
+        entry = self.registry.get(model_name)
+        if not entry:
+            return {
+                "valid": False,
+                "reason": f"Model '{model_name}' not found in registry",
+                "details": {},
+            }
+
+        path = model_path or entry.info.model_path
+        file_exists = os.path.exists(path)
+        structure_valid = True
+        load_test_passed = False
+
+        if file_exists:
+            try:
+                model_class = self.MODEL_CLASS_MAP.get(entry.info.model_type)
+                if model_class:
+                    model = model_class(
+                        model_name=entry.info.name,
+                        input_dim=len(entry.info.input_features),
+                        output_dim=len(entry.info.output_features),
+                    )
+                    model.load(path)
+                    model.build()
+                    load_test_passed = True
+            except Exception:
+                structure_valid = False
+                load_test_passed = False
+
+        return {
+            "valid": file_exists and structure_valid and load_test_passed,
+            "file_exists": file_exists,
+            "structure_valid": structure_valid,
+            "load_test_passed": load_test_passed,
+            "model_name": model_name,
+            "model_path": path,
+        }
+
+
+class ModelRegistry(BaseModelRegistry):
+    """
+    模型注册表
+
+    管理：
+    - 模型加载
+    - 版本控制
+    - 缓存管理
+    - 模型查询
+    """
+
+    # PyTorch版本模型类映射 (lazy-initialized)
+    _torch_model_class_map: Dict[str, Any] = {}
+
+    # 模型类型到类的映射
+    MODEL_CLASS_MAP: Dict[ModelType, Type[BaseLNNModel]] = {
+        ModelType.CFC: CFCModel,
+        ModelType.LTC: LTCModel,
+        ModelType.HYBRID_LNN: HybridLNNModel,
+    }
+
+    def __init__(
+        self,
+        cache_size: int = 10,
+        model_dir: Optional[str] = None,
+        enable_auto_cache: bool = True,
+    ):
+        self.cache_size = cache_size
+        self.model_dir = model_dir
+        self.enable_auto_cache = enable_auto_cache
+        self.registry: Dict[str, ModelEntry] = {}
+        self.cache_hits = 0
+        self.cache_misses = 0
+
+    def register(
+        self,
+        model_name: str,
+        model_type: ModelType,
+        model_path: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        if model_name in self.registry:
+            raise ValueError(f"Model '{model_name}' already registered")
+
+        model_config = ModelConfig(
+            model_type=model_type,
+            model_name=model_name,
+            model_path=model_path,
+            hyperparameters=config,
+            metadata=metadata,
+        )
+
+        entry = ModelEntry(
+            config=model_config,
+            metadata=metadata,
+        )
+
+        self.registry[model_name] = entry
+        return model_name
+
+    def get(self, model_name: str, load_if_needed: bool = True) -> BaseLNNModel:
+        if model_name not in self.registry:
+            raise KeyError(f"Model '{model_name}' not found in registry")
+
+        entry = self.registry[model_name]
+        entry.last_accessed = time.time()
+        entry.access_count += 1
+
+        if entry.model is not None:
+            self.cache_hits += 1
+            return entry.model
+
+        self.cache_misses += 1
+
+        if load_if_needed:
+            self._load_model(model_name)
+            return entry.model
+
+        raise RuntimeError(f"Model '{model_name}' is not loaded")
+
+    def load_model(self, model_name: str) -> None:
+        self._load_model(model_name)
+
+    def _load_model(self, model_name: str) -> None:
+        entry = self.registry[model_name]
+        config = entry.config
+
+        model_class = self.MODEL_CLASS_MAP.get(config.model_type)
+        if model_class is None:
+            raise ValueError(f"Unknown model type: {config.model_type}")
+
+        hyperparams = config.hyperparameters or {}
+        model = model_class(
+            model_name=config.model_name,
+            input_dim=hyperparams.get("input_dim", 128),
+            output_dim=hyperparams.get("output_dim", 10),
+            device=config.device,
+            **hyperparams,
+        )
+
+        if config.model_path and os.path.exists(config.model_path):
+            model.load(config.model_path)
+
+        model.build()
+
+        entry.model = model
+        entry.is_loaded = True
+        self._evict_cache()
+
+    def _evict_cache(self) -> None:
+        if len(self.registry) <= self.cache_size:
+            return
+
+        loaded_models = [
+            (name, entry)
+            for name, entry in self.registry.items()
+            if entry.is_loaded
+        ]
+
+        if len(loaded_models) > self.cache_size:
+            loaded_models.sort(key=lambda x: x[1].last_accessed)
+            for name, _ in loaded_models[:len(loaded_models) - self.cache_size]:
+                self.registry[name].model = None
+                self.registry[name].is_loaded = False
+
+    def list_models(self) -> List[Dict[str, Any]]:
+        models = []
+        for name, entry in self.registry.items():
+            models.append({
+                "name": name,
+                "type": entry.config.model_type.value,
+                "is_loaded": entry.is_loaded,
+                "access_count": entry.access_count,
+                "version": entry.config.version,
+            })
+        return models
+
+    def get_model_info(self, model_name: str) -> Dict[str, Any]:
+        if model_name not in self.registry:
+            raise KeyError(f"Model '{model_name}' not found")
+
+        entry = self.registry[model_name]
+        info = {
+            "name": entry.config.model_name,
+            "type": entry.config.model_type.value,
+            "path": entry.config.model_path,
+            "is_loaded": entry.is_loaded,
+            "device": entry.config.device,
+            "version": entry.config.version,
+            "hyperparameters": entry.config.hyperparameters,
+            "access_count": entry.access_count,
+            "last_accessed": entry.last_accessed,
+        }
+
+        if entry.model is not None:
+            info["model_info"] = entry.model.get_model_info()
+
+        return info
+
+    def unload(self, model_name: str) -> None:
+        if model_name in self.registry:
+            self.registry[model_name].model = None
+            self.registry[model_name].is_loaded = False
+
+    def unload_all(self) -> None:
+        for name in list(self.registry.keys()):
+            self.unload(name)
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        total_requests = self.cache_hits + self.cache_misses
+        hit_rate = self.cache_hits / total_requests if total_requests > 0 else 0.0
+        loaded_count = sum(1 for entry in self.registry.values() if entry.is_loaded)
+
+        return {
+            "total_models": len(self.registry),
+            "loaded_models": loaded_count,
+            "cache_size": self.cache_size,
+            "cache_hits": self.cache_hits,
+            "cache_misses": self.cache_misses,
+            "hit_rate": hit_rate,
+        }
+
+    def export_registry(self, path: str) -> None:
+        export_data = {
+            name: {
+                "config": {
+                    "model_type": entry.config.model_type.value,
+                    "model_name": entry.config.model_name,
+                    "model_path": entry.config.model_path,
+                    "device": entry.config.device,
+                    "version": entry.config.version,
+                    "hyperparameters": entry.config.hyperparameters,
+                },
+                "access_count": entry.access_count,
+                "metadata": entry.metadata,
+            }
+            for name, entry in self.registry.items()
+        }
+
+        with open(path, "w") as f:
+            json.dump(export_data, f, indent=2)
+
+    def import_registry(self, path: str) -> None:
+        with open(path, "r") as f:
+            import_data = json.load(f)
+
+        for name, data in import_data.items():
+            config_data = data["config"]
+            self.register(
+                model_name=name,
+                model_type=ModelType(config_data["model_type"]),
+                model_path=config_data.get("model_path"),
+                config=config_data.get("hyperparameters"),
+                metadata=data.get("metadata"),
+            )
+
+    def register_custom_model(
+        self,
+        model_name: str,
+        model_class: Type[BaseLNNModel],
+        model_type: Optional[ModelType] = None,
+        **kwargs
+    ) -> str:
+        if model_name in self.registry:
+            raise ValueError(f"Model '{model_name}' already registered")
+
+        mtype = model_type or ModelType.CFC
+        self.MODEL_CLASS_MAP[mtype] = model_class
+
+        config = ModelConfig(
+            model_type=mtype,
+            model_name=model_name,
+            hyperparameters=kwargs,
+        )
+
+        entry = ModelEntry(config=config, metadata=kwargs)
+        self.registry[model_name] = entry
+
+        return model_name
+
+    def register_quantized_model(
+        self,
+        model_name: str,
+        model_type: ModelType,
+        model_path: str,
+        config: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        if model_name in self.registry:
+            raise ValueError(f"Model '{model_name}' already registered")
+
+        quant_meta = metadata or {}
+        quant_meta.update({
+            "is_quantized": True,
+            "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+        model_config = ModelConfig(
+            model_type=model_type,
+            model_name=model_name,
+            model_path=model_path,
+            hyperparameters=config,
+            metadata=quant_meta,
+        )
+
+        entry = ModelEntry(
+            config=model_config,
+            metadata=quant_meta,
+        )
+
+        self.registry[model_name] = entry
+        return model_name
+
+    def has_quantized_version(self, base_model_name: str) -> bool:
+        quantized_name = get_quantized_model_name(base_model_name)
+        return quantized_name in self.registry
+
+    def get_quantized_model_path(self, base_model_name: str) -> Optional[str]:
+        quantized_name = get_quantized_model_name(base_model_name)
+        entry = self.registry.get(quantized_name)
+        if entry and entry.config:
+            return entry.config.model_path
+        return None
+
+
+def get_torch_model_class(model_type_str: str) -> Optional[Type]:
+    """Get PyTorch model class by type string.
+
+    Args:
+        model_type_str: Model type string (e.g. "CFC", "LTC", "HybridLNN")
+
+    Returns:
+        PyTorch model class or None if not supported
+    """
+    if not ModelRegistry._torch_model_class_map:
+        _init_torch_model_map()
+    return ModelRegistry._torch_model_class_map.get(model_type_str)
+
+
+def _init_torch_model_map() -> None:
+    """Initialize the PyTorch model class map lazily."""
+    try:
+        from app.ai.lnn.models.torch_cfc_model import CFCModel as TorchCFCModel
+        from app.ai.lnn.models.torch_ltc_model import LTCModel as TorchLTCModel
+        from app.ai.lnn.models.torch_hybrid_lnn import HybridLNN as TorchHybridLNNModel
+        ModelRegistry._torch_model_class_map.update({
+            "CFC": TorchCFCModel,
+            "LTC": TorchLTCModel,
+            "HybridLNN": TorchHybridLNNModel,
+        })
+    except ImportError:
+        pass
