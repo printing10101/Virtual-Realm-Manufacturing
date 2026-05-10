@@ -1,166 +1,45 @@
 <template>
-  <div class="about-view">
-    <el-card class="about-card">
-      <template #header>
-        <div class="card-header">
-          <h2>{{ t('about.title') }}</h2>
-        </div>
-      </template>
-      
+  <div class="about-page">
+    <el-card>
+      <template #header>关于灵境制造</template>
       <div class="about-content">
-        <div class="logo-section">
-          <div class="logo-icon">
-            <el-icon :size="64" color="#409eff"><Monitor /></el-icon>
-          </div>
-          <h3>灵境制造 V4</h3>
-          <p class="subtitle">{{ t('about.subtitle') }}</p>
-        </div>
-        
+        <h3>灵境制造 V4</h3>
+        <p>版本：1.3.0</p>
+        <p>基于神经逻辑网络(LNN)的智能制造AI推理与训练API服务</p>
+
         <el-divider />
-        
-        <div class="info-section">
-          <h4>{{ t('about.versionInfo') }}</h4>
-          <el-descriptions :column="1" border>
-            <el-descriptions-item :label="t('about.version')">{{ version }}</el-descriptions-item>
-            <el-descriptions-item :label="t('about.buildTime')">{{ buildTime }}</el-descriptions-item>
-            <el-descriptions-item :label="t('about.techStack')">{{ t('about.techStackValue') }}</el-descriptions-item>
-          </el-descriptions>
-        </div>
-        
-        <el-divider />
-        
-        <div class="info-section">
-          <h4>{{ t('about.coreFeatures') }}</h4>
-          <el-row :gutter="16">
-            <el-col :xs="24" :sm="12" v-for="feature in features" :key="feature.key">
-              <div class="feature-item">
-                <el-icon :size="24" :color="feature.color"><component :is="feature.icon" /></el-icon>
-                <span>{{ t(feature.key) }}</span>
-              </div>
-            </el-col>
-          </el-row>
-        </div>
-        
-        <el-divider />
-        
-        <div class="info-section">
-          <h4>{{ t('about.contact') }}</h4>
-          <el-descriptions :column="1" border>
-            <el-descriptions-item :label="t('about.github')"><a href="https://github.com" target="_blank" class="link">GitHub</a></el-descriptions-item>
-            <el-descriptions-item :label="t('about.license')">{{ t('about.licenseValue') }}</el-descriptions-item>
-          </el-descriptions>
-        </div>
+
+        <h4>核心技术</h4>
+        <ul>
+          <li>LNN (Logical Neural Network) - 逻辑神经网络推理引擎</li>
+          <li>CFC (Context-Free Grammar Network) - 快速推理模型</li>
+          <li>LTC (Liquid Time Constant) - 时序数据分析模型</li>
+          <li>Hybrid LNN - 多模态混合推理模型</li>
+          <li>Dempster-Shafer 证据理论 - 多引擎结果融合</li>
+        </ul>
+
+        <h4>数据支撑</h4>
+        <ul>
+          <li>Bosch CNC 振动数据集 - 刀具状态监测</li>
+          <li>Uniwear-NUAA TC4 - 钛合金磨损实验数据</li>
+          <li>Uniwear-PHM2010 HRC52 - 不锈钢刀具磨损数据</li>
+        </ul>
       </div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { Monitor, Box, Document, Cpu, Tools } from '@element-plus/icons-vue'
-
-const { t } = useI18n()
-
-const version = '0.1.0'
-const buildTime = '2026-04-29'
-
-const features = [
-  { key: 'about.feature1', icon: Box, color: '#409eff' },
-  { key: 'about.feature2', icon: Document, color: '#67c23a' },
-  { key: 'about.feature3', icon: Cpu, color: '#e6a23c' },
-  { key: 'about.feature4', icon: Tools, color: '#f56c6c' }
-]
 </script>
 
-<style scoped lang="scss">
-.about-view {
-  .about-card {
-    max-width: 800px;
-    margin: 0 auto;
-    
-    .card-header {
-      h2 {
-        margin: 0;
-        font-size: 20px;
-        color: #303133;
-      }
-    }
-  }
-  
-  .about-content {
-    .logo-section {
-      text-align: center;
-      padding: 20px 0;
-      
-      .logo-icon {
-        width: 100px;
-        height: 100px;
-        margin: 0 auto 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #ecf5ff 0%, #d9ecff 100%);
-        border-radius: 50%;
-      }
-      
-      h3 {
-        margin: 0 0 8px;
-        font-size: 24px;
-        color: #303133;
-      }
-      
-      .subtitle {
-        margin: 0;
-        font-size: 14px;
-        color: #909399;
-      }
-    }
-    
-    .info-section {
-      h4 {
-        margin: 0 0 16px;
-        font-size: 16px;
-        color: #303133;
-      }
-      
-      .feature-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        background-color: #f5f7fa;
-        border-radius: 8px;
-        margin-bottom: 12px;
-        
-        span {
-          font-size: 14px;
-          color: #303133;
-        }
-      }
-    }
-    
-    .link {
-      color: #409eff;
-      text-decoration: none;
-      
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-  }
+<style scoped>
+.about-page {
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-@media (max-width: 768px) {
-  .about-view {
-    .about-card {
-      .about-content {
-        .info-section {
-          .feature-item {
-            padding: 10px 12px;
-          }
-        }
-      }
-    }
-  }
+.about-content ul {
+  padding-left: 20px;
+  line-height: 1.8;
 }
 </style>

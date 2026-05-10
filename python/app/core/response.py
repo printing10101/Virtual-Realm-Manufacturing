@@ -1,33 +1,39 @@
-from enum import IntEnum
-from typing import Any, Generic, Optional, TypeVar
-
-from pydantic import BaseModel, Field
-
-T = TypeVar("T")
+from enum import StrEnum
+from typing import Any
 
 
-class ErrorCode(IntEnum):
-    SUCCESS = 0
-    AI_MODEL_UNAVAILABLE = 1001
-    AI_MODEL_TIMEOUT = 1002
-    CAD_GENERATION_ERROR = 2001
-    FILE_NOT_FOUND = 3001
-    INVALID_REQUEST = 4001
-    INTERNAL_ERROR = 5000
+class ErrorCode(StrEnum):
+    SUCCESS = "SUCCESS"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+    NOT_FOUND = "NOT_FOUND"
+    INVALID_REQUEST = "INVALID_REQUEST"
+    UNAUTHORIZED = "UNAUTHORIZED"
+    FILE_NOT_FOUND = "FILE_NOT_FOUND"
+    CAD_GENERATION_ERROR = "CAD_GENERATION_ERROR"
+    SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
 
 
-class ApiResponse(BaseModel, Generic[T]):
-    code: int = Field(default=ErrorCode.SUCCESS)
-    message: str = Field(default="success")
-    data: Optional[T] = None
+def success(data: Any = None, message: str = "Success") -> dict:
+    return {
+        "code": ErrorCode.SUCCESS,
+        "message": message,
+        "data": data,
+    }
 
 
-def success(data: Any = None, message: str = "success") -> dict:
-    return ApiResponse(code=ErrorCode.SUCCESS, message=message, data=data).model_dump()
-
-
-def error(code: int, message: str, data: Any = None, detail: Optional[str] = None) -> dict:
-    result = ApiResponse(code=code, message=message, data=data).model_dump()
-    if detail:
+def error(
+    code: ErrorCode,
+    message: str = "Error",
+    detail: Any = None,
+    suggestion: str | None = None,
+) -> dict:
+    result: dict[str, Any] = {
+        "code": code,
+        "message": message,
+        "data": None,
+    }
+    if detail is not None:
         result["detail"] = detail
+    if suggestion is not None:
+        result["suggestion"] = suggestion
     return result

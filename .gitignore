@@ -96,3 +96,11 @@ Thumbs.db
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+# 大数据文件（CNC 加工数据）
+*.h5
+CNC_Machining-main/data/
+
+# 测试生成的临时目录
+python/test_chroma_db/
+python/test_chroma_db_e2e/

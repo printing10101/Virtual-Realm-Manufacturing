@@ -1,82 +1,109 @@
+"""FastAPI application entry point."""
+from __future__ import annotations
+
+import logging.config
+import time
+
 import uvicorn
-
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
-from app.config import config
-from app.core.response import success, error, ErrorCode
-from app.core.exceptions import app_exception_handler, general_exception_handler, AppException
-from app.models.schemas import HealthResponse, AIStatusResponse, AIMode
-from app.ai.llm_client import get_llm_client
+from app.api.v1.sse import sse_manager
+from app.core.cors_config import cors_settings
+from app.core.exception_handlers import register_exception_handlers
+from app.core.utils import get_metrics_collector
 
-from app.ai.agents import router as ai_router
-from app.ai.ollama_routes import router as ollama_router
-from app.ai.workflow_routes import router as workflow_router
-from app.cad.generator import router as cad_router
-from app.cad.process_router import router as process_router
-from app.rag.routes import router as knowledge_router
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+metrics = get_metrics_collector()
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(
-        title=config.app_name,
-        version=config.app_version,
-        description="灵境制造 AI 后端服务"
-    )
+app = FastAPI(
+    title="灵境制造 API",
+    version="1.0.0",
+    description="Lingjing Manufacturing - NC Machining AI Platform",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
+)
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=config.security.cors_origins if config.security.cors_origins != ["*"] else ["*"],
-        allow_credentials=config.security.allow_credentials,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_settings.get_origins(),
+    allow_origin_regex=cors_settings.allow_origin_regex,
+    allow_credentials=cors_settings.allow_credentials,
+    allow_methods=cors_settings.get_methods(),
+    allow_headers=cors_settings.get_headers(),
+    expose_headers=cors_settings.get_expose_headers(),
+    max_age=cors_settings.max_age,
+)
 
-    app.add_exception_handler(AppException, app_exception_handler)
-    app.add_exception_handler(Exception, general_exception_handler)
 
-    app.include_router(ai_router)
-    app.include_router(ollama_router)
-    app.include_router(workflow_router)
-    app.include_router(cad_router)
-    app.include_router(process_router)
-    app.include_router(knowledge_router)
-
-    @app.get("/health", response_model=HealthResponse, tags=["System"])
-    async def health_check():
-        ai_client = get_llm_client()
-        ai_available = await ai_client.is_available()
-
-        ai_status = AIStatusResponse(
-            mode=config.ai.mode,
-            available=ai_available,
-            model=config.ai.ollama_model if config.ai.mode == "local" else config.ai.cloud_model
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
         )
-
-        return HealthResponse(
-            status="healthy" if ai_available else "degraded",
-            version=config.app_version,
-            ai_status=ai_status
-        )
-
-    @app.get("/")
-    async def root():
-        return success(data={
-            "app": config.app_name,
-            "version": config.app_version,
-            "docs": "/docs"
-        })
-
-    return app
+        return response
 
 
-app = create_app()
+class MetricsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed = time.perf_counter() - start
+        metrics.record(request.url.path, elapsed)
+        return response
 
+
+app.add_middleware(MetricsMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await sse_manager.shutdown()
+
+
+@app.get("/api/metrics")
+async def get_metrics():
+    return Response(content=metrics.export(), media_type="text/plain; charset=utf-8")
+
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "version": "1.0.0"}
+
+
+@app.get("/api/health/ping")
+async def ping():
+    return {"ping": True}
+
+
+from app.api.v1 import lnn, wear_prediction
+from app.rag import routes as rag_routes
+from app.ai import ollama_routes
+
+app.include_router(lnn.router)
+app.include_router(wear_prediction.router)
+app.include_router(rag_routes.router)
+app.include_router(ollama_routes.router)
+
+register_exception_handlers(app)
+
+logger.info("Application initialized with %d routes", len(app.routes))
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "app.main:app",
-        host=config.server.host,
-        port=config.server.port,
-        reload=config.server.debug
-    )
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

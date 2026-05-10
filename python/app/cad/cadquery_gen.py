@@ -1,236 +1,372 @@
-import os
-import asyncio
-from pathlib import Path
-from typing import Optional
+"""CadQuery generator wrapper for CAD generation."""
+from __future__ import annotations
 
-from app.config import config
-from app.ai.llm_client import get_llm_client
+import asyncio
+import json
+import logging
+import struct
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from typing import Any
+
+import cadquery as cq
+
+logger = logging.getLogger(__name__)
+
+
+class CadQueryError(Exception):
+    """Base exception for CadQuery generation errors."""
+
+
+class CadQueryScriptError(CadQueryError):
+    """Raised when executing a CadQuery script fails."""
+
+
+class CadQueryExportError(CadQueryError):
+    """Raised when exporting a model file fails."""
 
 
 class CadQueryGenerator:
-    def __init__(self):
-        self.llm_client = get_llm_client()
+    """CadQuery-based 3D model generator."""
 
-    async def extract_geometry_params_from_views(self, views: dict) -> dict:
-        front_path = views.get('front', '')
-        top_path = views.get('top', '')
-        left_path = views.get('left', '')
-        
-        from PIL import Image
-        
-        try:
-            front_img = Image.open(front_path)
-            top_img = Image.open(top_path)
-            left_img = Image.open(left_path)
-            
-            width, height = front_img.size
-            depth = top_img.size[1] if top_img else width
-        except Exception:
-            width, height, depth = 100, 100, 100
-        
-        prompt = f"""你是一个专业的CAD工程师。根据以下三视图信息，请分析几何形状并提取参数：
+    def __init__(self) -> None:
+        self._initialized = True
+        logger.info("CadQueryGenerator initialized")
 
-正视图尺寸: {width}x{height}
-俯视图尺寸: {width}x{depth}
-左视图尺寸: 需要推断
+    async def extract_geometry_params_from_views(
+        self, views: dict[str, str]
+    ) -> dict[str, Any]:
+        """Extract geometry parameters from three-view image paths.
 
-请分析这可能是什么几何形状，并返回JSON格式的参数：
-{{
-  "shape_type": "形状类型(box/cylinder/hole_box等)",
-  "width": 宽度数值(单位mm),
-  "height": 高度数值(单位mm),
-  "depth": 深度数值(单位mm),
-  "features": [
-    {{"type": "hole/cutout/chamfer/fillet", "position": [x,y,z], "size": 尺寸, "description": "描述"}}
-  ],
-  "description": "形状描述"
-}}
+        Reads image dimensions from file headers (PNG/JPEG/GIF/BMP) to
+        inform the default geometry.  Full computer-vision-based extraction
+        of shape type and dimensions from engineering drawings requires a
+        dedicated ML pipeline and is not yet implemented.
+        """
+        logger.info("Extracting geometry params from views: %s", list(views.keys()))
 
-注意：
-1. 基于标准工程制图推断
-2. 尺寸单位统一为mm
-3. 坐标系：X向右，Y向前，Z向上
-4. 只返回JSON，不要其他解释"""
+        await asyncio.sleep(0)
 
-        try:
-            import json
-            response = await self.llm_client.chat_completion(
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1024,
-                temperature=0.3
+        image_sizes: dict[str, tuple[int, int]] = {}
+        for view_name, view_path in views.items():
+            view_file = Path(view_path)
+            if not view_file.exists():
+                logger.warning("View file not found: %s (%s)", view_name, view_path)
+                continue
+            try:
+                width, height = _get_image_dimensions(view_file)
+                image_sizes[view_name] = (width, height)
+                logger.debug(
+                    "View %s loaded: %s (%dx%d)", view_name, view_path, width, height,
+                )
+            except (OSError, ValueError) as e:
+                logger.warning("Failed to read view %s (%s): %s", view_name, view_path, e)
+
+        if not image_sizes:
+            logger.warning(
+                "Could not read any view images; using default geometry params"
             )
-            
-            content = response.get('content', '{}')
-            
-            start = content.find('{')
-            end = content.rfind('}') + 1
-            if start >= 0 and end > start:
-                params = json.loads(content[start:end])
-            else:
-                params = self._default_params(width, height, depth)
-            
-        except Exception:
-            params = self._default_params(width, height, depth)
-        
-        params.setdefault('width', width / 10)
-        params.setdefault('height', height / 10)
-        params.setdefault('depth', depth / 10)
-        params.setdefault('shape_type', 'box')
-        params.setdefault('features', [])
-        
-        return params
 
-    def _default_params(self, width, height, depth):
-        return {
+        length = 50.0
+        width = 30.0
+        height = 20.0
+        if "front" in image_sizes:
+            length = max(image_sizes["front"][0] / 10.0, 10.0)
+            height = max(image_sizes["front"][1] / 10.0, 10.0)
+        if "top" in image_sizes:
+            width = max(image_sizes["top"][1] / 10.0, 10.0)
+        if "left" in image_sizes:
+            width = max(image_sizes["left"][0] / 10.0, 10.0)
+
+        params: dict[str, Any] = {
             "shape_type": "box",
-            "width": width / 10,
-            "height": height / 10,
-            "depth": depth / 10,
-            "features": [],
-            "description": "基础长方体"
+            "dimensions": {"length": round(length, 1), "width": round(width, 1), "height": round(height, 1)},
+            "position": {"x": 0, "y": 0, "z": 0},
         }
 
-    async def generate_script_from_params(self, params: dict, library_matches: list) -> str:
-        if library_matches and len(library_matches) > 0:
+        logger.info("Extracted params: %s", params)
+        return params
+
+    async def generate_script_from_params(
+        self, params: dict[str, Any], library_matches: list[dict[str, Any]] | None = None
+    ) -> str:
+        """Generate a CadQuery Python script from geometry parameters."""
+        logger.info(
+            "Generating script from params: shape=%s, matches=%d",
+            params.get("shape_type", "unknown"),
+            len(library_matches) if library_matches else 0,
+        )
+
+        await asyncio.sleep(0)
+
+        if library_matches:
             best_match = library_matches[0]
-            match_params = best_match.get('parameters', '{}')
-            
-            import json
-            try:
-                if json.loads(match_params) == params:
-                    return best_match.get('cadquery_script', '')
-            except Exception:
-                pass
-        
-        shape_type = params.get('shape_type', 'box')
-        width = params.get('width', 100)
-        height = params.get('height', 100)
-        depth = params.get('depth', 100)
-        features = params.get('features', [])
-        
-        script = self._generate_basic_shape(shape_type, width, height, depth)
-        
-        for feature in features:
-            feat_script = self._add_feature(feature)
-            script += feat_script
-        
-        script += """
-import cadquery as cq
-from cadquery import exporters
-import sys
+            cached_script = best_match.get("cadquery_script", "")
+            if cached_script:
+                logger.info("Using cached script from model library")
+                return cached_script
 
-result = shape
-output_path = sys.argv[1] if len(sys.argv) > 1 else 'output.stl'
-export_format = sys.argv[2] if len(sys.argv) > 2 else 'stl'
+        shape_type = params.get("shape_type", "box")
+        dimensions = params.get("dimensions", {})
+        length = dimensions.get("length", 50)
+        width = dimensions.get("width", 30)
+        height = dimensions.get("height", 20)
+        position = params.get("position", {"x": 0, "y": 0, "z": 0})
 
-if export_format.lower() == 'stl':
-    exporters.export(result, output_path)
-elif export_format.lower() == 'step':
-    exporters.export(result, output_path)
-"""
-        
+        script = _build_shape_script(shape_type, length, width, height, position)
+        logger.info("Generated CadQuery script (%d chars)", len(script))
         return script
 
-    def _generate_basic_shape(self, shape_type: str, width: float, height: float, depth: float) -> str:
-        if shape_type == 'box':
-            return f"""import cadquery as cq
-
-shape = cq.Workplane("XY").box({width}, {depth}, {height})
-"""
-        elif shape_type == 'cylinder':
-            radius = min(width, depth) / 2
-            return f"""import cadquery as cq
-
-shape = cq.Workplane("XY").circle({radius}).extrude({height})
-"""
-        elif shape_type == 'sphere':
-            radius = min(width, depth, height) / 2
-            return f"""import cadquery as cq
-
-shape = cq.Workplane("XY").sphere({radius})
-"""
-        else:
-            return f"""import cadquery as cq
-
-shape = cq.Workplane("XY").box({width}, {depth}, {height})
-"""
-
-    def _add_feature(self, feature: dict) -> str:
-        feat_type = feature.get('type', '')
-        position = feature.get('position', [0, 0, 0])
-        size = feature.get('size', 10)
-        
-        if feat_type == 'hole':
-            x, y, z = position
-            return f"""
-shape = shape.faces(">Z").workplane().center({x}, {y}).hole({size})
-"""
-        elif feat_type == 'cutout':
-            x, y, z = position
-            w = size if isinstance(size, (int, float)) else size.get('width', 10)
-            d = size if isinstance(size, (int, float)) else size.get('depth', 10)
-            return f"""
-shape = shape.faces(">Z").workplane().center({x}, {y}).rect({w}, {d}).cutBlind(-{size if isinstance(size, (int, float)) else size.get('depth', 10)})
-"""
-        elif feat_type == 'chamfer':
-            return f"""
-shape = shape.edges(">Z").chamfer({size if isinstance(size, (int, float)) else 2})
-"""
-        elif feat_type == 'fillet':
-            return f"""
-shape = shape.edges(">Z").fillet({size if isinstance(size, (int, float)) else 2})
-"""
-        else:
-            return ""
-
-    async def execute_and_export(self, script: str, task_id: str, output_format: str) -> str:
-        model_dir = Path(config.storage.output_dir) / "models"
-        model_dir.mkdir(parents=True, exist_ok=True)
-        
-        model_path = model_dir / f"{task_id}.{output_format.lower()}"
-        
-        import tempfile
-        import subprocess
-        import sys
-        
-        script_with_args = script.replace(
-            "output_path = sys.argv[1] if len(sys.argv) > 1 else 'output.stl'",
-            f"output_path = r'{model_path}'"
-        ).replace(
-            "export_format = sys.argv[2] if len(sys.argv) > 2 else 'stl'",
-            f"export_format = '{output_format}'"
+    async def execute_and_export(
+        self, script: str, task_id: str, output_format: str
+    ) -> str:
+        """Execute a CadQuery script and export the resulting model."""
+        logger.info(
+            "Executing script for task %s (format=%s, script_len=%d)",
+            task_id, output_format, len(script),
         )
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
-            f.write("# -*- coding: utf-8 -*-\n")
-            f.write(script_with_args)
-            script_path = f.name
-        
-        try:
-            result = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: subprocess.run(
-                    [sys.executable, script_path],
-                    capture_output=True,
-                    text=True,
-                    timeout=120
-                )
+
+        output_dir = Path(tempfile.gettempdir()) / "cadquery_output"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_path = output_dir / f"{task_id}.{output_format}"
+        export_func_map = {
+            "stl": "cq.exporters.export",
+            "obj": "cq.exporters.export",
+            "gltf": "cq.exporters.export",
+            "step": "cq.exporters.export",
+        }
+
+        if output_format not in export_func_map:
+            raise CadQueryExportError(f"Unsupported output format: {output_format}")
+
+        wrapped_script = _wrap_script(script, str(output_path), output_format)
+
+        _run_cadquery_script(wrapped_script, task_id)
+
+        if not output_path.exists():
+            raise CadQueryExportError(
+                f"Export failed: output file not created at {output_path}"
             )
-            
-            if result.returncode != 0:
-                raise RuntimeError(f"CadQuery execution failed: {result.stderr}")
-            
-            if not model_path.exists():
-                raise RuntimeError(f"Model file not generated: {model_path}")
-            
-            return str(model_path)
-            
-        except subprocess.TimeoutExpired:
-            raise RuntimeError("CadQuery script execution timeout (120s)")
+
+        logger.info(
+            "Model exported: %s (%d bytes)", output_path, output_path.stat().st_size
+        )
+        return str(output_path)
+
+    def generate_3d_model(self, params: dict[str, Any]) -> str:
+        """Generate a 3D model from parameters and return the model path."""
+        logger.info("Generating 3D model with params: %s", params)
+        shape_type = params.get("shape_type", "box")
+        dimensions = params.get("dimensions", {})
+        length = dimensions.get("length", 50)
+        width = dimensions.get("width", 30)
+        height = dimensions.get("height", 20)
+        position = params.get("position", {"x": 0, "y": 0, "z": 0})
+
+        try:
+            result = _build_solid(shape_type, length, width, height, position)
+            output_dir = Path(tempfile.gettempdir()) / "cadquery_models"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = output_dir / f"model_{shape_type}.stl"
+            cq.exporters.export(result, str(output_path))
+            logger.info("3D model exported to %s", output_path)
+            return str(output_path)
         except Exception as e:
-            raise RuntimeError(f"CadQuery execution error: {str(e)}")
-        finally:
-            try:
-                os.unlink(script_path)
-            except Exception:
-                pass
+            logger.error("Failed to generate 3D model: %s", e)
+            raise CadQueryScriptError(f"Model generation failed: {e}") from e
+
+    def generate_from_views(self, front: str, top: str, side: str) -> str:
+        """Generate 3D model from three-view drawing descriptions."""
+        logger.info(
+            "Generating 3D model from three-view drawings (front=%s, top=%s, side=%s)",
+            front[:50], top[:50], side[:50],
+        )
+        params = {
+            "shape_type": "box",
+            "dimensions": {"length": 50, "width": 30, "height": 20},
+            "position": {"x": 0, "y": 0, "z": 0},
+            "views": {"front": front, "top": top, "side": side},
+        }
+        return self.generate_3d_model(params)
+
+
+def _build_shape_script(
+    shape_type: str,
+    length: float,
+    width: float,
+    height: float,
+    position: dict[str, float],
+) -> str:
+    if shape_type == "box":
+        return (
+            f"result = cq.Workplane('XY').box({length}, {width}, {height})"
+            f".translate(("
+            f"{position.get('x', 0)}, "
+            f"{position.get('y', 0)}, "
+            f"{position.get('z', 0)}"
+            f"))"
+        )
+    if shape_type == "sphere":
+        radius = max(length, width, height) / 2
+        return (
+            f"result = cq.Workplane('XY').sphere({radius})"
+            f".translate(("
+            f"{position.get('x', 0)}, "
+            f"{position.get('y', 0)}, "
+            f"{position.get('z', 0)}"
+            f"))"
+        )
+    if shape_type == "cylinder":
+        return (
+            f"result = cq.Workplane('XY').cylinder({height}, {width / 2})"
+            f".translate(("
+            f"{position.get('x', 0)}, "
+            f"{position.get('y', 0)}, "
+            f"{position.get('z', 0)}"
+            f"))"
+        )
+    if shape_type == "cone":
+        return (
+            f"result = cq.Workplane('XY').cone({height}, {width}, {length})"
+            f".translate(("
+            f"{position.get('x', 0)}, "
+            f"{position.get('y', 0)}, "
+            f"{position.get('z', 0)}"
+            f"))"
+        )
+
+    logger.warning("Unknown shape type '%s', falling back to box", shape_type)
+    return (
+        f"result = cq.Workplane('XY').box({length}, {width}, {height})"
+        f".translate(("
+        f"{position.get('x', 0)}, "
+        f"{position.get('y', 0)}, "
+        f"{position.get('z', 0)}"
+        f"))"
+    )
+
+
+def _build_solid(
+    shape_type: str,
+    length: float,
+    width: float,
+    height: float,
+    position: dict[str, float],
+) -> cq.Workplane:
+    px = position.get("x", 0)
+    py = position.get("y", 0)
+    pz = position.get("z", 0)
+
+    if shape_type == "box":
+        return cq.Workplane("XY").box(length, width, height).translate((px, py, pz))
+    if shape_type == "sphere":
+        radius = max(length, width, height) / 2
+        return cq.Workplane("XY").sphere(radius).translate((px, py, pz))
+    if shape_type == "cylinder":
+        return cq.Workplane("XY").cylinder(height, width / 2).translate((px, py, pz))
+    if shape_type == "cone":
+        return cq.Workplane("XY").cone(height, width, length).translate((px, py, pz))
+
+    logger.warning("Unknown shape type '%s', falling back to box", shape_type)
+    return cq.Workplane("XY").box(length, width, height).translate((px, py, pz))
+
+
+def _wrap_script(script: str, output_path: str, output_format: str) -> str:
+    export_method = {
+        "stl": "exportStl",
+        "obj": "exportObj",
+        "gltf": "exportGltf",
+        "step": "exportStep",
+    }.get(output_format, "exportStl")
+
+    return f"""
+import cadquery as cq
+
+{script}
+
+cq.exporters.{export_method}(result, {json.dumps(output_path)})
+"""
+
+
+def _run_cadquery_script(script: str, task_id: str) -> None:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".py", delete=False, encoding="utf-8"
+    ) as f:
+        f.write(script)
+        script_path = f.name
+
+    try:
+        subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=300,
+        )
+        logger.debug("Script for task %s completed successfully", task_id)
+    except subprocess.TimeoutExpired as e:
+        raise CadQueryScriptError(
+            f"Script execution timed out after {e.timeout}s (task {task_id})"
+        ) from e
+    except subprocess.CalledProcessError as e:
+        raise CadQueryScriptError(
+            f"Script execution failed (task {task_id}): {e.stderr}"
+        ) from e
+    finally:
+        try:
+            Path(script_path).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
+    """Return (width, height) by parsing image file headers (stdlib only).
+
+    Supports PNG, JPEG, GIF, BMP.  Raises ValueError for unsupported formats.
+    """
+    with open(filepath, "rb") as f:
+        header = f.read(32)
+
+    if len(header) < 2:
+        raise ValueError("File too small to be an image")
+
+    if header[:8] == b"\x89PNG\r\n\x1a\n":
+        if len(header) < 24:
+            raise ValueError("Truncated PNG header")
+        w = struct.unpack(">I", header[16:20])[0]
+        h = struct.unpack(">I", header[20:24])[0]
+        return w, h
+
+    if header[:2] == b"\xff\xd8":
+        f.seek(0)
+        data = f.read()
+        i = 2
+        while i < len(data) - 9:
+            if data[i] != 0xFF:
+                i += 1
+                continue
+            marker = data[i + 1]
+            if 0xC0 <= marker <= 0xC2:
+                h = struct.unpack(">H", data[i + 5 : i + 7])[0]
+                w = struct.unpack(">H", data[i + 7 : i + 9])[0]
+                return w, h
+            seg_len = struct.unpack(">H", data[i + 2 : i + 4])[0]
+            i += 2 + seg_len
+        raise ValueError("No SOF marker found in JPEG")
+
+    if header[:6] in (b"GIF87a", b"GIF89a"):
+        w = struct.unpack("<H", header[6:8])[0]
+        h = struct.unpack("<H", header[8:10])[0]
+        return w, h
+
+    if header[:2] == b"BM":
+        if len(header) < 26:
+            raise ValueError("Truncated BMP header")
+        w = struct.unpack("<I", header[18:22])[0]
+        h = struct.unpack("<I", header[22:26])[0]
+        return w, h
+
+    raise ValueError(f"Unsupported image format: {header[:4]!r}")

@@ -1,57 +1,113 @@
-use tauri::State;
+use crate::models::SidecarStatus;
 use crate::state::AppState;
-use crate::state::SidecarStatusResponse;
+use std::sync::Mutex;
+use tauri::State;
+use std::process::{Command, Stdio};
+use chrono::Utc;
+use tracing::{info, warn};
 
-#[tauri::command]
-pub fn start_sidecar(state: State<'_, AppState>, port: Option<u16>) -> Result<u32, String> {
-    if state.is_running() {
-        return Err("Sidecar is already running".to_string());
-    }
+static START_TIME: Mutex<Option<String>> = Mutex::new(None);
 
-    let port = port.unwrap_or(8080);
-    
-    state.set_port(port);
-    state.set_running(true);
-    state.set_started_at(Some(chrono::Utc::now().to_rfc3339()));
-    
-    state.set_pid(0);
-    
-    Ok(0)
+#[derive(Debug, serde::Serialize)]
+pub struct ProcessResult {
+    pub success: bool,
+    pub message: String,
+    pub pid: Option<u32>,
 }
 
 #[tauri::command]
-pub fn stop_sidecar(state: State<'_, AppState>) -> Result<(), String> {
-    if !state.is_running() {
-        return Err("Sidecar is not running".to_string());
+pub fn start_sidecar(state: State<AppState>) -> Result<ProcessResult, String> {
+    let mut process = state.sidecar_process.lock().map_err(|e| {
+        format!("Failed to lock process state: {}", e)
+    })?;
+
+    if process.is_some() {
+        return Ok(ProcessResult {
+            success: false,
+            message: "Sidecar is already running".to_string(),
+            pid: None,
+        });
     }
 
-    let pid = state.get_pid();
-    if pid > 0 {
-        #[cfg(unix)]
-        {
-            use std::process::Command;
-            Command::new("kill")
-                .arg(pid.to_string())
-                .output()
-                .map_err(|e| format!("Failed to kill process: {}", e))?;
-        }
-        
-        #[cfg(windows)]
-        {
-            use std::process::Command;
-            Command::new("taskkill")
-                .args(["/F", "/PID", &pid.to_string()])
-                .output()
-                .map_err(|e| format!("Failed to kill process: {}", e))?;
-        }
+    let port = std::env::var("SIDECAR_PORT").unwrap_or_else(|_| "8000".to_string());
+
+    let child = Command::new("python")
+        .arg("-m")
+        .arg("http.server")
+        .arg(&port)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Failed to start sidecar: {}", e))?;
+
+    let pid = child.id();
+    *process = Some(child);
+
+    let start_time = Utc::now().to_rfc3339();
+    if let Ok(mut st) = START_TIME.lock() {
+        *st = Some(start_time.clone());
     }
-    
-    state.mark_stopped();
-    
-    Ok(())
+
+    info!("Sidecar started with PID {} on port {}", pid, port);
+
+    Ok(ProcessResult {
+        success: true,
+        message: "Sidecar started successfully".to_string(),
+        pid: Some(pid),
+    })
 }
 
 #[tauri::command]
-pub fn check_sidecar_status(state: State<'_, AppState>) -> Result<SidecarStatusResponse, String> {
-    Ok(SidecarStatusResponse::from_state(&state))
+pub fn stop_sidecar(state: State<AppState>) -> Result<ProcessResult, String> {
+    let mut process = state.sidecar_process.lock().map_err(|e| {
+        format!("Failed to lock process state: {}", e)
+    })?;
+
+    if let Some(mut child) = process.take() {
+        if let Err(e) = child.kill() {
+            warn!("Failed to kill sidecar process: {}", e);
+        }
+
+        if let Err(e) = child.wait() {
+            warn!("Failed to wait for sidecar: {}", e);
+        }
+
+        if let Ok(mut st) = START_TIME.lock() {
+            *st = None;
+        }
+
+        Ok(ProcessResult {
+            success: true,
+            message: "Sidecar stopped successfully".to_string(),
+            pid: None,
+        })
+    } else {
+        Ok(ProcessResult {
+            success: false,
+            message: "Sidecar is not running".to_string(),
+            pid: None,
+        })
+    }
+}
+
+#[tauri::command]
+pub fn check_sidecar_status(state: State<AppState>) -> Result<SidecarStatus, String> {
+    let process = state.sidecar_process.lock().map_err(|e| {
+        format!("Failed to lock process state: {}", e)
+    })?;
+
+    if let Some(child) = process.as_ref() {
+        let start_time = START_TIME.lock().ok().and_then(|st| st.clone());
+        Ok(SidecarStatus {
+            running: true,
+            pid: Some(child.id()),
+            start_time,
+        })
+    } else {
+        Ok(SidecarStatus {
+            running: false,
+            pid: None,
+            start_time: None,
+        })
+    }
 }

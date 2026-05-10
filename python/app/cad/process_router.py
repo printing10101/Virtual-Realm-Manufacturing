@@ -1,14 +1,19 @@
-from fastapi import APIRouter, Request
+"""Process router for CAD-related process management."""
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from fastapi import APIRouter
 
 from app.core.response import success
-from app.cad.process_route import generate_process_route
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/process", tags=["Process"])
 
 
-@router.post("/route")
-async def process_route(request: Request):
-    body = await request.json()
-    item = body.get("item", "未知零件")
-    result = generate_process_route(item)
-    return success(data=result, message="工艺路线生成请求已接收")
+@router.get("/info")
+async def get_process_info() -> dict[str, Any]:
+    """Get process information."""
+    return success(data={"status": "active"})

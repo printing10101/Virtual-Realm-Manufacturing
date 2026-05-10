@@ -1,159 +1,247 @@
-from abc import ABC, abstractmethod
-from typing import Optional
+"""LLM client implementations for Ollama and cloud providers."""
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import Any
 
 import httpx
 
-from app.models.schemas import LLMRequest, LLMResponse
+logger = logging.getLogger(__name__)
 
 
-class BaseLLMClient(ABC):
-    @abstractmethod
-    async def chat(self, request: LLMRequest) -> LLMResponse:
-        pass
+class LLMError(Exception):
+    """Base exception for LLM client errors."""
 
-    @abstractmethod
-    async def is_available(self) -> bool:
-        pass
 
-    async def chat_completion(self, messages: list, max_tokens: int = 2048, temperature: float = 0.7, model: str = None) -> dict:
-        request = LLMRequest(
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            model=model
-        )
-        response = await self.chat(request)
-        return {
-            'content': response.content,
-            'model': response.model,
-            'finish_reason': response.finish_reason,
-            'usage': response.usage
-        }
+class RateLimitError(LLMError):
+    """Raised when the API rate limit is exceeded (HTTP 429)."""
+
+
+class ServiceUnavailableError(LLMError):
+    """Raised when the API service is temporarily unavailable (HTTP 5xx)."""
+
+
+class InvalidResponseError(LLMError):
+    """Raised when the API returns an empty or malformed response."""
+
+
+DEFAULT_MAX_RETRIES = 3
+DEFAULT_RETRY_DELAY = 1.0
+
+
+def _classify_error(status_code: int, body: str) -> LLMError:
+    if status_code == 429:
+        return RateLimitError(f"Rate limit exceeded: {status_code} - {body}")
+    if 500 <= status_code < 600:
+        return ServiceUnavailableError(f"Service temporarily unavailable: {status_code} - {body}")
+    return LLMError(f"API error: {status_code} - {body}")
+
+
+class BaseLLMClient:
+    """Base class for LLM clients with shared retry logic."""
+
+    def __init__(
+        self,
+        timeout: int = 60,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> None:
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+
+    async def _build_payload(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        model: str | None,
+    ) -> tuple[dict[str, Any], dict[str, str] | None, str]:
+        raise NotImplementedError
+
+    def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
+        raise NotImplementedError
+
+    def _default_model(self) -> str:
+        """Return the default model name for this client."""
+        raise NotImplementedError
+
+    @staticmethod
+    def _validate_inputs(
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+    ) -> None:
+        if not messages:
+            raise ValueError("messages must not be empty")
+        if max_tokens < 1:
+            raise ValueError(f"max_tokens must be >= 1, got {max_tokens}")
+        if not (0.0 <= temperature <= 2.0):
+            raise ValueError(f"temperature must be in [0.0, 2.0], got {temperature}")
+
+    @staticmethod
+    def _safe_parse(parser, response_data: dict[str, Any], model: str) -> dict[str, Any]:
+        try:
+            return parser(response_data, model)
+        except (LLMError, InvalidResponseError):
+            raise
+        except Exception as e:
+            raise InvalidResponseError(
+                f"Failed to parse response from {model}: {e}"
+            ) from e
+
+    async def chat_completion(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        model: str | None = None,
+    ) -> dict[str, Any]:
+        """Call LLM chat completion API with retry logic."""
+        self._validate_inputs(messages, max_tokens, temperature)
+
+        payload, headers, endpoint = self._build_payload(messages, max_tokens, temperature, model)
+        target_model = model or self._default_model()
+
+        last_error: Exception | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(
+                        endpoint,
+                        headers=headers,
+                        json=payload,
+                    )
+                if response.status_code != 200:
+                    raise _classify_error(response.status_code, response.text)
+                return self._safe_parse(self._parse_response, response.json(), target_model)
+            except httpx.TimeoutException as e:
+                last_error = e
+                logger.warning(
+                    "%s API timeout (attempt %d/%d): %s",
+                    type(self).__name__, attempt, self.max_retries, e,
+                )
+            except httpx.NetworkError as e:
+                last_error = e
+                logger.warning(
+                    "%s API network error (attempt %d/%d): %s",
+                    type(self).__name__, attempt, self.max_retries, e,
+                )
+            except (ServiceUnavailableError, RateLimitError) as e:
+                last_error = e
+                logger.warning(
+                    "%s API %s (attempt %d/%d): %s",
+                    type(self).__name__, type(e).__name__, attempt, self.max_retries, e,
+                )
+            except (LLMError, InvalidResponseError):
+                raise
+
+            if attempt < self.max_retries:
+                await asyncio.sleep(self.retry_delay * attempt)
+
+        raise ServiceUnavailableError(
+            f"{type(self).__name__} API call failed after {self.max_retries} retries"
+        ) from last_error
 
 
 class OllamaClient(BaseLLMClient):
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen2.5-coder:7b", timeout: int = 60):
-        self.base_url = base_url
+    """Client for Ollama API."""
+
+    def __init__(
+        self,
+        base_url: str,
+        model: str,
+        timeout: int = 60,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> None:
+        super().__init__(timeout=timeout, max_retries=max_retries, retry_delay=retry_delay)
+        self.base_url = base_url.rstrip("/")
         self.model = model
-        self.timeout = timeout
 
-    async def chat(self, request: LLMRequest) -> LLMResponse:
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.base_url}/api/chat",
-                json={
-                    "model": request.model or self.model,
-                    "messages": request.messages,
-                    "stream": request.stream,
-                    "options": {
-                        "temperature": request.temperature,
-                        "num_predict": request.max_tokens
-                    }
-                }
-            )
-            response.raise_for_status()
-            data = response.json()
-            return LLMResponse(
-                content=data.get("message", {}).get("content", ""),
-                model=self.model,
-                finish_reason="stop"
-            )
+    def _default_model(self) -> str:
+        return self.model
 
-    async def is_available(self) -> bool:
-        try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                response = await client.get(f"{self.base_url}/api/version")
-                return response.status_code == 200
-        except Exception:
-            return False
+    async def _build_payload(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        model: str | None,
+    ) -> tuple[dict[str, Any], dict[str, str] | None, str]:
+        target_model = model or self.model
+        payload = {
+            "model": target_model,
+            "messages": messages,
+            "stream": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+        }
+        endpoint = f"{self.base_url}/api/chat"
+        return payload, None, endpoint
 
-    async def list_models(self) -> list[str]:
-        try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                response = await client.get(f"{self.base_url}/api/tags")
-                response.raise_for_status()
-                data = response.json()
-                return [m.get("name") for m in data.get("models", [])]
-        except Exception:
-            return []
-
-    async def get_version(self) -> Optional[str]:
-        try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                response = await client.get(f"{self.base_url}/api/version")
-                response.raise_for_status()
-                return response.json().get("version")
-        except Exception:
-            return None
+    def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
+        return {
+            "content": data.get("message", {}).get("content", ""),
+            "model": model,
+            "finish_reason": "stop",
+            "usage": data.get("usage", {}),
+        }
 
 
 class CloudLLMClient(BaseLLMClient):
-    def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1", model: str = "gpt-3.5-turbo", timeout: int = 60):
+    """Client for cloud LLM providers (OpenAI-compatible API)."""
+
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str,
+        model: str,
+        timeout: int = 60,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> None:
+        super().__init__(timeout=timeout, max_retries=max_retries, retry_delay=retry_delay)
         self.api_key = api_key
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.model = model
-        self.timeout = timeout
 
-    async def chat(self, request: LLMRequest) -> LLMResponse:
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": request.model or self.model,
-                    "messages": request.messages,
-                    "temperature": request.temperature,
-                    "max_tokens": request.max_tokens,
-                    "stream": request.stream
-                }
-            )
-            response.raise_for_status()
-            data = response.json()
-            choice = data.get("choices", [{}])[0]
-            return LLMResponse(
-                content=choice.get("message", {}).get("content", ""),
-                model=self.model,
-                finish_reason=choice.get("finish_reason"),
-                usage=data.get("usage")
-            )
+    def _default_model(self) -> str:
+        return self.model
 
-    async def is_available(self) -> bool:
-        return bool(self.api_key)
+    async def _build_payload(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        model: str | None,
+    ) -> tuple[dict[str, Any], dict[str, str] | None, str]:
+        target_model = model or self.model
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": target_model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        endpoint = f"{self.base_url}/chat/completions"
+        return payload, headers, endpoint
 
-
-class RuleEngineClient(BaseLLMClient):
-    async def chat(self, request: LLMRequest) -> LLMResponse:
-        return LLMResponse(
-            content="规则引擎模式：此功能需要配置具体的规则逻辑。",
-            model="rule_engine",
-            finish_reason="stop"
-        )
-
-    async def is_available(self) -> bool:
-        return True
-
-
-def get_llm_client(mode: Optional[str] = None) -> BaseLLMClient:
-    from app.config import config
-
-    if mode is None:
-        mode = config.ai.mode
-
-    if mode == "local":
-        return OllamaClient(
-            base_url=config.ai.ollama_base_url,
-            model=config.ai.ollama_model,
-            timeout=config.ai.timeout
-        )
-    elif mode == "cloud":
-        return CloudLLMClient(
-            api_key=config.ai.cloud_api_key,
-            base_url=config.ai.cloud_base_url,
-            model=config.ai.cloud_model,
-            timeout=config.ai.timeout
-        )
-    else:
-        return RuleEngineClient()
+    def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
+        choices = data.get("choices", [])
+        if not choices:
+            raise InvalidResponseError("No choices returned from API")
+        choice = choices[0]
+        message = choice.get("message", {})
+        return {
+            "content": message.get("content", ""),
+            "model": model,
+            "finish_reason": choice.get("finish_reason", "stop"),
+            "usage": data.get("usage", {}),
+        }
