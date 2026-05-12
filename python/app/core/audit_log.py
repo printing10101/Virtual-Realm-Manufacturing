@@ -1,0 +1,279 @@
+import os
+import json
+import time
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+
+logger = logging.getLogger(__name__)
+
+
+class UserDecision(Enum):
+    ACCEPT = "accept"
+    MODIFY = "modify"
+    REJECT = "reject"
+    AUTO_EXECUTED = "auto_executed"
+
+
+class OperationStatus(Enum):
+    SUCCESS = "success"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    PENDING = "pending"
+
+
+class AIModule(Enum):
+    LNN_PREDICT = "lnn_predict"
+    LNN_TRAIN = "lnn_train"
+    PROCESS_OPTIMIZE = "process_optimize"
+    TOOL_WEAR_ANALYZE = "tool_wear_analyze"
+    CAD_GENERATE = "cad_generate"
+
+
+@dataclass
+class AuditLogEntry:
+    timestamp_ms: int
+    ai_module: str
+    ai_recommendation: dict
+    user_decision: str
+    final_execution: dict
+    operation_status: str
+    confidence: Optional[float] = None
+    reasoning: Optional[str] = None
+    user_modifications: Optional[dict] = None
+    metadata: Optional[dict] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AuditLogEntry":
+        return cls(
+            timestamp_ms=data.get("timestamp_ms"),
+            ai_module=data.get("ai_module"),
+            ai_recommendation=data.get("ai_recommendation", {}),
+            user_decision=data.get("user_decision"),
+            final_execution=data.get("final_execution", {}),
+            operation_status=data.get("operation_status"),
+            confidence=data.get("confidence"),
+            reasoning=data.get("reasoning"),
+            user_modifications=data.get("user_modifications"),
+            metadata=data.get("metadata"),
+        )
+
+
+class AuditLog:
+    def __init__(self, log_dir: Optional[str] = None, max_entries: int = 10000):
+        self.log_dir = log_dir or os.path.join(os.getcwd(), "logs", "audit")
+        self.max_entries = max_entries
+        self.log_file = os.path.join(self.log_dir, "audit_log.jsonl")
+
+        Path(self.log_dir).mkdir(parents=True, exist_ok=True)
+
+        if not os.path.exists(self.log_file):
+            with open(self.log_file, "w", encoding="utf-8") as f:
+                pass
+
+    def log_decision(
+        self,
+        ai_module: AIModule,
+        ai_recommendation: dict,
+        user_decision: UserDecision,
+        final_execution: dict,
+        operation_status: OperationStatus,
+        confidence: Optional[float] = None,
+        reasoning: Optional[str] = None,
+        user_modifications: Optional[dict] = None,
+        metadata: Optional[dict] = None,
+    ) -> AuditLogEntry:
+        entry = AuditLogEntry(
+            timestamp_ms=int(time.time() * 1000),
+            ai_module=ai_module.value,
+            ai_recommendation=ai_recommendation,
+            user_decision=user_decision.value,
+            final_execution=final_execution,
+            operation_status=operation_status.value,
+            confidence=confidence,
+            reasoning=reasoning,
+            user_modifications=user_modifications,
+            metadata=metadata,
+        )
+
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry.to_dict(), ensure_ascii=False) + "\n")
+
+            self._rotate_if_needed()
+
+            logger.info(
+                f"Audit log entry created: module={ai_module.value}, "
+                f"decision={user_decision.value}, status={operation_status.value}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to write audit log: {e}")
+
+        return entry
+
+    def get_logs(
+        self,
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
+        ai_module: Optional[str] = None,
+        user_decision: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[AuditLogEntry]:
+        logs = []
+
+        try:
+            with open(self.log_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    try:
+                        data = json.loads(line)
+                        entry = AuditLogEntry.from_dict(data)
+
+                        if start_time and entry.timestamp_ms < start_time:
+                            continue
+                        if end_time and entry.timestamp_ms > end_time:
+                            continue
+                        if ai_module and entry.ai_module != ai_module:
+                            continue
+                        if user_decision and entry.user_decision != user_decision:
+                            continue
+
+                        logs.append(entry)
+                    except json.JSONDecodeError:
+                        continue
+
+        except FileNotFoundError:
+            return []
+
+        logs.sort(key=lambda x: x.timestamp_ms, reverse=True)
+        return logs[offset : offset + limit]
+
+    def search_logs(self, keyword: str, limit: int = 50) -> list[AuditLogEntry]:
+        logs = self.get_logs(limit=10000)
+
+        results = []
+        for entry in logs:
+            entry_str = json.dumps(entry.to_dict(), ensure_ascii=False).lower()
+            if keyword.lower() in entry_str:
+                results.append(entry)
+                if len(results) >= limit:
+                    break
+
+        return results
+
+    def export_logs(
+        self,
+        format: str = "json",
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
+        ai_module: Optional[str] = None,
+    ) -> str:
+        logs = self.get_logs(start_time=start_time, end_time=end_time, ai_module=ai_module, limit=100000)
+
+        if format == "json":
+            return json.dumps([entry.to_dict() for entry in logs], ensure_ascii=False, indent=2)
+        elif format == "csv":
+            if not logs:
+                return ""
+
+            headers = [
+                "timestamp_ms",
+                "ai_module",
+                "user_decision",
+                "operation_status",
+                "confidence",
+                "reasoning",
+            ]
+            lines = [",".join(headers)]
+
+            for entry in logs:
+                row = [
+                    str(entry.timestamp_ms),
+                    entry.ai_module,
+                    entry.user_decision,
+                    entry.operation_status,
+                    str(entry.confidence if entry.confidence is not None else ""),
+                    f'"{(entry.reasoning or "").replace(chr(34), chr(34)+chr(34))}"',
+                ]
+                lines.append(",".join(row))
+
+            return "\n".join(lines)
+        else:
+            raise ValueError(f"Unsupported export format: {format}")
+
+    def get_statistics(self) -> dict:
+        logs = self.get_logs(limit=100000)
+
+        stats = {
+            "total_entries": len(logs),
+            "by_module": {},
+            "by_decision": {},
+            "by_status": {},
+            "avg_confidence": 0.0,
+            "recent_24h": 0,
+        }
+
+        if not logs:
+            return stats
+
+        confidence_values = []
+        now_ms = int(time.time() * 1000)
+        twenty_four_hours_ms = 24 * 60 * 60 * 1000
+
+        for entry in logs:
+            stats["by_module"][entry.ai_module] = stats["by_module"].get(entry.ai_module, 0) + 1
+            stats["by_decision"][entry.user_decision] = stats["by_decision"].get(entry.user_decision, 0) + 1
+            stats["by_status"][entry.operation_status] = stats["by_status"].get(entry.operation_status, 0) + 1
+
+            if entry.confidence is not None:
+                confidence_values.append(entry.confidence)
+
+            if now_ms - entry.timestamp_ms <= twenty_four_hours_ms:
+                stats["recent_24h"] += 1
+
+        if confidence_values:
+            stats["avg_confidence"] = sum(confidence_values) / len(confidence_values)
+
+        return stats
+
+    def _rotate_if_needed(self):
+        try:
+            with open(self.log_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+
+            if len(lines) > self.max_entries:
+                lines = lines[-self.max_entries :]
+
+                with open(self.log_file, "w", encoding="utf-8") as f:
+                    f.writelines(lines)
+
+                logger.info(f"Audit log rotated: kept last {self.max_entries} entries")
+
+        except Exception as e:
+            logger.error(f"Failed to rotate audit log: {e}")
+
+    def clear_logs(self) -> int:
+        try:
+            with open(self.log_file, "r", encoding="utf-8") as f:
+                count = sum(1 for line in f if line.strip())
+
+            with open(self.log_file, "w", encoding="utf-8") as f:
+                pass
+
+            logger.info(f"Audit log cleared: {count} entries removed")
+            return count
+
+        except Exception as e:
+            logger.error(f"Failed to clear audit log: {e}")
+            return 0
