@@ -13,7 +13,11 @@ static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
         .pool_max_idle_per_host(10)
         .tcp_keepalive(Duration::from_secs(60))
         .build()
-        .expect("Failed to create HTTP client")
+        .expect("HTTP 客户端初始化失败：无法创建 HTTP 客户端实例。可能原因：1) 系统网络配置异常；2) TLS 证书验证失败。请检查系统网络连接和 TLS 证书配置。")
+});
+
+static AUTH_TOKEN: std::sync::LazyLock<Option<String>> = std::sync::LazyLock::new(|| {
+    std::env::var("LNN_AUTH_TOKEN").ok()
 });
 
 const MAX_CONCURRENT_BATCH_REQUESTS: usize = 10;
@@ -61,17 +65,31 @@ pub struct BatchResponse {
     pub total_duration_ms: u128,
 }
 
+fn is_localhost_url(url: &str) -> bool {
+    url.contains("localhost") || url.contains("127.0.0.1")
+}
+
 #[tauri::command]
 pub async fn proxy_http_request(request: ProxyRequest) -> Result<ProxyResponse, ProxyError> {
     info!("Proxying {} request to {}", request.method, request.url);
     let start = std::time::Instant::now();
 
-    let method = parse_method(&request.method)?;
+    let method = parse_method(&request.method).map_err(|e| {
+        let mut enhanced = e.clone();
+        enhanced.message = format!("HTTP 代理请求失败：不支持的 HTTP 方法 '{}'。支持的方法包括：GET、POST、PUT、DELETE、PATCH、HEAD、OPTIONS。请检查请求中的 method 字段配置。原始错误: {}", request.method, e.message);
+        enhanced
+    })?;
     let mut req_builder = HTTP_CLIENT.request(method, &request.url);
 
     for (key, value) in &request.headers {
         if let Ok(header_name) = HeaderName::try_from(key) {
             req_builder = req_builder.header(header_name, value);
+        }
+    }
+
+    if is_localhost_url(&request.url) {
+        if let Some(ref token) = *AUTH_TOKEN {
+            req_builder = req_builder.header("Authorization", format!("Bearer {}", token));
         }
     }
 
@@ -86,14 +104,14 @@ pub async fn proxy_http_request(request: ProxyRequest) -> Result<ProxyResponse, 
         .build()
         .map_err(|e| ProxyError {
             code: "CLIENT_BUILD_ERROR".to_string(),
-            message: e.to_string(),
+            message: format!("HTTP 代理请求失败：无法创建 HTTP 客户端实例。错误详情: {}。可能原因：1) 请求超时配置无效；2) 系统资源不足。请检查请求的 timeout_ms 参数配置。", e),
             status: None,
         })?;
 
     let response = client
         .execute(req_builder.build().map_err(|e| ProxyError {
             code: "REQUEST_BUILD_ERROR".to_string(),
-            message: e.to_string(),
+            message: format!("HTTP 代理请求失败：无法构建 HTTP 请求。错误详情: {}。可能原因：1) URL 格式不正确；2) 请求头配置有误。请检查请求的 url 和 headers 字段。", e),
             status: None,
         })?)
         .await
@@ -102,19 +120,19 @@ pub async fn proxy_http_request(request: ProxyRequest) -> Result<ProxyResponse, 
             if e.is_timeout() {
                 ProxyError {
                     code: "TIMEOUT".to_string(),
-                    message: "Request timeout".to_string(),
+                    message: format!("HTTP 代理请求超时：请求 '{}' 在 {}ms 内未收到响应。可能原因：1) 目标服务器响应缓慢；2) 网络连接不稳定。请尝试增加 timeout_ms 参数值，或检查目标服务器状态。", request.url, request.timeout_ms),
                     status: None,
                 }
             } else if e.is_connect() {
                 ProxyError {
                     code: "CONNECTION_ERROR".to_string(),
-                    message: format!("Connection failed: {}", e),
+                    message: format!("HTTP 代理连接失败：无法连接到目标服务器 '{}'。错误详情: {}。可能原因：1) 目标服务器不可达；2) DNS 解析失败；3) 防火墙阻止连接。请检查 URL 是否正确，目标服务器是否运行正常。", request.url, e),
                     status: None,
                 }
             } else {
                 ProxyError {
                     code: "REQUEST_ERROR".to_string(),
-                    message: e.to_string(),
+                    message: format!("HTTP 代理请求失败：向 '{}' 发送请求时出现异常。错误详情: {}。请检查网络连接和目标服务器状态。", request.url, e),
                     status: None,
                 }
             }
@@ -132,7 +150,7 @@ pub async fn proxy_http_request(request: ProxyRequest) -> Result<ProxyResponse, 
         error!("Failed to parse response body: {}", e);
         ProxyError {
             code: "PARSE_ERROR".to_string(),
-            message: format!("Failed to parse response: {}", e),
+            message: format!("HTTP 代理响应解析失败：无法将目标服务器响应解析为 JSON 格式。目标 URL: '{}'，HTTP 状态码: {}。错误详情: {}。可能原因：1) 目标服务器返回了非 JSON 格式的响应；2) 响应数据已损坏。请检查目标服务器的响应格式。", request.url, status, e),
             status: Some(status),
         }
     })?;
@@ -158,7 +176,7 @@ pub async fn proxy_batch_request(batch: BatchRequest) -> Result<BatchResponse, P
         return Err(ProxyError {
             code: "TOO_MANY_REQUESTS".to_string(),
             message: format!(
-                "Too many concurrent batch requests (max {})",
+                "HTTP 代理请求限流：并发请求数超过上限（最大 {} 个并发）。可能原因：1) 短时间内发送了大量请求；2) 其他客户端占用了并发配额。请稍后重试，或减少并发请求数量。",
                 MAX_CONCURRENT_BATCH_REQUESTS
             ),
             status: Some(429),
@@ -190,12 +208,22 @@ impl Drop for DecrementOnDrop {
 async fn proxy_single_request(request: ProxyRequest) -> Result<ProxyResponse, ProxyError> {
     let start = std::time::Instant::now();
 
-    let method = parse_method(&request.method)?;
+    let method = parse_method(&request.method).map_err(|e| {
+        let mut enhanced = e.clone();
+        enhanced.message = format!("HTTP 代理请求失败：不支持的 HTTP 方法 '{}'。支持的方法包括：GET、POST、PUT、DELETE、PATCH、HEAD、OPTIONS。请检查请求中的 method 字段配置。原始错误: {}", request.method, e.message);
+        enhanced
+    })?;
     let mut req_builder = HTTP_CLIENT.request(method, &request.url);
 
     for (key, value) in &request.headers {
         if let Ok(header_name) = HeaderName::try_from(key) {
             req_builder = req_builder.header(header_name, value);
+        }
+    }
+
+    if is_localhost_url(&request.url) {
+        if let Some(ref token) = *AUTH_TOKEN {
+            req_builder = req_builder.header("Authorization", format!("Bearer {}", token));
         }
     }
 
@@ -210,14 +238,14 @@ async fn proxy_single_request(request: ProxyRequest) -> Result<ProxyResponse, Pr
         .build()
         .map_err(|e| ProxyError {
             code: "CLIENT_BUILD_ERROR".to_string(),
-            message: e.to_string(),
+            message: format!("HTTP 代理请求失败：无法创建 HTTP 客户端实例。错误详情: {}。可能原因：1) 请求超时配置无效；2) 系统资源不足。请检查请求的 timeout_ms 参数配置。", e),
             status: None,
         })?;
 
     let response = client
         .execute(req_builder.build().map_err(|e| ProxyError {
             code: "REQUEST_BUILD_ERROR".to_string(),
-            message: e.to_string(),
+            message: format!("HTTP 代理请求失败：无法构建 HTTP 请求。错误详情: {}。可能原因：1) URL 格式不正确；2) 请求头配置有误。请检查请求的 url 和 headers 字段。", e),
             status: None,
         })?)
         .await
@@ -226,19 +254,19 @@ async fn proxy_single_request(request: ProxyRequest) -> Result<ProxyResponse, Pr
             if e.is_timeout() {
                 ProxyError {
                     code: "TIMEOUT".to_string(),
-                    message: format!("Request timeout for {}", request.url),
+                    message: format!("HTTP 代理请求超时：请求 '{}' 在 {}ms 内未收到响应。可能原因：1) 目标服务器响应缓慢；2) 网络连接不稳定。请尝试增加 timeout_ms 参数值，或检查目标服务器状态。", request.url, request.timeout_ms),
                     status: None,
                 }
             } else if e.is_connect() {
                 ProxyError {
                     code: "CONNECTION_ERROR".to_string(),
-                    message: format!("Connection failed: {}", e),
+                    message: format!("HTTP 代理连接失败：无法连接到目标服务器 '{}'。错误详情: {}。可能原因：1) 目标服务器不可达；2) DNS 解析失败；3) 防火墙阻止连接。请检查 URL 是否正确，目标服务器是否运行正常。", request.url, e),
                     status: None,
                 }
             } else {
                 ProxyError {
                     code: "REQUEST_ERROR".to_string(),
-                    message: format!("Request failed: {}", e),
+                    message: format!("HTTP 代理请求失败：向 '{}' 发送请求时出现异常。错误详情: {}。请检查网络连接和目标服务器状态。", request.url, e),
                     status: None,
                 }
             }
@@ -256,7 +284,7 @@ async fn proxy_single_request(request: ProxyRequest) -> Result<ProxyResponse, Pr
         error!("Failed to parse response body for {}: {}", request.url, e);
         ProxyError {
             code: "PARSE_ERROR".to_string(),
-            message: format!("Failed to parse response: {}", e),
+            message: format!("HTTP 代理响应解析失败：无法将目标服务器响应解析为 JSON 格式。目标 URL: '{}'，HTTP 状态码: {}。错误详情: {}。可能原因：1) 目标服务器返回了非 JSON 格式的响应；2) 响应数据已损坏。请检查目标服务器的响应格式。", request.url, status, e),
             status: Some(status),
         }
     })?;
@@ -282,7 +310,7 @@ fn parse_method(method: &str) -> Result<Method, ProxyError> {
         "OPTIONS" => Ok(Method::OPTIONS),
         _ => Err(ProxyError {
             code: "INVALID_METHOD".to_string(),
-            message: format!("Unsupported HTTP method: {}", method),
+            message: format!("HTTP 代理请求失败：不支持的 HTTP 方法 '{}'。支持的方法包括：GET、POST、PUT、DELETE、PATCH、HEAD、OPTIONS。请检查请求中的 method 字段配置。", method),
             status: None,
         }),
     }
@@ -299,7 +327,7 @@ pub async fn proxy_health_check(url: String) -> Result<serde_json::Value, ProxyE
         .await
         .map_err(|e| ProxyError {
             code: "HEALTH_CHECK_FAILED".to_string(),
-            message: e.to_string(),
+            message: format!("HTTP 代理健康检查失败：无法连接到目标服务 '{}'。错误详情: {}。可能原因：1) 目标服务未启动或不可达；2) URL 配置错误；3) 网络连接异常。请确认目标服务正在运行，并检查 URL 配置。", url, e),
             status: None,
         })?;
 

@@ -1,6 +1,6 @@
 {
   "productName": "灵境制造",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "identifier": "com.lingjing.manufacturing",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -20,19 +20,13 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*; media-src 'self' blob:;"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     }
   },
   "bundle": {
     "active": true,
     "targets": ["nsis"],
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
+    "icon": [],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",

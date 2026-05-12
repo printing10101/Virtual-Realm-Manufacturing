@@ -9,10 +9,15 @@ mod models;
 mod state;
 mod storage;
 mod utils;
+mod auth;
+mod path_security;
+mod version;
+mod sidecar_manager;
 
 use state::AppState;
 use tauri::Manager;
 use tracing::{info, warn};
+use version::VersionInfo;
 
 fn main() {
   let app_state = AppState::new();
@@ -34,14 +39,33 @@ fn main() {
         warn!("Failed to create app data directory: {}", e);
       }
 
-      let db_path = app_data_dir.join("app.db");
-      match database::Database::new(&db_path) {
-        database => {
-          database::migrate_from_json(&database);
-          app.manage(database);
-          info!("Database initialized at {}", db_path.display());
+      let token_file = app_data_dir.join(".lnn_token");
+      let token_manager = auth::TokenManager::new(token_file.clone());
+      let token = match token_manager.initialize() {
+        Ok(t) => {
+          info!("Token initialized successfully");
+          t
         }
-      }
+        Err(e) => {
+          warn!("Token initialization failed: {}. Using fallback.", e);
+          String::new()
+        }
+      };
+      app.manage(token_manager);
+
+      let path_security = path_security::PathSecurity::new(app_data_dir.clone());
+      app.manage(path_security);
+
+      let version_info = VersionInfo::rust_version();
+      app.manage(version_info.clone());
+      info!("Application version: {} (commit: {})", version_info.version, version_info.commit);
+
+      let db_path = app_data_dir.join("app.db");
+      let db = database::Database::new(&db_path);
+      database::migrate_from_json(&db);
+      app.manage(db);
+      info!("Database initialized at {}", db_path.display());
+      info!("Security token file: {}", token_file.display());
 
       Ok(())
     })
@@ -55,7 +79,11 @@ fn main() {
       commands::start_sidecar,
       commands::stop_sidecar,
       commands::check_sidecar_status,
+      commands::restart_sidecar,
+      commands::auto_reconnect_sidecar,
+      commands::force_restart_sidecar,
       commands::get_app_info,
+      commands::get_version_info,
       commands::open_external_url,
       commands::get_settings,
       commands::save_settings_cmd,
@@ -67,5 +95,5 @@ fn main() {
       commands::proxy_health_check,
     ])
     .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .expect("Tauri 应用启动失败：无法初始化桌面应用运行时。可能原因：1) Tauri 配置文件（tauri.conf.json）格式错误；2) 前端资源文件缺失；3) 系统依赖不满足。请检查 src-tauri/tauri.conf.json 配置，或查看日志获取详细错误信息。");
 }

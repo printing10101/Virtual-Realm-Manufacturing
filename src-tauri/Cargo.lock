@@ -1963,13 +1963,14 @@ dependencies = [
 
 [[package]]
 name = "lingjing-v4"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "chrono",
  "dirs 5.0.1",
  "futures",
  "gethostname",
+ "libc",
  "once_cell",
  "open",
  "reqwest 0.11.27",

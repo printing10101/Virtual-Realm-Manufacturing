@@ -52,5 +52,8 @@ pub struct AppInfo {
 pub struct SidecarStatus {
     pub running: bool,
     pub pid: Option<u32>,
+    pub port: Option<u16>,
+    pub token: Option<String>,
     pub start_time: Option<String>,
+    pub recovered: bool,
 }
