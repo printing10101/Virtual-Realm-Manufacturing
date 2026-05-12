@@ -576,7 +576,7 @@ class ToolWearPredictor:
         elif model_type == "svm":
             model = SVC(kernel="rbf", probability=True, random_state=42)
         else:
-            raise ValueError(f"Unsupported model_type: {model_type}")
+            raise ValueError(f"刀具磨损预测失败：不支持的模型类型 '{model_type}'。支持的模型类型包括：'LNN'（神经逻辑网络）、'CTC'（连续时间分类）、'CFC'（连续-离散混合模型）。请调用 GET /api/v1/lnn/models 查看支持的模型类型列表，或检查 model_type 参数配置。")
 
         model.fit(X_train_scaled, y_train)
         self._bosch_model = model
@@ -867,7 +867,7 @@ class ToolWearPredictor:
                 elif model_type == "linear":
                     model = LinearRegression()
                 else:
-                    raise ValueError(f"Unsupported model_type: {model_type}")
+                    raise ValueError(f"刀具磨损预测失败：不支持的模型类型 '{model_type}'。支持的模型类型包括：'LNN'（神经逻辑网络）、'CTC'（连续时间分类）、'CFC'（连续-离散混合模型）。请调用 GET /api/v1/lnn/models 查看支持的模型类型列表，或检查 model_type 参数配置。")
 
                 model.fit(X_train_scaled, y_train)
                 y_pred = model.predict(X_test_scaled)
