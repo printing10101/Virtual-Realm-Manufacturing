@@ -1,6 +1,18 @@
+"""
+Enhanced Log Sanitizer
+
+Filters sensitive information from logs and error responses:
+- API tokens and authentication credentials
+- File paths with username/personal info
+- System configuration and secret keys
+- Internal file paths and stack traces
+- Database structure and sensitive config
+"""
 import re
 from dataclasses import dataclass
 from typing import Any, Callable
+import os
+import getpass
 
 
 @dataclass
@@ -57,6 +69,18 @@ class LogSanitizer:
         r'(xox[bapsr]-[a-zA-Z0-9]{8})[a-zA-Z0-9]+',
         r'(Bearer\s+)[a-zA-Z0-9_.-]+',
         r'(Authorization:\s*)[a-zA-Z0-9_.-]+',
+        r'(token["\s:=]+)([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})',
+    ]
+
+    PATH_PATTERNS = [
+        r'C:\\Users\\([^\\]+)',
+        r'/Users/([^/]+)',
+        r'/home/([^/]+)',
+    ]
+
+    CONFIG_KEYS = [
+        "database_url", "db_password", "redis_url", "aws_secret",
+        "private_key", "encryption_key", "jwt_secret",
     ]
 
     USER_INPUT_MAX_LENGTH = 50
@@ -69,6 +93,15 @@ class LogSanitizer:
         self._api_key_compiled_patterns = []
         for pattern in self.API_KEY_PATTERNS:
             self._api_key_compiled_patterns.append(re.compile(pattern))
+
+        self._path_compiled_patterns = []
+        for pattern in self.PATH_PATTERNS:
+            self._path_compiled_patterns.append(re.compile(pattern))
+        
+        try:
+            self._current_user = getpass.getuser()
+        except Exception:
+            self._current_user = None
 
     def sanitize(self, data: Any) -> Any:
         if data is None:
@@ -84,6 +117,12 @@ class LogSanitizer:
         else:
             return str(data)
 
+    def sanitize_error_response(self, error: Exception) -> dict:
+        return {
+            "error": type(error).__name__,
+            "message": "Internal server error",
+        }
+
     def _sanitize_dict(self, data: dict) -> dict:
         sanitized = {}
         for key, value in data.items():
@@ -91,7 +130,7 @@ class LogSanitizer:
                 sanitized[key] = self._sanitize_process_param_value(key, value)
             elif self._is_file_content_key(key):
                 sanitized[key] = self._sanitize_file_content(key, value)
-            elif self._is_api_key_key(key):
+            elif self._is_api_key_key(key) or self._is_config_key(key):
                 sanitized[key] = self._sanitize_api_key(value)
             elif self._is_user_input_key(key):
                 sanitized[key] = self._sanitize_user_input(value)
@@ -102,6 +141,9 @@ class LogSanitizer:
     def _sanitize_string(self, text: str) -> str:
         text = self._sanitize_process_param_patterns(text)
         text = self._sanitize_api_key_patterns(text)
+        text = self._sanitize_file_paths(text)
+        if self._current_user:
+            text = text.replace(self._current_user, "[user]")
         return text
 
     def _is_process_param_key(self, key: str) -> bool:
@@ -115,6 +157,10 @@ class LogSanitizer:
     def _is_api_key_key(self, key: str) -> bool:
         key_lower = key.lower()
         return key_lower in [k.lower() for k in self.API_KEY_KEYS]
+
+    def _is_config_key(self, key: str) -> bool:
+        key_lower = key.lower()
+        return key_lower in [k.lower() for k in self.CONFIG_KEYS]
 
     def _is_user_input_key(self, key: str) -> bool:
         key_lower = key.lower()
@@ -194,3 +240,12 @@ class LogSanitizer:
                 text = text[:match.start()] + prefix + masked_value + text[match.end():]
                 match = pattern.search(text)
         return text
+
+    def _sanitize_file_paths(self, text: str) -> str:
+        for pattern in self._path_compiled_patterns:
+            text = pattern.sub(lambda m: m.group(0).split(m.group(1))[0] + "[user]", text)
+        text = re.sub(r'\\([^\\]+)\\AppData', '[user]\\\\AppData', text)
+        return text
+
+
+sanitizer = LogSanitizer()
