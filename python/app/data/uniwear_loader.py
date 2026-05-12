@@ -77,7 +77,7 @@ class UniwearDataLoader:
 
         file_path = self._resolve_path(dataset)
         if not file_path.exists():
-            raise FileNotFoundError(f"Dataset file not found: {file_path}")
+            raise FileNotFoundError(f"UniWear 数据集加载失败：找不到数据集文件 '{file_path}'。可能原因：1) 文件路径配置错误；2) 数据集文件未下载或已删除。请检查配置文件中的数据集路径，或运行数据下载脚本获取数据集文件。")
 
         df = pd.read_csv(file_path, index_col=0)
         self._cache[cache_key] = df
@@ -125,7 +125,7 @@ class UniwearDataLoader:
         elif "wear_blade_1" in df.columns:
             wear_cols = ["wear_blade_1", "wear_blade_2", "wear_blade_3", "wear_blade_4", "timestamp"]
         else:
-            raise ValueError(f"No wear columns found in {dataset.value} dataset")
+            raise ValueError(f"UniWear 数据集解析失败：在 '{dataset.value}' 数据集中未找到刀具磨损（wear）相关列。可能原因：数据集格式不符合预期或列名已变更。请检查数据集文件结构，或参考文档确认预期的列名格式。")
 
         available = [c for c in wear_cols if c in df.columns]
         result = df[available].copy()
