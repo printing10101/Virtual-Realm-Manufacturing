@@ -232,10 +232,10 @@ class YAMLConfigManager:
         """
         path = config_path or self.config_path
         if not path:
-            raise ValueError("No config path specified")
+            raise ValueError("配置加载失败：未指定配置文件路径。请通过 config_manager.set_path('/path/to/config.json') 设置配置文件路径，或在初始化时传入 config_path 参数。")
 
         if not os.path.exists(path):
-            raise FileNotFoundError(f"Config file not found: {path}")
+            raise FileNotFoundError(f"配置加载失败：找不到配置文件 '{path}'。可能原因：1) 文件路径错误；2) 配置文件尚未创建。请检查路径是否正确，或调用 config_manager.create_default_config() 创建默认配置文件。")
 
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -257,7 +257,7 @@ class YAMLConfigManager:
         except Exception as e:
             if isinstance(e, (ValueError, FileNotFoundError)):
                 raise
-            raise RuntimeError(f"Failed to load config: {e}")
+            raise RuntimeError(f"配置加载失败：解析配置文件时出现异常。错误详情: {e}。可能原因：1) 配置文件格式不正确（非 JSON/YAML 格式）；2) 配置文件内容有误；3) 文件编码不匹配。请检查配置文件语法、内容格式和文件编码。")
 
     def validate(self, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -371,7 +371,7 @@ class YAMLConfigManager:
         """
         target_path = output_path or self.config_path
         if not target_path:
-            raise ValueError("No output path specified")
+            raise ValueError("配置保存失败：未指定输出文件路径。请通过 config_manager.set_path('/path/to/config.json') 设置保存路径，或在调用 save() 时传入 output_path 参数。")
 
         try:
             output_dir = os.path.dirname(target_path)
@@ -392,7 +392,7 @@ class YAMLConfigManager:
             logger.info(f"Configuration saved to {target_path}")
 
         except IOError as e:
-            raise IOError(f"Failed to save config: {e}")
+            raise IOError(f"配置保存失败：无法将配置写入文件。错误详情: {e}。可能原因：1) 磁盘空间不足；2) 目标目录无写入权限；3) 文件被其他进程占用。请检查磁盘状态和目录权限。")
 
     def to_dict(self) -> Dict[str, Any]:
         """将配置转换为字典格式"""
@@ -525,7 +525,7 @@ class YAMLConfigManager:
         """验证当前配置，失败时抛出异常"""
         result = self.validate()
         if not result["valid"]:
-            error_msg = "Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in result["errors"])
+            error_msg = "配置验证失败：以下配置项不符合要求:\n" + "\n".join(f"  - {e}" for e in result["errors"]) + "\n\n请检查配置文件中的相关字段，或参考文档了解各配置项的合法取值范围。"
             raise ValueError(error_msg)
 
     def _validate_lnn_section(self, lnn_config: Dict[str, Any]) -> List[str]:

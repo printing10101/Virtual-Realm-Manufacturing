@@ -238,7 +238,7 @@ class DataPreprocessor:
             原始尺度数据
         """
         if not self.is_fitted:
-            raise RuntimeError("Preprocessor must be fitted before inverse_transform")
+            raise RuntimeError("数据预处理失败：预处理器尚未完成拟合（fit），无法执行逆变换（inverse_transform）。预处理器必须先通过 fit() 方法在训练数据上进行拟合，才能使用 inverse_transform()。请先调用 preprocessor.fit(X_train) 完成拟合。")
 
         if self.normalization == NormalizationMethod.Z_SCORE:
             return X * self.std_ + self.mean_

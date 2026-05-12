@@ -482,7 +482,7 @@ class WorkflowLNNOrchestrator:
                     time.sleep(0.1 * (attempt + 1))
 
         raise RuntimeError(
-            f"Inference failed after {max_retries} attempts. Last error: {last_error}"
+            f"工作流推理失败：已连续尝试 {max_retries} 次但全部失败。最后错误: {last_error}。可能原因：1) 模型推理服务不可用；2) 输入数据不符合模型要求；3) 系统资源不足。请检查推理日志，确认模型和输入数据状态后重试。"
         )
 
     def _execute_postprocessing_step(

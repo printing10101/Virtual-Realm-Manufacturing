@@ -87,11 +87,11 @@ class DatasetCache:
             cache_eviction_policy: Cache eviction policy (default: LRU)
         """
         if max_cache_size < 1:
-            raise ValueError(f"max_cache_size must be >= 1, got {max_cache_size}")
+            raise ValueError(f"数据集缓存配置失败：'max_cache_size' 参数值必须大于等于 1，当前值: {max_cache_size}。该参数控制缓存中最多可存储的文件数量，请设置为合理的正整数（如 50）。")
         if memory_cache_size < 1:
-            raise ValueError(f"memory_cache_size must be >= 1, got {memory_cache_size}")
+            raise ValueError(f"数据集缓存配置失败：'memory_cache_size' 参数值必须大于等于 1，当前值: {memory_cache_size}。该参数控制内存缓存的最大大小（单位: MB），请设置为合理的正整数（如 100）。")
         if cache_eviction_policy.lower() not in ("lru",):
-            raise ValueError(f"Unsupported eviction policy: {cache_eviction_policy}")
+            raise ValueError(f"数据集缓存配置失败：不支持的缓存淘汰策略 '{cache_eviction_policy}'。当前支持的淘汰策略为：'lru'（最近最少使用）。请检查缓存配置中的 eviction_policy 参数。")
 
         self._cache_directory = os.path.expanduser(cache_directory)
         self._max_cache_size = max_cache_size
@@ -164,7 +164,7 @@ class DatasetCache:
         abs_path = os.path.abspath(file_path)
 
         if not os.path.exists(abs_path):
-            raise FileNotFoundError(f"File not found: {abs_path}")
+            raise FileNotFoundError(f"数据集缓存加载失败：找不到文件 '{abs_path}'。可能原因：1) 文件路径配置错误；2) 文件已被删除或移动。请确认文件路径正确，或检查数据集是否已完整下载。")
 
         file_stat = os.stat(abs_path)
         file_mtime = file_stat.st_mtime

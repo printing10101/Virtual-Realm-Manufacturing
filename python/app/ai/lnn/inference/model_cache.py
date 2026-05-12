@@ -85,7 +85,7 @@ class ModelCache:
             ValueError: If memory_size_bytes is negative
         """
         if memory_size_bytes < 0:
-            raise ValueError("Memory size must be non-negative")
+            raise ValueError("模型缓存内存估算失败：内存大小（memory_size）必须为非负数。当前值为负数，这通常表示模型参数计算出现异常。请检查模型架构定义。")
 
         with self._lock:
             if model_name in self._cache:

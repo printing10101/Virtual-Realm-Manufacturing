@@ -173,7 +173,7 @@ class Quantizer:
 
     def dynamic_quantize(self, model: nn.Module, calibration_data: Optional[Any] = None) -> nn.Module:
         if not HAS_TORCH_QUANTIZATION:
-            raise RuntimeError("PyTorch quantization not available")
+            raise RuntimeError("模型量化失败：当前环境中不可用 PyTorch 量化模块。可能原因：1) PyTorch 未安装或版本不兼容；2) 使用了不支持量化的 PyTorch 构建版本。请确认已安装完整 PyTorch（pip install torch），并检查 PyTorch 版本是否与量化 API 兼容。")
 
         self.logger.info("Starting dynamic quantization")
         model.eval()
@@ -196,10 +196,10 @@ class Quantizer:
 
     def static_quantize(self, model: nn.Module, calibration_data: Any) -> nn.Module:
         if not HAS_TORCH_QUANTIZATION:
-            raise RuntimeError("PyTorch quantization not available")
+            raise RuntimeError("静态量化失败：当前环境中不可用 PyTorch 量化模块。可能原因：1) PyTorch 未安装或版本不兼容；2) 使用了不支持量化的 PyTorch 构建版本。请确认已安装完整 PyTorch（pip install torch），并检查 PyTorch 版本是否与量化 API 兼容。")
 
         if calibration_data is None:
-            raise ValueError("Static quantization requires calibration data")
+            raise ValueError("静态量化失败：缺少校准数据集。静态量化需要代表性校准数据来估计激活值范围。请提供至少 100 个样本的校准数据集（numpy array 或 torch tensor），并通过 'calibration_data' 参数传入。")
 
         self.logger.info("Starting static quantization with calibration")
         model.eval()
@@ -296,7 +296,7 @@ class Quantizer:
         config: Any,
     ) -> nn.Module:
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Quantized model not found: {model_path}")
+            raise FileNotFoundError(f"量化模型加载失败：找不到模型文件 '{model_path}'。可能原因：1) 模型尚未量化保存；2) 文件路径错误或文件已被删除/移动。请确认路径是否正确，或先调用量化流程生成模型文件。")
 
         model = model_class(config)
         model.eval()
@@ -322,7 +322,7 @@ class Quantizer:
         elif isinstance(test_data, torch.Tensor):
             test_tensor = test_data
         else:
-            raise ValueError("test_data must be numpy array or torch tensor")
+            raise ValueError("测试数据评估失败：'test_data' 参数必须为 numpy 数组（np.ndarray）或 PyTorch 张量（torch.Tensor）。当前类型：{0}。请检查数据类型转换逻辑，确保输入为数值型张量。".format(type(test_data).__name__))
 
         if test_tensor.dim() == 1:
             test_tensor = test_tensor.unsqueeze(0)
@@ -390,10 +390,10 @@ class Quantizer:
             quantized_model = self.dynamic_quantize(model, calibration_data)
         elif self.config.quantization_type == QuantizationType.STATIC:
             if calibration_data is None:
-                raise ValueError("Static quantization requires calibration data")
+                raise ValueError("量化流程执行失败：'STATIC' 量化模式缺少校准数据。可能原因：调用量化 API 时未传入 calibration_data 参数。解决方案：1) 提供代表性校准数据集；或 2) 将 quantization_type 改为 'DYNAMIC' 模式（无需校准数据）。")
             quantized_model = self.static_quantize(model, calibration_data)
         else:
-            raise ValueError(f"Unknown quantization type: {self.config.quantization_type}")
+            raise ValueError(f"量化流程执行失败：未知的量化类型 '{self.config.quantization_type}'。支持的量化类型为：DYNAMIC（动态量化，无需校准数据）、STATIC（静态量化，需要校准数据）。请检查 QuantizationConfig.quantization_type 配置值。")
 
         quantization_time = time.perf_counter() - start_time
 

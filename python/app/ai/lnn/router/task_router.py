@@ -132,7 +132,7 @@ class ScoringModel:
         """从配置文件加载权重"""
         path = Path(config_path)
         if not path.exists():
-            raise FileNotFoundError(f"权重配置文件不存在: {config_path}")
+            raise FileNotFoundError(f"任务路由配置失败：找不到权重配置文件 '{config_path}'。可能原因：1) 配置文件路径错误；2) 配置文件尚未创建。请检查路由配置中的路径设置，或创建新的权重配置文件（JSON/YAML 格式）。")
 
         with open(path, "r", encoding="utf-8") as f:
             if path.suffix in (".yaml", ".yml"):
@@ -140,10 +140,10 @@ class ScoringModel:
             elif path.suffix == ".json":
                 raw = json.load(f)
             else:
-                raise ValueError(f"不支持的配置文件格式: {path.suffix}")
+                raise ValueError(f"任务路由配置失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请将配置转换为支持的格式，或检查文件扩展名是否正确。")
 
         if "weights" not in raw:
-            raise KeyError("配置文件中缺少 'weights' 字段")
+            raise KeyError("任务路由配置解析失败：配置文件中缺少必需的 'weights' 字段。'weights' 字段定义各引擎（LNN、规则引擎、ML 模型）的权重分配，格式为 {\"lnn\": 0.6, \"rule\": 0.3, \"ml\": 0.1}。请检查并补充配置文件。")
 
         weights: Dict[str, Dict[EngineType, float]] = {}
         for feature_name, engine_weights_raw in raw["weights"].items():
@@ -175,7 +175,7 @@ class ScoringModel:
         if feature not in self.weights:
             raise KeyError(f"无效的特征名称: {feature}")
         if engine not in self.weights[feature]:
-            raise KeyError(f"无效的引擎类型: {engine}")
+            raise KeyError(f"引擎路由映射失败：无效的引擎类型 '{engine}'。支持的引擎类型可通过 task_router.AVAILABLE_ENGINES 查看。请检查配置中的 engine 参数。")
         self.weights[feature][engine] = float(weight)
 
     def save_config(self, config_path: str) -> None:
@@ -203,7 +203,7 @@ class ScoringModel:
             elif path.suffix == ".json":
                 json.dump(data, f, indent=2, ensure_ascii=False)
             else:
-                raise ValueError(f"不支持的配置文件格式: {path.suffix}")
+                raise ValueError(f"任务路由配置保存失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请更改文件扩展名为支持的格式后重试。")
 
     def predict_scores(self, features: TaskFeatures) -> Dict[EngineType, float]:
         """

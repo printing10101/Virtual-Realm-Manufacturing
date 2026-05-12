@@ -4,10 +4,12 @@ Predictor Module
 Implements single-sample, batch, and streaming inference interfaces for LNN models.
 Supports automatic device selection and AMP (Automatic Mixed Precision) acceleration.
 """
+import os
 import numpy as np
 import time
 import logging
 import psutil
+import statistics
 from typing import Any, Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass, field
 
@@ -26,9 +28,10 @@ except ImportError:
 from app.ai.lnn.core import EngineType
 from app.ai.lnn.preprocessing import DataPreprocessor
 from app.ai.lnn.postprocessing import ResultPostprocessor
-from app.ai.lnn.inference.registry import ModelRegistry, BaseModelRegistry
+from app.ai.lnn.inference.registry import ModelRegistry, BaseModelRegistry, ModelEntry
 from app.ai.lnn.inference.model_cache import get_model_cache
 from app.ai.lnn.inference.registry import is_quantized_model
+from app.ai.lnn.models.base_lnn import BaseLNNModel
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +123,11 @@ class LNNPredictor:
             "max_inference_time_ms": 0.0,
             "min_inference_time_ms": float("inf"),
             "peak_memory_mb": 0.0,
+            "inference_times": [],
+            "window_start": time.perf_counter(),
+            "window_inferences": 0,
         }
+        self._max_recent_times = 10_000
 
     def _select_device(self) -> Any:
         """Automatically select best available device"""
@@ -183,21 +190,33 @@ class LNNPredictor:
 
         try:
             features, hidden = self._preprocess(input_data)
-            features_tensor = self._to_tensor(features)
 
-            if self.use_amp and self.device.type == "cuda" and HAS_AMP:
-                with autocast():
+            if isinstance(self.model, BaseLNNModel):
+                output = self.model.predict(features)
+            else:
+                features_tensor = self._to_tensor(features)
+
+                if self.use_amp and self.device.type == "cuda" and HAS_AMP:
+                    with autocast():
+                        with torch.no_grad():
+                            output = self.model(features_tensor)
+                else:
                     with torch.no_grad():
                         output = self.model(features_tensor)
-            else:
-                with torch.no_grad():
-                    output = self.model(features_tensor)
 
             processed_output = self._postprocess(output, hidden)
 
             inference_time = (time.perf_counter() - start_time) * 1000
             mem_after = self._get_memory_usage_mb()
             self._update_stats(inference_time, mem_after)
+
+            try:
+                from app.core.utils import get_metrics_collector
+                m = get_metrics_collector()
+                m.record_lnn_inference(self.model_name, inference_time / 1000.0)
+                m.record_lnn_prediction(self.model_name, "success")
+            except Exception:
+                pass
 
             confidence = self._compute_confidence(output) if return_confidence else 0.0
 
@@ -215,7 +234,13 @@ class LNNPredictor:
         except Exception as e:
             inference_time = (time.perf_counter() - start_time) * 1000
             self._update_stats(inference_time, self._get_memory_usage_mb())
-            raise RuntimeError(f"Prediction failed: {str(e)}")
+            try:
+                from app.core.utils import get_metrics_collector
+                m = get_metrics_collector()
+                m.record_lnn_prediction(self.model_name, "error")
+            except Exception:
+                pass
+            raise RuntimeError(f"模型预测失败：推理过程出现异常。错误详情: {str(e)}。可能原因：1) 模型输入数据格式不匹配；2) 模型权重加载异常；3) GPU 内存不足。请检查输入数据格式，确认模型已正确加载，如使用 GPU 请检查显存使用情况。")
 
     def predict_batch(
         self,
@@ -249,17 +274,21 @@ class LNNPredictor:
             hidden_list.append(hidden)
 
         batch_features = np.concatenate(features_list, axis=0)
-        batch_tensor = self._to_tensor(batch_features)
 
         start_time = time.perf_counter()
 
-        if self.use_amp and self.device.type == "cuda" and HAS_AMP:
-            with autocast():
+        if isinstance(self.model, BaseLNNModel):
+            outputs = self.model.predict(batch_features)
+        else:
+            batch_tensor = self._to_tensor(batch_features)
+
+            if self.use_amp and self.device.type == "cuda" and HAS_AMP:
+                with autocast():
+                    with torch.no_grad():
+                        outputs = self.model(batch_tensor)
+            else:
                 with torch.no_grad():
                     outputs = self.model(batch_tensor)
-        else:
-            with torch.no_grad():
-                outputs = self.model(batch_tensor)
 
         inference_time = (time.perf_counter() - start_time) * 1000
         mem_after = self._get_memory_usage_mb()
@@ -302,17 +331,6 @@ class LNNPredictor:
             yield self.predict(item, return_confidence=return_confidence)
 
     def get_statistics(self) -> Dict[str, Any]:
-        """
-        Get inference statistics
-        
-        Returns:
-            Dictionary with inference statistics including:
-            - total_inferences: Total number of inferences
-            - average_inference_time_ms: Average inference time
-            - max_inference_time_ms: Maximum inference time
-            - min_inference_time_ms: Minimum inference time
-            - peak_memory_mb: Peak memory usage
-        """
         stats = self._stats.copy()
         total = stats["total_inferences"]
         stats["average_inference_time_ms"] = (
@@ -322,6 +340,48 @@ class LNNPredictor:
             stats["min_inference_time_ms"] = 0.0
         stats["current_memory_mb"] = self._get_memory_usage_mb()
         return stats
+
+    def get_performance(self) -> Dict[str, Any]:
+        total = self._stats["total_inferences"]
+        times = sorted(self._stats["inference_times"]) if self._stats["inference_times"] else []
+        n = len(times)
+
+        avg_ms = (self._stats["total_inference_time_ms"] / total) if total > 0 else 0.0
+        p50 = times[int(n * 0.50)] if n > 0 else 0.0
+        p95 = times[min(int(n * 0.95), n - 1)] if n > 0 else 0.0
+        p99 = times[min(int(n * 0.99), n - 1)] if n > 0 else 0.0
+
+        now = time.perf_counter()
+        window_elapsed = now - self._stats["window_start"]
+        throughput = self._stats["window_inferences"] / window_elapsed if window_elapsed > 0 else 0.0
+        if window_elapsed > 60.0:
+            self._stats["window_start"] = now
+            self._stats["window_inferences"] = 0
+
+        device_type = str(self.device)
+        if HAS_TORCH and self.device.type == "cuda":
+            device_type = f"CUDA:{torch.cuda.get_device_name(self.device)}"
+        elif self.device.type == "mps":
+            device_type = "Apple MPS"
+
+        return {
+            "model_name": self.model_name,
+            "device": device_type,
+            "device_type": str(self.device),
+            "amp_enabled": self.use_amp,
+            "engine_type": self.engine_type.value if hasattr(self.engine_type, "value") else str(self.engine_type),
+            "total_inferences": total,
+            "avg_inference_ms": round(avg_ms, 4),
+            "p50_inference_ms": round(p50, 4),
+            "p95_inference_ms": round(p95, 4),
+            "p99_inference_ms": round(p99, 4),
+            "min_inference_ms": round(self._stats["min_inference_time_ms"] if self._stats["min_inference_time_ms"] != float("inf") else 0.0, 4),
+            "max_inference_ms": round(self._stats["max_inference_time_ms"], 4),
+            "throughput_inf_per_sec": round(throughput, 2),
+            "current_memory_mb": round(self._get_memory_usage_mb(), 2),
+            "peak_memory_mb": round(self._stats["peak_memory_mb"], 2),
+            "sample_count_recent": n,
+        }
 
     def _compute_confidence(self, output) -> float:
         """Compute prediction confidence"""
@@ -336,17 +396,21 @@ class LNNPredictor:
     def _standardize_input(self, input_data: Any) -> np.ndarray:
         """Standardize various input types to numpy array"""
         if isinstance(input_data, np.ndarray):
-            return input_data
+            result = input_data
         elif isinstance(input_data, dict):
-            return DataPreprocessor.extract_numeric_features(input_data)
+            result = DataPreprocessor.extract_numeric_features(input_data)
         elif isinstance(input_data, (list, tuple)):
-            return np.array(input_data)
+            result = np.array(input_data)
         elif HAS_TORCH and isinstance(input_data, torch.Tensor):
-            return input_data.detach().cpu().numpy()
+            result = input_data.detach().cpu().numpy()
         elif isinstance(input_data, (int, float)):
-            return np.array([input_data])
+            result = np.array([input_data])
         else:
-            raise ValueError(f"Unsupported input type: {type(input_data)}")
+            raise ValueError(f"模型预测失败：不支持的输入数据类型 '{type(input_data).__name__}'。支持的输入类型包括：dict（字典格式）、list（列表格式）、numpy.ndarray（数组格式）、torch.Tensor（张量格式）。请将输入数据转换为支持的格式后重试。")
+        
+        if result.ndim == 1:
+            result = result.reshape(1, -1)
+        return result
 
     def _to_tensor(self, data: np.ndarray):
         """Convert numpy array to tensor on correct device"""
@@ -372,6 +436,11 @@ class LNNPredictor:
         self._stats["peak_memory_mb"] = max(
             self._stats["peak_memory_mb"], memory_mb
         )
+        times = self._stats["inference_times"]
+        times.append(inference_time_ms)
+        if len(times) > self._max_recent_times:
+            self._stats["inference_times"] = times[-self._max_recent_times:]
+        self._stats["window_inferences"] += 1
 
     @classmethod
     def from_registry(
@@ -395,7 +464,15 @@ class LNNPredictor:
             f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} "
             f"operation=load status=FROM_REGISTRY"
         )
+        load_start = time.perf_counter()
         model = cls._load_model_from_registry(registry, model_name)
+        load_duration = time.perf_counter() - load_start
+
+        try:
+            from app.core.utils import get_metrics_collector
+            get_metrics_collector().record_lnn_model_load(model_name, load_duration)
+        except Exception:
+            pass
 
         try:
             memory_bytes = cls._calculate_model_memory(model)
@@ -428,25 +505,79 @@ class LNNPredictor:
             RuntimeError: If registry type is unsupported
         """
         if not isinstance(registry, BaseModelRegistry):
-            # Support dict-like registries with get() method
             if not (hasattr(registry, 'get') and callable(getattr(registry, 'get'))):
                 supported = [BaseModelRegistry.__name__, "dict", "dict-like with get()"]
                 actual = type(registry).__name__
                 raise RuntimeError(
-                    f"Unsupported registry type: {actual}. "
-                    f"Expected one of: {', '.join(supported)}. "
-                    f"Consider wrapping your registry in a BaseModelRegistry adapter."
+                    f"模型加载失败：注册表类型不兼容。错误详情: 不支持的注册表类型 '{actual}'。预期类型为: {', '.join(supported)}。请将注册表包装为 BaseModelRegistry 适配器，或使用支持 get() 方法的字典类对象。"
                 )
         
         try:
             model = registry.get(model_name)
             if model is None:
-                raise KeyError(f"Model '{model_name}' found but returned None")
+                raise KeyError(f"模型加载异常：模型 '{model_name}' 在注册表中存在但返回为空（None）。可能原因：1) 模型文件已损坏或丢失；2) 模型加载过程出现异常。请检查模型文件完整性，或调用 POST /api/v1/lnn/models/{{name}}/load 重新加载模型。")
+            
+            if isinstance(model, ModelEntry):
+                return LNNPredictor._build_model_from_entry(model)
+            
             return model
         except KeyError:
             raise
         except Exception as e:
-            raise RuntimeError(f"Failed to load model '{model_name}': {e}") from e
+            raise RuntimeError(f"模型加载失败：无法加载模型 '{model_name}'。错误详情: {e}。可能原因：1) 模型权重文件不存在或已损坏；2) 模型配置与权重不匹配；3) 内存/GPU 显存不足。请检查模型文件路径和完整性，或查看日志获取详细错误信息。") from e
+
+    @staticmethod
+    def _build_model_from_entry(entry: ModelEntry) -> Any:
+        """Build a real model instance from a ModelEntry metadata."""
+        if entry.model is not None:
+            logger.info(
+                f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={entry.info.name} "
+                f"operation=build_model status=FROM_CACHED_ENTRY input_dim={entry.model.input_dim}"
+            )
+            return entry.model
+        
+        from app.ai.lnn.inference.registry import LNNModelRegistry
+        
+        model_cls = LNNModelRegistry.MODEL_CLASS_MAP.get(entry.info.model_type)
+        if model_cls is None:
+            raise ValueError(f"Unsupported model type: {entry.info.model_type}")
+        
+        input_dim = len(entry.info.input_features) if entry.info.input_features else 1
+        output_dim = len(entry.info.output_features) if entry.info.output_features else 1
+        
+        logger.info(
+            f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={entry.info.name} "
+            f"operation=build_model status=CREATING input_dim={input_dim} output_dim={output_dim} "
+            f"input_features={entry.info.input_features}"
+        )
+        
+        model = model_cls(
+            model_name=entry.info.name,
+            input_dim=input_dim,
+            output_dim=output_dim,
+        )
+        
+        model_path = entry.info.model_path
+        if model_path and os.path.exists(model_path):
+            logger.info(
+                f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={entry.info.name} "
+                f"operation=build_model status=LOADING_FILE path={model_path}"
+            )
+            try:
+                model.load(model_path)
+            except Exception:
+                pass
+        
+        model.build()
+        
+        logger.info(
+            f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={entry.info.name} "
+            f"operation=build_model status=BUILT model_input_dim={model.input_dim}"
+        )
+        
+        entry.model = model
+        entry.is_loaded = True
+        return model
 
     @staticmethod
     def _calculate_model_memory(model) -> int:

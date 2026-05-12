@@ -360,7 +360,7 @@ class BoschCNCDataset(Dataset):
         self._dataset_cache = dataset_cache
 
         if not os.path.exists(hdf5_path):
-            raise FileNotFoundError(f"HDF5文件不存在: {hdf5_path}")
+            raise FileNotFoundError(f"数据集加载失败：HDF5 数据文件不存在: '{hdf5_path}'。可能原因：1) 文件路径配置错误；2) 数据集文件未下载或已删除。请检查配置文件中的数据路径，或运行数据下载脚本获取 HDF5 数据集文件。")
 
         self._data: Optional[np.ndarray] = None
         self._labels: Optional[np.ndarray] = None
@@ -440,7 +440,7 @@ class BoschCNCDataset(Dataset):
                                 all_labels.append(group['labels'][:])
                     
                     if not all_signals:
-                        raise ValueError("HDF5文件中未找到有效的工序数据")
+                        raise ValueError("数据集解析失败：HDF5 文件中未找到有效的工序数据。可能原因：1) HDF5 文件结构不符合预期格式；2) 文件已损坏。请检查 HDF5 文件结构，或重新下载数据集。")
                     
                     signals = np.concatenate(all_signals, axis=0)
                     labels = np.concatenate(all_labels, axis=0)
@@ -502,7 +502,7 @@ class BoschCNCDataset(Dataset):
                     label = f[self.operation]['labels'][idx]
                 else:
                     # 需要更复杂的索引映射
-                    raise NotImplementedError("非缓存模式下需要实现索引映射")
+                    raise NotImplementedError("数据集索引映射失败：在非缓存模式下无法直接通过索引获取数据。当前未实现动态索引映射逻辑。建议解决方案：1) 启用数据缓存模式（设置 cache=True）；2) 或实现自定义的索引映射方法以支持按需加载。")
         else:
             signal = self._data[idx]
             label = self._labels[idx]
@@ -528,7 +528,7 @@ class BoschCNCDataset(Dataset):
     def get_labels(self) -> np.ndarray:
         """获取标签数据"""
         if not self.cache_data:
-            raise RuntimeError("未缓存数据，无法获取标签")
+            raise RuntimeError("数据访问失败：尚未缓存数据集，无法获取标签数据。请先调用 load() 方法加载数据集到缓存，或直接访问数据集文件获取标签。")
         return self._labels
 
     def split(

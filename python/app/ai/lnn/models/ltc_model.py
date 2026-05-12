@@ -197,7 +197,7 @@ class LTCModel(BaseLNNModel):
             聚合后的输出
         """
         if not states:
-            raise ValueError("Empty states list")
+            raise ValueError("LTC 模型状态聚合失败：状态列表（states）为空。LTC 网络需要至少一个时间步的状态数据进行聚合。请检查数据生成逻辑，确保状态列表包含有效的状态数据。")
 
         # 使用注意力机制聚合
         stacked = np.stack(states, axis=1)  # (batch_size, seq_len, hidden_dim)
@@ -385,4 +385,4 @@ class LTCModel(BaseLNNModel):
             return torch_model
 
         except ImportError:
-            raise RuntimeError("PyTorch is required for to_torch() conversion")
+            raise RuntimeError("LTC 模型转换失败：转换为 PyTorch 张量需要安装 PyTorch 库。当前环境中未检测到 PyTorch。请安装 PyTorch（pip install torch）后重试。")

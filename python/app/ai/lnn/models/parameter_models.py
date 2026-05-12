@@ -37,7 +37,7 @@ class CuttingParameters(BaseModel):
     @classmethod
     def validate_feed_rate(cls, v):
         if not (0.05 <= v <= 1.0):
-            raise ValueError(f'进给量必须在[0.05, 1.0] mm/r区间内，当前值: {v}')
+            raise ValueError(f"切削参数验证失败：进给量（feed_rate）必须在 [0.05, 1.0] mm/r 有效区间内，当前输入值: {v} mm/r。超出此范围可能导致模型预测不准确。请调整进给量参数至有效范围，或参考切削工艺手册确认合理参数。")
         return v
 
 

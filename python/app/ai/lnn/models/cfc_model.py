@@ -324,4 +324,4 @@ class CFCModel(BaseLNNModel):
             return torch_model
 
         except ImportError:
-            raise RuntimeError("PyTorch is required for to_torch() conversion")
+            raise RuntimeError("CFC 模型转换失败：转换为 PyTorch 张量需要安装 PyTorch 库。当前环境中未检测到 PyTorch。请安装 PyTorch（pip install torch）后重试。")

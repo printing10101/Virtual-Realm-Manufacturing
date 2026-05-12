@@ -240,7 +240,7 @@ class BaseLNNModel(ABC):
             评估结果字典
         """
         if not self.is_trained:
-            raise RuntimeError("Model must be trained before evaluation")
+            raise RuntimeError("LNN 模型评估失败：模型尚未完成训练，无法执行评估。评估操作只能在模型训练完成后进行。请先调用 train() 方法完成模型训练，或加载已训练的检查点。")
 
         predictions = self.predict(test_data)
 
