@@ -1,0 +1,11 @@
+﻿{
+    "model_name": "cutting_force",
+    "data_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\uniwear.csv",
+    "hyperparameters": {
+        "epochs": 5,
+        "batch_size": 32,
+        "learning_rate": 0.001,
+        "optimizer": "adam"
+    },
+    "device": "cpu"
+}
