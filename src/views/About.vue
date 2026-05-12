@@ -1,7 +1,9 @@
 <template>
   <div class="about-page">
     <el-card>
-      <template #header>关于灵境制造</template>
+      <template #header>
+        关于灵境制造
+      </template>
       <div class="about-content">
         <h3>灵境制造 V4</h3>
         <p>版本：1.3.0</p>

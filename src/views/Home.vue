@@ -9,10 +9,14 @@
       </el-col>
       <el-col :span="8">
         <el-card>
-          <template #header>系统状态</template>
+          <template #header>
+            系统状态
+          </template>
           <div class="status-item">
             <span>AI服务</span>
-            <el-tag type="success">运行中</el-tag>
+            <el-tag type="success">
+              运行中
+            </el-tag>
           </div>
           <div class="status-item">
             <span>模型注册数</span>

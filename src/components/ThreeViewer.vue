@@ -1,19 +1,25 @@
 <template>
   <div class="three-viewer-container">
-    <div ref="viewerContainer" class="viewer-canvas"></div>
+    <div
+      ref="viewerContainer"
+      class="viewer-canvas"
+    />
 
     <div class="viewer-controls">
       <div class="control-group">
         <label class="control-label">LOD {{ $t('common.enabled') }}</label>
         <el-switch
           v-model="lodEnabled"
-          @change="onLODEnabledChange"
           :active-text="$t('common.on')"
           :inactive-text="$t('common.off')"
+          @change="onLODEnabledChange"
         />
       </div>
 
-      <div v-if="lodEnabled" class="control-group lod-settings">
+      <div
+        v-if="lodEnabled"
+        class="control-group lod-settings"
+      >
         <label class="control-label">{{ $t('lod.distanceThresholds') }}</label>
 
         <div class="threshold-row">
@@ -53,7 +59,10 @@
         </div>
       </div>
 
-      <div v-if="lodEnabled" class="control-group simplification-settings">
+      <div
+        v-if="lodEnabled"
+        class="control-group simplification-settings"
+      >
         <label class="control-label">{{ $t('lod.simplification') }}</label>
 
         <div class="simplification-row">
@@ -85,7 +94,10 @@
         </div>
       </div>
 
-      <div v-if="lodEnabled" class="control-group performance-monitor">
+      <div
+        v-if="lodEnabled"
+        class="control-group performance-monitor"
+      >
         <label class="control-label">{{ $t('lod.performance') }}</label>
         <div class="metrics-row">
           <span class="metric-label">{{ $t('lod.fps') }}</span>
@@ -103,7 +115,10 @@
           <span class="metric-label">{{ $t('lod.vertices') }}</span>
           <span class="metric-value">{{ currentVertices.toLocaleString() }}</span>
         </div>
-        <div v-if="performanceMetrics.fpsWithLOD && performanceMetrics.fpsWithoutLOD" class="metrics-row highlight">
+        <div
+          v-if="performanceMetrics.fpsWithLOD && performanceMetrics.fpsWithoutLOD"
+          class="metrics-row highlight"
+        >
           <span class="metric-label">{{ $t('lod.improvement') }}</span>
           <span class="metric-value">
             {{ ((performanceMetrics.fpsWithLOD - performanceMetrics.fpsWithoutLOD) / performanceMetrics.fpsWithoutLOD * 100).toFixed(1) }}%
@@ -112,8 +127,13 @@
       </div>
     </div>
 
-    <div v-if="loading" class="viewer-loading">
-      <el-icon class="loading-icon"><Loading /></el-icon>
+    <div
+      v-if="loading"
+      class="viewer-loading"
+    >
+      <el-icon class="loading-icon">
+        <Loading />
+      </el-icon>
       <span>{{ $t('viewer.loading') }}</span>
     </div>
   </div>
@@ -129,7 +149,6 @@ import {
   updateLOD,
   calculateDistanceToModel,
   getDefaultConfig,
-  updateLODConfig,
   measurePerformance,
   estimateMemoryUsage,
   countVertices,
@@ -264,8 +283,10 @@ function startAnimation() {
         currentDistance.value = calculateDistanceToModel(camera, originalModel.value)
       }
 
-      const vertices = currentLOD.value.getCurrentObject()
-      currentVertices.value = countVertices(vertices)
+      const lodObject = currentLOD.value.levels[level]?.object
+      if (lodObject) {
+        currentVertices.value = countVertices(lodObject)
+      }
     }
 
     if (renderer && scene && camera) {

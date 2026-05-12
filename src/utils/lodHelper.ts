@@ -53,7 +53,7 @@ export function countVertices(object: THREE.Object3D): number {
   return count
 }
 
-function estimateMeshSize(object: THREE.Object3D): number {
+function _estimateMeshSize(object: THREE.Object3D): number {
   const box = new THREE.Box3().setFromObject(object)
   const size = box.getSize(new THREE.Vector3())
   return Math.max(size.x, size.y, size.z)
@@ -308,8 +308,8 @@ export function createLODObject(
 
   const levels = config.levels.length > 0 ? config.levels : getDefaultConfig().levels
 
-  let memoryBeforeKB = 0
-  let memoryAfterKB = 0
+  const memoryBeforeKB = 0
+  const memoryAfterKB = 0
 
   for (let i = 0; i < levels.length; i++) {
     const level = levels[i]
@@ -455,7 +455,7 @@ export function estimateMemoryUsage(object: THREE.Object3D): number {
 
     if (child instanceof THREE.Mesh && child.material) {
       const materials = Array.isArray(child.material) ? child.material : [child.material]
-      for (const mat of materials) {
+      for (const _mat of materials) {
         memoryKB += 50
       }
     }
