@@ -3,7 +3,7 @@
   "info": {
     "title": "灵境制造 LNN AI API",
     "description": "基于神经逻辑网络(LNN)的智能制造AI推理与训练API服务，支持切削力预测、磨损预测等工业场景",
-    "version": "1.5.0",
+    "version": "1.7.0",
     "contact": {
       "name": "灵境制造团队"
     }

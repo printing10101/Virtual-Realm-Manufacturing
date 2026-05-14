@@ -49,7 +49,7 @@ def get_state_file_path() -> str:
 
 app = FastAPI(
     title="灵境制造 API",
-    version="1.5.0",
+    version="1.7.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -146,7 +146,7 @@ async def health_check():
 
 @app.get("/api/health")
 async def api_health_check():
-    return {"status": "ok", "version": "1.5.0"}
+    return {"status": "ok", "version": "1.7.0"}
 
 
 @app.get("/api/health/ping")

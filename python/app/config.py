@@ -92,7 +92,7 @@ class PathsConfig:
 @dataclass
 class AppConfig:
     app_name: str = field(default_factory=lambda: _env("APP_NAME", "灵境制造"))
-    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "1.5.0"))
+    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "1.7.0"))
     offline_mode: bool = field(default_factory=lambda: _env("OFFLINE_MODE", "false").lower() == "true")
     environment: EnvironmentConfig = field(default_factory=EnvironmentConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
