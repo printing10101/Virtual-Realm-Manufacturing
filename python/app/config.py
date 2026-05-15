@@ -71,6 +71,7 @@ class SecurityConfig:
         origin.strip() for origin in _env("CORS_ORIGINS", "*").split(",") if origin.strip()
     ])
     allow_credentials: bool = field(default_factory=lambda: _env("CORS_ALLOW_CREDENTIALS", "true").lower() == "true")
+    cors_origin_regex: str | None = field(default_factory=lambda: _env("CORS_ORIGIN_REGEX", "") or None)
     rate_limit_enabled: bool = field(default_factory=lambda: _env("RATE_LIMIT_ENABLED", "false").lower() == "true")
     rate_limit_requests: int = field(default_factory=lambda: int(_env("RATE_LIMIT_REQUESTS", "100")))
     rate_limit_window: int = field(default_factory=lambda: int(_env("RATE_LIMIT_WINDOW", "60")))

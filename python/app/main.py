@@ -88,7 +88,7 @@ async def shutdown_event():
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_settings.get_origins(),
-    allow_origin_regex=r"https?://localhost(:\d+)?|tauri://localhost|https://tauri\.localhost",
+    allow_origin_regex=cors_settings.get_origin_regex(),
     allow_credentials=cors_settings.allow_credentials,
     allow_methods=cors_settings.get_methods(),
     allow_headers=cors_settings.get_headers(),
