@@ -8,13 +8,12 @@ Tests for:
 - Material-based search and statistics
 - Reliability scoring
 """
-import os
+
 import pytest
 import tempfile
 import shutil
 import threading
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 from app.services.experience_store import ExperienceStore, Experience
 
@@ -43,7 +42,11 @@ def store_with_experiences(temp_storage_dir):
             "metadata": {"source": "test"},
         },
         {
-            "parameters": {"material": "不锈钢", "process": "铣削", "cutting_speed": 100},
+            "parameters": {
+                "material": "不锈钢",
+                "process": "铣削",
+                "cutting_speed": 100,
+            },
             "metrics": {"accuracy": 0.88, "mean_wear_rate": 0.003},
             "validation_result": {"is_valid": True},
             "metadata": {"source": "test"},
@@ -57,7 +60,9 @@ def store_with_experiences(temp_storage_dir):
     ]
 
     for i, exp in enumerate(experiences):
-        store.save_experience(task_id=f"task_{i}", experience=exp, process=exp["parameters"]["process"])
+        store.save_experience(
+            task_id=f"task_{i}", experience=exp, process=exp["parameters"]["process"]
+        )
 
     return store
 
@@ -113,23 +118,27 @@ class TestExperienceStoreInitialization:
         exp_dir.mkdir(parents=True, exist_ok=True)
 
         import json
+
         with open(exp_dir / "experiences.json", "w") as f:
-            json.dump({
-                "experiences": {
-                    "exp1": {
-                        "experience_id": "exp1",
-                        "task_id": "task1",
-                        "process": "test",
-                        "parameters": {},
-                        "metrics": {},
-                        "validation_result": {},
-                        "created_at": "2024-01-01T00:00:00",
-                        "updated_at": "2024-01-01T00:00:00",
-                    }
+            json.dump(
+                {
+                    "experiences": {
+                        "exp1": {
+                            "experience_id": "exp1",
+                            "task_id": "task1",
+                            "process": "test",
+                            "parameters": {},
+                            "metrics": {},
+                            "validation_result": {},
+                            "created_at": "2024-01-01T00:00:00",
+                            "updated_at": "2024-01-01T00:00:00",
+                        }
+                    },
+                    "validation_history": {},
+                    "updated_at": "2024-01-01T00:00:00",
                 },
-                "validation_history": {},
-                "updated_at": "2024-01-01T00:00:00",
-            }, f)
+                f,
+            )
 
         store = ExperienceStore(storage_dir=temp_storage_dir)
         assert len(store.list_experiences()) == 1
@@ -214,16 +223,12 @@ class TestExperienceStoreList:
         assert len(results) == 2
 
     def test_list_with_process_filter(self, store_with_experiences):
-        results = store_with_experiences.list_experiences(
-            filters={"process": "车削"}
-        )
+        results = store_with_experiences.list_experiences(filters={"process": "车削"})
         assert all(r["process"] == "车削" for r in results)
         assert len(results) == 2
 
     def test_list_with_material_filter(self, store_with_experiences):
-        results = store_with_experiences.list_experiences(
-            filters={"process": "车削"}
-        )
+        results = store_with_experiences.list_experiences(filters={"process": "车削"})
         assert all(r["process"] == "车削" for r in results)
         assert len(results) == 2
 
@@ -327,10 +332,20 @@ class TestExperienceStoreReliability:
 
         exp_id = result["experience_id"]
         from datetime import datetime
+
         store._validation_history[exp_id] = [
-            {"timestamp": datetime.now().isoformat(), "validation_result": {"is_consistent": True}},
-            {"timestamp": datetime.now().isoformat(), "validation_result": {"is_consistent": True}},
-            {"timestamp": datetime.now().isoformat(), "validation_result": {"is_consistent": False}},
+            {
+                "timestamp": datetime.now().isoformat(),
+                "validation_result": {"is_consistent": True},
+            },
+            {
+                "timestamp": datetime.now().isoformat(),
+                "validation_result": {"is_consistent": True},
+            },
+            {
+                "timestamp": datetime.now().isoformat(),
+                "validation_result": {"is_consistent": False},
+            },
         ]
 
         reliability = store.get_experience_reliability(exp_id)
@@ -338,13 +353,19 @@ class TestExperienceStoreReliability:
         assert abs(reliability["consistency_rate"] - 0.6667) < 0.001
 
     def test_reliability_calculation_formula(self, store):
-        score = store._calculate_reliability_score(validation_count=0, consistency_rate=0.0)
+        score = store._calculate_reliability_score(
+            validation_count=0, consistency_rate=0.0
+        )
         assert score == 0.5
 
-        score = store._calculate_reliability_score(validation_count=10, consistency_rate=1.0)
+        score = store._calculate_reliability_score(
+            validation_count=10, consistency_rate=1.0
+        )
         assert score == pytest.approx(1.0)
 
-        score = store._calculate_reliability_score(validation_count=10, consistency_rate=0.0)
+        score = store._calculate_reliability_score(
+            validation_count=10, consistency_rate=0.0
+        )
         assert score < 1.0
 
     def test_reliability_nonexistent_experience(self, store):
@@ -360,8 +381,7 @@ class TestExperienceStoreSearch:
         results = store_with_experiences.search_by_material("45钢")
         assert len(results) >= 1
         assert all(
-            "45钢" in str(r.get("parameters", {}).get("material", ""))
-            for r in results
+            "45钢" in str(r.get("parameters", {}).get("material", "")) for r in results
         )
 
     def test_search_by_material_fuzzy(self, store_with_experiences):
@@ -451,8 +471,7 @@ class TestExperienceStoreConcurrency:
                 errors.append(e)
 
         threads = [
-            threading.Thread(target=save_experiences, args=(i,))
-            for i in range(5)
+            threading.Thread(target=save_experiences, args=(i,)) for i in range(5)
         ]
 
         for t in threads:
@@ -523,7 +542,9 @@ class TestExperienceStoreEdgeCases:
         assert len(results) == 0
 
     def test_reliability_with_zero_divisor_handled(self, store):
-        score = store._calculate_reliability_score(validation_count=0, consistency_rate=0.0)
+        score = store._calculate_reliability_score(
+            validation_count=0, consistency_rate=0.0
+        )
         assert score == 0.5
 
     def test_relevance_score_empty_query(self, store_with_experiences):

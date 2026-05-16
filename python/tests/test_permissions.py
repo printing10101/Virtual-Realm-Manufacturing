@@ -7,10 +7,11 @@ Tests for:
 - RateLimitConfig and RateLimitState: Rate limit tracking
 - PaperOnlyGuard: Paper-Only mode enforcement for T-level operations
 """
+
 import os
 import time
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from app.core.permissions import (
     PermissionLevel,
@@ -18,7 +19,6 @@ from app.core.permissions import (
     RateLimitConfig,
     RateLimitState,
     PaperOnlyGuard,
-    permission_checker,
     PERMISSION_HIERARCHY,
 )
 
@@ -146,50 +146,105 @@ class TestPermissionChecker:
 
     def test_read_endpoints_require_r_permission(self):
         checker = PermissionChecker()
-        assert checker.has_permission(PermissionLevel.R, "/api/v1/lnn/predict", "GET") is True
-        assert checker.has_permission(PermissionLevel.R, "/api/v1/wear/predict", "POST") is False
+        assert (
+            checker.has_permission(PermissionLevel.R, "/api/v1/lnn/predict", "GET")
+            is True
+        )
+        assert (
+            checker.has_permission(PermissionLevel.R, "/api/v1/wear/predict", "POST")
+            is False
+        )
 
     def test_write_endpoints_require_w_permission(self):
         checker = PermissionChecker()
-        assert checker.has_permission(PermissionLevel.W, "/api/v1/lnn/predict", "POST") is True
-        assert checker.has_permission(PermissionLevel.R, "/api/v1/lnn/predict", "POST") is False
+        assert (
+            checker.has_permission(PermissionLevel.W, "/api/v1/lnn/predict", "POST")
+            is True
+        )
+        assert (
+            checker.has_permission(PermissionLevel.R, "/api/v1/lnn/predict", "POST")
+            is False
+        )
 
     def test_batch_endpoints_require_b_permission(self):
         checker = PermissionChecker()
-        assert checker.has_permission(PermissionLevel.B, "/api/v1/lnn/train", "POST") is True
-        assert checker.has_permission(PermissionLevel.W, "/api/v1/lnn/train", "POST") is False
+        assert (
+            checker.has_permission(PermissionLevel.B, "/api/v1/lnn/train", "POST")
+            is True
+        )
+        assert (
+            checker.has_permission(PermissionLevel.W, "/api/v1/lnn/train", "POST")
+            is False
+        )
 
     def test_notification_endpoints_require_n_permission(self):
         checker = PermissionChecker()
-        assert checker.has_permission(PermissionLevel.N, "/api/v1/notifications", "POST") is True
-        assert checker.has_permission(PermissionLevel.B, "/api/v1/notifications", "POST") is False
+        assert (
+            checker.has_permission(PermissionLevel.N, "/api/v1/notifications", "POST")
+            is True
+        )
+        assert (
+            checker.has_permission(PermissionLevel.B, "/api/v1/notifications", "POST")
+            is False
+        )
 
     def test_credentials_endpoints_require_c_permission(self):
         checker = PermissionChecker()
-        assert checker.has_permission(PermissionLevel.C, "/api/v1/config", "GET") is True
-        assert checker.has_permission(PermissionLevel.B, "/api/v1/config", "GET") is False
+        assert (
+            checker.has_permission(PermissionLevel.C, "/api/v1/config", "GET") is True
+        )
+        assert (
+            checker.has_permission(PermissionLevel.B, "/api/v1/config", "GET") is False
+        )
 
     def test_machine_endpoints_require_t_permission(self):
         checker = PermissionChecker()
-        assert checker.has_permission(PermissionLevel.T, "/api/v1/machine/params", "POST") is True
-        assert checker.has_permission(PermissionLevel.C, "/api/v1/machine/params", "POST") is False
+        assert (
+            checker.has_permission(PermissionLevel.T, "/api/v1/machine/params", "POST")
+            is True
+        )
+        assert (
+            checker.has_permission(PermissionLevel.C, "/api/v1/machine/params", "POST")
+            is False
+        )
 
     def test_higher_permission_includes_lower(self):
         checker = PermissionChecker()
-        assert checker.has_permission(PermissionLevel.T, "/api/v1/lnn/predict", "GET") is True
-        assert checker.has_permission(PermissionLevel.C, "/api/v1/lnn/predict", "GET") is True
-        assert checker.has_permission(PermissionLevel.B, "/api/v1/lnn/predict", "GET") is True
+        assert (
+            checker.has_permission(PermissionLevel.T, "/api/v1/lnn/predict", "GET")
+            is True
+        )
+        assert (
+            checker.has_permission(PermissionLevel.C, "/api/v1/lnn/predict", "GET")
+            is True
+        )
+        assert (
+            checker.has_permission(PermissionLevel.B, "/api/v1/lnn/predict", "GET")
+            is True
+        )
 
     def test_default_permission_for_unknown_endpoint(self):
         checker = PermissionChecker()
-        assert checker.has_permission(PermissionLevel.R, "/api/v1/unknown/endpoint", "GET") is True
-        assert checker.has_permission(PermissionLevel.R, "/api/v1/unknown/endpoint", "POST") is False
+        assert (
+            checker.has_permission(PermissionLevel.R, "/api/v1/unknown/endpoint", "GET")
+            is True
+        )
+        assert (
+            checker.has_permission(
+                PermissionLevel.R, "/api/v1/unknown/endpoint", "POST"
+            )
+            is False
+        )
 
     def test_default_permissions_fallback(self):
         checker = PermissionChecker()
         assert checker.has_permission(PermissionLevel.R, "/random/path", "GET") is True
-        assert checker.has_permission(PermissionLevel.R, "/random/path", "POST") is False
-        assert checker.has_permission(PermissionLevel.C, "/random/path", "DELETE") is True
+        assert (
+            checker.has_permission(PermissionLevel.R, "/random/path", "POST") is False
+        )
+        assert (
+            checker.has_permission(PermissionLevel.C, "/random/path", "DELETE") is True
+        )
 
     def test_get_required_permission_explicit(self):
         checker = PermissionChecker()
@@ -257,28 +312,36 @@ class TestPaperOnlyGuard:
 
     def test_check_t_operation_paper_only_mode(self):
         guard = PaperOnlyGuard()
-        allowed, message = guard.check_t_operation(has_t_permission=True, ui_confirmed=True)
+        allowed, message = guard.check_t_operation(
+            has_t_permission=True, ui_confirmed=True
+        )
         assert allowed is False
         assert "Paper-Only mode" in message
 
     @patch.dict(os.environ, {"LNN_LIVE_EXECUTION_ENABLED": "true"})
     def test_check_t_operation_missing_permission(self):
         guard = PaperOnlyGuard()
-        allowed, message = guard.check_t_operation(has_t_permission=False, ui_confirmed=True)
+        allowed, message = guard.check_t_operation(
+            has_t_permission=False, ui_confirmed=True
+        )
         assert allowed is False
         assert "Insufficient permission" in message
 
     @patch.dict(os.environ, {"LNN_LIVE_EXECUTION_ENABLED": "true"})
     def test_check_t_operation_missing_ui_confirmation(self):
         guard = PaperOnlyGuard()
-        allowed, message = guard.check_t_operation(has_t_permission=True, ui_confirmed=False)
+        allowed, message = guard.check_t_operation(
+            has_t_permission=True, ui_confirmed=False
+        )
         assert allowed is False
         assert "UI confirmation required" in message
 
     @patch.dict(os.environ, {"LNN_LIVE_EXECUTION_ENABLED": "true"})
     def test_check_t_operation_all_conditions_met(self):
         guard = PaperOnlyGuard()
-        allowed, message = guard.check_t_operation(has_t_permission=True, ui_confirmed=True)
+        allowed, message = guard.check_t_operation(
+            has_t_permission=True, ui_confirmed=True
+        )
         assert allowed is True
         assert "approved" in message.lower()
 
@@ -302,8 +365,14 @@ class TestPermissionCheckerEdgeCases:
 
     def test_permission_level_case_sensitivity(self):
         checker = PermissionChecker()
-        assert checker.has_permission(PermissionLevel.R, "/api/v1/lnn/predict", "GET") is True
-        assert checker.has_permission(PermissionLevel.R, "/api/v1/lnn/predict", "get") is False
+        assert (
+            checker.has_permission(PermissionLevel.R, "/api/v1/lnn/predict", "GET")
+            is True
+        )
+        assert (
+            checker.has_permission(PermissionLevel.R, "/api/v1/lnn/predict", "get")
+            is False
+        )
 
     def test_rate_limit_different_tokens_independent(self):
         checker = PermissionChecker()

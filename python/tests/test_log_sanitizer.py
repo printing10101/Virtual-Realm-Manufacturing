@@ -8,8 +8,9 @@ Tests for:
 - File content protection
 - User input truncation
 """
+
 import pytest
-from app.core.log_sanitizer import LogSanitizer, SanitizationRule
+from app.core.log_sanitizer import LogSanitizer
 
 
 class TestLogSanitizerInitialization:
@@ -248,17 +249,15 @@ class TestLogSanitizerMainSanitize:
         sanitizer = LogSanitizer()
         data = {
             "level1": {
-                "level2": {
-                    "cutting_speed": 200,
-                    "nested_list": [
-                        {"feed_rate": 0.3}
-                    ]
-                }
+                "level2": {"cutting_speed": 200, "nested_list": [{"feed_rate": 0.3}]}
             }
         }
         result = sanitizer.sanitize(data)
         assert result["level1"]["level2"]["cutting_speed"] == "[工艺参数已脱敏]"
-        assert result["level1"]["level2"]["nested_list"][0]["feed_rate"] == "[工艺参数已脱敏]"
+        assert (
+            result["level1"]["level2"]["nested_list"][0]["feed_rate"]
+            == "[工艺参数已脱敏]"
+        )
 
 
 class TestLogSanitizerEdgeCases:

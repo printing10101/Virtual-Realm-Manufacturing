@@ -3,9 +3,9 @@
 Python backend comprehensive test script.
 Validates system environment, dependencies, service startup, and API connectivity.
 """
+
 from __future__ import annotations
 
-import os
 import sys
 import subprocess
 import time
@@ -79,7 +79,16 @@ def test_server_health() -> bool:
     server = None
     try:
         server = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port)],
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "app.main:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(port),
+            ],
             cwd=str(python_dir),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -91,16 +100,18 @@ def test_server_health() -> bool:
             with httpx.Client(timeout=10) as client:
                 resp = client.get(f"http://127.0.0.1:{port}/health")
                 if resp.status_code == 200:
-                    print(f"  \033[92m\u2713\033[0m Health check returned 200")
-                    print(f"  \033[92m\u2713 PASS\033[0m")
+                    print("  \033[92m\u2713\033[0m Health check returned 200")
+                    print("  \033[92m\u2713 PASS\033[0m")
                     return True
                 else:
-                    print(f"  \033[91m\u2717\033[0m Health check returned {resp.status_code}")
-                    print(f"  \033[91m\u2717 FAIL\033[0m")
+                    print(
+                        f"  \033[91m\u2717\033[0m Health check returned {resp.status_code}"
+                    )
+                    print("  \033[91m\u2717 FAIL\033[0m")
                     return False
         except Exception as e:
             print(f"  \033[91m\u2717\033[0m Failed to connect: {e}")
-            print(f"  \033[91m\u2717 FAIL\033[0m")
+            print("  \033[91m\u2717 FAIL\033[0m")
             return False
     finally:
         if server is not None:
@@ -109,7 +120,7 @@ def test_server_health() -> bool:
                 server.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 server.kill()
-            print(f"  Server process terminated.")
+            print("  Server process terminated.")
 
 
 def test_api_endpoints() -> bool:
@@ -122,7 +133,16 @@ def test_api_endpoints() -> bool:
     server = None
     try:
         server = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port)],
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "app.main:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(port),
+            ],
             cwd=str(python_dir),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -144,7 +164,9 @@ def test_api_endpoints() -> bool:
                     print(f"  \033[91m\u2717\033[0m {ep} -> Error: {str(e)[:50]}")
                     all_pass = False
 
-        status = "\033[92m\u2713 PASS\033[0m" if all_pass else "\033[91m\u2717 FAIL\033[0m"
+        status = (
+            "\033[92m\u2713 PASS\033[0m" if all_pass else "\033[91m\u2717 FAIL\033[0m"
+        )
         print(f"Result: {status}")
         return all_pass
     finally:
@@ -154,7 +176,7 @@ def test_api_endpoints() -> bool:
                 server.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 server.kill()
-            print(f"  Server process terminated.")
+            print("  Server process terminated.")
 
 
 def test_ollama_connection() -> bool:
@@ -167,17 +189,21 @@ def test_ollama_connection() -> bool:
                 data = resp.json()
                 models = data.get("models", [])
                 model_names = [m.get("name", "unknown") for m in models]
-                print(f"  \033[92m\u2713\033[0m Connected to Ollama successfully")
-                print(f"  \033[92m\u2713\033[0m Installed models: {', '.join(model_names)}")
-                print(f"  \033[92m\u2713 PASS\033[0m")
+                print("  \033[92m\u2713\033[0m Connected to Ollama successfully")
+                print(
+                    f"  \033[92m\u2713\033[0m Installed models: {', '.join(model_names)}"
+                )
+                print("  \033[92m\u2713 PASS\033[0m")
                 return True
             else:
-                print(f"  \033[91m\u2717\033[0m Ollama returned status {resp.status_code}")
-                print(f"  \033[91m\u2717 FAIL\033[0m")
+                print(
+                    f"  \033[91m\u2717\033[0m Ollama returned status {resp.status_code}"
+                )
+                print("  \033[91m\u2717 FAIL\033[0m")
                 return False
     except Exception as e:
         print(f"  \033[91m\u2717\033[0m Failed to connect to Ollama: {e}")
-        print(f"  \033[91m\u2717 FAIL\033[0m")
+        print("  \033[91m\u2717 FAIL\033[0m")
         return False
 
 
@@ -206,7 +232,9 @@ def main() -> int:
 
     passed = 0
     for name, result in results.items():
-        status_str = "\033[92m\u2713 Pass\033[0m" if result else "\033[91m\u2717 Fail\033[0m"
+        status_str = (
+            "\033[92m\u2713 Pass\033[0m" if result else "\033[91m\u2717 Fail\033[0m"
+        )
         print(f"  {name}: {status_str}")
         if result:
             passed += 1

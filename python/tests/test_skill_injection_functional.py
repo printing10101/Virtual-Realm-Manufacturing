@@ -1,7 +1,4 @@
-import os
 import sys
-import time
-import json
 from pathlib import Path
 
 import pytest
@@ -9,19 +6,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core.skill_loader import (
-    Skill,
-    SkillLevel,
-    SkillMetadata,
-    SkillPriority,
-    SkillVersion,
-    MarkdownSkillParser,
-    SkillRegistry,
     SkillLoader,
-    SkillFileWatcher,
-    get_skill_loader,
-    init_skill_loader,
-    inject_skills,
-    PRIORITY_MAP,
 )
 
 GLOBAL_SKILL_CONTENT = """---
@@ -208,7 +193,9 @@ class TestGlobalSkillAvailability:
 
         global_dir = skills_base / "global"
         global_dir.mkdir()
-        (global_dir / "global_safety_check.md").write_text(GLOBAL_SKILL_CONTENT, encoding="utf-8")
+        (global_dir / "global_safety_check.md").write_text(
+            GLOBAL_SKILL_CONTENT, encoding="utf-8"
+        )
 
         projects_dir = skills_base / "projects"
         projects_dir.mkdir()
@@ -221,8 +208,12 @@ class TestGlobalSkillAvailability:
             (agents_dir / aid).mkdir()
 
         loader = SkillLoader(skills_base_dir=str(skills_base))
-        yield loader, skills_base, ["proj_alpha", "proj_beta", "proj_gamma"], \
-              ["agent_01", "agent_02", "agent_03", "agent_04", "agent_05"]
+        yield (
+            loader,
+            skills_base,
+            ["proj_alpha", "proj_beta", "proj_gamma"],
+            ["agent_01", "agent_02", "agent_03", "agent_04", "agent_05"],
+        )
         loader.stop_watcher()
 
     def test_global_skill_accessible_to_all_projects(self, global_skill_setup):
@@ -234,8 +225,9 @@ class TestGlobalSkillAvailability:
                     task_type="prediction", project_id=pid, agent_id=aid
                 )
                 global_ids = [s.metadata.skill_id for s in skills]
-                assert "global_safety_check" in global_ids, \
+                assert "global_safety_check" in global_ids, (
                     f"全局技能未被 project={pid}, agent={aid} 获取到"
+                )
 
     def test_global_skill_accessible_across_diverse_tasks(self, global_skill_setup):
         loader, _, projects, agents = global_skill_setup
@@ -248,8 +240,9 @@ class TestGlobalSkillAvailability:
                     task_type=task_type, project_id=pid, agent_id=agents[0]
                 )
                 global_ids = [s.metadata.skill_id for s in skills]
-                assert "global_safety_check" in global_ids, \
+                assert "global_safety_check" in global_ids, (
                     f"全局技能未被 task={task_type}, project={pid} 获取到"
+                )
 
     def test_global_skill_available_without_project_agent(self, global_skill_setup):
         loader, _, _, _ = global_skill_setup
@@ -331,8 +324,9 @@ class TestProjectSkillIsolation:
                 task_type=task_type, project_id="proj_internal"
             )
             skill_ids = [s.metadata.skill_id for s in skills]
-            assert "project_custom_validation" in skill_ids, \
+            assert "project_custom_validation" in skill_ids, (
                 f"项目技能未被 task={task_type} 获取到"
+            )
 
 
 class TestAgentSkillExclusivity:
@@ -376,8 +370,9 @@ class TestAgentSkillExclusivity:
                 task_type="prediction", project_id="proj_common", agent_id=other_agent
             )
             skill_ids = [s.metadata.skill_id for s in skills]
-            assert "agent_expert_rules" not in skill_ids, \
+            assert "agent_expert_rules" not in skill_ids, (
                 f"代理 {other_agent} 不应获取到 agent_target 的技能"
+            )
 
     def test_same_task_type_different_agents(self, agent_exclusivity_setup):
         loader = agent_exclusivity_setup
@@ -422,7 +417,9 @@ description: 版本1 - 原始内容
 result = input_value * 2
 """
         global_dir = skills_base / "global"
-        (global_dir / "hot_reload_test.md").write_text(skill_content_v1, encoding="utf-8")
+        (global_dir / "hot_reload_test.md").write_text(
+            skill_content_v1, encoding="utf-8"
+        )
 
         loader.hot_reload()
 
@@ -454,7 +451,9 @@ description: 版本2 - 更新后的内容
 ## 执行逻辑
 result = input_value * 3 + offset
 """
-        (global_dir / "hot_reload_test.md").write_text(skill_content_v2, encoding="utf-8")
+        (global_dir / "hot_reload_test.md").write_text(
+            skill_content_v2, encoding="utf-8"
+        )
 
         result = loader.hot_reload(skill_id="hot_reload_test")
 
@@ -494,7 +493,9 @@ required_context: []
 ---
 # 文件监听检测技能
 """
-        (global_dir / "watcher_detected.md").write_text(new_skill_content, encoding="utf-8")
+        (global_dir / "watcher_detected.md").write_text(
+            new_skill_content, encoding="utf-8"
+        )
 
         loader.hot_reload()
 
@@ -513,7 +514,9 @@ class TestSkillContextLogVerification:
 
         global_dir = skills_base / "global"
         global_dir.mkdir()
-        (global_dir / "global_safety_check.md").write_text(GLOBAL_SKILL_CONTENT, encoding="utf-8")
+        (global_dir / "global_safety_check.md").write_text(
+            GLOBAL_SKILL_CONTENT, encoding="utf-8"
+        )
 
         projects_dir = skills_base / "projects"
         projects_dir.mkdir()
@@ -607,7 +610,9 @@ class TestTaskTypeFiltering:
         projects_dir = skills_base / "projects"
         projects_dir.mkdir()
         (projects_dir / "proj_test").mkdir()
-        (projects_dir / "proj_test" / "training_specialist.md").write_text(TRAINING_ONLY_SKILL, encoding="utf-8")
+        (projects_dir / "proj_test" / "training_specialist.md").write_text(
+            TRAINING_ONLY_SKILL, encoding="utf-8"
+        )
 
         agents_dir = skills_base / "agents"
         agents_dir.mkdir()
@@ -642,8 +647,9 @@ class TestTaskTypeFiltering:
                 task_type=task_type, project_id="proj_test", agent_id="agent_test"
             )
             skill_ids = [s.metadata.skill_id for s in skills]
-            assert "training_specialist" not in skill_ids, \
+            assert "training_specialist" not in skill_ids, (
                 f"training_specialist 不应被 task={task_type} 获取"
+            )
 
     def test_training_skill_injected_only_for_training(self, task_filter_setup):
         loader = task_filter_setup
@@ -675,7 +681,9 @@ class TestSkillLoadFailureTolerance:
         global_dir = skills_base / "global"
         global_dir.mkdir()
 
-        (global_dir / "healthy_skill.md").write_text(GLOBAL_SKILL_CONTENT, encoding="utf-8")
+        (global_dir / "healthy_skill.md").write_text(
+            GLOBAL_SKILL_CONTENT, encoding="utf-8"
+        )
 
         projects_dir = skills_base / "projects"
         projects_dir.mkdir()
@@ -687,6 +695,7 @@ class TestSkillLoadFailureTolerance:
 
         yield skills_base
         import shutil
+
         if skills_base.exists():
             shutil.rmtree(str(skills_base), ignore_errors=True)
 
@@ -712,17 +721,18 @@ applicable_tasks: ["*"]
                 task_type="prediction", project_id="proj_test", agent_id="agent_test"
             )
             healthy_ids = [s.metadata.skill_id for s in healthy_skills]
-            assert "global_safety_check" in healthy_ids, \
-                "健康的全局技能应该仍然可用"
+            assert "global_safety_check" in healthy_ids, "健康的全局技能应该仍然可用"
 
             import asyncio
+
             ctx = asyncio.run(
                 loader.inject_skills(
-                    task_type="prediction", project_id="proj_test", agent_id="agent_test"
+                    task_type="prediction",
+                    project_id="proj_test",
+                    agent_id="agent_test",
                 )
             )
-            assert "全局安全检查" in ctx, \
-                "注入上下文应包含健康技能的内容"
+            assert "全局安全检查" in ctx, "注入上下文应包含健康技能的内容"
         finally:
             loader.stop_watcher()
 
@@ -730,7 +740,9 @@ applicable_tasks: ["*"]
         skills_base = failure_tolerance_setup
         global_dir = skills_base / "global"
 
-        (global_dir / "malformed.md").write_text("\x00\x01\x02\xff\xfe", encoding="utf-8")
+        (global_dir / "malformed.md").write_text(
+            "\x00\x01\x02\xff\xfe", encoding="utf-8"
+        )
 
         loader = SkillLoader(skills_base_dir=str(skills_base))
         try:
@@ -769,18 +781,21 @@ applicable_tasks: ["*"]
             assert "global_safety_check" in healthy_ids
 
             import asyncio
-            ctx = asyncio.run(
-                loader.inject_skills(task_type="prediction")
-            )
+
+            ctx = asyncio.run(loader.inject_skills(task_type="prediction"))
             assert len(ctx) > 0
         finally:
             loader.stop_watcher()
 
-    def test_task_execution_continues_with_corrupt_skill_present(self, failure_tolerance_setup):
+    def test_task_execution_continues_with_corrupt_skill_present(
+        self, failure_tolerance_setup
+    ):
         skills_base = failure_tolerance_setup
         global_dir = skills_base / "global"
 
-        (global_dir / "corrupt_binary.md").write_bytes(b"\x00\x01\x02\x03\xff\xfe\xfd\xfc")
+        (global_dir / "corrupt_binary.md").write_bytes(
+            b"\x00\x01\x02\x03\xff\xfe\xfd\xfc"
+        )
 
         loader = SkillLoader(skills_base_dir=str(skills_base))
         try:
@@ -824,7 +839,9 @@ class TestMultiSkillMergeConflicts:
         skills = loader.get_skills_for_task(
             task_type="prediction", project_id="proj_merge", agent_id="agent_merge"
         )
-        term_skills = [s for s in skills if s.metadata.skill_id.startswith("term_definition_")]
+        term_skills = [
+            s for s in skills if s.metadata.skill_id.startswith("term_definition_")
+        ]
         assert len(term_skills) == 3
 
     def test_merged_context_contains_all_skill_names(self, merge_conflict_setup):
@@ -858,8 +875,13 @@ class TestMultiSkillMergeConflicts:
         skills = loader.get_skills_for_task(
             task_type="prediction", project_id="proj_merge", agent_id="agent_merge"
         )
-        term_skills = [s for s in skills if s.metadata.skill_id.startswith("term_definition_")]
-        assert term_skills[0].metadata.priority.value <= term_skills[2].metadata.priority.value
+        term_skills = [
+            s for s in skills if s.metadata.skill_id.startswith("term_definition_")
+        ]
+        assert (
+            term_skills[0].metadata.priority.value
+            <= term_skills[2].metadata.priority.value
+        )
 
     def test_merge_handles_empty_context_gracefully(self, merge_conflict_setup):
         loader = merge_conflict_setup
@@ -891,7 +913,9 @@ class TestEndToEndIntegration:
 
         global_dir = skills_base / "global"
         global_dir.mkdir()
-        (global_dir / "global_safety_check.md").write_text(GLOBAL_SKILL_CONTENT, encoding="utf-8")
+        (global_dir / "global_safety_check.md").write_text(
+            GLOBAL_SKILL_CONTENT, encoding="utf-8"
+        )
 
         projects_dir = skills_base / "projects"
         projects_dir.mkdir()
@@ -933,9 +957,7 @@ class TestEndToEndIntegration:
 
     def test_proj_a_without_agent_gets_global_and_project(self, e2e_setup):
         loader = e2e_setup
-        skills = loader.get_skills_for_task(
-            task_type="prediction", project_id="proj_a"
-        )
+        skills = loader.get_skills_for_task(task_type="prediction", project_id="proj_a")
         skill_ids = [s.metadata.skill_id for s in skills]
 
         assert "global_safety_check" in skill_ids
@@ -944,9 +966,7 @@ class TestEndToEndIntegration:
 
     def test_agent_x_without_project_gets_global_and_agent(self, e2e_setup):
         loader = e2e_setup
-        skills = loader.get_skills_for_task(
-            task_type="prediction", agent_id="agent_x"
-        )
+        skills = loader.get_skills_for_task(task_type="prediction", agent_id="agent_x")
         skill_ids = [s.metadata.skill_id for s in skills]
 
         assert "global_safety_check" in skill_ids

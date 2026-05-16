@@ -11,22 +11,25 @@ Comprehensive tests covering:
 7. Project deletion impact analysis
 8. Frontend goal tree view verification (API-based)
 """
+
 import os
 import sys
 import time
 import uuid
-import json
 import pytest
 import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.models.goals import (
-    Goal, GoalLevel, GoalStatus, GoalRef, GoalVersion, GoalProgress,
-    DEFAULT_GOALS,
+    Goal,
+    GoalLevel,
+    GoalStatus,
 )
 from app.models.tasks import (
-    EnhancedTask, EnhancedTaskType, EnhancedTaskStatus,
+    EnhancedTask,
+    EnhancedTaskType,
+    EnhancedTaskStatus,
 )
 from app.core.goal_chain_store import GoalChainStore
 from app.core.goal_alignment import GoalAlignmentChecker, GoalAlignmentError
@@ -118,9 +121,33 @@ class TestGoalChainCreation:
         project_id = f"project-rel-{uuid.uuid4().hex[:8]}"
         task_id = f"task-rel-{uuid.uuid4().hex[:8]}"
 
-        store.add_goal(Goal(id=strategic_id, name="S", description="Strategic", level=GoalLevel.STRATEGIC_GOAL, parent_id="mission-001"))
-        store.add_goal(Goal(id=project_id, name="P", description="Project", level=GoalLevel.PROJECT, parent_id=strategic_id))
-        store.add_goal(Goal(id=task_id, name="T", description="Task", level=GoalLevel.TASK, parent_id=project_id))
+        store.add_goal(
+            Goal(
+                id=strategic_id,
+                name="S",
+                description="Strategic",
+                level=GoalLevel.STRATEGIC_GOAL,
+                parent_id="mission-001",
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="P",
+                description="Project",
+                level=GoalLevel.PROJECT,
+                parent_id=strategic_id,
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=task_id,
+                name="T",
+                description="Task",
+                level=GoalLevel.TASK,
+                parent_id=project_id,
+            )
+        )
 
         children_of_mission = store.get_children("mission-001")
         strategic_children = [c for c in children_of_mission if c.id == strategic_id]
@@ -142,16 +169,34 @@ class TestGoalChainCreation:
         strategic_id = f"strategic-acc-{uuid.uuid4().hex[:8]}"
         project_id = f"project-acc-{uuid.uuid4().hex[:8]}"
 
-        store.add_goal(Goal(id=strategic_id, name="Strategic", description="S", level=GoalLevel.STRATEGIC_GOAL, parent_id="mission-001"))
+        store.add_goal(
+            Goal(
+                id=strategic_id,
+                name="Strategic",
+                description="S",
+                level=GoalLevel.STRATEGIC_GOAL,
+                parent_id="mission-001",
+            )
+        )
         parent_ids[strategic_id] = "mission-001"
 
-        store.add_goal(Goal(id=project_id, name="Project", description="P", level=GoalLevel.PROJECT, parent_id=strategic_id))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Project",
+                description="P",
+                level=GoalLevel.PROJECT,
+                parent_id=strategic_id,
+            )
+        )
         parent_ids[project_id] = strategic_id
 
         for goal_id, expected_parent in parent_ids.items():
             goal = store.get_goal(goal_id)
             assert goal is not None
-            assert goal.parent_id == expected_parent, f"Goal {goal_id} parent_id mismatch"
+            assert goal.parent_id == expected_parent, (
+                f"Goal {goal_id} parent_id mismatch"
+            )
 
 
 class TestGoalChainQueryVerification:
@@ -162,9 +207,33 @@ class TestGoalChainQueryVerification:
         project_id = f"project-q-{uuid.uuid4().hex[:8]}"
         task_id = f"task-q-{uuid.uuid4().hex[:8]}"
 
-        store.add_goal(Goal(id=strategic_id, name="战略目标", description="S", level=GoalLevel.STRATEGIC_GOAL, parent_id="mission-001"))
-        store.add_goal(Goal(id=project_id, name="项目", description="P", level=GoalLevel.PROJECT, parent_id=strategic_id))
-        store.add_goal(Goal(id=task_id, name="任务", description="T", level=GoalLevel.TASK, parent_id=project_id))
+        store.add_goal(
+            Goal(
+                id=strategic_id,
+                name="战略目标",
+                description="S",
+                level=GoalLevel.STRATEGIC_GOAL,
+                parent_id="mission-001",
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="项目",
+                description="P",
+                level=GoalLevel.PROJECT,
+                parent_id=strategic_id,
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=task_id,
+                name="任务",
+                description="T",
+                level=GoalLevel.TASK,
+                parent_id=project_id,
+            )
+        )
 
         chain = store.resolve_goal_chain(task_id)
 
@@ -189,8 +258,24 @@ class TestGoalChainQueryVerification:
         strategic_id = f"strategic-acc2-{uuid.uuid4().hex[:8]}"
         project_id = f"project-acc2-{uuid.uuid4().hex[:8]}"
 
-        store.add_goal(Goal(id=strategic_id, name="战略", description="战略目标描述", level=GoalLevel.STRATEGIC_GOAL, parent_id="mission-001"))
-        store.add_goal(Goal(id=project_id, name="项目", description="项目描述", level=GoalLevel.PROJECT, parent_id=strategic_id))
+        store.add_goal(
+            Goal(
+                id=strategic_id,
+                name="战略",
+                description="战略目标描述",
+                level=GoalLevel.STRATEGIC_GOAL,
+                parent_id="mission-001",
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="项目",
+                description="项目描述",
+                level=GoalLevel.PROJECT,
+                parent_id=strategic_id,
+            )
+        )
 
         chain = store.resolve_goal_chain(project_id)
 
@@ -213,7 +298,15 @@ class TestGoalChainQueryVerification:
 
     def test_goal_chain_serialization(self, store):
         project_id = f"project-serial-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Project", description="P", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Project",
+                description="P",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         chain = store.resolve_goal_chain(project_id)
         serialized = [ref.to_dict() for ref in chain]
@@ -231,7 +324,15 @@ class TestTaskExecutionContextInjection:
 
     def test_context_contains_full_goal_chain(self, store, checker, context_builder):
         project_id = f"project-ctx-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="上下文测试项目", description="用于测试上下文注入", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="上下文测试项目",
+                description="用于测试上下文注入",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         chain = store.resolve_goal_chain(project_id)
         task = EnhancedTask(
@@ -252,7 +353,15 @@ class TestTaskExecutionContextInjection:
 
     def test_context_includes_mission(self, store, context_builder):
         project_id = f"project-mission-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Mission Project", description="MP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Mission Project",
+                description="MP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         chain = store.resolve_goal_chain(project_id)
         task = EnhancedTask(
@@ -271,7 +380,15 @@ class TestTaskExecutionContextInjection:
 
     def test_context_importance_explanation(self, store, context_builder):
         project_id = f"project-importance-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Importance Project", description="IP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Importance Project",
+                description="IP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         chain = store.resolve_goal_chain(project_id)
         task = EnhancedTask(
@@ -303,7 +420,9 @@ class TestOrphanTaskCreationPrevention:
         with pytest.raises(GoalAlignmentError) as excinfo:
             checker.validate_task_goal_chain(task)
 
-        assert "goal chain" in str(excinfo.value).lower() or "目标链" in str(excinfo.value)
+        assert "goal chain" in str(excinfo.value).lower() or "目标链" in str(
+            excinfo.value
+        )
 
     def test_task_creation_api_requires_parent_goal(self, store, checker):
         try:
@@ -317,7 +436,11 @@ class TestOrphanTaskCreationPrevention:
             assert False, "Should have raised GoalAlignmentError"
         except GoalAlignmentError as e:
             error_message = str(e)
-            assert "必须" in error_message or "required" in error_message.lower() or "goal" in error_message.lower()
+            assert (
+                "必须" in error_message
+                or "required" in error_message.lower()
+                or "goal" in error_message.lower()
+            )
 
     def test_empty_goal_chain_rejected(self, store, checker):
         task = EnhancedTask(
@@ -333,7 +456,15 @@ class TestOrphanTaskCreationPrevention:
 
     def test_task_with_valid_goal_chain_accepted(self, store, checker):
         project_id = f"project-valid-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Valid Project", description="VP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Valid Project",
+                description="VP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         chain = store.resolve_goal_chain(project_id)
         task = EnhancedTask(
@@ -355,13 +486,31 @@ class TestGoalChainContextUpdate:
         strategic_id = f"strategic-update-{uuid.uuid4().hex[:8]}"
         project_id = f"project-update-{uuid.uuid4().hex[:8]}"
 
-        store.add_goal(Goal(id=strategic_id, name="战略", description="原始描述", level=GoalLevel.STRATEGIC_GOAL, parent_id="mission-001"))
-        store.add_goal(Goal(id=project_id, name="项目", description="项目描述", level=GoalLevel.PROJECT, parent_id=strategic_id))
+        store.add_goal(
+            Goal(
+                id=strategic_id,
+                name="战略",
+                description="原始描述",
+                level=GoalLevel.STRATEGIC_GOAL,
+                parent_id="mission-001",
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="项目",
+                description="项目描述",
+                level=GoalLevel.PROJECT,
+                parent_id=strategic_id,
+            )
+        )
 
         original_strategic = store.get_goal(strategic_id)
         assert original_strategic.description == "原始描述"
 
-        updated_strategic = store.update_goal(strategic_id, description="更新后的战略目标描述")
+        updated_strategic = store.update_goal(
+            strategic_id, description="更新后的战略目标描述"
+        )
         assert updated_strategic is not None
         assert updated_strategic.description == "更新后的战略目标描述"
 
@@ -370,7 +519,15 @@ class TestGoalChainContextUpdate:
 
     def test_context_reflects_updated_description(self, store, context_builder):
         project_id = f"project-reflect-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Reflect Project", description="RC", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Reflect Project",
+                description="RC",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         chain = store.resolve_goal_chain(project_id)
         task = EnhancedTask(
@@ -396,7 +553,15 @@ class TestGoalChainContextUpdate:
 
     def test_version_history_tracks_updates(self, store):
         strategic_id = f"strategic-version-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=strategic_id, name="Version Test", description="v1", level=GoalLevel.STRATEGIC_GOAL, parent_id="mission-001"))
+        store.add_goal(
+            Goal(
+                id=strategic_id,
+                name="Version Test",
+                description="v1",
+                level=GoalLevel.STRATEGIC_GOAL,
+                parent_id="mission-001",
+            )
+        )
 
         store.update_goal(strategic_id, description="v2")
         store.update_goal(strategic_id, description="v3")
@@ -414,7 +579,15 @@ class TestAutomaticProgressComputation:
 
     def test_all_tasks_completed_yields_100_percent(self, store, checker):
         project_id = f"project-progress-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Progress Project", description="PP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Progress Project",
+                description="PP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         def belongs_check(task_id, goal_id):
             task = checker._task_map.get(task_id)
@@ -446,7 +619,15 @@ class TestAutomaticProgressComputation:
 
     def test_partial_completion_yields_correct_percent(self, store, checker):
         project_id = f"project-partial-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Partial Project", description="PP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Partial Project",
+                description="PP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         def belongs_check(task_id, goal_id):
             task = checker._task_map.get(task_id)
@@ -479,7 +660,15 @@ class TestAutomaticProgressComputation:
 
     def test_progress_computation_respects_business_rules(self, store, checker):
         project_id = f"project-rules-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Rules Project", description="RP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Rules Project",
+                description="RP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         def belongs_check(task_id, goal_id):
             task = checker._task_map.get(task_id)
@@ -489,7 +678,7 @@ class TestAutomaticProgressComputation:
 
         store.set_task_belongs_checker(belongs_check)
 
-        task_id = f"task-rules-0"
+        task_id = "task-rules-0"
         chain = store.resolve_goal_chain(project_id)
         task = EnhancedTask(
             id=task_id,
@@ -520,8 +709,26 @@ class TestProjectDeletionImpact:
         project_id = f"project-delete-{uuid.uuid4().hex[:8]}"
         task_goal_id = f"task-goal-delete-{uuid.uuid4().hex[:8]}"
 
-        store.add_goal(Goal(id=project_id, name="Delete Project", description="DP", level=GoalLevel.PROJECT, parent_id="strategic-001", status=GoalStatus.IN_PROGRESS))
-        store.add_goal(Goal(id=task_goal_id, name="Task under project", description="TUP", level=GoalLevel.TASK, parent_id=project_id, status=GoalStatus.IN_PROGRESS))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Delete Project",
+                description="DP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+                status=GoalStatus.IN_PROGRESS,
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=task_goal_id,
+                name="Task under project",
+                description="TUP",
+                level=GoalLevel.TASK,
+                parent_id=project_id,
+                status=GoalStatus.IN_PROGRESS,
+            )
+        )
 
         affected = store.propagate_cancellation(project_id)
 
@@ -536,9 +743,35 @@ class TestProjectDeletionImpact:
         task1_id = f"task-state-1-{uuid.uuid4().hex[:8]}"
         task2_id = f"task-state-2-{uuid.uuid4().hex[:8]}"
 
-        store.add_goal(Goal(id=project_id, name="State Project", description="SP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
-        store.add_goal(Goal(id=task1_id, name="Task 1", description="T1", level=GoalLevel.TASK, parent_id=project_id, status=GoalStatus.IN_PROGRESS))
-        store.add_goal(Goal(id=task2_id, name="Task 2", description="T2", level=GoalLevel.TASK, parent_id=project_id, status=GoalStatus.NOT_STARTED))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="State Project",
+                description="SP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=task1_id,
+                name="Task 1",
+                description="T1",
+                level=GoalLevel.TASK,
+                parent_id=project_id,
+                status=GoalStatus.IN_PROGRESS,
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=task2_id,
+                name="Task 2",
+                description="T2",
+                level=GoalLevel.TASK,
+                parent_id=project_id,
+                status=GoalStatus.NOT_STARTED,
+            )
+        )
 
         affected = store.propagate_cancellation(project_id)
 
@@ -554,8 +787,25 @@ class TestProjectDeletionImpact:
         project_id = f"project-log-{uuid.uuid4().hex[:8]}"
         task_id = f"task-log-{uuid.uuid4().hex[:8]}"
 
-        store.add_goal(Goal(id=project_id, name="Log Project", description="LP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
-        store.add_goal(Goal(id=task_id, name="Log Task", description="LT", level=GoalLevel.TASK, parent_id=project_id, status=GoalStatus.IN_PROGRESS))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Log Project",
+                description="LP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=task_id,
+                name="Log Task",
+                description="LT",
+                level=GoalLevel.TASK,
+                parent_id=project_id,
+                status=GoalStatus.IN_PROGRESS,
+            )
+        )
 
         original_task = store.get_goal(task_id)
         assert original_task.status == GoalStatus.IN_PROGRESS
@@ -566,7 +816,9 @@ class TestProjectDeletionImpact:
         assert updated_task.status == GoalStatus.NEEDS_REVIEW
 
         project_goal = store.get_goal(project_id)
-        assert project_goal.status != GoalStatus.NEEDS_REVIEW or project_goal.id != task_id
+        assert (
+            project_goal.status != GoalStatus.NEEDS_REVIEW or project_goal.id != task_id
+        )
 
         affected_children = store.get_children(project_id)
         for child in affected_children:
@@ -581,9 +833,33 @@ class TestFrontendGoalTreeView:
         project_id = f"project-tree-{uuid.uuid4().hex[:8]}"
         task_id = f"task-tree-{uuid.uuid4().hex[:8]}"
 
-        store.add_goal(Goal(id=strategic_id, name="Tree Strategic", description="TS", level=GoalLevel.STRATEGIC_GOAL, parent_id="mission-001"))
-        store.add_goal(Goal(id=project_id, name="Tree Project", description="TP", level=GoalLevel.PROJECT, parent_id=strategic_id))
-        store.add_goal(Goal(id=task_id, name="Tree Task", description="TT", level=GoalLevel.TASK, parent_id=project_id))
+        store.add_goal(
+            Goal(
+                id=strategic_id,
+                name="Tree Strategic",
+                description="TS",
+                level=GoalLevel.STRATEGIC_GOAL,
+                parent_id="mission-001",
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Tree Project",
+                description="TP",
+                level=GoalLevel.PROJECT,
+                parent_id=strategic_id,
+            )
+        )
+        store.add_goal(
+            Goal(
+                id=task_id,
+                name="Tree Task",
+                description="TT",
+                level=GoalLevel.TASK,
+                parent_id=project_id,
+            )
+        )
 
         tree = store.get_goal_tree()
 
@@ -592,7 +868,9 @@ class TestFrontendGoalTreeView:
         assert mission_node["level"] == "mission"
         assert "children" in mission_node
 
-        strategic_nodes = [c for c in mission_node["children"] if c["id"] == strategic_id]
+        strategic_nodes = [
+            c for c in mission_node["children"] if c["id"] == strategic_id
+        ]
         assert len(strategic_nodes) == 1
         strategic_node = strategic_nodes[0]
         assert strategic_node["level"] == "strategic_goal"
@@ -608,17 +886,37 @@ class TestFrontendGoalTreeView:
 
     def test_tree_expand_collapse_functionality(self, store):
         project_id = f"project-expand-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Expand Project", description="EP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Expand Project",
+                description="EP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         for i in range(3):
             task_id = f"task-expand-{i}"
-            store.add_goal(Goal(id=task_id, name=f"Task {i}", description=f"T{i}", level=GoalLevel.TASK, parent_id=project_id))
+            store.add_goal(
+                Goal(
+                    id=task_id,
+                    name=f"Task {i}",
+                    description=f"T{i}",
+                    level=GoalLevel.TASK,
+                    parent_id=project_id,
+                )
+            )
 
         tree = store.get_goal_tree()
 
         mission_node = tree[0]
-        strategic_node = [c for c in mission_node["children"] if c["level"] == "strategic_goal"][0]
-        project_node = [c for c in strategic_node["children"] if c["id"] == project_id][0]
+        strategic_node = [
+            c for c in mission_node["children"] if c["level"] == "strategic_goal"
+        ][0]
+        project_node = [c for c in strategic_node["children"] if c["id"] == project_id][
+            0
+        ]
 
         assert len(project_node["children"]) == 3
 
@@ -630,11 +928,27 @@ class TestFrontendGoalTreeView:
 
     def test_tree_response_performance(self, store):
         project_id = f"project-perf-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="Perf Project", description="PP", level=GoalLevel.PROJECT, parent_id="strategic-001"))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="Perf Project",
+                description="PP",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+            )
+        )
 
         for i in range(50):
             task_id = f"task-perf-{i}"
-            store.add_goal(Goal(id=task_id, name=f"Task {i}", description=f"T{i}", level=GoalLevel.TASK, parent_id=project_id))
+            store.add_goal(
+                Goal(
+                    id=task_id,
+                    name=f"Task {i}",
+                    description=f"T{i}",
+                    level=GoalLevel.TASK,
+                    parent_id=project_id,
+                )
+            )
 
         start_time = time.time()
         tree = store.get_goal_tree()
@@ -643,20 +957,37 @@ class TestFrontendGoalTreeView:
         assert elapsed < 1.0, f"Tree generation took {elapsed:.3f}s, expected < 1.0s"
 
         mission_node = tree[0]
-        strategic_node = [c for c in mission_node["children"] if c["level"] == "strategic_goal"][0]
-        project_node = [c for c in strategic_node["children"] if c["id"] == project_id][0]
+        strategic_node = [
+            c for c in mission_node["children"] if c["level"] == "strategic_goal"
+        ][0]
+        project_node = [c for c in strategic_node["children"] if c["id"] == project_id][
+            0
+        ]
 
         assert len(project_node["children"]) == 50
 
     def test_tree_node_labels_and_tags(self, store):
         project_id = f"project-labels-{uuid.uuid4().hex[:8]}"
-        store.add_goal(Goal(id=project_id, name="标签测试项目", description="Label Test", level=GoalLevel.PROJECT, parent_id="strategic-001", status=GoalStatus.IN_PROGRESS))
+        store.add_goal(
+            Goal(
+                id=project_id,
+                name="标签测试项目",
+                description="Label Test",
+                level=GoalLevel.PROJECT,
+                parent_id="strategic-001",
+                status=GoalStatus.IN_PROGRESS,
+            )
+        )
 
         tree = store.get_goal_tree()
 
         mission_node = tree[0]
-        strategic_node = [c for c in mission_node["children"] if c["level"] == "strategic_goal"][0]
-        project_node = [c for c in strategic_node["children"] if c["id"] == project_id][0]
+        strategic_node = [
+            c for c in mission_node["children"] if c["level"] == "strategic_goal"
+        ][0]
+        project_node = [c for c in strategic_node["children"] if c["id"] == project_id][
+            0
+        ]
 
         assert project_node["name"] == "标签测试项目"
         assert project_node["level"] == "project"

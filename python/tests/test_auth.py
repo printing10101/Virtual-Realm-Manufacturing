@@ -7,16 +7,12 @@ Tests for:
 - Permission enforcement logic
 - Public endpoint handling
 """
-import os
+
 import json
-import tempfile
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from starlette.responses import JSONResponse
 
 from app.core.auth import (
     AuthMiddleware,
@@ -24,10 +20,8 @@ from app.core.auth import (
     save_token,
     load_token,
     initialize_token,
-    get_token_file_path,
     PUBLIC_ENDPOINTS,
 )
-from app.core.permissions import PermissionLevel
 
 
 class TestTokenGeneration:
@@ -221,7 +215,9 @@ class TestAuthMiddleware:
         app.add_middleware(AuthMiddleware, enabled=True)
 
         client = TestClient(app)
-        response = client.get("/protected", headers={"Authorization": "Bearer invalid_token"})
+        response = client.get(
+            "/protected", headers={"Authorization": "Bearer invalid_token"}
+        )
 
         assert response.status_code == 401
         assert "Invalid authentication token" in response.json()["message"]
@@ -239,7 +235,9 @@ class TestAuthMiddleware:
         app.add_middleware(AuthMiddleware, enabled=True)
 
         client = TestClient(app)
-        response = client.get("/protected", headers={"Authorization": f"Bearer {token_file.read_text()}"})
+        response = client.get(
+            "/protected", headers={"Authorization": f"Bearer {token_file.read_text()}"}
+        )
 
         assert response.status_code == 200
 
@@ -267,7 +265,9 @@ class TestAuthMiddlewarePermissionEnforcement:
     def test_permission_enforcement_enabled(self, tmp_path, monkeypatch):
         token_file = tmp_path / ".lnn_token"
         monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
-        monkeypatch.setenv("LNN_TOKEN_META_FILE", str(tmp_path / ".lnn_token_meta.json"))
+        monkeypatch.setenv(
+            "LNN_TOKEN_META_FILE", str(tmp_path / ".lnn_token_meta.json")
+        )
 
         meta_data = {"token": token_file.read_text(), "level": "R"}
         (tmp_path / ".lnn_token_meta.json").write_text(json.dumps(meta_data))
@@ -284,8 +284,7 @@ class TestAuthMiddlewarePermissionEnforcement:
 
         token = token_file.read_text()
         response = client.post(
-            "/api/v1/lnn/train",
-            headers={"Authorization": f"Bearer {token}"}
+            "/api/v1/lnn/train", headers={"Authorization": f"Bearer {token}"}
         )
 
         assert response.status_code == 403
@@ -294,7 +293,9 @@ class TestAuthMiddlewarePermissionEnforcement:
     def test_permission_satisfied(self, tmp_path, monkeypatch):
         token_file = tmp_path / ".lnn_token"
         monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
-        monkeypatch.setenv("LNN_TOKEN_META_FILE", str(tmp_path / ".lnn_token_meta.json"))
+        monkeypatch.setenv(
+            "LNN_TOKEN_META_FILE", str(tmp_path / ".lnn_token_meta.json")
+        )
 
         meta_data = {"token": token_file.read_text(), "level": "B"}
         (tmp_path / ".lnn_token_meta.json").write_text(json.dumps(meta_data))
@@ -311,8 +312,7 @@ class TestAuthMiddlewarePermissionEnforcement:
 
         token = token_file.read_text()
         response = client.post(
-            "/api/v1/lnn/train",
-            headers={"Authorization": f"Bearer {token}"}
+            "/api/v1/lnn/train", headers={"Authorization": f"Bearer {token}"}
         )
 
         assert response.status_code == 200
@@ -334,7 +334,9 @@ class TestAuthMiddlewareEdgeCases:
     def test_permission_level_fallback(self, tmp_path, monkeypatch):
         token_file = tmp_path / ".lnn_token"
         monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
-        monkeypatch.setenv("LNN_TOKEN_META_FILE", str(tmp_path / ".lnn_token_meta.json"))
+        monkeypatch.setenv(
+            "LNN_TOKEN_META_FILE", str(tmp_path / ".lnn_token_meta.json")
+        )
 
         (tmp_path / ".lnn_token_meta.json").write_text("{}")
 
@@ -350,8 +352,7 @@ class TestAuthMiddlewareEdgeCases:
 
         token = token_file.read_text()
         response = client.post(
-            "/api/v1/machine/params",
-            headers={"Authorization": f"Bearer {token}"}
+            "/api/v1/machine/params", headers={"Authorization": f"Bearer {token}"}
         )
 
         assert response.status_code == 403

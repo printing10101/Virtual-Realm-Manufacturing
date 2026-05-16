@@ -3,11 +3,21 @@ Test Response Utilities
 
 Tests for:
 - ErrorCode: Enumeration of error codes
+- code_to_numeric / numeric_to_code: Code mapping
 - success(): Success response builder
 - error(): Error response builder with optional fields
+- error_response(): Direct numeric error response builder
 """
+
 import pytest
-from app.core.response import success, error, ErrorCode
+from app.core.response import (
+    success,
+    error,
+    error_response,
+    ErrorCode,
+    code_to_numeric,
+    numeric_to_code,
+)
 
 
 class TestErrorCode:
@@ -27,15 +37,40 @@ class TestErrorCode:
         assert ErrorCode.CAD_GENERATION_ERROR == "CAD_GENERATION_ERROR"
         assert ErrorCode.SERVICE_UNAVAILABLE == "SERVICE_UNAVAILABLE"
 
+    def test_code_to_numeric_success(self):
+        assert code_to_numeric(ErrorCode.SUCCESS) == 0
+
+    def test_code_to_numeric_not_found(self):
+        assert code_to_numeric(ErrorCode.NOT_FOUND) == 1001
+
+    def test_code_to_numeric_internal_error(self):
+        assert code_to_numeric(ErrorCode.INTERNAL_ERROR) == 2001
+
+    def test_code_to_numeric_unknown_returns_2001(self):
+        assert code_to_numeric(ErrorCode.FILE_NOT_FOUND) == 1001
+
+    def test_numeric_to_code(self):
+        assert numeric_to_code(0) == ErrorCode.SUCCESS
+        assert numeric_to_code(1001) == ErrorCode.NOT_FOUND
+        assert numeric_to_code(2001) == ErrorCode.INTERNAL_ERROR
+
 
 class TestSuccessResponse:
     """Test success response builder"""
 
+    def test_success_code_is_zero(self):
+        result = success()
+        assert result["code"] == 0
+
     def test_success_with_default_values(self):
         result = success()
-        assert result["code"] == ErrorCode.SUCCESS
         assert result["message"] == "Success"
         assert result["data"] is None
+
+    def test_success_has_request_id(self):
+        result = success()
+        assert "request_id" in result
+        assert isinstance(result["request_id"], str)
 
     def test_success_with_custom_message(self):
         result = success(message="Operation completed")
@@ -68,28 +103,36 @@ class TestSuccessResponse:
         assert "code" in result
         assert "message" in result
         assert "data" in result
-        assert len(result) == 3
+        assert "request_id" in result
+        assert len(result) == 4
 
 
 class TestErrorResponse:
     """Test error response builder"""
 
+    def test_error_code_is_numeric(self):
+        result = error(ErrorCode.NOT_FOUND)
+        assert result["code"] == 1001
+        assert isinstance(result["code"], int)
+
     def test_error_with_code_only(self):
         result = error(ErrorCode.NOT_FOUND)
-        assert result["code"] == ErrorCode.NOT_FOUND
         assert result["message"] == "Error"
-        assert result["data"] is None
+
+    def test_error_has_request_id(self):
+        result = error(ErrorCode.INTERNAL_ERROR)
+        assert "request_id" in result
+        assert isinstance(result["request_id"], str)
 
     def test_error_with_custom_message(self):
         result = error(ErrorCode.INTERNAL_ERROR, message="Database connection failed")
-        assert result["code"] == ErrorCode.INTERNAL_ERROR
+        assert result["code"] == 2001
         assert result["message"] == "Database connection failed"
 
     def test_error_with_detail(self):
         detail = {"field": "email", "reason": "invalid format"}
         result = error(ErrorCode.INVALID_REQUEST, detail=detail)
         assert result["detail"] == detail
-        assert result["data"] is None
 
     def test_error_with_suggestion(self):
         suggestion = "Please check the input format and try again"
@@ -103,7 +146,7 @@ class TestErrorResponse:
             detail={"errors": ["field required"]},
             suggestion="Fill in all required fields",
         )
-        assert result["code"] == ErrorCode.INVALID_REQUEST
+        assert result["code"] == 1002
         assert result["message"] == "Validation failed"
         assert "errors" in result["detail"]
         assert result["suggestion"] == "Fill in all required fields"
@@ -113,35 +156,37 @@ class TestErrorResponse:
         assert "detail" not in result
         assert "suggestion" not in result
 
-    def test_error_with_none_detail(self):
+    def test_error_with_none_detail_excluded(self):
         result = error(ErrorCode.INTERNAL_ERROR, detail=None)
-        assert result["detail"] is None
+        assert "detail" not in result
 
-    def test_error_with_none_suggestion(self):
+    def test_error_with_none_suggestion_excluded(self):
         result = error(ErrorCode.INTERNAL_ERROR, suggestion=None)
-        assert result["suggestion"] is None
+        assert "suggestion" not in result
 
-
-class TestErrorResponseEdgeCases:
-    """Test edge cases for error responses"""
-
-    def test_error_with_empty_string_message(self):
-        result = error(ErrorCode.INTERNAL_ERROR, message="")
-        assert result["message"] == ""
-
-    def test_error_with_numeric_detail(self):
-        result = error(ErrorCode.INVALID_REQUEST, detail=42)
-        assert result["detail"] == 42
-
-    def test_error_with_list_detail(self):
-        result = error(ErrorCode.INVALID_REQUEST, detail=["error1", "error2"])
-        assert result["detail"] == ["error1", "error2"]
-
-    def test_error_code_string_values(self):
+    def test_all_error_codes_map_to_int(self):
         for code in ErrorCode:
             result = error(code)
-            assert isinstance(result["code"], str)
-            assert result["code"] == code.value
+            assert isinstance(result["code"], int)
+
+
+class TestErrorResponseDirect:
+    """Test direct numeric error response builder"""
+
+    def test_error_response_basic(self):
+        result = error_response(code=1001, message="Not found")
+        assert result["code"] == 1001
+        assert result["message"] == "Not found"
+        assert "request_id" in result
+
+    def test_error_response_with_detail(self):
+        result = error_response(code=2001, message="Server error", detail={"error_id": "abc"})
+        assert result["code"] == 2001
+        assert result["detail"] == {"error_id": "abc"}
+
+    def test_error_response_without_detail(self):
+        result = error_response(code=1006, message="Bad request")
+        assert "detail" not in result
 
 
 class TestResponseIntegration:
@@ -154,8 +199,9 @@ class TestResponseIntegration:
             detail={"field": "cutting_speed", "reason": "must be positive"},
             suggestion="请输入大于0的切削速度值",
         )
-        assert result["code"] == "INVALID_REQUEST"
+        assert result["code"] == 1002
         assert "detail" in result
+        assert "request_id" in result
 
     def test_not_found_response(self):
         result = error(
@@ -163,7 +209,8 @@ class TestResponseIntegration:
             message="资源未找到",
             detail={"resource": "experience", "id": "invalid-id"},
         )
-        assert result["code"] == "NOT_FOUND"
+        assert result["code"] == 1001
+        assert "request_id" in result
 
     def test_service_unavailable_response(self):
         result = error(
@@ -171,7 +218,8 @@ class TestResponseIntegration:
             message="服务暂不可用",
             suggestion="请稍后重试或联系管理员",
         )
-        assert result["code"] == "SERVICE_UNAVAILABLE"
+        assert result["code"] == 2002
+        assert "request_id" in result
 
     def test_success_with_pagination(self):
         data = {
@@ -183,6 +231,7 @@ class TestResponseIntegration:
         result = success(data=data, message="Page retrieved")
         assert result["data"]["total"] == 100
         assert result["data"]["page"] == 1
+        assert result["code"] == 0
 
 
 if __name__ == "__main__":

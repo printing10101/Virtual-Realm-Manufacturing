@@ -4,15 +4,12 @@ Heartbeat System Test Suite
 Comprehensive test suite for Paperclip Heartbeat Execution architecture,
 covering all 8 test scenarios specified by the user.
 """
+
 import asyncio
-import json
 import logging
 import os
-import sqlite3
 import sys
 import time
-import uuid
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -34,13 +31,11 @@ from app.core.budget import (
 )
 from app.core.execution import (
     ExecutionEngine,
-    ExecutionResult,
     ExecutionSession,
     ExecutionStatus,
     SessionManager,
 )
 from app.core.cost_tracker import MultiDimensionCostTracker
-from app.core.workspace import WorkspaceResolver, WorkspaceContext
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,17 +57,26 @@ class TestResultRecorder:
             "test_start_time": datetime.now().isoformat(),
         }
 
-    def record(self, test_name: str, step: str, expected: str, actual: str,
-               status: str, details: str = ""):
-        self.results.append({
-            "test_name": test_name,
-            "step": step,
-            "expected": expected,
-            "actual": actual,
-            "status": status,
-            "details": details,
-            "timestamp": datetime.now().isoformat(),
-        })
+    def record(
+        self,
+        test_name: str,
+        step: str,
+        expected: str,
+        actual: str,
+        status: str,
+        details: str = "",
+    ):
+        self.results.append(
+            {
+                "test_name": test_name,
+                "step": step,
+                "expected": expected,
+                "actual": actual,
+                "status": status,
+                "details": details,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
     def generate_report(self) -> str:
         report_lines = []
@@ -115,11 +119,15 @@ class TestResultRecorder:
 
         report_lines.append("")
         report_lines.append("=" * 80)
-        report_lines.append(f"## 总结")
+        report_lines.append("## 总结")
         report_lines.append(f"- 总测试项: {passed + failed}")
         report_lines.append(f"- 通过: {passed}")
         report_lines.append(f"- 失败: {failed}")
-        report_lines.append(f"- 通过率: {passed/(passed+failed)*100:.1f}%" if (passed+failed) > 0 else "- 通过率: N/A")
+        report_lines.append(
+            f"- 通过率: {passed / (passed + failed) * 100:.1f}%"
+            if (passed + failed) > 0
+            else "- 通过率: N/A"
+        )
         report_lines.append("=" * 80)
 
         return "\n".join(report_lines)
@@ -130,6 +138,7 @@ recorder = TestResultRecorder()
 
 _active_connections = []
 
+
 def cleanup_test_dbs():
     global _active_connections
     for conn in _active_connections:
@@ -138,8 +147,9 @@ def cleanup_test_dbs():
         except:
             pass
     _active_connections.clear()
-    
+
     import time
+
     for db_file in TEST_DIR.glob("*.db"):
         try:
             db_file.unlink(missing_ok=True)
@@ -163,7 +173,9 @@ def create_test_session_manager(db_name: str = "test_sessions.db") -> SessionMan
     return SessionManager(str(TEST_DIR / db_name))
 
 
-def create_test_cost_tracker(db_name: str = "test_costs.db") -> MultiDimensionCostTracker:
+def create_test_cost_tracker(
+    db_name: str = "test_costs.db",
+) -> MultiDimensionCostTracker:
     return MultiDimensionCostTracker(db_path=str(TEST_DIR / db_name))
 
 
@@ -215,7 +227,7 @@ async def test_1_heartbeat_scheduling():
         recorder.record(
             "测试1: 心跳任务调度",
             "步骤2: 验证cron表达式解析",
-            f"解析出至少3个未来时间点，间隔约300秒",
+            "解析出至少3个未来时间点，间隔约300秒",
             f"解析出{len(future_times)}个时间点，间隔={expected_interval:.0f}秒",
             "PASS" if expected_interval == 300 else "FAIL",
             f"前3个时间点: {[datetime.fromtimestamp(t).strftime('%H:%M:%S') for t in future_times[:3]]}",
@@ -233,10 +245,19 @@ async def test_1_heartbeat_scheduling():
 
     async def mock_task_callback(task):
         triggered_times.append(time.time())
-        logger.info(f"[TEST] Task {task.task_id} triggered at {datetime.now().isoformat()}")
+        logger.info(
+            f"[TEST] Task {task.task_id} triggered at {datetime.now().isoformat()}"
+        )
         await asyncio.sleep(0.1)
-        queue.update_task_status(task.task_id, ScheduleStatus.COMPLETED, last_run=time.time())
-        queue.log_execution(task.task_id, "completed", duration_ms=100.0, result_summary="Mock task execution completed")
+        queue.update_task_status(
+            task.task_id, ScheduleStatus.COMPLETED, last_run=time.time()
+        )
+        queue.log_execution(
+            task.task_id,
+            "completed",
+            duration_ms=100.0,
+            result_summary="Mock task execution completed",
+        )
 
     scheduler.set_task_trigger_callback(mock_task_callback)
 
@@ -291,13 +312,15 @@ async def test_2_gpu_budget_control():
 
     agent_id = "test_agent_2"
 
-    budget_mgr.set_budget_limit(BudgetLimit(
-        resource_type=ResourceType.GPU_HOURS,
-        limit_value=1.0,
-        warning_threshold=0.8,
-        hard_stop_threshold=1.0,
-        budget_level=BudgetLevel.GLOBAL,
-    ))
+    budget_mgr.set_budget_limit(
+        BudgetLimit(
+            resource_type=ResourceType.GPU_HOURS,
+            limit_value=1.0,
+            warning_threshold=0.8,
+            hard_stop_threshold=1.0,
+            budget_level=BudgetLevel.GLOBAL,
+        )
+    )
 
     recorder.record(
         "测试2: GPU预算控制",
@@ -333,7 +356,7 @@ async def test_2_gpu_budget_control():
             "测试2: GPU预算控制",
             "步骤3: 模拟GPU使用0.5单位后检查",
             "预算状态应为warning（50% < 80%阈值）",
-            f"status={result2.status.value}, usage_ratio={result2.usages[0].usage_ratio*100:.1f}%",
+            f"status={result2.status.value}, usage_ratio={result2.usages[0].usage_ratio * 100:.1f}%",
             "PASS" if result2.passed else "FAIL",
             "Simulated 0.5 GPU hours usage",
         )
@@ -343,7 +366,9 @@ async def test_2_gpu_budget_control():
             "步骤4: 模拟GPU使用1.5单位后检查（超出限额）",
             "预算检查失败，状态为exceeded",
             f"passed={result3.passed}, status={result3.status.value}",
-            "PASS" if not result3.passed and result3.status == BudgetStatus.EXCEEDED else "FAIL",
+            "PASS"
+            if not result3.passed and result3.status == BudgetStatus.EXCEEDED
+            else "FAIL",
             f"blocked_reasons={result3.blocked_reasons}",
         )
 
@@ -513,11 +538,15 @@ async def test_4_orphaned_task_recovery():
     engine = ExecutionEngine()
     engine.session_manager = session_mgr
 
-    from app.core.heartbeat import _scheduler as global_scheduler, init_scheduler
+    from app.core.heartbeat import _scheduler as global_scheduler
+
     orig_scheduler = global_scheduler
-    
-    test_scheduler_instance = HeartbeatScheduler(wakeup_queue=queue, heartbeat_interval=60)
+
+    test_scheduler_instance = HeartbeatScheduler(
+        wakeup_queue=queue, heartbeat_interval=60
+    )
     import app.core.heartbeat as heartbeat_module
+
     heartbeat_module._scheduler = test_scheduler_instance
 
     recovered = await engine.recover_orphaned_tasks()
@@ -676,8 +705,12 @@ async def test_6_task_concurrent_control():
 
         await asyncio.sleep(2)
 
-        queue.update_task_status(task.task_id, ScheduleStatus.COMPLETED, last_run=time.time())
-        logger.info(f"[TEST] Task {task.task_id} execution #{execution_count} completed")
+        queue.update_task_status(
+            task.task_id, ScheduleStatus.COMPLETED, last_run=time.time()
+        )
+        logger.info(
+            f"[TEST] Task {task.task_id} execution #{execution_count} completed"
+        )
 
     scheduler = HeartbeatScheduler(wakeup_queue=queue, heartbeat_interval=1)
     scheduler.set_task_trigger_callback(slow_task_callback)
@@ -692,9 +725,7 @@ async def test_6_task_concurrent_control():
 
     history = queue.get_task_history(task_id)
 
-    coalesced_count = sum(
-        1 for h in history if h.get("status") == "coalesced"
-    )
+    coalesced_count = sum(1 for h in history if h.get("status") == "coalesced")
 
     recorder.record(
         "测试6: 任务并发控制",
@@ -702,7 +733,7 @@ async def test_6_task_concurrent_control():
         f"执行{execution_count}次，跳过{coalesced_count}次",
         f"execution_count={execution_count}, coalesced_count={coalesced_count}",
         "PASS" if coalesced_count > 0 or execution_count <= 3 else "FAIL",
-        f"task执行耗时2秒>心跳间隔1秒，验证coalescing机制",
+        "task执行耗时2秒>心跳间隔1秒，验证coalescing机制",
     )
 
     is_running = queue.is_task_running(task_id)
@@ -768,7 +799,9 @@ async def test_7_agent_pause():
     for task in tasks_before:
         queue.pause_task(task.task_id)
 
-    tasks_after_pause = queue.list_tasks(agent_id=agent_id, status=ScheduleStatus.PAUSED)
+    tasks_after_pause = queue.list_tasks(
+        agent_id=agent_id, status=ScheduleStatus.PAUSED
+    )
     recorder.record(
         "测试7: 代理暂停功能",
         "步骤3: 暂停代理所有任务",
@@ -857,7 +890,7 @@ async def test_8_agent_resume():
     for task in tasks_paused:
         queue._conn.execute(
             "UPDATE scheduled_tasks SET next_run = ? WHERE task_id = ?",
-            (now - 1, task.task_id)
+            (now - 1, task.task_id),
         )
         queue._conn.commit()
 
@@ -876,7 +909,9 @@ async def test_8_agent_resume():
 
     async def mock_callback(task):
         triggered_tasks.append(task.task_id)
-        queue.update_task_status(task.task_id, ScheduleStatus.COMPLETED, last_run=time.time())
+        queue.update_task_status(
+            task.task_id, ScheduleStatus.COMPLETED, last_run=time.time()
+        )
 
     scheduler = HeartbeatScheduler(wakeup_queue=queue, heartbeat_interval=1)
     scheduler.set_task_trigger_callback(mock_callback)
@@ -895,7 +930,9 @@ async def test_8_agent_resume():
         "恢复后任务应立即进入正常调度流程",
     )
 
-    completed_tasks = queue.list_tasks(agent_id=agent_id, status=ScheduleStatus.COMPLETED)
+    completed_tasks = queue.list_tasks(
+        agent_id=agent_id, status=ScheduleStatus.COMPLETED
+    )
     recorder.record(
         "测试8: 代理恢复功能",
         "步骤5: 验证任务执行完成状态",

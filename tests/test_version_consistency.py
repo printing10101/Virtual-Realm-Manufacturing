@@ -99,9 +99,9 @@ class TestVersionConsistencyLogic(unittest.TestCase):
     def test_versions_consistent(self):
         """Test consistent version detection."""
         versions = {
-            'frontend': '1.7.0',
-            'rust': '1.7.0',
-            'python': '1.7.0',
+            'frontend': '1.7.1',
+            'rust': '1.7.1',
+            'python': '1.7.1',
         }
         
         is_consistent = (
@@ -115,8 +115,8 @@ class TestVersionConsistencyLogic(unittest.TestCase):
         """Test inconsistent frontend version detection."""
         versions = {
             'frontend': '1.6.0',
-            'rust': '1.7.0',
-            'python': '1.7.0',
+            'rust': '1.7.1',
+            'python': '1.7.1',
         }
         
         is_consistent = (
@@ -129,8 +129,8 @@ class TestVersionConsistencyLogic(unittest.TestCase):
     def test_versions_inconsistent_python(self):
         """Test inconsistent python version detection."""
         versions = {
-            'frontend': '1.7.0',
-            'rust': '1.7.0',
+            'frontend': '1.7.1',
+            'rust': '1.7.1',
             'python': '1.6.0',
         }
         

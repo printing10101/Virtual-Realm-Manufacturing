@@ -9,8 +9,8 @@ Tests for:
 - ValidationResult: Validation result with merge capability
 - PredictionRequest/TrainingRequest: Request models with validation methods
 """
+
 import pytest
-from datetime import datetime
 
 from app.models.validation import (
     WearDataPoint,

@@ -7,6 +7,7 @@ Tests for:
 - Environment variable override via ALLOWED_ORIGINS
 - Default values and error handling for invalid LINGJING_ENV values
 """
+
 import os
 import pytest
 from unittest.mock import patch
@@ -21,7 +22,6 @@ from app.core.cors_config import (
     is_development,
     is_production,
     PRODUCTION_ORIGIN_REGEX,
-    DEVELOPMENT_ORIGINS,
     PRODUCTION_ORIGINS,
 )
 
@@ -141,7 +141,10 @@ class TestEnvOverride:
 
     @patch.dict(
         os.environ,
-        {"LINGJING_ENV": "production", "ALLOWED_ORIGINS": "http://custom.local,https://custom.local"},
+        {
+            "LINGJING_ENV": "production",
+            "ALLOWED_ORIGINS": "http://custom.local,https://custom.local",
+        },
         clear=True,
     )
     def test_override_origins_in_production(self):
@@ -215,11 +218,16 @@ class TestOverrideEnvParam:
 
     def test_get_cors_origin_regex_with_override(self):
         assert get_cors_origin_regex(override_env="development") is None
-        assert get_cors_origin_regex(override_env="production") == PRODUCTION_ORIGIN_REGEX
+        assert (
+            get_cors_origin_regex(override_env="production") == PRODUCTION_ORIGIN_REGEX
+        )
 
     def test_is_allowed_origin_with_override(self):
         assert is_allowed_origin("https://evil.com", override_env="development") is True
-        assert is_allowed_origin("http://localhost:5173", override_env="production") is True
+        assert (
+            is_allowed_origin("http://localhost:5173", override_env="production")
+            is True
+        )
         assert is_allowed_origin("https://evil.com", override_env="production") is False
 
 
@@ -228,6 +236,7 @@ class TestSecurityHeaders:
 
     def test_get_security_headers(self):
         from app.core.cors_config import get_security_headers
+
         headers = get_security_headers()
         assert headers["X-Content-Type-Options"] == "nosniff"
         assert headers["X-Frame-Options"] == "DENY"

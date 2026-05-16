@@ -1,5 +1,4 @@
 import requests
-import json
 import os
 
 print("=== TEST 9: Frontend-Backend Integration Chain ===\n")
@@ -25,6 +24,7 @@ headers = {"Authorization": f"Bearer {token}"}
 
 all_pass = True
 
+
 def test(name, url, expected=200, use_auth=False, method="GET"):
     global all_pass
     print(f"{name}:")
@@ -34,39 +34,50 @@ def test(name, url, expected=200, use_auth=False, method="GET"):
             r = requests.get(url, headers=hdrs, timeout=5)
         elif method == "POST":
             r = requests.post(url, headers=hdrs, json={}, timeout=5)
-        
+
         status = r.status_code
         print(f"   Status: {status} (expected: {expected})")
-        
+
         if status == 200:
             try:
                 data = r.json()
-                if 'data' in data:
-                    if isinstance(data['data'], dict) and 'models' in data['data']:
+                if "data" in data:
+                    if isinstance(data["data"], dict) and "models" in data["data"]:
                         print(f"   Models: {len(data['data']['models'])} available")
-                    elif isinstance(data['data'], list):
+                    elif isinstance(data["data"], list):
                         print(f"   Items: {len(data['data'])}")
             except:
                 pass
-        
-        passed = (status == expected)
+
+        passed = status == expected
         print(f"   Result: {'PASS' if passed else 'FAIL'}")
         if not passed:
             all_pass = False
     except requests.exceptions.ConnectionError:
-        print(f"   Connection refused - server not running")
-        print(f"   Result: FAIL (server down)")
+        print("   Connection refused - server not running")
+        print("   Result: FAIL (server down)")
         all_pass = False
     except Exception as e:
         print(f"   Error: {e}")
-        print(f"   Result: FAIL")
+        print("   Result: FAIL")
         all_pass = False
     print()
 
+
 # Run tests
 test("1. Health Check", f"{BASE_URL}/api/health", expected=200)
-test("2. Model List (with auth)", f"{BASE_URL}/api/v1/lnn/models", expected=200, use_auth=True)
-test("3. Task List (with auth)", f"{BASE_URL}/api/v1/lnn/tasks", expected=200, use_auth=True)
+test(
+    "2. Model List (with auth)",
+    f"{BASE_URL}/api/v1/lnn/models",
+    expected=200,
+    use_auth=True,
+)
+test(
+    "3. Task List (with auth)",
+    f"{BASE_URL}/api/v1/lnn/tasks",
+    expected=200,
+    use_auth=True,
+)
 test("4. Unauthorized Access", f"{BASE_URL}/api/v1/lnn/models", expected=401)
 test("5. OpenAPI Docs (public)", f"{BASE_URL}/api/openapi.json", expected=200)
 

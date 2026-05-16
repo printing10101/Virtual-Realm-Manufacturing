@@ -10,24 +10,22 @@ Tests cover:
 - Performance comparison (before/after cache)
 - Special scenarios: file update, directory migration, disk space, concurrency, memory leaks
 """
+
 import os
 import sys
 import time
-import pickle
 import shutil
 import tempfile
 import threading
 import unittest
 import hashlib
-from pathlib import Path
-from unittest.mock import Mock, patch
 
 import numpy as np
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from app.ai.lnn.training.dataset_cache import DatasetCache, CacheEntry
+from app.ai.lnn.training.dataset_cache import DatasetCache
 
 
 class TestDatasetCacheKeyGeneration(unittest.TestCase):

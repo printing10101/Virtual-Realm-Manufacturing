@@ -1,11 +1,9 @@
 """Functional tests for Template Branching System."""
-import json
+
 import os
 import shutil
 import sqlite3
 import tempfile
-import time
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -42,6 +40,7 @@ def api_client(branch_manager):
 
     # Override dependency to use test manager
     import app.api.v1.template_branching_routes as routes
+
     routes._test_manager = branch_manager
 
     return TestClient(app)
@@ -93,11 +92,17 @@ def test_list_branches(branch_manager):
     )
     # Create industry branch
     branch_manager.create_branch(
-        name="car-industry", base_branch="main", data={"name": "Car"}, metadata={"type": "industry"}
+        name="car-industry",
+        base_branch="main",
+        data={"name": "Car"},
+        metadata={"type": "industry"},
     )
     # Create material branch
     branch_manager.create_branch(
-        name="aluminum", base_branch="main", data={"name": "Aluminum"}, metadata={"type": "material"}
+        name="aluminum",
+        base_branch="main",
+        data={"name": "Aluminum"},
+        metadata={"type": "material"},
     )
 
     all_branches = branch_manager.list_branches()
@@ -128,12 +133,15 @@ def test_commit_log(branch_manager):
 
 def test_api_create_branch(api_client):
     """Test POST /api/v1/templates/branches/"""
-    response = api_client.post("/api/v1/templates/branches/", json={
-        "name": "main",
-        "base_branch": None,
-        "data": {"name": "Main Template"},
-        "metadata": {"type": "main"},
-    })
+    response = api_client.post(
+        "/api/v1/templates/branches/",
+        json={
+            "name": "main",
+            "base_branch": None,
+            "data": {"name": "Main Template"},
+            "metadata": {"type": "main"},
+        },
+    )
     assert response.status_code == 201
     data = response.json()
     assert data["branch"]["name"] == "main"
@@ -142,10 +150,15 @@ def test_api_create_branch(api_client):
 
 def test_api_list_branches(api_client):
     """Test GET /api/v1/templates/branches/"""
-    api_client.post("/api/v1/templates/branches/", json={
-        "name": "test-branch", "base_branch": None,
-        "data": {"name": "Test"}, "metadata": {"type": "main"},
-    })
+    api_client.post(
+        "/api/v1/templates/branches/",
+        json={
+            "name": "test-branch",
+            "base_branch": None,
+            "data": {"name": "Test"},
+            "metadata": {"type": "main"},
+        },
+    )
 
     response = api_client.get("/api/v1/templates/branches/")
     assert response.status_code == 200
@@ -156,10 +169,15 @@ def test_api_list_branches(api_client):
 
 def test_api_get_branch(api_client):
     """Test GET /api/v1/templates/branches/{branch_id}"""
-    create_resp = api_client.post("/api/v1/templates/branches/", json={
-        "name": "single", "base_branch": None,
-        "data": {"name": "Single"}, "metadata": {"type": "main"},
-    })
+    create_resp = api_client.post(
+        "/api/v1/templates/branches/",
+        json={
+            "name": "single",
+            "base_branch": None,
+            "data": {"name": "Single"},
+            "metadata": {"type": "main"},
+        },
+    )
     branch_id = create_resp.json()["branch"]["branch_id"]
 
     response = api_client.get(f"/api/v1/templates/branches/{branch_id}")
@@ -169,20 +187,33 @@ def test_api_get_branch(api_client):
 
 def test_api_merge_branch(api_client):
     """Test POST /api/v1/templates/branches/merge"""
-    src = api_client.post("/api/v1/templates/branches/", json={
-        "name": "source", "base_branch": None,
-        "data": {"skill": "v1"}, "metadata": {"type": "experiment"},
-    })
-    tgt = api_client.post("/api/v1/templates/branches/", json={
-        "name": "target", "base_branch": None,
-        "data": {"skill": "v0"}, "metadata": {"type": "main"},
-    })
+    src = api_client.post(
+        "/api/v1/templates/branches/",
+        json={
+            "name": "source",
+            "base_branch": None,
+            "data": {"skill": "v1"},
+            "metadata": {"type": "experiment"},
+        },
+    )
+    tgt = api_client.post(
+        "/api/v1/templates/branches/",
+        json={
+            "name": "target",
+            "base_branch": None,
+            "data": {"skill": "v0"},
+            "metadata": {"type": "main"},
+        },
+    )
 
-    response = api_client.post("/api/v1/templates/branches/merge", json={
-        "source_id": src.json()["branch"]["branch_id"],
-        "target_id": tgt.json()["branch"]["branch_id"],
-        "strategy": "overwrite",
-    })
+    response = api_client.post(
+        "/api/v1/templates/branches/merge",
+        json={
+            "source_id": src.json()["branch"]["branch_id"],
+            "target_id": tgt.json()["branch"]["branch_id"],
+            "strategy": "overwrite",
+        },
+    )
     assert response.status_code == 200
     assert response.json()["merged_branch"]["template_data"]["skill"] == "v1"
 
@@ -199,7 +230,9 @@ def test_startup_initialization():
     assert same is manager
 
     conn = sqlite3.connect(db_path)
-    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='template_branches'")
+    cursor = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='template_branches'"
+    )
     assert cursor.fetchone() is not None
     conn.close()
 

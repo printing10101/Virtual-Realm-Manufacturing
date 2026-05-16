@@ -11,9 +11,9 @@ Covers:
 - Goal version history
 - API endpoints
 """
+
 import os
 import sys
-import time
 import uuid
 import pytest
 import tempfile
@@ -21,11 +21,17 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.models.goals import (
-    Goal, GoalLevel, GoalStatus, GoalRef, GoalVersion, GoalProgress,
+    Goal,
+    GoalLevel,
+    GoalStatus,
+    GoalRef,
+    GoalVersion,
     DEFAULT_GOALS,
 )
 from app.models.tasks import (
-    EnhancedTask, EnhancedTaskType, EnhancedTaskStatus,
+    EnhancedTask,
+    EnhancedTaskType,
+    EnhancedTaskStatus,
 )
 from app.core.goal_chain_store import GoalChainStore
 from app.core.goal_alignment import GoalAlignmentChecker, GoalAlignmentError
@@ -90,8 +96,13 @@ class TestGoalModel:
 
     def test_goal_version_to_dict(self):
         v = GoalVersion(
-            id=1, goal_id="g-001", version=2, changed_by="admin",
-            change_type="update", field_name="status", old_value="in_progress",
+            id=1,
+            goal_id="g-001",
+            version=2,
+            changed_by="admin",
+            change_type="update",
+            field_name="status",
+            old_value="in_progress",
             new_value="completed",
         )
         d = v.to_dict()
@@ -132,7 +143,13 @@ class TestGoalChainStore:
 
     def test_delete_goal(self, store):
         gid = f"temp-{uuid.uuid4().hex[:6]}"
-        goal = Goal(id=gid, name="Temp", description="temp", level=GoalLevel.TASK, parent_id="proj-001")
+        goal = Goal(
+            id=gid,
+            name="Temp",
+            description="temp",
+            level=GoalLevel.TASK,
+            parent_id="proj-001",
+        )
         store.add_goal(goal)
         assert store.delete_goal(gid) is True
         assert store.get_goal(gid) is None
@@ -182,7 +199,9 @@ class TestEnhancedTaskModel:
     def test_task_creation_with_goal_chain(self):
         chain = [
             GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="Project"),
-            GoalRef(id="strategic-001", level=GoalLevel.STRATEGIC_GOAL, name="Strategy"),
+            GoalRef(
+                id="strategic-001", level=GoalLevel.STRATEGIC_GOAL, name="Strategy"
+            ),
             GoalRef(id="mission-001", level=GoalLevel.MISSION, name="Mission"),
         ]
         task = EnhancedTask(
@@ -197,7 +216,9 @@ class TestEnhancedTaskModel:
 
     def test_task_to_dict(self):
         task = EnhancedTask(
-            id="t-1", title="T", description="D",
+            id="t-1",
+            title="T",
+            description="D",
             task_type=EnhancedTaskType.PREDICTION,
         )
         d = task.to_dict()
@@ -206,7 +227,9 @@ class TestEnhancedTaskModel:
         assert isinstance(d["goal_chain"], list)
 
     def test_task_status_transitions(self):
-        task = EnhancedTask(id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING)
+        task = EnhancedTask(
+            id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING
+        )
         assert task.can_transition_to(EnhancedTaskStatus.IN_PROGRESS) is True
         assert task.can_transition_to(EnhancedTaskStatus.COMPLETED) is False
 
@@ -215,13 +238,17 @@ class TestEnhancedTaskModel:
         assert task.can_transition_to(EnhancedTaskStatus.FAILED) is True
 
     def test_completed_task_cannot_transition(self):
-        task = EnhancedTask(id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING)
+        task = EnhancedTask(
+            id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING
+        )
         task.status = EnhancedTaskStatus.COMPLETED
         assert task.can_transition_to(EnhancedTaskStatus.PENDING) is False
 
     def test_blockers_resolved(self):
         task = EnhancedTask(
-            id="t-1", title="T", description="D",
+            id="t-1",
+            title="T",
+            description="D",
             task_type=EnhancedTaskType.EXECUTION,
             blockers=["dep-1", "dep-2"],
         )
@@ -235,7 +262,9 @@ class TestEnhancedTaskModel:
             EnhancedTask.validate_task_type("invalid_type")
 
     def test_validate_task_status(self):
-        assert EnhancedTask.validate_task_status("pending") == EnhancedTaskStatus.PENDING
+        assert (
+            EnhancedTask.validate_task_status("pending") == EnhancedTaskStatus.PENDING
+        )
         with pytest.raises(ValueError):
             EnhancedTask.validate_task_status("invalid_status")
 
@@ -243,12 +272,28 @@ class TestEnhancedTaskModel:
 class TestContextBuilder:
     def test_build_context_with_full_chain(self, context_builder):
         chain = [
-            GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="优化精加工切削参数", description="优化切削参数"),
-            GoalRef(id="strategic-001", level=GoalLevel.STRATEGIC_GOAL, name="将45钢铣削表面粗糙度降低到Ra 0.8", description="降低粗糙度"),
-            GoalRef(id="mission-001", level=GoalLevel.MISSION, name="成为智能制造领域的领导者", description="领导智能制造"),
+            GoalRef(
+                id="proj-001",
+                level=GoalLevel.PROJECT,
+                name="优化精加工切削参数",
+                description="优化切削参数",
+            ),
+            GoalRef(
+                id="strategic-001",
+                level=GoalLevel.STRATEGIC_GOAL,
+                name="将45钢铣削表面粗糙度降低到Ra 0.8",
+                description="降低粗糙度",
+            ),
+            GoalRef(
+                id="mission-001",
+                level=GoalLevel.MISSION,
+                name="成为智能制造领域的领导者",
+                description="领导智能制造",
+            ),
         ]
         task = EnhancedTask(
-            id="t-1", title="训练LNN模型",
+            id="t-1",
+            title="训练LNN模型",
             description="使用历史数据训练LNN预测模型",
             task_type=EnhancedTaskType.TRAINING,
             goal_chain=chain,
@@ -263,7 +308,9 @@ class TestContextBuilder:
 
     def test_build_context_no_chain(self, context_builder):
         task = EnhancedTask(
-            id="t-1", title="Orphan Task", description="No goal",
+            id="t-1",
+            title="Orphan Task",
+            description="No goal",
             task_type=EnhancedTaskType.ANALYSIS,
         )
         ctx = context_builder.build_context(task)
@@ -275,7 +322,9 @@ class TestContextBuilder:
             GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="Project"),
         ]
         task = EnhancedTask(
-            id="t-1", title="T", description="D",
+            id="t-1",
+            title="T",
+            description="D",
             task_type=EnhancedTaskType.REVIEW,
             goal_chain=chain,
         )
@@ -290,17 +339,31 @@ class TestGoalAlignmentChecker:
             GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="P"),
             GoalRef(id="mission-001", level=GoalLevel.MISSION, name="M"),
         ]
-        task = EnhancedTask(id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING, goal_chain=chain)
+        task = EnhancedTask(
+            id="t-1",
+            title="T",
+            description="D",
+            task_type=EnhancedTaskType.TRAINING,
+            goal_chain=chain,
+        )
         assert checker.validate_task_goal_chain(task) is True
 
     def test_validate_task_without_chain_raises(self, checker):
-        task = EnhancedTask(id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING)
+        task = EnhancedTask(
+            id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING
+        )
         with pytest.raises(GoalAlignmentError):
             checker.validate_task_goal_chain(task)
 
     def test_register_and_update_task(self, checker):
         chain = [GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="P")]
-        task = EnhancedTask(id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING, goal_chain=chain)
+        task = EnhancedTask(
+            id="t-1",
+            title="T",
+            description="D",
+            task_type=EnhancedTaskType.TRAINING,
+            goal_chain=chain,
+        )
         checker.register_task(task)
         assert "t-1" in checker._task_map
         checker.update_task_status("t-1", EnhancedTaskStatus.IN_PROGRESS)
@@ -308,7 +371,13 @@ class TestGoalAlignmentChecker:
 
     def test_alignment_scan_no_issues(self, checker):
         chain = [GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="P")]
-        task = EnhancedTask(id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING, goal_chain=chain)
+        task = EnhancedTask(
+            id="t-1",
+            title="T",
+            description="D",
+            task_type=EnhancedTaskType.TRAINING,
+            goal_chain=chain,
+        )
         checker.register_task(task)
         checker.update_task_status("t-1", EnhancedTaskStatus.IN_PROGRESS)
         result = checker.run_alignment_scan()
@@ -316,7 +385,9 @@ class TestGoalAlignmentChecker:
         assert result["tasks_checked"] == 1
 
     def test_alignment_scan_finds_issues(self, checker):
-        task = EnhancedTask(id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING)
+        task = EnhancedTask(
+            id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING
+        )
         checker.register_task(task)
         checker.update_task_status("t-1", EnhancedTaskStatus.IN_PROGRESS)
         result = checker.run_alignment_scan()
@@ -326,10 +397,15 @@ class TestGoalAlignmentChecker:
         assert checker.should_scan() is True
 
     def test_compute_goal_progress(self, checker):
-        checker.register_task(EnhancedTask(
-            id="t-1", title="T1", description="D", task_type=EnhancedTaskType.TRAINING,
-            goal_chain=[GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="P")],
-        ))
+        checker.register_task(
+            EnhancedTask(
+                id="t-1",
+                title="T1",
+                description="D",
+                task_type=EnhancedTaskType.TRAINING,
+                goal_chain=[GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="P")],
+            )
+        )
         checker.update_task_status("t-1", EnhancedTaskStatus.COMPLETED)
         progress = checker.compute_goal_progress("proj-001")
         assert progress.goal_id == "proj-001"
@@ -341,12 +417,23 @@ class TestGoalAlignmentChecker:
 
     def test_get_alignment_summary(self, checker):
         chain = [GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="P")]
-        checker.register_task(EnhancedTask(
-            id="t-1", title="T", description="D", task_type=EnhancedTaskType.TRAINING, goal_chain=chain,
-        ))
-        checker.register_task(EnhancedTask(
-            id="t-2", title="T2", description="D2", task_type=EnhancedTaskType.ANALYSIS,
-        ))
+        checker.register_task(
+            EnhancedTask(
+                id="t-1",
+                title="T",
+                description="D",
+                task_type=EnhancedTaskType.TRAINING,
+                goal_chain=chain,
+            )
+        )
+        checker.register_task(
+            EnhancedTask(
+                id="t-2",
+                title="T2",
+                description="D2",
+                task_type=EnhancedTaskType.ANALYSIS,
+            )
+        )
         summary = checker.get_alignment_summary()
         assert summary["total_tasks"] == 2
         assert summary["aligned_tasks"] == 1
@@ -361,7 +448,13 @@ class TestGoalAlignmentChecker:
         task_id = f"task-{uuid.uuid4().hex[:6]}"
         goal_id = f"temp-goal-{uuid.uuid4().hex[:6]}"
 
-        goal = Goal(id=goal_id, name="Temporary", description="temp", level=GoalLevel.TASK, parent_id="proj-001")
+        goal = Goal(
+            id=goal_id,
+            name="Temporary",
+            description="temp",
+            level=GoalLevel.TASK,
+            parent_id="proj-001",
+        )
         checker._store.add_goal(goal)
 
         chain = [
@@ -369,7 +462,13 @@ class TestGoalAlignmentChecker:
             GoalRef(id="proj-001", level=GoalLevel.PROJECT, name="P"),
             GoalRef(id="mission-001", level=GoalLevel.MISSION, name="M"),
         ]
-        task = EnhancedTask(id=task_id, title="Child Task", description="D", task_type=EnhancedTaskType.TRAINING, goal_chain=chain)
+        task = EnhancedTask(
+            id=task_id,
+            title="Child Task",
+            description="D",
+            task_type=EnhancedTaskType.TRAINING,
+            goal_chain=chain,
+        )
         checker.register_task(task)
         checker.update_task_status(task_id, EnhancedTaskStatus.IN_PROGRESS)
 
@@ -446,9 +545,13 @@ class TestGoalAlignmentIntegration:
             )
             checker.register_task(task)
             if i < 2:
-                checker.update_task_status(f"prog-task-{i}", EnhancedTaskStatus.COMPLETED)
+                checker.update_task_status(
+                    f"prog-task-{i}", EnhancedTaskStatus.COMPLETED
+                )
             else:
-                checker.update_task_status(f"prog-task-{i}", EnhancedTaskStatus.IN_PROGRESS)
+                checker.update_task_status(
+                    f"prog-task-{i}", EnhancedTaskStatus.IN_PROGRESS
+                )
 
         summary = checker.get_alignment_summary()
         assert summary["total_tasks"] == 3

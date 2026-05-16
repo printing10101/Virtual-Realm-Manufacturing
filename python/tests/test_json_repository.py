@@ -8,13 +8,11 @@ Tests for:
 - Version control and history tracking
 - Transaction support (begin/commit/rollback)
 """
-import os
+
 import pytest
 import tempfile
 import shutil
 import threading
-import time
-from pathlib import Path
 
 from app.core.repository.json_repository import JsonRepository
 from app.core.repository.config import JsonConfig
@@ -280,17 +278,16 @@ class TestJsonRepositoryConcurrency:
         def create_records(thread_id):
             try:
                 for i in range(10):
-                    repository.create({
-                        "id": f"concurrent_{thread_id}_{i}",
-                        "thread": thread_id,
-                    })
+                    repository.create(
+                        {
+                            "id": f"concurrent_{thread_id}_{i}",
+                            "thread": thread_id,
+                        }
+                    )
             except Exception as e:
                 errors.append(e)
 
-        threads = [
-            threading.Thread(target=create_records, args=(i,))
-            for i in range(5)
-        ]
+        threads = [threading.Thread(target=create_records, args=(i,)) for i in range(5)]
 
         for t in threads:
             t.start()

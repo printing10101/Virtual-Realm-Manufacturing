@@ -9,8 +9,8 @@ Tests for:
 - Memory management
 - API endpoints
 """
+
 import pytest
-import time
 import threading
 from unittest.mock import MagicMock
 
@@ -214,7 +214,9 @@ class TestModelCacheThreadSafety:
             except Exception as e:
                 errors.append(e)
 
-        threads = [threading.Thread(target=put_model, args=(f"model_{i}",)) for i in range(50)]
+        threads = [
+            threading.Thread(target=put_model, args=(f"model_{i}",)) for i in range(50)
+        ]
         for t in threads:
             t.start()
         for t in threads:

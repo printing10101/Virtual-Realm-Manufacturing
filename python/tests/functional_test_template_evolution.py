@@ -1,14 +1,13 @@
 """Functional tests for Template Evolution."""
-import json
+
 import os
 import sys
 import tempfile
-import time
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.core.template_evolution import TemplateEvolutionEngine, EvolutionSuggestion
+from app.core.template_evolution import TemplateEvolutionEngine
 
 
 @pytest.fixture
@@ -36,10 +35,12 @@ def test_skill_trigger_fires(engine):
 
 
 def test_model_config_trigger_fires(engine):
-    engine.update_metrics({
-        "ab_test_winner": {"config_name": "cfc_v2", "improvement": 12.5},
-        "confidence": 0.97,
-    })
+    engine.update_metrics(
+        {
+            "ab_test_winner": {"config_name": "cfc_v2", "improvement": 12.5},
+            "confidence": 0.97,
+        }
+    )
     new = engine.evaluate_triggers()
     model_suggestions = [s for s in new if s.trigger_type == "model_config"]
     assert len(model_suggestions) >= 1
@@ -93,8 +94,12 @@ def test_apply_nonexistent_suggestion(engine):
 
 
 def test_list_suggestions(engine):
-    engine.create_suggestion(trigger_type="skill", evidence={"description": "A"}, proposed_change={})
-    engine.create_suggestion(trigger_type="model_config", evidence={"description": "B"}, proposed_change={})
+    engine.create_suggestion(
+        trigger_type="skill", evidence={"description": "A"}, proposed_change={}
+    )
+    engine.create_suggestion(
+        trigger_type="model_config", evidence={"description": "B"}, proposed_change={}
+    )
     all_s = engine.list_suggestions()
     assert len(all_s) == 2
     pending = engine.list_suggestions(status_filter="pending")

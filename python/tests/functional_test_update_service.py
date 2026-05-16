@@ -1,5 +1,5 @@
 """Functional tests for Template Update Service."""
-import json
+
 import os
 import sys
 import tempfile
@@ -87,7 +87,13 @@ def test_scan_no_duplicates(service):
 def test_apply_update(service):
     notif = service.create_notification(
         project_id="proj_001",
-        suggestion={"suggestion_id": "ev_001", "title": "T", "description": "D", "change_preview": {}, "expected_impact": {}},
+        suggestion={
+            "suggestion_id": "ev_001",
+            "title": "T",
+            "description": "D",
+            "change_preview": {},
+            "expected_impact": {},
+        },
         priority="optional",
     )
     result = service.apply_update(notif.notification_id)
@@ -103,7 +109,13 @@ def test_apply_nonexistent(service):
 def test_dismiss_notification(service):
     notif = service.create_notification(
         project_id="proj_001",
-        suggestion={"suggestion_id": "ev_001", "title": "T", "description": "D", "change_preview": {}, "expected_impact": {}},
+        suggestion={
+            "suggestion_id": "ev_001",
+            "title": "T",
+            "description": "D",
+            "change_preview": {},
+            "expected_impact": {},
+        },
         priority="optional",
     )
     result = service.dismiss_notification(notif.notification_id)
@@ -142,12 +154,24 @@ def test_preview_nonexistent(service):
 def test_get_notifications(service):
     service.create_notification(
         project_id="proj_001",
-        suggestion={"suggestion_id": "ev_001", "title": "T", "description": "D", "change_preview": {}, "expected_impact": {}},
+        suggestion={
+            "suggestion_id": "ev_001",
+            "title": "T",
+            "description": "D",
+            "change_preview": {},
+            "expected_impact": {},
+        },
         priority="optional",
     )
     service.create_notification(
         project_id="proj_002",
-        suggestion={"suggestion_id": "ev_002", "title": "T", "description": "D", "change_preview": {}, "expected_impact": {}},
+        suggestion={
+            "suggestion_id": "ev_002",
+            "title": "T",
+            "description": "D",
+            "change_preview": {},
+            "expected_impact": {},
+        },
         priority="recommended",
     )
     notifs = service.get_notifications("proj_001")
@@ -158,7 +182,13 @@ def test_get_notifications(service):
 def test_get_notifications_by_status(service):
     notif = service.create_notification(
         project_id="proj_001",
-        suggestion={"suggestion_id": "ev_001", "title": "T", "description": "D", "change_preview": {}, "expected_impact": {}},
+        suggestion={
+            "suggestion_id": "ev_001",
+            "title": "T",
+            "description": "D",
+            "change_preview": {},
+            "expected_impact": {},
+        },
         priority="optional",
     )
     service.apply_update(notif.notification_id)

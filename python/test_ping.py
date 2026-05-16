@@ -1,4 +1,5 @@
-import urllib.request, json
+import urllib.request
+
 try:
     r = urllib.request.urlopen("http://127.0.0.1:8000/api/health/ping", timeout=5)
     print(f"OK: {r.status} {r.read().decode()}")

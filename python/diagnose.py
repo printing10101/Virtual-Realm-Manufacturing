@@ -1,5 +1,11 @@
 """Quick diagnosis - test server connectivity and basic endpoints."""
-import subprocess, sys, time, json, urllib.request, urllib.error
+
+import subprocess
+import sys
+import time
+import json
+import urllib.request
+import urllib.error
 from pathlib import Path
 
 PYTHON_DIR = Path(__file__).parent.resolve()
@@ -10,14 +16,23 @@ HEADERS = {"Content-Type": "application/json", "Authorization": f"Bearer {TOKEN}
 
 print("=" * 60)
 print("Starting server subprocess...")
-env = {**__import__('os').environ, "PYTHONUNBUFFERED": "1"}
+env = {**__import__("os").environ, "PYTHONUNBUFFERED": "1"}
 proc = subprocess.Popen(
-    [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+    [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000",
+    ],
     cwd=str(PYTHON_DIR),
     env=env,
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
-    text=True
+    text=True,
 )
 print(f"Server PID: {proc.pid}")
 
@@ -27,7 +42,7 @@ for i in range(30):
     try:
         r = urllib.request.urlopen("http://127.0.0.1:8000/api/health/ping", timeout=2)
         if r.status == 200:
-            print(f"Server ready after {i+1}s")
+            print(f"Server ready after {i + 1}s")
             break
     except Exception:
         pass
@@ -44,7 +59,9 @@ else:
 # Test 1: GET /api/v1/jobs
 print("\nTest 1: GET /api/v1/jobs")
 try:
-    req = urllib.request.Request(f"{BASE}/api/v1/jobs", headers={"Authorization": f"Bearer {TOKEN}"})
+    req = urllib.request.Request(
+        f"{BASE}/api/v1/jobs", headers={"Authorization": f"Bearer {TOKEN}"}
+    )
     r = urllib.request.urlopen(req, timeout=10)
     print(f"  Status: {r.status}")
     print(f"  Body: {r.read().decode()[:300]}")
@@ -56,15 +73,20 @@ print("\nTest 2: POST /api/v1/lnn/train")
 payload = {
     "model_name": "cutting_force",
     "data_path": r"C:\Users\Lenovo\AppData\Local\Temp\uniwear.csv",
-    "hyperparameters": {"epochs": 2, "batch_size": 32, "learning_rate": 0.001, "optimizer": "adam"},
-    "device": "cpu"
+    "hyperparameters": {
+        "epochs": 2,
+        "batch_size": 32,
+        "learning_rate": 0.001,
+        "optimizer": "adam",
+    },
+    "device": "cpu",
 }
 try:
     req = urllib.request.Request(
         f"{BASE}/api/v1/lnn/train",
         data=json.dumps(payload).encode(),
         headers=HEADERS,
-        method="POST"
+        method="POST",
     )
     t0 = time.time()
     r = urllib.request.urlopen(req, timeout=30)
@@ -72,7 +94,7 @@ try:
     print(f"  Status: {r.status}, {elapsed:.2f}s")
     print(f"  Body: {r.read().decode()[:500]}")
 except Exception as e:
-    print(f"  ERROR after {time.time()-t0:.2f}s: {e}")
+    print(f"  ERROR after {time.time() - t0:.2f}s: {e}")
 
 # Read any server output
 time.sleep(0.5)

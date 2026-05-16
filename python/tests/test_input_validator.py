@@ -11,9 +11,9 @@ Tests for:
 - validate_file_path: File path existence validation
 - coalesce: Helper function for null-coalescing
 """
+
 import os
 import pytest
-from unittest.mock import patch, MagicMock
 
 from app.core.input_validator import (
     validate_cutting_parameters,
