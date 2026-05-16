@@ -1,8 +1,14 @@
 import urllib.request
 import json
 
-body = json.dumps({"model_name": "cutting_force", "input_data": [120.5, 85.3, 65.1, 12000.0, 0.15]})
-req = urllib.request.Request("http://localhost:8001/api/v1/lnn/predict", data=body.encode(), headers={"Content-Type": "application/json"})
+body = json.dumps(
+    {"model_name": "cutting_force", "input_data": [120.5, 85.3, 65.1, 12000.0, 0.15]}
+)
+req = urllib.request.Request(
+    "http://localhost:8001/api/v1/lnn/predict",
+    data=body.encode(),
+    headers={"Content-Type": "application/json"},
+)
 try:
     resp = urllib.request.urlopen(req, timeout=60)
     print("Status:", resp.status)

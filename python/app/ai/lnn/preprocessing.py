@@ -193,9 +193,7 @@ class DataPreprocessor:
                 col_mean = means[col] if means is not None else np.mean(col_data)
                 col_std = stds[col] if stds is not None else np.std(col_data)
 
-                z_scores = np.abs(
-                    (col_data - col_mean) / (col_std + 1e-10)
-                )
+                z_scores = np.abs((col_data - col_mean) / (col_std + 1e-10))
                 outlier_mask = z_scores > self.outlier_threshold
                 outlier_count += int(np.sum(outlier_mask))
 
