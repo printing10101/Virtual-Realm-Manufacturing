@@ -19,6 +19,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install and pull Git LFS files
+        run: |
+          git lfs install
+          git lfs pull
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
