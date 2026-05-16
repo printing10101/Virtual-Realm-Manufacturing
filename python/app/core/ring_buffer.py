@@ -7,12 +7,12 @@ Design inspired by gstack's real-time logging architecture:
 - Async background flush to .gstack/*.log files every second
 - Query with pagination, time-range filtering, and type selection
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
-import os
 import threading
 import time as _time
 from collections import deque
@@ -33,7 +33,9 @@ GSTACK_DIR = ".gstack"
 
 @dataclass
 class LogEntry:
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     type: LogBufferType = "system_event"
     level: str = "INFO"
     source: str = ""
@@ -148,7 +150,9 @@ class RingLogBuffer:
         data: dict[str, Any] | None = None,
     ) -> None:
         if buffer_type not in self._buffers:
-            logger.warning("Unknown buffer type: %s, falling back to system_event", buffer_type)
+            logger.warning(
+                "Unknown buffer type: %s, falling back to system_event", buffer_type
+            )
             buffer_type = "system_event"
         entry = LogEntry(
             type=buffer_type,
@@ -208,7 +212,9 @@ class RingLogBuffer:
                     if new_count <= 0:
                         continue
                     entries = buf.snapshot()
-                    new_entries = entries[-new_count:] if new_count <= len(entries) else entries
+                    new_entries = (
+                        entries[-new_count:] if new_count <= len(entries) else entries
+                    )
                     if not new_entries:
                         continue
                     log_path = self._base_dir / f"{buffer_type}.log"

@@ -9,6 +9,7 @@ Provides environment-aware CORS configuration for the LNN AI service.
 Environment detection is driven by LINGJING_ENV environment variable.
 Allowed values: "development" | "production" (default: "production")
 """
+
 from __future__ import annotations
 import os
 from typing import Optional, List
@@ -75,6 +76,7 @@ class CorsSettings:
             return True
 
         import re
+
         if self._origin_regex and re.match(self._origin_regex, origin):
             return True
         return origin in self._origins
@@ -103,6 +105,7 @@ def is_allowed_origin(origin: str, override_env: Optional[str] = None) -> bool:
         return True
 
     import re
+
     if re.match(PRODUCTION_ORIGIN_REGEX, origin):
         return True
     return origin in PRODUCTION_ORIGINS
@@ -145,7 +148,11 @@ def get_cors_config(override_env: Optional[str] = None) -> dict:
         "allow_credentials": True,
         "allow_methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         "allow_headers": ["*"],
-        "expose_headers": ["X-Content-Type-Options", "X-Frame-Options", "X-XSS-Protection"],
+        "expose_headers": [
+            "X-Content-Type-Options",
+            "X-Frame-Options",
+            "X-XSS-Protection",
+        ],
         "max_age": 600 if env == "production" else 3600,
     }
 

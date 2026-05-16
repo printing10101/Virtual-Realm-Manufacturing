@@ -8,13 +8,14 @@ Complete approval lifecycle management:
 - Time limit management with auto-escalation/rejection
 - Immutable approval record system for audit trail
 """
+
 import logging
 import time
 import uuid
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional
 
 from app.models.governance import (
     ApprovalDecision,
@@ -22,7 +23,6 @@ from app.models.governance import (
     ApprovalPriority,
     ApprovalRequest,
     ApprovalStatus,
-    ApprovalStrategy,
     GovernanceReport,
 )
 
@@ -35,6 +35,7 @@ class ApprovalWorkflowEngine:
     def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
             from app.config import PROJECT_ROOT
+
             db_path = str(Path(PROJECT_ROOT) / "data" / "approval_workflow.db")
 
         db_dir = Path(db_path).parent
@@ -165,19 +166,28 @@ class ApprovalWorkflowEngine:
         )
 
         self._save_request(request)
-        self._log_audit(request_id, "created", requester, {
-            "task_id": task_id,
-            "priority": priority.value,
-            "risk_score": risk_score,
-        })
+        self._log_audit(
+            request_id,
+            "created",
+            requester,
+            {
+                "task_id": task_id,
+                "priority": priority.value,
+                "risk_score": risk_score,
+            },
+        )
 
         logger.info(
             "Approval request created: %s for task %s, risk=%.2f",
-            request_id, task_id, risk_score
+            request_id,
+            task_id,
+            risk_score,
         )
         return request
 
-    def assign_approver(self, request_id: str, approver_id: str) -> Optional[ApprovalRequest]:
+    def assign_approver(
+        self, request_id: str, approver_id: str
+    ) -> Optional[ApprovalRequest]:
         """分配审批人"""
         request = self._get_request(request_id)
         if request is None:
@@ -190,9 +200,14 @@ class ApprovalWorkflowEngine:
             request.approvers.append(approver_id)
 
         self._save_request(request)
-        self._log_audit(request_id, "approver_assigned", approver_id, {
-            "request_id": request_id,
-        })
+        self._log_audit(
+            request_id,
+            "approver_assigned",
+            approver_id,
+            {
+                "request_id": request_id,
+            },
+        )
 
         return request
 
@@ -209,7 +224,11 @@ class ApprovalWorkflowEngine:
             return None
 
         if request.status not in (ApprovalStatus.PENDING, ApprovalStatus.UNDER_REVIEW):
-            logger.warning("Cannot decide on request %s: invalid status %s", request_id, request.status)
+            logger.warning(
+                "Cannot decide on request %s: invalid status %s",
+                request_id,
+                request.status,
+            )
             return None
 
         approval_decision = ApprovalDecision(
@@ -221,42 +240,71 @@ class ApprovalWorkflowEngine:
         request.decisions.append(approval_decision)
 
         if decision == "approved":
-            approved_count = sum(1 for d in request.decisions if d.decision == "approved")
+            approved_count = sum(
+                1 for d in request.decisions if d.decision == "approved"
+            )
             if approved_count >= request.required_approvals:
                 request.status = ApprovalStatus.APPROVED
                 request.completed_at = time.time()
-                self._log_audit(request_id, "approved", approver_id, {
-                    "comment": comment,
-                    "total_decisions": len(request.decisions),
-                })
+                self._log_audit(
+                    request_id,
+                    "approved",
+                    approver_id,
+                    {
+                        "comment": comment,
+                        "total_decisions": len(request.decisions),
+                    },
+                )
             else:
-                self._log_audit(request_id, "decision_approved", approver_id, {
-                    "comment": comment,
-                    "approved_so_far": approved_count,
-                    "required": request.required_approvals,
-                })
+                self._log_audit(
+                    request_id,
+                    "decision_approved",
+                    approver_id,
+                    {
+                        "comment": comment,
+                        "approved_so_far": approved_count,
+                        "required": request.required_approvals,
+                    },
+                )
         elif decision == "rejected":
             request.status = ApprovalStatus.REJECTED
             request.completed_at = time.time()
-            self._log_audit(request_id, "rejected", approver_id, {
-                "comment": comment,
-            })
+            self._log_audit(
+                request_id,
+                "rejected",
+                approver_id,
+                {
+                    "comment": comment,
+                },
+            )
         elif decision == "escalated":
             request.status = ApprovalStatus.ESCALATED
             request.escalated_from = approver_id
             request.escalated_at = time.time()
-            self._log_audit(request_id, "escalated", approver_id, {
-                "comment": comment,
-            })
+            self._log_audit(
+                request_id,
+                "escalated",
+                approver_id,
+                {
+                    "comment": comment,
+                },
+            )
         elif decision == "request_info":
-            self._log_audit(request_id, "request_info", approver_id, {
-                "comment": comment,
-            })
+            self._log_audit(
+                request_id,
+                "request_info",
+                approver_id,
+                {
+                    "comment": comment,
+                },
+            )
 
         self._save_request(request)
         return request
 
-    def escalate_request(self, request_id: str, escalator_id: str, reason: str = "") -> Optional[ApprovalRequest]:
+    def escalate_request(
+        self, request_id: str, escalator_id: str, reason: str = ""
+    ) -> Optional[ApprovalRequest]:
         """升级审批请求"""
         request = self._get_request(request_id)
         if request is None:
@@ -267,9 +315,14 @@ class ApprovalWorkflowEngine:
         request.escalated_at = time.time()
 
         self._save_request(request)
-        self._log_audit(request_id, "escalated", escalator_id, {
-            "reason": reason,
-        })
+        self._log_audit(
+            request_id,
+            "escalated",
+            escalator_id,
+            {
+                "reason": reason,
+            },
+        )
 
         return request
 
@@ -281,7 +334,7 @@ class ApprovalWorkflowEngine:
                WHERE status IN ('pending', 'under_review')
                AND expires_at IS NOT NULL
                AND expires_at < ?""",
-            (now,)
+            (now,),
         ).fetchall()
 
         handled_count = 0
@@ -299,9 +352,14 @@ class ApprovalWorkflowEngine:
             request.escalated_from = "system_timeout"
 
             self._save_request(request)
-            self._log_audit(request_id, "timeout_escalated", "system", {
-                "expires_at": request.expires_at,
-            })
+            self._log_audit(
+                request_id,
+                "timeout_escalated",
+                "system",
+                {
+                    "expires_at": request.expires_at,
+                },
+            )
             handled_count += 1
 
         if handled_count > 0:
@@ -324,7 +382,7 @@ class ApprovalWorkflowEngine:
                WHERE status = ?
                ORDER BY requested_at DESC
                LIMIT ? OFFSET ?""",
-            (status.value, limit, offset)
+            (status.value, limit, offset),
         ).fetchall()
         return [self._row_to_request(row) for row in rows]
 
@@ -341,7 +399,7 @@ class ApprovalWorkflowEngine:
                OR approvers LIKE ?
                ORDER BY requested_at DESC
                LIMIT ? OFFSET ?""",
-            (approver_id, f"%{approver_id}%", limit, offset)
+            (approver_id, f"%{approver_id}%", limit, offset),
         ).fetchall()
         return [self._row_to_request(row) for row in rows]
 
@@ -357,7 +415,7 @@ class ApprovalWorkflowEngine:
                WHERE requester = ?
                ORDER BY requested_at DESC
                LIMIT ? OFFSET ?""",
-            (requester, limit, offset)
+            (requester, limit, offset),
         ).fetchall()
         return [self._row_to_request(row) for row in rows]
 
@@ -399,14 +457,13 @@ class ApprovalWorkflowEngine:
                 delegation.end_time,
                 delegation.reason,
                 delegation.created_at,
-            )
+            ),
         )
         self._conn.commit()
         self._load_delegations.append(delegation)
 
         logger.info(
-            "Approval delegated: %s → %s (%s)",
-            delegator_id, delegate_id, reason
+            "Approval delegated: %s → %s (%s)", delegator_id, delegate_id, reason
         )
         return delegation
 
@@ -447,9 +504,15 @@ class ApprovalWorkflowEngine:
                 executed_at, retroactive_approval_required, retroactive_approval_completed, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?)""",
             (
-                emergency_id, request_id, task_id, operator_id,
-                reason, emergency_type, now, now
-            )
+                emergency_id,
+                request_id,
+                task_id,
+                operator_id,
+                reason,
+                emergency_type,
+                now,
+                now,
+            ),
         )
         self._conn.commit()
 
@@ -463,16 +526,23 @@ class ApprovalWorkflowEngine:
                     operator_id=operator_id,
                 )
 
-        self._log_audit(request_id, "emergency_override", operator_id, {
-            "emergency_id": emergency_id,
-            "reason": reason,
-            "emergency_type": emergency_type,
-            "consecutive_count": self._consecutive_emergency_count,
-        })
+        self._log_audit(
+            request_id,
+            "emergency_override",
+            operator_id,
+            {
+                "emergency_id": emergency_id,
+                "reason": reason,
+                "emergency_type": emergency_type,
+                "consecutive_count": self._consecutive_emergency_count,
+            },
+        )
 
         logger.warning(
             "Emergency operation recorded: %s by %s, consecutive=%d",
-            emergency_id, operator_id, self._consecutive_emergency_count
+            emergency_id,
+            operator_id,
+            self._consecutive_emergency_count,
         )
 
         return {
@@ -487,17 +557,22 @@ class ApprovalWorkflowEngine:
             """UPDATE emergency_operations 
                SET retroactive_approval_completed = 1
                WHERE id = ?""",
-            (emergency_id,)
+            (emergency_id,),
         )
         self._conn.commit()
 
-        if self._conn.execute(
-            "SELECT changes()"
-        ).fetchone()[0] > 0:
-            self._consecutive_emergency_count = max(0, self._consecutive_emergency_count - 1)
-            self._log_audit(emergency_id, "retroactive_completed", "system", {
-                "emergency_id": emergency_id,
-            })
+        if self._conn.execute("SELECT changes()").fetchone()[0] > 0:
+            self._consecutive_emergency_count = max(
+                0, self._consecutive_emergency_count - 1
+            )
+            self._log_audit(
+                emergency_id,
+                "retroactive_completed",
+                "system",
+                {
+                    "emergency_id": emergency_id,
+                },
+            )
             return True
         return False
 
@@ -525,7 +600,7 @@ class ApprovalWorkflowEngine:
                FROM approval_requests
                WHERE requested_at >= ? AND requested_at <= ?
                GROUP BY status""",
-            (period_start, period_end)
+            (period_start, period_end),
         ).fetchall()
 
         for row in rows:
@@ -542,7 +617,7 @@ class ApprovalWorkflowEngine:
         emergency_count = self._conn.execute(
             """SELECT COUNT(*) FROM emergency_operations
                WHERE executed_at >= ? AND executed_at <= ?""",
-            (period_start, period_end)
+            (period_start, period_end),
         ).fetchone()[0]
         report.emergency_count = emergency_count
 
@@ -555,7 +630,7 @@ class ApprovalWorkflowEngine:
                FROM approval_requests
                WHERE completed_at IS NOT NULL
                AND requested_at >= ? AND requested_at <= ?""",
-            (period_start, period_end)
+            (period_start, period_end),
         ).fetchone()
         if avg_time and avg_time[0] is not None:
             report.avg_approval_time_hours = avg_time[0]
@@ -570,7 +645,7 @@ class ApprovalWorkflowEngine:
                AND requested_at >= ? AND requested_at <= ?
                ORDER BY risk_score DESC
                LIMIT 10""",
-            (period_start, period_end)
+            (period_start, period_end),
         ).fetchall()
         report.top_risk_operations = [dict(row) for row in top_risks]
 
@@ -592,7 +667,7 @@ class ApprovalWorkflowEngine:
             """SELECT * FROM audit_log
                WHERE timestamp >= ? AND timestamp <= ?
                ORDER BY timestamp ASC""",
-            (start_time, end_time)
+            (start_time, end_time),
         ).fetchall()
 
         entries = [dict(row) for row in rows]
@@ -610,7 +685,7 @@ class ApprovalWorkflowEngine:
                     entry["request_id"],
                     entry["action"],
                     entry["actor_id"],
-                    f'"{(entry["details"] or "").replace(chr(34), chr(34)+chr(34))}"',
+                    f'"{(entry["details"] or "").replace(chr(34), chr(34) + chr(34))}"',
                     str(entry["timestamp"]),
                 ]
                 lines.append(",".join(row))
@@ -650,15 +725,14 @@ class ApprovalWorkflowEngine:
                 request.expires_at,
                 request.completed_at,
                 request.requested_at,
-            )
+            ),
         )
         self._conn.commit()
 
     def _get_request(self, request_id: str) -> Optional[ApprovalRequest]:
         """从数据库获取审批请求"""
         row = self._conn.execute(
-            "SELECT * FROM approval_requests WHERE request_id = ?",
-            (request_id,)
+            "SELECT * FROM approval_requests WHERE request_id = ?", (request_id,)
         ).fetchone()
         if row is None:
             return None
@@ -700,7 +774,9 @@ class ApprovalWorkflowEngine:
             completed_at=row["completed_at"],
         )
 
-    def _log_audit(self, request_id: str, action: str, actor_id: str, details: Dict[str, Any]) -> None:
+    def _log_audit(
+        self, request_id: str, action: str, actor_id: str, details: Dict[str, Any]
+    ) -> None:
         """记录不可变审计日志"""
         self._conn.execute(
             """INSERT INTO audit_log (request_id, action, actor_id, details, timestamp)
@@ -711,7 +787,7 @@ class ApprovalWorkflowEngine:
                 actor_id,
                 json.dumps(details),
                 time.time(),
-            )
+            ),
         )
         self._conn.commit()
 
@@ -729,15 +805,19 @@ class ApprovalWorkflowEngine:
                 """SELECT AVG(risk_score) as avg_risk, COUNT(*) as count
                    FROM approval_requests
                    WHERE requested_at >= ? AND requested_at < ?""",
-                (period_start, period_end)
+                (period_start, period_end),
             ).fetchone()
 
-            trend.append({
-                "period_start": period_start,
-                "period_end": period_end,
-                "avg_risk": round(avg_risk["avg_risk"], 2) if avg_risk["avg_risk"] else 0,
-                "count": avg_risk["count"],
-            })
+            trend.append(
+                {
+                    "period_start": period_start,
+                    "period_end": period_end,
+                    "avg_risk": round(avg_risk["avg_risk"], 2)
+                    if avg_risk["avg_risk"]
+                    else 0,
+                    "count": avg_risk["count"],
+                }
+            )
 
         return trend
 

@@ -3,11 +3,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
 from app.core.capability_gating import CapabilityGatekeeper
 from app.core.plugin_system import (
-    PluginLifecycleManager,
     PluginStatus,
     get_dependency_resolver,
     get_plugin_manager,
@@ -27,12 +26,14 @@ def list_marketplace_plugins(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    return success(data={
-        "plugins": [],
-        "total": 0,
-        "page": page,
-        "page_size": page_size,
-    })
+    return success(
+        data={
+            "plugins": [],
+            "total": 0,
+            "page": page,
+            "page_size": page_size,
+        }
+    )
 
 
 @router.post("/marketplace/{plugin_id}/install")
@@ -49,18 +50,20 @@ def list_installed_plugins(
     try:
         manager = get_plugin_manager()
         registry = manager._registry
-        
+
         status_filter = PluginStatus(status) if status else None
         plugins = registry.list_plugins(
             status=status_filter,
             plugin_type=plugin_type,
             capability=capability,
         )
-        
-        return success(data={
-            "plugins": [p.to_dict() for p in plugins],
-            "total": len(plugins),
-        })
+
+        return success(
+            data={
+                "plugins": [p.to_dict() for p in plugins],
+                "total": len(plugins),
+            }
+        )
     except Exception as e:
         return error(str(e), code=500)
 
@@ -70,22 +73,22 @@ def get_plugin_detail(plugin_id: str):
     try:
         manager = get_plugin_manager()
         info = manager.get_plugin_info(plugin_id)
-        
+
         resolver = get_dependency_resolver()
         info["dependency_tree"] = resolver.get_dependency_tree(plugin_id)
-        
+
         gatekeeper = CapabilityGatekeeper.get_instance()
         info["capabilities"] = gatekeeper.get_plugin_capabilities(plugin_id)
-        
+
         worker_info = None
         try:
             worker_mgr = PluginWorkerManager.get_instance()
             worker_info = worker_mgr.get_worker_info(plugin_id)
         except Exception:
             pass
-        
+
         info["worker"] = worker_info
-        
+
         return success(data=info)
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
@@ -159,11 +162,13 @@ def get_plugin_dependencies(plugin_id: str):
         resolver = get_dependency_resolver()
         tree = resolver.get_dependency_tree(plugin_id)
         order = resolver.resolve_dependencies(plugin_id)
-        
-        return success(data={
-            "tree": tree,
-            "load_order": order,
-        })
+
+        return success(
+            data={
+                "tree": tree,
+                "load_order": order,
+            }
+        )
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
     except Exception as e:
@@ -177,10 +182,12 @@ def get_plugin_logs(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
-    return success(data={
-        "logs": [],
-        "total": 0,
-    })
+    return success(
+        data={
+            "logs": [],
+            "total": 0,
+        }
+    )
 
 
 @router.get("/{plugin_id}/capabilities")
@@ -188,10 +195,12 @@ def get_plugin_capabilities(plugin_id: str):
     try:
         gatekeeper = CapabilityGatekeeper.get_instance()
         caps = gatekeeper.get_plugin_capabilities(plugin_id)
-        
-        return success(data={
-            "capabilities": caps,
-        })
+
+        return success(
+            data={
+                "capabilities": caps,
+            }
+        )
     except Exception as e:
         return error(str(e), code=500)
 
@@ -233,14 +242,14 @@ def start_worker(plugin_id: str):
     try:
         manager = get_plugin_manager()
         metadata = manager._registry.get(plugin_id)
-        
+
         worker_mgr = PluginWorkerManager.get_instance()
         config = WorkerConfig(
             plugin_id=plugin_id,
             plugin_path=metadata.plugin_path,
         )
         worker_mgr.start_worker(config)
-        
+
         return success(data={"message": f"Worker for '{plugin_id}' started"})
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)

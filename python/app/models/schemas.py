@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.core.task_manager import TaskStatus, TaskType
+from app.core.task_manager import TaskType
 
 
 class KnowledgeAddRequest(BaseModel):
@@ -185,9 +185,13 @@ class LNNModelSizeResponse(BaseModel):
     original_size_bytes: int = Field(..., description="原始模型大小")
     quantized_size_bytes: int | None = Field(default=None, description="量化模型大小")
     original_size_human: str = Field(..., description="原始模型大小（人类可读）")
-    quantized_size_human: str | None = Field(default=None, description="量化模型大小（人类可读）")
+    quantized_size_human: str | None = Field(
+        default=None, description="量化模型大小（人类可读）"
+    )
     size_reduction_bytes: int | None = Field(default=None, description="减少的大小")
-    size_reduction_percent: float | None = Field(default=None, description="减少的百分比")
+    size_reduction_percent: float | None = Field(
+        default=None, description="减少的百分比"
+    )
 
 
 class AlternativePlan(BaseModel):
@@ -204,20 +208,26 @@ class LNNPredictResponseExtended(BaseModel):
     reasoning: str | None = Field(default=None, description="AI推理过程")
     inference_time: float = Field(..., description="推理耗时，单位毫秒")
     model_info: LNNModelInfo = Field(..., description="模型信息")
-    alternatives: list[AlternativePlan] | None = Field(default=None, description="备选方案列表")
+    alternatives: list[AlternativePlan] | None = Field(
+        default=None, description="备选方案列表"
+    )
 
 
 class LNNTrainDryRunRequest(BaseModel):
     model_name: str = Field(..., description="训练模型的名称", min_length=1)
     data_path: str = Field(..., description="训练数据集的存储路径", min_length=1)
     hyperparameters: LNNHyperparameters = Field(..., description="训练超参数集合")
-    device: str = Field(default="auto", description="训练设备", pattern="^(auto|gpu|cuda|cpu)$")
+    device: str = Field(
+        default="auto", description="训练设备", pattern="^(auto|gpu|cuda|cpu)$"
+    )
 
 
 class TrainingPlanSummary(BaseModel):
     estimated_duration_minutes: float = Field(..., description="预估训练时长（分钟）")
     estimated_memory_mb: float = Field(..., description="预估内存占用（MB）")
-    estimated_gpu_memory_mb: float | None = Field(default=None, description="预估GPU显存占用（MB）")
+    estimated_gpu_memory_mb: float | None = Field(
+        default=None, description="预估GPU显存占用（MB）"
+    )
     dataset_samples: int = Field(..., description="数据集样本数")
     train_val_split: dict = Field(..., description="训练集/验证集划分比例")
     potential_risks: list[str] = Field(default=[], description="潜在风险提示")
@@ -327,7 +337,9 @@ class AgentTrainRequest(BaseModel):
     model_name: str = Field(..., description="模型名称", min_length=1)
     data_path: str = Field(..., description="训练数据路径", min_length=1)
     hyperparameters: LNNHyperparameters = Field(..., description="超参数")
-    device: str = Field(default="auto", description="设备", pattern="^(auto|gpu|cuda|cpu)$")
+    device: str = Field(
+        default="auto", description="设备", pattern="^(auto|gpu|cuda|cpu)$"
+    )
 
 
 class AgentExecuteRequest(BaseModel):

@@ -4,6 +4,7 @@ Goal Chain Store
 SQLite-backed storage for goal hierarchy with version tracking,
 goal chain resolution, and progress computation.
 """
+
 import logging
 import time
 import sqlite3
@@ -11,7 +12,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.models.goals import (
-    Goal, GoalLevel, GoalStatus, GoalRef, GoalVersion, GoalProgress,
+    Goal,
+    GoalLevel,
+    GoalStatus,
+    GoalRef,
+    GoalVersion,
+    GoalProgress,
     DEFAULT_GOALS,
 )
 
@@ -73,9 +79,14 @@ class GoalChainStore:
                 self._conn.execute(
                     "INSERT INTO goals (id, name, description, level, parent_id, status, created_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (
-                        goal.id, goal.name, goal.description,
-                        goal.level.value, goal.parent_id, goal.status.value,
-                        time.time(), goal.version,
+                        goal.id,
+                        goal.name,
+                        goal.description,
+                        goal.level.value,
+                        goal.parent_id,
+                        goal.status.value,
+                        time.time(),
+                        goal.version,
                     ),
                 )
             self._conn.commit()
@@ -87,16 +98,23 @@ class GoalChainStore:
         self._conn.execute(
             "INSERT INTO goals (id, name, description, level, parent_id, status, created_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                goal.id, goal.name, goal.description,
-                goal.level.value, goal.parent_id, goal.status.value,
-                goal.created_at, goal.version,
+                goal.id,
+                goal.name,
+                goal.description,
+                goal.level.value,
+                goal.parent_id,
+                goal.status.value,
+                goal.created_at,
+                goal.version,
             ),
         )
         self._conn.commit()
         return goal
 
     def get_goal(self, goal_id: str) -> Optional[Goal]:
-        row = self._conn.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
+        row = self._conn.execute(
+            "SELECT * FROM goals WHERE id = ?", (goal_id,)
+        ).fetchone()
         if row is None:
             return None
         return self._row_to_goal(row)
@@ -132,12 +150,16 @@ class GoalChainStore:
             )
 
         goal.version += 1
-        self._conn.execute("UPDATE goals SET version = ? WHERE id = ?", (goal.version, goal_id))
+        self._conn.execute(
+            "UPDATE goals SET version = ? WHERE id = ?", (goal.version, goal_id)
+        )
         self._conn.commit()
         return goal
 
     def delete_goal(self, goal_id: str) -> bool:
-        row = self._conn.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+        row = self._conn.execute(
+            "SELECT id FROM goals WHERE id = ?", (goal_id,)
+        ).fetchone()
         if row is None:
             return False
         self._conn.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
@@ -162,12 +184,14 @@ class GoalChainStore:
             goal = self.get_goal(current_id)
             if goal is None:
                 break
-            chain.append(GoalRef(
-                id=goal.id,
-                level=goal.level,
-                name=goal.name,
-                description=goal.description,
-            ))
+            chain.append(
+                GoalRef(
+                    id=goal.id,
+                    level=goal.level,
+                    name=goal.name,
+                    description=goal.description,
+                )
+            )
             current_id = goal.parent_id
 
         return chain
@@ -187,7 +211,9 @@ class GoalChainStore:
     def get_goal_tree(self) -> List[Dict[str, Any]]:
         all_goals = self.get_all_goals()
         goal_map = {g.id: g for g in all_goals}
-        root_goals = [g for g in all_goals if g.parent_id is None or g.level == GoalLevel.MISSION]
+        root_goals = [
+            g for g in all_goals if g.parent_id is None or g.level == GoalLevel.MISSION
+        ]
 
         def _build_tree(goal: Goal) -> Dict[str, Any]:
             children = [g for g in all_goals if g.parent_id == goal.id]
@@ -199,7 +225,9 @@ class GoalChainStore:
 
         return [_build_tree(g) for g in root_goals]
 
-    def compute_progress(self, goal_id: str, task_status_map: Optional[Dict[str, str]] = None) -> GoalProgress:
+    def compute_progress(
+        self, goal_id: str, task_status_map: Optional[Dict[str, str]] = None
+    ) -> GoalProgress:
         goal = self.get_goal(goal_id)
         if goal is None:
             return GoalProgress()
@@ -218,7 +246,11 @@ class GoalChainStore:
             completed += sub.completed_tasks
             in_progress += sub.in_progress_tasks
 
-        direct_tasks = {tid: st for tid, st in task_status_map.items() if self._task_belongs_to_goal(tid, goal_id)}
+        direct_tasks = {
+            tid: st
+            for tid, st in task_status_map.items()
+            if self._task_belongs_to_goal(tid, goal_id)
+        }
         for tid, st in direct_tasks.items():
             if st == "completed":
                 completed += 1
@@ -253,7 +285,10 @@ class GoalChainStore:
     def _mark_descendants_needs_review(self, parent_id: str, affected: List[str]):
         children = self.get_children(parent_id)
         for child in children:
-            if child.level == GoalLevel.TASK and child.status in (GoalStatus.IN_PROGRESS, GoalStatus.NOT_STARTED):
+            if child.level == GoalLevel.TASK and child.status in (
+                GoalStatus.IN_PROGRESS,
+                GoalStatus.NOT_STARTED,
+            ):
                 self._conn.execute(
                     "UPDATE goals SET status = ? WHERE id = ?",
                     (GoalStatus.NEEDS_REVIEW.value, child.id),
@@ -262,10 +297,28 @@ class GoalChainStore:
             self._mark_descendants_needs_review(child.id, affected)
         self._conn.commit()
 
-    def _record_version(self, goal_id: str, version: int, change_type: str, field_name: str, old_value: str, new_value: str, changed_by: str = "system"):
+    def _record_version(
+        self,
+        goal_id: str,
+        version: int,
+        change_type: str,
+        field_name: str,
+        old_value: str,
+        new_value: str,
+        changed_by: str = "system",
+    ):
         self._conn.execute(
             "INSERT INTO goal_versions (goal_id, version, changed_at, changed_by, change_type, field_name, old_value, new_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (goal_id, version, time.time(), changed_by, change_type, field_name, old_value, new_value),
+            (
+                goal_id,
+                version,
+                time.time(),
+                changed_by,
+                change_type,
+                field_name,
+                old_value,
+                new_value,
+            ),
         )
 
     def _task_belongs_to_goal(self, task_id: str, goal_id: str) -> bool:
@@ -275,7 +328,7 @@ class GoalChainStore:
         self._task_belongs_checker = checker
 
     def _task_belongs_to_goal(self, task_id: str, goal_id: str) -> bool:
-        if hasattr(self, '_task_belongs_checker'):
+        if hasattr(self, "_task_belongs_checker"):
             return self._task_belongs_checker(task_id, goal_id)
         return False
 

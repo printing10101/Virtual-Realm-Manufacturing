@@ -1,4 +1,5 @@
 """A/B Testing Framework — validates template changes via controlled experiments."""
+
 import hashlib
 import json
 import logging
@@ -135,8 +136,18 @@ class ABTestingFramework:
                 traffic_split=traffic_split,
                 status="running",
                 metrics={
-                    "control": {"count": 0, "execution_times": [], "success_count": 0, "resource_costs": []},
-                    "candidate": {"count": 0, "execution_times": [], "success_count": 0, "resource_costs": []},
+                    "control": {
+                        "count": 0,
+                        "execution_times": [],
+                        "success_count": 0,
+                        "resource_costs": [],
+                    },
+                    "candidate": {
+                        "count": 0,
+                        "execution_times": [],
+                        "success_count": 0,
+                        "resource_costs": [],
+                    },
                 },
             )
             self._experiments[exp.experiment_id] = exp
@@ -156,7 +167,12 @@ class ABTestingFramework:
                 ),
             )
             self._db.commit()
-            logger.info("Experiment created: id=%s, name=%s, split=%.0f%%", exp.experiment_id, name, traffic_split * 100)
+            logger.info(
+                "Experiment created: id=%s, name=%s, split=%.0f%%",
+                exp.experiment_id,
+                name,
+                traffic_split * 100,
+            )
             return exp
 
     def record_execution(
@@ -224,7 +240,10 @@ class ABTestingFramework:
             control = exp.metrics.get("control", {})
             candidate = exp.metrics.get("candidate", {})
 
-            if control["count"] < self.MIN_SAMPLE_SIZE or candidate["count"] < self.MIN_SAMPLE_SIZE:
+            if (
+                control["count"] < self.MIN_SAMPLE_SIZE
+                or candidate["count"] < self.MIN_SAMPLE_SIZE
+            ):
                 return {
                     "status": "insufficient_data",
                     "control_count": control["count"],
@@ -241,11 +260,16 @@ class ABTestingFramework:
         candidate_times = candidate.get("execution_times", [])
 
         if not control_times or not candidate_times:
-            return {"status": "insufficient_metrics", "message": "No execution time data"}
+            return {
+                "status": "insufficient_metrics",
+                "message": "No execution time data",
+            }
 
         control_mean = sum(control_times) / len(control_times)
         candidate_mean = sum(candidate_times) / len(candidate_times)
-        improvement = (control_mean - candidate_mean) / control_mean if control_mean > 0 else 0
+        improvement = (
+            (control_mean - candidate_mean) / control_mean if control_mean > 0 else 0
+        )
 
         control_success = control.get("success_count", 0)
         candidate_success = candidate.get("success_count", 0)
@@ -254,7 +278,10 @@ class ABTestingFramework:
 
         confidence = self._compute_confidence(control_times, candidate_times)
 
-        if improvement > self.IMPROVEMENT_THRESHOLD and confidence > self.CONFIDENCE_THRESHOLD:
+        if (
+            improvement > self.IMPROVEMENT_THRESHOLD
+            and confidence > self.CONFIDENCE_THRESHOLD
+        ):
             verdict = "winner_candidate"
         elif improvement < 0:
             verdict = "winner_control"
@@ -272,7 +299,9 @@ class ABTestingFramework:
             "candidate_success_rate": round(candidate_rate, 4),
         }
 
-    def _compute_confidence(self, control: List[float], candidate: List[float]) -> float:
+    def _compute_confidence(
+        self, control: List[float], candidate: List[float]
+    ) -> float:
         if len(control) < 2 or len(candidate) < 2:
             return 0.0
 
@@ -289,7 +318,7 @@ class ABTestingFramework:
         se = math.sqrt(se_sq)
         t = abs(m2 - m1) / se
 
-        df_num = se_sq ** 2
+        df_num = se_sq**2
         df_den = (v1 / n1) ** 2 / max(n1 - 1, 1) + (v2 / n2) ** 2 / max(n2 - 1, 1)
         df = df_num / max(df_den, 0.001)
 
@@ -332,8 +361,12 @@ class ABTestingFramework:
 
             if result["verdict"] == "winner_candidate":
                 exp.status = "merged"
-                logger.info("Experiment auto-merged: id=%s (improvement=%.1f%%, confidence=%.2f)",
-                            experiment_id, result["improvement"] * 100, result["confidence"])
+                logger.info(
+                    "Experiment auto-merged: id=%s (improvement=%.1f%%, confidence=%.2f)",
+                    experiment_id,
+                    result["improvement"] * 100,
+                    result["confidence"],
+                )
             elif result["verdict"] == "winner_control":
                 exp.status = "rolled_back"
                 logger.info("Experiment auto-rolled back: id=%s", experiment_id)
@@ -344,7 +377,13 @@ class ABTestingFramework:
             self._db.execute(
                 """UPDATE ab_experiments SET status=?, concluded_at=?, result=?, metrics=?
                    WHERE experiment_id=?""",
-                (exp.status, exp.concluded_at, exp.result, json.dumps(exp.metrics), experiment_id),
+                (
+                    exp.status,
+                    exp.concluded_at,
+                    exp.result,
+                    json.dumps(exp.metrics),
+                    experiment_id,
+                ),
             )
             self._db.commit()
             return exp
@@ -360,7 +399,9 @@ class ABTestingFramework:
                 return None
             return exp.to_dict()
 
-    def list_experiments(self, status_filter: Optional[str] = None) -> List[ABExperiment]:
+    def list_experiments(
+        self, status_filter: Optional[str] = None
+    ) -> List[ABExperiment]:
         with self._lock:
             exps = list(self._experiments.values())
             if status_filter:

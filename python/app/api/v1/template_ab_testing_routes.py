@@ -1,13 +1,14 @@
 """A/B Testing API Routes."""
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.core.template_ab_testing import get_ab_testing, init_ab_testing
+from app.core.template_ab_testing import get_ab_testing
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,9 @@ class CreateExperimentRequest(BaseModel):
     name: str = Field(..., description="Experiment name")
     control_branch: str = Field(..., description="Control branch ID")
     candidate_branch: str = Field(..., description="Candidate branch ID")
-    traffic_split: float = Field(default=0.10, description="Traffic split for candidate (0.0-1.0)")
+    traffic_split: float = Field(
+        default=0.10, description="Traffic split for candidate (0.0-1.0)"
+    )
 
 
 class RecordExecutionRequest(BaseModel):
@@ -108,5 +111,7 @@ def conclude_experiment(experiment_id: str):
     framework = get_ab_testing()
     exp = framework.auto_conclude(experiment_id)
     if exp is None:
-        return error(code="EXPERIMENT_NOT_FOUND", message="Experiment not found or not running")
+        return error(
+            code="EXPERIMENT_NOT_FOUND", message="Experiment not found or not running"
+        )
     return success(data=exp.to_dict())

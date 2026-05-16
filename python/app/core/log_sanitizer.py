@@ -8,10 +8,10 @@ Filters sensitive information from logs and error responses:
 - Internal file paths and stack traces
 - Database structure and sensitive config
 """
+
 import re
 from dataclasses import dataclass
 from typing import Any, Callable
-import os
 import getpass
 
 
@@ -25,62 +25,119 @@ class SanitizationRule:
 
 class LogSanitizer:
     PROCESS_PARAM_KEYS = [
-        "cutting_speed", "feed_rate", "spindle_speed", "depth_of_cut",
-        "v_c", "f", "a_p", "n", "ap", "ae", "vf", "fz",
-        "切削速度", "进给量", "主轴转速", "切削深度", "进给速度"
+        "cutting_speed",
+        "feed_rate",
+        "spindle_speed",
+        "depth_of_cut",
+        "v_c",
+        "f",
+        "a_p",
+        "n",
+        "ap",
+        "ae",
+        "vf",
+        "fz",
+        "切削速度",
+        "进给量",
+        "主轴转速",
+        "切削深度",
+        "进给速度",
     ]
 
     PROCESS_PARAM_PATTERNS = [
-        r'(切削速度[:\s]*)(\d+\.?\d*)\s*(rpm|m/min)',
-        r'(进给量[:\s]*)(\d+\.?\d*)\s*(mm/rev|mm/min)',
-        r'(主轴转速[:\s]*)(\d+\.?\d*)\s*(rpm)',
-        r'(切削深度[:\s]*)(\d+\.?\d*)\s*(mm)',
-        r'(进给速度[:\s]*)(\d+\.?\d*)\s*(mm/min)',
-        r'(spindle\s*speed[:\s]*)(\d+\.?\d*)\s*(rpm)',
-        r'(cutting\s*speed[:\s]*)(\d+\.?\d*)\s*(m/min)',
-        r'(feed\s*rate[:\s]*)(\d+\.?\d*)\s*(mm/rev|mm/min)',
-        r'(depth\s*of\s*cut[:\s]*)(\d+\.?\d*)\s*(mm)',
+        r"(切削速度[:\s]*)(\d+\.?\d*)\s*(rpm|m/min)",
+        r"(进给量[:\s]*)(\d+\.?\d*)\s*(mm/rev|mm/min)",
+        r"(主轴转速[:\s]*)(\d+\.?\d*)\s*(rpm)",
+        r"(切削深度[:\s]*)(\d+\.?\d*)\s*(mm)",
+        r"(进给速度[:\s]*)(\d+\.?\d*)\s*(mm/min)",
+        r"(spindle\s*speed[:\s]*)(\d+\.?\d*)\s*(rpm)",
+        r"(cutting\s*speed[:\s]*)(\d+\.?\d*)\s*(m/min)",
+        r"(feed\s*rate[:\s]*)(\d+\.?\d*)\s*(mm/rev|mm/min)",
+        r"(depth\s*of\s*cut[:\s]*)(\d+\.?\d*)\s*(mm)",
     ]
 
     FILE_CONTENT_KEYS = [
-        "file_content", "cad_content", "nc_code", "gcode", "model_data",
-        "binary_data", "upload_data", "file_data", "image_data",
-        "design_content", "drawing_content", "program_content",
-        "文件内容", "cad数据", "nc程序", "加工代码"
+        "file_content",
+        "cad_content",
+        "nc_code",
+        "gcode",
+        "model_data",
+        "binary_data",
+        "upload_data",
+        "file_data",
+        "image_data",
+        "design_content",
+        "drawing_content",
+        "program_content",
+        "文件内容",
+        "cad数据",
+        "nc程序",
+        "加工代码",
     ]
 
     USER_INPUT_KEYS = [
-        "description", "comment", "remark", "note", "user_input",
-        "feedback", "suggestion", "detail", "memo",
-        "描述", "备注", "评论", "说明", "用户输入", "反馈", "建议"
+        "description",
+        "comment",
+        "remark",
+        "note",
+        "user_input",
+        "feedback",
+        "suggestion",
+        "detail",
+        "memo",
+        "描述",
+        "备注",
+        "评论",
+        "说明",
+        "用户输入",
+        "反馈",
+        "建议",
     ]
 
     API_KEY_KEYS = [
-        "api_key", "token", "secret", "credential", "access_key",
-        "secret_key", "auth_token", "api_secret", "password",
-        "authorization", "bearer_token", "api_token",
-        "密钥", "令牌", "访问令牌", "授权码", "凭证"
+        "api_key",
+        "token",
+        "secret",
+        "credential",
+        "access_key",
+        "secret_key",
+        "auth_token",
+        "api_secret",
+        "password",
+        "authorization",
+        "bearer_token",
+        "api_token",
+        "密钥",
+        "令牌",
+        "访问令牌",
+        "授权码",
+        "凭证",
     ]
 
     API_KEY_PATTERNS = [
-        r'(sk_[a-zA-Z0-9]{8})[a-zA-Z0-9]+',
-        r'(key-[a-zA-Z0-9]{8})[a-zA-Z0-9]+',
-        r'(ghp_[a-zA-Z0-9]{8})[a-zA-Z0-9]+',
-        r'(xox[bapsr]-[a-zA-Z0-9]{8})[a-zA-Z0-9]+',
-        r'(Bearer\s+)[a-zA-Z0-9_.-]+',
-        r'(Authorization:\s*)[a-zA-Z0-9_.-]+',
+        r"(sk_[a-zA-Z0-9]{8})[a-zA-Z0-9]+",
+        r"(key-[a-zA-Z0-9]{8})[a-zA-Z0-9]+",
+        r"(ghp_[a-zA-Z0-9]{8})[a-zA-Z0-9]+",
+        r"(xox[bapsr]-[a-zA-Z0-9]{8})[a-zA-Z0-9]+",
+        r"(Bearer\s+)[a-zA-Z0-9_.-]+",
+        r"(Authorization:\s*)[a-zA-Z0-9_.-]+",
         r'(token["\s:=]+)([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})',
     ]
 
     PATH_PATTERNS = [
-        r'C:\\Users\\([^\\]+)',
-        r'/Users/([^/]+)',
-        r'/home/([^/]+)',
+        r"C:\\Users\\([^\\]+)",
+        r"/Users/([^/]+)",
+        r"/home/([^/]+)",
     ]
 
     CONFIG_KEYS = [
-        "database_url", "db_password", "redis_url", "aws_secret",
-        "private_key", "encryption_key", "jwt_secret",
+        "database_url",
+        "db_password",
+        "redis_url",
+        "aws_secret",
+        "private_key",
+        "encryption_key",
+        "jwt_secret",
     ]
 
     USER_INPUT_MAX_LENGTH = 50
@@ -97,7 +154,7 @@ class LogSanitizer:
         self._path_compiled_patterns = []
         for pattern in self.PATH_PATTERNS:
             self._path_compiled_patterns.append(re.compile(pattern))
-        
+
         try:
             self._current_user = getpass.getuser()
         except Exception:
@@ -191,7 +248,7 @@ class LogSanitizer:
                 replacement = f"{prefix}[工艺参数已脱敏]"
                 if unit:
                     replacement += f" {unit}"
-                text = text[:match.start()] + replacement + text[match.end():]
+                text = text[: match.start()] + replacement + text[match.end() :]
                 match = pattern.search(text)
         return text
 
@@ -215,7 +272,7 @@ class LogSanitizer:
             return None
         if isinstance(value, str):
             if len(value) > self.USER_INPUT_MAX_LENGTH:
-                return value[:self.USER_INPUT_MAX_LENGTH] + "..."
+                return value[: self.USER_INPUT_MAX_LENGTH] + "..."
             return value
         return str(value)
 
@@ -232,19 +289,23 @@ class LogSanitizer:
             while match:
                 prefix = match.group(1)
                 full_match = match.group(0)
-                masked_value = full_match[len(prefix):]
+                masked_value = full_match[len(prefix) :]
                 if len(masked_value) > 4:
                     masked_value = "[已脱敏]" + masked_value[-4:]
                 else:
                     masked_value = "[已脱敏]"
-                text = text[:match.start()] + prefix + masked_value + text[match.end():]
+                text = (
+                    text[: match.start()] + prefix + masked_value + text[match.end() :]
+                )
                 match = pattern.search(text)
         return text
 
     def _sanitize_file_paths(self, text: str) -> str:
         for pattern in self._path_compiled_patterns:
-            text = pattern.sub(lambda m: m.group(0).split(m.group(1))[0] + "[user]", text)
-        text = re.sub(r'\\([^\\]+)\\AppData', '[user]\\\\AppData', text)
+            text = pattern.sub(
+                lambda m: m.group(0).split(m.group(1))[0] + "[user]", text
+            )
+        text = re.sub(r"\\([^\\]+)\\AppData", "[user]\\\\AppData", text)
         return text
 
 

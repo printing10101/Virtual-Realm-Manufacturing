@@ -1,13 +1,14 @@
 """Pattern Engine API Routes."""
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.core.pattern_engine import get_pattern_engine, init_pattern_engine
+from app.core.pattern_engine import get_pattern_engine
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)
@@ -18,9 +19,15 @@ router = APIRouter(prefix="/api/v1/templates/patterns", tags=["patterns"])
 class ExecutionRecordRequest(BaseModel):
     task_id: str = Field(..., description="Task ID")
     branch_id: str = Field(..., description="Branch ID")
-    elements: Dict[str, Any] = Field(default_factory=dict, description="Execution elements")
-    conditions: Dict[str, Any] = Field(default_factory=dict, description="Execution conditions")
-    metrics: Dict[str, Any] = Field(default_factory=dict, description="Execution metrics")
+    elements: Dict[str, Any] = Field(
+        default_factory=dict, description="Execution elements"
+    )
+    conditions: Dict[str, Any] = Field(
+        default_factory=dict, description="Execution conditions"
+    )
+    metrics: Dict[str, Any] = Field(
+        default_factory=dict, description="Execution metrics"
+    )
     success: bool = Field(default=True, description="Whether execution succeeded")
 
 
@@ -62,7 +69,12 @@ def analyze_patterns(min_samples: int = 10):
     """Run pattern analysis on accumulated execution data."""
     engine = get_pattern_engine()
     new_patterns = engine.analyze_patterns(min_samples=min_samples)
-    return success(data={"new_patterns": len(new_patterns), "patterns": [p.to_dict() for p in new_patterns]})
+    return success(
+        data={
+            "new_patterns": len(new_patterns),
+            "patterns": [p.to_dict() for p in new_patterns],
+        }
+    )
 
 
 @router.get("/{pattern_id}")

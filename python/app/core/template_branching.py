@@ -1,4 +1,5 @@
 """Template Branching System — Foundation for template evolution."""
+
 import hashlib
 import json
 import logging
@@ -62,9 +63,7 @@ class TemplateBranch:
             metadata=data.get("metadata", {}),
             created_at=data.get("created_at", time.time()),
             updated_at=data.get("updated_at", time.time()),
-            commit_log=[
-                CommitEntry(**e) for e in data.get("commit_log", [])
-            ],
+            commit_log=[CommitEntry(**e) for e in data.get("commit_log", [])],
         )
 
 
@@ -103,7 +102,11 @@ class TemplateBranchManager:
         """)
         self._db.commit()
         self._load_cache()
-        logger.info("TemplateBranchManager initialized: db=%s, json_dir=%s", self.db_path, self.json_dir)
+        logger.info(
+            "TemplateBranchManager initialized: db=%s, json_dir=%s",
+            self.db_path,
+            self.json_dir,
+        )
 
     def _load_cache(self) -> None:
         """Load all branches from storage into memory cache."""
@@ -119,7 +122,11 @@ class TemplateBranchManager:
 
     def _save_branch(self, branch: TemplateBranch) -> None:
         """Persist branch to SQLite + JSON."""
-        with open(os.path.join(self.json_dir, f"{branch.branch_id}.json"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(self.json_dir, f"{branch.branch_id}.json"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             json.dump(branch.to_dict(), f, indent=2, ensure_ascii=False)
 
         self._db.execute(
@@ -138,7 +145,9 @@ class TemplateBranchManager:
         self._db.commit()
 
     def _compute_content_hash(self, data: Dict[str, Any]) -> str:
-        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16]
+        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[
+            :16
+        ]
 
     def create_branch(
         self,
@@ -176,7 +185,12 @@ class TemplateBranchManager:
             self._cache[branch_id] = branch
             self._save_branch(branch)
 
-            logger.info("Branch created: id=%s, name=%s, type=%s", branch_id, name, branch.metadata.get("type"))
+            logger.info(
+                "Branch created: id=%s, name=%s, type=%s",
+                branch_id,
+                name,
+                branch.metadata.get("type"),
+            )
             return branch
 
     def get_branch(self, branch_id: str) -> Optional[TemplateBranch]:
@@ -189,7 +203,9 @@ class TemplateBranchManager:
         with self._lock:
             branches = list(self._cache.values())
             if type_filter:
-                branches = [b for b in branches if b.metadata.get("type") == type_filter]
+                branches = [
+                    b for b in branches if b.metadata.get("type") == type_filter
+                ]
             return sorted(branches, key=lambda b: b.updated_at, reverse=True)
 
     def get_commit_log(self, branch_id: str) -> List[Dict[str, Any]]:
@@ -211,12 +227,14 @@ class TemplateBranchManager:
 
             branch.template_data = data
             branch.updated_at = time.time()
-            branch.commit_log.append(CommitEntry(
-                action=action,
-                branch_name=branch.name,
-                timestamp=branch.updated_at,
-                details={"content_hash": self._compute_content_hash(data)},
-            ))
+            branch.commit_log.append(
+                CommitEntry(
+                    action=action,
+                    branch_name=branch.name,
+                    timestamp=branch.updated_at,
+                    details={"content_hash": self._compute_content_hash(data)},
+                )
+            )
 
             self._save_branch(branch)
             logger.info("Branch updated: id=%s, action=%s", branch_id, action)
@@ -235,30 +253,42 @@ class TemplateBranchManager:
             if strategy == "overwrite":
                 target.template_data = source.template_data.copy()
             elif strategy == "deep_merge":
-                target.template_data = self._deep_merge(target.template_data, source.template_data)
+                target.template_data = self._deep_merge(
+                    target.template_data, source.template_data
+                )
 
             target.updated_at = time.time()
-            target.commit_log.append(CommitEntry(
-                action="merge",
-                branch_name=f"{source.name}→{target.name}",
-                timestamp=target.updated_at,
-                details={
-                    "source_id": source_id,
-                    "target_id": target_id,
-                    "strategy": strategy,
-                    "content_hash": self._compute_content_hash(target.template_data),
-                },
-            ))
+            target.commit_log.append(
+                CommitEntry(
+                    action="merge",
+                    branch_name=f"{source.name}→{target.name}",
+                    timestamp=target.updated_at,
+                    details={
+                        "source_id": source_id,
+                        "target_id": target_id,
+                        "strategy": strategy,
+                        "content_hash": self._compute_content_hash(
+                            target.template_data
+                        ),
+                    },
+                )
+            )
 
             self._save_branch(target)
-            logger.info("Branch merged: %s → %s (strategy=%s)", source_id, target_id, strategy)
+            logger.info(
+                "Branch merged: %s → %s (strategy=%s)", source_id, target_id, strategy
+            )
             return target
 
     def _deep_merge(self, base: Dict, override: Dict) -> Dict:
         """Recursively merge override into base."""
         result = base.copy()
         for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value
@@ -274,7 +304,9 @@ class TemplateBranchManager:
                 raise ValueError("Cannot delete main branch")
 
             del self._cache[branch_id]
-            self._db.execute("DELETE FROM template_branches WHERE branch_id = ?", (branch_id,))
+            self._db.execute(
+                "DELETE FROM template_branches WHERE branch_id = ?", (branch_id,)
+            )
             self._db.commit()
 
             json_path = os.path.join(self.json_dir, f"{branch_id}.json")

@@ -5,11 +5,12 @@ Builds task execution context that automatically includes
 goal chain information so AI agents understand the full
 alignment context of every task they execute.
 """
+
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from app.models.tasks import EnhancedTask
-from app.models.goals import GoalRef, GoalLevel
+from app.models.goals import GoalLevel
 
 
 CONTEXT_TEMPLATE = """当前任务：{task_title}
@@ -101,13 +102,9 @@ class ContextBuilder:
         parts = []
 
         if project_name:
-            parts.append(
-                f"本任务「{task_title}」属于项目「{project_name}」的一部分。"
-            )
+            parts.append(f"本任务「{task_title}」属于项目「{project_name}」的一部分。")
             if parent_goal_desc:
-                parts.append(
-                    f"该项目旨在{parent_goal_desc}。"
-                )
+                parts.append(f"该项目旨在{parent_goal_desc}。")
 
         if strategic_goal_name:
             parts.append(
@@ -115,9 +112,7 @@ class ContextBuilder:
             )
 
         if mission_name:
-            parts.append(
-                f"最终服务于公司使命：「{mission_name}」。"
-            )
+            parts.append(f"最终服务于公司使命：「{mission_name}」。")
 
         if not parts:
             parts.append(

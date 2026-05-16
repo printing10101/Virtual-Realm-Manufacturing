@@ -89,10 +89,12 @@ class ExperienceStore:
 
         if exp_id not in self._validation_history:
             self._validation_history[exp_id] = []
-        self._validation_history[exp_id].append({
-            "timestamp": datetime.now().isoformat(),
-            "validation_result": validation_result,
-        })
+        self._validation_history[exp_id].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "validation_result": validation_result,
+            }
+        )
 
         self._save_to_disk()
 
@@ -112,10 +114,7 @@ class ExperienceStore:
         results = []
         for exp in self._experiences.values():
             if filters:
-                match = all(
-                    getattr(exp, k, None) == v
-                    for k, v in filters.items()
-                )
+                match = all(getattr(exp, k, None) == v for k, v in filters.items())
                 if not match:
                     continue
             results.append(asdict(exp))
@@ -143,6 +142,7 @@ class ExperienceStore:
         if include_ground_truth and query.get("process"):
             try:
                 from app.services.ground_truth_adapter import BoschGroundTruthAdapter
+
                 gt_adapter = BoschGroundTruthAdapter()
                 gt_adapter.load_ground_truth()
 
@@ -195,7 +195,8 @@ class ExperienceStore:
                 last_validated = None
         else:
             consistent_count = sum(
-                1 for h in history
+                1
+                for h in history
                 if h.get("validation_result", {}).get("is_consistent", False)
             )
             consistency_rate = consistent_count / validation_count
@@ -224,7 +225,12 @@ class ExperienceStore:
             common_keys = set(query_params.keys()) & set(exp_params.keys())
             if common_keys:
                 param_similarity = sum(
-                    1.0 - min(abs(query_params[k] - exp_params[k]) / max(abs(query_params[k]), 1e-10), 1.0)
+                    1.0
+                    - min(
+                        abs(query_params[k] - exp_params[k])
+                        / max(abs(query_params[k]), 1e-10),
+                        1.0,
+                    )
                     for k in common_keys
                 ) / len(common_keys)
                 score += param_similarity * 0.5
@@ -235,7 +241,12 @@ class ExperienceStore:
             common_keys = set(query_metrics.keys()) & set(exp_metrics.keys())
             if common_keys:
                 metric_similarity = sum(
-                    1.0 - min(abs(query_metrics[k] - exp_metrics[k]) / max(abs(query_metrics[k]), 1e-10), 1.0)
+                    1.0
+                    - min(
+                        abs(query_metrics[k] - exp_metrics[k])
+                        / max(abs(query_metrics[k]), 1e-10),
+                        1.0,
+                    )
                     for k in common_keys
                 ) / len(common_keys)
                 score += metric_similarity * 0.3
@@ -243,7 +254,9 @@ class ExperienceStore:
         return score
 
     @staticmethod
-    def _calculate_reliability_score(validation_count: int, consistency_rate: float) -> float:
+    def _calculate_reliability_score(
+        validation_count: int, consistency_rate: float
+    ) -> float:
         if validation_count == 0:
             return 0.5
 
@@ -254,10 +267,7 @@ class ExperienceStore:
     def _save_to_disk(self):
         file_path = self.storage_dir / "experiences.json"
         data = {
-            "experiences": {
-                eid: asdict(exp)
-                for eid, exp in self._experiences.items()
-            },
+            "experiences": {eid: asdict(exp) for eid, exp in self._experiences.items()},
             "validation_history": self._validation_history,
             "updated_at": datetime.now().isoformat(),
         }
@@ -295,11 +305,13 @@ class ExperienceStore:
                 "avg_wear_rate": mat_data["avg_wear_rate"],
                 "min_wear_rate": mat_data["min_wear_rate"],
                 "max_wear_rate": mat_data["max_wear_rate"],
-                "datasets": sorted({
-                    e.get("dataset", "unknown")
-                    for e in mat_data.get("experiments", [])
-                    if isinstance(e, dict)
-                }),
+                "datasets": sorted(
+                    {
+                        e.get("dataset", "unknown")
+                        for e in mat_data.get("experiments", [])
+                        if isinstance(e, dict)
+                    }
+                ),
             }
         return result
 
@@ -323,7 +335,9 @@ class ExperienceStore:
             backup_path = file_path.with_suffix(".json.bak")
             try:
                 file_path.rename(backup_path)
-                logger.warning("Corrupted experiences file backed up to %s", backup_path)
+                logger.warning(
+                    "Corrupted experiences file backed up to %s", backup_path
+                )
             except Exception as be:
                 logger.error("Failed to backup corrupted experiences file: %s", be)
 
@@ -345,7 +359,12 @@ class ExperienceStore:
 
         ds_configs = [
             (UniwearDataset.NUAA, "nuaa", NUAA_MATERIAL, NUAA_MATERIAL_FULL),
-            (UniwearDataset.PHM2010, "phm2010", PHM2010_MATERIAL, PHM2010_MATERIAL_FULL),
+            (
+                UniwearDataset.PHM2010,
+                "phm2010",
+                PHM2010_MATERIAL,
+                PHM2010_MATERIAL_FULL,
+            ),
         ]
 
         for ds, ds_key, material, material_full in ds_configs:
@@ -358,7 +377,11 @@ class ExperienceStore:
                     wear_stats = stats.get("wear_stats", {})
                     signal_stats = stats.get("signal_stats", {})
 
-                    process_name = f"{ds_key.upper()}正交切削" if ds_key == "nuaa" else f"{ds_key.upper()}全寿命切削"
+                    process_name = (
+                        f"{ds_key.upper()}正交切削"
+                        if ds_key == "nuaa"
+                        else f"{ds_key.upper()}全寿命切削"
+                    )
 
                     experience_data = {
                         "parameters": {
@@ -373,7 +396,9 @@ class ExperienceStore:
                             "final_wear": wear_stats.get("final_wear", 0),
                             "max_wear": wear_stats.get("max_wear", 0),
                             "mean_wear_rate": wear_stats.get("mean_wear_rate", 0),
-                            "total_wear_increment": wear_stats.get("total_wear_increment", 0),
+                            "total_wear_increment": wear_stats.get(
+                                "total_wear_increment", 0
+                            ),
                             "sample_count": wear_stats.get("sample_count", 0),
                         },
                         "signal_summary": {
@@ -407,12 +432,16 @@ class ExperienceStore:
 
                     logger.info(
                         "Imported uniwear experience: %s/%s (material=%s)",
-                        ds_key, exp, material,
+                        ds_key,
+                        exp,
+                        material,
                     )
                 except Exception as e:
                     logger.warning(
                         "Failed to import uniwear experience %s/%s: %s",
-                        ds_key, exp, e,
+                        ds_key,
+                        exp,
+                        e,
                     )
 
         return {
@@ -422,7 +451,9 @@ class ExperienceStore:
             "experience_ids": imported,
         }
 
-    def query_by_material(self, material: str, limit: int = 20, fuzzy: bool = False) -> list[dict]:
+    def query_by_material(
+        self, material: str, limit: int = 20, fuzzy: bool = False
+    ) -> list[dict]:
         results = []
         for exp in self._experiences.values():
             exp_params = exp.parameters if isinstance(exp.parameters, dict) else {}
@@ -458,12 +489,14 @@ class ExperienceStore:
                 materials[material] = []
 
             metrics = exp.metrics if isinstance(exp.metrics, dict) else {}
-            materials[material].append({
-                "experience_id": exp.experience_id,
-                "experiment": params.get("experiment", "unknown"),
-                "mean_wear_rate": metrics.get("mean_wear_rate", 0),
-                "final_wear": metrics.get("final_wear", 0),
-            })
+            materials[material].append(
+                {
+                    "experience_id": exp.experience_id,
+                    "experiment": params.get("experiment", "unknown"),
+                    "mean_wear_rate": metrics.get("mean_wear_rate", 0),
+                    "final_wear": metrics.get("final_wear", 0),
+                }
+            )
 
         summary = {}
         for mat, exps in materials.items():
@@ -474,9 +507,15 @@ class ExperienceStore:
             ]
             summary[mat] = {
                 "experiment_count": len(exps),
-                "avg_wear_rate": round(float(np.mean(wear_rates)), 8) if wear_rates else 0,
-                "max_wear_rate": round(float(np.max(wear_rates)), 8) if wear_rates else 0,
-                "min_wear_rate": round(float(np.min(wear_rates)), 8) if wear_rates else 0,
+                "avg_wear_rate": round(float(np.mean(wear_rates)), 8)
+                if wear_rates
+                else 0,
+                "max_wear_rate": round(float(np.max(wear_rates)), 8)
+                if wear_rates
+                else 0,
+                "min_wear_rate": round(float(np.min(wear_rates)), 8)
+                if wear_rates
+                else 0,
                 "experiments": exps,
             }
 

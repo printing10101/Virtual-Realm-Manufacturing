@@ -4,6 +4,7 @@ Skill Management API Routes
 Provides RESTful interfaces for skill CRUD, hot-reload,
 version management, and skill marketplace operations.
 """
+
 from __future__ import annotations
 
 import logging
@@ -101,22 +102,24 @@ async def list_skills(
 
         result = []
         for s in skills:
-            result.append({
-                "skill_id": s.metadata.skill_id,
-                "name": s.metadata.name,
-                "display_name": s.metadata.display_name,
-                "version": s.metadata.version,
-                "description": s.metadata.description,
-                "level": s.metadata.level.value,
-                "priority": s.metadata.priority.value,
-                "applicable_tasks": s.metadata.applicable_tasks,
-                "required_context": list(s.metadata.required_context),
-                "tags": s.metadata.tags,
-                "parameters": s.metadata.parameters,
-                "ratings": s.metadata.ratings,
-                "active": s.active,
-                "source_path": s.metadata.source_path,
-            })
+            result.append(
+                {
+                    "skill_id": s.metadata.skill_id,
+                    "name": s.metadata.name,
+                    "display_name": s.metadata.display_name,
+                    "version": s.metadata.version,
+                    "description": s.metadata.description,
+                    "level": s.metadata.level.value,
+                    "priority": s.metadata.priority.value,
+                    "applicable_tasks": s.metadata.applicable_tasks,
+                    "required_context": list(s.metadata.required_context),
+                    "tags": s.metadata.tags,
+                    "parameters": s.metadata.parameters,
+                    "ratings": s.metadata.ratings,
+                    "active": s.active,
+                    "source_path": s.metadata.source_path,
+                }
+            )
 
         return success(data=result, message=f"共 {len(result)} 个技能")
     except HTTPException:
@@ -212,25 +215,30 @@ async def get_skill(skill_id: str):
         if skill is None:
             return error(ErrorCode.NOT_FOUND, f"技能不存在: {skill_id}")
 
-        return success(data={
-            "skill_id": skill.metadata.skill_id,
-            "name": skill.metadata.name,
-            "display_name": skill.metadata.display_name,
-            "version": skill.metadata.version,
-            "description": skill.metadata.description,
-            "level": skill.metadata.level.value,
-            "priority": skill.metadata.priority.value,
-            "applicable_tasks": skill.metadata.applicable_tasks,
-            "required_context": list(skill.metadata.required_context),
-            "tags": skill.metadata.tags,
-            "parameters": skill.metadata.parameters,
-            "ratings": skill.metadata.ratings,
-            "active": skill.active,
-            "source_path": skill.metadata.source_path,
-            "body": skill.body[:5000] if skill.body else "",
-            "code_blocks": [(lang, code[:500]) for lang, code in skill.code_blocks[:5]],
-            "version_count": len(skill.versions),
-        }, message="技能详情")
+        return success(
+            data={
+                "skill_id": skill.metadata.skill_id,
+                "name": skill.metadata.name,
+                "display_name": skill.metadata.display_name,
+                "version": skill.metadata.version,
+                "description": skill.metadata.description,
+                "level": skill.metadata.level.value,
+                "priority": skill.metadata.priority.value,
+                "applicable_tasks": skill.metadata.applicable_tasks,
+                "required_context": list(skill.metadata.required_context),
+                "tags": skill.metadata.tags,
+                "parameters": skill.metadata.parameters,
+                "ratings": skill.metadata.ratings,
+                "active": skill.active,
+                "source_path": skill.metadata.source_path,
+                "body": skill.body[:5000] if skill.body else "",
+                "code_blocks": [
+                    (lang, code[:500]) for lang, code in skill.code_blocks[:5]
+                ],
+                "version_count": len(skill.versions),
+            },
+            message="技能详情",
+        )
     except Exception as e:
         logger.exception("Failed to get skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
@@ -258,11 +266,14 @@ async def get_skill_versions(skill_id: str):
         if history is None:
             return error(ErrorCode.NOT_FOUND, f"技能不存在: {skill_id}")
 
-        return success(data={
-            "skill_id": skill_id,
-            "version_count": len(history),
-            "versions": history,
-        }, message="版本历史")
+        return success(
+            data={
+                "skill_id": skill_id,
+                "version_count": len(history),
+                "versions": history,
+            },
+            message="版本历史",
+        )
     except Exception as e:
         logger.exception("Failed to get versions")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
@@ -296,7 +307,10 @@ async def import_skill(request: SkillImportRequest):
             return error(ErrorCode.INVALID_REQUEST, "技能导入失败：解析错误")
 
         return success(
-            data={"skill_id": imported.metadata.skill_id, "name": imported.metadata.name},
+            data={
+                "skill_id": imported.metadata.skill_id,
+                "name": imported.metadata.name,
+            },
             message=f"技能已导入: {imported.metadata.name}",
         )
     except HTTPException:
@@ -326,21 +340,27 @@ async def inject_skills_endpoint(
     task_type: str = Query(..., description="任务类型"),
     project_id: Optional[str] = Query(None, description="项目ID"),
     agent_id: Optional[str] = Query(None, description="代理ID"),
-    available_context: Optional[List[str]] = Query(None, description="可用上下文键列表"),
+    available_context: Optional[List[str]] = Query(
+        None, description="可用上下文键列表"
+    ),
 ):
     try:
         ctx_set = set(available_context) if available_context else set()
         context_str = await inject_skills_fn(task_type, project_id, agent_id, ctx_set)
-        return success(data={
-            "task_type": task_type,
-            "skill_context": context_str,
-        }, message="技能注入完成")
+        return success(
+            data={
+                "task_type": task_type,
+                "skill_context": context_str,
+            },
+            message="技能注入完成",
+        )
     except Exception as e:
         logger.exception("Failed to inject skills")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
 
 # ─── 技能市场 ───
+
 
 @router.get("/marketplace/list")
 async def marketplace_list(tag: Optional[str] = Query(None, description="按标签筛选")):
@@ -399,7 +419,9 @@ async def marketplace_download(request: SkillDownloadRequest):
 async def marketplace_rate(request: SkillMarketplaceRateRequest):
     try:
         marketplace = get_marketplace()
-        result = marketplace.rate_skill(request.skill_id, request.rating, request.agent_id)
+        result = marketplace.rate_skill(
+            request.skill_id, request.rating, request.agent_id
+        )
         return success(data=result, message="评分已记录")
     except KeyError as e:
         return error(ErrorCode.NOT_FOUND, str(e))

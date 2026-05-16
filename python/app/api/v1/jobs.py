@@ -1,6 +1,7 @@
 """
 Jobs API - Async task management and SSE streaming.
 """
+
 import asyncio
 import logging
 from typing import Optional
@@ -35,7 +36,7 @@ async def stream_job_events(job_id: str):
         return error(code=ErrorCode.NOT_FOUND, message=f"Job '{job_id}' not found")
 
     queue = task_manager.subscribe(job_id)
-    
+
     async def event_generator():
         try:
             while True:
@@ -44,8 +45,12 @@ async def stream_job_events(job_id: str):
                     yield event
                 except asyncio.TimeoutError:
                     record = await task_manager.get_task(job_id)
-                    if record and record.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
-                        yield f"event: done\ndata: {{\"status\": \"{record.status.value}\"}}\n\n"
+                    if record and record.status in (
+                        TaskStatus.COMPLETED,
+                        TaskStatus.FAILED,
+                        TaskStatus.CANCELLED,
+                    ):
+                        yield f'event: done\ndata: {{"status": "{record.status.value}"}}\n\n'
                         break
                     yield ": heartbeat\n\n"
         except asyncio.CancelledError:
@@ -69,8 +74,12 @@ async def cancel_job(job_id: str):
     """Cancel a running job"""
     result = await task_manager.cancel_task(job_id)
     if not result:
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Cannot cancel job '{job_id}'")
-    return success(data={"job_id": job_id, "status": "cancelled"}, message="Job cancelled")
+        return error(
+            code=ErrorCode.INVALID_REQUEST, message=f"Cannot cancel job '{job_id}'"
+        )
+    return success(
+        data={"job_id": job_id, "status": "cancelled"}, message="Job cancelled"
+    )
 
 
 @router.delete("/{job_id}")
@@ -78,8 +87,12 @@ async def delete_job(job_id: str):
     """Cancel a running job (RESTful DELETE alias)"""
     result = await task_manager.cancel_task(job_id)
     if not result:
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Cannot cancel job '{job_id}'")
-    return success(data={"job_id": job_id, "status": "cancelled"}, message="Job cancelled")
+        return error(
+            code=ErrorCode.INVALID_REQUEST, message=f"Cannot cancel job '{job_id}'"
+        )
+    return success(
+        data={"job_id": job_id, "status": "cancelled"}, message="Job cancelled"
+    )
 
 
 @router.get("")
@@ -94,30 +107,40 @@ async def list_jobs(
         tt = TaskType(task_type) if task_type else None
     except ValueError:
         valid_types = [t.value for t in TaskType]
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid task_type '{task_type}'. Valid values: {valid_types}")
-    
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"Invalid task_type '{task_type}'. Valid values: {valid_types}",
+        )
+
     try:
         st = TaskStatus(status) if status else None
     except ValueError:
         valid_statuses = [s.value for s in TaskStatus]
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid status '{status}'. Valid values: {valid_statuses}")
-    
-    tasks = await task_manager.list_tasks(task_type=tt, status=st, limit=limit, offset=offset)
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"Invalid status '{status}'. Valid values: {valid_statuses}",
+        )
+
+    tasks = await task_manager.list_tasks(
+        task_type=tt, status=st, limit=limit, offset=offset
+    )
     total = len(tasks)
-    
+
     items = []
     for t in tasks:
         td = t.to_dict()
-        items.append({
-            "job_id": t.job_id,
-            "task_type": t.task_type.value,
-            "status": t.status.value,
-            "progress": t.progress,
-            "created_at": td.get("created_at_iso", ""),
-            "duration_seconds": td.get("duration_seconds"),
-            "owner_id": t.owner_id,
-        })
-    
+        items.append(
+            {
+                "job_id": t.job_id,
+                "task_type": t.task_type.value,
+                "status": t.status.value,
+                "progress": t.progress,
+                "created_at": td.get("created_at_iso", ""),
+                "duration_seconds": td.get("duration_seconds"),
+                "owner_id": t.owner_id,
+            }
+        )
+
     return success(
         data={
             "jobs": items,

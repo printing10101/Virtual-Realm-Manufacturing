@@ -5,6 +5,7 @@ SQLite 操作重试包装器
 并发写操作可能触发 database is locked 错误。
 本模块提供装饰器和上下文管理器，以指数退避 + jitter 自动重试。
 """
+
 import functools
 import logging
 import random
@@ -55,12 +56,15 @@ def sqlite_retry(
                     last_error = e
                     if attempt >= max_retries:
                         break
-                    delay = min(base_delay * (2 ** attempt), max_delay)
+                    delay = min(base_delay * (2**attempt), max_delay)
                     jitter = random.uniform(0, delay * 0.5)
                     sleep_time = delay + jitter
                     logger.debug(
                         "SQLite lock retry %d/%d after %.3fs: %s",
-                        attempt + 1, max_retries, sleep_time, e,
+                        attempt + 1,
+                        max_retries,
+                        sleep_time,
+                        e,
                     )
                     time.sleep(sleep_time)
                 except Exception:
@@ -68,7 +72,8 @@ def sqlite_retry(
 
             logger.error(
                 "SQLite operation failed after %d retries: %s",
-                max_retries, last_error,
+                max_retries,
+                last_error,
             )
             raise last_error  # type: ignore[misc]
 
@@ -105,7 +110,7 @@ class SqliteTransaction:
                 last_error = e
                 if attempt >= self._max_retries:
                     break
-                delay = min(self._base_delay * (2 ** attempt), self._max_delay)
+                delay = min(self._base_delay * (2**attempt), self._max_delay)
                 time.sleep(delay + random.uniform(0, delay * 0.5))
 
         raise last_error  # type: ignore[misc]
@@ -122,7 +127,7 @@ class SqliteTransaction:
                 last_error = e
                 if attempt >= self._max_retries:
                     break
-                delay = min(self._base_delay * (2 ** attempt), self._max_delay)
+                delay = min(self._base_delay * (2**attempt), self._max_delay)
                 time.sleep(delay + random.uniform(0, delay * 0.5))
 
         raise last_error  # type: ignore[misc]

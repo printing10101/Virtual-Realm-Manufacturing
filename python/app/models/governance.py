@@ -9,6 +9,7 @@ Four configurable approval strategies with multi-dimensional policy configuratio
 
 Multi-dimensional policy: Global → TaskType → AgentRole → ResourceSensitivity
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
@@ -17,6 +18,7 @@ from typing import Any, Dict, List, Optional
 
 class ApprovalStrategy(str, Enum):
     """审批策略类型"""
+
     AUTO_EXECUTE = "auto_execute"
     EXECUTE_AFTER_RECORD = "execute_after_record"
     APPROVE_BEFORE_EXECUTE = "approve_before_execute"
@@ -25,6 +27,7 @@ class ApprovalStrategy(str, Enum):
 
 class TaskType(str, Enum):
     """任务类型"""
+
     TRAINING = "training"
     EXECUTION = "execution"
     ANALYSIS = "analysis"
@@ -32,6 +35,7 @@ class TaskType(str, Enum):
 
 class AgentRole(str, Enum):
     """代理角色"""
+
     ENGINEER = "engineer"
     ANALYST = "analyst"
     OPERATOR = "operator"
@@ -39,6 +43,7 @@ class AgentRole(str, Enum):
 
 class ResourceSensitivity(str, Enum):
     """资源敏感度级别"""
+
     NORMAL = "normal"
     CONFIDENTIAL = "confidential"
     CORE = "core"
@@ -46,6 +51,7 @@ class ResourceSensitivity(str, Enum):
 
 class ApprovalStatus(str, Enum):
     """审批状态"""
+
     PENDING = "pending"
     UNDER_REVIEW = "under_review"
     APPROVED = "approved"
@@ -56,6 +62,7 @@ class ApprovalStatus(str, Enum):
 
 class ApprovalPriority(str, Enum):
     """审批优先级"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -64,6 +71,7 @@ class ApprovalPriority(str, Enum):
 
 class ApprovalMode(str, Enum):
     """多人审批模式"""
+
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"
 
@@ -71,6 +79,7 @@ class ApprovalMode(str, Enum):
 @dataclass
 class ApprovalDecision:
     """审批决策记录"""
+
     approver_id: str
     decision: str  # approved/rejected/request_info/escalated
     comment: str = ""
@@ -88,6 +97,7 @@ class ApprovalDecision:
 @dataclass
 class ApprovalPolicy:
     """审批策略配置"""
+
     id: Optional[str] = None
     dimension: str = "global"  # global/task_type/agent_role/resource_sensitivity
     dimension_value: str = "default"
@@ -125,6 +135,7 @@ class ApprovalPolicy:
 @dataclass
 class ApprovalRequest:
     """审批请求"""
+
     request_id: str
     task_id: str
     requester: str
@@ -178,6 +189,7 @@ class ApprovalRequest:
 @dataclass
 class ApprovalDelegation:
     """审批委托记录"""
+
     id: Optional[str] = None
     delegator_id: str = ""
     delegate_id: str = ""
@@ -201,6 +213,7 @@ class ApprovalDelegation:
 @dataclass
 class EmergencyOperation:
     """紧急操作记录"""
+
     id: Optional[str] = None
     request_id: str = ""
     task_id: str = ""
@@ -230,6 +243,7 @@ class EmergencyOperation:
 @dataclass
 class GovernanceReport:
     """治理报告"""
+
     report_id: str = ""
     period_start: Optional[float] = None
     period_end: Optional[float] = None

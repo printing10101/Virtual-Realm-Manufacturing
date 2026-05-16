@@ -1,12 +1,15 @@
 """
 Job-related Pydantic schemas for async task system.
 """
+
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
 
 
 class CreateJobRequest(BaseModel):
-    task_type: str = Field(..., description="任务类型: lnn_training, lnn_batch_inference")
+    task_type: str = Field(
+        ..., description="任务类型: lnn_training, lnn_batch_inference"
+    )
     params: Dict[str, Any] = Field(..., description="任务参数")
 
 

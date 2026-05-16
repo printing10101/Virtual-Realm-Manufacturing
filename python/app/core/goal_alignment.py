@@ -8,12 +8,13 @@ Features:
 - Goal change propagation to child tasks
 - Progress computation based on task completion
 """
+
 from __future__ import annotations
 import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from app.models.goals import Goal, GoalLevel, GoalStatus, GoalRef, GoalProgress
+from app.models.goals import GoalStatus, GoalProgress
 from app.models.tasks import EnhancedTask, EnhancedTaskStatus
 from app.core.goal_chain_store import GoalChainStore, get_goal_chain_store
 from app.core.context_builder import ContextBuilder
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class GoalAlignmentError(Exception):
     """Raised when a task fails goal alignment checks"""
+
     pass
 
 
@@ -75,12 +77,14 @@ class GoalAlignmentChecker:
                 try:
                     self.validate_task_goal_chain(task)
                 except GoalAlignmentError as e:
-                    issues.append({
-                        "task_id": task_id,
-                        "task_title": task.title,
-                        "issue": str(e),
-                        "severity": "high",
-                    })
+                    issues.append(
+                        {
+                            "task_id": task_id,
+                            "task_title": task.title,
+                            "issue": str(e),
+                            "severity": "high",
+                        }
+                    )
 
         result = {
             "scan_time": self._last_scan_at,
@@ -89,7 +93,9 @@ class GoalAlignmentChecker:
             "issues": issues,
         }
 
-        logger.info(f"Goal alignment scan completed: {len(issues)} issues found in {len(self._task_map)} tasks")
+        logger.info(
+            f"Goal alignment scan completed: {len(issues)} issues found in {len(self._task_map)} tasks"
+        )
         return result
 
     def should_scan(self) -> bool:
@@ -106,11 +112,13 @@ class GoalAlignmentChecker:
                 task = self._task_map[task_id]
                 old_status = task.status
                 task.status = EnhancedTaskStatus.PENDING
-                updated_tasks.append({
-                    "task_id": task_id,
-                    "old_status": old_status.value,
-                    "new_status": task.status.value,
-                })
+                updated_tasks.append(
+                    {
+                        "task_id": task_id,
+                        "old_status": old_status.value,
+                        "new_status": task.status.value,
+                    }
+                )
 
         for task in self._task_map.values():
             if task.status != EnhancedTaskStatus.IN_PROGRESS:
@@ -163,17 +171,21 @@ class GoalAlignmentChecker:
                 aligned_tasks += 1
             else:
                 unaligned_tasks += 1
-                alignment_issues.append({
-                    "task_id": task_id,
-                    "task_title": task.title,
-                    "issue": "No goal chain associated",
-                })
+                alignment_issues.append(
+                    {
+                        "task_id": task_id,
+                        "task_title": task.title,
+                        "issue": "No goal chain associated",
+                    }
+                )
 
         return {
             "total_tasks": total_tasks,
             "aligned_tasks": aligned_tasks,
             "unaligned_tasks": unaligned_tasks,
-            "alignment_rate": round((aligned_tasks / total_tasks * 100) if total_tasks > 0 else 0.0, 1),
+            "alignment_rate": round(
+                (aligned_tasks / total_tasks * 100) if total_tasks > 0 else 0.0, 1
+            ),
             "issues": alignment_issues,
         }
 

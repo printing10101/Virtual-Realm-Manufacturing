@@ -1,4 +1,5 @@
 """Agent Gateway middleware: audit logging, rate limiting, idempotency."""
+
 from __future__ import annotations
 
 import logging
@@ -46,6 +47,7 @@ class AgentAuditLog:
         latency_ms: float,
     ):
         import json
+
         entry = AgentAuditEntry(
             timestamp_ms=int(time.time() * 1000),
             agent_id=agent_id,
@@ -69,6 +71,7 @@ class AgentAuditLog:
         offset: int = 0,
     ) -> list[dict]:
         import json
+
         entries = []
         if self._log_path.exists():
             with self._log_path.open("r") as f:
@@ -80,13 +83,16 @@ class AgentAuditLog:
                         e = json.loads(line)
                         if agent_id and e.get("agent_id") != agent_id:
                             continue
-                        if permission_class and e.get("permission_class") != permission_class:
+                        if (
+                            permission_class
+                            and e.get("permission_class") != permission_class
+                        ):
                             continue
                         entries.append(e)
                     except json.JSONDecodeError:
                         continue
         entries.reverse()
-        return entries[offset:offset + limit]
+        return entries[offset : offset + limit]
 
 
 class AgentRateLimiter:
@@ -150,9 +156,7 @@ class IdempotencyStore:
 
     def cleanup(self, max_age: int = 3600):
         now = time.time()
-        expired = [
-            k for k, v in self._keys.items() if now - v["created_at"] > max_age
-        ]
+        expired = [k for k, v in self._keys.items() if now - v["created_at"] > max_age]
         for k in expired:
             del self._keys[k]
 
@@ -265,6 +269,7 @@ class AgentAuthMiddleware(BaseHTTPMiddleware):
             )
             try:
                 from app.core.utils import get_metrics_collector
+
                 get_metrics_collector().record_agent_request("auth", "unauthorized")
             except Exception:
                 pass
@@ -312,7 +317,10 @@ class AgentAuthMiddleware(BaseHTTPMiddleware):
             )
             try:
                 from app.core.utils import get_metrics_collector
-                get_metrics_collector().record_agent_request(required_level.value, "forbidden")
+
+                get_metrics_collector().record_agent_request(
+                    required_level.value, "forbidden"
+                )
             except Exception:
                 pass
             return JSONResponse(
@@ -369,6 +377,7 @@ class AgentAuthMiddleware(BaseHTTPMiddleware):
         status_label = "success" if response.status_code < 400 else "error"
         try:
             from app.core.utils import get_metrics_collector
+
             m = get_metrics_collector()
             m.record_agent_request(required_level.value, status_label)
         except Exception:
@@ -389,6 +398,7 @@ class AgentAuthMiddleware(BaseHTTPMiddleware):
             if idem_key:
                 import json
                 from starlette.responses import StreamingResponse
+
                 if not isinstance(response, StreamingResponse):
                     try:
                         body = b""
@@ -398,7 +408,12 @@ class AgentAuthMiddleware(BaseHTTPMiddleware):
                         idempotency_store.store(idem_key, agent_id, result)
                         # Re-create response with body
                         from starlette.responses import JSONResponse as JR
-                        response = JR(status_code=response.status_code, content=result, headers=dict(response.headers))
+
+                        response = JR(
+                            status_code=response.status_code,
+                            content=result,
+                            headers=dict(response.headers),
+                        )
                     except Exception:
                         pass
 

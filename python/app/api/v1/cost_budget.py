@@ -3,20 +3,17 @@ Cost & Budget Management API Routes
 
 Endpoints for cost tracking, budget enforcement, alerts, and optimization suggestions.
 """
+
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 
 from app.core.budget_enforcer import (
     get_budget_enforcer,
     get_cost_optimizer,
-    BudgetEnforcer,
-    CostOptimizer,
-    EnforcementResult,
 )
 from app.core.cost_tracker import (
     get_cost_tracker,
     CostDimension,
-    MultiDimensionCostTracker,
 )
 from app.models.budget import (
     BudgetLevel,
@@ -30,7 +27,9 @@ router = APIRouter(prefix="/api/v1/cost-budget", tags=["Cost & Budget"])
 
 @router.get("/summary")
 async def get_cost_summary(
-    dimension: str = Query("agent", description="汇总维度: agent/project/goal/task/provider/model"),
+    dimension: str = Query(
+        "agent", description="汇总维度: agent/project/goal/task/provider/model"
+    ),
     scope_id: str = Query("", description="范围ID"),
     start_time: Optional[float] = Query(None, description="起始Unix时间戳"),
     end_time: Optional[float] = Query(None, description="结束Unix时间戳"),
@@ -61,7 +60,7 @@ async def get_task_costs(task_id: str):
             "task_id": task_id,
             "total_cost": total,
             "events": costs,
-        }
+        },
     }
 
 
@@ -221,9 +220,11 @@ async def enforce_budget(data: dict):
         "data": {
             "actions": [a.value for a in result.actions_taken],
             "passed": result.check_result.passed if result.check_result else False,
-            "status": result.check_result.status.value if result.check_result else "unknown",
+            "status": result.check_result.status.value
+            if result.check_result
+            else "unknown",
             "alerts": [a.to_dict() for a in result.alerts_generated],
-        }
+        },
     }
 
 
@@ -239,7 +240,10 @@ async def reset_budget_period(data: dict):
         raise HTTPException(400, f"Invalid reset data: {e}")
 
     enforcer.reset_period(level, scope_id, resource_type)
-    return {"ok": True, "message": f"Reset completed: {level.value}/{scope_id}/{resource_type.value}"}
+    return {
+        "ok": True,
+        "message": f"Reset completed: {level.value}/{scope_id}/{resource_type.value}",
+    }
 
 
 @router.get("/alerts")

@@ -1,17 +1,15 @@
 """Template Marketplace API Routes — enhanced with evolution data, trending, subscriptions, export/import."""
+
 from __future__ import annotations
 
-import json
 import logging
-import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.core.template_branching import get_branch_manager
-from app.core.pattern_engine import get_pattern_engine
 from app.core.template_ab_testing import get_ab_testing
 from app.core.response import success, error
 
@@ -71,21 +69,30 @@ def get_template_metrics(branch_id: str):
         return error(code="BRANCH_NOT_FOUND", message="Branch not found")
 
     ab_framework = get_ab_testing()
-    exps = [e for e in ab_framework.list_experiments()
-            if e.control_branch == branch_id or e.candidate_branch == branch_id]
+    exps = [
+        e
+        for e in ab_framework.list_experiments()
+        if e.control_branch == branch_id or e.candidate_branch == branch_id
+    ]
 
     total_experiments = len(exps)
-    success_count = sum(1 for e in exps if e.result == "winner_control" or e.result == "winner_candidate")
+    success_count = sum(
+        1
+        for e in exps
+        if e.result == "winner_control" or e.result == "winner_candidate"
+    )
     success_rate = success_count / max(total_experiments, 1)
 
-    return success(data={
-        "branch_id": branch_id,
-        "name": branch.name,
-        "success_rate": round(success_rate, 4),
-        "total_experiments": total_experiments,
-        "adoption_count": _marketplace_data.get("downloads", {}).get(branch_id, 0),
-        "last_updated": branch.updated_at,
-    })
+    return success(
+        data={
+            "branch_id": branch_id,
+            "name": branch.name,
+            "success_rate": round(success_rate, 4),
+            "total_experiments": total_experiments,
+            "adoption_count": _marketplace_data.get("downloads", {}).get(branch_id, 0),
+            "last_updated": branch.updated_at,
+        }
+    )
 
 
 @router.post("/publish")
@@ -125,7 +132,11 @@ def subscribe(req: SubscribeRequest):
 @router.get("/subscriptions/{project_id}")
 def get_subscriptions(project_id: str):
     """Get subscriptions for a project."""
-    subs = [s for s in _marketplace_data.get("subscriptions", []) if s["project_id"] == project_id]
+    subs = [
+        s
+        for s in _marketplace_data.get("subscriptions", [])
+        if s["project_id"] == project_id
+    ]
     return success(data=subs)
 
 
@@ -153,11 +164,16 @@ def export_template(branch_id: str, req: ExportRequest = None):
         export_data["commit_log"] = branch.commit_log
 
         ab_framework = get_ab_testing()
-        exps = [e for e in ab_framework.list_experiments()
-                if e.control_branch == branch_id or e.candidate_branch == branch_id]
+        exps = [
+            e
+            for e in ab_framework.list_experiments()
+            if e.control_branch == branch_id or e.candidate_branch == branch_id
+        ]
         export_data["experiments"] = [e.to_dict() for e in exps]
 
-    _marketplace_data["downloads"][branch_id] = _marketplace_data.get("downloads", {}).get(branch_id, 0) + 1
+    _marketplace_data["downloads"][branch_id] = (
+        _marketplace_data.get("downloads", {}).get(branch_id, 0) + 1
+    )
 
     return success(data=export_data)
 
@@ -179,7 +195,9 @@ def import_template(req: ImportRequest):
         data=data,
         metadata={"type": "imported", "imported_at": time.time()},
     )
-    logger.info("Template imported: branch_id=%s, name=%s", branch.branch_id, target_name)
+    logger.info(
+        "Template imported: branch_id=%s, name=%s", branch.branch_id, target_name
+    )
     return success(data={"branch_id": branch.branch_id, "name": target_name})
 
 
@@ -191,12 +209,14 @@ def sync_changes(branch_id: str):
     if branch is None:
         return error(code="BRANCH_NOT_FOUND", message="Branch not found")
 
-    return success(data={
-        "branch_id": branch_id,
-        "content_hash": branch_mgr._compute_content_hash(branch.template_data),
-        "updated_at": branch.updated_at,
-        "changes": branch.commit_log[-5:],
-    })
+    return success(
+        data={
+            "branch_id": branch_id,
+            "content_hash": branch_mgr._compute_content_hash(branch.template_data),
+            "updated_at": branch.updated_at,
+            "changes": branch.commit_log[-5:],
+        }
+    )
 
 
 def _adapt_parameters(params: Dict[str, Any]) -> Dict[str, Any]:

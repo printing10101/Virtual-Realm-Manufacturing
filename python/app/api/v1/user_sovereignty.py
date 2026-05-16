@@ -1,5 +1,3 @@
-import os
-import time
 import uuid
 import logging
 from fastapi import APIRouter
@@ -7,10 +5,8 @@ from datetime import datetime
 
 from app.core.response import ErrorCode, error, success
 from app.core.audit_log import AuditLog, AIModule, UserDecision, OperationStatus
-from app.config import config
 from app.models.schemas import (
     LNNPredictRequest,
-    LNNPredictResponseExtended,
     AlternativePlan,
     LNNModelInfo,
     AuditLogQueryRequest,
@@ -53,7 +49,9 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
                 message="输入数据必须为数值类型",
             )
 
-        expected_dim = len(model_info.input_features) if model_info.input_features else None
+        expected_dim = (
+            len(model_info.input_features) if model_info.input_features else None
+        )
         if expected_dim:
             input_len = len(request.input_data)
             if input_len != expected_dim and input_len % expected_dim != 0:
@@ -126,7 +124,10 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
             "alternatives": [alt.model_dump() for alt in alternatives],
         }
 
-        return success(data=response_data, message="Prediction completed with full sovereignty context")
+        return success(
+            data=response_data,
+            message="Prediction completed with full sovereignty context",
+        )
 
     except KeyError:
         return error(
@@ -218,7 +219,7 @@ def generate_alternatives(
                     "optimization_target": "conservative",
                     "safety_margin": "+5%",
                 },
-                expected_outcome=f"保守方案：输出值整体下调5%，偏向安全边际，适合对稳定性要求高的场景。",
+                expected_outcome="保守方案：输出值整体下调5%，偏向安全边际，适合对稳定性要求高的场景。",
                 confidence=max(0.0, primary_confidence - 0.05),
                 reasoning="保守方案通过降低各输出值约5%提供额外的安全缓冲，适用于风险敏感型决策。",
             )
@@ -231,7 +232,7 @@ def generate_alternatives(
                     "optimization_target": "aggressive",
                     "efficiency_gain": "+5%",
                 },
-                expected_outcome=f"激进方案：输出值整体上调5%，偏向性能优化，适合追求效率的场景。",
+                expected_outcome="激进方案：输出值整体上调5%，偏向性能优化，适合追求效率的场景。",
                 confidence=max(0.0, primary_confidence - 0.08),
                 reasoning="激进方案通过提高各输出值约5%追求性能最优，适用于对效率要求高的场景。",
             )

@@ -8,9 +8,8 @@ Implements dynamic skill loading and injection for AI agents with:
 - Multi-version coexistence and rollback
 - Skill context merging for agent guidance
 """
-import asyncio
+
 import hashlib
-import json
 import logging
 import os
 import re
@@ -20,17 +19,16 @@ import threading
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from enum import Enum, auto
+from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+
+from app.config import config
 
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_SKILLS_BASE = str(Path(os.environ.get(
-    "LNN_SKILLS_DIR",
-    str(Path(__file__).resolve().parents[3] / ".trae" / "skills")
-)))
+DEFAULT_SKILLS_BASE = config.paths.skills_dir
 
 
 class SkillLevel(str, Enum):
@@ -41,6 +39,7 @@ class SkillLevel(str, Enum):
 
 class SkillPriority(int, Enum):
     """技能优先级：数字越小优先级越高"""
+
     GLOBAL = 100
     PROJECT = 50
     AGENT = 10
@@ -95,7 +94,9 @@ class SkillMetadata:
             "tags": self.tags,
             "dependencies": self.dependencies,
             "parameters": self.parameters,
-            "avg_rating": round(sum(self.ratings) / len(self.ratings), 2) if self.ratings else None,
+            "avg_rating": round(sum(self.ratings) / len(self.ratings), 2)
+            if self.ratings
+            else None,
             "rating_count": len(self.ratings),
         }
 
@@ -129,8 +130,7 @@ class Skill:
         if not self.versions:
             return None
         sorted_versions = sorted(
-            self.versions.items(),
-            key=lambda x: [int(p) for p in x[0].split(".")]
+            self.versions.items(), key=lambda x: [int(p) for p in x[0].split(".")]
         )
         return sorted_versions[-1][1]
 
@@ -154,14 +154,8 @@ class Skill:
 
 
 class MarkdownSkillParser:
-    YAML_FRONTMATTER_PATTERN = re.compile(
-        r"^---\s*\n(.*?)\n---\s*\n",
-        re.DOTALL
-    )
-    CODE_BLOCK_PATTERN = re.compile(
-        r"```(\w+)\s*\n(.*?)\n```",
-        re.DOTALL
-    )
+    YAML_FRONTMATTER_PATTERN = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+    CODE_BLOCK_PATTERN = re.compile(r"```(\w+)\s*\n(.*?)\n```", re.DOTALL)
     HEADING_PATTERN = re.compile(r"^#{1,6}\s+(.*)$", re.MULTILINE)
 
     @classmethod
@@ -220,7 +214,9 @@ class MarkdownSkillParser:
                 value = value.strip()
                 if value.startswith("[") and value.endswith("]"):
                     items = value[1:-1].split(",")
-                    metadata[key] = [item.strip().strip("\"'") for item in items if item.strip()]
+                    metadata[key] = [
+                        item.strip().strip("\"'") for item in items if item.strip()
+                    ]
                 elif value.lower() == "true":
                     metadata[key] = True
                 elif value.lower() == "false":
@@ -239,7 +235,9 @@ class MarkdownSkillParser:
 
     @classmethod
     def _parse_legacy_metadata(cls, content: str) -> Optional[Dict[str, Any]]:
-        table_pattern = re.compile(r"\|\s*字段\s*\|\s*值\s*\|\s*\n\|[-| ]+\|\s*\n((?:\|.*\|\s*\n?)+)")
+        table_pattern = re.compile(
+            r"\|\s*字段\s*\|\s*值\s*\|\s*\n\|[-| ]+\|\s*\n((?:\|.*\|\s*\n?)+)"
+        )
         match = table_pattern.search(content)
         if not match:
             return None
@@ -313,7 +311,9 @@ class SkillRegistry:
                 self._skill_order.append(skill.metadata.skill_id)
         logger.info(
             "Skill registered: %s (level=%s, version=%s)",
-            skill.metadata.name, skill.metadata.level.value, skill.metadata.version,
+            skill.metadata.name,
+            skill.metadata.level.value,
+            skill.metadata.version,
         )
 
     def get(self, skill_id: str) -> Optional[Skill]:
@@ -323,14 +323,16 @@ class SkillRegistry:
     def get_by_level(self, level: SkillLevel) -> List[Skill]:
         with self._lock:
             return [
-                s for s in self._skills.values()
+                s
+                for s in self._skills.values()
                 if s.metadata.level == level and s.is_active
             ]
 
     def get_by_task(self, task_type: str) -> List[Skill]:
         with self._lock:
             return [
-                s for s in self._skills.values()
+                s
+                for s in self._skills.values()
                 if s.is_active and s.metadata.applicable_to(task_type)
             ]
 
@@ -368,8 +370,7 @@ class SkillRegistry:
     def clear_level(self, level: SkillLevel) -> int:
         with self._lock:
             to_remove = [
-                sid for sid, s in self._skills.items()
-                if s.metadata.level == level
+                sid for sid, s in self._skills.items() if s.metadata.level == level
             ]
             for sid in to_remove:
                 del self._skills[sid]
@@ -392,7 +393,9 @@ class SkillRegistry:
 
 
 class SkillFileWatcher:
-    def __init__(self, skills_dir: str, loader: "SkillLoader", poll_interval: float = 2.0):
+    def __init__(
+        self, skills_dir: str, loader: "SkillLoader", poll_interval: float = 2.0
+    ):
         self.skills_dir = skills_dir
         self.loader = loader
         self.poll_interval = poll_interval
@@ -408,7 +411,9 @@ class SkillFileWatcher:
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._watch_loop, daemon=True)
         self._thread.start()
-        logger.info("SkillFileWatcher started (poll_interval=%.1fs)", self.poll_interval)
+        logger.info(
+            "SkillFileWatcher started (poll_interval=%.1fs)", self.poll_interval
+        )
 
     def stop(self) -> None:
         self._running = False
@@ -466,7 +471,9 @@ class SkillFileWatcher:
                 if skill:
                     self.loader.registry.register(skill)
         except Exception as e:
-            logger.error("Failed to handle file event %s for %s: %s", event, file_path, e)
+            logger.error(
+                "Failed to handle file event %s for %s: %s", event, file_path, e
+            )
 
     def _infer_level(self, file_path: str) -> SkillLevel:
         rel = os.path.relpath(file_path, self.skills_dir).replace("\\", "/")
@@ -496,6 +503,22 @@ class SkillLoader:
         self._start_watcher()
 
         logger.info("SkillLoader initialized: skills_base=%s", skills_base_dir)
+
+    @staticmethod
+    def _sanitize_path_segment(segment: str) -> str:
+        sanitized = re.sub(r'[<>:"|?*\\/]', '_', str(segment))
+        sanitized = sanitized.strip('. ')
+        if not sanitized:
+            raise ValueError(f"路径段净化后为空: '{segment}'")
+        return sanitized
+
+    def _resolve_safe_subpath(self, *segments: str) -> str:
+        safe = [self._sanitize_path_segment(s) for s in segments]
+        result = os.path.normpath(os.path.join(self.skills_base, *safe))
+        normalized_base = os.path.normpath(self.skills_base)
+        if not result.startswith(normalized_base):
+            raise ValueError(f"路径遍历检测: {result}")
+        return result
 
     def _ensure_directory_structure(self) -> None:
         for subdir in ["global", "projects", "agents"]:
@@ -533,10 +556,7 @@ class SkillLoader:
 
         self._create_builtin_skills()
 
-        logger.info(
-            "All skills loaded: total=%d",
-            len(self.registry.list_all())
-        )
+        logger.info("All skills loaded: total=%d", len(self.registry.list_all()))
 
     def _create_builtin_skills(self) -> None:
         builtins = [
@@ -602,7 +622,9 @@ class SkillLoader:
             if not self.registry.get(skill.metadata.skill_id):
                 self.registry.register(skill)
 
-    def _load_skills_from_directory(self, directory: str, level: SkillLevel) -> List[Skill]:
+    def _load_skills_from_directory(
+        self, directory: str, level: SkillLevel
+    ) -> List[Skill]:
         skills = []
         if not os.path.exists(directory):
             return skills
@@ -617,7 +639,9 @@ class SkillLoader:
 
         return skills
 
-    def _load_skill_from_file(self, file_path: str, level: SkillLevel) -> Optional[Skill]:
+    def _load_skill_from_file(
+        self, file_path: str, level: SkillLevel
+    ) -> Optional[Skill]:
         parsed = MarkdownSkillParser.parse(file_path)
         if parsed is None:
             return None
@@ -687,7 +711,9 @@ class SkillLoader:
                 return cls()
             except Exception:
                 for attr_name in dir(cls):
-                    if not attr_name.startswith("_") and callable(getattr(cls, attr_name)):
+                    if not attr_name.startswith("_") and callable(
+                        getattr(cls, attr_name)
+                    ):
                         return getattr(cls, attr_name)()
         for attr_name, attr_val in namespace.items():
             if not attr_name.startswith("_") and callable(attr_val):
@@ -699,20 +725,23 @@ class SkillLoader:
         return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
 
     def load_project_skills(self, project_id: str) -> List[Skill]:
-        project_dir = os.path.join(self.skills_base, "projects", project_id)
+        project_dir = self._resolve_safe_subpath("projects", project_id)
         if os.path.exists(project_dir):
             return self._load_skills_from_directory(project_dir, SkillLevel.PROJECT)
         return []
 
     def load_agent_skills(self, agent_id: str) -> List[Skill]:
-        agent_dir = os.path.join(self.skills_base, "agents", agent_id)
+        agent_dir = self._resolve_safe_subpath("agents", agent_id)
         if os.path.exists(agent_dir):
             return self._load_skills_from_directory(agent_dir, SkillLevel.AGENT)
         return []
 
     def get_skills_for_task(
-        self, task_type: str, project_id: Optional[str] = None,
-        agent_id: Optional[str] = None, available_context: Optional[Set[str]] = None,
+        self,
+        task_type: str,
+        project_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        available_context: Optional[Set[str]] = None,
     ) -> List[Skill]:
         skills: List[Skill] = []
 
@@ -721,7 +750,9 @@ class SkillLoader:
 
         if project_id:
             project_skills = self.load_project_skills(project_id)
-            skills.extend([s for s in project_skills if s.metadata.applicable_to(task_type)])
+            skills.extend(
+                [s for s in project_skills if s.metadata.applicable_to(task_type)]
+            )
 
         if agent_id:
             agent_skills = self.load_agent_skills(agent_id)
@@ -731,13 +762,15 @@ class SkillLoader:
 
         if available_context is not None:
             skills = [
-                s for s in skills
-                if s.metadata.contexts_satisfied(available_context)[0]
+                s for s in skills if s.metadata.contexts_satisfied(available_context)[0]
             ]
 
         logger.info(
             "Retrieved %d skills for task=%s project=%s agent=%s",
-            len(skills), task_type, project_id or "N/A", agent_id or "N/A",
+            len(skills),
+            task_type,
+            project_id or "N/A",
+            agent_id or "N/A",
         )
         return skills
 
@@ -752,15 +785,23 @@ class SkillLoader:
             raise KeyError(f"Skill not found: {skill_id}")
         return skill.execute(**kwargs)
 
-    def execute_all(self, task_type: str, project_id: Optional[str] = None,
-                    agent_id: Optional[str] = None, **kwargs) -> Dict[str, Any]:
+    def execute_all(
+        self,
+        task_type: str,
+        project_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
         skills = self.get_skills_for_task(task_type, project_id, agent_id)
         results: Dict[str, Any] = {}
 
         for skill in skills:
             try:
                 result = skill.execute(**kwargs)
-                results[skill.metadata.skill_id] = {"status": "success", "result": result}
+                results[skill.metadata.skill_id] = {
+                    "status": "success",
+                    "result": result,
+                }
             except Exception as e:
                 results[skill.metadata.skill_id] = {"status": "error", "error": str(e)}
                 logger.error("Skill execution failed %s: %s", skill.metadata.name, e)
@@ -768,10 +809,15 @@ class SkillLoader:
         return results
 
     async def inject_skills(
-        self, task_type: str, project_id: Optional[str] = None,
-        agent_id: Optional[str] = None, available_context: Optional[Set[str]] = None,
+        self,
+        task_type: str,
+        project_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        available_context: Optional[Set[str]] = None,
     ) -> str:
-        skills = self.get_skills_for_task(task_type, project_id, agent_id, available_context)
+        skills = self.get_skills_for_task(
+            task_type, project_id, agent_id, available_context
+        )
         return self._merge_skills_to_context(skills)
 
     def _merge_skills_to_context(self, skills: List[Skill]) -> str:
@@ -826,11 +872,17 @@ class SkillLoader:
             skill = self.registry.get(skill_id)
             if skill and skill.metadata.source_path:
                 level = skill.metadata.level
-                new_skill = self._load_skill_from_file(skill.metadata.source_path, level)
+                new_skill = self._load_skill_from_file(
+                    skill.metadata.source_path, level
+                )
                 if new_skill:
                     self.registry.register(new_skill)
                     return {"status": "reloaded", "skill_id": skill_id}
-                return {"status": "error", "skill_id": skill_id, "message": "Parse failed"}
+                return {
+                    "status": "error",
+                    "skill_id": skill_id,
+                    "message": "Parse failed",
+                }
             return {"status": "not_found", "skill_id": skill_id}
 
         self._load_all_skills()
@@ -843,45 +895,54 @@ class SkillLoader:
 
         history = []
         for ver_str, ver_obj in sorted(skill.versions.items()):
-            history.append({
-                "version": ver_str,
-                "content_hash": ver_obj.content_hash,
-                "file_path": ver_obj.file_path,
-                "created_at": ver_obj.created_at,
-                "created_at_iso": datetime.fromtimestamp(
-                    ver_obj.created_at, tz=timezone.utc
-                ).isoformat(),
-            })
+            history.append(
+                {
+                    "version": ver_str,
+                    "content_hash": ver_obj.content_hash,
+                    "file_path": ver_obj.file_path,
+                    "created_at": ver_obj.created_at,
+                    "created_at_iso": datetime.fromtimestamp(
+                        ver_obj.created_at, tz=timezone.utc
+                    ).isoformat(),
+                }
+            )
 
         return history
 
     def save_skill_file(
-        self, skill_id: str, content: str, level: SkillLevel = SkillLevel.PROJECT,
+        self,
+        skill_id: str,
+        content: str,
+        level: SkillLevel = SkillLevel.PROJECT,
         sub_id: Optional[str] = None,
     ) -> str:
+        safe_skill_id = self._sanitize_path_segment(skill_id)
+
         if level == SkillLevel.GLOBAL:
             target_dir = os.path.join(self.skills_base, "global")
         elif level == SkillLevel.PROJECT:
             if not sub_id:
-                raise ValueError("sub_id (project_id) required for PROJECT level skills")
-            target_dir = os.path.join(self.skills_base, "projects", sub_id)
+                raise ValueError(
+                    "sub_id (project_id) required for PROJECT level skills"
+                )
+            target_dir = self._resolve_safe_subpath("projects", sub_id)
         elif level == SkillLevel.AGENT:
             if not sub_id:
                 raise ValueError("sub_id (agent_id) required for AGENT level skills")
-            target_dir = os.path.join(self.skills_base, "agents", sub_id)
+            target_dir = self._resolve_safe_subpath("agents", sub_id)
         else:
             raise ValueError(f"Unknown skill level: {level}")
 
         os.makedirs(target_dir, exist_ok=True)
 
-        file_name = f"{skill_id}.md"
+        file_name = f"{safe_skill_id}.md"
         file_path = os.path.join(target_dir, file_name)
 
         if os.path.exists(file_path):
             backup_dir = os.path.join(target_dir, ".versions")
             os.makedirs(backup_dir, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = os.path.join(backup_dir, f"{skill_id}_{timestamp}.md")
+            backup_path = os.path.join(backup_dir, f"{safe_skill_id}_{timestamp}.md")
             shutil.copy2(file_path, backup_path)
             logger.info("Backup created: %s", backup_path)
 
@@ -909,9 +970,12 @@ class SkillLoader:
             "exported_at": datetime.now(timezone.utc).isoformat(),
         }
 
-    def import_skill(self, skill_package: Dict[str, Any],
-                     level: SkillLevel = SkillLevel.PROJECT,
-                     sub_id: Optional[str] = None) -> Optional[Skill]:
+    def import_skill(
+        self,
+        skill_package: Dict[str, Any],
+        level: SkillLevel = SkillLevel.PROJECT,
+        sub_id: Optional[str] = None,
+    ) -> Optional[Skill]:
         skill_id = skill_package.get("skill_id")
         raw_content = skill_package.get("raw_content")
 
@@ -969,7 +1033,12 @@ class SkillLoader:
         skill.metadata.ratings.append(rating)
         avg = sum(skill.metadata.ratings) / len(skill.metadata.ratings)
 
-        logger.info("Skill rated: %s -> %.2f (%d ratings)", skill_id, rating, len(skill.metadata.ratings))
+        logger.info(
+            "Skill rated: %s -> %.2f (%d ratings)",
+            skill_id,
+            rating,
+            len(skill.metadata.ratings),
+        )
         return {
             "skill_id": skill_id,
             "rating": rating,
@@ -980,7 +1049,9 @@ class SkillLoader:
     def get_stats(self) -> Dict[str, Any]:
         registry_stats = self.registry.get_stats()
         registry_stats["skills_base_dir"] = self.skills_base
-        registry_stats["watcher_active"] = self._watcher is not None and self._watcher._running
+        registry_stats["watcher_active"] = (
+            self._watcher is not None and self._watcher._running
+        )
         return registry_stats
 
     def shutdown(self) -> None:
@@ -1011,8 +1082,12 @@ def init_skill_loader(skills_base_dir: Optional[str] = None) -> SkillLoader:
 
 
 async def inject_skills(
-    task_type: str, project_id: Optional[str] = None,
-    agent_id: Optional[str] = None, available_context: Optional[Set[str]] = None,
+    task_type: str,
+    project_id: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    available_context: Optional[Set[str]] = None,
 ) -> str:
     loader = get_skill_loader()
-    return await loader.inject_skills(task_type, project_id, agent_id, available_context)
+    return await loader.inject_skills(
+        task_type, project_id, agent_id, available_context
+    )

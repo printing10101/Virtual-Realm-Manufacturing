@@ -1,13 +1,14 @@
 """Template Evolution API Routes."""
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.core.template_evolution import get_evolution_engine, init_template_evolution
+from app.core.template_evolution import get_evolution_engine
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)
@@ -73,10 +74,12 @@ def evaluate_triggers():
     """Evaluate all evolution triggers."""
     engine = get_evolution_engine()
     new_suggestions = engine.evaluate_triggers()
-    return success(data={
-        "new_suggestions": len(new_suggestions),
-        "suggestions": [s.to_dict() for s in new_suggestions],
-    })
+    return success(
+        data={
+            "new_suggestions": len(new_suggestions),
+            "suggestions": [s.to_dict() for s in new_suggestions],
+        }
+    )
 
 
 @router.get("/history")
