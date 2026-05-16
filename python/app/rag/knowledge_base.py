@@ -2,13 +2,13 @@
 
 Provides an in-memory knowledge base with ChromaDB-compatible query interface.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
 import time
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,9 @@ class KnowledgeStore:
         self._documents: list[dict[str, Any]] = []
         self._next_id = 1
 
-    def add(self, document: str, metadata: dict | None = None, doc_id: str | None = None) -> str:
+    def add(
+        self, document: str, metadata: dict | None = None, doc_id: str | None = None
+    ) -> str:
         doc_id = doc_id or f"doc_{self._next_id}"
         self._next_id += 1
         existing = [d for d in self._documents if d["id"] == doc_id]
@@ -97,16 +99,20 @@ class KnowledgeStore:
             existing[0]["metadata"] = metadata or {}
             existing[0]["updated_at"] = time.time()
         else:
-            self._documents.append({
-                "id": doc_id,
-                "document": document,
-                "metadata": metadata or {},
-                "created_at": time.time(),
-                "updated_at": time.time(),
-            })
+            self._documents.append(
+                {
+                    "id": doc_id,
+                    "document": document,
+                    "metadata": metadata or {},
+                    "created_at": time.time(),
+                    "updated_at": time.time(),
+                }
+            )
         return doc_id
 
-    def query(self, text: str, top_k: int = 5, filters: dict | None = None) -> list[dict[str, Any]]:
+    def query(
+        self, text: str, top_k: int = 5, filters: dict | None = None
+    ) -> list[dict[str, Any]]:
         query_terms = set(text.lower().split())
         scored: list[tuple[float, dict]] = []
         for doc in self._documents:
@@ -131,7 +137,9 @@ class KnowledgeStore:
         ]
 
     def query_by_source(self, source: str, query: str = "", n_results: int = 5) -> dict:
-        filtered = [d for d in self._documents if d.get("metadata", {}).get("source") == source]
+        filtered = [
+            d for d in self._documents if d.get("metadata", {}).get("source") == source
+        ]
         if not query:
             records = filtered[:n_results]
         else:
@@ -169,7 +177,9 @@ class KnowledgeStore:
 
     def delete_by_source(self, source: str) -> int:
         before = len(self._documents)
-        self._documents = [d for d in self._documents if d.get("metadata", {}).get("source") != source]
+        self._documents = [
+            d for d in self._documents if d.get("metadata", {}).get("source") != source
+        ]
         return before - len(self._documents)
 
     def count(self) -> int:
@@ -180,32 +190,56 @@ class KnowledgeStore:
             {
                 "id": "default_machining_001",
                 "document": "45钢推荐切削参数：粗车切削速度80-150m/min，进给量0.2-0.5mm/r，切削深度1-4mm。精车切削速度120-200m/min，进给量0.05-0.15mm/r，切削深度0.1-0.5mm。",
-                "metadata": {"category": "切削参数", "type": "guideline", "source": "default"},
+                "metadata": {
+                    "category": "切削参数",
+                    "type": "guideline",
+                    "source": "default",
+                },
             },
             {
                 "id": "default_machining_002",
                 "document": "铝合金6061推荐切削参数：粗车切削速度200-400m/min，进给量0.3-0.8mm/r，切削深度1-5mm。",
-                "metadata": {"category": "切削参数", "type": "guideline", "source": "default"},
+                "metadata": {
+                    "category": "切削参数",
+                    "type": "guideline",
+                    "source": "default",
+                },
             },
             {
                 "id": "default_machining_003",
                 "document": "304不锈钢切削参数：粗车切削速度60-120m/min，进给量0.15-0.3mm/r，切削深度1-3mm。由于加工硬化特性，需保持连续切削避免刀具在已加工表面停留。",
-                "metadata": {"category": "切削参数", "type": "guideline", "source": "default"},
+                "metadata": {
+                    "category": "切削参数",
+                    "type": "guideline",
+                    "source": "default",
+                },
             },
             {
                 "id": "default_machining_004",
                 "document": "工艺路线规划原则：粗加工→半精加工→精加工→超精加工。各阶段应选择不同机床和刀具以保证精度和效率。",
-                "metadata": {"category": "工艺规划", "type": "guideline", "source": "default"},
+                "metadata": {
+                    "category": "工艺规划",
+                    "type": "guideline",
+                    "source": "default",
+                },
             },
             {
                 "id": "default_machining_005",
                 "document": "G代码编程基础：G00快速定位，G01直线插补，G02/G03圆弧插补，G90绝对编程，G91增量编程。",
-                "metadata": {"category": "NC编程", "type": "reference", "source": "default"},
+                "metadata": {
+                    "category": "NC编程",
+                    "type": "reference",
+                    "source": "default",
+                },
             },
         ]
         added = 0
         for entry in default_entries:
-            self.add(entry["document"], metadata=entry.get("metadata", {}), doc_id=entry["id"])
+            self.add(
+                entry["document"],
+                metadata=entry.get("metadata", {}),
+                doc_id=entry["id"],
+            )
             added += 1
         return added
 
@@ -223,7 +257,11 @@ class KnowledgeStore:
             for item in items:
                 try:
                     doc_id = item.get("id") or item.get("doc_id")
-                    document = item.get("document") or item.get("content") or item.get("text", "")
+                    document = (
+                        item.get("document")
+                        or item.get("content")
+                        or item.get("text", "")
+                    )
                     metadata = item.get("metadata") or item.get("meta", {})
                     if not document:
                         stats["skipped"] += 1
@@ -249,11 +287,15 @@ class KnowledgeBase:
         self._store = KnowledgeStore()
         self.collection = CollectionProxy(self._store)
 
-    def add_knowledge(self, document: str, metadata: dict | None = None, doc_id: str | None = None) -> dict:
+    def add_knowledge(
+        self, document: str, metadata: dict | None = None, doc_id: str | None = None
+    ) -> dict:
         doc_id = self._store.add(document, metadata=metadata, doc_id=doc_id)
         return {"doc_id": doc_id}
 
-    def query(self, query_text: str = "", n_results: int = 5, top_k: int = 5) -> dict[str, Any]:
+    def query(
+        self, query_text: str = "", n_results: int = 5, top_k: int = 5
+    ) -> dict[str, Any]:
         results = self._store.query(query_text, top_k=n_results or top_k)
         return {"documents": results, "total_results": len(results)}
 
@@ -271,7 +313,11 @@ class KnowledgeBase:
 
     def list_documents(self, limit: int = 50) -> list[dict]:
         return [
-            {"id": d["id"], "metadata": d.get("metadata", {}), "created_at": d.get("created_at")}
+            {
+                "id": d["id"],
+                "metadata": d.get("metadata", {}),
+                "created_at": d.get("created_at"),
+            }
             for d in self._store.get_all()[:limit]
         ]
 

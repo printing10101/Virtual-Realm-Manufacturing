@@ -1,4 +1,5 @@
 """RAG knowledge base API routes."""
+
 from __future__ import annotations
 
 import logging

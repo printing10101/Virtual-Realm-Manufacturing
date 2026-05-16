@@ -1,4 +1,5 @@
 """CadQuery generator wrapper for CAD generation."""
+
 from __future__ import annotations
 
 import asyncio
@@ -59,10 +60,16 @@ class CadQueryGenerator:
                 width, height = _get_image_dimensions(view_file)
                 image_sizes[view_name] = (width, height)
                 logger.debug(
-                    "View %s loaded: %s (%dx%d)", view_name, view_path, width, height,
+                    "View %s loaded: %s (%dx%d)",
+                    view_name,
+                    view_path,
+                    width,
+                    height,
                 )
             except (OSError, ValueError) as e:
-                logger.warning("Failed to read view %s (%s): %s", view_name, view_path, e)
+                logger.warning(
+                    "Failed to read view %s (%s): %s", view_name, view_path, e
+                )
 
         if not image_sizes:
             logger.warning(
@@ -82,7 +89,11 @@ class CadQueryGenerator:
 
         params: dict[str, Any] = {
             "shape_type": "box",
-            "dimensions": {"length": round(length, 1), "width": round(width, 1), "height": round(height, 1)},
+            "dimensions": {
+                "length": round(length, 1),
+                "width": round(width, 1),
+                "height": round(height, 1),
+            },
             "position": {"x": 0, "y": 0, "z": 0},
         }
 
@@ -90,7 +101,9 @@ class CadQueryGenerator:
         return params
 
     async def generate_script_from_params(
-        self, params: dict[str, Any], library_matches: list[dict[str, Any]] | None = None
+        self,
+        params: dict[str, Any],
+        library_matches: list[dict[str, Any]] | None = None,
     ) -> str:
         """Generate a CadQuery Python script from geometry parameters."""
         logger.info(
@@ -125,7 +138,9 @@ class CadQueryGenerator:
         """Execute a CadQuery script and export the resulting model."""
         logger.info(
             "Executing script for task %s (format=%s, script_len=%d)",
-            task_id, output_format, len(script),
+            task_id,
+            output_format,
+            len(script),
         )
 
         output_dir = Path(tempfile.gettempdir()) / "cadquery_output"
@@ -141,7 +156,9 @@ class CadQueryGenerator:
 
         if output_format not in export_func_map:
             supported = ", ".join(export_func_map.keys())
-            raise CadQueryExportError(f"CAD 模型导出失败：不支持的输出格式 '{output_format}'。支持的格式包括：{supported}。请将 output_format 参数设置为支持的格式之一后重试。")
+            raise CadQueryExportError(
+                f"CAD 模型导出失败：不支持的输出格式 '{output_format}'。支持的格式包括：{supported}。请将 output_format 参数设置为支持的格式之一后重试。"
+            )
 
         wrapped_script = _wrap_script(script, str(output_path), output_format)
 
@@ -177,13 +194,17 @@ class CadQueryGenerator:
             return str(output_path)
         except Exception as e:
             logger.error("CAD 模型生成失败: %s", e)
-            raise CadQueryScriptError(f"CAD 模型生成失败：执行 CadQuery 脚本时出现异常。错误详情: {e}。可能原因：1) 脚本语法错误；2) 几何参数无效；3) CadQuery 版本不兼容。请检查脚本内容和几何参数，或查看日志获取详细错误信息。") from e
+            raise CadQueryScriptError(
+                f"CAD 模型生成失败：执行 CadQuery 脚本时出现异常。错误详情: {e}。可能原因：1) 脚本语法错误；2) 几何参数无效；3) CadQuery 版本不兼容。请检查脚本内容和几何参数，或查看日志获取详细错误信息。"
+            ) from e
 
     def generate_from_views(self, front: str, top: str, side: str) -> str:
         """Generate 3D model from three-view drawing descriptions."""
         logger.info(
             "Generating 3D model from three-view drawings (front=%s, top=%s, side=%s)",
-            front[:50], top[:50], side[:50],
+            front[:50],
+            top[:50],
+            side[:50],
         )
         params = {
             "shape_type": "box",
@@ -332,11 +353,15 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
         header = f.read(32)
 
     if len(header) < 2:
-        raise ValueError("图像文件解析失败：文件大小不足以包含有效的图像文件头。正常图像文件至少需要 2 字节。请确认上传的是有效的图像文件（PNG/JPEG/GIF/BMP 格式），而非空文件或损坏文件。")
+        raise ValueError(
+            "图像文件解析失败：文件大小不足以包含有效的图像文件头。正常图像文件至少需要 2 字节。请确认上传的是有效的图像文件（PNG/JPEG/GIF/BMP 格式），而非空文件或损坏文件。"
+        )
 
     if header[:8] == b"\x89PNG\r\n\x1a\n":
         if len(header) < 24:
-            raise ValueError("PNG 图像解析失败：PNG 文件头不完整。可能原因：1) 文件传输过程中被截断；2) 文件已损坏。请确认 PNG 文件完整性（标准 PNG 文件头为 8 字节: \\x89PNG\\r\\n\\x1a\\n）。")
+            raise ValueError(
+                "PNG 图像解析失败：PNG 文件头不完整。可能原因：1) 文件传输过程中被截断；2) 文件已损坏。请确认 PNG 文件完整性（标准 PNG 文件头为 8 字节: \\x89PNG\\r\\n\\x1a\\n）。"
+            )
         w = struct.unpack(">I", header[16:20])[0]
         h = struct.unpack(">I", header[20:24])[0]
         return w, h
@@ -356,7 +381,9 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
                 return w, h
             seg_len = struct.unpack(">H", data[i + 2 : i + 4])[0]
             i += 2 + seg_len
-        raise ValueError("JPEG 图像解析失败：未找到 SOF（Start Of Frame）标记。可能原因：1) JPEG 文件已损坏或格式不正确；2) 文件为渐进式 JPEG 但不支持解析。请检查 JPEG 文件是否为标准基线格式，或使用图像编辑工具重新保存。")
+        raise ValueError(
+            "JPEG 图像解析失败：未找到 SOF（Start Of Frame）标记。可能原因：1) JPEG 文件已损坏或格式不正确；2) 文件为渐进式 JPEG 但不支持解析。请检查 JPEG 文件是否为标准基线格式，或使用图像编辑工具重新保存。"
+        )
 
     if header[:6] in (b"GIF87a", b"GIF89a"):
         w = struct.unpack("<H", header[6:8])[0]
@@ -365,9 +392,13 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
 
     if header[:2] == b"BM":
         if len(header) < 26:
-            raise ValueError("BMP 图像解析失败：BMP 文件头不完整。可能原因：1) 文件传输过程中被截断；2) 文件已损坏。标准 BMP 文件头至少 26 字节。请确认 BMP 文件完整性。")
+            raise ValueError(
+                "BMP 图像解析失败：BMP 文件头不完整。可能原因：1) 文件传输过程中被截断；2) 文件已损坏。标准 BMP 文件头至少 26 字节。请确认 BMP 文件完整性。"
+            )
         w = struct.unpack("<I", header[18:22])[0]
         h = struct.unpack("<I", header[22:26])[0]
         return w, h
 
-    raise ValueError(f"图像格式解析失败：不支持的图像格式。文件头标识: {header[:4]!r}。支持的图像格式包括：PNG（文件头: \\x89PNG）、JPEG（文件头: \\xff\\xd8\\xff）、BMP（文件头: BM）。请将图像转换为支持的格式后重试。")
+    raise ValueError(
+        f"图像格式解析失败：不支持的图像格式。文件头标识: {header[:4]!r}。支持的图像格式包括：PNG（文件头: \\x89PNG）、JPEG（文件头: \\xff\\xd8\\xff）、BMP（文件头: BM）。请将图像转换为支持的格式后重试。"
+    )

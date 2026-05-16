@@ -1,8 +1,11 @@
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 # 项目根目录（python/ 的上级目录，即项目根）
-PROJECT_ROOT: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT: str = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 # Python包目录
 PYTHON_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -21,17 +24,27 @@ def _path(key: str, default_rel: str) -> str:
 class ServerConfig:
     host: str = field(default_factory=lambda: _env("SERVER_HOST", "127.0.0.1"))
     port: int = field(default_factory=lambda: int(_env("SERVER_PORT", "8765")))
-    debug: bool = field(default_factory=lambda: _env("DEBUG", "false").lower() == "true")
+    debug: bool = field(
+        default_factory=lambda: _env("DEBUG", "false").lower() == "true"
+    )
 
 
 @dataclass
 class AIConfig:
     mode: str = field(default_factory=lambda: _env("AI_MODE", "local"))
-    ollama_base_url: str = field(default_factory=lambda: _env("OLLAMA_BASE_URL", "http://localhost:11434"))
-    ollama_model: str = field(default_factory=lambda: _env("OLLAMA_MODEL", "qwen2.5-coder:7b"))
+    ollama_base_url: str = field(
+        default_factory=lambda: _env("OLLAMA_BASE_URL", "http://localhost:11434")
+    )
+    ollama_model: str = field(
+        default_factory=lambda: _env("OLLAMA_MODEL", "qwen2.5-coder:7b")
+    )
     cloud_api_key: str = field(default_factory=lambda: _env("CLOUD_API_KEY", ""))
-    cloud_base_url: str = field(default_factory=lambda: _env("CLOUD_BASE_URL", "https://api.openai.com/v1"))
-    cloud_model: str = field(default_factory=lambda: _env("CLOUD_MODEL", "gpt-3.5-turbo"))
+    cloud_base_url: str = field(
+        default_factory=lambda: _env("CLOUD_BASE_URL", "https://api.openai.com/v1")
+    )
+    cloud_model: str = field(
+        default_factory=lambda: _env("CLOUD_MODEL", "gpt-3.5-turbo")
+    )
     timeout: int = field(default_factory=lambda: int(_env("AI_TIMEOUT", "60")))
     max_retries: int = field(default_factory=lambda: int(_env("AI_MAX_RETRIES", "3")))
 
@@ -44,57 +57,115 @@ class StorageConfig:
 
 @dataclass
 class DatabaseConfig:
-    cad_db_path: str = field(default_factory=lambda: _path("CAD_DB_PATH", "cad_tasks.db"))
-    model_library_path: str = field(default_factory=lambda: _path("MODEL_LIBRARY_PATH", "model_library.db"))
+    cad_db_path: str = field(
+        default_factory=lambda: _path("CAD_DB_PATH", "cad_tasks.db")
+    )
+    model_library_path: str = field(
+        default_factory=lambda: _path("MODEL_LIBRARY_PATH", "model_library.db")
+    )
 
 
 @dataclass
 class ModelRouterSettings:
     local_model: str = field(default_factory=lambda: _env("LOCAL_MODEL", "qwen2.5:7b"))
-    cloud_provider: str = field(default_factory=lambda: _env("CLOUD_PROVIDER", "openai"))
-    cloud_model: str = field(default_factory=lambda: _env("CLOUD_MODEL_ROUTER", "gpt-4o"))
-    fallback_threshold: int = field(default_factory=lambda: int(_env("FALLBACK_THRESHOLD", "3")))
+    cloud_provider: str = field(
+        default_factory=lambda: _env("CLOUD_PROVIDER", "openai")
+    )
+    cloud_model: str = field(
+        default_factory=lambda: _env("CLOUD_MODEL_ROUTER", "gpt-4o")
+    )
+    fallback_threshold: int = field(
+        default_factory=lambda: int(_env("FALLBACK_THRESHOLD", "3"))
+    )
     local_timeout: int = field(default_factory=lambda: int(_env("LOCAL_TIMEOUT", "30")))
 
 
 @dataclass
 class FineTuneSettings:
-    finetune_auto_trigger: bool = field(default_factory=lambda: _env("FINETUNE_AUTO_TRIGGER", "false").lower() == "true")
-    finetune_min_samples: int = field(default_factory=lambda: int(_env("FINETUNE_MIN_SAMPLES", "50")))
-    finetune_interval_days: int = field(default_factory=lambda: int(_env("FINETUNE_INTERVAL_DAYS", "7")))
-    finetune_output_dir: str = field(default_factory=lambda: _path("FINETUNE_OUTPUT_DIR", os.path.join("output", "models", "finetuned")))
+    finetune_auto_trigger: bool = field(
+        default_factory=lambda: _env("FINETUNE_AUTO_TRIGGER", "false").lower() == "true"
+    )
+    finetune_min_samples: int = field(
+        default_factory=lambda: int(_env("FINETUNE_MIN_SAMPLES", "50"))
+    )
+    finetune_interval_days: int = field(
+        default_factory=lambda: int(_env("FINETUNE_INTERVAL_DAYS", "7"))
+    )
+    finetune_output_dir: str = field(
+        default_factory=lambda: _path(
+            "FINETUNE_OUTPUT_DIR", os.path.join("output", "models", "finetuned")
+        )
+    )
 
 
 @dataclass
 class SecurityConfig:
-    cors_origins: list[str] = field(default_factory=lambda: [
-        origin.strip() for origin in _env("CORS_ORIGINS", "*").split(",") if origin.strip()
-    ])
-    allow_credentials: bool = field(default_factory=lambda: _env("CORS_ALLOW_CREDENTIALS", "true").lower() == "true")
-    cors_origin_regex: str | None = field(default_factory=lambda: _env("CORS_ORIGIN_REGEX", "") or None)
-    rate_limit_enabled: bool = field(default_factory=lambda: _env("RATE_LIMIT_ENABLED", "false").lower() == "true")
-    rate_limit_requests: int = field(default_factory=lambda: int(_env("RATE_LIMIT_REQUESTS", "100")))
-    rate_limit_window: int = field(default_factory=lambda: int(_env("RATE_LIMIT_WINDOW", "60")))
+    cors_origins: list[str] = field(
+        default_factory=lambda: [
+            origin.strip()
+            for origin in _env("CORS_ORIGINS", "*").split(",")
+            if origin.strip()
+        ]
+    )
+    allow_credentials: bool = field(
+        default_factory=lambda: _env("CORS_ALLOW_CREDENTIALS", "true").lower() == "true"
+    )
+    cors_origin_regex: str | None = field(
+        default_factory=lambda: _env("CORS_ORIGIN_REGEX", "") or None
+    )
+    rate_limit_enabled: bool = field(
+        default_factory=lambda: _env("RATE_LIMIT_ENABLED", "false").lower() == "true"
+    )
+    rate_limit_requests: int = field(
+        default_factory=lambda: int(_env("RATE_LIMIT_REQUESTS", "100"))
+    )
+    rate_limit_window: int = field(
+        default_factory=lambda: int(_env("RATE_LIMIT_WINDOW", "60"))
+    )
+    auth_enabled: bool = field(
+        default_factory=lambda: _env("LNN_AUTH_ENABLED", "true").lower() == "true"
+    )
+    permission_enforced: bool = field(
+        default_factory=lambda: _env("LNN_PERMISSION_ENFORCED", "false").lower() == "true"
+    )
+    agent_auth_enabled: bool = field(
+        default_factory=lambda: _env("AGENT_AUTH_ENABLED", "true").lower() == "true"
+    )
 
 
 @dataclass
 class EnvironmentConfig:
-    environment: str = field(default_factory=lambda: _env("ENVIRONMENT", "development").lower())
+    environment: str = field(
+        default_factory=lambda: _env("ENVIRONMENT", "development").lower()
+    )
 
 
 @dataclass
 class PathsConfig:
     backup_dir: str = field(default_factory=lambda: _env("BACKUP_DIR", "./backups"))
     db_path: str = field(default_factory=lambda: _env("DB_PATH", "./data/app.db"))
-    vector_db_path: str = field(default_factory=lambda: _env("VECTOR_DB_PATH", "./data/chroma_db"))
-    config_path: str = field(default_factory=lambda: _env("CONFIG_PATH", "./config.json"))
+    vector_db_path: str = field(
+        default_factory=lambda: _env("VECTOR_DB_PATH", "./data/chroma_db")
+    )
+    config_path: str = field(
+        default_factory=lambda: _env("CONFIG_PATH", "./config.json")
+    )
+    gstack_dir: str = field(
+        default_factory=lambda: _env("LNN_GSTACK_DIR", ".lingjing/.gstack")
+    )
+    skills_dir: str = field(
+        default_factory=lambda: _env("LNN_SKILLS_DIR",
+            str(Path(__file__).resolve().parent.parent.parent / ".trae" / "skills"))
+    )
 
 
 @dataclass
 class AppConfig:
     app_name: str = field(default_factory=lambda: _env("APP_NAME", "灵境制造"))
-    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "1.7.0"))
-    offline_mode: bool = field(default_factory=lambda: _env("OFFLINE_MODE", "false").lower() == "true")
+    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "1.7.1"))
+    offline_mode: bool = field(
+        default_factory=lambda: _env("OFFLINE_MODE", "false").lower() == "true"
+    )
     environment: EnvironmentConfig = field(default_factory=EnvironmentConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
     ai: AIConfig = field(default_factory=AIConfig)

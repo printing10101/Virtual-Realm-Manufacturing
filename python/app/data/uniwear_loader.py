@@ -1,7 +1,6 @@
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -16,28 +15,49 @@ class UniwearDataset(Enum):
 
 
 NUAA_SIGNAL_COLUMNS = [
-    "axial_force", "bending_moment_x", "bending_moment_y", "torsion",
-    "vibration1", "vibration2", "spindle_power", "spindle_current",
-    "vibration_x", "vibration_y", "force_z",
+    "axial_force",
+    "bending_moment_x",
+    "bending_moment_y",
+    "torsion",
+    "vibration1",
+    "vibration2",
+    "spindle_power",
+    "spindle_current",
+    "vibration_x",
+    "vibration_y",
+    "force_z",
 ]
 
 NUAA_META_COLUMNS = [
-    "feed_per_tooth", "spindle_speed", "axial_cutting_depth",
+    "feed_per_tooth",
+    "spindle_speed",
+    "axial_cutting_depth",
 ]
 
 NUAA_WEAR_COLUMNS = [
-    "wear_blade_1", "wear_blade_2", "wear_blade_3", "wear_blade_4",
+    "wear_blade_1",
+    "wear_blade_2",
+    "wear_blade_3",
+    "wear_blade_4",
 ]
 
 PHM2010_SIGNAL_COLUMNS = [
-    "force_x", "force_y", "force_z",
-    "vibration_x", "vibration_y", "vibration_z",
+    "force_x",
+    "force_y",
+    "force_z",
+    "vibration_x",
+    "vibration_y",
+    "vibration_z",
     "acoustic_emission_rms",
 ]
 
 UNIWEAR_SIGNAL_COLUMNS = [
-    "force_x", "force_y", "force_z",
-    "vibration_x", "vibration_y", "vibration_z",
+    "force_x",
+    "force_y",
+    "force_z",
+    "vibration_x",
+    "vibration_y",
+    "vibration_z",
 ]
 
 NUAA_MATERIAL = "TC4"
@@ -70,18 +90,27 @@ class UniwearDataLoader:
         }
         return self.data_dir / mapping[dataset]
 
-    def load_dataset(self, dataset: UniwearDataset, use_cache: bool = True) -> pd.DataFrame:
+    def load_dataset(
+        self, dataset: UniwearDataset, use_cache: bool = True
+    ) -> pd.DataFrame:
         cache_key = dataset.value
         if use_cache and cache_key in self._cache:
             return self._cache[cache_key].copy()
 
         file_path = self._resolve_path(dataset)
         if not file_path.exists():
-            raise FileNotFoundError(f"UniWear 数据集加载失败：找不到数据集文件 '{file_path}'。可能原因：1) 文件路径配置错误；2) 数据集文件未下载或已删除。请检查配置文件中的数据集路径，或运行数据下载脚本获取数据集文件。")
+            raise FileNotFoundError(
+                f"UniWear 数据集加载失败：找不到数据集文件 '{file_path}'。可能原因：1) 文件路径配置错误；2) 数据集文件未下载或已删除。请检查配置文件中的数据集路径，或运行数据下载脚本获取数据集文件。"
+            )
 
         df = pd.read_csv(file_path, index_col=0)
         self._cache[cache_key] = df
-        logger.info("Loaded %s dataset: %d rows, %d columns", dataset.value, len(df), len(df.columns))
+        logger.info(
+            "Loaded %s dataset: %d rows, %d columns",
+            dataset.value,
+            len(df),
+            len(df.columns),
+        )
         return df.copy()
 
     def get_signal_data(
@@ -106,7 +135,9 @@ class UniwearDataLoader:
         available = [c for c in columns if c in df.columns]
         missing = set(columns) - set(available)
         if missing:
-            logger.warning("Columns not found in %s dataset: %s", dataset.value, missing)
+            logger.warning(
+                "Columns not found in %s dataset: %s", dataset.value, missing
+            )
 
         return df[available] if available else df
 
@@ -123,15 +154,32 @@ class UniwearDataLoader:
         if "tool_wear" in df.columns:
             wear_cols = ["tool_wear", "timestamp"]
         elif "wear_blade_1" in df.columns:
-            wear_cols = ["wear_blade_1", "wear_blade_2", "wear_blade_3", "wear_blade_4", "timestamp"]
+            wear_cols = [
+                "wear_blade_1",
+                "wear_blade_2",
+                "wear_blade_3",
+                "wear_blade_4",
+                "timestamp",
+            ]
         else:
-            raise ValueError(f"UniWear 数据集解析失败：在 '{dataset.value}' 数据集中未找到刀具磨损（wear）相关列。可能原因：数据集格式不符合预期或列名已变更。请检查数据集文件结构，或参考文档确认预期的列名格式。")
+            raise ValueError(
+                f"UniWear 数据集解析失败：在 '{dataset.value}' 数据集中未找到刀具磨损（wear）相关列。可能原因：数据集格式不符合预期或列名已变更。请检查数据集文件结构，或参考文档确认预期的列名格式。"
+            )
 
         available = [c for c in wear_cols if c in df.columns]
         result = df[available].copy()
 
         if "tool_wear" not in result.columns and "wear_blade_1" in result.columns:
-            wear_cols_present = [c for c in ["wear_blade_1", "wear_blade_2", "wear_blade_3", "wear_blade_4"] if c in result.columns]
+            wear_cols_present = [
+                c
+                for c in [
+                    "wear_blade_1",
+                    "wear_blade_2",
+                    "wear_blade_3",
+                    "wear_blade_4",
+                ]
+                if c in result.columns
+            ]
             if wear_cols_present:
                 result["tool_wear"] = result[wear_cols_present].mean(axis=1)
 
@@ -157,7 +205,11 @@ class UniwearDataLoader:
         for ds in UniwearDataset:
             try:
                 df = self.load_dataset(ds)
-                experiments = self.get_experiment_tags(ds) if "experiment_tag" in df.columns else []
+                experiments = (
+                    self.get_experiment_tags(ds)
+                    if "experiment_tag" in df.columns
+                    else []
+                )
 
                 ds_summary = {
                     "file": self._resolve_path(ds).name,
@@ -178,7 +230,9 @@ class UniwearDataLoader:
                     ds_summary["signal_types"] = "force/vibration/acoustic_emission"
                 elif ds == UniwearDataset.UNIWEAR:
                     ds_summary["material"] = f"{NUAA_MATERIAL}+{PHM2010_MATERIAL}"
-                    ds_summary["material_full"] = f"{NUAA_MATERIAL_FULL} / {PHM2010_MATERIAL_FULL}"
+                    ds_summary["material_full"] = (
+                        f"{NUAA_MATERIAL_FULL} / {PHM2010_MATERIAL_FULL}"
+                    )
                     ds_summary["signal_types"] = "unified force/vibration"
 
                 summary["datasets"][ds.value] = ds_summary
@@ -245,7 +299,9 @@ class UniwearDataLoader:
                     "initial_wear": round(float(finite_w[0]), 6),
                     "final_wear": round(float(finite_w[-1]), 6),
                     "max_wear": round(float(np.max(finite_w)), 6),
-                    "mean_wear_rate": round(float((finite_w[-1] - finite_w[0]) / max(len(finite_w), 1)), 8),
+                    "mean_wear_rate": round(
+                        float((finite_w[-1] - finite_w[0]) / max(len(finite_w), 1)), 8
+                    ),
                     "total_wear_increment": round(float(finite_w[-1] - finite_w[0]), 6),
                     "sample_count": len(finite_w),
                 }
@@ -272,7 +328,9 @@ class UniwearDataLoader:
 
         comparison: dict = {
             "dataset": dataset.value,
-            "material": NUAA_MATERIAL if dataset == UniwearDataset.NUAA else PHM2010_MATERIAL,
+            "material": NUAA_MATERIAL
+            if dataset == UniwearDataset.NUAA
+            else PHM2010_MATERIAL,
             "experiments": {},
         }
 
@@ -308,12 +366,10 @@ class UniwearDataLoader:
         phm2010_comparison = self.compare_experiments(UniwearDataset.PHM2010)
 
         total_nuaa_samples = sum(
-            e.get("sample_count", 0)
-            for e in nuaa_comparison["experiments"].values()
+            e.get("sample_count", 0) for e in nuaa_comparison["experiments"].values()
         )
         total_phm2010_samples = sum(
-            e.get("sample_count", 0)
-            for e in phm2010_comparison["experiments"].values()
+            e.get("sample_count", 0) for e in phm2010_comparison["experiments"].values()
         )
 
         return {

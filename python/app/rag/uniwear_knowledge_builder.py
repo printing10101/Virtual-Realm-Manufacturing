@@ -2,8 +2,6 @@ import logging
 import uuid
 from typing import Callable
 
-import numpy as np
-import pandas as pd
 
 from app.data.uniwear_loader import (
     UniwearDataLoader,
@@ -12,17 +10,23 @@ from app.data.uniwear_loader import (
     NUAA_MATERIAL_FULL,
     PHM2010_MATERIAL,
     PHM2010_MATERIAL_FULL,
-    NUAA_EXPERIMENTS,
-    PHM2010_EXPERIMENTS,
 )
 
 logger = logging.getLogger(__name__)
 
 PROCESS_CN_MAP = {
-    "W1": "正交切削实验1", "W2": "正交切削实验2", "W3": "正交切削实验3",
-    "W4": "正交切削实验4", "W5": "正交切削实验5", "W6": "正交切削实验6",
-    "W7": "正交切削实验7", "W8": "正交切削实验8", "W9": "正交切削实验9",
-    "c1": "全寿命切削实验1", "c4": "全寿命切削实验4", "c6": "全寿命切削实验6",
+    "W1": "正交切削实验1",
+    "W2": "正交切削实验2",
+    "W3": "正交切削实验3",
+    "W4": "正交切削实验4",
+    "W5": "正交切削实验5",
+    "W6": "正交切削实验6",
+    "W7": "正交切削实验7",
+    "W8": "正交切削实验8",
+    "W9": "正交切削实验9",
+    "c1": "全寿命切削实验1",
+    "c4": "全寿命切削实验4",
+    "c6": "全寿命切削实验6",
 }
 
 
@@ -47,7 +51,9 @@ class UniwearKnowledgeBuilder:
 
         lines: list[str] = []
         lines.append("【Uniwear 多材料刀具磨损数据集概述】")
-        lines.append("Uniwear 是一个面向刀具磨损预测与健康监测的多材料数据集，包含两个子数据集：")
+        lines.append(
+            "Uniwear 是一个面向刀具磨损预测与健康监测的多材料数据集，包含两个子数据集："
+        )
         lines.append("")
 
         for ds_key, ds_info in summary.get("datasets", {}).items():
@@ -58,7 +64,9 @@ class UniwearKnowledgeBuilder:
             lines.append(f"- 样本数：{ds_info.get('rows', 0):,} 行")
             lines.append(f"- 特征列数：{ds_info.get('columns', 0)}")
             lines.append(f"- 实验数：{ds_info.get('experiment_count', 0)}")
-            lines.append(f"- 材料：{ds_info.get('material_full', ds_info.get('material', 'N/A'))}")
+            lines.append(
+                f"- 材料：{ds_info.get('material_full', ds_info.get('material', 'N/A'))}"
+            )
             lines.append(f"- 信号类型：{ds_info.get('signal_types', 'N/A')}")
             lines.append(f"- 实验编号：{', '.join(ds_info.get('experiments', []))}")
             lines.append("")
@@ -81,7 +89,9 @@ class UniwearKnowledgeBuilder:
 
         lines.append("## 应用场景")
         lines.append("- NUAA数据集（TC4钛合金）：适用于航空航天材料加工刀具磨损预测")
-        lines.append("- PHM2010数据集（HRC52不锈钢）：适用于高硬度不锈钢加工刀具状态监测")
+        lines.append(
+            "- PHM2010数据集（HRC52不锈钢）：适用于高硬度不锈钢加工刀具状态监测"
+        )
         lines.append("- 联合分析可支持跨材料迁移学习，提高模型泛化能力")
 
         doc_id = "uniwear_dataset_overview"
@@ -129,13 +139,15 @@ class UniwearKnowledgeBuilder:
             if exp_df.empty:
                 continue
 
-            stats = self.loader.compute_statistics(UniwearDataset.NUAA, experiment_tag=exp)
+            stats = self.loader.compute_statistics(
+                UniwearDataset.NUAA, experiment_tag=exp
+            )
             wear_df = self.loader.get_wear_data(UniwearDataset.NUAA, experiment_tag=exp)
 
             lines: list[str] = []
             lines.append(f"【NUAA 钛合金TC4 实验报告】{exp}")
             lines.append(f"材料：{NUAA_MATERIAL_FULL}")
-            lines.append(f"数据集来源：NUAA 正交切削高分辨率束")
+            lines.append("数据集来源：NUAA 正交切削高分辨率束")
             lines.append(f"实验编号：{exp}（共9组：W1-W9）")
             lines.append(f"样本数量：{len(exp_df):,} 行")
             lines.append("")
@@ -144,9 +156,7 @@ class UniwearKnowledgeBuilder:
                 if meta_col in exp_df.columns:
                     vals = exp_df[meta_col].dropna().values
                     if len(vals) > 0:
-                        lines.append(
-                            f"- {meta_col}：{float(vals[0]):.4f}"
-                        )
+                        lines.append(f"- {meta_col}：{float(vals[0]):.4f}")
             lines.append("")
             lines.append("## 信号特征统计")
             for col_name, col_stats in stats.get("signal_stats", {}).items():
@@ -168,10 +178,14 @@ class UniwearKnowledgeBuilder:
             lines.append("")
             lines.append("## 工艺建议（TC4钛合金）")
             lines.append("- 钛合金TC4导热性差，建议使用充足冷却液降低切削温度")
-            lines.append("- 推荐使用硬质合金涂层刀具（TiAlN涂层），切削速度80-120 m/min")
+            lines.append(
+                "- 推荐使用硬质合金涂层刀具（TiAlN涂层），切削速度80-120 m/min"
+            )
             lines.append("- 进给量建议0.05-0.15 mm/tooth，背吃刀量1-3 mm")
             lines.append("- 钛合金易产生加工硬化，需保持稳定切削避免刀具振动")
-            lines.append(f"- 基于本实验数据，平均磨损率为 {ws.get('mean_wear_rate', 'N/A')} mm/样本")
+            lines.append(
+                f"- 基于本实验数据，平均磨损率为 {ws.get('mean_wear_rate', 'N/A')} mm/样本"
+            )
 
             doc_id = f"uniwear_nuaa_{exp}"
             document = "\n".join(lines)
@@ -215,12 +229,14 @@ class UniwearKnowledgeBuilder:
             if exp_df.empty:
                 continue
 
-            stats = self.loader.compute_statistics(UniwearDataset.PHM2010, experiment_tag=exp)
+            stats = self.loader.compute_statistics(
+                UniwearDataset.PHM2010, experiment_tag=exp
+            )
 
             lines: list[str] = []
             lines.append(f"【PHM2010 不锈钢HRC52 实验报告】{exp}")
             lines.append(f"材料：{PHM2010_MATERIAL_FULL}")
-            lines.append(f"数据集来源：PHM2010 刀具磨损竞赛束数据")
+            lines.append("数据集来源：PHM2010 刀具磨损竞赛束数据")
             lines.append(f"实验编号：{exp}（共3组：c1, c4, c6）")
             lines.append(f"样本数量：{len(exp_df):,} 行")
             lines.append("")
@@ -247,7 +263,9 @@ class UniwearKnowledgeBuilder:
             lines.append("- 切削速度建议60-100 m/min，进给量0.05-0.12 mm/r")
             lines.append("- 不锈钢加工易产生积屑瘤，需保持充分冷却和润滑")
             lines.append("- 注意监控切削力和振动信号，及时发现异常磨损")
-            lines.append(f"- 基于本实验数据，平均磨损率为 {ws.get('mean_wear_rate', 'N/A')} mm/样本")
+            lines.append(
+                f"- 基于本实验数据，平均磨损率为 {ws.get('mean_wear_rate', 'N/A')} mm/样本"
+            )
 
             doc_id = f"uniwear_phm2010_{exp}"
             document = "\n".join(lines)
@@ -285,7 +303,7 @@ class UniwearKnowledgeBuilder:
         lines.append("【TC4钛合金 vs HRC52不锈钢 刀具磨损对比分析】")
         lines.append("")
         lines.append("## TC4（钛合金 Ti-6Al-4V）")
-        lines.append(f"来源：NUAA 正交切削数据集")
+        lines.append("来源：NUAA 正交切削数据集")
         lines.append("典型特征：")
         lines.append("- 钛合金导热系数低（约7 W/m·K），切削热集中在刀尖区域")
         lines.append("- 高温化学活性强，易与刀具材料发生反应")
@@ -294,7 +312,7 @@ class UniwearKnowledgeBuilder:
         lines.append("")
 
         lines.append("## HRC52（硬化不锈钢）")
-        lines.append(f"来源：PHM2010 刀具磨损数据集")
+        lines.append("来源：PHM2010 刀具磨损数据集")
         lines.append("典型特征：")
         lines.append("- 高硬度（HRC52）导致切削力大、刀具磨损快")
         lines.append("- 加工硬化倾向强，切削层金属变形大")
@@ -470,6 +488,7 @@ class UniwearKnowledgeBuilder:
         total = sum(counts.values())
         logger.info(
             "Uniwear knowledge build complete: %d total entries (%s)",
-            total, counts,
+            total,
+            counts,
         )
         return {"total_entries": total, "by_type": counts}

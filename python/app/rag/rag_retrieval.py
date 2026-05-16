@@ -10,7 +10,6 @@ RAG 检索规则引擎
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +39,13 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
         source_filters=["uniwear-nuaa", "uniwear-phm2010", "uniwear"],
         metadata_filters={"category": "tool_wear"},
         keyword_boost={
-            "TC4": 3.0, "钛合金": 3.0, "Ti-6Al-4V": 3.0,
-            "HRC52": 3.0, "不锈钢": 2.5, "磨损": 2.0, "刀具": 1.5,
+            "TC4": 3.0,
+            "钛合金": 3.0,
+            "Ti-6Al-4V": 3.0,
+            "HRC52": 3.0,
+            "不锈钢": 2.5,
+            "磨损": 2.0,
+            "刀具": 1.5,
         },
         n_results=8,
         priority=1,
@@ -51,8 +55,12 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
         source_filters=["uniwear-phm2010", "bosch_cnc"],
         metadata_filters={"category": "tool_wear"},
         keyword_boost={
-            "HRC52": 4.0, "不锈钢": 4.0, "切削参数": 3.0,
-            "切削速度": 2.5, "进给量": 2.5, "切削深度": 2.5,
+            "HRC52": 4.0,
+            "不锈钢": 4.0,
+            "切削参数": 3.0,
+            "切削速度": 2.5,
+            "进给量": 2.5,
+            "切削深度": 2.5,
             "PHM2010": 3.0,
         },
         n_results=8,
@@ -63,8 +71,13 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
         source_filters=["uniwear-nuaa", "uniwear-phm2010", "bosch_cnc", "uniwear"],
         metadata_filters={"has_vibration": True},
         keyword_boost={
-            "振动": 4.0, "RMS": 3.0, "频域": 2.5, "声发射": 2.5,
-            "磨损关联": 3.0, "信号分析": 2.0, "监测": 1.5,
+            "振动": 4.0,
+            "RMS": 3.0,
+            "频域": 2.5,
+            "声发射": 2.5,
+            "磨损关联": 3.0,
+            "信号分析": 2.0,
+            "监测": 1.5,
         },
         n_results=10,
         priority=1,
@@ -74,8 +87,13 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
         source_filters=["uniwear", "uniwear-nuaa", "uniwear-phm2010"],
         metadata_filters={},
         keyword_boost={
-            "TC4": 3.0, "HRC52": 3.0, "钛合金": 3.0, "不锈钢": 3.0,
-            "对比": 2.5, "材料差异": 2.5, "工艺对比": 2.5,
+            "TC4": 3.0,
+            "HRC52": 3.0,
+            "钛合金": 3.0,
+            "不锈钢": 3.0,
+            "对比": 2.5,
+            "材料差异": 2.5,
+            "工艺对比": 2.5,
         },
         n_results=10,
         priority=1,
@@ -85,8 +103,12 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
         source_filters=["bosch_cnc", "uniwear-nuaa", "uniwear-phm2010", "cross_source"],
         metadata_filters={},
         keyword_boost={
-            "Bosch": 3.0, "Uniwear": 3.0, "多源": 3.0, "对比": 2.5,
-            "交叉验证": 3.0, "联合分析": 2.5,
+            "Bosch": 3.0,
+            "Uniwear": 3.0,
+            "多源": 3.0,
+            "对比": 2.5,
+            "交叉验证": 3.0,
+            "联合分析": 2.5,
         },
         n_results=10,
         priority=1,
@@ -96,7 +118,10 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
         source_filters=[],
         metadata_filters={},
         keyword_boost={
-            "刀具": 1.5, "磨损": 1.5, "加工": 1.2, "工艺": 1.2,
+            "刀具": 1.5,
+            "磨损": 1.5,
+            "加工": 1.2,
+            "工艺": 1.2,
         },
         n_results=5,
         priority=3,
@@ -105,29 +130,63 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
 
 INTENT_KEYWORDS = {
     QueryIntent.MATERIAL_WEAR: [
-        "TC4", "Ti-6Al-4V", "钛合金", "titanium",
-        "HRC52", "不锈钢加工磨损", "磨损特征",
-        "NUAA", "PHM2010",
+        "TC4",
+        "Ti-6Al-4V",
+        "钛合金",
+        "titanium",
+        "HRC52",
+        "不锈钢加工磨损",
+        "磨损特征",
+        "NUAA",
+        "PHM2010",
     ],
     QueryIntent.CUTTING_PARAMS: [
-        "HRC52", "不锈钢", "切削参数", "切削速度",
-        "进给量", "背吃刀量", "转速",
-        "PHM2010", "参数建议", "推荐参数",
+        "HRC52",
+        "不锈钢",
+        "切削参数",
+        "切削速度",
+        "进给量",
+        "背吃刀量",
+        "转速",
+        "PHM2010",
+        "参数建议",
+        "推荐参数",
     ],
     QueryIntent.VIBRATION_WEAR: [
-        "振动", "vibration", "RMS", "声发射",
-        "acoustic", "信号", "频域", "频谱",
-        "振动与磨损", "磨损关联", "监测",
+        "振动",
+        "vibration",
+        "RMS",
+        "声发射",
+        "acoustic",
+        "信号",
+        "频域",
+        "频谱",
+        "振动与磨损",
+        "磨损关联",
+        "监测",
     ],
     QueryIntent.MATERIAL_COMPARE: [
-        "多材料", "对比", "比较", "TC4", "HRC52",
-        "钛合金", "不锈钢", "工艺对比",
-        "材料差异", "不同材料",
+        "多材料",
+        "对比",
+        "比较",
+        "TC4",
+        "HRC52",
+        "钛合金",
+        "不锈钢",
+        "工艺对比",
+        "材料差异",
+        "不同材料",
     ],
     QueryIntent.CROSS_SOURCE: [
-        "Bosch", "Uniwear", "多源", "对比",
-        "交叉验证", "联合", "标定",
-        "两个数据集", "不同数据源",
+        "Bosch",
+        "Uniwear",
+        "多源",
+        "对比",
+        "交叉验证",
+        "联合",
+        "标定",
+        "两个数据集",
+        "不同数据源",
     ],
 }
 
@@ -207,7 +266,9 @@ class RagRetrievalEngine:
             "results": reranked,
         }
 
-    def retrieve_by_material(self, material: str, query: str, n_results: int = 5) -> dict:
+    def retrieve_by_material(
+        self, material: str, query: str, n_results: int = 5
+    ) -> dict:
         if material.upper() == "TC4" or "钛" in material:
             intent = QueryIntent.MATERIAL_WEAR
             override = "uniwear-nuaa"
@@ -218,9 +279,13 @@ class RagRetrievalEngine:
             intent = QueryIntent.GENERAL
             override = None
 
-        return self.retrieve(query=query, intent=intent, n_results=n_results, override_source=override)
+        return self.retrieve(
+            query=query, intent=intent, n_results=n_results, override_source=override
+        )
 
-    def retrieve_by_signal_type(self, signal_type: str, query: str, n_results: int = 5) -> dict:
+    def retrieve_by_signal_type(
+        self, signal_type: str, query: str, n_results: int = 5
+    ) -> dict:
         if "vibration" in signal_type.lower() or "振动" in signal_type:
             intent = QueryIntent.VIBRATION_WEAR
         else:
@@ -240,7 +305,9 @@ class RagRetrievalEngine:
         all_results: list[dict] = []
         for source in sources:
             try:
-                source_results = self._query_source(query=query, source=source, n_results=n_results)
+                source_results = self._query_source(
+                    query=query, source=source, n_results=n_results
+                )
                 for r in source_results:
                     r["_retrieval_source_filter"] = source
                 all_results.extend(source_results)
@@ -259,7 +326,9 @@ class RagRetrievalEngine:
 
     def _query_source(self, query: str, source: str, n_results: int) -> list[dict]:
         try:
-            raw = self.kb.query_by_source(source=source, query=query, n_results=n_results)
+            raw = self.kb.query_by_source(
+                source=source, query=query, n_results=n_results
+            )
         except Exception:
             return self._query_general(query, n_results)
 
@@ -268,9 +337,13 @@ class RagRetrievalEngine:
             for i, doc in enumerate(raw["documents"][0]):
                 item = {"document": doc}
                 if raw.get("metadatas") and raw["metadatas"][0]:
-                    item["metadata"] = raw["metadatas"][0][i] if i < len(raw["metadatas"][0]) else {}
+                    item["metadata"] = (
+                        raw["metadatas"][0][i] if i < len(raw["metadatas"][0]) else {}
+                    )
                 if raw.get("distances") and raw["distances"][0]:
-                    item["distance"] = raw["distances"][0][i] if i < len(raw["distances"][0]) else None
+                    item["distance"] = (
+                        raw["distances"][0][i] if i < len(raw["distances"][0]) else None
+                    )
                 if raw.get("ids") and raw["ids"][0]:
                     item["id"] = raw["ids"][0][i] if i < len(raw["ids"][0]) else None
                 results.append(item)
@@ -287,9 +360,13 @@ class RagRetrievalEngine:
             for i, doc in enumerate(raw["documents"][0]):
                 item = {"document": doc}
                 if raw.get("metadatas") and raw["metadatas"][0]:
-                    item["metadata"] = raw["metadatas"][0][i] if i < len(raw["metadatas"][0]) else {}
+                    item["metadata"] = (
+                        raw["metadatas"][0][i] if i < len(raw["metadatas"][0]) else {}
+                    )
                 if raw.get("distances") and raw["distances"][0]:
-                    item["distance"] = raw["distances"][0][i] if i < len(raw["distances"][0]) else None
+                    item["distance"] = (
+                        raw["distances"][0][i] if i < len(raw["distances"][0]) else None
+                    )
                 if raw.get("ids") and raw["ids"][0]:
                     item["id"] = raw["ids"][0][i] if i < len(raw["ids"][0]) else None
                 results.append(item)
