@@ -34,6 +34,13 @@ from app.ai.lnn.inference.registry import BaseModelRegistry, ModelEntry
 from app.ai.lnn.inference.model_cache import get_model_cache
 from app.ai.lnn.models.base_lnn import BaseLNNModel
 
+try:
+    from app.database.constraints import CuttingConstraintValidator
+
+    _HAS_CONSTRAINT_VALIDATOR = True
+except ImportError:
+    _HAS_CONSTRAINT_VALIDATOR = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -94,6 +101,9 @@ class LNNPredictor:
         engine_type: EngineType = EngineType.LNN,
         use_amp: bool = True,
         auto_device: bool = True,
+        material_id: Optional[str] = None,
+        tool_id: Optional[str] = None,
+        machine_id: Optional[str] = None,
     ):
         """
         Initialize LNN Predictor
@@ -118,6 +128,19 @@ class LNNPredictor:
         self.device = self._select_device()
         if HAS_TORCH and hasattr(self.model, "to"):
             self.model.to(self.device)
+
+        self._material_id = material_id
+        self._tool_id = tool_id
+        self._machine_id = machine_id
+        self._constraint_validator: CuttingConstraintValidator | None = None
+        if _HAS_CONSTRAINT_VALIDATOR and material_id and tool_id:
+            self._constraint_validator = CuttingConstraintValidator()
+            logger.info(
+                "物理约束校验已启用 material=%s tool=%s machine=%s",
+                material_id,
+                tool_id,
+                machine_id or "none",
+            )
 
         self._stats = {
             "total_inferences": 0,
@@ -223,11 +246,38 @@ class LNNPredictor:
 
             confidence = self._compute_confidence(output) if return_confidence else 0.0
 
+            constraint_result = None
+            if self._constraint_validator and isinstance(processed_output, dict):
+                try:
+                    constraint_result = self._constraint_validator.validate(
+                        material_id=self._material_id,
+                        tool_id=self._tool_id,
+                        params=processed_output,
+                        machine_id=self._machine_id,
+                    )
+                    if constraint_result.adjusted_params:
+                        for k, v in constraint_result.adjusted_params.items():
+                            if k in processed_output:
+                                processed_output[k] = v
+                    if constraint_result.warnings:
+                        logger.warning(
+                            "物理约束校验警告: %s",
+                            "; ".join(constraint_result.warnings),
+                        )
+                except Exception as exc:
+                    logger.warning("物理约束校验失败: %s", exc)
+
             result = PredictionResult(
                 value=processed_output,
                 confidence=confidence,
                 inference_time=inference_time,
-                model_info={"name": self.model_name, "device": str(self.device)},
+                model_info={
+                    "name": self.model_name,
+                    "device": str(self.device),
+                    "constraint_result": constraint_result.to_dict()
+                    if constraint_result
+                    else None,
+                },
             )
 
             if return_confidence:

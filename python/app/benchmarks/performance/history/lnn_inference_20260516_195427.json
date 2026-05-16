@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-05-16T19:54:27",
+  "environment": {
+    "python": "3.11.0rc2",
+    "torch": "2.12.0+cpu",
+    "cuda": false
+  },
+  "results": {
+    "lnn_inference_ms_p50": 1.169,
+    "lnn_inference_ms_p95": 1.481,
+    "lnn_inference_ms_p99": 2.455,
+    "lnn_inference_ms_mean": 1.205,
+    "lnn_inference_ms_min": 0.943,
+    "lnn_inference_ms_max": 2.455,
+    "lnn_inference_samples": 1,
+    "batch_10_inference_ms": 17.92,
+    "batch_10_throughput_sps": 11158.0,
+    "batch_50_inference_ms": 9.12,
+    "batch_50_throughput_sps": 54833.0,
+    "batch_100_inference_ms": 7.57,
+    "batch_100_throughput_sps": 66075.5
+  }
+}
