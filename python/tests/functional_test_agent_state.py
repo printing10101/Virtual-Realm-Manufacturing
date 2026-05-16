@@ -14,17 +14,15 @@ Aligns with the 9-category test plan:
 
 Run:  python -m pytest tests/functional_test_agent_state.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import asyncio
 import hashlib
 import copy
-import json
 import os
-import time
 import uuid
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
@@ -36,19 +34,10 @@ from app.models.agent_state import (
     CheckpointType,
     MemoryEntry,
     SessionContext,
-    CURRENT_SCHEMA_VERSION,
 )
 from app.core.state_persistence import (
     StatePersistenceManager,
     StateRecoveryManager,
-    CheckpointLifecycleManager,
-    StateCompressor,
-    StateMigrationEngine,
-    HEARTBEAT_INTERVAL_SECONDS,
-    CHECKPOINT_MAX_COUNT,
-    CHECKPOINT_MAX_AGE_SECONDS,
-    MEMORY_PRUNING_THRESHOLD,
-    CONTEXT_COMPRESSION_THRESHOLD_BYTES,
 )
 
 # ── Shared fixtures ─────────────────────────────────────────────────────────
@@ -129,7 +118,10 @@ class TestTrainingInterruptionRecovery:
                 best_metric=best_loss,
                 best_metric_name="val_loss",
                 checkpoint_type=CheckpointType.EPOCH,
-                metrics={"val_loss": simulated_loss, "train_loss": simulated_loss + 0.1},
+                metrics={
+                    "val_loss": simulated_loss,
+                    "train_loss": simulated_loss + 0.1,
+                },
                 state_dict_path=str(weights_path),
             )
             await persistence.save_checkpoint(agent_id, ckpt, trigger="epoch_end")
@@ -142,11 +134,17 @@ class TestTrainingInterruptionRecovery:
         # ── 1c. Verify state persisted to file-system (checkpoint files exist) ──
         chk_dir = persistence._checkpoint_manager.get_agent_checkpoint_dir(agent_id)
         pt_files = sorted(chk_dir.glob("*.pt"))
-        assert len(pt_files) >= net_epochs, f"Expected ≥{net_epochs} .pt files, found {len(pt_files)}"
+        assert len(pt_files) >= net_epochs, (
+            f"Expected ≥{net_epochs} .pt files, found {len(pt_files)}"
+        )
 
         # ── 1d. Recover agent ──
         async def task_loader(tid):
-            return type("_Task", (), {"task_id": tid, "status": "in_progress", "type": "training"})()
+            return type(
+                "_Task",
+                (),
+                {"task_id": tid, "status": "in_progress", "type": "training"},
+            )()
 
         async def task_runner(tid, ckpt=None):
             return {"resumed": True, "from_epoch": ckpt.epoch if ckpt else 1}
@@ -336,21 +334,29 @@ class TestFileSystemCheck:
         # ── 3c. Verify file size is reasonable (compressed, non-zero) ──
         for f in pt_files:
             size = f.stat().st_size
-            assert size > 100, f"File {f.name} too small ({size} bytes) – likely corrupted"
+            assert size > 100, (
+                f"File {f.name} too small ({size} bytes) – likely corrupted"
+            )
             assert size < 50_000, f"File {f.name} unexpectedly large ({size} bytes)"
 
         # ── 3d. Checksum verification (SHA-256) ──
         checksums = {}
         for f in pt_files:
             checksums[f.name] = hashlib.sha256(f.read_bytes()).hexdigest()
-        assert len(set(checksums.values())) == 3, "Identical checksums across different epochs!"
+        assert len(set(checksums.values())) == 3, (
+            "Identical checksums across different epochs!"
+        )
 
         # Reload and verify round-trip integrity
         for ep in [1, 2, 3]:
             ckpt_id = f"ckpt_fs_e{ep}"
-            raw = persistence._checkpoint_manager.load_checkpoint_file(agent_id, ckpt_id)
+            raw = persistence._checkpoint_manager.load_checkpoint_file(
+                agent_id, ckpt_id
+            )
             assert raw is not None, f"Failed to load {ckpt_id}"
-            assert raw == original_weights[ckpt_id], f"Round-trip mismatch for {ckpt_id}"
+            assert raw == original_weights[ckpt_id], (
+                f"Round-trip mismatch for {ckpt_id}"
+            )
 
     @pytest.mark.asyncio
     async def test_agent_isolation_in_filesystem(self, persistence):
@@ -451,7 +457,9 @@ class TestStateRollback:
 
     @pytest_asyncio.fixture
     async def persistence(self, tmp_path):
-        mgr = StatePersistenceManager(checkpoint_base_dir=str(tmp_path / "chk_rollback"))
+        mgr = StatePersistenceManager(
+            checkpoint_base_dir=str(tmp_path / "chk_rollback")
+        )
         await mgr.start()
         return mgr
 
@@ -584,12 +592,8 @@ class TestStateCloning:
             checkpoint=Checkpoint(epoch=4, step=800, best_metric=0.23),
         )
         await persistence.save_state(source)
-        await persistence.save_checkpoint(
-            source_id, Checkpoint(epoch=1, step=200)
-        )
-        await persistence.save_checkpoint(
-            source_id, Checkpoint(epoch=2, step=400)
-        )
+        await persistence.save_checkpoint(source_id, Checkpoint(epoch=1, step=200))
+        await persistence.save_checkpoint(source_id, Checkpoint(epoch=2, step=400))
 
         # 6b. Clone
         cloned = await recovery.clone_agent_state(source_id, target_id)
@@ -601,11 +605,18 @@ class TestStateCloning:
         assert len(cloned.memory) == len(source.memory)
         for i, (s_mem, c_mem) in enumerate(zip(source.memory, cloned.memory)):
             assert c_mem.content == s_mem.content, f"Memory {i} content differs"
-            assert c_mem.importance == s_mem.importance, f"Memory {i} importance differs"
+            assert c_mem.importance == s_mem.importance, (
+                f"Memory {i} importance differs"
+            )
 
         # 6e. Context complete
-        assert cloned.session_context.task_description == source.session_context.task_description
-        assert cloned.session_context.current_stage == source.session_context.current_stage
+        assert (
+            cloned.session_context.task_description
+            == source.session_context.task_description
+        )
+        assert (
+            cloned.session_context.current_stage == source.session_context.current_stage
+        )
 
         # 6f. Independent execution – modify clone, source unchanged
         cloned.session_context.current_stage = "evaluating"
@@ -692,13 +703,20 @@ class TestManualStateManagement:
         # Verify original saved
         loaded = await persistence.load_state(agent_id)
         assert loaded.session_context.current_stage == "geometry_planning"
-        assert loaded.session_context.goal_chain == ["parse_spec", "generate_geom", "validate", "export"]
+        assert loaded.session_context.goal_chain == [
+            "parse_spec",
+            "generate_geom",
+            "validate",
+            "export",
+        ]
 
         # 8b. Modify context/task params
         modified = await persistence.load_state(agent_id)
         modified.session_context.current_stage = "mesh_generation"
         modified.session_context.goal_chain = ["wrong_stage"]
-        modified.memory.append(MemoryEntry(content="wrong modification", importance=0.1))
+        modified.memory.append(
+            MemoryEntry(content="wrong modification", importance=0.1)
+        )
         modified.metadata["temp_change"] = True
         await persistence.save_state(modified)
 
@@ -720,7 +738,12 @@ class TestManualStateManagement:
         # 8e. Confirm all modifications reverted
         restored = await persistence.load_state(agent_id)
         assert restored.session_context.current_stage == "geometry_planning"
-        assert restored.session_context.goal_chain == ["parse_spec", "generate_geom", "validate", "export"]
+        assert restored.session_context.goal_chain == [
+            "parse_spec",
+            "generate_geom",
+            "validate",
+            "export",
+        ]
         assert len(restored.memory) == 1
         assert restored.memory[0].content == "user prefers low-poly style"
         assert "temp_change" not in restored.metadata
@@ -789,17 +812,19 @@ class TestConcurrentStateSave:
         # 9c. Trigger all concurrent saves
         async def concurrent_save(aid, extra):
             state = await mgr.load_state(aid)
-            state.memory.append(MemoryEntry(content=f"conc_mem_{extra}", importance=0.7))
+            state.memory.append(
+                MemoryEntry(content=f"conc_mem_{extra}", importance=0.7)
+            )
             state.metadata["concurrent"] = True
             await mgr.save_state(state, trigger="concurrent_test")
 
-        await asyncio.gather(*[
-            concurrent_save(aid, i) for i, aid in enumerate(agents)
-        ])
+        await asyncio.gather(*[concurrent_save(aid, i) for i, aid in enumerate(agents)])
 
         # 9d. Verify all agents saved
         all_agents = await mgr.list_all_agent_states()
-        conc_ids = [a["agent_id"] for a in all_agents if a["agent_id"].startswith("conc_")]
+        conc_ids = [
+            a["agent_id"] for a in all_agents if a["agent_id"].startswith("conc_")
+        ]
         assert len(conc_ids) == N
 
         # 9e. Verify no corruption: each agent has exactly its own data
@@ -819,7 +844,9 @@ class TestConcurrentStateSave:
             for mem in loaded.memory:
                 if "conc_mem" in mem.content:
                     cid = int(mem.content.split("_")[-1])
-                    assert cid == i, f"Cross-contamination: {aid} has memory from agent {cid}"
+                    assert cid == i, (
+                        f"Cross-contamination: {aid} has memory from agent {cid}"
+                    )
 
         await mgr.stop()
 
@@ -838,11 +865,15 @@ class TestConcurrentStateSave:
         for r in range(rounds):
             tasks = []
             for aid in agent_ids:
+
                 async def cycle(a=aid, round_num=r):
                     s = await mgr.load_state(a)
                     s.metadata["round"] = round_num
-                    s.memory.append(MemoryEntry(content=f"r{round_num}", importance=0.5))
+                    s.memory.append(
+                        MemoryEntry(content=f"r{round_num}", importance=0.5)
+                    )
                     await mgr.save_state(s, trigger="stress")
+
                 tasks.append(cycle())
             await asyncio.gather(*tasks)
 

@@ -1,10 +1,6 @@
-import json
 import os
 import sys
-import tempfile
-import uuid
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -20,9 +16,7 @@ from app.core.skill_loader import (
     SkillRegistry,
     SkillLoader,
     SkillFileWatcher,
-    get_skill_loader,
     init_skill_loader,
-    inject_skills,
     PRIORITY_MAP,
 )
 
@@ -73,7 +67,9 @@ print("hello")
 
 class TestSkillVersion:
     def test_create_version(self):
-        v = SkillVersion(version="1.0.0", content_hash="abc123", file_path="/tmp/test.md")
+        v = SkillVersion(
+            version="1.0.0", content_hash="abc123", file_path="/tmp/test.md"
+        )
         assert v.version == "1.0.0"
         assert v.content_hash == "abc123"
         assert v.file_path == "/tmp/test.md"
@@ -106,24 +102,32 @@ class TestSkillMetadata:
         assert m.required_context == ["material", "tool_type"]
 
     def test_applicable_to_wildcard(self):
-        m = SkillMetadata(skill_id="t1", name="t1", version="1.0.0", applicable_tasks=["*"])
+        m = SkillMetadata(
+            skill_id="t1", name="t1", version="1.0.0", applicable_tasks=["*"]
+        )
         assert m.applicable_to("lnn_training") is True
         assert m.applicable_to("unknown") is True
 
     def test_applicable_to_exact(self):
-        m = SkillMetadata(skill_id="t2", name="t2", version="1.0.0", applicable_tasks=["prediction"])
+        m = SkillMetadata(
+            skill_id="t2", name="t2", version="1.0.0", applicable_tasks=["prediction"]
+        )
         assert m.applicable_to("prediction") is True
         assert m.applicable_to("training") is False
 
     def test_contexts_satisfied_empty(self):
-        m = SkillMetadata(skill_id="t3", name="t3", version="1.0.0", required_context=[])
+        m = SkillMetadata(
+            skill_id="t3", name="t3", version="1.0.0", required_context=[]
+        )
         ok, missing = m.contexts_satisfied(set())
         assert ok is True
         ok2, _ = m.contexts_satisfied({"a"})
         assert ok2 is True
 
     def test_contexts_satisfied_partial(self):
-        m = SkillMetadata(skill_id="t4", name="t4", version="1.0.0", required_context=["a", "b"])
+        m = SkillMetadata(
+            skill_id="t4", name="t4", version="1.0.0", required_context=["a", "b"]
+        )
         ok, _ = m.contexts_satisfied({"a", "b"})
         assert ok is True
         ok2, _ = m.contexts_satisfied({"a"})
@@ -132,15 +136,21 @@ class TestSkillMetadata:
         assert ok3 is False
 
     def test_contexts_satisfied_superset(self):
-        m = SkillMetadata(skill_id="t5", name="t5", version="1.0.0", required_context=["a"])
+        m = SkillMetadata(
+            skill_id="t5", name="t5", version="1.0.0", required_context=["a"]
+        )
         ok, _ = m.contexts_satisfied({"a", "b", "c"})
         assert ok is True
 
     def test_to_dict(self):
         m = SkillMetadata(
-            skill_id="dict_test", name="字典测试", version="1.0.0",
-            applicable_tasks=["prediction"], required_context=["material"],
-            tags=["tag1"], parameters={"max": 100},
+            skill_id="dict_test",
+            name="字典测试",
+            version="1.0.0",
+            applicable_tasks=["prediction"],
+            required_context=["material"],
+            tags=["tag1"],
+            parameters={"max": 100},
         )
         d = m.to_dict()
         assert d["skill_id"] == "dict_test"
@@ -184,7 +194,9 @@ class TestMarkdownSkillParser:
         assert result["metadata"]["skill_id"] is not None
 
     def test_parse_no_frontmatter(self, tmp_path):
-        file_path = self._write_skill_file(tmp_path, "# Just a heading\n\nContent here.")
+        file_path = self._write_skill_file(
+            tmp_path, "# Just a heading\n\nContent here."
+        )
         result = MarkdownSkillParser.parse(file_path)
         assert result is not None
         assert result["metadata"]["skill_id"] is not None
@@ -237,14 +249,24 @@ class TestSkillRegistry:
 
     def test_get_by_level(self):
         registry = SkillRegistry()
-        s1 = Skill(metadata=SkillMetadata(
-            skill_id="g1", name="g1", version="1.0.0",
-            level=SkillLevel.GLOBAL, priority=SkillPriority.GLOBAL,
-        ))
-        s2 = Skill(metadata=SkillMetadata(
-            skill_id="p1", name="p1", version="1.0.0",
-            level=SkillLevel.PROJECT, priority=SkillPriority.PROJECT,
-        ))
+        s1 = Skill(
+            metadata=SkillMetadata(
+                skill_id="g1",
+                name="g1",
+                version="1.0.0",
+                level=SkillLevel.GLOBAL,
+                priority=SkillPriority.GLOBAL,
+            )
+        )
+        s2 = Skill(
+            metadata=SkillMetadata(
+                skill_id="p1",
+                name="p1",
+                version="1.0.0",
+                level=SkillLevel.PROJECT,
+                priority=SkillPriority.PROJECT,
+            )
+        )
         registry.register(s1)
         registry.register(s2)
 
@@ -254,18 +276,30 @@ class TestSkillRegistry:
 
     def test_get_by_task(self):
         registry = SkillRegistry()
-        s1 = Skill(metadata=SkillMetadata(
-            skill_id="pred_skill", name="pred", version="1.0.0",
-            applicable_tasks=["prediction"],
-        ))
-        s2 = Skill(metadata=SkillMetadata(
-            skill_id="train_skill", name="train", version="1.0.0",
-            applicable_tasks=["training"],
-        ))
-        s3 = Skill(metadata=SkillMetadata(
-            skill_id="all_skill", name="all", version="1.0.0",
-            applicable_tasks=["*"],
-        ))
+        s1 = Skill(
+            metadata=SkillMetadata(
+                skill_id="pred_skill",
+                name="pred",
+                version="1.0.0",
+                applicable_tasks=["prediction"],
+            )
+        )
+        s2 = Skill(
+            metadata=SkillMetadata(
+                skill_id="train_skill",
+                name="train",
+                version="1.0.0",
+                applicable_tasks=["training"],
+            )
+        )
+        s3 = Skill(
+            metadata=SkillMetadata(
+                skill_id="all_skill",
+                name="all",
+                version="1.0.0",
+                applicable_tasks=["*"],
+            )
+        )
         registry.register(s1)
         registry.register(s2)
         registry.register(s3)
@@ -305,14 +339,22 @@ class TestSkillRegistry:
 
     def test_clear_level(self):
         registry = SkillRegistry()
-        s1 = Skill(metadata=SkillMetadata(
-            skill_id="g2", name="g2", version="1.0.0",
-            level=SkillLevel.GLOBAL,
-        ))
-        s2 = Skill(metadata=SkillMetadata(
-            skill_id="p2", name="p2", version="1.0.0",
-            level=SkillLevel.PROJECT,
-        ))
+        s1 = Skill(
+            metadata=SkillMetadata(
+                skill_id="g2",
+                name="g2",
+                version="1.0.0",
+                level=SkillLevel.GLOBAL,
+            )
+        )
+        s2 = Skill(
+            metadata=SkillMetadata(
+                skill_id="p2",
+                name="p2",
+                version="1.0.0",
+                level=SkillLevel.PROJECT,
+            )
+        )
         registry.register(s1)
         registry.register(s2)
 
@@ -323,7 +365,9 @@ class TestSkillRegistry:
 
     def test_get_stats(self):
         registry = SkillRegistry()
-        s = Skill(metadata=SkillMetadata(skill_id="stat1", name="stat1", version="1.0.0"))
+        s = Skill(
+            metadata=SkillMetadata(skill_id="stat1", name="stat1", version="1.0.0")
+        )
         registry.register(s)
 
         stats = registry.get_stats()
@@ -385,16 +429,28 @@ class TestSkillLoaderSkillsForTask:
     def test_get_skills_with_context(self, tmp_path):
         loader = self._make_loader(tmp_path)
 
-        s1 = Skill(metadata=SkillMetadata(
-            skill_id="ctx_all", name="ctx_all", version="1.0.0",
-            applicable_tasks=["*"], required_context=[],
-            level=SkillLevel.GLOBAL, priority=SkillPriority.GLOBAL,
-        ))
-        s2 = Skill(metadata=SkillMetadata(
-            skill_id="ctx_full", name="ctx_full", version="1.0.0",
-            applicable_tasks=["*"], required_context=["material", "tool_type"],
-            level=SkillLevel.GLOBAL, priority=SkillPriority.PROJECT,
-        ))
+        s1 = Skill(
+            metadata=SkillMetadata(
+                skill_id="ctx_all",
+                name="ctx_all",
+                version="1.0.0",
+                applicable_tasks=["*"],
+                required_context=[],
+                level=SkillLevel.GLOBAL,
+                priority=SkillPriority.GLOBAL,
+            )
+        )
+        s2 = Skill(
+            metadata=SkillMetadata(
+                skill_id="ctx_full",
+                name="ctx_full",
+                version="1.0.0",
+                applicable_tasks=["*"],
+                required_context=["material", "tool_type"],
+                level=SkillLevel.GLOBAL,
+                priority=SkillPriority.PROJECT,
+            )
+        )
         loader.registry.register(s1)
         loader.registry.register(s2)
 
@@ -421,7 +477,8 @@ class TestSkillLoaderSkillsForTask:
         proj_dir.mkdir(parents=True)
 
         skill_file = proj_dir / "proj_skill.md"
-        skill_file.write_text("""---
+        skill_file.write_text(
+            """---
 skill_id: proj_only
 name: 项目专属
 version: 1.0.0
@@ -429,7 +486,9 @@ applicable_tasks: ["prediction"]
 required_context: []
 ---
 # 项目专属
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         loader = SkillLoader(skills_base_dir=str(skills_dir))
         loader.load_project_skills("projA")
@@ -448,7 +507,8 @@ required_context: []
         agent_dir.mkdir(parents=True)
 
         skill_file = agent_dir / "agent_skill.md"
-        skill_file.write_text("""---
+        skill_file.write_text(
+            """---
 skill_id: agent_only
 name: 代理专属
 version: 1.0.0
@@ -456,7 +516,9 @@ applicable_tasks: ["analysis"]
 required_context: []
 ---
 # 代理专属
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         loader = SkillLoader(skills_base_dir=str(skills_dir))
         loader.load_agent_skills("agentX")
@@ -471,21 +533,39 @@ required_context: []
     def test_priority_ordering(self, tmp_path):
         loader = self._make_loader(tmp_path)
 
-        g = Skill(metadata=SkillMetadata(
-            skill_id="g", name="g", version="1.0.0",
-            applicable_tasks=["*"], required_context=[],
-            level=SkillLevel.GLOBAL, priority=SkillPriority.GLOBAL,
-        ))
-        p = Skill(metadata=SkillMetadata(
-            skill_id="p", name="p", version="1.0.0",
-            applicable_tasks=["*"], required_context=[],
-            level=SkillLevel.GLOBAL, priority=SkillPriority.PROJECT,
-        ))
-        a = Skill(metadata=SkillMetadata(
-            skill_id="a", name="a", version="1.0.0",
-            applicable_tasks=["*"], required_context=[],
-            level=SkillLevel.GLOBAL, priority=SkillPriority.AGENT,
-        ))
+        g = Skill(
+            metadata=SkillMetadata(
+                skill_id="g",
+                name="g",
+                version="1.0.0",
+                applicable_tasks=["*"],
+                required_context=[],
+                level=SkillLevel.GLOBAL,
+                priority=SkillPriority.GLOBAL,
+            )
+        )
+        p = Skill(
+            metadata=SkillMetadata(
+                skill_id="p",
+                name="p",
+                version="1.0.0",
+                applicable_tasks=["*"],
+                required_context=[],
+                level=SkillLevel.GLOBAL,
+                priority=SkillPriority.PROJECT,
+            )
+        )
+        a = Skill(
+            metadata=SkillMetadata(
+                skill_id="a",
+                name="a",
+                version="1.0.0",
+                applicable_tasks=["*"],
+                required_context=[],
+                level=SkillLevel.GLOBAL,
+                priority=SkillPriority.AGENT,
+            )
+        )
         loader.registry.register(g)
         loader.registry.register(p)
         loader.registry.register(a)
@@ -503,11 +583,17 @@ class TestInjectSkills:
         for lvl in [SkillLevel.GLOBAL, SkillLevel.PROJECT, SkillLevel.AGENT]:
             loader.registry.clear_level(lvl)
 
-        s = Skill(metadata=SkillMetadata(
-            skill_id="inject_test", name="注入测试", version="1.0.0",
-            applicable_tasks=["*"], required_context=[],
-            level=SkillLevel.GLOBAL, priority=SkillPriority.GLOBAL,
-        ))
+        s = Skill(
+            metadata=SkillMetadata(
+                skill_id="inject_test",
+                name="注入测试",
+                version="1.0.0",
+                applicable_tasks=["*"],
+                required_context=[],
+                level=SkillLevel.GLOBAL,
+                priority=SkillPriority.GLOBAL,
+            )
+        )
         s.body = "## 测试内容\n测试步骤：\n1. 做A\n2. 做B\n"
         loader.registry.register(s)
 
@@ -534,13 +620,21 @@ class TestVersionManagement:
             loader.registry.clear_level(lvl)
 
         s = Skill(
-            metadata=SkillMetadata(skill_id="ver_test", name="ver_test", version="1.0.0"),
+            metadata=SkillMetadata(
+                skill_id="ver_test", name="ver_test", version="1.0.0"
+            ),
             raw_content="# v1",
             body="v1",
         )
-        s.versions["1.0.0"] = SkillVersion(version="1.0.0", content_hash="hash_v1", file_path="/t/v1.md")
-        s.versions["1.1.0"] = SkillVersion(version="1.1.0", content_hash="hash_v2", file_path="/t/v2.md")
-        s.versions["2.0.0"] = SkillVersion(version="2.0.0", content_hash="hash_v3", file_path="/t/v3.md")
+        s.versions["1.0.0"] = SkillVersion(
+            version="1.0.0", content_hash="hash_v1", file_path="/t/v1.md"
+        )
+        s.versions["1.1.0"] = SkillVersion(
+            version="1.1.0", content_hash="hash_v2", file_path="/t/v2.md"
+        )
+        s.versions["2.0.0"] = SkillVersion(
+            version="2.0.0", content_hash="hash_v3", file_path="/t/v3.md"
+        )
         loader.registry.register(s)
 
         history = loader.get_version_history("ver_test")
@@ -602,7 +696,9 @@ class TestSkillExportImport:
 
         s = Skill(
             metadata=SkillMetadata(
-                skill_id="export_test", name="导出测试", version="1.0.0",
+                skill_id="export_test",
+                name="导出测试",
+                version="1.0.0",
                 applicable_tasks=["prediction"],
                 required_context=["material"],
                 tags=["export"],
@@ -680,9 +776,13 @@ class TestSkillRating:
         for lvl in [SkillLevel.GLOBAL, SkillLevel.PROJECT, SkillLevel.AGENT]:
             loader.registry.clear_level(lvl)
 
-        s = Skill(metadata=SkillMetadata(
-            skill_id="rate_test", name="rate_test", version="1.0.0",
-        ))
+        s = Skill(
+            metadata=SkillMetadata(
+                skill_id="rate_test",
+                name="rate_test",
+                version="1.0.0",
+            )
+        )
         loader.registry.register(s)
 
         result = loader.rate_skill("rate_test", 4.0)
@@ -696,9 +796,13 @@ class TestSkillRating:
         for lvl in [SkillLevel.GLOBAL, SkillLevel.PROJECT, SkillLevel.AGENT]:
             loader.registry.clear_level(lvl)
 
-        s = Skill(metadata=SkillMetadata(
-            skill_id="rate_avg", name="rate_avg", version="1.0.0",
-        ))
+        s = Skill(
+            metadata=SkillMetadata(
+                skill_id="rate_avg",
+                name="rate_avg",
+                version="1.0.0",
+            )
+        )
         loader.registry.register(s)
 
         loader.rate_skill("rate_avg", 4.0)
@@ -711,9 +815,13 @@ class TestSkillRating:
         skills_dir = str(tmp_path / "skills")
         loader = SkillLoader(skills_base_dir=skills_dir)
 
-        s = Skill(metadata=SkillMetadata(
-            skill_id="rate_invalid", name="rate_invalid", version="1.0.0",
-        ))
+        s = Skill(
+            metadata=SkillMetadata(
+                skill_id="rate_invalid",
+                name="rate_invalid",
+                version="1.0.0",
+            )
+        )
         loader.registry.register(s)
 
         with pytest.raises(ValueError):
@@ -737,9 +845,20 @@ class TestSkillFileWatcher:
         loader = SkillLoader(skills_base_dir=skills_dir)
         watcher = SkillFileWatcher(skills_dir, loader)
 
-        assert watcher._infer_level(os.path.join(skills_dir, "global", "error_handling.md")) == SkillLevel.GLOBAL
-        assert watcher._infer_level(os.path.join(skills_dir, "projects", "p1", "skill.md")) == SkillLevel.PROJECT
-        assert watcher._infer_level(os.path.join(skills_dir, "agents", "a1", "skill.md")) == SkillLevel.AGENT
+        assert (
+            watcher._infer_level(
+                os.path.join(skills_dir, "global", "error_handling.md")
+            )
+            == SkillLevel.GLOBAL
+        )
+        assert (
+            watcher._infer_level(os.path.join(skills_dir, "projects", "p1", "skill.md"))
+            == SkillLevel.PROJECT
+        )
+        assert (
+            watcher._infer_level(os.path.join(skills_dir, "agents", "a1", "skill.md"))
+            == SkillLevel.AGENT
+        )
         loader.stop_watcher()
 
     def test_infer_level_unknown(self, tmp_path):
@@ -747,7 +866,10 @@ class TestSkillFileWatcher:
         loader = SkillLoader(skills_base_dir=skills_dir)
         watcher = SkillFileWatcher(skills_dir, loader)
 
-        assert watcher._infer_level(os.path.join(skills_dir, "other", "skill.md")) == SkillLevel.GLOBAL
+        assert (
+            watcher._infer_level(os.path.join(skills_dir, "other", "skill.md"))
+            == SkillLevel.GLOBAL
+        )
         loader.stop_watcher()
 
 
@@ -770,15 +892,25 @@ class TestSkillEnumMapping:
 
 class TestSkillProperties:
     def test_current_version(self):
-        s = Skill(metadata=SkillMetadata(skill_id="vtest", name="vtest", version="1.0.0"))
-        s.versions["1.0.0"] = SkillVersion(version="1.0.0", content_hash="hash1", file_path="/t/v1.md")
-        s.versions["2.0.0"] = SkillVersion(version="2.0.0", content_hash="hash2", file_path="/t/v2.md")
-        s.versions["1.5.0"] = SkillVersion(version="1.5.0", content_hash="hash15", file_path="/t/v15.md")
+        s = Skill(
+            metadata=SkillMetadata(skill_id="vtest", name="vtest", version="1.0.0")
+        )
+        s.versions["1.0.0"] = SkillVersion(
+            version="1.0.0", content_hash="hash1", file_path="/t/v1.md"
+        )
+        s.versions["2.0.0"] = SkillVersion(
+            version="2.0.0", content_hash="hash2", file_path="/t/v2.md"
+        )
+        s.versions["1.5.0"] = SkillVersion(
+            version="1.5.0", content_hash="hash15", file_path="/t/v15.md"
+        )
 
         assert s.current_version.version == "2.0.0"
 
     def test_current_version_empty(self):
-        s = Skill(metadata=SkillMetadata(skill_id="vtest2", name="vtest2", version="1.0.0"))
+        s = Skill(
+            metadata=SkillMetadata(skill_id="vtest2", name="vtest2", version="1.0.0")
+        )
         assert s.current_version is None
 
 
@@ -804,10 +936,15 @@ class TestEdgeCases:
     def test_deactivated_skill_not_injected(self, tmp_path):
         loader = self._make_loader(tmp_path)
 
-        s = Skill(metadata=SkillMetadata(
-            skill_id="deactivated", name="deactivated", version="1.0.0",
-            applicable_tasks=["*"], required_context=[],
-        ))
+        s = Skill(
+            metadata=SkillMetadata(
+                skill_id="deactivated",
+                name="deactivated",
+                version="1.0.0",
+                applicable_tasks=["*"],
+                required_context=[],
+            )
+        )
         loader.registry.register(s)
         s.is_active = False
 
@@ -830,7 +967,9 @@ class TestEdgeCases:
     def test_get_stats(self, tmp_path):
         loader = self._make_loader(tmp_path)
 
-        s = Skill(metadata=SkillMetadata(skill_id="stats1", name="stats1", version="1.0.0"))
+        s = Skill(
+            metadata=SkillMetadata(skill_id="stats1", name="stats1", version="1.0.0")
+        )
         loader.registry.register(s)
 
         stats = loader.get_stats()
@@ -872,7 +1011,11 @@ class TestEdgeCases:
 
     def test_execute_skill_not_loaded(self, tmp_path):
         loader = self._make_loader(tmp_path)
-        s = Skill(metadata=SkillMetadata(skill_id="unloaded", name="unloaded", version="1.0.0"))
+        s = Skill(
+            metadata=SkillMetadata(
+                skill_id="unloaded", name="unloaded", version="1.0.0"
+            )
+        )
         loader.registry.register(s)
 
         with pytest.raises(RuntimeError):

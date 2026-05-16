@@ -1,19 +1,19 @@
 import requests
 import json
 import time
-import threading
-import queue
 
 BASE_URL = "http://localhost:8000"
 UNIWEAR_CSV = "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\uniwear.csv"
 
 TEST_RESULTS = []
 
+
 def log_result(test_name, passed, detail=""):
     status = "PASS" if passed else "FAIL"
     msg = f"[{status}] {test_name}: {detail}"
     print(msg)
     TEST_RESULTS.append({"test": test_name, "passed": passed, "detail": detail})
+
 
 def test1_training_start():
     """测试1：启动训练任务，3秒内返回job_id"""
@@ -25,9 +25,9 @@ def test1_training_start():
             "epochs": 5,
             "batch_size": 32,
             "learning_rate": 0.001,
-            "hidden_size": 64
+            "hidden_size": 64,
         },
-        "device": "cpu"
+        "device": "cpu",
     }
     start = time.time()
     try:
@@ -38,34 +38,48 @@ def test1_training_start():
         code = data.get("code", "")
 
         if resp.status_code == 200 and job_id and elapsed < 3:
-            log_result("测试1-训练任务启动", True, f"job_id={job_id}, 耗时={elapsed:.2f}s")
+            log_result(
+                "测试1-训练任务启动", True, f"job_id={job_id}, 耗时={elapsed:.2f}s"
+            )
             return job_id
         elif job_id and elapsed >= 3:
             log_result("测试1-训练任务启动", False, f"超时: {elapsed:.2f}s (>3s)")
             return job_id
         else:
-            log_result("测试1-训练任务启动", False, f"code={code}, message={data.get('message', '')}")
+            log_result(
+                "测试1-训练任务启动",
+                False,
+                f"code={code}, message={data.get('message', '')}",
+            )
             return None
     except Exception as e:
         log_result("测试1-训练任务启动", False, str(e))
         return None
+
 
 def test2_sse_connection(job_id):
     """测试2：SSE事件流连接，5秒内返回200"""
     print("\n=== 测试2：SSE连接 ===")
     start = time.time()
     try:
-        resp = requests.get(f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=10)
+        resp = requests.get(
+            f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=10
+        )
         elapsed = time.time() - start
         if resp.status_code == 200 and elapsed < 5:
             log_result("测试2-SSE连接", True, f"status=200, 耗时={elapsed:.2f}s")
             return resp
         else:
-            log_result("测试2-SSE连接", False, f"status={resp.status_code}, 耗时={elapsed:.2f}s")
+            log_result(
+                "测试2-SSE连接",
+                False,
+                f"status={resp.status_code}, 耗时={elapsed:.2f}s",
+            )
             return None
     except Exception as e:
         log_result("测试2-SSE连接", False, str(e))
         return None
+
 
 def test3_sse_events(job_id):
     """测试3：SSE事件序列验证 queued->started->progress->complete"""
@@ -74,7 +88,9 @@ def test3_sse_events(job_id):
     event_types = []
 
     try:
-        resp = requests.get(f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=60)
+        resp = requests.get(
+            f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=60
+        )
         if resp.status_code != 200:
             log_result("测试3-SSE事件序列", False, f"HTTP {resp.status_code}")
             return
@@ -90,7 +106,9 @@ def test3_sse_events(job_id):
                     evt = json.loads(data_str)
                     events.append(evt)
                     event_types.append(evt.get("event", evt.get("type", "unknown")))
-                    print(f"  SSE event: {evt.get('event', evt.get('type', '?'))} progress={evt.get('progress', 'N/A')}")
+                    print(
+                        f"  SSE event: {evt.get('event', evt.get('type', '?'))} progress={evt.get('progress', 'N/A')}"
+                    )
 
                     if evt.get("event") in ("failed", "error", "complete", "cancelled"):
                         break
@@ -107,16 +125,25 @@ def test3_sse_events(job_id):
     has_complete = "complete" in event_types
 
     if has_queued and has_started and has_progress >= 1 and has_complete:
-        log_result("测试3-SSE事件序列", True, f"queued=✓ started=✓ progress={has_progress}x complete=✓")
+        log_result(
+            "测试3-SSE事件序列",
+            True,
+            f"queued=✓ started=✓ progress={has_progress}x complete=✓",
+        )
     else:
         issues = []
-        if not has_queued: issues.append("missing queued")
-        if not has_started: issues.append("missing started")
-        if has_progress < 3: issues.append(f"progress only {has_progress}x (need >=3)")
-        if not has_complete: issues.append("missing complete")
+        if not has_queued:
+            issues.append("missing queued")
+        if not has_started:
+            issues.append("missing started")
+        if has_progress < 3:
+            issues.append(f"progress only {has_progress}x (need >=3)")
+        if not has_complete:
+            issues.append("missing complete")
         log_result("测试3-SSE事件序列", False, "; ".join(issues))
 
     return events
+
 
 def test4_task_cancel():
     """测试4：任务取消 DELETE /api/v1/jobs/{job_id}"""
@@ -129,9 +156,9 @@ def test4_task_cancel():
             "epochs": 5,
             "batch_size": 32,
             "learning_rate": 0.001,
-            "hidden_size": 64
+            "hidden_size": 64,
         },
-        "device": "cpu"
+        "device": "cpu",
     }
 
     resp = requests.post(f"{BASE_URL}/api/v1/lnn/train", json=payload, timeout=10)
@@ -152,15 +179,23 @@ def test4_task_cancel():
         cdata = cancel_resp.json()
 
         if cancel_resp.status_code == 200 and elapsed < 10:
-            log_result("测试4-任务取消", True, f"deleted job={job_id}, 耗时={elapsed:.2f}s")
+            log_result(
+                "测试4-任务取消", True, f"deleted job={job_id}, 耗时={elapsed:.2f}s"
+            )
         else:
-            log_result("测试4-任务取消", False, f"status={cancel_resp.status_code}, elapsed={elapsed:.2f}s")
+            log_result(
+                "测试4-任务取消",
+                False,
+                f"status={cancel_resp.status_code}, elapsed={elapsed:.2f}s",
+            )
     except Exception as e:
         log_result("测试4-任务取消", False, str(e))
 
     # Verify cancelled event via SSE
     try:
-        resp = requests.get(f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=15)
+        resp = requests.get(
+            f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=15
+        )
         events = []
         for line in resp.iter_lines(decode_unicode=True):
             if line and line.startswith("data:"):
@@ -171,7 +206,11 @@ def test4_task_cancel():
                     evt = json.loads(data_str)
                     events.append(evt)
                     if evt.get("event") == "cancelled":
-                        log_result("测试4-取消事件验证", True, "received cancelled event via SSE")
+                        log_result(
+                            "测试4-取消事件验证",
+                            True,
+                            "received cancelled event via SSE",
+                        )
                         break
                 except json.JSONDecodeError:
                     pass
@@ -179,6 +218,7 @@ def test4_task_cancel():
             log_result("测试4-取消事件验证", False, "no cancelled event received")
     except Exception as e:
         log_result("测试4-取消事件验证", False, str(e))
+
 
 def test7_task_history():
     """测试7：任务历史记录"""
@@ -199,9 +239,13 @@ def test7_task_history():
                 sample = jobs[0]
                 missing = [f for f in required_fields if f not in sample]
                 if not missing:
-                    log_result("测试7-任务历史记录", True, f"{total} records, fields complete")
+                    log_result(
+                        "测试7-任务历史记录", True, f"{total} records, fields complete"
+                    )
                 else:
-                    log_result("测试7-任务历史记录", False, f"Missing fields: {missing}")
+                    log_result(
+                        "测试7-任务历史记录", False, f"Missing fields: {missing}"
+                    )
 
                 # Check time ordering
                 times = [j.get("created_at", "") for j in jobs]
@@ -210,11 +254,16 @@ def test7_task_history():
                 else:
                     log_result("测试7-时间排序", False, "records not time-sorted")
             else:
-                log_result("测试7-任务历史记录", True, "0 records (empty - OK, system was just restarted)")
+                log_result(
+                    "测试7-任务历史记录",
+                    True,
+                    "0 records (empty - OK, system was just restarted)",
+                )
         else:
             log_result("测试7-任务历史记录", False, f"HTTP {resp.status_code}")
     except Exception as e:
         log_result("测试7-任务历史记录", False, str(e))
+
 
 def test8_task_reexecute():
     """测试8：任务重执行 - 重新提交训练生成新job_id"""
@@ -226,9 +275,9 @@ def test8_task_reexecute():
             "epochs": 3,
             "batch_size": 32,
             "learning_rate": 0.001,
-            "hidden_size": 64
+            "hidden_size": 64,
         },
-        "device": "cpu"
+        "device": "cpu",
     }
 
     job_ids = []
@@ -237,13 +286,16 @@ def test8_task_reexecute():
         data = resp.json()
         jid = data.get("data", {}).get("job_id", "")
         job_ids.append(jid)
-        print(f"  第{i+1}次: job_id={jid}")
+        print(f"  第{i + 1}次: job_id={jid}")
         time.sleep(0.5)
 
     if len(job_ids) == 2 and job_ids[0] != job_ids[1]:
-        log_result("测试8-任务重执行", True, f"unique job_ids: {job_ids[0]} != {job_ids[1]}")
+        log_result(
+            "测试8-任务重执行", True, f"unique job_ids: {job_ids[0]} != {job_ids[1]}"
+        )
     else:
         log_result("测试8-任务重执行", False, f"job_ids: {job_ids}")
+
 
 def main():
     print("=" * 60)
@@ -269,9 +321,9 @@ def main():
             "epochs": 5,
             "batch_size": 32,
             "learning_rate": 0.001,
-            "hidden_size": 64
+            "hidden_size": 64,
         },
-        "device": "cpu"
+        "device": "cpu",
     }
     resp = requests.post(f"{BASE_URL}/api/v1/lnn/train", json=payload, timeout=10)
     data = resp.json()
@@ -300,6 +352,7 @@ def main():
         status = "PASS" if r["passed"] else "FAIL"
         print(f"  [{status}] {r['test']}: {r['detail']}")
     print(f"\n总计: {passed} 通过, {failed} 失败, {len(TEST_RESULTS)} 项测试")
+
 
 if __name__ == "__main__":
     main()

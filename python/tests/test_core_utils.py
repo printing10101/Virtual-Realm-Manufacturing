@@ -7,9 +7,9 @@ Tests for:
 - format_bytes: Human-readable byte formatting
 - MetricsCollector: Thread-safe metrics collection
 """
+
 import pytest
 import threading
-import time
 from app.core.utils import (
     extract_json_from_markdown,
     flatten_documents,
@@ -23,33 +23,33 @@ class TestExtractJsonFromMarkdown:
     """Test JSON extraction from markdown"""
 
     def test_extract_json_code_fence(self):
-        content = '''
+        content = """
         Here is the result:
         ```json
         {"status": "success", "data": [1, 2, 3]}
         ```
         End of response.
-        '''
+        """
         result = extract_json_from_markdown(content)
         assert result["status"] == "success"
         assert result["data"] == [1, 2, 3]
 
     def test_extract_gcode_fence(self):
-        content = '''
+        content = """
         Generated code:
         ```gcode
         {"tool_path": "M3 S1000", "feed_rate": 150}
         ```
-        '''
+        """
         result = extract_json_from_markdown(content)
         assert result["tool_path"] == "M3 S1000"
 
     def test_extract_plain_code_fence(self):
-        content = '''
+        content = """
         ```
         {"key": "value", "count": 42}
         ```
-        '''
+        """
         result = extract_json_from_markdown(content)
         assert result["key"] == "value"
 
@@ -64,7 +64,7 @@ class TestExtractJsonFromMarkdown:
         assert result["trimmed"] is True
 
     def test_extract_invalid_json_returns_empty(self):
-        content = '```json\n{invalid json}\n```'
+        content = "```json\n{invalid json}\n```"
         result = extract_json_from_markdown(content)
         assert result == {}
 
@@ -77,7 +77,7 @@ class TestExtractJsonFromMarkdown:
         assert result == {}
 
     def test_extract_complex_nested_json(self):
-        content = '''
+        content = """
         ```json
         {
             "model": "LNN",
@@ -88,7 +88,7 @@ class TestExtractJsonFromMarkdown:
             "metrics": [0.95, 0.92, 0.98]
         }
         ```
-        '''
+        """
         result = extract_json_from_markdown(content)
         assert result["model"] == "LNN"
         assert result["config"]["layers"] == 4

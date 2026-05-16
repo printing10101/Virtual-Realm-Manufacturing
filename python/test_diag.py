@@ -1,19 +1,25 @@
 """Quick diagnostic for TestClient."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 
 print("Importing app...")
 from app.main import app
+
 print(f"App has {len(app.routes)} routes")
 
 print("\nCreating TestClient...")
 from fastapi.testclient import TestClient
+
 client = TestClient(app, raise_server_exceptions=False)
 print("TestClient ready")
 
 print("\nTest1: Train endpoint...")
-import time, json, os
+import time
+import json
+
 UNIWEAR_CSV = r"C:\Users\Lenovo\AppData\Local\Temp\uniwear.csv"
 token_path = Path(__file__).parent / ".lnn_token"
 TOKEN = token_path.read_text().strip()
@@ -22,8 +28,13 @@ HEADERS = {"Content-Type": "application/json", "Authorization": f"Bearer {TOKEN}
 payload = {
     "model_name": "cutting_force",
     "data_path": UNIWEAR_CSV,
-    "hyperparameters": {"epochs": 3, "batch_size": 32, "learning_rate": 0.001, "optimizer": "adam"},
-    "device": "cpu"
+    "hyperparameters": {
+        "epochs": 3,
+        "batch_size": 32,
+        "learning_rate": 0.001,
+        "optimizer": "adam",
+    },
+    "device": "cpu",
 }
 t0 = time.time()
 resp = client.post("/api/v1/lnn/train", json=payload, headers=HEADERS, timeout=30)
@@ -41,8 +52,10 @@ print(f"\nTest2: SSE stream for {job_id}...")
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 t0 = time.time()
 try:
-    with client.stream("GET", f"/api/v1/jobs/{job_id}/stream", headers=AUTH, timeout=60) as r:
-        print(f"  Stream status: {r.status_code}, elapsed: {time.time()-t0:.2f}s")
+    with client.stream(
+        "GET", f"/api/v1/jobs/{job_id}/stream", headers=AUTH, timeout=60
+    ) as r:
+        print(f"  Stream status: {r.status_code}, elapsed: {time.time() - t0:.2f}s")
         event_count = 0
         for line in r.iter_lines():
             line = line.strip()

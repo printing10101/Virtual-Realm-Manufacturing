@@ -2,6 +2,7 @@
 
 全面测试知识库扩展、重排序、文档导入、管理界面和评估体系。
 """
+
 import os
 import sys
 import tempfile
@@ -51,21 +52,29 @@ def test_reranker():
         {
             "id": "doc1",
             "document": "45钢车削参数：粗车切削速度80-120m/min，进给量0.3-0.5mm/r",
-            "metadata": {"type": "工艺", "category": "车削", "keywords": "车削,45钢,切削参数"},
-            "distance": 0.5
+            "metadata": {
+                "type": "工艺",
+                "category": "车削",
+                "keywords": "车削,45钢,切削参数",
+            },
+            "distance": 0.5,
         },
         {
             "id": "doc2",
             "document": "不锈钢铣削：304不锈钢粗铣切削速度60-100m/min",
-            "metadata": {"type": "工艺", "category": "不锈钢", "keywords": "不锈钢,铣削,切削参数"},
-            "distance": 0.7
+            "metadata": {
+                "type": "工艺",
+                "category": "不锈钢",
+                "keywords": "不锈钢,铣削,切削参数",
+            },
+            "distance": 0.7,
         },
         {
             "id": "doc3",
             "document": "车削加工基础：车削是最基本的金属切削加工方法",
             "metadata": {"type": "工艺", "category": "车削", "keywords": "车削,基础"},
-            "distance": 0.6
-        }
+            "distance": 0.6,
+        },
     ]
 
     start_time = time.time()
@@ -76,7 +85,7 @@ def test_reranker():
     print(f"重排序结果数量: {len(reranked)}")
     print("重排序排名:")
     for i, result in enumerate(reranked):
-        print(f"  {i+1}. {result['doc_id']} (得分: {result['rerank_score']:.4f})")
+        print(f"  {i + 1}. {result['doc_id']} (得分: {result['rerank_score']:.4f})")
 
     assert elapsed_ms < 200, f"重排序响应时间超时: {elapsed_ms:.2f}ms > 200ms"
     assert len(reranked) == 3, "重排序结果数量不匹配"
@@ -113,7 +122,9 @@ def test_chunker():
 
     print(f"分块数量: {len(chunks)}")
     for i, chunk in enumerate(chunks):
-        print(f"  块{i+1}: {len(chunk.content)}字符, 索引: {chunk.chunk_index}/{chunk.total_chunks}")
+        print(
+            f"  块{i + 1}: {len(chunk.content)}字符, 索引: {chunk.chunk_index}/{chunk.total_chunks}"
+        )
 
     assert len(chunks) > 0, "分块结果为空"
     assert all(c.chunk_index < c.total_chunks for c in chunks), "分块索引错误"
@@ -133,7 +144,7 @@ def test_knowledge_base_operations():
     kb.add_knowledge(
         document="这是一条测试知识，用于验证知识库功能。",
         metadata={"type": "测试", "category": "测试分类"},
-        doc_id="test_001"
+        doc_id="test_001",
     )
     print(f"添加后知识数量: {kb.count()}")
 
@@ -161,10 +172,14 @@ def test_evaluation_dataset():
     print(f"难度级别: {list(stats['difficulties'].keys())}")
 
     print("分类分布:")
-    for cat, count in sorted(stats['categories'].items(), key=lambda x: x[1], reverse=True)[:5]:
+    for cat, count in sorted(
+        stats["categories"].items(), key=lambda x: x[1], reverse=True
+    )[:5]:
         print(f"  - {cat}: {count}个查询")
 
-    assert stats['total_queries'] >= 50, f"评估查询数量不足: {stats['total_queries']} < 50"
+    assert stats["total_queries"] >= 50, (
+        f"评估查询数量不足: {stats['total_queries']} < 50"
+    )
     print("✓ 评估数据集测试通过")
     print()
 
@@ -188,7 +203,7 @@ def test_document_import():
 加工时要注意安全和冷却。
 """
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
         f.write(md_content)
         temp_path = f.name
 
@@ -221,9 +236,7 @@ def test_end_to_end():
     for item in extended:
         try:
             kb.add_knowledge(
-                document=item["document"],
-                metadata=item["metadata"],
-                doc_id=item["id"]
+                document=item["document"], metadata=item["metadata"], doc_id=item["id"]
             )
             success_count += 1
         except Exception:
@@ -278,5 +291,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"测试异常: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

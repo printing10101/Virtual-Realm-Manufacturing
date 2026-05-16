@@ -4,11 +4,11 @@ import time
 import requests
 import json
 import os
-import signal
 
 BASE_URL = "http://localhost:8000"
 UNIWEAR_CSV = "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\uniwear.csv"
 TEST_RESULTS = []
+
 
 def log_result(test_name, passed, detail=""):
     status = "PASS" if passed else "FAIL"
@@ -16,18 +16,20 @@ def log_result(test_name, passed, detail=""):
     print(msg)
     TEST_RESULTS.append({"test": test_name, "passed": passed, "detail": detail})
 
+
 def wait_for_server(timeout=30):
     print("Waiting for server to start...")
     for i in range(timeout):
         try:
             resp = requests.get(f"{BASE_URL}/api/v1/lnn/models", timeout=2)
             if resp.status_code == 200:
-                print(f"Server ready after {i+1}s")
+                print(f"Server ready after {i + 1}s")
                 return True
         except:
             pass
         time.sleep(1)
     return False
+
 
 def test1_training_start():
     print("\n=== Test 1: Training start ===")
@@ -38,9 +40,9 @@ def test1_training_start():
             "epochs": 5,
             "batch_size": 32,
             "learning_rate": 0.001,
-            "optimizer": "adam"
+            "optimizer": "adam",
         },
-        "device": "cpu"
+        "device": "cpu",
     }
     start = time.time()
     try:
@@ -48,7 +50,9 @@ def test1_training_start():
         elapsed = time.time() - start
         data = resp.json()
         if resp.status_code != 200:
-            log_result("Test1-Training start", False, f"HTTP {resp.status_code}: {data}")
+            log_result(
+                "Test1-Training start", False, f"HTTP {resp.status_code}: {data}"
+            )
             return None
         job_id = data.get("data", {}).get("job_id", "")
         code = data.get("code", "")
@@ -59,34 +63,46 @@ def test1_training_start():
             log_result("Test1-Training start", False, f"Timeout: {elapsed:.2f}s")
             return job_id
         else:
-            log_result("Test1-Training start", False, f"code={code}, msg={data.get('message','')}")
+            log_result(
+                "Test1-Training start",
+                False,
+                f"code={code}, msg={data.get('message', '')}",
+            )
             return None
     except Exception as e:
         log_result("Test1-Training start", False, str(e))
         return None
 
+
 def test2_sse_connection(job_id):
     print("\n=== Test 2: SSE connection ===")
     start = time.time()
     try:
-        resp = requests.get(f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=10)
+        resp = requests.get(
+            f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=10
+        )
         elapsed = time.time() - start
         if resp.status_code == 200 and elapsed < 5:
             log_result("Test2-SSE connect", True, f"200 in {elapsed:.2f}s")
             resp.close()
             return True
         else:
-            log_result("Test2-SSE connect", False, f"status={resp.status_code}, {elapsed:.2f}s")
+            log_result(
+                "Test2-SSE connect", False, f"status={resp.status_code}, {elapsed:.2f}s"
+            )
             return False
     except Exception as e:
         log_result("Test2-SSE connect", False, str(e))
         return False
 
+
 def test3_sse_events(job_id):
     print("\n=== Test 3: SSE event sequence ===")
     event_types = []
     try:
-        resp = requests.get(f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=120)
+        resp = requests.get(
+            f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=120
+        )
         if resp.status_code != 200:
             log_result("Test3-SSE events", False, f"HTTP {resp.status_code}")
             return
@@ -117,14 +133,25 @@ def test3_sse_events(job_id):
     has_complete = "complete" in event_types
 
     if has_queued and has_started and progress_count >= 1 and has_complete:
-        log_result("Test3-SSE events", True, f"queued start progress({progress_count}x) complete")
+        log_result(
+            "Test3-SSE events",
+            True,
+            f"queued start progress({progress_count}x) complete",
+        )
     else:
         issues = []
-        if not has_queued: issues.append("no queued")
-        if not has_started: issues.append("no started")
-        if progress_count < 3: issues.append(f"progress={progress_count}")
-        if not has_complete: issues.append("no complete")
-        log_result("Test3-SSE events", False, "; ".join(issues) if issues else "partial")
+        if not has_queued:
+            issues.append("no queued")
+        if not has_started:
+            issues.append("no started")
+        if progress_count < 3:
+            issues.append(f"progress={progress_count}")
+        if not has_complete:
+            issues.append("no complete")
+        log_result(
+            "Test3-SSE events", False, "; ".join(issues) if issues else "partial"
+        )
+
 
 def test4_task_cancel():
     print("\n=== Test 4: Task cancel ===")
@@ -135,9 +162,9 @@ def test4_task_cancel():
             "epochs": 5,
             "batch_size": 32,
             "learning_rate": 0.001,
-            "optimizer": "adam"
+            "optimizer": "adam",
         },
-        "device": "cpu"
+        "device": "cpu",
     }
     resp = requests.post(f"{BASE_URL}/api/v1/lnn/train", json=payload, timeout=10)
     data = resp.json()
@@ -154,13 +181,19 @@ def test4_task_cancel():
         if cancel_resp.status_code == 200 and elapsed < 10:
             log_result("Test4-Cancel DELETE", True, f"job={job_id}, {elapsed:.2f}s")
         else:
-            log_result("Test4-Cancel DELETE", False, f"{cancel_resp.status_code}, {elapsed:.2f}s")
+            log_result(
+                "Test4-Cancel DELETE",
+                False,
+                f"{cancel_resp.status_code}, {elapsed:.2f}s",
+            )
     except Exception as e:
         log_result("Test4-Cancel DELETE", False, str(e))
 
     # Verify cancelled event via SSE
     try:
-        resp = requests.get(f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=15)
+        resp = requests.get(
+            f"{BASE_URL}/api/v1/jobs/{job_id}/stream", stream=True, timeout=15
+        )
         for line in resp.iter_lines(decode_unicode=True):
             if line and line.startswith("data:"):
                 data_str = line[5:].strip()
@@ -177,6 +210,7 @@ def test4_task_cancel():
             log_result("Test4-Cancel SSE event", False, "no cancelled event")
     except Exception as e:
         log_result("Test4-Cancel SSE event", False, str(e))
+
 
 def test7_task_history():
     print("\n=== Test 7: Task history ===")
@@ -207,6 +241,7 @@ def test7_task_history():
     except Exception as e:
         log_result("Test7-History", False, str(e))
 
+
 def test8_task_reexecute():
     print("\n=== Test 8: Task re-execute ===")
     payload = {
@@ -216,9 +251,9 @@ def test8_task_reexecute():
             "epochs": 3,
             "batch_size": 32,
             "learning_rate": 0.001,
-            "optimizer": "adam"
+            "optimizer": "adam",
         },
-        "device": "cpu"
+        "device": "cpu",
     }
     job_ids = []
     for i in range(2):
@@ -226,12 +261,13 @@ def test8_task_reexecute():
         data = resp.json()
         jid = data.get("data", {}).get("job_id", "")
         job_ids.append(jid)
-        print(f"  Attempt {i+1}: job_id={jid}")
+        print(f"  Attempt {i + 1}: job_id={jid}")
         time.sleep(0.3)
     if len(job_ids) == 2 and job_ids[0] != job_ids[1]:
         log_result("Test8-Re-execute", True, f"unique: {job_ids[0]} vs {job_ids[1]}")
     else:
         log_result("Test8-Re-execute", False, f"ids: {job_ids}")
+
 
 def main():
     print("=" * 60)
@@ -242,11 +278,20 @@ def main():
     env = os.environ.copy()
     env["LNN_AUTH_ENABLED"] = "false"
     server_proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"],
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "app.main:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8000",
+        ],
         cwd=os.path.dirname(os.path.abspath(__file__)),
         env=env,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
+        stderr=subprocess.DEVNULL,
     )
 
     if not wait_for_server():
@@ -271,9 +316,9 @@ def main():
             "epochs": 5,
             "batch_size": 32,
             "learning_rate": 0.001,
-            "optimizer": "adam"
+            "optimizer": "adam",
         },
-        "device": "cpu"
+        "device": "cpu",
     }
     resp = requests.post(f"{BASE_URL}/api/v1/lnn/train", json=payload, timeout=10)
     data = resp.json()
@@ -309,6 +354,7 @@ def main():
     input()
     server_proc.terminate()
     server_proc.wait()
+
 
 if __name__ == "__main__":
     main()

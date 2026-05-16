@@ -1,7 +1,9 @@
 from pathlib import Path
 from packaging import version
 
-worker = Path(r"c:\Users\Lenovo\Desktop\灵境制造（上线版）\python\app\core\worker_process.py")
+worker = Path(
+    r"c:\Users\Lenovo\Desktop\灵境制造（上线版）\python\app\core\worker_process.py"
+)
 print(f"worker_process.py exists: {worker.exists()}")
 print(f"worker_process.py size: {worker.stat().st_size} bytes")
 

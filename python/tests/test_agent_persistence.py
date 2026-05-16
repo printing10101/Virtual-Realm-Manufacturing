@@ -13,13 +13,12 @@ Covers:
 - Checkpoint lifecycle management
 - Multi-agent state isolation
 """
+
 from __future__ import annotations
 
-import json
 import os
 import time
 import uuid
-from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -32,7 +31,6 @@ from app.models.agent_state import (
     MemoryEntry,
     SessionContext,
     StateVersion,
-    CURRENT_SCHEMA_VERSION,
     migrate_state,
 )
 from app.core.state_persistence import (
@@ -41,10 +39,6 @@ from app.core.state_persistence import (
     CheckpointLifecycleManager,
     StateCompressor,
     StateMigrationEngine,
-    StatePersistenceError,
-    StateNotFoundError,
-    HEARTBEAT_INTERVAL_SECONDS,
-    CHECKPOINT_MAX_COUNT,
     MEMORY_PRUNING_THRESHOLD,
 )
 
@@ -67,8 +61,12 @@ class TestAgentStateModel:
     def test_agent_state_full_creation(self):
         checkpoint = Checkpoint(epoch=5, step=100, best_metric=0.95)
         memory = [
-            MemoryEntry(content="Test memory", memory_type="observation", importance=0.8),
-            MemoryEntry(content="Important decision", memory_type="decision", importance=0.9),
+            MemoryEntry(
+                content="Test memory", memory_type="observation", importance=0.8
+            ),
+            MemoryEntry(
+                content="Important decision", memory_type="decision", importance=0.9
+            ),
         ]
         state = AgentState(
             agent_id="agent_002",
@@ -125,7 +123,9 @@ class TestAgentStateModel:
 
     def test_session_context_incremental_update(self):
         ctx = SessionContext(task_id="task_001", current_stage="stage1")
-        ctx.increment_update({"current_stage": "stage2", "custom_context": {"key": "val"}})
+        ctx.increment_update(
+            {"current_stage": "stage2", "custom_context": {"key": "val"}}
+        )
         assert ctx.current_stage == "stage2"
         assert ctx.custom_context["key"] == "val"
         assert ctx.task_id == "task_001"
@@ -135,7 +135,9 @@ class TestAgentStateModel:
             agent_id="agent_full",
             current_task_id="task_xyz",
             status=AgentStatus.BUSY,
-            session_context=SessionContext(task_type="training", current_stage="epoch_3"),
+            session_context=SessionContext(
+                task_type="training", current_stage="epoch_3"
+            ),
             memory=[MemoryEntry(content="learned pattern", memory_type="observation")],
             checkpoint=Checkpoint(epoch=3, step=300),
             metadata={"region": "cn-east"},
@@ -210,7 +212,9 @@ class TestAgentStateModel:
 
     def test_state_version_migration_tracking(self):
         sv = StateVersion(state_version=2, schema_version="2.0.0")
-        sv.migration_history.append({"from": "1.0.0", "to": "2.0.0", "timestamp": time.time()})
+        sv.migration_history.append(
+            {"from": "1.0.0", "to": "2.0.0", "timestamp": time.time()}
+        )
         d = sv.to_dict()
         restored = StateVersion.from_dict(d)
         assert restored.state_version == 2
@@ -221,7 +225,10 @@ class TestStateMigration:
     """State version migration tests"""
 
     def test_migration_noop(self):
-        data = {"agent_id": "test", "state_version": {"state_version": 1, "schema_version": "1.0.0"}}
+        data = {
+            "agent_id": "test",
+            "state_version": {"state_version": 1, "schema_version": "1.0.0"},
+        }
         result = migrate_state(data, "1.0.0")
         assert result is data
 
@@ -297,7 +304,9 @@ class TestCheckpointLifecycleManager:
         manager = CheckpointLifecycleManager(str(base))
         for i in range(60):
             manager.save_checkpoint_file("agent_d", f"ckpt_{i}", f"data_{i}".encode())
-        removed = manager.cleanup_agent_checkpoints("agent_d", max_count=50, max_age_seconds=1e9)
+        removed = manager.cleanup_agent_checkpoints(
+            "agent_d", max_count=50, max_age_seconds=1e9
+        )
         assert removed >= 10
 
     def test_remove_single_checkpoint(self, tmp_path):
@@ -491,7 +500,9 @@ class TestStateRecoveryManager:
         )
         await recovery._persistence.save_state(state)
 
-        task = type("Task", (), {"status": type("Status", (), {"value": "in_progress"})()})()
+        task = type(
+            "Task", (), {"status": type("Status", (), {"value": "in_progress"})()}
+        )()
 
         async def fake_task_loader(task_id: str):
             return task
@@ -505,7 +516,11 @@ class TestStateRecoveryManager:
             task_runner=fake_task_runner,
         )
         assert result["recovered"] is True
-        assert result["action"] in ("resumed_with_checkpoint", "restarted_without_checkpoint", "idle_task_done")
+        assert result["action"] in (
+            "resumed_with_checkpoint",
+            "restarted_without_checkpoint",
+            "idle_task_done",
+        )
 
     @pytest.mark.asyncio
     async def test_resume_task_not_in_progress(self, recovery):
@@ -515,7 +530,9 @@ class TestStateRecoveryManager:
             status=AgentStatus.BUSY,
         )
         await recovery._persistence.save_state(state)
-        task = type("Task", (), {"status": type("Status", (), {"value": "completed"})()})()
+        task = type(
+            "Task", (), {"status": type("Status", (), {"value": "completed"})()}
+        )()
 
         async def fake_loader(task_id: str):
             return task
@@ -636,4 +653,5 @@ class TestPersistenceIntegration:
 
 def asyncio_wait(seconds: float):
     import asyncio
+
     return asyncio.sleep(seconds)

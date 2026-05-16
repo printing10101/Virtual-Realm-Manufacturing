@@ -8,17 +8,15 @@ Tests cover:
 - Cancel signal handling
 - Multi-client support
 """
+
 import asyncio
 import json
 import pytest
-import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.api.v1.sse import (
     SSEClient,
     SSEConnectionManager,
     TrainingProgressCallback,
-    sse_manager,
     create_progress_callback,
 )
 
@@ -66,7 +64,9 @@ class TestSSEConnectionManager:
         assert manager.get_active_clients_count(sample_task_id) == 0
 
     @pytest.mark.asyncio
-    async def test_broadcast_single_client(self, manager, sample_task_id, sample_client_id):
+    async def test_broadcast_single_client(
+        self, manager, sample_task_id, sample_client_id
+    ):
         await manager.subscribe(sample_task_id, sample_client_id)
         await manager.broadcast(sample_task_id, "progress", {"epoch": 1, "loss": 0.5})
 
@@ -95,11 +95,15 @@ class TestSSEConnectionManager:
         assert manager.get_total_clients_count() == 0
 
     @pytest.mark.asyncio
-    async def test_send_to_specific_client(self, manager, sample_task_id, sample_client_id):
+    async def test_send_to_specific_client(
+        self, manager, sample_task_id, sample_client_id
+    ):
         await manager.subscribe(sample_task_id, sample_client_id)
         await manager.subscribe(sample_task_id, "client-other")
 
-        await manager.send_to_client(sample_task_id, sample_client_id, "complete", {"status": "done"})
+        await manager.send_to_client(
+            sample_task_id, sample_client_id, "complete", {"status": "done"}
+        )
 
         target_client = manager._clients[sample_task_id][sample_client_id]
         event = await asyncio.wait_for(target_client.queue.get(), timeout=1.0)
@@ -128,6 +132,7 @@ class TestSSEConnectionManager:
         await short_timeout_manager.subscribe(sample_task_id, "client-1")
 
         import time
+
         client = short_timeout_manager._clients[sample_task_id]["client-1"]
         client.last_activity = time.time() - 2
 

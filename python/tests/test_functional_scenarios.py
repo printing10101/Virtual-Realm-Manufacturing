@@ -13,22 +13,19 @@ Covers 10 user-defined scenarios:
 9.  Admin manual lock release (force release)
 10. High concurrency (10 agents competing for 1 task)
 """
+
 import os
 import sys
 import time
 import pytest
 import tempfile
 import threading
-import sqlite3
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.core.execution_lock import (
     ExecutionLockStore,
-    LockConflictError,
-    LockNotFoundError,
     LockStatus,
-    ExecutionLock,
 )
 from app.core.task_checkout import (
     TaskCheckoutManager,
@@ -38,7 +35,6 @@ from app.core.task_checkout import (
     TaskStatus,
     CheckoutRequest,
     TaskRecord,
-    MAX_RETRY_COUNT,
 )
 
 
@@ -47,6 +43,7 @@ def temp_db_dir():
     tmpdir = tempfile.mkdtemp()
     yield tmpdir
     import shutil
+
     try:
         shutil.rmtree(tmpdir)
     except Exception:
@@ -100,7 +97,13 @@ def _make_task(task_id, status="pending", assigned_to=None, required_gpu=0.0):
     )
 
 
-def _make_request(task_id, agent_id="agent-001", agent_mode=AgentMode.SINGLE, timeout_hours=4.0, required_gpu=0.0):
+def _make_request(
+    task_id,
+    agent_id="agent-001",
+    agent_mode=AgentMode.SINGLE,
+    timeout_hours=4.0,
+    required_gpu=0.0,
+):
     return CheckoutRequest(
         task_id=task_id,
         agent_id=agent_id,
@@ -115,7 +118,6 @@ def _make_request(task_id, agent_id="agent-001", agent_mode=AgentMode.SINGLE, ti
 # 验证: pending -> in_progress, assigned_to 设置
 # ============================================================
 class TestScenario1BasicCheckout:
-
     def test_checkout_updates_status_and_assignment(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-001"))
 
@@ -142,7 +144,6 @@ class TestScenario1BasicCheckout:
 # 验证: 代理B检出同一任务失败，状态不变
 # ============================================================
 class TestScenario2ConcurrentConflict:
-
     def test_second_agent_cannot_checkout_same_task(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-002"))
 
@@ -162,7 +163,6 @@ class TestScenario2ConcurrentConflict:
 # 验证: 超时后自动释放，状态恢复pending，assigned_to清空
 # ============================================================
 class TestScenario3CrashAutoRelease:
-
     def test_lock_timeout_releases_and_resets_task(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-003"))
 
@@ -189,18 +189,22 @@ class TestScenario3CrashAutoRelease:
 # 验证: 代理B可以在锁释放后成功检出
 # ============================================================
 class TestScenario4RecheckoutAfterRelease:
-
     def test_agent_b_can_checkout_after_lock_release(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-004"))
 
-        checkout_manager.checkout_task(_make_request("task-004", "agent-A", timeout_hours=0.001))
+        checkout_manager.checkout_task(
+            _make_request("task-004", "agent-A", timeout_hours=0.001)
+        )
         time.sleep(5)
         checkout_manager.cleanup_expired_locks()
 
         # After cleanup, the lock status is 'expired' but the record still exists.
         # We need to delete the expired lock record so a new lock can be created.
         conn = checkout_manager._lock_store._get_conn()
-        conn.execute("DELETE FROM execution_locks WHERE task_id = ? AND status = ?", ("task-004", "expired"))
+        conn.execute(
+            "DELETE FROM execution_locks WHERE task_id = ? AND status = ?",
+            ("task-004", "expired"),
+        )
         conn.commit()
 
         r2 = checkout_manager.checkout_task(_make_request("task-004", "agent-B"))
@@ -216,7 +220,6 @@ class TestScenario4RecheckoutAfterRelease:
 # 验证: 检出被拒绝，不自动重试
 # ============================================================
 class TestScenario5BudgetExceeded:
-
     def test_budget_exceeded_rejects_and_no_retry(self, checkout_manager):
         budget_state, _ = _setup_default_checkers(checkout_manager)
         budget_state["exceeded"] = True
@@ -237,7 +240,6 @@ class TestScenario5BudgetExceeded:
 # 验证: 初始检出被拒绝，5分钟后重试
 # ============================================================
 class TestScenario6GPUInsufficient:
-
     def test_gpu_unavailable_rejects_and_retries(self, checkout_manager):
         _, gpu_state = _setup_default_checkers(checkout_manager)
         gpu_state["available"] = False
@@ -290,7 +292,6 @@ class TestScenario6GPUInsufficient:
 # 验证: execution_locks表包含正确的过期时间戳
 # ============================================================
 class TestScenario7DatabaseLockRecord:
-
     def test_lock_records_have_valid_expiration_timestamps(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-007"))
         checkout_manager.checkout_task(_make_request("task-007", "agent-DB"))
@@ -319,7 +320,6 @@ class TestScenario7DatabaseLockRecord:
 # 验证: 任务看板显示代理信息与后端一致
 # ============================================================
 class TestScenario8FrontendDisplay:
-
     def test_board_shows_lock_info_consistent_with_backend(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-008"))
         checkout_manager.checkout_task(_make_request("task-008", "agent-FRONT"))
@@ -347,7 +347,6 @@ class TestScenario8FrontendDisplay:
 # 验证: 状态立即更新为pending，assigned_to清空
 # ============================================================
 class TestScenario9AdminForceRelease:
-
     def test_admin_force_release_resets_task_immediately(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-009"))
         checkout_manager.checkout_task(_make_request("task-009", "agent-ADMIN"))
@@ -373,7 +372,6 @@ class TestScenario9AdminForceRelease:
 # 验证: 10个代理竞争同一任务，仅1个成功，其余失败
 # ============================================================
 class TestScenario10HighConcurrency:
-
     def test_ten_agents_competing_for_one_task(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-010"))
 

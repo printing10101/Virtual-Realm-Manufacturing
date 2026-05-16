@@ -57,7 +57,7 @@ def step2_verify_loader() -> bool:
     logger.info("=" * 60)
 
     try:
-        from app.data.uniwear_loader import UniwearDataLoader, UniwearDataset
+        from app.data.uniwear_loader import UniwearDataLoader
 
         loader = UniwearDataLoader(data_dir=UNIWEAR_DATA_DIR)
         summary = loader.get_dataset_summary()
@@ -107,13 +107,15 @@ def step3_build_knowledge() -> bool:
         after_count = kb.count()
         added = after_count - before_count
         logger.info("  ✓ 新增条目: %d (总计: %d)", added, after_count)
-        logger.info("  分类: overview=%d, nuaa=%d, phm2010=%d, material=%d, vibration=%d, cross=%d",
-                    result["by_type"].get("overview", 0),
-                    result["by_type"].get("nuaa_experiments", 0),
-                    result["by_type"].get("phm2010_experiments", 0),
-                    result["by_type"].get("material_comparison", 0),
-                    result["by_type"].get("vibration_wear_correlation", 0),
-                    result["by_type"].get("cross_source", 0))
+        logger.info(
+            "  分类: overview=%d, nuaa=%d, phm2010=%d, material=%d, vibration=%d, cross=%d",
+            result["by_type"].get("overview", 0),
+            result["by_type"].get("nuaa_experiments", 0),
+            result["by_type"].get("phm2010_experiments", 0),
+            result["by_type"].get("material_comparison", 0),
+            result["by_type"].get("vibration_wear_correlation", 0),
+            result["by_type"].get("cross_source", 0),
+        )
 
         if added == 0:
             logger.warning("  ⚠ 未新增任何条目，可能已存在")
@@ -191,7 +193,11 @@ def step5_calibrate_validation() -> bool:
 
         merged = calibrator.merge_calibration_rules()
         sources_list = merged.get("multi_source_calibration", {}).get("sources", [])
-        logger.info("  ✓ 合并校准规则: %d 数据源 (%s)", len(sources_list), ", ".join(sources_list))
+        logger.info(
+            "  ✓ 合并校准规则: %d 数据源 (%s)",
+            len(sources_list),
+            ", ".join(sources_list),
+        )
         return True
     except Exception as e:
         logger.error("  验证校准失败: %s", e)
@@ -256,8 +262,11 @@ def step7_verify_retrieval() -> bool:
             count = result.get("results_returned", 0)
             status = "✓" if count > 0 else "⚠"
             logger.info(
-                "  %s [%s] \"%s\" → 命中 %d 条",
-                status, intent, query[:30], count,
+                '  %s [%s] "%s" → 命中 %d 条',
+                status,
+                intent,
+                query[:30],
+                count,
             )
 
         return True

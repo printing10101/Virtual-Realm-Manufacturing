@@ -4,10 +4,11 @@
 使用方法：
     cd python
     python scripts/run_benchmark.py
-    
+
 或直接：
     python python/scripts/run_benchmark.py
 """
+
 import os
 import sys
 from pathlib import Path
@@ -28,8 +29,11 @@ from app.ai.lnn.tests.benchmark_lnn import LNNAccelerationBenchmark
 
 if __name__ == "__main__":
     import logging
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-    
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+
     benchmark = LNNAccelerationBenchmark(output_dir="benchmarks")
     benchmark.run_all_benchmarks()
     benchmark.print_summary()

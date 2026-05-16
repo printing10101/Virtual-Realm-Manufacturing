@@ -7,13 +7,14 @@ Tests cover:
 - Fallback mechanisms
 - Environment adaptation
 """
+
 import os
 import sys
 import pytest
 import tempfile
 import shutil
 import yaml
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from datetime import datetime
 
 # Add parent directory to path
@@ -41,7 +42,6 @@ from app.ai.lnn.core import (
     TaskInput,
     RoutingDecision,
     InferenceResult,
-    FusionResult,
     TaskCategory,
     DataType,
 )
@@ -484,6 +484,7 @@ class TestWorkflowLNNOrchestrator:
     def test_execute_workflow_with_task_input(self, orchestrator):
         """测试使用TaskInput执行工作流"""
         import numpy as np
+
         task_input = TaskInput(
             task_description="预测刀具磨损",
             input_data=np.array([[0.1, 0.2, 0.3]]),

@@ -2,6 +2,7 @@
 ParameterAgentLNN 测试
 测试切削参数数据类、验证规则和Agent功能
 """
+
 import pytest
 from app.ai.lnn.models.parameter_models import (
     CuttingParameters,
@@ -29,7 +30,7 @@ class TestCuttingParameters:
             depth_of_cut=2.0,
             spindle_speed=955.0,
             material="45钢",
-            source=ParameterSource.LNN
+            source=ParameterSource.LNN,
         )
         assert params.cutting_speed == 150.0
         assert params.feed_rate == 0.2
@@ -46,7 +47,7 @@ class TestCuttingParameters:
                 depth_of_cut=2.0,
                 spindle_speed=955.0,
                 material="45钢",
-                source=ParameterSource.LNN
+                source=ParameterSource.LNN,
             )
 
         with pytest.raises(Exception):
@@ -56,7 +57,7 @@ class TestCuttingParameters:
                 depth_of_cut=2.0,
                 spindle_speed=955.0,
                 material="45钢",
-                source=ParameterSource.LNN
+                source=ParameterSource.LNN,
             )
 
     def test_feed_rate_validation(self):
@@ -68,7 +69,7 @@ class TestCuttingParameters:
                 depth_of_cut=2.0,
                 spindle_speed=955.0,
                 material="45钢",
-                source=ParameterSource.LNN
+                source=ParameterSource.LNN,
             )
 
         with pytest.raises(Exception):
@@ -78,7 +79,7 @@ class TestCuttingParameters:
                 depth_of_cut=2.0,
                 spindle_speed=955.0,
                 material="45钢",
-                source=ParameterSource.LNN
+                source=ParameterSource.LNN,
             )
 
     def test_optional_tool_type(self):
@@ -89,7 +90,7 @@ class TestCuttingParameters:
             depth_of_cut=2.0,
             spindle_speed=955.0,
             material="45钢",
-            source=ParameterSource.LNN
+            source=ParameterSource.LNN,
         )
         assert params.tool_type is None
 
@@ -100,7 +101,7 @@ class TestCuttingParameters:
             spindle_speed=955.0,
             material="45钢",
             tool_type="硬质合金刀片",
-            source=ParameterSource.HYBRID
+            source=ParameterSource.HYBRID,
         )
         assert params_with_tool.tool_type == "硬质合金刀片"
 
@@ -114,7 +115,7 @@ class TestCuttingParameters:
                 spindle_speed=955.0,
                 material="45钢",
                 confidence=1.5,
-                source=ParameterSource.LNN
+                source=ParameterSource.LNN,
             )
 
     def test_material_required(self):
@@ -125,7 +126,7 @@ class TestCuttingParameters:
                 feed_rate=0.2,
                 depth_of_cut=2.0,
                 spindle_speed=955.0,
-                source=ParameterSource.LNN
+                source=ParameterSource.LNN,
             )
 
 
@@ -134,11 +135,7 @@ class TestValidationResult:
 
     def test_valid_result(self):
         """测试有效结果"""
-        result = ValidationResult(
-            is_valid=True,
-            issues=[],
-            warnings=[]
-        )
+        result = ValidationResult(is_valid=True, issues=[], warnings=[])
         assert result.is_valid is True
         assert len(result.issues) == 0
         assert len(result.warnings) == 0
@@ -146,9 +143,7 @@ class TestValidationResult:
     def test_invalid_result_with_issues(self):
         """测试包含问题的无效结果"""
         result = ValidationResult(
-            is_valid=False,
-            issues=["切削速度超出范围"],
-            warnings=["建议降低进给量"]
+            is_valid=False, issues=["切削速度超出范围"], warnings=["建议降低进给量"]
         )
         assert result.is_valid is False
         assert len(result.issues) == 1
@@ -166,12 +161,9 @@ class TestLNNResult:
             depth_of_cut=2.0,
             spindle_speed=955.0,
             material="45钢",
-            source=ParameterSource.LNN
+            source=ParameterSource.LNN,
         )
-        result = LNNResult(
-            parameters=params,
-            confidence=0.85
-        )
+        result = LNNResult(parameters=params, confidence=0.85)
         assert result.confidence == 0.85
         assert result.parameters.material == "45钢"
 
@@ -183,13 +175,10 @@ class TestLNNResult:
             depth_of_cut=2.0,
             spindle_speed=955.0,
             material="45钢",
-            source=ParameterSource.LNN
+            source=ParameterSource.LNN,
         )
         with pytest.raises(Exception):
-            LNNResult(
-                parameters=params,
-                confidence=1.5
-            )
+            LNNResult(parameters=params, confidence=1.5)
 
 
 class TestParameterAgentLNN:
@@ -234,7 +223,7 @@ class TestParameterAgentLNN:
             depth_of_cut=2.0,
             spindle_speed=955.0,
             material="45钢",
-            source=ParameterSource.LNN
+            source=ParameterSource.LNN,
         )
         requirements = {"tolerance": "IT8"}
         result = agent._validate_parameters(params, requirements)
@@ -334,7 +323,7 @@ class TestParameterAgentLNN:
             depth_of_cut=2.0,
             spindle_speed=955.0,
             material="45钢",
-            source=ParameterSource.LNN
+            source=ParameterSource.LNN,
         )
         llm_params = CuttingParameters(
             cutting_speed=180.0,
@@ -342,7 +331,7 @@ class TestParameterAgentLNN:
             depth_of_cut=1.5,
             spindle_speed=1100.0,
             material="45钢",
-            source=ParameterSource.LLM
+            source=ParameterSource.LLM,
         )
         blended = agent._blend_parameters(lnn_params, llm_params, weight_lnn=0.6)
         assert blended.cutting_speed == 150.0 * 0.6 + 180.0 * 0.4

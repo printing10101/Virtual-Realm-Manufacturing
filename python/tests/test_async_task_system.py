@@ -8,11 +8,9 @@ Tests for:
 - SSE event broadcasting
 - Idempotency support
 """
+
 import asyncio
-import time
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
 
 from app.core.task_system import AsyncTaskManager, TaskRecord
 from app.core.task_manager import TaskStatus, TaskType
@@ -396,8 +394,7 @@ class TestAsyncTaskManagerConcurrency:
         await asyncio.sleep(0.15)
 
         running_count = sum(
-            1 for t in task_manager._tasks.values()
-            if t.status == TaskStatus.RUNNING
+            1 for t in task_manager._tasks.values() if t.status == TaskStatus.RUNNING
         )
 
         assert running_count <= 2

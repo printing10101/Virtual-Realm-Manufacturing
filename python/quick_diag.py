@@ -25,9 +25,9 @@ payload = {
         "epochs": 3,
         "batch_size": 16,
         "learning_rate": 0.001,
-        "optimizer": "adam"
+        "optimizer": "adam",
     },
-    "device": "cpu"
+    "device": "cpu",
 }
 
 print(f"\nPOST /api/v1/lnn/train with payload: {json.dumps(payload, indent=2)}")

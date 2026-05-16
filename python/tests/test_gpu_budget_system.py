@@ -11,14 +11,15 @@ Tests all 8 budget management scenarios:
 7. Budget period reset
 8. Cost optimization suggestions
 """
+
 import pytest
 import time
 import os
 import tempfile
-import sqlite3
 from pathlib import Path
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.core.cost_tracker import (
@@ -300,9 +301,7 @@ class Test3_CostDataCompleteness:
         task_costs = cost_tracker.get_task_costs(task_id)
         assert len(task_costs) > 0
 
-        agent_summary = cost_tracker.get_cost_summary(
-            CostDimension.AGENT, agent_id
-        )
+        agent_summary = cost_tracker.get_cost_summary(CostDimension.AGENT, agent_id)
         assert agent_summary.total_cost > 0
         assert agent_summary.scope_id == agent_id
 
@@ -586,9 +585,12 @@ class Test6_BudgetAdjustmentAndRecovery:
             BudgetLevel.GLOBAL, "default", ResourceType.TOTAL_COST, 150.0
         )
 
-        assert EnforcementAction.BLOCK in budget_enforcer.enforce(
-            BudgetLevel.GLOBAL, "default", ResourceType.TOTAL_COST, 0.0
-        ).actions_taken
+        assert (
+            EnforcementAction.BLOCK
+            in budget_enforcer.enforce(
+                BudgetLevel.GLOBAL, "default", ResourceType.TOTAL_COST, 0.0
+            ).actions_taken
+        )
 
         budget_enforcer.adjust_budget(
             level=BudgetLevel.GLOBAL,
@@ -769,7 +771,10 @@ class Test8_CostOptimizationSuggestions:
         assert len(suggestions) >= 0
 
         for suggestion in suggestions:
-            assert "gpu" in suggestion.category.lower() or "resource" in suggestion.category.lower()
+            assert (
+                "gpu" in suggestion.category.lower()
+                or "resource" in suggestion.category.lower()
+            )
             assert suggestion.priority in ["low", "medium", "high", "critical"]
 
     def test_training_efficiency_analysis(self, cost_tracker, cost_optimizer):
@@ -867,30 +872,36 @@ class TestCascadeBudgetCheck:
         assert result.status == BudgetStatus.OK
 
     def test_cascade_check_fail_at_agent_level(self, budget_enforcer):
-        budget_enforcer.set_policy(BudgetPolicy(
-            level=BudgetLevel.GLOBAL,
-            scope_id="default",
-            resource_type=ResourceType.TOTAL_COST,
-            limit=10000.0,
-            period=BudgetPeriod.DAILY,
-        ))
-        budget_enforcer.set_policy(BudgetPolicy(
-            level=BudgetLevel.PROJECT,
-            scope_id="default",
-            resource_type=ResourceType.TOTAL_COST,
-            limit=5000.0,
-            period=BudgetPeriod.DAILY,
-        ))
+        budget_enforcer.set_policy(
+            BudgetPolicy(
+                level=BudgetLevel.GLOBAL,
+                scope_id="default",
+                resource_type=ResourceType.TOTAL_COST,
+                limit=10000.0,
+                period=BudgetPeriod.DAILY,
+            )
+        )
+        budget_enforcer.set_policy(
+            BudgetPolicy(
+                level=BudgetLevel.PROJECT,
+                scope_id="default",
+                resource_type=ResourceType.TOTAL_COST,
+                limit=5000.0,
+                period=BudgetPeriod.DAILY,
+            )
+        )
 
-        budget_enforcer.set_policy(BudgetPolicy(
-            level=BudgetLevel.AGENT,
-            scope_id="agent_01",
-            resource_type=ResourceType.TOTAL_COST,
-            limit=100.0,
-            period=BudgetPeriod.DAILY,
-            warning_threshold=0.5,
-            hard_stop=True,
-        ))
+        budget_enforcer.set_policy(
+            BudgetPolicy(
+                level=BudgetLevel.AGENT,
+                scope_id="agent_01",
+                resource_type=ResourceType.TOTAL_COST,
+                limit=100.0,
+                period=BudgetPeriod.DAILY,
+                warning_threshold=0.5,
+                hard_stop=True,
+            )
+        )
         budget_enforcer.record_usage(
             BudgetLevel.AGENT, "agent_01", ResourceType.TOTAL_COST, 100.0
         )
@@ -918,9 +929,7 @@ class TestMultipleCostTypes:
             task_id=task_id, gb_seconds=8.0 * 3600.0, agent_id="agent_01"
         )
 
-        cost_tracker.record_api_call(
-            task_id=task_id, count=500, agent_id="agent_01"
-        )
+        cost_tracker.record_api_call(task_id=task_id, count=500, agent_id="agent_01")
 
         cost_tracker.record_data_transfer(
             task_id=task_id, mb_amount=1024.0, agent_id="agent_01"

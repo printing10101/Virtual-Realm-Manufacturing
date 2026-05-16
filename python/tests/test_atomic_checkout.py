@@ -10,6 +10,7 @@ Covers:
 - Task board data aggregation
 - API endpoints
 """
+
 import os
 import sys
 import time
@@ -22,14 +23,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.core.execution_lock import (
     ExecutionLockStore,
-    LockError,
     LockConflictError,
     LockNotFoundError,
-    LockExpiredError,
     LockOwnershipError,
     LockStatus,
-    ExecutionLock,
-    init_execution_lock_store,
 )
 from app.core.task_checkout import (
     TaskCheckoutManager,
@@ -39,10 +36,8 @@ from app.core.task_checkout import (
     AgentMode,
     TaskStatus,
     CheckoutRequest,
-    CheckoutResult,
     TaskRecord,
     MAX_RETRY_COUNT,
-    init_checkout_manager,
 )
 
 
@@ -51,6 +46,7 @@ def temp_db_dir():
     tmpdir = tempfile.mkdtemp()
     yield tmpdir
     import shutil
+
     try:
         shutil.rmtree(tmpdir)
     except Exception:
@@ -132,7 +128,6 @@ def _make_request(
 
 
 class TestExecutionLockStore:
-
     def test_create_lock_success(self, lock_store):
         lock = lock_store.create_lock(task_id="task-001", agent_id="agent-A")
         assert lock.task_id == "task-001"
@@ -192,7 +187,9 @@ class TestExecutionLockStore:
             lock_store.force_release("nonexistent", "admin")
 
     def test_cleanup_expired_locks(self, lock_store):
-        lock_store.create_lock(task_id="task-008", agent_id="agent-A", timeout_hours=0.001)
+        lock_store.create_lock(
+            task_id="task-008", agent_id="agent-A", timeout_hours=0.001
+        )
         lock_store.create_lock(task_id="task-009", agent_id="agent-B", timeout_hours=24)
         time.sleep(5)
         expired = lock_store.cleanup_expired_locks()
@@ -242,7 +239,6 @@ class TestExecutionLockStore:
 
 
 class TestAtomicCheckout:
-
     def test_checkout_success(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="task-001"))
         req = _make_request("task-001")
@@ -303,15 +299,18 @@ class TestAtomicCheckout:
 
 
 class TestSingleTaskMode:
-
     def test_single_task_mode_prevents_multiple_checkouts(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="task-single-1"))
         checkout_manager.register_task(_make_task(task_id="task-single-2"))
 
-        r1 = checkout_manager.checkout_task(_make_request("task-single-1", agent_id="agent-A"))
+        r1 = checkout_manager.checkout_task(
+            _make_request("task-single-1", agent_id="agent-A")
+        )
         assert r1.status == CheckoutStatus.SUCCESS
 
-        r2 = checkout_manager.checkout_task(_make_request("task-single-2", agent_id="agent-A"))
+        r2 = checkout_manager.checkout_task(
+            _make_request("task-single-2", agent_id="agent-A")
+        )
         assert r2.status == CheckoutStatus.FAILED
         assert r2.failure_reason == CheckoutFailureReason.AGENT_BUSY
 
@@ -319,12 +318,16 @@ class TestSingleTaskMode:
         checkout_manager.register_task(_make_task(task_id="task-next-1"))
         checkout_manager.register_task(_make_task(task_id="task-next-2"))
 
-        r1 = checkout_manager.checkout_task(_make_request("task-next-1", agent_id="agent-A"))
+        r1 = checkout_manager.checkout_task(
+            _make_request("task-next-1", agent_id="agent-A")
+        )
         assert r1.status == CheckoutStatus.SUCCESS
 
         checkout_manager.complete_task("task-next-1", "agent-A")
 
-        r2 = checkout_manager.checkout_task(_make_request("task-next-2", agent_id="agent-A"))
+        r2 = checkout_manager.checkout_task(
+            _make_request("task-next-2", agent_id="agent-A")
+        )
         assert r2.status == CheckoutStatus.SUCCESS
 
     def test_after_abandon_can_checkout_next(self, checkout_manager):
@@ -334,12 +337,13 @@ class TestSingleTaskMode:
         checkout_manager.checkout_task(_make_request("task-ab-1", agent_id="agent-A"))
         checkout_manager.abandon_task("task-ab-1", "agent-A")
 
-        r2 = checkout_manager.checkout_task(_make_request("task-ab-2", agent_id="agent-A"))
+        r2 = checkout_manager.checkout_task(
+            _make_request("task-ab-2", agent_id="agent-A")
+        )
         assert r2.status == CheckoutStatus.SUCCESS
 
 
 class TestBatchMode:
-
     def test_batch_mode_allows_multiple_checkouts(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="batch-1", required_gpu=0.5))
         checkout_manager.register_task(_make_task(task_id="batch-2", required_gpu=0.5))
@@ -371,7 +375,6 @@ class TestBatchMode:
 
 
 class TestBudgetAndGPU:
-
     def test_budget_exceeded_precludes_checkout(self, checkout_manager):
         budget_state = _setup_budget_gpu_checkers(checkout_manager)
         budget_state["exceeded"] = True
@@ -396,7 +399,6 @@ class TestBudgetAndGPU:
 
 
 class TestFailureHandling:
-
     def test_failure_recorded(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="fail-rec-1"))
         checkout_manager.checkout_task(_make_request("fail-rec-1"))
@@ -444,7 +446,6 @@ class TestFailureHandling:
 
 
 class TestForceRelease:
-
     def test_force_release_resets_task(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="force-1"))
         checkout_manager.checkout_task(_make_request("force-1", agent_id="agent-A"))
@@ -462,7 +463,6 @@ class TestForceRelease:
 
 
 class TestExpiredLockCleanup:
-
     def test_cleanup_resets_expired_tasks(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="exp-1"))
         req = _make_request("exp-1", agent_id="agent-A", timeout_hours=0.001)
@@ -479,12 +479,17 @@ class TestExpiredLockCleanup:
 
 
 class TestTaskBoard:
-
     def test_board_separates_by_status(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="board-p", status="pending"))
-        checkout_manager.register_task(_make_task(task_id="board-ip", status="in_progress", assigned_to="agent-A"))
-        checkout_manager.register_task(_make_task(task_id="board-c", status="completed", assigned_to="agent-A"))
-        checkout_manager.register_task(_make_task(task_id="board-f", status="failed", assigned_to="agent-A"))
+        checkout_manager.register_task(
+            _make_task(task_id="board-ip", status="in_progress", assigned_to="agent-A")
+        )
+        checkout_manager.register_task(
+            _make_task(task_id="board-c", status="completed", assigned_to="agent-A")
+        )
+        checkout_manager.register_task(
+            _make_task(task_id="board-f", status="failed", assigned_to="agent-A")
+        )
 
         board = checkout_manager.get_task_board()
         assert len(board["pending"]) >= 1
@@ -508,7 +513,6 @@ class TestTaskBoard:
 
 
 class TestPriorityQueue:
-
     def test_enqueue_checkout(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="queue-1"))
 
@@ -541,7 +545,9 @@ class TestPriorityQueue:
             return False
 
         checkout_manager.set_gpu_checker(gpu_always_fail)
-        checkout_manager.register_task(_make_task(task_id="retry-task", required_gpu=16.0))
+        checkout_manager.register_task(
+            _make_task(task_id="retry-task", required_gpu=16.0)
+        )
 
         checkout_manager.enqueue_checkout(
             _make_request("retry-task", agent_id="agent-R", required_gpu=16.0)
@@ -552,11 +558,14 @@ class TestPriorityQueue:
 
         task = checkout_manager.get_task("retry-task")
         if task:
-            assert task.status in (TaskStatus.FAILED.value, TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value)
+            assert task.status in (
+                TaskStatus.FAILED.value,
+                TaskStatus.PENDING.value,
+                TaskStatus.IN_PROGRESS.value,
+            )
 
 
 class TestCheckoutHistory:
-
     def test_history_includes_task_and_lock_history(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="hist-1"))
         checkout_manager.checkout_task(_make_request("hist-1", agent_id="agent-A"))
@@ -583,7 +592,6 @@ class TestCheckoutHistory:
 
 
 class TestAgentStatus:
-
     def test_agent_status_with_active_task(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="status-1"))
         checkout_manager.checkout_task(_make_request("status-1", agent_id="agent-A"))
@@ -600,7 +608,6 @@ class TestAgentStatus:
 
 
 class TestThreadSafety:
-
     def test_concurrent_checkout_same_task(self, checkout_manager):
         checkout_manager.register_task(_make_task(task_id="concurrent-1"))
 
