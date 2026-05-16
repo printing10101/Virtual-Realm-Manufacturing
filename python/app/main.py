@@ -1,8 +1,8 @@
 """FastAPI application entry point."""
+
 from __future__ import annotations
 
 import logging.config
-import os
 import time
 from pathlib import Path
 
@@ -16,29 +16,32 @@ from app.api.v1.sse import sse_manager
 from app.core.cors_config import cors_settings
 from app.core.auth import AuthMiddleware
 from app.core.exception_handlers import register_exception_handlers
+from app.core.request_id import RequestIdMiddleware, get_request_id
+from app.core.logging_config import configure_logging
 from app.core.utils import get_metrics_collector
-from app.core.sidecar_lifecycle import IdleAutoShutdownMiddleware, GracefulShutdownHandler
+from app.core.sidecar_lifecycle import (
+    IdleAutoShutdownMiddleware,
+    GracefulShutdownHandler,
+)
 from app.core.ring_buffer import get_ring_log_buffer, BUFFER_TYPES
+from app.core.response import success, error, ErrorCode
+from app.config import config
 from app.version import get_version_info, VERSION as PY_VERSION
 from app.agent.middleware import AgentAuthMiddleware
 from app.api.v1 import lnn, wear_prediction, user_sovereignty, agent_gateway, jobs
 from app.rag import routes as rag_routes
 from app.ai import ollama_routes
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+configure_logging(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 metrics = get_metrics_collector()
-ring_log = get_ring_log_buffer(base_dir=os.environ.get("LNN_GSTACK_DIR", ".lingjing/.gstack"))
+ring_log = get_ring_log_buffer(base_dir=config.paths.gstack_dir)
 
-auth_enabled = os.environ.get("LNN_AUTH_ENABLED", "true").lower() == "true"
-permission_enforced = os.environ.get("LNN_PERMISSION_ENFORCED", "false").lower() == "true"
+auth_enabled = config.security.auth_enabled
+permission_enforced = config.security.permission_enforced
 
-STATE_FILE_PATH = str(Path(os.environ.get("LNN_GSTACK_DIR", ".lingjing/.gstack")) / "sidecar.json")
+STATE_FILE_PATH = str(Path(config.paths.gstack_dir) / "sidecar.json")
 
 APP_START_TIME = time.time()
 
@@ -49,7 +52,7 @@ def get_state_file_path() -> str:
 
 app = FastAPI(
     title="灵境制造 API",
-    version="1.7.0",
+    version="1.7.1",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -69,8 +72,13 @@ async def startup_event():
     shutdown_handler.setup()
     await ring_log.start()
     await idle_middleware.start_idle_checker()
-    ring_log.append("system_event", level="INFO", source="startup",
-                    message="Application started", data={"version": PY_VERSION})
+    ring_log.append(
+        "system_event",
+        level="INFO",
+        source="startup",
+        message="Application started",
+        data={"version": PY_VERSION},
+    )
     logger.info("Graceful shutdown handler and signal processors registered")
     logger.info("Idle auto-shutdown middleware registered (timeout: 1800s)")
     logger.info("State file path: %s", STATE_FILE_PATH)
@@ -78,12 +86,18 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    ring_log.append("system_event", level="INFO", source="shutdown",
-                    message="Application shutting down")
+    ring_log.append(
+        "system_event",
+        level="INFO",
+        source="shutdown",
+        message="Application shutting down",
+    )
     await ring_log.stop()
     await sse_manager.shutdown()
     logger.info("FastAPI shutdown event completed")
 
+
+app.add_middleware(RequestIdMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -116,17 +130,26 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         elapsed = time.perf_counter() - start
         metrics.record(request.url.path, elapsed)
-        ring_log.append("request", level="INFO", source=request.url.path,
-                        message=f"{request.method} {request.url.path}",
-                        data={"method": request.method, "path": request.url.path,
-                              "status": response.status_code,
-                              "elapsed_ms": round(elapsed * 1000, 3)})
+        ring_log.append(
+            "request",
+            level="INFO",
+            source=request.url.path,
+            message=f"{request.method} {request.url.path}",
+            data={
+                "method": request.method,
+                "path": request.url.path,
+                "status": response.status_code,
+                "elapsed_ms": round(elapsed * 1000, 3),
+            },
+        )
         return response
 
 
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(AuthMiddleware, enabled=auth_enabled, permission_enforced=permission_enforced)
+app.add_middleware(
+    AuthMiddleware, enabled=auth_enabled, permission_enforced=permission_enforced
+)
 
 
 @app.get("/api/metrics")
@@ -146,7 +169,7 @@ async def health_check():
 
 @app.get("/api/health")
 async def api_health_check():
-    return {"status": "ok", "version": "1.7.0"}
+    return {"status": "ok", "version": "1.7.1"}
 
 
 @app.get("/api/health/ping")
@@ -161,7 +184,7 @@ async def get_version():
 
 @app.get("/api/v1/logs/stats")
 async def get_log_stats():
-    return {"code": "SUCCESS", "message": "OK", "data": ring_log.stats()}
+    return {"code": 0, "message": "OK", "data": ring_log.stats(), "request_id": get_request_id()}
 
 
 @app.get("/api/v1/logs/{buffer_type}")
@@ -175,16 +198,26 @@ async def query_logs(
 ):
     if buffer_type not in BUFFER_TYPES:
         return JSONResponse(
-            content={"code": "INVALID_REQUEST", "message": f"Invalid buffer type: {buffer_type}",
-                     "data": None, "detail": {"valid_types": list(BUFFER_TYPES)}},
+            content={
+                "code": 1002,
+                "message": f"Invalid buffer type: {buffer_type}",
+                "request_id": get_request_id(),
+                "detail": {"valid_types": list(BUFFER_TYPES)},
+            },
             status_code=400,
         )
-    result = ring_log.query(buffer_type=buffer_type, since=since, until=until,
-                            level=level, limit=limit, offset=offset)
-    return {"code": "SUCCESS", "message": "OK", "data": result}
+    result = ring_log.query(
+        buffer_type=buffer_type,
+        since=since,
+        until=until,
+        level=level,
+        limit=limit,
+        offset=offset,
+    )
+    return {"code": 0, "message": "OK", "data": result, "request_id": get_request_id()}
 
 
-agent_auth_enabled = os.environ.get("AGENT_AUTH_ENABLED", "true").lower() == "true"
+agent_auth_enabled = config.security.agent_auth_enabled
 app.add_middleware(AgentAuthMiddleware, enabled=agent_auth_enabled)
 
 app.include_router(lnn.router)

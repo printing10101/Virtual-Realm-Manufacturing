@@ -2,6 +2,7 @@
 
 Provides cross-encoder based re-ranking of search results.
 """
+
 from __future__ import annotations
 
 import logging
@@ -57,10 +58,12 @@ class RerankerService:
             overlap = len(query_terms & doc_terms)
             score = overlap / max(len(query_terms), 1)
 
-            reranked.append({
-                **result,
-                "rerank_score": round(score, 4),
-            })
+            reranked.append(
+                {
+                    **result,
+                    "rerank_score": round(score, 4),
+                }
+            )
 
         reranked.sort(key=lambda x: x["rerank_score"], reverse=True)
 

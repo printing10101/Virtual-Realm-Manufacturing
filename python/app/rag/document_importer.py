@@ -2,10 +2,10 @@
 
 Handles importing documents (PDF, DOCX, MD, etc.) into the knowledge base.
 """
+
 from __future__ import annotations
 
 import logging
-import os
 import time
 from pathlib import Path
 from typing import Any
@@ -43,6 +43,7 @@ class DocumentImportService:
             chunks = [content]
         elif suffix == ".json":
             import json
+
             with open(file_path_obj, encoding="utf-8") as f:
                 data = json.load(f)
             if isinstance(data, list):

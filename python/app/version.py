@@ -4,7 +4,7 @@ Version Information Module
 Loads version from root VERSION file and provides runtime version info.
 Version is sourced from project root VERSION file (single source of truth).
 """
-import os
+
 import subprocess
 from pathlib import Path
 from typing import Optional
