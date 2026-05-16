@@ -1,0 +1,144 @@
+# =============================================================================
+# .dockerignore - Exclude unnecessary files from Docker build context
+# =============================================================================
+
+# --- Version Control ---
+.git
+.gitignore
+.gitattributes
+
+# --- IDE & Editor ---
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.project
+.settings
+*.sublime-project
+*.sublime-workspace
+
+# --- Trae AI ---
+.trae
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs & Runtime Data ---
+logs/
+*.log
+*.jsonl
+data/traces/
+
+# --- Test Files & Reports ---
+python/tests/
+python/test_*.py
+python/debug_*.py
+python/diagnose*.py
+python/quick_*.py
+python/verify*.py
+python/run_*.py
+python/run_*.bat
+python/start_server.bat
+python/start_server.py
+python/test_output.txt
+reports/
+pytest-report.html
+playwright-report/
+test-results/
+
+# --- Scripts & Build Tools ---
+scripts/
+build.ps1
+check-env.ps1
+health_check.ps1
+execute_tests.bat
+quick_test.bat
+run_tests.bat
+run_full_tests.py
+run_integration_tests_standalone.py
+run_pytest_prog.py
+run_tests_direct.py
+run_tests_via_subprocess.py
+run_verify.bat
+run_agent_test.py
+run_agent_tests.bat
+launch_test.py
+
+# --- E2E & Testing ---
+e2e/
+playwright.config.ts
+.eslintrc.cjs
+commitlint.config.js
+
+# --- Documentation ---
+docs/
+README.md
+README-en.md
+*.md
+!VERSION
+CHANGELOG.md
+LICENSE
+
+# --- Frontend Build Files ---
+node_modules/
+dist/
+pnpm-lock.yaml
+package.json
+package-lock.json
+auto-imports.d.ts
+components.d.ts
+env.d.ts
+index.html
+*.cjs
+*.ts
+!Dockerfile
+!docker-compose.yml
+
+# --- Other Sub-projects ---
+CNC_Machining-main/
+uniwear-dataset-main/
+mcp_server/
+skills/
+
+# --- Docker ---
+docker-compose.yml
+Dockerfile.backup
+Dockerfile.*
+
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# --- Python Cache & Build Artifacts ---
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.eggs
+*.egg-info
+dist
+build
+.pytest_cache
+.mypy_cache
+
+# --- Git ---
+.git
+.gitignore
+.gitattributes
+
+# --- Misc ---
+*.bak
+*.tmp
+*.temp
+*.cache
+*.sqlite
+*.db

@@ -13,10 +13,12 @@ export default defineConfig({
     vue(),
     AutoImport({
       imports: ['vue', 'vue-router', 'pinia'],
-      resolvers: [ElementPlusResolver()],
+      resolvers: [ElementPlusResolver({ importStyle: false })],
+      dts: 'src/auto-imports.d.ts',
     }),
     Components({
-      resolvers: [ElementPlusResolver()],
+      resolvers: [ElementPlusResolver({ importStyle: false })],
+      dts: 'src/components.d.ts',
     }),
   ],
   resolve: {
@@ -37,39 +39,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          if (id.includes('node_modules/three') || id.includes('three/examples')) {
-            return 'three-vendor'
-          }
-          
-          if (id.includes('node_modules/echarts')) {
-            return 'echarts-vendor'
-          }
-          
-          if (id.includes('node_modules/element-plus')) {
-            return 'element-plus-vendor'
-          }
-          
-          if (id.includes('node_modules/vue') || 
-              id.includes('node_modules/vue-router') || 
-              id.includes('node_modules/pinia')) {
-            return 'framework-vendor'
-          }
-          
-          if (id.includes('node_modules')) {
-            return 'vendor'
-          }
-          
-          if (id.includes('src/views/')) {
-            const match = id.match(/src\/views\/([A-Za-z0-9]+)/)
-            if (match) {
-              return `view-${match[1].toLowerCase()}`
-            }
-          }
-          
-          if (id.includes('src/components/')) {
-            return 'components'
-          }
+        manualChunks: {
+          'framework-vendor': ['vue', 'vue-router', 'pinia'],
+          'element-plus-icons': ['@element-plus/icons-vue'],
+          'element-plus-locale': ['element-plus/es/locale/lang/zh-cn', 'element-plus/es/locale/lang/en'],
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
