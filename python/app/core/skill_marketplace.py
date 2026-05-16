@@ -46,9 +46,7 @@ class SkillMarketplace:
         try:
             with open(self._listings_file, "r", encoding="utf-8") as f:
                 raw = json.load(f)
-            return {
-                k: MarketListing(**v) for k, v in raw.items()
-            }
+            return {k: MarketListing(**v) for k, v in raw.items()}
         except (json.JSONDecodeError, TypeError) as e:
             logger.warning("Failed to load marketplace listings: %s", e)
             return {}
@@ -114,15 +112,25 @@ class SkillMarketplace:
 
     def _build_package(self, package: Dict[str, Any]) -> str:
         skill_id = package["skill_id"]
-        package_file = os.path.join(self.market_dir, f"{skill_id}_{package.get('metadata', {}).get('version', '1.0.0')}.skz")
+        package_file = os.path.join(
+            self.market_dir,
+            f"{skill_id}_{package.get('metadata', {}).get('version', '1.0.0')}.skz",
+        )
 
         with zipfile.ZipFile(package_file, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("manifest.json", json.dumps({
-                "skill_id": skill_id,
-                "name": package.get("name", ""),
-                "version": package.get("version", "1.0.0"),
-                "metadata": package.get("metadata", {}),
-            }, ensure_ascii=False, indent=2))
+            zf.writestr(
+                "manifest.json",
+                json.dumps(
+                    {
+                        "skill_id": skill_id,
+                        "name": package.get("name", ""),
+                        "version": package.get("version", "1.0.0"),
+                        "metadata": package.get("metadata", {}),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+            )
             zf.writestr("skill.md", package.get("raw_content", ""))
 
         logger.info("Package built: %s", package_file)
@@ -133,19 +141,21 @@ class SkillMarketplace:
         for skill_id, listing in self._listings.items():
             if tag and tag not in listing.tags:
                 continue
-            results.append({
-                "skill_id": listing.skill_id,
-                "name": listing.name,
-                "version": listing.version,
-                "description": listing.description,
-                "author": listing.author,
-                "tags": listing.tags,
-                "downloads": listing.downloads,
-                "avg_rating": listing.avg_rating,
-                "rating_count": listing.rating_count,
-                "created_at": listing.created_at,
-                "updated_at": listing.updated_at,
-            })
+            results.append(
+                {
+                    "skill_id": listing.skill_id,
+                    "name": listing.name,
+                    "version": listing.version,
+                    "description": listing.description,
+                    "author": listing.author,
+                    "tags": listing.tags,
+                    "downloads": listing.downloads,
+                    "avg_rating": listing.avg_rating,
+                    "rating_count": listing.rating_count,
+                    "created_at": listing.created_at,
+                    "updated_at": listing.updated_at,
+                }
+            )
 
         results.sort(key=lambda x: (x["avg_rating"], x["downloads"]), reverse=True)
         return results
@@ -156,17 +166,19 @@ class SkillMarketplace:
         for skill_id, listing in self._listings.items():
             searchable = f"{listing.name} {listing.description} {' '.join(listing.tags)} {listing.author}"
             if query_lower in searchable.lower():
-                results.append({
-                    "skill_id": listing.skill_id,
-                    "name": listing.name,
-                    "version": listing.version,
-                    "description": listing.description,
-                    "author": listing.author,
-                    "tags": listing.tags,
-                    "downloads": listing.downloads,
-                    "avg_rating": listing.avg_rating,
-                    "rating_count": listing.rating_count,
-                })
+                results.append(
+                    {
+                        "skill_id": listing.skill_id,
+                        "name": listing.name,
+                        "version": listing.version,
+                        "description": listing.description,
+                        "author": listing.author,
+                        "tags": listing.tags,
+                        "downloads": listing.downloads,
+                        "avg_rating": listing.avg_rating,
+                        "rating_count": listing.rating_count,
+                    }
+                )
 
         results.sort(key=lambda x: (x["avg_rating"], x["downloads"]), reverse=True)
         return results
@@ -180,7 +192,8 @@ class SkillMarketplace:
         loader = get_skill_loader()
 
         matching_files = [
-            f for f in os.listdir(self.market_dir)
+            f
+            for f in os.listdir(self.market_dir)
             if f.startswith(f"{skill_id}_") and f.endswith(".skz")
         ]
         if not matching_files:
@@ -195,7 +208,11 @@ class SkillMarketplace:
             skill_md = zf.read("skill.md").decode("utf-8")
 
         imported = loader.import_skill(
-            {"skill_id": skill_id, "raw_content": skill_md, "metadata": manifest.get("metadata", {})},
+            {
+                "skill_id": skill_id,
+                "raw_content": skill_md,
+                "metadata": manifest.get("metadata", {}),
+            },
             level=target_level,
             sub_id=target_sub_id,
         )
@@ -212,7 +229,9 @@ class SkillMarketplace:
             "sub_id": target_sub_id,
         }
 
-    def rate_skill(self, skill_id: str, rating: float, agent_id: str = "") -> Dict[str, Any]:
+    def rate_skill(
+        self, skill_id: str, rating: float, agent_id: str = ""
+    ) -> Dict[str, Any]:
         loader = get_skill_loader()
         result = loader.rate_skill(skill_id, rating)
 
@@ -232,7 +251,8 @@ class SkillMarketplace:
             self._save_listings()
 
             matching_files = [
-                f for f in os.listdir(self.market_dir)
+                f
+                for f in os.listdir(self.market_dir)
                 if f.startswith(f"{skill_id}_") and f.endswith(".skz")
             ]
             for f in matching_files:

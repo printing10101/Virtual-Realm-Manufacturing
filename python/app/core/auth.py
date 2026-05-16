@@ -6,6 +6,7 @@ Implements token-based authentication for all non-public API endpoints.
 - Tokens are stored in memory and local file (0o600 permissions)
 - Health check and metrics endpoints are exempted
 """
+
 from __future__ import annotations
 import os
 import json
@@ -61,12 +62,12 @@ def get_token_file_path() -> Path:
 def save_token(token: str, file_path: Optional[Path] = None) -> Path:
     if file_path is None:
         file_path = get_token_file_path()
-    
+
     file_path.write_text(token)
-    
+
     if os.name != "nt":
         os.chmod(str(file_path), stat.S_IRUSR | stat.S_IWUSR)
-    
+
     logger.info("Token saved to %s", file_path)
     return file_path
 
@@ -74,10 +75,10 @@ def save_token(token: str, file_path: Optional[Path] = None) -> Path:
 def load_token(file_path: Optional[Path] = None) -> Optional[str]:
     if file_path is None:
         file_path = get_token_file_path()
-    
+
     if not file_path.exists():
         return None
-    
+
     try:
         token = file_path.read_text().strip()
         return token if token else None
@@ -91,7 +92,7 @@ def initialize_token() -> str:
     if existing:
         logger.info("Loaded existing token")
         return existing
-    
+
     new_token = generate_token()
     save_token(new_token)
     return new_token
@@ -105,43 +106,51 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self._token = None
         if enabled:
             self._token = initialize_token()
-    
+
     @property
     def token(self) -> Optional[str]:
         return self._token
-    
+
     async def dispatch(self, request: Request, call_next):
         if not self.enabled:
             return await call_next(request)
-        
+
         path = request.url.path
-        
-        if path in PUBLIC_ENDPOINTS or path.startswith("/api/docs") or path.startswith("/api/redoc") or path.startswith("/api/openapi"):
+
+        if (
+            path in PUBLIC_ENDPOINTS
+            or path.startswith("/api/docs")
+            or path.startswith("/api/redoc")
+            or path.startswith("/api/openapi")
+        ):
             return await call_next(request)
-        
+
         auth_header = request.headers.get("Authorization", "")
-        
+
         if not auth_header.startswith("Bearer "):
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={
                     "error": "unauthorized",
-                    "message": "Missing or invalid Authorization header"
-                }
+                    "message": "Missing or invalid Authorization header",
+                },
             )
-        
+
         token = auth_header[7:]
-        
+
         if not hmac.compare_digest(token, self._token or ""):
-            logger.warning("Invalid token attempt from %s", request.client.host if request.client else "unknown")
+            logger.warning(
+                "Invalid token attempt from %s",
+                request.client.host if request.client else "unknown",
+            )
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={
                     "error": "unauthorized",
-                    "message": "Invalid authentication token"
-                }
+                    "message": "Invalid authentication token",
+                },
             )
-        
+
         if self.permission_enforced:
             metadata = _get_token_metadata(token)
             token_level_str = metadata.get("level", "T")
@@ -149,14 +158,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 token_level = PermissionLevel(token_level_str)
             except ValueError:
                 token_level = PermissionLevel.T
-            
+
             if not permission_checker.has_permission(token_level, path, request.method):
                 return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
                     content={
                         "error": "forbidden",
-                        "message": f"Insufficient permission: token has {token_level_str} level, endpoint requires {permission_checker.get_required_permission(request.method, path).value} level"
-                    }
+                        "message": f"Insufficient permission: token has {token_level_str} level, endpoint requires {permission_checker.get_required_permission(request.method, path).value} level",
+                    },
                 )
-        
+
         return await call_next(request)

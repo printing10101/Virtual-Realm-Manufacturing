@@ -4,6 +4,7 @@ Async Task System
 Provides unified async task management with lifecycle control,
 SSE event broadcasting, and concurrency management.
 """
+
 import asyncio
 import json
 import logging
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TaskRecord:
     """Complete task record with lifecycle tracking"""
+
     job_id: str
     task_type: TaskType
     status: TaskStatus
@@ -38,15 +40,17 @@ class TaskRecord:
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
-        d['status'] = self.status.value
-        d['task_type'] = self.task_type.value
-        d['created_at_iso'] = datetime.fromtimestamp(self.created_at).isoformat()
+        d["status"] = self.status.value
+        d["task_type"] = self.task_type.value
+        d["created_at_iso"] = datetime.fromtimestamp(self.created_at).isoformat()
         if self.started_at:
-            d['started_at_iso'] = datetime.fromtimestamp(self.started_at).isoformat()
+            d["started_at_iso"] = datetime.fromtimestamp(self.started_at).isoformat()
         if self.completed_at:
-            d['completed_at_iso'] = datetime.fromtimestamp(self.completed_at).isoformat()
+            d["completed_at_iso"] = datetime.fromtimestamp(
+                self.completed_at
+            ).isoformat()
         if self.started_at and self.completed_at:
-            d['duration_seconds'] = round(self.completed_at - self.started_at, 2)
+            d["duration_seconds"] = round(self.completed_at - self.started_at, 2)
         return d
 
 
@@ -73,7 +77,7 @@ class AsyncTaskManager:
         return cls._instance
 
     def __init__(self):
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             return
         self._initialized = True
 
@@ -90,7 +94,7 @@ class AsyncTaskManager:
 
     def register_cancel_hook(self, job_id: str, hook: Callable):
         """Register a cancel hook for a specific task.
-        
+
         Args:
             job_id: The task ID to register the hook for
             hook: A callable that will be invoked when the task is cancelled
@@ -116,7 +120,7 @@ class AsyncTaskManager:
                 return self._tasks[existing_id]
 
             job_id = f"{task_type.value}-{uuid.uuid4().hex[:12]}"
-            
+
             record = TaskRecord(
                 job_id=job_id,
                 task_type=task_type,
@@ -134,12 +138,16 @@ class AsyncTaskManager:
                 self._idempotency_map[idempotency_key] = job_id
 
             record.status = TaskStatus.QUEUED
-            await self._broadcast_event(job_id, "queued", {
-                "job_id": job_id,
-                "task_type": task_type.value,
-                "estimated_wait": self._estimate_wait(),
-                "queue_position": self._queue_size() + 1,
-            })
+            await self._broadcast_event(
+                job_id,
+                "queued",
+                {
+                    "job_id": job_id,
+                    "task_type": task_type.value,
+                    "estimated_wait": self._estimate_wait(),
+                    "queue_position": self._queue_size() + 1,
+                },
+            )
 
             logger.info(f"Task {job_id} created and queued")
 
@@ -157,16 +165,22 @@ class AsyncTaskManager:
                 record.status = TaskStatus.RUNNING
                 record.started_at = time.time()
 
-            await self._broadcast_event(job_id, "started", {
-                "job_id": job_id,
-                "started_at": datetime.fromtimestamp(record.started_at).isoformat(),
-                "resources": {"max_concurrent": self._max_concurrent},
-            })
+            await self._broadcast_event(
+                job_id,
+                "started",
+                {
+                    "job_id": job_id,
+                    "started_at": datetime.fromtimestamp(record.started_at).isoformat(),
+                    "resources": {"max_concurrent": self._max_concurrent},
+                },
+            )
 
             try:
                 cancel_evt = self._cancel_events.get(job_id)
-                result = await executor(cancel_evt, self._create_progress_updater(job_id))
-                
+                result = await executor(
+                    cancel_evt, self._create_progress_updater(job_id)
+                )
+
                 async with self._task_lock:
                     record = self._tasks[job_id]
                     record.status = TaskStatus.COMPLETED
@@ -175,11 +189,15 @@ class AsyncTaskManager:
                     record.completed_at = time.time()
                     record.metrics = result.get("metrics") if result else None
 
-                await self._broadcast_event(job_id, "complete", {
-                    "job_id": job_id,
-                    "result": result,
-                    "completed_at": datetime.now().isoformat(),
-                })
+                await self._broadcast_event(
+                    job_id,
+                    "complete",
+                    {
+                        "job_id": job_id,
+                        "result": result,
+                        "completed_at": datetime.now().isoformat(),
+                    },
+                )
 
                 await self._cleanup_task(job_id)
 
@@ -189,11 +207,15 @@ class AsyncTaskManager:
                     record.status = TaskStatus.CANCELLED
                     record.completed_at = time.time()
 
-                await self._broadcast_event(job_id, "cancelled", {
-                    "job_id": job_id,
-                    "cancelled_at": datetime.now().isoformat(),
-                    "progress": record.progress,
-                })
+                await self._broadcast_event(
+                    job_id,
+                    "cancelled",
+                    {
+                        "job_id": job_id,
+                        "cancelled_at": datetime.now().isoformat(),
+                        "progress": record.progress,
+                    },
+                )
 
                 await self._cleanup_task(job_id)
 
@@ -204,12 +226,16 @@ class AsyncTaskManager:
                     record.error = str(e)
                     record.completed_at = time.time()
 
-                await self._broadcast_event(job_id, "failed", {
-                    "job_id": job_id,
-                    "error": str(e),
-                    "suggestion": self._get_error_suggestion(e),
-                    "failed_at": datetime.now().isoformat(),
-                })
+                await self._broadcast_event(
+                    job_id,
+                    "failed",
+                    {
+                        "job_id": job_id,
+                        "error": str(e),
+                        "suggestion": self._get_error_suggestion(e),
+                        "failed_at": datetime.now().isoformat(),
+                    },
+                )
 
                 await self._cleanup_task(job_id)
 
@@ -219,9 +245,13 @@ class AsyncTaskManager:
             if job_id not in self._tasks:
                 return False
             record = self._tasks[job_id]
-            if record.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
+            if record.status in (
+                TaskStatus.COMPLETED,
+                TaskStatus.FAILED,
+                TaskStatus.CANCELLED,
+            ):
                 return False
-            
+
             record.status = TaskStatus.CANCELLED
             record.completed_at = time.time()
 
@@ -236,11 +266,15 @@ class AsyncTaskManager:
             except Exception as e:
                 logger.warning(f"Cancel hook for task {job_id} failed: {e}")
 
-        await self._broadcast_event(job_id, "cancelled", {
-            "job_id": job_id,
-            "cancelled_at": datetime.now().isoformat(),
-            "progress": record.progress,
-        })
+        await self._broadcast_event(
+            job_id,
+            "cancelled",
+            {
+                "job_id": job_id,
+                "cancelled_at": datetime.now().isoformat(),
+                "progress": record.progress,
+            },
+        )
 
         await self._cleanup_task(job_id)
 
@@ -262,7 +296,9 @@ class AsyncTaskManager:
             self._tasks.pop(job_id, None)
 
             if len(self._tasks) > MAX_TASK_RECORDS:
-                sorted_tasks = sorted(self._tasks.items(), key=lambda x: x[1].created_at)
+                sorted_tasks = sorted(
+                    self._tasks.items(), key=lambda x: x[1].created_at
+                )
                 excess_count = len(self._tasks) - MAX_TASK_RECORDS
                 for old_job_id, old_record in sorted_tasks[:excess_count]:
                     del self._tasks[old_job_id]
@@ -298,7 +334,7 @@ class AsyncTaskManager:
             tasks = [t for t in tasks if t.status == status]
 
         tasks.sort(key=lambda t: t.created_at, reverse=True)
-        return tasks[offset:offset + limit]
+        return tasks[offset : offset + limit]
 
     def subscribe(self, job_id: str) -> asyncio.Queue:
         """Subscribe to task events"""
@@ -315,10 +351,12 @@ class AsyncTaskManager:
             except ValueError:
                 pass
 
-    async def _broadcast_event(self, job_id: str, event_type: str, data: Dict[str, Any]):
+    async def _broadcast_event(
+        self, job_id: str, event_type: str, data: Dict[str, Any]
+    ):
         """Broadcast event to all subscribers"""
         event = f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-        
+
         if job_id in self._subscribers:
             dead_queues = []
             for q in self._subscribers[job_id]:
@@ -331,25 +369,34 @@ class AsyncTaskManager:
 
     def _create_progress_updater(self, job_id: str) -> Callable:
         """Create a progress update callback"""
-        async def update_progress(percent: float, message: str = "", metrics: Optional[Dict] = None):
+
+        async def update_progress(
+            percent: float, message: str = "", metrics: Optional[Dict] = None
+        ):
             async with self._task_lock:
                 if job_id in self._tasks:
                     self._tasks[job_id].progress = percent
                     if metrics:
                         self._tasks[job_id].metrics = metrics
 
-            await self._broadcast_event(job_id, "progress", {
-                "job_id": job_id,
-                "percent": round(percent, 1),
-                "message": message,
-                "metrics": metrics or {},
-            })
+            await self._broadcast_event(
+                job_id,
+                "progress",
+                {
+                    "job_id": job_id,
+                    "percent": round(percent, 1),
+                    "message": message,
+                    "metrics": metrics or {},
+                },
+            )
 
         return update_progress
 
     def _estimate_wait(self) -> float:
         """Estimate wait time in seconds"""
-        queued_count = sum(1 for t in self._tasks.values() if t.status == TaskStatus.QUEUED)
+        queued_count = sum(
+            1 for t in self._tasks.values() if t.status == TaskStatus.QUEUED
+        )
         return queued_count * 60.0
 
     def _queue_size(self) -> int:
@@ -372,7 +419,9 @@ class AsyncTaskManager:
         total = len(self._tasks)
         active = sum(1 for t in self._tasks.values() if t.status == TaskStatus.RUNNING)
         queued = sum(1 for t in self._tasks.values() if t.status == TaskStatus.QUEUED)
-        completed = sum(1 for t in self._tasks.values() if t.status == TaskStatus.COMPLETED)
+        completed = sum(
+            1 for t in self._tasks.values() if t.status == TaskStatus.COMPLETED
+        )
         failed = sum(1 for t in self._tasks.values() if t.status == TaskStatus.FAILED)
 
         return {

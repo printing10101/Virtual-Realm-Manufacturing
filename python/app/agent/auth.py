@@ -1,4 +1,5 @@
 """Agent Token Database and Authentication System."""
+
 from __future__ import annotations
 
 import hashlib
@@ -6,10 +7,9 @@ import logging
 import os
 import secrets
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ class AgentTokenStore:
     def _load(self):
         if self._storage_path.exists():
             import json
+
             try:
                 data = json.loads(self._storage_path.read_text())
                 for agent_id, t in data.items():
@@ -59,6 +60,7 @@ class AgentTokenStore:
 
     def _save(self):
         import json
+
         self._storage_path.parent.mkdir(parents=True, exist_ok=True)
         data = {
             aid: {
@@ -89,6 +91,7 @@ class AgentTokenStore:
         paper_only: bool = True,
     ) -> tuple[str, AgentToken]:
         import uuid
+
         raw = f"lj_agent_{secrets.token_hex(16)}"
         agent_id = str(uuid.uuid4())
         now = time.time()
@@ -125,15 +128,17 @@ class AgentTokenStore:
     def list_tokens(self) -> list[dict]:
         result = []
         for t in self._tokens.values():
-            result.append({
-                "agent_id": t.agent_id,
-                "scopes": t.scopes,
-                "created_at": t.created_at,
-                "expires_at": t.expires_at,
-                "paper_only": t.paper_only,
-                "is_active": t.is_active,
-                "token_prefix": "lj_agent_" + t.token_hash[:8] + "...",
-            })
+            result.append(
+                {
+                    "agent_id": t.agent_id,
+                    "scopes": t.scopes,
+                    "created_at": t.created_at,
+                    "expires_at": t.expires_at,
+                    "paper_only": t.paper_only,
+                    "is_active": t.is_active,
+                    "token_prefix": "lj_agent_" + t.token_hash[:8] + "...",
+                }
+            )
         return result
 
     def revoke_t_tokens(self) -> int:

@@ -5,12 +5,10 @@ import asyncio
 import logging
 import atexit
 from pathlib import Path
-from datetime import datetime
 from typing import Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +52,12 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
         else:
             if self._shutdown_initiated:
                 from starlette.responses import JSONResponse
+
                 return JSONResponse(
-                    content={"status": "shutting_down", "message": "Server is shutting down"},
+                    content={
+                        "status": "shutting_down",
+                        "message": "Server is shutting down",
+                    },
                     status_code=503,
                 )
 
@@ -83,6 +85,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
 
         try:
             from app.ai.lnn.inference.model_cache import ModelCache
+
             cache = ModelCache()
             cache.clear()
             logger.info("Model cache cleared")
@@ -91,6 +94,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
 
         try:
             import gc
+
             gc.collect()
             logger.info("Garbage collection completed")
         except Exception as e:
@@ -119,6 +123,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
         except RuntimeError:
             try:
                 import threading
+
                 t = threading.Thread(target=self._send_shutdown_signal, daemon=True)
                 t.start()
             except Exception as e:
@@ -188,6 +193,7 @@ class GracefulShutdownHandler:
 
         try:
             from app.ai.lnn.inference.model_cache import ModelCache
+
             cache = ModelCache()
             cache.clear()
             logger.info("Model cache cleared")
@@ -196,6 +202,7 @@ class GracefulShutdownHandler:
 
         try:
             import gc
+
             gc.collect()
             logger.info("Garbage collection completed")
         except Exception as e:
@@ -210,6 +217,7 @@ class GracefulShutdownHandler:
         try:
             import json
             from datetime import datetime
+
             state_path = Path(self.state_file_path)
             if state_path.exists():
                 with open(state_path, "r", encoding="utf-8") as f:

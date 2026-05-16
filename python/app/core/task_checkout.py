@@ -7,11 +7,15 @@ import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 from app.core.execution_lock import (
-    ExecutionLockStore, ExecutionLock, LockConflictError, LockNotFoundError,
-    get_execution_lock_store, DEFAULT_LOCK_TIMEOUT_HOURS,
+    ExecutionLockStore,
+    ExecutionLock,
+    LockConflictError,
+    LockNotFoundError,
+    get_execution_lock_store,
+    DEFAULT_LOCK_TIMEOUT_HOURS,
 )
 
 logger = logging.getLogger(__name__)
@@ -88,7 +92,9 @@ class CheckoutResult:
             "task_id": self.task_id,
             "agent_id": self.agent_id,
             "message": self.message,
-            "failure_reason": self.failure_reason.value if self.failure_reason else None,
+            "failure_reason": self.failure_reason.value
+            if self.failure_reason
+            else None,
             "retry_recommended": self.retry_recommended,
             "retry_delay_minutes": self.retry_delay_minutes,
             "checked_out_at": self.checked_out_at,
@@ -149,7 +155,9 @@ class TaskRecord:
 
 
 class TaskCheckoutManager:
-    def __init__(self, lock_store: ExecutionLockStore, db_path: str = "task_checkout.db"):
+    def __init__(
+        self, lock_store: ExecutionLockStore, db_path: str = "task_checkout.db"
+    ):
         self._lock_store = lock_store
         self._db_path = db_path
         self._queue_lock = threading.Lock()
@@ -227,11 +235,21 @@ class TaskCheckoutManager:
                 checked_out_at, checkout_expires_at, created_at, completed_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                task.id, task.title, task.description, task.task_type, task.status,
-                task.assigned_to, task.parent_goal_id, task.project_id,
-                task.required_gpu_memory, self._serialize_blockers(task.blockers),
-                task.priority, task.checked_out_at, task.checkout_expires_at,
-                task.created_at, task.completed_at,
+                task.id,
+                task.title,
+                task.description,
+                task.task_type,
+                task.status,
+                task.assigned_to,
+                task.parent_goal_id,
+                task.project_id,
+                task.required_gpu_memory,
+                self._serialize_blockers(task.blockers),
+                task.priority,
+                task.checked_out_at,
+                task.checkout_expires_at,
+                task.created_at,
+                task.completed_at,
             ),
         )
         conn.commit()
@@ -247,6 +265,7 @@ class TaskCheckoutManager:
 
     def _row_to_task(self, row) -> TaskRecord:
         import json
+
         blockers = []
         try:
             blockers = json.loads(row["blockers"] or "[]")
@@ -274,6 +293,7 @@ class TaskCheckoutManager:
     @staticmethod
     def _serialize_blockers(blockers: List[str]) -> str:
         import json
+
         return json.dumps(blockers, ensure_ascii=False)
 
     def checkout_task(self, request: CheckoutRequest) -> CheckoutResult:
@@ -284,38 +304,53 @@ class TaskCheckoutManager:
         task = self.get_task(request.task_id)
         if task is None:
             return self._checkout_fail(
-                request, CheckoutFailureReason.ALREADY_CHECKED_OUT,
-                f"Task '{request.task_id}' not found", retry=False
+                request,
+                CheckoutFailureReason.ALREADY_CHECKED_OUT,
+                f"Task '{request.task_id}' not found",
+                retry=False,
             )
 
         if task.status == TaskStatus.COMPLETED.value:
             return self._checkout_fail(
-                request, CheckoutFailureReason.TASK_COMPLETED,
-                f"Task '{request.task_id}' is already completed", retry=False
+                request,
+                CheckoutFailureReason.TASK_COMPLETED,
+                f"Task '{request.task_id}' is already completed",
+                retry=False,
             )
 
         if task.status == TaskStatus.FAILED.value:
             return self._checkout_fail(
-                request, CheckoutFailureReason.TASK_FAILED,
-                f"Task '{request.task_id}' has failed", retry=False
+                request,
+                CheckoutFailureReason.TASK_FAILED,
+                f"Task '{request.task_id}' has failed",
+                retry=False,
             )
 
         if task.status == TaskStatus.CANCELLED.value:
             return self._checkout_fail(
-                request, CheckoutFailureReason.ALREADY_CHECKED_OUT,
-                f"Task '{request.task_id}' is cancelled", retry=False
+                request,
+                CheckoutFailureReason.ALREADY_CHECKED_OUT,
+                f"Task '{request.task_id}' is cancelled",
+                retry=False,
             )
 
-        if task.status == TaskStatus.IN_PROGRESS.value and task.assigned_to != request.agent_id:
+        if (
+            task.status == TaskStatus.IN_PROGRESS.value
+            and task.assigned_to != request.agent_id
+        ):
             return self._checkout_fail(
-                request, CheckoutFailureReason.ASSIGNED_TO_OTHER,
-                f"Task is assigned to {task.assigned_to}", retry=False
+                request,
+                CheckoutFailureReason.ASSIGNED_TO_OTHER,
+                f"Task is assigned to {task.assigned_to}",
+                retry=False,
             )
 
         if task.assigned_to and task.assigned_to != request.agent_id:
             return self._checkout_fail(
-                request, CheckoutFailureReason.ASSIGNED_TO_OTHER,
-                f"Task assigned to {task.assigned_to}", retry=True,
+                request,
+                CheckoutFailureReason.ASSIGNED_TO_OTHER,
+                f"Task assigned to {task.assigned_to}",
+                retry=True,
                 retry_delay=CONFLICT_RETRY_DELAY_MINUTES,
             )
 
@@ -323,8 +358,10 @@ class TaskCheckoutManager:
             unresolved = self._get_unresolved_blockers(task.blockers)
             if unresolved:
                 return self._checkout_fail(
-                    request, CheckoutFailureReason.BLOCKERS_UNRESOLVED,
-                    f"Unresolved blockers: {unresolved}", retry=True,
+                    request,
+                    CheckoutFailureReason.BLOCKERS_UNRESOLVED,
+                    f"Unresolved blockers: {unresolved}",
+                    retry=True,
                     retry_delay=CONFLICT_RETRY_DELAY_MINUTES,
                 )
 
@@ -332,7 +369,8 @@ class TaskCheckoutManager:
             active_lock = self._lock_store.get_active_lock_by_agent(request.agent_id)
             if active_lock and active_lock.task_id != request.task_id:
                 return self._checkout_fail(
-                    request, CheckoutFailureReason.AGENT_BUSY,
+                    request,
+                    CheckoutFailureReason.AGENT_BUSY,
                     f"Agent '{request.agent_id}' is holding lock on task '{active_lock.task_id}'",
                     retry=False,
                 )
@@ -340,21 +378,33 @@ class TaskCheckoutManager:
         if self._budget_checker:
             project_id = task.project_id
             if not self._budget_checker(request.agent_id, project_id):
-                self._record_failure(request.task_id, request.agent_id, CheckoutFailureReason.BUDGET_EXCEEDED,
-                                     "Budget exceeded for agent/project")
+                self._record_failure(
+                    request.task_id,
+                    request.agent_id,
+                    CheckoutFailureReason.BUDGET_EXCEEDED,
+                    "Budget exceeded for agent/project",
+                )
                 return self._checkout_fail(
-                    request, CheckoutFailureReason.BUDGET_EXCEEDED,
-                    "Budget exceeded", retry=False,
+                    request,
+                    CheckoutFailureReason.BUDGET_EXCEEDED,
+                    "Budget exceeded",
+                    retry=False,
                 )
 
         if request.required_gpu_memory > 0 and self._gpu_checker:
             if not self._gpu_checker(request.required_gpu_memory):
-                self._record_failure(request.task_id, request.agent_id, CheckoutFailureReason.GPU_UNAVAILABLE,
-                                     f"GPU memory {request.required_gpu_memory}GB unavailable")
+                self._record_failure(
+                    request.task_id,
+                    request.agent_id,
+                    CheckoutFailureReason.GPU_UNAVAILABLE,
+                    f"GPU memory {request.required_gpu_memory}GB unavailable",
+                )
                 return self._checkout_fail(
-                    request, CheckoutFailureReason.GPU_UNAVAILABLE,
+                    request,
+                    CheckoutFailureReason.GPU_UNAVAILABLE,
                     f"GPU resources unavailable (need {request.required_gpu_memory}GB)",
-                    retry=True, retry_delay=GPU_RETRY_DELAY_MINUTES,
+                    retry=True,
+                    retry_delay=GPU_RETRY_DELAY_MINUTES,
                 )
 
         try:
@@ -365,23 +415,39 @@ class TaskCheckoutManager:
             )
         except LockConflictError as e:
             return self._checkout_fail(
-                request, CheckoutFailureReason.LOCK_EXISTS,
-                str(e), retry=True, retry_delay=CONFLICT_RETRY_DELAY_MINUTES,
+                request,
+                CheckoutFailureReason.LOCK_EXISTS,
+                str(e),
+                retry=True,
+                retry_delay=CONFLICT_RETRY_DELAY_MINUTES,
             )
 
         now_iso = datetime.now().isoformat()
-        expires_iso = (datetime.now() + timedelta(hours=request.timeout_hours)).isoformat()
+        expires_iso = (
+            datetime.now() + timedelta(hours=request.timeout_hours)
+        ).isoformat()
 
         conn = self._get_conn()
         conn.execute(
             """UPDATE checkout_tasks
                SET status = ?, assigned_to = ?, checked_out_at = ?, checkout_expires_at = ?
                WHERE id = ?""",
-            (TaskStatus.IN_PROGRESS.value, request.agent_id, now_iso, expires_iso, request.task_id),
+            (
+                TaskStatus.IN_PROGRESS.value,
+                request.agent_id,
+                now_iso,
+                expires_iso,
+                request.task_id,
+            ),
         )
         conn.commit()
 
-        logger.info("Task checked out: task=%s agent=%s expires=%s", request.task_id, request.agent_id, expires_iso)
+        logger.info(
+            "Task checked out: task=%s agent=%s expires=%s",
+            request.task_id,
+            request.agent_id,
+            expires_iso,
+        )
         return CheckoutResult(
             status=CheckoutStatus.SUCCESS,
             task_id=request.task_id,
@@ -396,21 +462,27 @@ class TaskCheckoutManager:
         task = self.get_task(task_id)
         if task is None:
             return CheckoutResult(
-                status=CheckoutStatus.FAILED, task_id=task_id, agent_id=agent_id,
+                status=CheckoutStatus.FAILED,
+                task_id=task_id,
+                agent_id=agent_id,
                 message=f"Task '{task_id}' not found",
                 failure_reason=CheckoutFailureReason.ALREADY_CHECKED_OUT,
             )
 
         if task.status != TaskStatus.IN_PROGRESS.value:
             return CheckoutResult(
-                status=CheckoutStatus.FAILED, task_id=task_id, agent_id=agent_id,
+                status=CheckoutStatus.FAILED,
+                task_id=task_id,
+                agent_id=agent_id,
                 message=f"Task is not in progress (current: {task.status})",
                 failure_reason=CheckoutFailureReason.ALREADY_CHECKED_OUT,
             )
 
         if task.assigned_to != agent_id:
             return CheckoutResult(
-                status=CheckoutStatus.FAILED, task_id=task_id, agent_id=agent_id,
+                status=CheckoutStatus.FAILED,
+                task_id=task_id,
+                agent_id=agent_id,
                 message=f"Task is assigned to {task.assigned_to}, not {agent_id}",
                 failure_reason=CheckoutFailureReason.ASSIGNED_TO_OTHER,
             )
@@ -431,15 +503,20 @@ class TaskCheckoutManager:
         logger.info("Task completed: task=%s agent=%s", task_id, agent_id)
         return CheckoutResult(
             status=CheckoutStatus.SUCCESS,
-            task_id=task_id, agent_id=agent_id,
+            task_id=task_id,
+            agent_id=agent_id,
             message="Task completed successfully",
         )
 
-    def fail_task(self, task_id: str, agent_id: str, reason: str = "") -> CheckoutResult:
+    def fail_task(
+        self, task_id: str, agent_id: str, reason: str = ""
+    ) -> CheckoutResult:
         task = self.get_task(task_id)
         if task is None:
             return CheckoutResult(
-                status=CheckoutStatus.FAILED, task_id=task_id, agent_id=agent_id,
+                status=CheckoutStatus.FAILED,
+                task_id=task_id,
+                agent_id=agent_id,
                 message=f"Task '{task_id}' not found",
                 failure_reason=CheckoutFailureReason.ALREADY_CHECKED_OUT,
             )
@@ -457,12 +534,17 @@ class TaskCheckoutManager:
         )
         conn.commit()
 
-        self._record_failure(task_id, agent_id, CheckoutFailureReason.TASK_FAILED, reason)
+        self._record_failure(
+            task_id, agent_id, CheckoutFailureReason.TASK_FAILED, reason
+        )
 
-        logger.warning("Task failed: task=%s agent=%s reason=%s", task_id, agent_id, reason)
+        logger.warning(
+            "Task failed: task=%s agent=%s reason=%s", task_id, agent_id, reason
+        )
         return CheckoutResult(
             status=CheckoutStatus.SUCCESS,
-            task_id=task_id, agent_id=agent_id,
+            task_id=task_id,
+            agent_id=agent_id,
             message=f"Task marked as failed: {reason}",
         )
 
@@ -470,7 +552,9 @@ class TaskCheckoutManager:
         task = self.get_task(task_id)
         if task is None:
             return CheckoutResult(
-                status=CheckoutStatus.FAILED, task_id=task_id, agent_id=agent_id,
+                status=CheckoutStatus.FAILED,
+                task_id=task_id,
+                agent_id=agent_id,
                 message=f"Task '{task_id}' not found",
                 failure_reason=CheckoutFailureReason.ALREADY_CHECKED_OUT,
             )
@@ -490,7 +574,8 @@ class TaskCheckoutManager:
         logger.info("Task abandoned: task=%s agent=%s", task_id, agent_id)
         return CheckoutResult(
             status=CheckoutStatus.SUCCESS,
-            task_id=task_id, agent_id=agent_id,
+            task_id=task_id,
+            agent_id=agent_id,
             message="Task abandoned, returned to pending",
         )
 
@@ -559,8 +644,12 @@ class TaskCheckoutManager:
     def get_agent_status(self, agent_id: str) -> Dict[str, Any]:
         active_lock = self._lock_store.get_active_lock_by_agent(agent_id)
         pending_count = self._count_tasks_by_agent(agent_id, TaskStatus.PENDING.value)
-        in_progress_count = self._count_tasks_by_agent(agent_id, TaskStatus.IN_PROGRESS.value)
-        completed_count = self._count_tasks_by_agent(agent_id, TaskStatus.COMPLETED.value)
+        in_progress_count = self._count_tasks_by_agent(
+            agent_id, TaskStatus.IN_PROGRESS.value
+        )
+        completed_count = self._count_tasks_by_agent(
+            agent_id, TaskStatus.COMPLETED.value
+        )
 
         return {
             "agent_id": agent_id,
@@ -582,7 +671,9 @@ class TaskCheckoutManager:
     def get_all_locks(self) -> List[dict]:
         return [lock.to_dict() for lock in self._lock_store.list_all_locks()]
 
-    def force_release_lock(self, task_id: str, admin_id: str = "admin") -> CheckoutResult:
+    def force_release_lock(
+        self, task_id: str, admin_id: str = "admin"
+    ) -> CheckoutResult:
         try:
             lock = self._lock_store.force_release(task_id, admin_id)
 
@@ -593,20 +684,32 @@ class TaskCheckoutManager:
             )
             conn.commit()
 
-            self._record_failure(task_id, lock.agent_id, "force_released",
-                                 f"Lock force-released by {admin_id}")
+            self._record_failure(
+                task_id,
+                lock.agent_id,
+                "force_released",
+                f"Lock force-released by {admin_id}",
+            )
 
-            logger.warning("Lock force-released and task reset: task=%s agent=%s by=%s",
-                           task_id, lock.agent_id, admin_id)
+            logger.warning(
+                "Lock force-released and task reset: task=%s agent=%s by=%s",
+                task_id,
+                lock.agent_id,
+                admin_id,
+            )
             return CheckoutResult(
                 status=CheckoutStatus.SUCCESS,
-                task_id=task_id, agent_id=lock.agent_id,
+                task_id=task_id,
+                agent_id=lock.agent_id,
                 message=f"Lock force-released by {admin_id}, task returned to pending",
             )
         except LockNotFoundError as e:
             return CheckoutResult(
-                status=CheckoutStatus.FAILED, task_id=task_id, agent_id="",
-                message=str(e), failure_reason=CheckoutFailureReason.LOCK_EXISTS,
+                status=CheckoutStatus.FAILED,
+                task_id=task_id,
+                agent_id="",
+                message=str(e),
+                failure_reason=CheckoutFailureReason.LOCK_EXISTS,
             )
 
     def cleanup_expired_locks(self) -> List[dict]:
@@ -621,10 +724,17 @@ class TaskCheckoutManager:
                     (TaskStatus.PENDING.value, lock.task_id),
                 )
                 conn.commit()
-                self._record_failure(lock.task_id, lock.agent_id, "lock_expired",
-                                     "Task returned to pending due to lock timeout")
-                logger.warning("Task returned to pending due to expired lock: task=%s agent=%s",
-                               lock.task_id, lock.agent_id)
+                self._record_failure(
+                    lock.task_id,
+                    lock.agent_id,
+                    "lock_expired",
+                    "Task returned to pending due to lock timeout",
+                )
+                logger.warning(
+                    "Task returned to pending due to expired lock: task=%s agent=%s",
+                    lock.task_id,
+                    lock.agent_id,
+                )
 
         return [e.to_dict() for e in expired]
 
@@ -636,15 +746,29 @@ class TaskCheckoutManager:
                 """INSERT OR REPLACE INTO checkout_queue
                    (task_id, agent_id, priority, retry_count, last_failure, next_retry_at, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (request.task_id, request.agent_id, request.priority.value, 0, None, now, now),
+                (
+                    request.task_id,
+                    request.agent_id,
+                    request.priority.value,
+                    0,
+                    None,
+                    now,
+                    now,
+                ),
             )
             conn.commit()
 
-        logger.debug("Checkout enqueued: task=%s agent=%s priority=%s",
-                     request.task_id, request.agent_id, request.priority.name)
+        logger.debug(
+            "Checkout enqueued: task=%s agent=%s priority=%s",
+            request.task_id,
+            request.agent_id,
+            request.priority.name,
+        )
         return CheckoutQueueEntry(
-            task_id=request.task_id, agent_id=request.agent_id,
-            priority=request.priority, created_at=now,
+            task_id=request.task_id,
+            agent_id=request.agent_id,
+            priority=request.priority,
+            created_at=now,
         )
 
     def process_queue(self, max_batch: int = 10) -> List[CheckoutResult]:
@@ -667,7 +791,9 @@ class TaskCheckoutManager:
                     priority=CheckoutPriority(row["priority"]),
                     created_at=row["created_at"],
                     retry_count=row["retry_count"],
-                    last_failure=CheckoutFailureReason(row["last_failure"]) if row["last_failure"] else None,
+                    last_failure=CheckoutFailureReason(row["last_failure"])
+                    if row["last_failure"]
+                    else None,
                     next_retry_at=row["next_retry_at"],
                 )
 
@@ -695,16 +821,26 @@ class TaskCheckoutManager:
                             "DELETE FROM checkout_queue WHERE task_id = ? AND agent_id = ?",
                             (entry.task_id, entry.agent_id),
                         )
-                        self.fail_task(entry.task_id, entry.agent_id,
-                                       f"Max retries ({MAX_RETRY_COUNT}) exceeded: {result.failure_reason}")
+                        self.fail_task(
+                            entry.task_id,
+                            entry.agent_id,
+                            f"Max retries ({MAX_RETRY_COUNT}) exceeded: {result.failure_reason}",
+                        )
                     else:
                         next_retry = now + result.retry_delay_minutes * 60
                         conn.execute(
                             """UPDATE checkout_queue
                                SET retry_count = ?, last_failure = ?, next_retry_at = ?
                                WHERE task_id = ? AND agent_id = ?""",
-                            (new_retry_count, result.failure_reason.value if result.failure_reason else None,
-                             next_retry, entry.task_id, entry.agent_id),
+                            (
+                                new_retry_count,
+                                result.failure_reason.value
+                                if result.failure_reason
+                                else None,
+                                next_retry,
+                                entry.task_id,
+                                entry.agent_id,
+                            ),
                         )
 
                 results.append(result)
@@ -724,7 +860,11 @@ class TaskCheckoutManager:
                 "priority": row["priority"],
                 "retry_count": row["retry_count"],
                 "last_failure": row["last_failure"],
-                "next_retry_at": datetime.fromtimestamp(row["next_retry_at"]).isoformat() if row["next_retry_at"] else None,
+                "next_retry_at": datetime.fromtimestamp(
+                    row["next_retry_at"]
+                ).isoformat()
+                if row["next_retry_at"]
+                else None,
                 "created_at": datetime.fromtimestamp(row["created_at"]).isoformat(),
             }
             for row in rows
@@ -734,13 +874,17 @@ class TaskCheckoutManager:
         unresolved = []
         for blocker_id in blockers:
             blocker_task = self.get_task(blocker_id)
-            if blocker_task is None or blocker_task.status != TaskStatus.COMPLETED.value:
+            if (
+                blocker_task is None
+                or blocker_task.status != TaskStatus.COMPLETED.value
+            ):
                 unresolved.append(blocker_id)
         return unresolved
 
-    def _record_failure(self, task_id: str, agent_id: str,
-                        reason, message: str = ""):
-        reason_str = reason.value if isinstance(reason, CheckoutFailureReason) else reason
+    def _record_failure(self, task_id: str, agent_id: str, reason, message: str = ""):
+        reason_str = (
+            reason.value if isinstance(reason, CheckoutFailureReason) else reason
+        )
         conn = self._get_conn()
         conn.execute(
             """INSERT INTO checkout_failure_history (task_id, agent_id, reason, message, timestamp)
@@ -749,13 +893,24 @@ class TaskCheckoutManager:
         )
         conn.commit()
 
-    def _checkout_fail(self, request: CheckoutRequest, reason: CheckoutFailureReason,
-                       message: str, retry: bool = False,
-                       retry_delay: int = 0) -> CheckoutResult:
+    def _checkout_fail(
+        self,
+        request: CheckoutRequest,
+        reason: CheckoutFailureReason,
+        message: str,
+        retry: bool = False,
+        retry_delay: int = 0,
+    ) -> CheckoutResult:
         self._record_failure(request.task_id, request.agent_id, reason, message)
 
-        logger.warning("Checkout failed: task=%s agent=%s reason=%s message=%s retry=%s",
-                       request.task_id, request.agent_id, reason.value, message, retry)
+        logger.warning(
+            "Checkout failed: task=%s agent=%s reason=%s message=%s retry=%s",
+            request.task_id,
+            request.agent_id,
+            reason.value,
+            message,
+            retry,
+        )
 
         return CheckoutResult(
             status=CheckoutStatus.FAILED,

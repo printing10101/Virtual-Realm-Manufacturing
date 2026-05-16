@@ -11,27 +11,22 @@ References Paperclip's Persistent Agent State design:
 - Permission-controlled state operations
 - Comprehensive audit logging
 """
+
 from __future__ import annotations
 
 import asyncio
-import gzip
 import json
 import logging
 import os
-import shutil
 import time
 import zlib
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 from app.models.agent_state import (
     AgentState,
     AgentStatus,
     Checkpoint,
-    CheckpointType,
     MemoryEntry,
     SessionContext,
     StateVersion,
@@ -109,13 +104,17 @@ class CheckpointLifecycleManager:
         agent_dir = self.get_agent_checkpoint_dir(agent_id)
         return sum(f.stat().st_size for f in agent_dir.glob("*.pt"))
 
-    def save_checkpoint_file(self, agent_id: str, checkpoint_id: str, data: bytes) -> Path:
+    def save_checkpoint_file(
+        self, agent_id: str, checkpoint_id: str, data: bytes
+    ) -> Path:
         path = self.get_checkpoint_path(agent_id, checkpoint_id)
         compressed = zlib.compress(data, level=6)
         path.write_bytes(compressed)
         return path
 
-    def load_checkpoint_file(self, agent_id: str, checkpoint_id: str) -> Optional[bytes]:
+    def load_checkpoint_file(
+        self, agent_id: str, checkpoint_id: str
+    ) -> Optional[bytes]:
         path = self.get_checkpoint_path(agent_id, checkpoint_id)
         if not path.exists():
             return None
@@ -146,7 +145,9 @@ class StateCompressor:
         return SessionContext.from_dict(json.loads(raw.decode("utf-8")))
 
     @staticmethod
-    def compact_conversation_history(context: SessionContext, max_entries: int = 200) -> SessionContext:
+    def compact_conversation_history(
+        context: SessionContext, max_entries: int = 200
+    ) -> SessionContext:
         if len(context.conversation_history) <= max_entries:
             return context
         context.conversation_history = context.conversation_history[-max_entries:]
@@ -159,12 +160,16 @@ class StateMigrationEngine:
     def __init__(self):
         self._migrations: List[Dict[str, Any]] = []
 
-    def register_migration(self, from_version: str, to_version: str, migrator: Callable[[Dict], Dict]):
-        self._migrations.append({
-            "from": from_version,
-            "to": to_version,
-            "migrator": migrator,
-        })
+    def register_migration(
+        self, from_version: str, to_version: str, migrator: Callable[[Dict], Dict]
+    ):
+        self._migrations.append(
+            {
+                "from": from_version,
+                "to": to_version,
+                "migrator": migrator,
+            }
+        )
 
     def migrate(self, data: Dict[str, Any]) -> Dict[str, Any]:
         return migrate_state(data, CURRENT_SCHEMA_VERSION)
@@ -235,7 +240,9 @@ class StatePersistenceManager:
             key = self._redis_key(agent_id)
             data = await asyncio.to_thread(self._redis.get, key)
             if data:
-                raw = json.loads(data.decode("utf-8") if isinstance(data, bytes) else data)
+                raw = json.loads(
+                    data.decode("utf-8") if isinstance(data, bytes) else data
+                )
                 raw = self._migration_engine.migrate(raw)
                 return AgentState.from_dict(raw)
         except Exception:
@@ -276,12 +283,22 @@ class StatePersistenceManager:
                     {
                         "agent_id": state.agent_id,
                         "task_id": state.current_task_id,
-                        "session_ctx": json.dumps(state.session_context.to_dict(), ensure_ascii=False),
-                        "memory": json.dumps([m.to_dict() for m in state.memory], ensure_ascii=False),
-                        "checkpoint": json.dumps(state.checkpoint.to_dict(), ensure_ascii=False) if state.checkpoint else None,
+                        "session_ctx": json.dumps(
+                            state.session_context.to_dict(), ensure_ascii=False
+                        ),
+                        "memory": json.dumps(
+                            [m.to_dict() for m in state.memory], ensure_ascii=False
+                        ),
+                        "checkpoint": json.dumps(
+                            state.checkpoint.to_dict(), ensure_ascii=False
+                        )
+                        if state.checkpoint
+                        else None,
                         "hb": state.last_heartbeat,
                         "status": state.status.value,
-                        "sv": json.dumps(state.state_version.to_dict(), ensure_ascii=False),
+                        "sv": json.dumps(
+                            state.state_version.to_dict(), ensure_ascii=False
+                        ),
                         "meta": json.dumps(state.metadata, ensure_ascii=False),
                         "compressed": compressed,
                     },
@@ -301,13 +318,26 @@ class StatePersistenceManager:
                     {
                         "agent_id": state.agent_id,
                         "task_id": state.current_task_id,
-                        "session_ctx": json.dumps(state.session_context.to_dict(), ensure_ascii=False),
-                        "memory": json.dumps([m.to_dict() for m in state.memory], ensure_ascii=False),
-                        "checkpoint": json.dumps(state.checkpoint.to_dict(), ensure_ascii=False) if state.checkpoint else None,
+                        "session_ctx": json.dumps(
+                            state.session_context.to_dict(), ensure_ascii=False
+                        ),
+                        "memory": json.dumps(
+                            [m.to_dict() for m in state.memory], ensure_ascii=False
+                        ),
+                        "checkpoint": json.dumps(
+                            state.checkpoint.to_dict(), ensure_ascii=False
+                        )
+                        if state.checkpoint
+                        else None,
                         "hb": state.last_heartbeat,
                         "status": state.status.value,
-                        "chk_hist": json.dumps([c.to_dict() for c in state.checkpoints_history], ensure_ascii=False),
-                        "sv": json.dumps(state.state_version.to_dict(), ensure_ascii=False),
+                        "chk_hist": json.dumps(
+                            [c.to_dict() for c in state.checkpoints_history],
+                            ensure_ascii=False,
+                        ),
+                        "sv": json.dumps(
+                            state.state_version.to_dict(), ensure_ascii=False
+                        ),
                         "meta": json.dumps(state.metadata, ensure_ascii=False),
                         "compressed": compressed,
                     },
@@ -341,8 +371,14 @@ class StatePersistenceManager:
 
             session_ctx = json.loads(row.session_context) if row.session_context else {}
             memory = json.loads(row.memory_json) if row.memory_json else []
-            checkpoint = json.loads(row.checkpoint_json) if row.checkpoint_json else None
-            chk_hist = json.loads(row.checkpoints_history_json) if row.checkpoints_history_json else []
+            checkpoint = (
+                json.loads(row.checkpoint_json) if row.checkpoint_json else None
+            )
+            chk_hist = (
+                json.loads(row.checkpoints_history_json)
+                if row.checkpoints_history_json
+                else []
+            )
             state_ver = json.loads(row.state_version) if row.state_version else {}
             metadata = json.loads(row.metadata_json) if row.metadata_json else {}
 
@@ -352,12 +388,18 @@ class StatePersistenceManager:
                 session_context=SessionContext.from_dict(session_ctx),
                 memory=[MemoryEntry.from_dict(m) for m in memory],
                 checkpoint=Checkpoint.from_dict(checkpoint) if checkpoint else None,
-                last_heartbeat=float(row.last_heartbeat.timestamp()) if hasattr(row.last_heartbeat, 'timestamp') else row.last_heartbeat,
+                last_heartbeat=float(row.last_heartbeat.timestamp())
+                if hasattr(row.last_heartbeat, "timestamp")
+                else row.last_heartbeat,
                 status=AgentStatus(row.status),
                 checkpoints_history=[Checkpoint.from_dict(c) for c in chk_hist],
                 state_version=StateVersion.from_dict(state_ver),
-                created_at=float(row.created_at.timestamp()) if hasattr(row.created_at, 'timestamp') else row.created_at,
-                updated_at=float(row.updated_at.timestamp()) if hasattr(row.updated_at, 'timestamp') else row.updated_at,
+                created_at=float(row.created_at.timestamp())
+                if hasattr(row.created_at, "timestamp")
+                else row.created_at,
+                updated_at=float(row.updated_at.timestamp())
+                if hasattr(row.updated_at, "timestamp")
+                else row.updated_at,
                 metadata=metadata,
             )
             return state
@@ -372,7 +414,9 @@ class StatePersistenceManager:
         ckpt = state.checkpoint
         if ckpt.state_dict_path and os.path.exists(ckpt.state_dict_path):
             data = Path(ckpt.state_dict_path).read_bytes()
-            path = self._checkpoint_manager.save_checkpoint_file(agent_id, ckpt.checkpoint_id, data)
+            path = self._checkpoint_manager.save_checkpoint_file(
+                agent_id, ckpt.checkpoint_id, data
+            )
             ckpt.file_size_bytes = os.path.getsize(path)
 
     async def _load_checkpoint_files(self, state: AgentState):
@@ -380,13 +424,19 @@ class StatePersistenceManager:
             return
         agent_id = state.agent_id
         ckpt = state.checkpoint
-        data = self._checkpoint_manager.load_checkpoint_file(agent_id, ckpt.checkpoint_id)
+        data = self._checkpoint_manager.load_checkpoint_file(
+            agent_id, ckpt.checkpoint_id
+        )
         if data:
-            temp_path = self._checkpoint_manager.get_checkpoint_path(agent_id, ckpt.checkpoint_id)
+            temp_path = self._checkpoint_manager.get_checkpoint_path(
+                agent_id, ckpt.checkpoint_id
+            )
             ckpt.state_dict_path = str(temp_path.with_suffix(".restored.pt"))
             Path(ckpt.state_dict_path).write_bytes(data)
 
-    async def save_state(self, state: AgentState, trigger: str = "manual") -> AgentState:
+    async def save_state(
+        self, state: AgentState, trigger: str = "manual"
+    ) -> AgentState:
         """Atomic save to all three storage tiers"""
         lock = self._get_lock(state.agent_id)
         async with lock:
@@ -397,7 +447,12 @@ class StatePersistenceManager:
             tasks.append(asyncio.create_task(self._save_checkpoint_files(state)))
             await asyncio.gather(*tasks, return_exceptions=True)
             self._active_states[state.agent_id] = state
-            logger.info("State saved: agent=%s trigger=%s status=%s", state.agent_id, trigger, state.status.value)
+            logger.info(
+                "State saved: agent=%s trigger=%s status=%s",
+                state.agent_id,
+                trigger,
+                state.status.value,
+            )
             return state
 
     async def load_state(self, agent_id: str) -> Optional[AgentState]:
@@ -426,6 +481,7 @@ class StatePersistenceManager:
             try:
                 session = await self._db_session_factory()
                 import sqlalchemy as sa
+
                 await session.execute(
                     sa.text("DELETE FROM agent_states WHERE agent_id = :agent_id"),
                     {"agent_id": agent_id},
@@ -481,7 +537,9 @@ class StatePersistenceManager:
     def _start_heartbeat(self, agent_id: str):
         if agent_id in self._heartbeat_tasks:
             return
-        self._heartbeat_tasks[agent_id] = asyncio.create_task(self._heartbeat_loop(agent_id))
+        self._heartbeat_tasks[agent_id] = asyncio.create_task(
+            self._heartbeat_loop(agent_id)
+        )
 
     def _stop_heartbeat(self, agent_id: str):
         task = self._heartbeat_tasks.pop(agent_id, None)
@@ -516,7 +574,9 @@ class StatePersistenceManager:
         if self._redis:
             try:
                 data = json.dumps(state.to_dict(), ensure_ascii=False)
-                await asyncio.to_thread(self._redis.setex, rollback_key, 86400 * 7, data)
+                await asyncio.to_thread(
+                    self._redis.setex, rollback_key, 86400 * 7, data
+                )
             except Exception:
                 pass
         return rollback_key
@@ -542,6 +602,7 @@ class StatePersistenceManager:
             self._event_handlers.setdefault(event, [])
             self._event_handlers[event].append(func)
             return func
+
         return decorator
 
     async def emit_event(self, event: str, agent_id: str, data: Optional[Dict] = None):
@@ -585,6 +646,7 @@ class StatePersistenceManager:
         try:
             session = await self._db_session_factory()
             import sqlalchemy as sa
+
             result = await session.execute(
                 sa.text(
                     """SELECT agent_id, status, current_task_id, last_heartbeat, updated_at
@@ -598,8 +660,12 @@ class StatePersistenceManager:
                     "agent_id": r.agent_id,
                     "status": r.status,
                     "current_task_id": r.current_task_id,
-                    "last_heartbeat": r.last_heartbeat.isoformat() if hasattr(r.last_heartbeat, 'isoformat') else r.last_heartbeat,
-                    "updated_at": r.updated_at.isoformat() if hasattr(r.updated_at, 'isoformat') else r.updated_at,
+                    "last_heartbeat": r.last_heartbeat.isoformat()
+                    if hasattr(r.last_heartbeat, "isoformat")
+                    else r.last_heartbeat,
+                    "updated_at": r.updated_at.isoformat()
+                    if hasattr(r.updated_at, "isoformat")
+                    else r.updated_at,
                 }
                 for r in rows
             ]
@@ -665,24 +731,41 @@ class StateRecoveryManager:
                 result["action"] = "idle_no_loader"
                 result["state"] = state
                 return result
-            task = await task_loader(state.current_task_id) if asyncio.iscoroutinefunction(task_loader) else task_loader(state.current_task_id)
+            task = (
+                await task_loader(state.current_task_id)
+                if asyncio.iscoroutinefunction(task_loader)
+                else task_loader(state.current_task_id)
+            )
             if not task:
                 state.current_task_id = None
                 state.status = AgentStatus.IDLE
-                await self._persistence.save_state(state, trigger="recovery_task_not_found")
+                await self._persistence.save_state(
+                    state, trigger="recovery_task_not_found"
+                )
                 result["recovered"] = True
                 result["action"] = "idle_task_gone"
                 result["state"] = state
                 return result
-            task_status = getattr(task, 'status', None)
-            task_status_str = task_status.value if hasattr(task_status, 'value') else str(task_status)
-            result["task"] = {"task_id": state.current_task_id, "status": task_status_str}
+            task_status = getattr(task, "status", None)
+            task_status_str = (
+                task_status.value if hasattr(task_status, "value") else str(task_status)
+            )
+            result["task"] = {
+                "task_id": state.current_task_id,
+                "status": task_status_str,
+            }
             if task_status and task_status_str in ("in_progress", "running"):
                 if state.checkpoint and task_runner:
                     try:
-                        run_result = await task_runner(state.current_task_id, state.checkpoint) if asyncio.iscoroutinefunction(task_runner) else task_runner(state.current_task_id, state.checkpoint)
+                        run_result = (
+                            await task_runner(state.current_task_id, state.checkpoint)
+                            if asyncio.iscoroutinefunction(task_runner)
+                            else task_runner(state.current_task_id, state.checkpoint)
+                        )
                         state.status = AgentStatus.BUSY
-                        await self._persistence.save_state(state, trigger="recovery_resumed")
+                        await self._persistence.save_state(
+                            state, trigger="recovery_resumed"
+                        )
                         result["recovered"] = True
                         result["action"] = "resumed_with_checkpoint"
                         result["checkpoint_used"] = state.checkpoint.checkpoint_id
@@ -692,9 +775,15 @@ class StateRecoveryManager:
                         result["error"] = str(e)
                 if task_runner:
                     try:
-                        run_result = await task_runner(state.current_task_id, None) if asyncio.iscoroutinefunction(task_runner) else task_runner(state.current_task_id, None)
+                        run_result = (
+                            await task_runner(state.current_task_id, None)
+                            if asyncio.iscoroutinefunction(task_runner)
+                            else task_runner(state.current_task_id, None)
+                        )
                         state.status = AgentStatus.BUSY
-                        await self._persistence.save_state(state, trigger="recovery_restarted")
+                        await self._persistence.save_state(
+                            state, trigger="recovery_restarted"
+                        )
                         result["recovered"] = True
                         result["action"] = "restarted_without_checkpoint"
                         result["state"] = state
@@ -702,14 +791,18 @@ class StateRecoveryManager:
                     except Exception as e:
                         result["error"] = str(e)
                 state.status = AgentStatus.IDLE
-                await self._persistence.save_state(state, trigger="recovery_fallback_idle")
+                await self._persistence.save_state(
+                    state, trigger="recovery_fallback_idle"
+                )
                 result["recovered"] = True
                 result["action"] = "fallback_idle"
                 result["state"] = state
                 return result
             else:
                 state.status = AgentStatus.IDLE
-                await self._persistence.save_state(state, trigger="recovery_task_complete")
+                await self._persistence.save_state(
+                    state, trigger="recovery_task_complete"
+                )
                 result["recovered"] = True
                 result["action"] = "idle_task_done"
                 result["state"] = state
@@ -720,7 +813,9 @@ class StateRecoveryManager:
             try:
                 fallback_state = AgentState(agent_id=agent_id)
                 fallback_state.status = AgentStatus.IDLE
-                await self._persistence.save_state(fallback_state, trigger="recovery_fallback")
+                await self._persistence.save_state(
+                    fallback_state, trigger="recovery_fallback"
+                )
                 result["state"] = fallback_state
             except Exception:
                 pass
@@ -756,10 +851,12 @@ async def create_state_persistence(
     if redis_url:
         try:
             import redis.asyncio as aioredis
+
             redis_client = aioredis.from_url(redis_url, decode_responses=False)
         except ImportError:
             try:
                 import redis
+
                 redis_client = redis.from_url(redis_url, decode_responses=False)
             except Exception:
                 pass
@@ -770,7 +867,9 @@ async def create_state_persistence(
 
             async_url = db_url
             if async_url.startswith("postgresql://"):
-                async_url = async_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+                async_url = async_url.replace(
+                    "postgresql://", "postgresql+asyncpg://", 1
+                )
             elif async_url.startswith("sqlite://"):
                 async_url = async_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
 
@@ -782,6 +881,7 @@ async def create_state_persistence(
 
             async with engine.begin() as conn:
                 import sqlalchemy as sa
+
                 await conn.execute(
                     sa.text(
                         """CREATE TABLE IF NOT EXISTS agent_states (
@@ -815,9 +915,12 @@ async def create_state_persistence(
         except Exception:
             try:
                 from sqlalchemy import create_engine, text
+
                 sync_url = db_url
                 if sync_url.startswith("postgresql+asyncpg://"):
-                    sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+                    sync_url = sync_url.replace(
+                        "postgresql+asyncpg://", "postgresql://", 1
+                    )
                 sync_engine = create_engine(sync_url, echo=False)
                 with sync_engine.begin() as conn:
                     conn.execute(
@@ -840,6 +943,7 @@ async def create_state_persistence(
                         )
                     )
                 from sqlalchemy.orm import Session  # noqa: F811
+
                 db_session_factory = lambda: Session(sync_engine)
             except Exception:
                 db_session_factory = None

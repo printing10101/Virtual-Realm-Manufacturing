@@ -4,6 +4,7 @@ Multi-dimensional Cost Tracking System
 Tracks costs across agent, project, goal, task, provider, and model dimensions.
 Supports precise measurement of GPU time, GPU memory, API calls, and data transfer.
 """
+
 import logging
 import time
 import json
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class CostDimension(str, Enum):
     """成本统计维度"""
+
     AGENT = "agent"
     PROJECT = "project"
     GOAL = "goal"
@@ -30,6 +32,7 @@ class CostDimension(str, Enum):
 
 class CostType(str, Enum):
     """成本类型"""
+
     GPU_TIME = "gpu_time"
     GPU_MEMORY = "gpu_memory"
     API_CALLS = "api_calls"
@@ -38,6 +41,7 @@ class CostType(str, Enum):
 
 class ProviderType(str, Enum):
     """服务提供商"""
+
     OLLAMA_LOCAL = "ollama_local"
     OPENAI_API = "openai_api"
     CUSTOM_EXTERNAL = "custom_external"
@@ -46,6 +50,7 @@ class ProviderType(str, Enum):
 
 class ModelType(str, Enum):
     """模型类型"""
+
     CFC = "CFC"
     LTC = "LTC"
     HYBRID_LNN = "HybridLNN"
@@ -56,6 +61,7 @@ class ModelType(str, Enum):
 @dataclass
 class CostUnitPrice:
     """成本单价配置"""
+
     gpu_time_per_second: float = 0.0001
     gpu_memory_per_gb_second: float = 0.00005
     api_call_per_request: float = 0.001
@@ -73,6 +79,7 @@ class CostUnitPrice:
 @dataclass
 class CostEvent:
     """成本事件"""
+
     event_id: Optional[int] = None
     task_id: str = ""
     agent_id: str = ""
@@ -110,6 +117,7 @@ class CostEvent:
 @dataclass
 class CostSummary:
     """成本汇总"""
+
     dimension: CostDimension
     scope_id: str
     total_cost: float = 0.0
@@ -143,6 +151,7 @@ class CostSummary:
 @dataclass
 class BudgetEvent:
     """预算事件（超限/警告记录）"""
+
     event_id: Optional[int] = None
     budget_level: str = "global"
     scope_id: str = "default"
@@ -173,6 +182,7 @@ class MultiDimensionCostTracker:
     def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
             from app.config import PROJECT_ROOT
+
             db_path = str(Path(PROJECT_ROOT) / "data" / "cost_tracking.db")
 
         db_dir = Path(db_path).parent
@@ -270,7 +280,7 @@ class MultiDimensionCostTracker:
             else:
                 self._conn.execute(
                     "INSERT OR IGNORE INTO unit_price_config (price_key, price_value, updated_at) VALUES (?, ?, ?)",
-                    (key, val, time.time())
+                    (key, val, time.time()),
                 )
 
         self._conn.commit()
@@ -279,7 +289,7 @@ class MultiDimensionCostTracker:
         """设置单价"""
         self._conn.execute(
             "INSERT OR REPLACE INTO unit_price_config (price_key, price_value, updated_at) VALUES (?, ?, ?)",
-            (key, value, time.time())
+            (key, value, time.time()),
         )
         self._conn.commit()
         setattr(self._unit_prices, key, value)
@@ -303,18 +313,20 @@ class MultiDimensionCostTracker:
         return 0.0
 
     @sqlite_retry()
-    def record_cost(self,
-                    task_id: str,
-                    cost_type: str,
-                    resource_value: float,
-                    agent_id: str = "",
-                    project_id: str = "default",
-                    goal_id: str = "",
-                    provider: str = ProviderType.SYSTEM_INTERNAL.value,
-                    model: str = "",
-                    start_time: Optional[float] = None,
-                    end_time: Optional[float] = None,
-                    metadata: Optional[Dict[str, Any]] = None) -> CostEvent:
+    def record_cost(
+        self,
+        task_id: str,
+        cost_type: str,
+        resource_value: float,
+        agent_id: str = "",
+        project_id: str = "default",
+        goal_id: str = "",
+        provider: str = ProviderType.SYSTEM_INTERNAL.value,
+        model: str = "",
+        start_time: Optional[float] = None,
+        end_time: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> CostEvent:
         """记录成本事件"""
         cost_value = self._calculate_cost(cost_type, resource_value)
         now = time.time()
@@ -355,23 +367,32 @@ class MultiDimensionCostTracker:
                 event.end_time,
                 json.dumps(event.metadata),
                 event.recorded_at,
-            )
+            ),
         )
         self._conn.commit()
 
         event.event_id = cursor.lastrowid
         logger.debug(
             "Cost recorded: task=%s type=%s value=%.4f cost=%.6f",
-            task_id, cost_type, resource_value, cost_value
+            task_id,
+            cost_type,
+            resource_value,
+            cost_value,
         )
         return event
 
-    def record_gpu_time(self, task_id: str, gpu_seconds: float,
-                        agent_id: str = "", project_id: str = "default",
-                        model: str = "", provider: str = ProviderType.SYSTEM_INTERNAL.value,
-                        start_time: Optional[float] = None,
-                        end_time: Optional[float] = None,
-                        metadata: Optional[Dict[str, Any]] = None) -> CostEvent:
+    def record_gpu_time(
+        self,
+        task_id: str,
+        gpu_seconds: float,
+        agent_id: str = "",
+        project_id: str = "default",
+        model: str = "",
+        provider: str = ProviderType.SYSTEM_INTERNAL.value,
+        start_time: Optional[float] = None,
+        end_time: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> CostEvent:
         """记录GPU计算时间成本"""
         return self.record_cost(
             task_id=task_id,
@@ -386,10 +407,16 @@ class MultiDimensionCostTracker:
             metadata=metadata,
         )
 
-    def record_gpu_memory(self, task_id: str, gb_seconds: float,
-                          agent_id: str = "", project_id: str = "default",
-                          model: str = "", provider: str = ProviderType.SYSTEM_INTERNAL.value,
-                          metadata: Optional[Dict[str, Any]] = None) -> CostEvent:
+    def record_gpu_memory(
+        self,
+        task_id: str,
+        gb_seconds: float,
+        agent_id: str = "",
+        project_id: str = "default",
+        model: str = "",
+        provider: str = ProviderType.SYSTEM_INTERNAL.value,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> CostEvent:
         """记录GPU内存使用成本（GB-秒）"""
         return self.record_cost(
             task_id=task_id,
@@ -402,27 +429,34 @@ class MultiDimensionCostTracker:
             metadata=metadata,
         )
 
-    def record_gpu_usage(self, task_id: str, gpu_hours: float,
-                         agent_id: Optional[str] = None) -> CostEvent:
+    def record_gpu_usage(
+        self, task_id: str, gpu_hours: float, agent_id: Optional[str] = None
+    ) -> CostEvent:
         return self.record_gpu_time(
             task_id=task_id,
             gpu_seconds=gpu_hours * 3600.0,
             agent_id=agent_id or "",
         )
 
-    def record_memory_usage(self, task_id: str, memory_mb: float,
-                            agent_id: Optional[str] = None) -> CostEvent:
+    def record_memory_usage(
+        self, task_id: str, memory_mb: float, agent_id: Optional[str] = None
+    ) -> CostEvent:
         return self.record_gpu_memory(
             task_id=task_id,
             gb_seconds=memory_mb / 1024.0,
             agent_id=agent_id or "",
         )
 
-    def record_api_call(self, task_id: str, count: int = 1,
-                        agent_id: str = "", project_id: str = "default",
-                        provider: str = ProviderType.OLLAMA_LOCAL.value,
-                        model: str = "",
-                        metadata: Optional[Dict[str, Any]] = None) -> CostEvent:
+    def record_api_call(
+        self,
+        task_id: str,
+        count: int = 1,
+        agent_id: str = "",
+        project_id: str = "default",
+        provider: str = ProviderType.OLLAMA_LOCAL.value,
+        model: str = "",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> CostEvent:
         """记录API调用成本"""
         return self.record_cost(
             task_id=task_id,
@@ -435,10 +469,15 @@ class MultiDimensionCostTracker:
             metadata=metadata,
         )
 
-    def record_data_transfer(self, task_id: str, mb_amount: float,
-                             agent_id: str = "", project_id: str = "default",
-                             direction: str = "upload",
-                             metadata: Optional[Dict[str, Any]] = None) -> CostEvent:
+    def record_data_transfer(
+        self,
+        task_id: str,
+        mb_amount: float,
+        agent_id: str = "",
+        project_id: str = "default",
+        direction: str = "upload",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> CostEvent:
         """记录数据传输成本"""
         meta = metadata or {}
         meta["direction"] = direction
@@ -455,7 +494,7 @@ class MultiDimensionCostTracker:
         """获取任务的所有成本记录"""
         rows = self._conn.execute(
             "SELECT * FROM cost_events WHERE task_id = ? ORDER BY recorded_at ASC",
-            (task_id,)
+            (task_id,),
         ).fetchall()
         return [self._row_to_cost_dict(row) for row in rows]
 
@@ -463,14 +502,17 @@ class MultiDimensionCostTracker:
         """获取任务总成本"""
         row = self._conn.execute(
             "SELECT COALESCE(SUM(cost_value), 0) as total FROM cost_events WHERE task_id = ?",
-            (task_id,)
+            (task_id,),
         ).fetchone()
         return row["total"] if row else 0.0
 
-    def get_cost_summary(self, dimension: CostDimension,
-                         scope_id: str = "",
-                         start_time: Optional[float] = None,
-                         end_time: Optional[float] = None) -> CostSummary:
+    def get_cost_summary(
+        self,
+        dimension: CostDimension,
+        scope_id: str = "",
+        start_time: Optional[float] = None,
+        end_time: Optional[float] = None,
+    ) -> CostSummary:
         """获取指定维度的成本汇总"""
         dim_column = {
             CostDimension.AGENT: "agent_id",
@@ -501,7 +543,7 @@ class MultiDimensionCostTracker:
                 FROM cost_events
                 WHERE {where}
                 GROUP BY cost_type""",
-            params
+            params,
         ).fetchall()
 
         summary = CostSummary(dimension=dimension, scope_id=scope_id)
@@ -526,9 +568,12 @@ class MultiDimensionCostTracker:
 
         return summary
 
-    def get_all_summaries(self, dimension: CostDimension,
-                          start_time: Optional[float] = None,
-                          end_time: Optional[float] = None) -> List[CostSummary]:
+    def get_all_summaries(
+        self,
+        dimension: CostDimension,
+        start_time: Optional[float] = None,
+        end_time: Optional[float] = None,
+    ) -> List[CostSummary]:
         """获取某维度下所有范围的成本汇总"""
         dim_column = {
             CostDimension.AGENT: "agent_id",
@@ -561,7 +606,7 @@ class MultiDimensionCostTracker:
                 WHERE {where}
                 GROUP BY {dim_column}, cost_type
                 ORDER BY total_cost DESC""",
-            params
+            params,
         ).fetchall()
 
         summary_map: Dict[str, CostSummary] = {}
@@ -611,16 +656,18 @@ class MultiDimensionCostTracker:
                 event.usage_ratio,
                 event.status,
                 event.recorded_at,
-            )
+            ),
         )
         self._conn.commit()
 
-    def get_budget_events(self,
-                          budget_level: Optional[str] = None,
-                          scope_id: Optional[str] = None,
-                          status: Optional[str] = None,
-                          limit: int = 100,
-                          offset: int = 0) -> List[Dict[str, Any]]:
+    def get_budget_events(
+        self,
+        budget_level: Optional[str] = None,
+        scope_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
         """获取预算事件列表"""
         conditions = []
         params = []
@@ -642,16 +689,22 @@ class MultiDimensionCostTracker:
                 WHERE {where}
                 ORDER BY recorded_at DESC
                 LIMIT ? OFFSET ?""",
-            params + [limit, offset]
+            params + [limit, offset],
         ).fetchall()
 
         return [dict(row) for row in rows]
 
     @sqlite_retry()
-    def record_budget_adjustment(self, budget_level: str, scope_id: str,
-                                 resource_type: str, old_limit: float,
-                                 new_limit: float, reason: str = "",
-                                 adjusted_by: str = "admin") -> None:
+    def record_budget_adjustment(
+        self,
+        budget_level: str,
+        scope_id: str,
+        resource_type: str,
+        old_limit: float,
+        new_limit: float,
+        reason: str = "",
+        adjusted_by: str = "admin",
+    ) -> None:
         """记录预算调整历史"""
         self._conn.execute(
             """INSERT INTO budget_adjustments 
@@ -659,26 +712,37 @@ class MultiDimensionCostTracker:
                 reason, adjusted_by, adjusted_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                budget_level, scope_id, resource_type,
-                old_limit, new_limit, reason, adjusted_by, time.time()
-            )
+                budget_level,
+                scope_id,
+                resource_type,
+                old_limit,
+                new_limit,
+                reason,
+                adjusted_by,
+                time.time(),
+            ),
         )
         self._conn.commit()
         logger.info(
             "Budget adjusted: %s/%s/%s %.2f -> %.2f",
-            budget_level, scope_id, resource_type, old_limit, new_limit
+            budget_level,
+            scope_id,
+            resource_type,
+            old_limit,
+            new_limit,
         )
 
     def get_budget_adjustments(self, limit: int = 50) -> List[Dict[str, Any]]:
         """获取预算调整历史"""
         rows = self._conn.execute(
             "SELECT * FROM budget_adjustments ORDER BY adjusted_at DESC LIMIT ?",
-            (limit,)
+            (limit,),
         ).fetchall()
         return [dict(row) for row in rows]
 
-    def get_cost_trend(self, days: int = 30,
-                       interval_hours: int = 24) -> List[Dict[str, Any]]:
+    def get_cost_trend(
+        self, days: int = 30, interval_hours: int = 24
+    ) -> List[Dict[str, Any]]:
         """获取成本趋势数据"""
         cutoff = time.time() - (days * 86400)
 
@@ -693,7 +757,7 @@ class MultiDimensionCostTracker:
                WHERE recorded_at >= ?
                GROUP BY bucket, cost_type
                ORDER BY bucket ASC""",
-            (interval_hours * 3600, interval_hours * 3600, cutoff)
+            (interval_hours * 3600, interval_hours * 3600, cutoff),
         ).fetchall()
 
         trend: Dict[int, Dict[str, Any]] = {}

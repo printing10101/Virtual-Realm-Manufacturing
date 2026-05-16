@@ -10,6 +10,7 @@ Environment variables set by the parent:
     PLUGIN_PORT   — port for the health-check HTTP server
     PLUGIN_PATH   — filesystem path to the plugin directory
 """
+
 from __future__ import annotations
 
 import http.server
@@ -21,7 +22,7 @@ import socketserver
 import sys
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 logging.basicConfig(
     level=logging.INFO,
@@ -102,8 +103,12 @@ def main() -> None:
     state.plugin_path = os.environ.get("PLUGIN_PATH", ".")
     state.started_at = time.time()
 
-    logger.info("Worker starting: id=%s, port=%s, path=%s",
-                state.plugin_id, state.plugin_port, state.plugin_path)
+    logger.info(
+        "Worker starting: id=%s, port=%s, path=%s",
+        state.plugin_id,
+        state.plugin_port,
+        state.plugin_path,
+    )
 
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGINT, _signal_handler)

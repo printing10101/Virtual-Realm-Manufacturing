@@ -106,7 +106,8 @@ class ValidationCalibrator:
         if n_samples < 20:
             logger.warning(
                 "Insufficient samples (%d < 20) for %s - thresholds may be unreliable",
-                n_samples, cache_key,
+                n_samples,
+                cache_key,
             )
 
         self._calibration_cache[cache_key] = result
@@ -125,7 +126,9 @@ class ValidationCalibrator:
                 calibrated[process] = result
                 logger.info(
                     "Calibrated process %s with %d samples (confidence=%.2f)",
-                    process, result["sample_count"], result["confidence"],
+                    process,
+                    result["sample_count"],
+                    result["confidence"],
                 )
             except Exception as e:
                 logger.warning("Failed to calibrate %s: %s", process, e)
@@ -183,7 +186,9 @@ class ValidationCalibrator:
         calibrated = self.calibrate_all_processes()
 
         rules = self._load_rules()
-        rules["bosch_calibrated"]["last_calibrated"] = datetime.now().strftime("%Y-%m-%d")
+        rules["bosch_calibrated"]["last_calibrated"] = datetime.now().strftime(
+            "%Y-%m-%d"
+        )
         rules["bosch_calibrated"]["calibration_status"] = "pending"
         rules["bosch_calibrated"]["process_thresholds"] = {}
 
@@ -196,16 +201,24 @@ class ValidationCalibrator:
                 "confidence": cal_data["confidence"],
                 "vibration_rms_warning_multiplier": round(
                     cal_data["vibration"]["x_axis"]["warning_threshold"]
-                    / max(cal_data["vibration"]["x_axis"]["rms_normal_range"][0], 1e-10),
+                    / max(
+                        cal_data["vibration"]["x_axis"]["rms_normal_range"][0], 1e-10
+                    ),
                     2,
                 ),
                 "vibration_rms_critical_multiplier": round(
                     cal_data["vibration"]["x_axis"]["critical_threshold"]
-                    / max(cal_data["vibration"]["x_axis"]["rms_normal_range"][0], 1e-10),
+                    / max(
+                        cal_data["vibration"]["x_axis"]["rms_normal_range"][0], 1e-10
+                    ),
                     2,
                 ),
-                "frequency_shift_warning_percent": cal_data["frequency"]["shift_warning_percent"],
-                "frequency_shift_critical_percent": cal_data["frequency"]["shift_critical_percent"],
+                "frequency_shift_warning_percent": cal_data["frequency"][
+                    "shift_warning_percent"
+                ],
+                "frequency_shift_critical_percent": cal_data["frequency"][
+                    "shift_critical_percent"
+                ],
             }
 
         return rules
@@ -223,7 +236,9 @@ class ValidationCalibrator:
         )
         return {
             "status": "applied",
-            "process_count": len(updated_rules["bosch_calibrated"]["process_thresholds"]),
+            "process_count": len(
+                updated_rules["bosch_calibrated"]["process_thresholds"]
+            ),
             "last_calibrated": updated_rules["bosch_calibrated"]["last_calibrated"],
         }
 
@@ -313,8 +328,12 @@ class ValidationCalibrator:
                         }
                         mapped_axis = axis_map.get(u_signal)
                         if mapped_axis and mapped_axis in bosch_vib:
-                            bosch_warning = bosch_vib[mapped_axis].get("warning_threshold", 0)
-                            bosch_critical = bosch_vib[mapped_axis].get("critical_threshold", 0)
+                            bosch_warning = bosch_vib[mapped_axis].get(
+                                "warning_threshold", 0
+                            )
+                            bosch_critical = bosch_vib[mapped_axis].get(
+                                "critical_threshold", 0
+                            )
                             common_signals[u_signal] = {
                                 "uniwear_rms": round(u_rms, 6),
                                 "bosch_warning": round(bosch_warning, 6),
@@ -375,7 +394,12 @@ class ValidationCalibrator:
         uniwear_data_dir: str = "python/data/uniwear",
         process: str | None = None,
     ) -> dict:
-        from app.data.uniwear_loader import UniwearDataLoader, UniwearDataset, NUAA_MATERIAL, PHM2010_MATERIAL
+        from app.data.uniwear_loader import (
+            UniwearDataLoader,
+            UniwearDataset,
+            NUAA_MATERIAL,
+            PHM2010_MATERIAL,
+        )
 
         uniwear_loader = UniwearDataLoader(data_dir=uniwear_data_dir)
         result: dict = {
@@ -399,7 +423,8 @@ class ValidationCalibrator:
                 vibration_keys = [k for k in signal_rms if "vibration" in k.lower()]
                 avg_vibration_rms = (
                     float(np.mean([signal_rms[k] for k in vibration_keys]))
-                    if vibration_keys else 0.0
+                    if vibration_keys
+                    else 0.0
                 )
 
                 result["sources"][ds.value] = {
@@ -408,7 +433,8 @@ class ValidationCalibrator:
                     "avg_vibration_rms": round(avg_vibration_rms, 6),
                     "wear_range": {
                         "min": wear_stats.get("initial_wear", 0),
-                        "max": wear_stats.get("final_wear", 0) or wear_stats.get("max_wear", 0),
+                        "max": wear_stats.get("final_wear", 0)
+                        or wear_stats.get("max_wear", 0),
                     },
                     "mean_wear_rate": wear_stats.get("mean_wear_rate", 0),
                     "sample_count": wear_stats.get("sample_count", 0),
@@ -426,14 +452,17 @@ class ValidationCalibrator:
         }
 
         try:
-            bosch_baselines = self.calibrate_vibration_thresholds(process=process) if process else None
+            bosch_baselines = (
+                self.calibrate_vibration_thresholds(process=process)
+                if process
+                else None
+            )
             bosch_all = self._load_or_calibrate()
 
             cross_validation: dict = {}
 
             uniwear_stats_available = all(
-                "error" not in result["sources"].get(s, {})
-                for s in ["nuaa", "phm2010"]
+                "error" not in result["sources"].get(s, {}) for s in ["nuaa", "phm2010"]
             )
 
             if uniwear_stats_available and bosch_all:
@@ -459,9 +488,10 @@ class ValidationCalibrator:
                 ]
 
                 cross_validation["bosch_process_count"] = len(bosch_all)
-                cross_validation["uniwear_experiment_count"] = (
-                    result["sources"]["nuaa"].get("sample_count", 0)
-                    + result["sources"]["phm2010"].get("sample_count", 0)
+                cross_validation["uniwear_experiment_count"] = result["sources"][
+                    "nuaa"
+                ].get("sample_count", 0) + result["sources"]["phm2010"].get(
+                    "sample_count", 0
                 )
 
             result["cross_validation"] = cross_validation
@@ -488,14 +518,18 @@ class ValidationCalibrator:
                     "source": "NUAA",
                     "recommended_cutting_speed_range": [60, 120],
                     "recommended_feed_range": [0.04, 0.15],
-                    "expected_wear_rate_range": self._extract_wear_rate_range(uniwear_analysis, "nuaa"),
+                    "expected_wear_rate_range": self._extract_wear_rate_range(
+                        uniwear_analysis, "nuaa"
+                    ),
                 },
                 "hrc52": {
                     "material": "Stainless Steel HRC52",
                     "source": "PHM2010",
                     "recommended_cutting_speed_range": [50, 100],
                     "recommended_feed_range": [0.04, 0.12],
-                    "expected_wear_rate_range": self._extract_wear_rate_range(uniwear_analysis, "phm2010"),
+                    "expected_wear_rate_range": self._extract_wear_rate_range(
+                        uniwear_analysis, "phm2010"
+                    ),
                 },
             },
             "joint_thresholds": uniwear_analysis.get("joint_thresholds", {}),
@@ -515,6 +549,7 @@ class ValidationCalibrator:
     @staticmethod
     def _get_timestamp_str() -> str:
         from datetime import datetime
+
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     @staticmethod

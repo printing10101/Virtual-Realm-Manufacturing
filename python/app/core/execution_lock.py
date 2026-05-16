@@ -5,9 +5,9 @@ import threading
 import time
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,9 @@ class ExecutionLock:
     agent_id: str
     status: LockStatus = LockStatus.ACTIVE
     created_at: float = field(default_factory=time.time)
-    expires_at: float = field(default_factory=lambda: time.time() + DEFAULT_LOCK_TIMEOUT_HOURS * 3600)
+    expires_at: float = field(
+        default_factory=lambda: time.time() + DEFAULT_LOCK_TIMEOUT_HOURS * 3600
+    )
     heartbeat_at: float = field(default_factory=time.time)
     released_at: Optional[float] = None
     release_reason: Optional[str] = None
@@ -47,7 +49,9 @@ class ExecutionLock:
             "created_at": datetime.fromtimestamp(self.created_at).isoformat(),
             "expires_at": datetime.fromtimestamp(self.expires_at).isoformat(),
             "heartbeat_at": datetime.fromtimestamp(self.heartbeat_at).isoformat(),
-            "released_at": datetime.fromtimestamp(self.released_at).isoformat() if self.released_at else None,
+            "released_at": datetime.fromtimestamp(self.released_at).isoformat()
+            if self.released_at
+            else None,
             "release_reason": self.release_reason,
             "is_expired": self.is_expired(),
             "time_remaining_seconds": self.time_remaining_seconds(),
@@ -95,7 +99,9 @@ class ExecutionLockStore:
         """)
         conn.commit()
 
-    def _record_history(self, task_id: str, agent_id: str, action: str, reason: Optional[str] = None):
+    def _record_history(
+        self, task_id: str, agent_id: str, action: str, reason: Optional[str] = None
+    ):
         conn = self._get_conn()
         conn.execute(
             "INSERT INTO lock_history (task_id, agent_id, action, reason, timestamp) VALUES (?, ?, ?, ?, ?)",
@@ -103,15 +109,23 @@ class ExecutionLockStore:
         )
         conn.commit()
 
-    def create_lock(self, task_id: str, agent_id: str, timeout_hours: float = DEFAULT_LOCK_TIMEOUT_HOURS) -> ExecutionLock:
+    def create_lock(
+        self,
+        task_id: str,
+        agent_id: str,
+        timeout_hours: float = DEFAULT_LOCK_TIMEOUT_HOURS,
+    ) -> ExecutionLock:
         with self._lock:
             conn = self._get_conn()
 
             existing = conn.execute(
-                "SELECT task_id, status FROM execution_locks WHERE task_id = ?", (task_id,)
+                "SELECT task_id, status FROM execution_locks WHERE task_id = ?",
+                (task_id,),
             ).fetchone()
             if existing:
-                raise LockConflictError(f"Lock already exists for task '{task_id}' (status: {existing['status']})")
+                raise LockConflictError(
+                    f"Lock already exists for task '{task_id}' (status: {existing['status']})"
+                )
 
             now = time.time()
             lock = ExecutionLock(
@@ -125,13 +139,24 @@ class ExecutionLockStore:
             conn.execute(
                 """INSERT INTO execution_locks (task_id, agent_id, status, created_at, expires_at, heartbeat_at)
                    VALUES (?, ?, ?, ?, ?, ?)""",
-                (lock.task_id, lock.agent_id, lock.status.value, lock.created_at, lock.expires_at, lock.heartbeat_at),
+                (
+                    lock.task_id,
+                    lock.agent_id,
+                    lock.status.value,
+                    lock.created_at,
+                    lock.expires_at,
+                    lock.heartbeat_at,
+                ),
             )
             conn.commit()
 
             self._record_history(task_id, agent_id, "created")
-            logger.info("Execution lock created: task=%s agent=%s expires=%s",
-                        task_id, agent_id, datetime.fromtimestamp(lock.expires_at).isoformat())
+            logger.info(
+                "Execution lock created: task=%s agent=%s expires=%s",
+                task_id,
+                agent_id,
+                datetime.fromtimestamp(lock.expires_at).isoformat(),
+            )
             return lock
 
     def get_lock(self, task_id: str) -> Optional[ExecutionLock]:
@@ -153,11 +178,15 @@ class ExecutionLockStore:
             ).fetchone()
 
             if row is None:
-                raise LockNotFoundError(f"No active lock found for task '{task_id}' by agent '{agent_id}'")
+                raise LockNotFoundError(
+                    f"No active lock found for task '{task_id}' by agent '{agent_id}'"
+                )
 
             lock = self._row_to_lock(row)
             if lock.status != LockStatus.ACTIVE:
-                raise LockNotFoundError(f"Lock for task '{task_id}' is not active (status: {lock.status.value})")
+                raise LockNotFoundError(
+                    f"Lock for task '{task_id}' is not active (status: {lock.status.value})"
+                )
 
             if lock.is_expired():
                 conn.execute(
@@ -165,7 +194,9 @@ class ExecutionLockStore:
                     (LockStatus.EXPIRED.value, task_id),
                 )
                 conn.commit()
-                self._record_history(task_id, agent_id, "expired", "heartbeat on expired lock")
+                self._record_history(
+                    task_id, agent_id, "expired", "heartbeat on expired lock"
+                )
                 raise LockExpiredError(f"Lock for task '{task_id}' has expired")
 
             new_expires = time.time() + DEFAULT_LOCK_TIMEOUT_HOURS * 3600
@@ -178,11 +209,17 @@ class ExecutionLockStore:
 
             lock.expires_at = new_expires
             lock.heartbeat_at = new_heartbeat
-            logger.debug("Heartbeat received: task=%s agent=%s new_expires=%s",
-                         task_id, agent_id, datetime.fromtimestamp(new_expires).isoformat())
+            logger.debug(
+                "Heartbeat received: task=%s agent=%s new_expires=%s",
+                task_id,
+                agent_id,
+                datetime.fromtimestamp(new_expires).isoformat(),
+            )
             return lock
 
-    def release_lock(self, task_id: str, agent_id: str, reason: Optional[str] = None) -> ExecutionLock:
+    def release_lock(
+        self, task_id: str, agent_id: str, reason: Optional[str] = None
+    ) -> ExecutionLock:
         with self._lock:
             conn = self._get_conn()
 
@@ -212,7 +249,12 @@ class ExecutionLockStore:
             lock.release_reason = reason
 
             self._record_history(task_id, agent_id, "released", reason)
-            logger.info("Execution lock released: task=%s agent=%s reason=%s", task_id, agent_id, reason)
+            logger.info(
+                "Execution lock released: task=%s agent=%s reason=%s",
+                task_id,
+                agent_id,
+                reason,
+            )
             return lock
 
     def force_release(self, task_id: str, admin_id: str = "admin") -> ExecutionLock:
@@ -242,7 +284,9 @@ class ExecutionLockStore:
             lock.release_reason = reason
 
             self._record_history(task_id, lock.agent_id, "force_released", reason)
-            logger.warning("Execution lock force-released: task=%s by=%s", task_id, admin_id)
+            logger.warning(
+                "Execution lock force-released: task=%s by=%s", task_id, admin_id
+            )
             return lock
 
     def cleanup_expired_locks(self) -> List[ExecutionLock]:
@@ -264,7 +308,9 @@ class ExecutionLockStore:
                 lock = self._row_to_lock(row)
                 lock.status = LockStatus.EXPIRED
                 expired_locks.append(lock)
-                self._record_history(row["task_id"], row["agent_id"], "expired", "lock timeout")
+                self._record_history(
+                    row["task_id"], row["agent_id"], "expired", "lock timeout"
+                )
 
             conn.commit()
 
@@ -318,6 +364,12 @@ class ExecutionLockStore:
             self._conn.close()
             self._conn = None
 
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
     @staticmethod
     def _row_to_lock(row) -> ExecutionLock:
         return ExecutionLock(
@@ -362,7 +414,9 @@ def get_execution_lock_store() -> ExecutionLockStore:
     return _lock_store
 
 
-def init_execution_lock_store(db_path: str = "execution_locks.db") -> ExecutionLockStore:
+def init_execution_lock_store(
+    db_path: str = "execution_locks.db",
+) -> ExecutionLockStore:
     global _lock_store
     _lock_store = ExecutionLockStore(db_path=db_path)
     return _lock_store

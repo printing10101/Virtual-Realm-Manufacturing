@@ -3,28 +3,20 @@ Governance & Approval Management API Routes
 
 Endpoints for approval workflow, risk assessment, emergency override, and governance reports.
 """
+
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 import time
 
 from app.core.approval_workflow import (
     get_approval_engine,
-    ApprovalWorkflowEngine,
 )
 from app.core.risk_identifier import (
     get_risk_identifier,
-    HighRiskOperationIdentifier,
 )
 from app.models.governance import (
-    ApprovalPolicy,
-    ApprovalPriority,
-    ApprovalRequest,
     ApprovalStatus,
-    ApprovalStrategy,
-    ApprovalMode,
-    TaskType,
     AgentRole,
-    ResourceSensitivity,
 )
 
 router = APIRouter(prefix="/api/v1/governance", tags=["Governance & Approval"])
@@ -32,7 +24,9 @@ router = APIRouter(prefix="/api/v1/governance", tags=["Governance & Approval"])
 
 @router.get("/approval-requests")
 async def list_approval_requests(
-    status: Optional[str] = Query(None, description="筛选状态: pending/under_review/approved/rejected/escalated"),
+    status: Optional[str] = Query(
+        None, description="筛选状态: pending/under_review/approved/rejected/escalated"
+    ),
     requester: Optional[str] = Query(None, description="请求人"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
@@ -101,7 +95,11 @@ async def create_approval_request(data: dict):
             expires_at=expires_at,
         )
 
-        return {"ok": True, "data": request.to_dict(), "risk_assessment": assessment.to_dict()}
+        return {
+            "ok": True,
+            "data": request.to_dict(),
+            "risk_assessment": assessment.to_dict(),
+        }
     except (ValueError, KeyError) as e:
         raise HTTPException(400, f"Invalid request data: {e}")
 
@@ -127,7 +125,10 @@ async def make_decision(request_id: str, data: dict):
         approver_id = data["approver_id"]
         decision = data["decision"]
         if decision not in ("approved", "rejected", "escalated", "request_info"):
-            raise HTTPException(400, "Invalid decision. Must be: approved/rejected/escalated/request_info")
+            raise HTTPException(
+                400,
+                "Invalid decision. Must be: approved/rejected/escalated/request_info",
+            )
 
         comment = data.get("comment", "")
         request = engine.make_decision(request_id, approver_id, decision, comment)
@@ -190,8 +191,8 @@ async def get_approval_dashboard():
                 "under_review": len(under_review),
                 "approved": len(approved),
                 "rejected": len(rejected),
-            }
-        }
+            },
+        },
     }
 
 
@@ -230,7 +231,7 @@ async def get_risk_categories():
             "M_TYPE": list(risk_identifier.M_TYPE_OPERATIONS),
             "D_TYPE": list(risk_identifier.D_TYPE_OPERATIONS),
             "B_TYPE": list(risk_identifier.B_TYPE_OPERATIONS),
-        }
+        },
     }
 
 
@@ -280,9 +281,11 @@ async def get_delegations(user_id: str = Query(..., description="用户ID")):
     return {
         "ok": True,
         "data": {
-            "active_delegation": active_delegation.to_dict() if active_delegation else None,
+            "active_delegation": active_delegation.to_dict()
+            if active_delegation
+            else None,
             "delegates_for": delegates_for,
-        }
+        },
     }
 
 
@@ -318,7 +321,9 @@ async def get_governance_report(
     now = time.time()
     period_start = now - days * 24 * 3600
 
-    report = engine.generate_governance_report(period_start=period_start, period_end=now)
+    report = engine.generate_governance_report(
+        period_start=period_start, period_end=now
+    )
     return {"ok": True, "data": report.to_dict()}
 
 

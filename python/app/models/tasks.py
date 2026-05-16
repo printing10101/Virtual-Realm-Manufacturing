@@ -6,6 +6,7 @@ Extends the existing task model with:
 - blockers: Dependency management
 - Strict task type and status enum control
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from enum import Enum
@@ -16,6 +17,7 @@ from app.models.goals import GoalRef
 
 class EnhancedTaskType(str, Enum):
     """Strict task type enumeration"""
+
     PREDICTION = "prediction"
     TRAINING = "training"
     ANALYSIS = "analysis"
@@ -25,6 +27,7 @@ class EnhancedTaskType(str, Enum):
 
 class EnhancedTaskStatus(str, Enum):
     """Strict task lifecycle status"""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -35,6 +38,7 @@ class EnhancedTaskStatus(str, Enum):
 @dataclass
 class EnhancedTask:
     """Enhanced task model with goal alignment"""
+
     id: str
     title: str
     description: str
@@ -67,8 +71,15 @@ class EnhancedTask:
 
     def can_transition_to(self, new_status: EnhancedTaskStatus) -> bool:
         transitions = {
-            EnhancedTaskStatus.PENDING: {EnhancedTaskStatus.IN_PROGRESS, EnhancedTaskStatus.CANCELLED},
-            EnhancedTaskStatus.IN_PROGRESS: {EnhancedTaskStatus.COMPLETED, EnhancedTaskStatus.FAILED, EnhancedTaskStatus.CANCELLED},
+            EnhancedTaskStatus.PENDING: {
+                EnhancedTaskStatus.IN_PROGRESS,
+                EnhancedTaskStatus.CANCELLED,
+            },
+            EnhancedTaskStatus.IN_PROGRESS: {
+                EnhancedTaskStatus.COMPLETED,
+                EnhancedTaskStatus.FAILED,
+                EnhancedTaskStatus.CANCELLED,
+            },
             EnhancedTaskStatus.COMPLETED: set(),
             EnhancedTaskStatus.FAILED: {EnhancedTaskStatus.PENDING},
             EnhancedTaskStatus.CANCELLED: set(),

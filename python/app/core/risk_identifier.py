@@ -10,6 +10,7 @@ Automatic identification of operations requiring approval:
 
 Multi-factor risk scoring algorithm for approval strategy application.
 """
+
 from __future__ import annotations
 import logging
 import time
@@ -22,7 +23,6 @@ from app.models.governance import (
     ApprovalPriority,
     ApprovalStrategy,
     ResourceSensitivity,
-    TaskType,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 class OperationCategory(str, Enum):
     """操作分类"""
+
     T_TYPE = "T"
     C_TYPE = "C"
     M_TYPE = "M"
@@ -40,6 +41,7 @@ class OperationCategory(str, Enum):
 @dataclass
 class RiskFactor:
     """风险因子"""
+
     name: str
     weight: float
     score: float
@@ -49,6 +51,7 @@ class RiskFactor:
 @dataclass
 class RiskAssessment:
     """风险评估结果"""
+
     operation_id: str = ""
     operation_type: str = ""
     operation_category: Optional[OperationCategory] = None
@@ -66,11 +69,18 @@ class RiskAssessment:
         return {
             "operation_id": self.operation_id,
             "operation_type": self.operation_type,
-            "operation_category": self.operation_category.value if self.operation_category else None,
+            "operation_category": self.operation_category.value
+            if self.operation_category
+            else None,
             "risk_score": round(self.risk_score, 2),
             "risk_level": self.risk_level,
             "risk_factors": [
-                {"name": f.name, "weight": f.weight, "score": f.score, "description": f.description}
+                {
+                    "name": f.name,
+                    "weight": f.weight,
+                    "score": f.score,
+                    "description": f.description,
+                }
                 for f in self.risk_factors
             ],
             "requires_approval": self.requires_approval,
@@ -114,10 +124,14 @@ class RiskScorer:
         self._error_rates[user_or_agent_id] = min(error_rate, 1.0)
 
     def record_error(self, user_or_agent_id: str) -> None:
-        self._error_count[user_or_agent_id] = self._error_count.get(user_or_agent_id, 0) + 1
+        self._error_count[user_or_agent_id] = (
+            self._error_count.get(user_or_agent_id, 0) + 1
+        )
 
     def record_operation(self, user_or_agent_id: str) -> None:
-        self._total_operations[user_or_agent_id] = self._total_operations.get(user_or_agent_id, 0) + 1
+        self._total_operations[user_or_agent_id] = (
+            self._total_operations.get(user_or_agent_id, 0) + 1
+        )
 
     def get_error_rate(self, user_or_agent_id: str) -> float:
         if user_or_agent_id in self._error_rates:
@@ -153,10 +167,14 @@ class RiskScorer:
             elif budget_ratio > 0.8:
                 budget_factor = 1.0 + budget_ratio * 0.2
 
-        role_info = self.ROLE_RISK_FACTORS.get(agent_role, {"error_rate_weight": 1.0, "base_trust": 0.8})
+        role_info = self.ROLE_RISK_FACTORS.get(
+            agent_role, {"error_rate_weight": 1.0, "base_trust": 0.8}
+        )
         role_factor = 2.0 - role_info["base_trust"]
 
-        score = base_score * sensitivity_mult * error_factor * budget_factor * role_factor
+        score = (
+            base_score * sensitivity_mult * error_factor * budget_factor * role_factor
+        )
         score = min(score, 1.0)
 
         if additional_factors:
@@ -215,7 +233,9 @@ class HighRiskOperationIdentifier:
     def set_budget_threshold(self, threshold: float) -> None:
         self._budget_threshold = threshold
 
-    def identify_operation_category(self, operation_type: str) -> Optional[OperationCategory]:
+    def identify_operation_category(
+        self, operation_type: str
+    ) -> Optional[OperationCategory]:
         if operation_type in self.T_TYPE_OPERATIONS:
             return OperationCategory.T_TYPE
         if operation_type in self.C_TYPE_OPERATIONS:
@@ -227,13 +247,29 @@ class HighRiskOperationIdentifier:
         if operation_type in self.B_TYPE_OPERATIONS:
             return OperationCategory.B_TYPE
 
-        if "machine" in operation_type or "dispatch" in operation_type or "execute" in operation_type:
+        if (
+            "machine" in operation_type
+            or "dispatch" in operation_type
+            or "execute" in operation_type
+        ):
             return OperationCategory.T_TYPE
-        if "config" in operation_type or "setting" in operation_type or "permission" in operation_type:
+        if (
+            "config" in operation_type
+            or "setting" in operation_type
+            or "permission" in operation_type
+        ):
             return OperationCategory.C_TYPE
-        if "model" in operation_type or "train" in operation_type or "deploy" in operation_type:
+        if (
+            "model" in operation_type
+            or "train" in operation_type
+            or "deploy" in operation_type
+        ):
             return OperationCategory.M_TYPE
-        if "data" in operation_type or "access" in operation_type or "export" in operation_type:
+        if (
+            "data" in operation_type
+            or "access" in operation_type
+            or "export" in operation_type
+        ):
             return OperationCategory.D_TYPE
         if "budget" in operation_type or "cost" in operation_type:
             return OperationCategory.B_TYPE
@@ -282,7 +318,11 @@ class HighRiskOperationIdentifier:
         risk_factors.append(factor_error)
 
         if budget_amount > 0:
-            budget_ratio = budget_amount / self._budget_threshold if self._budget_threshold > 0 else 0
+            budget_ratio = (
+                budget_amount / self._budget_threshold
+                if self._budget_threshold > 0
+                else 0
+            )
             factor_budget = RiskFactor(
                 name="budget_threshold",
                 weight=0.15,
@@ -306,7 +346,9 @@ class HighRiskOperationIdentifier:
             category, sensitivity, risk_score
         )
 
-        suggested_approvers = self._suggest_approvers(category, sensitivity, requester_role)
+        suggested_approvers = self._suggest_approvers(
+            category, sensitivity, requester_role
+        )
 
         assessment = RiskAssessment(
             operation_id=operation_id,
@@ -325,7 +367,11 @@ class HighRiskOperationIdentifier:
 
         logger.info(
             "Risk assessment: op=%s category=%s risk=%.2f level=%s requires_approval=%s",
-            operation_id, category.value, risk_score, risk_level, requires_approval
+            operation_id,
+            category.value,
+            risk_score,
+            risk_level,
+            requires_approval,
         )
         return assessment
 

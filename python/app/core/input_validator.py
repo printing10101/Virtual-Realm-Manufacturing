@@ -1,4 +1,5 @@
 """Input validation utilities for API endpoints."""
+
 from __future__ import annotations
 
 import os
@@ -48,7 +49,7 @@ def validate_training_params(
     errors = []
     if not model_name or not model_name.strip():
         errors.append("模型名称不能为空")
-    elif not re.match(r'^[a-zA-Z0-9_\-]{1,64}$', model_name):
+    elif not re.match(r"^[a-zA-Z0-9_\-]{1,64}$", model_name):
         errors.append("模型名称只能包含字母、数字、下划线和连字符，长度1-64")
     if not dataset_path:
         errors.append("数据集路径不能为空")

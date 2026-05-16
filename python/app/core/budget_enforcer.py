@@ -4,13 +4,14 @@ Budget Enforcement & Control Mechanism
 Pre-execution atomic budget checks, hierarchical budget status handling,
 periodic auto-reset, intelligent cost optimization suggestions.
 """
+
 import logging
 import time
 import json
 import sqlite3
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional
 from pathlib import Path
 
 from app.models.budget import (
@@ -20,7 +21,6 @@ from app.models.budget import (
     ResourceType,
     BudgetPolicy,
     BudgetCheckResult,
-    BudgetAdjustment,
     BudgetAlert,
     CostOptimizationSuggestion,
     DEFAULT_GLOBAL_BUDGETS,
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class EnforcementAction(str, Enum):
     """强制执行动作"""
+
     ALLOW = "allow"
     WARN = "warn"
     BLOCK = "block"
@@ -42,6 +43,7 @@ class EnforcementAction(str, Enum):
 @dataclass
 class EnforcementResult:
     """强制执行结果"""
+
     actions_taken: List[EnforcementAction] = field(default_factory=list)
     check_result: Optional[BudgetCheckResult] = None
     alerts_generated: List[BudgetAlert] = field(default_factory=list)
@@ -56,6 +58,7 @@ class BudgetEnforcer:
     def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
             from app.config import PROJECT_ROOT
+
             db_path = str(Path(PROJECT_ROOT) / "data" / "budget_enforcer.db")
 
         db_dir = Path(db_path).parent
@@ -205,23 +208,26 @@ class BudgetEnforcer:
                 policy.last_reset_at,
                 policy.created_at,
                 policy.updated_at,
-            )
+            ),
         )
         self._conn.commit()
         self._policies[key] = policy
         logger.info(
             "Budget policy set: %s limit=%.2f period=%s",
-            key, policy.limit, policy.period.value
+            key,
+            policy.limit,
+            policy.period.value,
         )
 
-    def get_policy(self, level: BudgetLevel, scope_id: str,
-                   resource_type: ResourceType) -> Optional[BudgetPolicy]:
+    def get_policy(
+        self, level: BudgetLevel, scope_id: str, resource_type: ResourceType
+    ) -> Optional[BudgetPolicy]:
         key = self._policy_key(level.value, scope_id, resource_type.value)
         return self._policies.get(key)
 
-    def get_all_policies(self,
-                         level: Optional[BudgetLevel] = None,
-                         scope_id: Optional[str] = None) -> List[BudgetPolicy]:
+    def get_all_policies(
+        self, level: Optional[BudgetLevel] = None, scope_id: Optional[str] = None
+    ) -> List[BudgetPolicy]:
         result = []
         for policy in self._policies.values():
             if level and policy.level != level:
@@ -231,9 +237,15 @@ class BudgetEnforcer:
             result.append(policy)
         return sorted(result, key=lambda p: (p.level.value, p.scope_id))
 
-    def adjust_budget(self, level: BudgetLevel, scope_id: str,
-                      resource_type: ResourceType, new_limit: float,
-                      reason: str = "", adjusted_by: str = "admin") -> Optional[BudgetPolicy]:
+    def adjust_budget(
+        self,
+        level: BudgetLevel,
+        scope_id: str,
+        resource_type: ResourceType,
+        new_limit: float,
+        reason: str = "",
+        adjusted_by: str = "admin",
+    ) -> Optional[BudgetPolicy]:
         key = self._policy_key(level.value, scope_id, resource_type.value)
         old_policy = self._policies.get(key)
 
@@ -245,12 +257,14 @@ class BudgetEnforcer:
             self.set_policy(old_policy)
         else:
             new_policy = BudgetPolicy(
-                level=level, scope_id=scope_id, resource_type=resource_type,
+                level=level,
+                scope_id=scope_id,
+                resource_type=resource_type,
                 limit=new_limit,
             )
             self.set_policy(new_policy)
 
-        if hasattr(self, '_cost_tracker_ref') and self._cost_tracker_ref:
+        if hasattr(self, "_cost_tracker_ref") and self._cost_tracker_ref:
             self._cost_tracker_ref.record_budget_adjustment(
                 budget_level=level.value,
                 scope_id=scope_id,
@@ -263,13 +277,22 @@ class BudgetEnforcer:
 
         logger.info(
             "Budget adjusted: %s/%s/%s %.2f → %.2f by %s",
-            level.value, scope_id, resource_type.value, old_limit, new_limit, adjusted_by
+            level.value,
+            scope_id,
+            resource_type.value,
+            old_limit,
+            new_limit,
+            adjusted_by,
         )
         return self._policies.get(key)
 
-    def check_budget(self, level: BudgetLevel, scope_id: str,
-                     resource_type: ResourceType,
-                     planned_usage: float = 0.0) -> BudgetCheckResult:
+    def check_budget(
+        self,
+        level: BudgetLevel,
+        scope_id: str,
+        resource_type: ResourceType,
+        planned_usage: float = 0.0,
+    ) -> BudgetCheckResult:
         policy = self.get_policy(level, scope_id, resource_type)
 
         if policy is None:
@@ -298,7 +321,9 @@ class BudgetEnforcer:
         if not policy.enabled:
             result.status = BudgetStatus.DISABLED
             result.passed = False
-            result.block_reason = f"Budget policy disabled: {scope_id}/{resource_type.value}"
+            result.block_reason = (
+                f"Budget policy disabled: {scope_id}/{resource_type.value}"
+            )
         elif projected_ratio >= 1.0:
             result.status = BudgetStatus.EXCEEDED
             if policy.hard_stop:
@@ -328,9 +353,13 @@ class BudgetEnforcer:
 
         return result
 
-    def check_budget_cascade(self, agent_id: str, project_id: str = "default",
-                             resource_type: ResourceType = ResourceType.TOTAL_COST,
-                             planned_usage: float = 0.0) -> BudgetCheckResult:
+    def check_budget_cascade(
+        self,
+        agent_id: str,
+        project_id: str = "default",
+        resource_type: ResourceType = ResourceType.TOTAL_COST,
+        planned_usage: float = 0.0,
+    ) -> BudgetCheckResult:
         """级联预算检查：任务级 → 代理级 → 项目级 → 全局级"""
         cascade = [
             (BudgetLevel.TASK, agent_id),
@@ -359,8 +388,13 @@ class BudgetEnforcer:
             checked_at=time.time(),
         )
 
-    def record_usage(self, level: BudgetLevel, scope_id: str,
-                     resource_type: ResourceType, usage: float) -> None:
+    def record_usage(
+        self,
+        level: BudgetLevel,
+        scope_id: str,
+        resource_type: ResourceType,
+        usage: float,
+    ) -> None:
         """记录资源用量并更新策略"""
         key = self._policy_key(level.value, scope_id, resource_type.value)
         policy = self._policies.get(key)
@@ -373,14 +407,23 @@ class BudgetEnforcer:
         self._conn.execute(
             """UPDATE budget_policies SET current_usage = ?, updated_at = ?
                WHERE level = ? AND scope_id = ? AND resource_type = ?""",
-            (policy.current_usage, time.time(),
-             level.value, scope_id, resource_type.value)
+            (
+                policy.current_usage,
+                time.time(),
+                level.value,
+                scope_id,
+                resource_type.value,
+            ),
         )
         self._conn.commit()
 
-    def enforce(self, level: BudgetLevel, scope_id: str,
-                resource_type: ResourceType,
-                planned_usage: float = 0.0) -> EnforcementResult:
+    def enforce(
+        self,
+        level: BudgetLevel,
+        scope_id: str,
+        resource_type: ResourceType,
+        planned_usage: float = 0.0,
+    ) -> EnforcementResult:
         """执行预算强制执行"""
         result = EnforcementResult()
         check = self.check_budget(level, scope_id, resource_type, planned_usage)
@@ -403,9 +446,7 @@ class BudgetEnforcer:
 
         result.actions_taken.append(EnforcementAction.BLOCK)
 
-        alert = self._create_alert(
-            level, scope_id, resource_type, check, "exceeded"
-        )
+        alert = self._create_alert(level, scope_id, resource_type, check, "exceeded")
         result.alerts_generated.append(alert)
 
         policy = check.policy
@@ -413,9 +454,7 @@ class BudgetEnforcer:
             result.actions_taken.append(EnforcementAction.CANCEL_PENDING)
 
             if self._task_canceller and policy:
-                cancelled = self._cancel_pending_tasks(
-                    level, scope_id, resource_type
-                )
+                cancelled = self._cancel_pending_tasks(level, scope_id, resource_type)
                 result.cancelled_tasks = cancelled
 
             if level == BudgetLevel.AGENT:
@@ -426,7 +465,7 @@ class BudgetEnforcer:
                     self._agent_suspender(
                         scope_id,
                         f"Budget exceeded: {resource_type.value} "
-                        f"({check.usage_ratio:.1%})"
+                        f"({check.usage_ratio:.1%})",
                     )
 
         if policy and policy.auto_notify:
@@ -437,9 +476,13 @@ class BudgetEnforcer:
 
         return result
 
-    def enforce_cascade(self, agent_id: str, project_id: str = "default",
-                        resource_type: ResourceType = ResourceType.TOTAL_COST,
-                        planned_usage: float = 0.0) -> EnforcementResult:
+    def enforce_cascade(
+        self,
+        agent_id: str,
+        project_id: str = "default",
+        resource_type: ResourceType = ResourceType.TOTAL_COST,
+        planned_usage: float = 0.0,
+    ) -> EnforcementResult:
         """级联预算强制执行"""
         cascade = [
             (BudgetLevel.TASK, agent_id),
@@ -464,8 +507,9 @@ class BudgetEnforcer:
             ),
         )
 
-    def reset_period(self, level: BudgetLevel, scope_id: str,
-                     resource_type: ResourceType) -> None:
+    def reset_period(
+        self, level: BudgetLevel, scope_id: str, resource_type: ResourceType
+    ) -> None:
         """手动重置预算周期"""
         policy = self.get_policy(level, scope_id, resource_type)
         if policy is None:
@@ -479,9 +523,14 @@ class BudgetEnforcer:
                 limit_at_reset, reset_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
-                level.value, scope_id, resource_type.value,
-                policy.period.value, old_usage, policy.limit, time.time()
-            )
+                level.value,
+                scope_id,
+                resource_type.value,
+                policy.period.value,
+                old_usage,
+                policy.limit,
+                time.time(),
+            ),
         )
 
         policy.current_usage = 0.0
@@ -491,14 +540,22 @@ class BudgetEnforcer:
             """UPDATE budget_policies 
                SET current_usage = 0.0, last_reset_at = ?, updated_at = ?
                WHERE level = ? AND scope_id = ? AND resource_type = ?""",
-            (policy.last_reset_at, time.time(),
-             level.value, scope_id, resource_type.value)
+            (
+                policy.last_reset_at,
+                time.time(),
+                level.value,
+                scope_id,
+                resource_type.value,
+            ),
         )
         self._conn.commit()
 
         logger.info(
             "Budget reset: %s/%s/%s, previous usage: %.2f",
-            level.value, scope_id, resource_type.value, old_usage
+            level.value,
+            scope_id,
+            resource_type.value,
+            old_usage,
         )
 
     def auto_reset_periods(self) -> int:
@@ -516,8 +573,13 @@ class BudgetEnforcer:
                     """UPDATE budget_policies 
                        SET current_usage = 0.0, last_reset_at = ?, updated_at = ?
                        WHERE level = ? AND scope_id = ? AND resource_type = ?""",
-                    (now, now,
-                     policy.level.value, policy.scope_id, policy.resource_type.value)
+                    (
+                        now,
+                        now,
+                        policy.level.value,
+                        policy.scope_id,
+                        policy.resource_type.value,
+                    ),
                 )
 
                 self._conn.execute(
@@ -526,10 +588,14 @@ class BudgetEnforcer:
                         usage_before_reset, limit_at_reset, reset_at)
                        VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     (
-                        policy.level.value, policy.scope_id,
-                        policy.resource_type.value, policy.period.value,
-                        old_usage, policy.limit, now
-                    )
+                        policy.level.value,
+                        policy.scope_id,
+                        policy.resource_type.value,
+                        policy.period.value,
+                        old_usage,
+                        policy.limit,
+                        now,
+                    ),
                 )
                 reset_count += 1
 
@@ -544,6 +610,7 @@ class BudgetEnforcer:
             return False
 
         import datetime
+
         last_dt = datetime.datetime.fromtimestamp(policy.last_reset_at)
         now_dt = datetime.datetime.fromtimestamp(now)
 
@@ -565,7 +632,7 @@ class BudgetEnforcer:
             self._conn.execute(
                 """UPDATE budget_policies SET last_reset_at = ?
                    WHERE level = ? AND scope_id = ? AND resource_type = ?""",
-                (now, policy.level.value, policy.scope_id, policy.resource_type.value)
+                (now, policy.level.value, policy.scope_id, policy.resource_type.value),
             )
             self._conn.commit()
             return
@@ -579,8 +646,13 @@ class BudgetEnforcer:
                 """UPDATE budget_policies 
                    SET current_usage = 0.0, last_reset_at = ?, updated_at = ?
                    WHERE level = ? AND scope_id = ? AND resource_type = ?""",
-                (now, now,
-                 policy.level.value, policy.scope_id, policy.resource_type.value)
+                (
+                    now,
+                    now,
+                    policy.level.value,
+                    policy.scope_id,
+                    policy.resource_type.value,
+                ),
             )
             self._conn.execute(
                 """INSERT INTO budget_reset_log 
@@ -588,22 +660,32 @@ class BudgetEnforcer:
                     usage_before_reset, limit_at_reset, reset_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    policy.level.value, policy.scope_id,
-                    policy.resource_type.value, policy.period.value,
-                    old_usage, policy.limit, now
-                )
+                    policy.level.value,
+                    policy.scope_id,
+                    policy.resource_type.value,
+                    policy.period.value,
+                    old_usage,
+                    policy.limit,
+                    now,
+                ),
             )
             self._conn.commit()
             logger.info(
                 "Period reset triggered: %s/%s/%s, previous: %.2f",
-                policy.level.value, policy.scope_id,
-                policy.resource_type.value, old_usage
+                policy.level.value,
+                policy.scope_id,
+                policy.resource_type.value,
+                old_usage,
             )
 
-    def _create_alert(self, level: BudgetLevel, scope_id: str,
-                      resource_type: ResourceType,
-                      check: BudgetCheckResult,
-                      alert_type: str) -> BudgetAlert:
+    def _create_alert(
+        self,
+        level: BudgetLevel,
+        scope_id: str,
+        resource_type: ResourceType,
+        check: BudgetCheckResult,
+        alert_type: str,
+    ) -> BudgetAlert:
         now = time.time()
         message = (
             f"[{alert_type.upper()}] {level.value}:{scope_id} "
@@ -615,7 +697,9 @@ class BudgetEnforcer:
             level=level,
             scope_id=scope_id,
             resource_type=resource_type,
-            status=BudgetStatus.WARNING if alert_type == "warning" else BudgetStatus.EXCEEDED,
+            status=BudgetStatus.WARNING
+            if alert_type == "warning"
+            else BudgetStatus.EXCEEDED,
             current_usage=check.limit * check.usage_ratio,
             limit=check.limit,
             usage_ratio=check.usage_ratio,
@@ -629,10 +713,16 @@ class BudgetEnforcer:
                 limit_value, usage_ratio, message, is_read, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)""",
             (
-                level.value, scope_id, resource_type.value,
-                alert.status.value, alert.current_usage,
-                alert.limit, alert.usage_ratio, alert.message, now
-            )
+                level.value,
+                scope_id,
+                resource_type.value,
+                alert.status.value,
+                alert.current_usage,
+                alert.limit,
+                alert.usage_ratio,
+                alert.message,
+                now,
+            ),
         )
         self._conn.commit()
 
@@ -644,9 +734,13 @@ class BudgetEnforcer:
 
         return alert
 
-    def get_alerts(self, status: Optional[str] = None,
-                   unread_only: bool = False,
-                   limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    def get_alerts(
+        self,
+        status: Optional[str] = None,
+        unread_only: bool = False,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
         conditions = []
         params = []
 
@@ -663,15 +757,14 @@ class BudgetEnforcer:
                 WHERE {where}
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?""",
-            params + [limit, offset]
+            params + [limit, offset],
         ).fetchall()
 
         return [dict(row) for row in rows]
 
     def mark_alert_read(self, alert_id: int) -> None:
         self._conn.execute(
-            "UPDATE budget_alerts SET is_read = 1 WHERE id = ?",
-            (alert_id,)
+            "UPDATE budget_alerts SET is_read = 1 WHERE id = ?", (alert_id,)
         )
         self._conn.commit()
 
@@ -695,9 +788,9 @@ class BudgetEnforcer:
     def set_cost_tracker(self, cost_tracker) -> None:
         self._cost_tracker_ref = cost_tracker
 
-    def _cancel_pending_tasks(self, level: BudgetLevel,
-                              scope_id: str,
-                              resource_type: ResourceType) -> List[str]:
+    def _cancel_pending_tasks(
+        self, level: BudgetLevel, scope_id: str, resource_type: ResourceType
+    ) -> List[str]:
         cancelled = []
         if self._task_canceller:
             try:
@@ -711,45 +804,59 @@ class BudgetEnforcer:
                 logger.error("Task cancellation error: %s", e)
         return cancelled
 
-    def _log_enforcement(self, result: EnforcementResult,
-                         level: BudgetLevel, scope_id: str,
-                         resource_type: ResourceType) -> None:
-        details = json.dumps({
-            "actions": [a.value for a in result.actions_taken],
-            "cancelled_tasks": result.cancelled_tasks,
-            "suspended_agents": result.suspended_agents,
-            "notifications_sent": result.notifications_sent,
-        })
+    def _log_enforcement(
+        self,
+        result: EnforcementResult,
+        level: BudgetLevel,
+        scope_id: str,
+        resource_type: ResourceType,
+    ) -> None:
+        details = json.dumps(
+            {
+                "actions": [a.value for a in result.actions_taken],
+                "cancelled_tasks": result.cancelled_tasks,
+                "suspended_agents": result.suspended_agents,
+                "notifications_sent": result.notifications_sent,
+            }
+        )
         self._conn.execute(
             """INSERT INTO enforcement_log 
                (action, level, scope_id, resource_type, details, executed_at)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (
                 ",".join(a.value for a in result.actions_taken),
-                level.value, scope_id, resource_type.value,
-                details, time.time()
-            )
+                level.value,
+                scope_id,
+                resource_type.value,
+                details,
+                time.time(),
+            ),
         )
         self._conn.commit()
 
     def get_enforcement_log(self, limit: int = 100) -> List[Dict[str, Any]]:
         rows = self._conn.execute(
-            "SELECT * FROM enforcement_log ORDER BY executed_at DESC LIMIT ?",
-            (limit,)
+            "SELECT * FROM enforcement_log ORDER BY executed_at DESC LIMIT ?", (limit,)
         ).fetchall()
         return [dict(row) for row in rows]
 
     def get_reset_log(self, limit: int = 100) -> List[Dict[str, Any]]:
         rows = self._conn.execute(
-            "SELECT * FROM budget_reset_log ORDER BY reset_at DESC LIMIT ?",
-            (limit,)
+            "SELECT * FROM budget_reset_log ORDER BY reset_at DESC LIMIT ?", (limit,)
         ).fetchall()
         return [dict(row) for row in rows]
 
     def close(self) -> None:
         if self._conn:
             self._conn.close()
+            self._conn = None
             logger.info("BudgetEnforcer closed")
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
 
 class CostOptimizer:
@@ -759,24 +866,60 @@ class CostOptimizer:
 
     MODEL_ALTERNATIVES = {
         CTModelType.CFC.value: [
-            {"model": "LTC", "cost_factor": 0.7, "performance_note": "相近精度，低30%成本"},
-            {"model": "Custom", "cost_factor": 0.5, "performance_note": "精简模型，适用于简单任务"},
+            {
+                "model": "LTC",
+                "cost_factor": 0.7,
+                "performance_note": "相近精度，低30%成本",
+            },
+            {
+                "model": "Custom",
+                "cost_factor": 0.5,
+                "performance_note": "精简模型，适用于简单任务",
+            },
         ],
         CTModelType.LTC.value: [
-            {"model": "CFC", "cost_factor": 1.2, "performance_note": "更高精度但成本较高"},
-            {"model": "Custom", "cost_factor": 0.6, "performance_note": "精简模型，适用于推理任务"},
+            {
+                "model": "CFC",
+                "cost_factor": 1.2,
+                "performance_note": "更高精度但成本较高",
+            },
+            {
+                "model": "Custom",
+                "cost_factor": 0.6,
+                "performance_note": "精简模型，适用于推理任务",
+            },
         ],
         CTModelType.HYBRID_LNN.value: [
-            {"model": "LTC", "cost_factor": 0.5, "performance_note": "单模型方案，低成本替代"},
-            {"model": "CFC", "cost_factor": 0.8, "performance_note": "简化架构，适中成本"},
+            {
+                "model": "LTC",
+                "cost_factor": 0.5,
+                "performance_note": "单模型方案，低成本替代",
+            },
+            {
+                "model": "CFC",
+                "cost_factor": 0.8,
+                "performance_note": "简化架构，适中成本",
+            },
         ],
         CTModelType.TRANSFORMER.value: [
-            {"model": "HybridLNN", "cost_factor": 0.3, "performance_note": "LNN架构，显著降本"},
+            {
+                "model": "HybridLNN",
+                "cost_factor": 0.3,
+                "performance_note": "LNN架构，显著降本",
+            },
             {"model": "Custom", "cost_factor": 0.4, "performance_note": "轻量模型替代"},
         ],
         CTModelType.CUSTOM.value: [
-            {"model": "LTC", "cost_factor": 1.5, "performance_note": "更高性能标准模型"},
-            {"model": "CFC", "cost_factor": 2.0, "performance_note": "最高精度专业模型"},
+            {
+                "model": "LTC",
+                "cost_factor": 1.5,
+                "performance_note": "更高性能标准模型",
+            },
+            {
+                "model": "CFC",
+                "cost_factor": 2.0,
+                "performance_note": "最高精度专业模型",
+            },
         ],
     }
 
@@ -819,8 +962,12 @@ class CostOptimizer:
                         ),
                         current_cost=summary.total_cost,
                         estimated_savings=savings,
-                        savings_percentage=(savings / summary.total_cost * 100) if summary.total_cost > 0 else 0,
-                        priority="high" if savings > summary.total_cost * 0.3 else "medium",
+                        savings_percentage=(savings / summary.total_cost * 100)
+                        if summary.total_cost > 0
+                        else 0,
+                        priority="high"
+                        if savings > summary.total_cost * 0.3
+                        else "medium",
                         recommendation=f"建议将 {model_name} 相关任务迁移至 {alt['model']} 模型",
                         metrics={
                             "current_model": model_name,
@@ -834,7 +981,9 @@ class CostOptimizer:
 
         return suggestions
 
-    def analyze_gpu_utilization(self, gpu_utilization_threshold: float = 0.5) -> List[CostOptimizationSuggestion]:
+    def analyze_gpu_utilization(
+        self, gpu_utilization_threshold: float = 0.5
+    ) -> List[CostOptimizationSuggestion]:
         suggestions = []
 
         if self._cost_tracker is None:
@@ -844,8 +993,15 @@ class CostOptimizer:
 
         gpu_summary = self._cost_tracker.get_all_summaries(CostDimension.TASK)
         low_util_tasks = [
-            s for s in gpu_summary
-            if s.total_gpu_seconds > 0 and (s.total_gpu_memory_gb_seconds / s.total_gpu_seconds if s.total_gpu_seconds > 0 else 1.0) < gpu_utilization_threshold
+            s
+            for s in gpu_summary
+            if s.total_gpu_seconds > 0
+            and (
+                s.total_gpu_memory_gb_seconds / s.total_gpu_seconds
+                if s.total_gpu_seconds > 0
+                else 1.0
+            )
+            < gpu_utilization_threshold
         ]
 
         if low_util_tasks:
@@ -854,7 +1010,7 @@ class CostOptimizer:
                 category="resource_optimization",
                 title="GPU利用率优化建议",
                 description=(
-                    f"检测到 {len(low_util_tasks)} 个任务的GPU利用率低于{gpu_utilization_threshold*100:.0f}%。"
+                    f"检测到 {len(low_util_tasks)} 个任务的GPU利用率低于{gpu_utilization_threshold * 100:.0f}%。"
                     f"建议采用批量推理策略，将多个低利用率任务合并执行。"
                 ),
                 current_cost=sum(t.total_cost for t in low_util_tasks),

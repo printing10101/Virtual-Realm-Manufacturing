@@ -1,4 +1,5 @@
 """API routes for template branching system."""
+
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -94,7 +95,9 @@ async def delete_branch(branch_id: str):
     try:
         success = manager.delete_branch(branch_id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Branch not found: {branch_id}")
+            raise HTTPException(
+                status_code=404, detail=f"Branch not found: {branch_id}"
+            )
         return {"message": "Branch deleted"}
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))

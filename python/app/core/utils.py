@@ -1,4 +1,5 @@
 """Shared utility functions used across the application."""
+
 from __future__ import annotations
 
 import json
@@ -63,12 +64,27 @@ def format_bytes(size_bytes: int) -> str:
 class MetricsCollector:
     """Thread-safe metrics collector for Prometheus-style exposition."""
 
-    _INFERENCE_BUCKETS = (0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, float("inf"))
+    _INFERENCE_BUCKETS = (
+        0.001,
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1.0,
+        2.5,
+        5.0,
+        10.0,
+        float("inf"),
+    )
     _MODEL_LOAD_BUCKETS = (0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, float("inf"))
 
     def __init__(self):
         from threading import Lock
         from time import time as _time
+
         self._lock = Lock()
         self._start_time = _time()
         self._request_count = 0
@@ -87,14 +103,16 @@ class MetricsCollector:
             latencies = self._request_latency.setdefault(path, [])
             latencies.append(elapsed)
             if len(latencies) > self._max_latency_entries:
-                latencies[:] = latencies[-self._max_latency_entries:]
+                latencies[:] = latencies[-self._max_latency_entries :]
 
     def record_lnn_inference(self, model_name: str, duration_sec: float):
         with self._lock:
             times = self._lnn_inference_duration.setdefault(model_name, [])
             times.append(duration_sec)
             if len(times) > self._max_latency_entries:
-                self._lnn_inference_duration[model_name] = times[-self._max_latency_entries:]
+                self._lnn_inference_duration[model_name] = times[
+                    -self._max_latency_entries :
+                ]
 
     def record_lnn_model_load(self, model_name: str, duration_sec: float):
         with self._lock:
@@ -117,8 +135,14 @@ class MetricsCollector:
         with self._lock:
             self._active_training_tasks = count
 
-    def _format_histogram(self, name: str, help_text: str, label_name: str,
-                          data: dict[str, list[float]], buckets: tuple) -> list[str]:
+    def _format_histogram(
+        self,
+        name: str,
+        help_text: str,
+        label_name: str,
+        data: dict[str, list[float]],
+        buckets: tuple,
+    ) -> list[str]:
         lines = [f"# HELP {name} {help_text}", f"# TYPE {name} histogram"]
         for label_val, values in data.items():
             if not values:
@@ -132,24 +156,34 @@ class MetricsCollector:
             for b in buckets:
                 cum += bucket_counts[b]
                 label = "+Inf" if b == float("inf") else str(b)
-                lines.append(f'{name}_bucket{{{label_name}="{label_val}",le="{label}"}} {cum:.0f}')
+                lines.append(
+                    f'{name}_bucket{{{label_name}="{label_val}",le="{label}"}} {cum:.0f}'
+                )
             total = sum(values)
             count = len(values)
             lines.append(f'{name}_sum{{{label_name}="{label_val}"}} {total:.6f}')
             lines.append(f'{name}_count{{{label_name}="{label_val}"}} {count}')
         return lines
 
-    def _format_counter_by_label(self, name: str, help_text: str, label_name: str,
-                                 data: dict[str, dict[str, int]]) -> list[str]:
+    def _format_counter_by_label(
+        self,
+        name: str,
+        help_text: str,
+        label_name: str,
+        data: dict[str, dict[str, int]],
+    ) -> list[str]:
         lines = [f"# HELP {name} {help_text}", f"# TYPE {name} counter"]
         for label_val, status_counts in data.items():
             for status, count in status_counts.items():
-                lines.append(f'{name}{{{label_name}="{label_val}",status="{status}"}} {count}')
+                lines.append(
+                    f'{name}{{{label_name}="{label_val}",status="{status}"}} {count}'
+                )
         return lines
 
     def export(self) -> str:
         from time import time as _time
         import psutil as _psutil
+
         lines = [
             "# HELP app_uptime_seconds Application uptime in seconds",
             "# TYPE app_uptime_seconds counter",
@@ -182,44 +216,73 @@ class MetricsCollector:
                         f'http_request_duration_seconds_bucket{{path="{path}",le="+Inf"}} {avg:.4f}'
                     )
             lines.append("")
-            lines.extend(self._format_histogram(
-                "lnn_inference_duration_seconds",
-                "LNN model inference duration in seconds",
-                "model", self._lnn_inference_duration, self._INFERENCE_BUCKETS
-            ))
+            lines.extend(
+                self._format_histogram(
+                    "lnn_inference_duration_seconds",
+                    "LNN model inference duration in seconds",
+                    "model",
+                    self._lnn_inference_duration,
+                    self._INFERENCE_BUCKETS,
+                )
+            )
             lines.append("")
-            lines.extend(self._format_histogram(
-                "lnn_model_load_duration_seconds",
-                "LNN model load duration in seconds",
-                "model", self._lnn_model_load_duration, self._MODEL_LOAD_BUCKETS
-            ))
+            lines.extend(
+                self._format_histogram(
+                    "lnn_model_load_duration_seconds",
+                    "LNN model load duration in seconds",
+                    "model",
+                    self._lnn_model_load_duration,
+                    self._MODEL_LOAD_BUCKETS,
+                )
+            )
             lines.append("")
-            lines.extend(self._format_counter_by_label(
-                "lnn_prediction_count", "Total LNN predictions by model and status",
-                "model", self._lnn_prediction_count
-            ))
+            lines.extend(
+                self._format_counter_by_label(
+                    "lnn_prediction_count",
+                    "Total LNN predictions by model and status",
+                    "model",
+                    self._lnn_prediction_count,
+                )
+            )
             lines.append("")
-            lines.extend(self._format_counter_by_label(
-                "agent_requests_total", "Total agent API requests by permission and status",
-                "permission", self._agent_requests_total
-            ))
+            lines.extend(
+                self._format_counter_by_label(
+                    "agent_requests_total",
+                    "Total agent API requests by permission and status",
+                    "permission",
+                    self._agent_requests_total,
+                )
+            )
             lines.append("")
-            lines.append("# HELP lnn_active_training_tasks Current number of active training tasks")
+            lines.append(
+                "# HELP lnn_active_training_tasks Current number of active training tasks"
+            )
             lines.append("# TYPE lnn_active_training_tasks gauge")
             lines.append(f"lnn_active_training_tasks {self._active_training_tasks}")
             lines.append("")
             try:
                 from app.core.ring_buffer import get_ring_log_buffer
+
                 rlb = get_ring_log_buffer()
                 buf_stats = rlb.stats()
-                lines.append("# HELP ring_buffer_entries Number of entries in ring buffer")
+                lines.append(
+                    "# HELP ring_buffer_entries Number of entries in ring buffer"
+                )
                 lines.append("# TYPE ring_buffer_entries gauge")
                 for buf_type in buf_stats["buffers"]:
                     s = buf_stats["buffers"][buf_type]
-                    lines.append(f'ring_buffer_entries{{type="{buf_type}"}} {s["size"]}')
-                    lines.append(f'ring_buffer_capacity{{type="{buf_type}"}} {s["capacity"]}')
-                    lines.append(f'ring_buffer_appended_total{{type="{buf_type}"}} {s["total_appended"]}')
-                    lines.append(f'ring_buffer_dropped_total{{type="{buf_type}"}} {s["total_dropped"]}')
+                    lines.append(
+                        f'ring_buffer_entries{{type="{buf_type}"}} {s["size"]}'
+                    )
+                    lines.append(
+                        f'ring_buffer_capacity{{type="{buf_type}"}} {s["capacity"]}'
+                    )
+                    lines.append(
+                        f'ring_buffer_appended_total{{type="{buf_type}"}} {s["total_appended"]}'
+                    )
+                    lines.append(
+                        f'ring_buffer_dropped_total{{type="{buf_type}"}} {s["total_dropped"]}'
+                    )
             except Exception:
                 pass
         return "\n".join(lines)

@@ -4,6 +4,7 @@ Goal Alignment API Routes
 Endpoints for goal hierarchy management, task goal association,
 alignment verification, and progress tracking.
 """
+
 from __future__ import annotations
 
 import time
@@ -11,17 +12,20 @@ import uuid
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query
 
 from app.core.response import ErrorCode, error, success
-from app.core.goal_chain_store import get_goal_chain_store, GoalChainStore
+from app.core.goal_chain_store import get_goal_chain_store
 from app.core.goal_alignment import GoalAlignmentChecker, GoalAlignmentError
-from app.core.context_builder import ContextBuilder
 from app.models.goals import (
-    Goal, GoalLevel, GoalStatus, GoalRef, GoalVersion, GoalProgress,
+    Goal,
+    GoalLevel,
+    GoalStatus,
 )
 from app.models.tasks import (
-    EnhancedTask, EnhancedTaskType, EnhancedTaskStatus,
+    EnhancedTask,
+    EnhancedTaskType,
+    EnhancedTaskStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,7 +51,9 @@ async def get_goal_tree():
 
 @router.get("/goals")
 async def list_goals(
-    level: Optional[str] = Query(None, description="Filter by level: mission/strategic_goal/project/task"),
+    level: Optional[str] = Query(
+        None, description="Filter by level: mission/strategic_goal/project/task"
+    ),
 ):
     store = get_goal_chain_store()
     lvl = GoalLevel(level) if level else None
@@ -95,7 +101,9 @@ async def get_goal_history(goal_id: str, limit: int = Query(50, ge=1, le=200)):
     if goal is None:
         return error(code=ErrorCode.NOT_FOUND, message=f"Goal '{goal_id}' not found")
     versions = store.get_version_history(goal_id, limit)
-    return success(data=[v.to_dict() for v in versions], message="Version history retrieved")
+    return success(
+        data=[v.to_dict() for v in versions], message="Version history retrieved"
+    )
 
 
 @router.post("/goals")
@@ -127,7 +135,9 @@ async def create_goal(data: dict):
 
     existing = store.get_goal(goal_id)
     if existing:
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Goal '{goal_id}' already exists")
+        return error(
+            code=ErrorCode.INVALID_REQUEST, message=f"Goal '{goal_id}' already exists"
+        )
 
     store.add_goal(goal)
     return success(data=goal.to_dict(), message="Goal created")
@@ -147,7 +157,10 @@ async def update_goal(goal_id: str, data: dict):
         try:
             updatable["status"] = GoalStatus(data["status"])
         except ValueError:
-            return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid status: {data['status']}")
+            return error(
+                code=ErrorCode.INVALID_REQUEST,
+                message=f"Invalid status: {data['status']}",
+            )
     if "parent_id" in data:
         updatable["parent_id"] = data["parent_id"]
 
@@ -171,7 +184,9 @@ async def delete_goal(goal_id: str):
     if goal is None:
         return error(code=ErrorCode.NOT_FOUND, message=f"Goal '{goal_id}' not found")
     if goal.level == GoalLevel.MISSION:
-        return error(code=ErrorCode.INVALID_REQUEST, message="Cannot delete the mission")
+        return error(
+            code=ErrorCode.INVALID_REQUEST, message="Cannot delete the mission"
+        )
 
     store.delete_goal(goal_id)
     return success(message="Goal deleted")
@@ -184,9 +199,12 @@ async def create_task(data: dict):
 
     try:
         task_type = EnhancedTaskType(data["task_type"])
-    except (KeyError, ValueError) as e:
+    except (KeyError, ValueError):
         valid = [t.value for t in EnhancedTaskType]
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid task_type. Must be one of: {valid}")
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"Invalid task_type. Must be one of: {valid}",
+        )
 
     parent_goal_id = data.get("parent_goal_id")
     if not parent_goal_id:
@@ -197,7 +215,10 @@ async def create_task(data: dict):
 
     goal = store.get_goal(parent_goal_id)
     if goal is None:
-        return error(code=ErrorCode.NOT_FOUND, message=f"Parent goal '{parent_goal_id}' not found")
+        return error(
+            code=ErrorCode.NOT_FOUND,
+            message=f"Parent goal '{parent_goal_id}' not found",
+        )
 
     chain = store.resolve_goal_chain(parent_goal_id)
     if not chain:
@@ -243,7 +264,10 @@ async def update_task_status(task_id: str, data: dict):
         new_status = EnhancedTaskStatus(data["status"])
     except (KeyError, ValueError):
         valid = [s.value for s in EnhancedTaskStatus]
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid status. Must be one of: {valid}")
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"Invalid status. Must be one of: {valid}",
+        )
 
     if task_id not in checker._task_map:
         return error(code=ErrorCode.NOT_FOUND, message=f"Task '{task_id}' not found")
@@ -256,7 +280,11 @@ async def update_task_status(task_id: str, data: dict):
         )
 
     if new_status == EnhancedTaskStatus.IN_PROGRESS and not task.are_blockers_resolved(
-        set(tid for tid, t in checker._task_map.items() if t.status == EnhancedTaskStatus.COMPLETED)
+        set(
+            tid
+            for tid, t in checker._task_map.items()
+            if t.status == EnhancedTaskStatus.COMPLETED
+        )
     ):
         return error(
             code=ErrorCode.INVALID_REQUEST,
@@ -294,7 +322,11 @@ async def check_task_alignment(task_id: str):
     try:
         checker.validate_task_goal_chain(task)
         return success(
-            data={"task_id": task_id, "aligned": True, "chain_length": len(task.goal_chain)},
+            data={
+                "task_id": task_id,
+                "aligned": True,
+                "chain_length": len(task.goal_chain),
+            },
             message="Task is properly aligned",
         )
     except GoalAlignmentError as e:
@@ -322,7 +354,9 @@ async def get_alignment_summary():
 async def get_all_progress():
     checker = get_alignment_checker()
     progresses = checker.compute_all_progress()
-    return success(data=[p.to_dict() for p in progresses], message="All progress computed")
+    return success(
+        data=[p.to_dict() for p in progresses], message="All progress computed"
+    )
 
 
 @router.post("/goals/{goal_id}/propagate")

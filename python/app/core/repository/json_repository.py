@@ -14,6 +14,7 @@ from typing import Any
 
 try:
     import fcntl
+
     HAS_FCNTL = True
 except ImportError:
     HAS_FCNTL = False
@@ -31,6 +32,7 @@ LOCK_TIMEOUT = 2.0  # 锁获取超时时间（秒）
 
 class _LockContext:
     """上下文管理器，简化锁获取/释放，支持超时。"""
+
     def __init__(self, lock: threading.RLock, timeout: float, repo_type: str = "json"):
         self._lock = lock
         self._timeout = timeout
@@ -61,7 +63,9 @@ class JsonRepository(Repository):
         self._config = config or JsonConfig()
         self._store_name = store_name
         self._store_file = Path(self._config.data_directory) / f"{store_name}.json"
-        self._version_file = Path(self._config.data_directory) / f"{store_name}_versions.jsonl"
+        self._version_file = (
+            Path(self._config.data_directory) / f"{store_name}_versions.jsonl"
+        )
         self._data: dict[str, Any] = {}
         self._current_version = 0
         self._lock = threading.RLock()
@@ -122,7 +126,9 @@ class JsonRepository(Repository):
             log_entry = {
                 "version": self._current_version,
                 "timestamp": datetime.utcnow().isoformat(),
-                "record_count": len([k for k in self._data if k != "_version" and k != "_updated_at"]),
+                "record_count": len(
+                    [k for k in self._data if k != "_version" and k != "_updated_at"]
+                ),
             }
             with open(self._version_file, "a", encoding="utf-8") as f:
                 self._lock_file(f, exclusive=True)
@@ -132,7 +138,9 @@ class JsonRepository(Repository):
                     self._unlock_file(f)
 
     def _get_record_data(self) -> dict[str, Any]:
-        return {k: v for k, v in self._data.items() if k not in ("_version", "_updated_at")}
+        return {
+            k: v for k, v in self._data.items() if k not in ("_version", "_updated_at")
+        }
 
     def _do_begin_transaction(self) -> None:
         self._transaction_snapshot = dict(self._data)
@@ -155,10 +163,15 @@ class JsonRepository(Repository):
             with self._lock_acquired():
                 record_id = data.get("id")
                 if record_id is None:
-                    raise ValidationError("数据验证失败：记录数据中缺少必需的 'id' 字段。JSON 存储库要求每条记录都必须包含唯一的 'id' 标识符。请在数据中添加 'id' 字段（如 {'id': 'unique_id', ...}）后重试。", repository_type="json")
+                    raise ValidationError(
+                        "数据验证失败：记录数据中缺少必需的 'id' 字段。JSON 存储库要求每条记录都必须包含唯一的 'id' 标识符。请在数据中添加 'id' 字段（如 {'id': 'unique_id', ...}）后重试。",
+                        repository_type="json",
+                    )
 
                 if record_id in self._get_record_data():
-                    raise ValueError(f"记录创建失败：记录 ID '{record_id}' 已存在。JSON 存储库不允许创建重复 ID 的记录。可能原因：1) 重复提交了相同的创建请求；2) 记录已被其他操作创建。请调用 GET /api/v1/{{collection}}/{{id}} 检查现有记录，或使用更新操作替代创建。")
+                    raise ValueError(
+                        f"记录创建失败：记录 ID '{record_id}' 已存在。JSON 存储库不允许创建重复 ID 的记录。可能原因：1) 重复提交了相同的创建请求；2) 记录已被其他操作创建。请调用 GET /api/v1/{{collection}}/{{id}} 检查现有记录，或使用更新操作替代创建。"
+                    )
 
                 record = dict(data)
                 record["_created_at"] = datetime.utcnow().isoformat()

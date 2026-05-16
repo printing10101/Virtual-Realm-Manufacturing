@@ -1,4 +1,5 @@
 """Common validation and data models shared across services."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -119,6 +120,13 @@ class ValidationResult:
     is_valid: bool
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "is_valid": self.is_valid,
+            "errors": self.errors,
+            "warnings": self.warnings,
+        }
 
     def merge(self, other: ValidationResult) -> ValidationResult:
         return ValidationResult(

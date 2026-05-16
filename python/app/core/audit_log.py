@@ -2,10 +2,9 @@ import os
 import json
 import time
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -179,10 +178,14 @@ class AuditLog:
         end_time: Optional[int] = None,
         ai_module: Optional[str] = None,
     ) -> str:
-        logs = self.get_logs(start_time=start_time, end_time=end_time, ai_module=ai_module, limit=100000)
+        logs = self.get_logs(
+            start_time=start_time, end_time=end_time, ai_module=ai_module, limit=100000
+        )
 
         if format == "json":
-            return json.dumps([entry.to_dict() for entry in logs], ensure_ascii=False, indent=2)
+            return json.dumps(
+                [entry.to_dict() for entry in logs], ensure_ascii=False, indent=2
+            )
         elif format == "csv":
             if not logs:
                 return ""
@@ -204,7 +207,7 @@ class AuditLog:
                     entry.user_decision,
                     entry.operation_status,
                     str(entry.confidence if entry.confidence is not None else ""),
-                    f'"{(entry.reasoning or "").replace(chr(34), chr(34)+chr(34))}"',
+                    f'"{(entry.reasoning or "").replace(chr(34), chr(34) + chr(34))}"',
                 ]
                 lines.append(",".join(row))
 
@@ -232,9 +235,15 @@ class AuditLog:
         twenty_four_hours_ms = 24 * 60 * 60 * 1000
 
         for entry in logs:
-            stats["by_module"][entry.ai_module] = stats["by_module"].get(entry.ai_module, 0) + 1
-            stats["by_decision"][entry.user_decision] = stats["by_decision"].get(entry.user_decision, 0) + 1
-            stats["by_status"][entry.operation_status] = stats["by_status"].get(entry.operation_status, 0) + 1
+            stats["by_module"][entry.ai_module] = (
+                stats["by_module"].get(entry.ai_module, 0) + 1
+            )
+            stats["by_decision"][entry.user_decision] = (
+                stats["by_decision"].get(entry.user_decision, 0) + 1
+            )
+            stats["by_status"][entry.operation_status] = (
+                stats["by_status"].get(entry.operation_status, 0) + 1
+            )
 
             if entry.confidence is not None:
                 confidence_values.append(entry.confidence)

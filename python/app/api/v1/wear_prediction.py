@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
@@ -62,10 +61,12 @@ async def predict_wear(request: WearPredictRequest):
             "tool_type": request.tool_type,
             "current_wear": request.current_wear,
             "time_step": request.time_step,
-            "max_time": request.max_time
+            "max_time": request.max_time,
         }
         curve = predictor.predict_wear_curve(params)
-        return success(data=curve.to_dict(), message="Wear curve predicted successfully")
+        return success(
+            data=curve.to_dict(), message="Wear curve predicted successfully"
+        )
     except Exception as e:
         return error(code=ErrorCode.INTERNAL_ERROR, message=f"Prediction failed: {e!s}")
 
@@ -78,7 +79,7 @@ async def predict_remaining_life(request: RemainingLifeRequest):
             "feed_rate": request.feed_rate,
             "depth_of_cut": request.depth_of_cut,
             "material_type": request.material_type,
-            "tool_type": request.tool_type
+            "tool_type": request.tool_type,
         }
         remaining = predictor.predict_remaining_life(request.current_wear, params)
         threshold = predictor.get_replacement_threshold(request.material_type)
@@ -86,9 +87,9 @@ async def predict_remaining_life(request: RemainingLifeRequest):
             data={
                 "remaining_life": remaining,
                 "current_wear": request.current_wear,
-                "replacement_threshold": threshold
+                "replacement_threshold": threshold,
             },
-            message="Remaining life predicted successfully"
+            message="Remaining life predicted successfully",
         )
     except Exception as e:
         return error(code=ErrorCode.INTERNAL_ERROR, message=f"Prediction failed: {e!s}")
@@ -103,12 +104,14 @@ async def suggest_adjustment(request: SuggestRequest):
             "depth_of_cut": request.depth_of_cut,
             "coolant_flow": request.coolant_flow,
             "material_type": request.material_type,
-            "tool_type": request.tool_type
+            "tool_type": request.tool_type,
         }
         suggestion = predictor.suggest_parameter_adjustment(
             request.current_wear, request.remaining_life, current_params
         )
-        return success(data=suggestion.to_dict(), message="Adjustment suggestions generated")
+        return success(
+            data=suggestion.to_dict(), message="Adjustment suggestions generated"
+        )
     except Exception as e:
         return error(code=ErrorCode.INTERNAL_ERROR, message=f"Suggestion failed: {e!s}")
 
@@ -122,7 +125,7 @@ async def get_supported_models():
                 "name": val.name,
                 "taylor_n": val.taylor_n,
                 "taylor_C": val.taylor_C,
-                "hardness_factor": val.hardness_factor
+                "hardness_factor": val.hardness_factor,
             }
             for key, val in predictor.material_params.items()
         }
@@ -131,12 +134,14 @@ async def get_supported_models():
             data={
                 "models": models,
                 "supported_materials": materials,
-                "supported_tools": tools
+                "supported_tools": tools,
             },
-            message="Supported models retrieved successfully"
+            message="Supported models retrieved successfully",
         )
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get models: {e!s}")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get models: {e!s}"
+        )
 
 
 @router.post("/threshold")
@@ -145,10 +150,12 @@ async def get_threshold(material_type: str = "default"):
         threshold = predictor.get_replacement_threshold(material_type)
         return success(
             data={"material_type": material_type, "threshold": threshold},
-            message="Replacement threshold retrieved"
+            message="Replacement threshold retrieved",
         )
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get threshold: {e!s}")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get threshold: {e!s}"
+        )
 
 
 @router.post("/calibrate")
@@ -159,14 +166,16 @@ async def calibrate_prediction(request: CalibrateRequest):
             "feed_rate": request.feed_rate,
             "depth_of_cut": request.depth_of_cut,
             "material_type": request.material_type,
-            "tool_type": request.tool_type
+            "tool_type": request.tool_type,
         }
         result = predictor.calibrate_with_measurement(
             request.measured_wear, request.elapsed_time, params
         )
         return success(data=result, message="Prediction calibrated successfully")
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Calibration failed: {e!s}")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR, message=f"Calibration failed: {e!s}"
+        )
 
 
 @router.post("/train-uniwear")
@@ -180,7 +189,9 @@ async def train_uniwear_model(
         )
         return success(data=result, message="Uniwear model training completed")
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Uniwear training failed: {e!s}")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR, message=f"Uniwear training failed: {e!s}"
+        )
 
 
 @router.post("/predict-from-signals")
@@ -194,7 +205,9 @@ async def predict_wear_from_signal_features(
         )
         return success(data=result, message="Wear predicted from signal features")
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Signal prediction failed: {e!s}")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR, message=f"Signal prediction failed: {e!s}"
+        )
 
 
 @router.get("/cross-dataset-analysis")
@@ -203,7 +216,10 @@ async def get_cross_dataset_analysis():
         analysis = predictor.cross_dataset_analysis()
         return success(data=analysis, message="Cross-dataset analysis completed")
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Cross-dataset analysis failed: {e!s}")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"Cross-dataset analysis failed: {e!s}",
+        )
 
 
 @router.get("/uniwear-materials")
@@ -212,4 +228,7 @@ async def get_uniwear_materials():
         materials = predictor.get_uniwear_material_params()
         return success(data=materials, message="Uniwear material parameters retrieved")
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get uniwear materials: {e!s}")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"Failed to get uniwear materials: {e!s}",
+        )

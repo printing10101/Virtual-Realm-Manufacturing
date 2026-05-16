@@ -7,14 +7,16 @@ Four-level goal hierarchy based on Paperclip's Goal Alignment design:
 - Project: Active projects
 - Task: Execution units
 """
+
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 
 class GoalLevel(str, Enum):
     """Goal hierarchy level"""
+
     MISSION = "mission"
     STRATEGIC_GOAL = "strategic_goal"
     PROJECT = "project"
@@ -23,6 +25,7 @@ class GoalLevel(str, Enum):
 
 class GoalStatus(str, Enum):
     """Goal lifecycle status"""
+
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -33,6 +36,7 @@ class GoalStatus(str, Enum):
 @dataclass
 class Goal:
     """Unified goal data model for all hierarchy levels"""
+
     id: str
     name: str
     description: str
@@ -60,6 +64,7 @@ class Goal:
 @dataclass
 class GoalRef:
     """Reference to a goal in the chain"""
+
     id: str
     level: GoalLevel
     name: str
@@ -77,6 +82,7 @@ class GoalRef:
 @dataclass
 class GoalVersion:
     """Version history record for goal changes"""
+
     id: Optional[int] = None
     goal_id: str = ""
     version: int = 1
@@ -104,6 +110,7 @@ class GoalVersion:
 @dataclass
 class GoalProgress:
     """Computed progress for a goal based on child tasks"""
+
     goal_id: str = ""
     goal_name: str = ""
     level: GoalLevel = GoalLevel.PROJECT

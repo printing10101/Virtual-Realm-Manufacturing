@@ -9,6 +9,7 @@ Provides REST endpoints for:
 - State cloning for A/B testing
 - Checkpoint lifecycle management
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -21,11 +22,9 @@ from app.core.response import api_response
 from app.core.state_persistence import StatePersistenceManager, StateRecoveryManager
 from app.models.agent_state import (
     AgentState,
-    AgentStatus,
     Checkpoint,
     CheckpointType,
     MemoryEntry,
-    SessionContext,
 )
 
 router = APIRouter(prefix="/agents", tags=["Agent State Management"])
@@ -184,9 +183,13 @@ async def rollback_checkpoint(
         raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found")
     success = state.rollback_to_checkpoint(checkpoint_id)
     if not success:
-        raise HTTPException(status_code=404, detail=f"Checkpoint '{checkpoint_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Checkpoint '{checkpoint_id}' not found"
+        )
     await persistence.save_state(state, trigger="rollback")
-    return api_response(data=state.to_dict(), message=f"Rolled back to checkpoint '{checkpoint_id}'")
+    return api_response(
+        data=state.to_dict(), message=f"Rolled back to checkpoint '{checkpoint_id}'"
+    )
 
 
 @router.post("/{agent_id}/checkpoints/cleanup")
@@ -274,8 +277,12 @@ async def clone_agent(
         raise HTTPException(status_code=400, detail="target_agent_id is required")
     clone = await recovery.clone_agent_state(agent_id, target_id)
     if not clone:
-        raise HTTPException(status_code=404, detail=f"Source agent '{agent_id}' not found")
-    return api_response(data=clone.to_dict(), message=f"Cloned agent '{agent_id}' to '{target_id}'")
+        raise HTTPException(
+            status_code=404, detail=f"Source agent '{agent_id}' not found"
+        )
+    return api_response(
+        data=clone.to_dict(), message=f"Cloned agent '{agent_id}' to '{target_id}'"
+    )
 
 
 @router.post("/{agent_id}/snapshot")

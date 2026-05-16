@@ -4,21 +4,26 @@ Task Checkout API Routes
 Endpoints for atomic task checkout, execution lock management,
 task board, and checkout queue processing.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query
 
 from app.core.response import ErrorCode, error, success
 from app.core.task_checkout import (
-    get_checkout_manager, init_checkout_manager, TaskCheckoutManager,
-    CheckoutRequest, CheckoutResult, CheckoutStatus, CheckoutFailureReason,
-    CheckoutPriority, TaskStatus, AgentMode, TaskRecord, MAX_RETRY_COUNT,
+    get_checkout_manager,
+    TaskCheckoutManager,
+    CheckoutRequest,
+    CheckoutStatus,
+    CheckoutPriority,
+    AgentMode,
+    TaskRecord,
 )
 from app.core.execution_lock import (
-    LockError, LockNotFoundError, LockConflictError,
+    LockError,
+    LockNotFoundError,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +45,7 @@ async def register_task(data: dict):
 
     try:
         import json
+
         blockers = data.get("blockers", [])
         if isinstance(blockers, str):
             blockers = json.loads(blockers)
@@ -72,19 +78,27 @@ async def checkout_task(data: dict):
     agent_id = data.get("agent_id")
 
     if not task_id or not agent_id:
-        return error(code=ErrorCode.INVALID_REQUEST, message="task_id and agent_id are required")
+        return error(
+            code=ErrorCode.INVALID_REQUEST, message="task_id and agent_id are required"
+        )
 
     try:
         agent_mode = AgentMode(data.get("agent_mode", "single"))
     except ValueError:
         valid = [m.value for m in AgentMode]
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid agent_mode. Must be one of: {valid}")
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"Invalid agent_mode. Must be one of: {valid}",
+        )
 
     try:
         priority = CheckoutPriority(int(data.get("priority", 3)))
     except (ValueError, TypeError):
         valid = [f"{p.value}({p.name})" for p in CheckoutPriority]
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid priority. Must be one of: {valid}")
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"Invalid priority. Must be one of: {valid}",
+        )
 
     request = CheckoutRequest(
         task_id=task_id,
@@ -104,7 +118,9 @@ async def checkout_task(data: dict):
             code=ErrorCode.INVALID_REQUEST,
             message=result.message,
             detail={
-                "failure_reason": result.failure_reason.value if result.failure_reason else None,
+                "failure_reason": result.failure_reason.value
+                if result.failure_reason
+                else None,
                 "retry_recommended": result.retry_recommended,
                 "retry_delay_minutes": result.retry_delay_minutes,
             },
@@ -145,7 +161,11 @@ async def complete_task(task_id: str, data: dict):
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=result.message,
-            detail={"failure_reason": result.failure_reason.value if result.failure_reason else None},
+            detail={
+                "failure_reason": result.failure_reason.value
+                if result.failure_reason
+                else None
+            },
         )
 
 
@@ -166,7 +186,11 @@ async def fail_task(task_id: str, data: dict):
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=result.message,
-            detail={"failure_reason": result.failure_reason.value if result.failure_reason else None},
+            detail={
+                "failure_reason": result.failure_reason.value
+                if result.failure_reason
+                else None
+            },
         )
 
 
@@ -186,7 +210,11 @@ async def abandon_task(task_id: str, data: dict):
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=result.message,
-            detail={"failure_reason": result.failure_reason.value if result.failure_reason else None},
+            detail={
+                "failure_reason": result.failure_reason.value
+                if result.failure_reason
+                else None
+            },
         )
 
 
@@ -205,7 +233,9 @@ async def list_locks():
 
 
 @router.delete("/locks/{task_id}")
-async def force_release_lock(task_id: str, admin_id: str = Query("admin", description="Administrator ID")):
+async def force_release_lock(
+    task_id: str, admin_id: str = Query("admin", description="Administrator ID")
+):
     manager = _get_manager()
     result = manager.force_release_lock(task_id, admin_id)
 
@@ -215,7 +245,11 @@ async def force_release_lock(task_id: str, admin_id: str = Query("admin", descri
         return error(
             code=ErrorCode.NOT_FOUND,
             message=result.message,
-            detail={"failure_reason": result.failure_reason.value if result.failure_reason else None},
+            detail={
+                "failure_reason": result.failure_reason.value
+                if result.failure_reason
+                else None
+            },
         )
 
 
@@ -245,13 +279,18 @@ async def enqueue_checkout(data: dict):
     agent_id = data.get("agent_id")
 
     if not task_id or not agent_id:
-        return error(code=ErrorCode.INVALID_REQUEST, message="task_id and agent_id are required")
+        return error(
+            code=ErrorCode.INVALID_REQUEST, message="task_id and agent_id are required"
+        )
 
     try:
         priority = CheckoutPriority(int(data.get("priority", 3)))
     except (ValueError, TypeError):
         valid = [f"{p.value}({p.name})" for p in CheckoutPriority]
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid priority. Must be one of: {valid}")
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"Invalid priority. Must be one of: {valid}",
+        )
 
     try:
         agent_mode = AgentMode(data.get("agent_mode", "single"))

@@ -1,9 +1,10 @@
 """
 Budget Check Pre-execution Module
 
-Implements resource budget verification before task execution, including GPU memory 
+Implements resource budget verification before task execution, including GPU memory
 availability, inference quota validation, and multi-dimensional resource tracking.
 """
+
 import logging
 import threading
 import time
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BudgetLimit:
     """预算限制配置"""
+
     resource_type: ResourceType
     limit_value: float
     warning_threshold: float = 0.8
@@ -45,6 +47,7 @@ class BudgetLimit:
 @dataclass
 class BudgetUsage:
     """资源使用量"""
+
     resource_type: ResourceType
     current_usage: float
     limit: float
@@ -70,6 +73,7 @@ class BudgetUsage:
 @dataclass
 class BudgetCheckResult:
     """预算检查结果"""
+
     passed: bool
     status: BudgetStatus
     usages: List[BudgetUsage] = field(default_factory=list)
@@ -104,8 +108,7 @@ class ResourceTracker:
             process = psutil.Process()
             mem_info = process.memory_info()
             self._memory_peak_mb = max(
-                self._memory_peak_mb,
-                mem_info.rss / (1024 * 1024)
+                self._memory_peak_mb, mem_info.rss / (1024 * 1024)
             )
         except Exception as e:
             logger.warning("Failed to update memory metrics: %s", e)
@@ -114,9 +117,10 @@ class ResourceTracker:
         """获取GPU显存可用量（MB）"""
         try:
             import torch
+
             if torch.cuda.is_available():
-                total = torch.cuda.get_device_properties(0).total_memory / (1024 ** 2)
-                allocated = torch.cuda.memory_allocated(0) / (1024 ** 2)
+                total = torch.cuda.get_device_properties(0).total_memory / (1024**2)
+                allocated = torch.cuda.memory_allocated(0) / (1024**2)
                 return total - allocated
             return 0.0
         except ImportError:
@@ -126,8 +130,9 @@ class ResourceTracker:
         """获取GPU显存总量（MB）"""
         try:
             import torch
+
             if torch.cuda.is_available():
-                return torch.cuda.get_device_properties(0).total_memory / (1024 ** 2)
+                return torch.cuda.get_device_properties(0).total_memory / (1024**2)
             return 0.0
         except ImportError:
             return 0.0
@@ -147,7 +152,7 @@ class ResourceTracker:
     def get_current_usage(self, resource_type: ResourceType) -> float:
         """获取当前资源使用量"""
         self._update_current_metrics()
-        
+
         if resource_type == ResourceType.GPU_MEMORY:
             return self.get_gpu_memory_total() - self.get_gpu_memory_available()
         elif resource_type == ResourceType.GPU_HOURS:
@@ -165,7 +170,7 @@ class ResourceTracker:
         """重置每日计数"""
         now = time.time()
         elapsed = now - self._last_reset
-        
+
         if elapsed >= 86400:
             self._inference_count_today = 0
             self._gpu_hours_today = 0.0
@@ -180,16 +185,16 @@ class BudgetManager:
     def __init__(self, db_path: Optional[str] = None):
         """
         初始化预算管理器
-        
+
         Args:
             db_path: SQLite数据库路径
         """
         if db_path is None:
             db_path = str(Path(__file__).parent.parent.parent / "data" / "budget.db")
-        
+
         db_dir = Path(db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.db_path = db_path
         self.tracker = ResourceTracker()
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
@@ -197,7 +202,7 @@ class BudgetManager:
         self._lock = threading.RLock()
         self._init_schema()
         self._load_default_budgets()
-        
+
         logger.info("BudgetManager initialized at %s", db_path)
 
     def _init_schema(self) -> None:
@@ -264,7 +269,7 @@ class BudgetManager:
                 budget_level=BudgetLevel.GLOBAL,
             ),
         ]
-        
+
         with self._lock:
             for budget in defaults:
                 try:
@@ -281,11 +286,11 @@ class BudgetManager:
                             budget.budget_level.value,
                             budget.scope_id,
                             budget.reset_interval,
-                        )
+                        ),
                     )
                 except Exception:
                     pass
-            
+
             self._conn.commit()
 
     def set_budget_limit(self, budget: BudgetLimit) -> None:
@@ -304,77 +309,87 @@ class BudgetManager:
                     budget.budget_level.value,
                     budget.scope_id,
                     budget.reset_interval,
-                )
+                ),
             )
             self._conn.commit()
-        
+
         logger.info(
             "Budget limit set: %s for %s (level=%s, limit=%.2f)",
             budget.resource_type.value,
             budget.scope_id,
             budget.budget_level.value,
-            budget.limit_value
+            budget.limit_value,
         )
 
-    def check_budget(self, agent_id: str, resource_types: Optional[List[ResourceType]] = None) -> BudgetCheckResult:
+    def check_budget(
+        self, agent_id: str, resource_types: Optional[List[ResourceType]] = None
+    ) -> BudgetCheckResult:
         """
         执行预算检查
-        
+
         Args:
             agent_id: 代理ID
             resource_types: 要检查的资源类型列表（默认检查所有）
-            
+
         Returns:
             预算检查结果
         """
         self.tracker.reset_daily()
         self.tracker._update_current_metrics()
-        
+
         if resource_types is None:
             resource_types = list(ResourceType)
-        
+
         usages = []
         warnings = []
         blocked_reasons = []
         overall_status = BudgetStatus.OK
         passed = True
-        
+
         for res_type in resource_types:
             current_usage = self.tracker.get_current_usage(res_type)
             budget_limit = self._get_budget_limit(res_type, agent_id)
-            
+
             if budget_limit is None:
                 continue
-            
-            usage_ratio = current_usage / budget_limit.limit_value if budget_limit.limit_value > 0 else 0.0
-            
+
+            usage_ratio = (
+                current_usage / budget_limit.limit_value
+                if budget_limit.limit_value > 0
+                else 0.0
+            )
+
             if usage_ratio >= budget_limit.hard_stop_threshold:
                 status = BudgetStatus.EXCEEDED
                 passed = False
                 blocked_reasons.append(
                     f"Resource {res_type.value} exceeded hard stop threshold: "
-                    f"{current_usage:.2f}/{budget_limit.limit_value:.2f} ({usage_ratio*100:.1f}%)"
+                    f"{current_usage:.2f}/{budget_limit.limit_value:.2f} ({usage_ratio * 100:.1f}%)"
                 )
                 overall_status = BudgetStatus.EXCEEDED
-                
+
                 self._record_notification(
-                    agent_id, "hard_stop", blocked_reasons[-1], res_type.value, usage_ratio
+                    agent_id,
+                    "hard_stop",
+                    blocked_reasons[-1],
+                    res_type.value,
+                    usage_ratio,
                 )
             elif usage_ratio >= budget_limit.warning_threshold:
                 status = BudgetStatus.WARNING
                 warnings.append(
                     f"Resource {res_type.value} approaching limit: "
-                    f"{current_usage:.2f}/{budget_limit.limit_value:.2f} ({usage_ratio*100:.1f}%)"
+                    f"{current_usage:.2f}/{budget_limit.limit_value:.2f} ({usage_ratio * 100:.1f}%)"
                 )
                 if overall_status == BudgetStatus.OK:
                     overall_status = BudgetStatus.WARNING
-                
+
                 self._record_notification(
                     agent_id, "warning", warnings[-1], res_type.value, usage_ratio
                 )
             else:
                 status = BudgetStatus.OK
-            
+
             usage = BudgetUsage(
                 resource_type=res_type,
                 current_usage=current_usage,
@@ -386,22 +401,26 @@ class BudgetManager:
                 last_updated=time.time(),
             )
             usages.append(usage)
-            
+
             self._log_usage(
-                agent_id, res_type, current_usage, budget_limit.limit_value, 
-                usage_ratio, status
+                agent_id,
+                res_type,
+                current_usage,
+                budget_limit.limit_value,
+                usage_ratio,
+                status,
             )
-        
+
         if warnings:
-            logger.warning("Budget warnings for agent %s: %s", agent_id, "; ".join(warnings))
-        
+            logger.warning(
+                "Budget warnings for agent %s: %s", agent_id, "; ".join(warnings)
+            )
+
         if blocked_reasons:
             logger.error(
-                "Budget exceeded for agent %s: %s", 
-                agent_id, 
-                "; ".join(blocked_reasons)
+                "Budget exceeded for agent %s: %s", agent_id, "; ".join(blocked_reasons)
             )
-        
+
         return BudgetCheckResult(
             passed=passed,
             status=overall_status,
@@ -410,7 +429,9 @@ class BudgetManager:
             blocked_reasons=blocked_reasons,
         )
 
-    def _get_budget_limit(self, resource_type: ResourceType, agent_id: str) -> Optional[BudgetLimit]:
+    def _get_budget_limit(
+        self, resource_type: ResourceType, agent_id: str
+    ) -> Optional[BudgetLimit]:
         """获取预算限制（按代理级、项目级、全局级优先级）"""
         with self._lock:
             for level, scope in [
@@ -421,9 +442,9 @@ class BudgetManager:
                 row = self._conn.execute(
                     """SELECT * FROM budget_limits 
                        WHERE resource_type = ? AND budget_level = ? AND scope_id = ?""",
-                    (resource_type.value, level, scope)
+                    (resource_type.value, level, scope),
                 ).fetchone()
-                
+
                 if row:
                     return BudgetLimit(
                         resource_type=resource_type,
@@ -434,11 +455,18 @@ class BudgetManager:
                         scope_id=row["scope_id"],
                         reset_interval=row["reset_interval"],
                     )
-            
+
             return None
 
-    def _log_usage(self, agent_id: str, resource_type: ResourceType, 
-                   usage: float, limit: float, ratio: float, status: BudgetStatus) -> None:
+    def _log_usage(
+        self,
+        agent_id: str,
+        resource_type: ResourceType,
+        usage: float,
+        limit: float,
+        ratio: float,
+        status: BudgetStatus,
+    ) -> None:
         """记录使用量日志"""
         try:
             with self._lock:
@@ -446,15 +474,20 @@ class BudgetManager:
                     """INSERT INTO budget_usage_log 
                        (agent_id, resource_type, usage_value, limit_value, usage_ratio, status)
                        VALUES (?, ?, ?, ?, ?, ?)""",
-                    (agent_id, resource_type.value, usage, limit, ratio, status.value)
+                    (agent_id, resource_type.value, usage, limit, ratio, status.value),
                 )
                 self._conn.commit()
         except Exception as e:
             logger.warning("Failed to log budget usage: %s", e)
 
-    def _record_notification(self, agent_id: str, notification_type: str,
-                            message: str, resource_type: Optional[str] = None,
-                            usage_ratio: Optional[float] = None) -> None:
+    def _record_notification(
+        self,
+        agent_id: str,
+        notification_type: str,
+        message: str,
+        resource_type: Optional[str] = None,
+        usage_ratio: Optional[float] = None,
+    ) -> None:
         """记录预算通知"""
         try:
             with self._lock:
@@ -462,7 +495,7 @@ class BudgetManager:
                     """INSERT INTO budget_notifications 
                        (agent_id, notification_type, message, resource_type, usage_ratio)
                        VALUES (?, ?, ?, ?, ?)""",
-                    (agent_id, notification_type, message, resource_type, usage_ratio)
+                    (agent_id, notification_type, message, resource_type, usage_ratio),
                 )
                 self._conn.commit()
         except Exception as e:
@@ -476,53 +509,61 @@ class BudgetManager:
     def suspend_agent_tasks(self, agent_id: str, reason: str) -> None:
         """
         暂停代理的所有任务（当预算超出时调用）
-        
+
         Args:
             agent_id: 代理ID
             reason: 暂停原因
         """
         from app.core.heartbeat import get_scheduler
-        
+
         try:
             scheduler = get_scheduler()
             tasks = scheduler.wakeup_queue.list_tasks(agent_id=agent_id)
-            
+
             for task in tasks:
                 if task.status.value not in ("completed", "failed"):
                     scheduler.pause_task(task.task_id)
                     logger.info(
                         "Task %s paused for agent %s: budget exceeded",
                         task.task_id,
-                        agent_id
+                        agent_id,
                     )
-            
+
             self._record_notification(agent_id, "suspended", reason)
         except Exception as e:
             logger.error("Failed to suspend agent tasks: %s", e)
 
-    def get_notifications(self, agent_id: Optional[str] = None, 
-                         limit: int = 50) -> List[Dict[str, Any]]:
+    def get_notifications(
+        self, agent_id: Optional[str] = None, limit: int = 50
+    ) -> List[Dict[str, Any]]:
         """获取预算通知列表"""
         with self._lock:
             if agent_id:
                 rows = self._conn.execute(
                     """SELECT * FROM budget_notifications 
                        WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?""",
-                    (agent_id, limit)
+                    (agent_id, limit),
                 ).fetchall()
             else:
                 rows = self._conn.execute(
                     """SELECT * FROM budget_notifications 
                        ORDER BY created_at DESC LIMIT ?""",
-                    (limit,)
+                    (limit,),
                 ).fetchall()
-        
+
         return [dict(row) for row in rows]
 
     def close(self) -> None:
         """关闭数据库连接"""
         if self._conn:
             self._conn.close()
+            self._conn = None
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
 
 _budget_manager: Optional[BudgetManager] = None

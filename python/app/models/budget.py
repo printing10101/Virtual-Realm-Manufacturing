@@ -3,6 +3,7 @@ Budget Strategy Configuration Models
 
 Hierarchical budget configuration: Global → Project → Agent → Task
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
@@ -11,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 class BudgetLevel(str, Enum):
     """预算层级"""
+
     GLOBAL = "global"
     PROJECT = "project"
     AGENT = "agent"
@@ -19,6 +21,7 @@ class BudgetLevel(str, Enum):
 
 class BudgetPeriod(str, Enum):
     """预算周期"""
+
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -26,6 +29,7 @@ class BudgetPeriod(str, Enum):
 
 class BudgetStatus(str, Enum):
     """预算状态"""
+
     OK = "ok"
     WARNING = "warning"
     EXCEEDED = "exceeded"
@@ -34,6 +38,7 @@ class BudgetStatus(str, Enum):
 
 class ResourceType(str, Enum):
     """资源类型"""
+
     GPU_MEMORY = "gpu_memory"
     GPU_HOURS = "gpu_hours"
     GPU_TIME = "gpu_time"
@@ -47,6 +52,7 @@ class ResourceType(str, Enum):
 @dataclass
 class BudgetPolicy:
     """预算策略配置"""
+
     level: BudgetLevel = BudgetLevel.GLOBAL
     scope_id: str = "default"
     resource_type: ResourceType = ResourceType.TOTAL_COST
@@ -104,6 +110,7 @@ class BudgetPolicy:
 @dataclass
 class BudgetCheckResult:
     """预算检查结果"""
+
     passed: bool = True
     policy: Optional[BudgetPolicy] = None
     status: BudgetStatus = BudgetStatus.OK
@@ -131,6 +138,7 @@ class BudgetCheckResult:
 @dataclass
 class BudgetAdjustment:
     """预算调整记录"""
+
     id: Optional[int] = None
     level: BudgetLevel = BudgetLevel.GLOBAL
     scope_id: str = "default"
@@ -158,6 +166,7 @@ class BudgetAdjustment:
 @dataclass
 class BudgetAlert:
     """预算告警"""
+
     id: Optional[int] = None
     level: BudgetLevel = BudgetLevel.GLOBAL
     scope_id: str = "default"
@@ -189,6 +198,7 @@ class BudgetAlert:
 @dataclass
 class CostOptimizationSuggestion:
     """成本优化建议"""
+
     suggestion_id: str = ""
     category: str = ""
     title: str = ""

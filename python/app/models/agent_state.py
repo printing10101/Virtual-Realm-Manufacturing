@@ -6,15 +6,14 @@ References Paperclip's Persistent Agent State design:
 - Checkpoint management for training resumption
 - Serialization/deserialization for persistent storage
 """
+
 from __future__ import annotations
 
 import json
 import time
 import uuid
 from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 
@@ -38,6 +37,7 @@ class CheckpointType(str, Enum):
 @dataclass
 class Checkpoint:
     """Training checkpoint - captures model state for resumption"""
+
     checkpoint_id: str = field(default_factory=lambda: f"ckpt_{uuid.uuid4().hex[:12]}")
     epoch: int = 0
     step: int = 0
@@ -91,6 +91,7 @@ class Checkpoint:
 @dataclass
 class SessionContext:
     """Agent session context - what the agent is currently working on"""
+
     task_id: Optional[str] = None
     task_type: Optional[str] = None
     task_description: str = ""
@@ -148,6 +149,7 @@ class SessionContext:
 @dataclass
 class MemoryEntry:
     """Single memory item stored by the agent"""
+
     memory_id: str = field(default_factory=lambda: f"mem_{uuid.uuid4().hex[:12]}")
     content: str = ""
     memory_type: str = "observation"
@@ -170,6 +172,7 @@ class MemoryEntry:
 @dataclass
 class StateVersion:
     """Version metadata for state migration tracking"""
+
     state_version: int = 1
     schema_version: str = "1.0.0"
     created_at: float = field(default_factory=time.time)
@@ -205,6 +208,7 @@ class StateVersion:
 @dataclass
 class AgentState:
     """Persistent agent state with full lifecycle tracking"""
+
     agent_id: str
     current_task_id: Optional[str] = None
     session_context: SessionContext = field(default_factory=SessionContext)
@@ -241,10 +245,14 @@ class AgentState:
             current_task_id=data.get("current_task_id"),
             session_context=SessionContext.from_dict(data.get("session_context", {})),
             memory=[MemoryEntry.from_dict(m) for m in data.get("memory", [])],
-            checkpoint=Checkpoint.from_dict(data["checkpoint"]) if data.get("checkpoint") else None,
+            checkpoint=Checkpoint.from_dict(data["checkpoint"])
+            if data.get("checkpoint")
+            else None,
             last_heartbeat=data.get("last_heartbeat", time.time()),
             status=AgentStatus(data.get("status", "idle")),
-            checkpoints_history=[Checkpoint.from_dict(c) for c in data.get("checkpoints_history", [])],
+            checkpoints_history=[
+                Checkpoint.from_dict(c) for c in data.get("checkpoints_history", [])
+            ],
             state_version=StateVersion.from_dict(data.get("state_version", {})),
             created_at=data.get("created_at", time.time()),
             updated_at=data.get("updated_at", time.time()),
@@ -315,15 +323,19 @@ STATE_MIGRATIONS: Dict[str, List[callable]] = {}
 
 def register_migration(from_version: str, to_version: str):
     """Decorator to register state migration functions"""
+
     def decorator(func):
         key = f"{from_version}->{to_version}"
         STATE_MIGRATIONS.setdefault(key, [])
         STATE_MIGRATIONS[key].append(func)
         return func
+
     return decorator
 
 
-def migrate_state(data: Dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION) -> Dict[str, Any]:
+def migrate_state(
+    data: Dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION
+) -> Dict[str, Any]:
     """Apply registered migrations to bring state data to target version"""
     current = data.get("state_version", {}).get("schema_version", "1.0.0")
     while current != target_version:
