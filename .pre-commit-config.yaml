@@ -1,0 +1,28 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff
+        name: Ruff Check
+        args: [--fix]
+        files: ^python/
+      - id: ruff-format
+        name: Ruff Format
+        files: ^python/
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        name: Flake8 Check
+        args: [--max-line-length=120]
+        files: ^python/
+        additional_dependencies: []
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run Pytest
+        entry: python -m pytest python/tests/ --tb=short
+        language: system
+        pass_filenames: false
+        always_run: false
+        stages: [pre-push]
