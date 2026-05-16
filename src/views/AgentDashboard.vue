@@ -130,7 +130,6 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Refresh } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
 import { useAgentStore } from '@/stores/agents'
 
 const agentStore = useAgentStore()

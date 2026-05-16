@@ -36,7 +36,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Search, Setting } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
 
 const searchQuery = ref('')
 

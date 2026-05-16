@@ -310,7 +310,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { setLocale, type SupportedLocale } from '@/i18n'
 import ConfidenceIndicator from '@/components/ConfidenceIndicator.vue'
 import AcceptModifyReject from '@/components/AcceptModifyReject.vue'
 import { useSettingsStore } from '@/stores/settings'

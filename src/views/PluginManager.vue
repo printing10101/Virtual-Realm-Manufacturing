@@ -173,7 +173,6 @@ import { ref, computed, onMounted } from 'vue'
 import { usePluginStore } from '../stores/plugin'
 import { Refresh, Search } from '@element-plus/icons-vue'
 import DependencyTree from '../components/plugin/DependencyTree.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 
 const pluginStore = usePluginStore()
 const searchQuery = ref('')
