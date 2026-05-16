@@ -2,14 +2,14 @@
   <div class="settings-page">
     <el-alert
       v-if="versionStore.inconsistencyDetails && !versionStore.isConsistent"
-      title="版本不一致警告"
+      :title="$t('settings.versionWarningTitle')"
       type="error"
       :closable="false"
       show-icon
       class="version-warning"
     >
       <div>
-        检测到组件版本不一致，可能导致功能异常。建议重启应用以解决此问题。
+        {{ $t('settings.versionWarningMsg') }}
         <ul v-if="versionStore.inconsistencyDetails">
           <li v-for="(detail, idx) in versionStore.inconsistencyDetails" :key="idx">
             {{ detail }}
@@ -21,27 +21,27 @@
     <el-card class="version-card">
       <template #header>
         <div class="card-header">
-          版本信息
+          {{ $t('settings.versionInfo') }}
           <el-tag :type="versionStore.isConsistent ? 'success' : 'danger'" size="small">
-            {{ versionStore.isConsistent ? '版本一致' : '版本不一致' }}
+            {{ versionStore.isConsistent ? $t('settings.versionConsistent') : $t('settings.versionInconsistent') }}
           </el-tag>
         </div>
       </template>
       <el-descriptions :column="1" border>
-        <el-descriptions-item label="前端版本">
+        <el-descriptions-item :label="$t('settings.frontendVersion')">
           {{ versionStore.frontendVersion }}
           <span v-if="versionStore.frontendCommit" class="commit-hash">
             ({{ versionStore.frontendCommit }})
           </span>
         </el-descriptions-item>
-        <el-descriptions-item label="Rust后端版本">
-          {{ versionStore.rustVersion || '加载中...' }}
+        <el-descriptions-item :label="$t('settings.rustBackendVersion')">
+          {{ versionStore.rustVersion || $t('settings.loading') }}
           <span v-if="versionStore.rustCommit" class="commit-hash">
             ({{ versionStore.rustCommit }})
           </span>
         </el-descriptions-item>
-        <el-descriptions-item label="Python Sidecar版本">
-          {{ versionStore.pythonVersion || '未连接' }}
+        <el-descriptions-item :label="$t('settings.pythonSidecarVersion')">
+          {{ versionStore.pythonVersion || $t('settings.notConnected') }}
           <span v-if="versionStore.pythonCommit" class="commit-hash">
             ({{ versionStore.pythonCommit }})
           </span>
@@ -53,43 +53,49 @@
           @click="refreshVersions"
           :loading="versionStore.isLoading"
         >
-          刷新版本信息
+          {{ $t('settings.refreshVersion') }}
         </el-button>
       </div>
     </el-card>
 
     <el-card class="settings-card">
       <template #header>
-        系统设置
+        {{ $t('settings.systemSettings') }}
       </template>
       <el-form :model="store.settings" label-width="140px">
-        <el-form-item label="AI服务模式">
+        <el-form-item :label="$t('settings.aiMode')">
           <el-radio-group v-model="store.settings.aiMode">
-            <el-radio value="local">本地</el-radio>
-            <el-radio value="cloud">云端</el-radio>
+            <el-radio value="local">{{ $t('settings.localMode') }}</el-radio>
+            <el-radio value="cloud">{{ $t('settings.cloudMode') }}</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="本地模型">
+        <el-form-item :label="$t('settings.localModel')">
           <el-select v-model="store.settings.localModel">
             <el-option label="qwen2.5:7b" value="qwen2.5:7b" />
             <el-option label="qwen2.5:14b" value="qwen2.5:14b" />
           </el-select>
         </el-form-item>
-        <el-form-item label="计算设备">
+        <el-form-item :label="$t('settings.computeDevice')">
           <el-select v-model="store.settings.device">
             <el-option label="CPU" value="cpu" />
-            <el-option label="GPU (CUDA)" value="cuda" />
+            <el-option :label="$t('settings.gpuCuda')" value="cuda" />
           </el-select>
         </el-form-item>
-        <el-form-item label="离线模式">
+        <el-form-item :label="$t('settings.offlineMode')">
           <el-switch v-model="store.settings.offlineMode" />
+        </el-form-item>
+        <el-form-item :label="$t('settings.language')">
+          <el-select v-model="currentLocale" @change="handleLocaleChange" style="width: 160px;">
+            <el-option label="中文" value="zh-CN" />
+            <el-option label="English" value="en" />
+          </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="store.saveSettings()">
-            保存设置
+            {{ $t('settings.saveSettings') }}
           </el-button>
           <el-button @click="store.resetSettings()">
-            恢复默认
+            {{ $t('common.reset') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -98,10 +104,10 @@
     <el-card class="health-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <span>系统健康状态</span>
+          <span>{{ $t('settings.systemHealth') }}</span>
           <div>
             <el-tag :type="healthStatus.backendOnline ? 'success' : 'danger'" size="small">
-              {{ healthStatus.backendOnline ? '在线' : '离线' }}
+              {{ healthStatus.backendOnline ? $t('common.online') : $t('common.offline') }}
             </el-tag>
             <el-button size="small" @click="refreshHealth" :loading="healthLoading" style="margin-left:8px" circle>
               <el-icon><Refresh /></el-icon>
@@ -113,25 +119,25 @@
       <el-row :gutter="16">
         <el-col :span="6">
           <div class="stat-item">
-            <span class="stat-label">运行时间</span>
+            <span class="stat-label">{{ $t('settings.uptime') }}</span>
             <span class="stat-value">{{ healthStatus.uptimeStr }}</span>
           </div>
         </el-col>
         <el-col :span="6">
           <div class="stat-item">
-            <span class="stat-label">总请求数</span>
+            <span class="stat-label">{{ $t('settings.totalRequests') }}</span>
             <span class="stat-value">{{ healthStatus.totalRequests.toLocaleString() }}</span>
           </div>
         </el-col>
         <el-col :span="6">
           <div class="stat-item">
-            <span class="stat-label">平均响应</span>
+            <span class="stat-label">{{ $t('settings.avgResponse') }}</span>
             <span class="stat-value">{{ healthStatus.avgResponseMs }}ms</span>
           </div>
         </el-col>
         <el-col :span="6">
           <div class="stat-item">
-            <span class="stat-label">活跃模型</span>
+            <span class="stat-label">{{ $t('settings.activeModels') }}</span>
             <span class="stat-value">{{ healthStatus.activeModels }}</span>
           </div>
         </el-col>
@@ -142,7 +148,7 @@
       <el-row :gutter="16">
         <el-col :span="8">
           <div class="stat-item">
-            <span class="stat-label">内存使用</span>
+            <span class="stat-label">{{ $t('settings.memoryUsage') }}</span>
             <el-progress
               :percentage="healthStatus.memoryPercent"
               :status="healthStatus.memoryPercent > 80 ? 'exception' : healthStatus.memoryPercent > 60 ? 'warning' : ''"
@@ -153,7 +159,7 @@
         </el-col>
         <el-col :span="8">
           <div class="stat-item">
-            <span class="stat-label">CPU使用</span>
+            <span class="stat-label">{{ $t('settings.cpuUsage') }}</span>
             <el-progress
               :percentage="healthStatus.cpuPercent"
               :status="healthStatus.cpuPercent > 80 ? 'exception' : healthStatus.cpuPercent > 60 ? 'warning' : ''"
@@ -164,10 +170,10 @@
         </el-col>
         <el-col :span="8">
           <div class="stat-item">
-            <span class="stat-label">训练任务</span>
+            <span class="stat-label">{{ $t('settings.trainingTasks') }}</span>
             <span class="stat-value">
               <el-tag :type="healthStatus.activeTrainingTasks > 0 ? 'warning' : 'info'" size="small">
-                {{ healthStatus.activeTrainingTasks }} 活跃
+                {{ healthStatus.activeTrainingTasks }} {{ $t('settings.activeSuffix') }}
               </el-tag>
             </span>
           </div>
@@ -177,7 +183,7 @@
       <el-divider style="margin: 12px 0" />
 
       <div class="lnn-trend-section">
-        <span class="stat-label">LNN推理趋势 (最近10次)</span>
+        <span class="stat-label">{{ $t('settings.lnnTrend') }}</span>
         <div class="trend-chart">
           <div
             v-for="(item, idx) in healthStatus.recentInferences"
@@ -201,24 +207,24 @@
       <el-divider style="margin: 12px 0" />
 
       <div class="services-row">
-        <el-tag :type="healthStatus.dbHealthy ? 'success' : 'danger'" size="small">DB</el-tag>
+        <el-tag :type="healthStatus.dbHealthy ? 'success' : 'danger'" size="small">{{ $t('settings.db') }}</el-tag>
         <el-tag :type="healthStatus.redisHealthy ? 'success' : 'danger'" size="small" style="margin-left:6px">Redis</el-tag>
         <el-tag :type="healthStatus.prometheusHealthy ? 'success' : 'danger'" size="small" style="margin-left:6px">Prometheus</el-tag>
-        <span style="margin-left:12px;font-size:12px;color:#909399">自动刷新: {{ healthStatus.pollInterval }}s</span>
+        <span style="margin-left:12px;font-size:12px;color:#909399">{{ $t('settings.autoRefresh') }}: {{ healthStatus.pollInterval }}s</span>
       </div>
     </el-card>
 
     <el-card class="ai-sovereignty-card">
       <template #header>
         <div class="card-header">
-          <span>AI用户主权设置</span>
-          <el-tag type="success" size="small">用户主权模式</el-tag>
+          <span>{{ $t('settings.aiSovereignty') }}</span>
+          <el-tag type="success" size="small">{{ $t('settings.sovereigntyMode') }}</el-tag>
         </div>
       </template>
 
       <el-alert
         v-if="showSovereigntyIntro"
-        title="AI自主度模式说明"
+        :title="$t('settings.autonomyModeTitle')"
         type="info"
         :closable="true"
         @close="showSovereigntyIntro = false"
@@ -226,19 +232,19 @@
         style="margin-bottom: 16px;"
       >
         <div>
-          <p><strong>AI自主度</strong>控制AI系统的决策权限级别：</p>
+          <p><strong>{{ $t('settings.aiAutonomyLevel') }}</strong>{{ $t('settings.autonomyModeDesc') }}</p>
           <ul>
-            <li><strong>0 - 完全手动</strong>：所有AI建议均需用户明确确认后方可执行</li>
-            <li><strong>1 - 建议需确认</strong>：AI提供建议，用户确认后执行</li>
-            <li><strong>2 - 推荐模式（默认）</strong>：AI提供推荐方案，用户可选择接受/修改/拒绝</li>
-            <li><strong>3 - 半自动</strong>：高置信度AI建议自动执行，低置信度需确认</li>
-            <li><strong>4 - AI全自动</strong>：AI可直接执行推荐操作，但保留完整操作日志供审查</li>
+            <li><strong>0 - {{ $t('settings.fullyManual') }}</strong>：{{ $t('settings.autonomyLevel0') }}</li>
+            <li><strong>1 - {{ $t('settings.confirmRequired') }}</strong>：{{ $t('settings.autonomyLevel1') }}</li>
+            <li><strong>2 - {{ $t('settings.recommended') }}</strong>：{{ $t('settings.autonomyLevel2') }}</li>
+            <li><strong>3 - {{ $t('settings.semiAuto') }}</strong>：{{ $t('settings.autonomyLevel3') }}</li>
+            <li><strong>4 - {{ $t('settings.fullyAuto') }}</strong>：{{ $t('settings.autonomyLevel4') }}</li>
           </ul>
         </div>
       </el-alert>
 
       <el-form :model="sovereigntySettings" label-width="160px">
-        <el-form-item label="AI自主度">
+        <el-form-item :label="$t('settings.aiAutonomyLevel')">
           <div class="autonomy-slider">
             <el-slider
               v-model="sovereigntySettings.ai_autonomy_level"
@@ -257,7 +263,7 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="当前模式说明">
+        <el-form-item :label="$t('settings.recommended')">
           <el-alert
             :title="currentAutonomyDescription"
             :type="getAutonomyAlertType(sovereigntySettings.ai_autonomy_level)"
@@ -266,32 +272,32 @@
           />
         </el-form-item>
 
-        <el-form-item label="显示置信度指示器">
+        <el-form-item :label="$t('settings.showConfidence')">
           <el-switch v-model="sovereigntySettings.show_confidence_indicator" />
         </el-form-item>
 
-        <el-form-item label="显示备选方案">
+        <el-form-item :label="$t('settings.showAlternatives')">
           <el-switch v-model="sovereigntySettings.show_alternatives" />
         </el-form-item>
 
-        <el-form-item label="显示推理过程">
+        <el-form-item :label="$t('settings.showReasoning')">
           <el-switch v-model="sovereigntySettings.show_reasoning" />
         </el-form-item>
 
-        <el-form-item label="预测需确认">
+        <el-form-item :label="$t('settings.predictConfirm')">
           <el-switch v-model="sovereigntySettings.require_confirmation_for_predict" :disabled="sovereigntySettings.ai_autonomy_level >= 3" />
         </el-form-item>
 
-        <el-form-item label="训练需确认">
+        <el-form-item :label="$t('settings.trainConfirm')">
           <el-switch v-model="sovereigntySettings.require_confirmation_for_train" :disabled="sovereigntySettings.ai_autonomy_level >= 4" />
         </el-form-item>
 
         <el-form-item>
           <el-button type="primary" @click="saveSovereigntySettings">
-            保存AI主权设置
+            {{ $t('settings.saveSovereignty') }}
           </el-button>
           <el-button @click="resetSovereigntySettings">
-            恢复默认
+            {{ $t('common.reset') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -300,102 +306,102 @@
     <el-card class="audit-log-card">
       <template #header>
         <div class="card-header">
-          <span>AI决策操作日志</span>
+          <span>{{ $t('settings.auditLog') }}</span>
           <div class="header-actions">
             <el-button size="small" @click="exportLogs" :loading="exporting">
-              导出日志
+              {{ $t('settings.exportLogs') }}
             </el-button>
             <el-button size="small" type="danger" @click="clearLogs" :loading="clearing">
-              清空日志
+              {{ $t('settings.clearLogs') }}
             </el-button>
           </div>
         </div>
       </template>
 
       <el-form :inline="true" class="log-filters">
-        <el-form-item label="AI模块">
-          <el-select v-model="logFilters.ai_module" placeholder="全部" clearable @change="loadAuditLogs">
-            <el-option label="LNN预测" value="lnn_predict" />
-            <el-option label="LNN训练" value="lnn_train" />
-            <el-option label="工艺优化" value="process_optimize" />
-            <el-option label="刀具磨损分析" value="tool_wear_analyze" />
-            <el-option label="CAD生成" value="cad_generate" />
+        <el-form-item :label="$t('settings.aiModule')">
+          <el-select v-model="logFilters.ai_module" :placeholder="$t('settings.allModules')" clearable @change="loadAuditLogs">
+            <el-option :label="$t('settings.lnnPredict')" value="lnn_predict" />
+            <el-option :label="$t('settings.lnnTrain')" value="lnn_train" />
+            <el-option :label="$t('settings.processOptimize')" value="process_optimize" />
+            <el-option :label="$t('settings.toolWearAnalyze')" value="tool_wear_analyze" />
+            <el-option :label="$t('settings.cadGenerate')" value="cad_generate" />
           </el-select>
         </el-form-item>
-        <el-form-item label="用户决策">
-          <el-select v-model="logFilters.user_decision" placeholder="全部" clearable @change="loadAuditLogs">
-            <el-option label="接受" value="accept" />
-            <el-option label="修改" value="modify" />
-            <el-option label="拒绝" value="reject" />
-            <el-option label="自动执行" value="auto_executed" />
+        <el-form-item :label="$t('settings.userDecision')">
+          <el-select v-model="logFilters.user_decision" :placeholder="$t('settings.allModules')" clearable @change="loadAuditLogs">
+            <el-option :label="$t('settings.accept')" value="accept" />
+            <el-option :label="$t('settings.modify')" value="modify" />
+            <el-option :label="$t('settings.reject')" value="reject" />
+            <el-option :label="$t('settings.autoExecuted')" value="auto_executed" />
           </el-select>
         </el-form-item>
-        <el-form-item label="时间范围">
+        <el-form-item :label="$t('settings.timeRange')">
           <el-date-picker
             v-model="logFilters.dateRange"
             type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
+            :range-separator="$t('settings.to')"
+            :start-placeholder="$t('settings.startDate')"
+            :end-placeholder="$t('settings.endDate')"
             @change="loadAuditLogs"
           />
         </el-form-item>
-        <el-form-item label="搜索">
-          <el-input v-model="logSearchKeyword" placeholder="关键词" clearable @keyup.enter="searchLogs" />
-          <el-button type="primary" @click="searchLogs">搜索</el-button>
+        <el-form-item :label="$t('common.search')">
+          <el-input v-model="logSearchKeyword" :placeholder="$t('settings.keyword')" clearable @keyup.enter="searchLogs" />
+          <el-button type="primary" @click="searchLogs">{{ $t('common.search') }}</el-button>
         </el-form-item>
       </el-form>
 
       <div v-if="auditLogStatistics" class="log-statistics">
         <el-descriptions :column="3" border size="small">
-          <el-descriptions-item label="总条目数">{{ auditLogStatistics.total_entries }}</el-descriptions-item>
-          <el-descriptions-item label="平均置信度">{{ (auditLogStatistics.avg_confidence * 100).toFixed(1) }}%</el-descriptions-item>
-          <el-descriptions-item label="最近24小时">{{ auditLogStatistics.recent_24h }} 条</el-descriptions-item>
+          <el-descriptions-item :label="$t('settings.totalEntries')">{{ auditLogStatistics.total_entries }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('settings.avgConfidence')">{{ (auditLogStatistics.avg_confidence * 100).toFixed(1) }}%</el-descriptions-item>
+          <el-descriptions-item :label="$t('settings.recent24h')">{{ auditLogStatistics.recent_24h }} 条</el-descriptions-item>
         </el-descriptions>
       </div>
 
       <el-table :data="auditLogs" style="width: 100%; margin-top: 16px;" v-loading="loadingLogs">
-        <el-table-column prop="timestamp_ms" label="时间" width="180">
+        <el-table-column prop="timestamp_ms" :label="$t('common.time')" width="180">
           <template #default="{ row }">
             {{ formatTimestamp(row.timestamp_ms) }}
           </template>
         </el-table-column>
-        <el-table-column prop="ai_module" label="AI模块" width="140">
+        <el-table-column prop="ai_module" :label="$t('settings.aiModuleCol')" width="140">
           <template #default="{ row }">
             <el-tag size="small">{{ getModuleName(row.ai_module) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="user_decision" label="用户决策" width="100">
+        <el-table-column prop="user_decision" :label="$t('settings.userDecisionCol')" width="100">
           <template #default="{ row }">
             <el-tag :type="getDecisionType(row.user_decision)" size="small">
               {{ getDecisionName(row.user_decision) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="operation_status" label="操作状态" width="100">
+        <el-table-column prop="operation_status" :label="$t('settings.opStatus')" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.operation_status)" size="small">
               {{ getStatusName(row.operation_status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="confidence" label="置信度" width="100">
+        <el-table-column prop="confidence" :label="$t('settings.confidence')" width="100">
           <template #default="{ row }">
             <span v-if="row.confidence !== null">{{ (row.confidence * 100).toFixed(0) }}%</span>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="reasoning" label="推理说明" min-width="200">
+        <el-table-column prop="reasoning" :label="$t('settings.reasoningDesc')" min-width="200">
           <template #default="{ row }">
             <el-tooltip :content="row.reasoning" placement="top">
               <span class="reasoning-text">{{ row.reasoning }}</span>
             </el-tooltip>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="80">
+        <el-table-column :label="$t('common.operation')" width="80">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="viewLogDetail(row)">
-              详情
+              {{ $t('common.detail') }}
             </el-button>
           </template>
         </el-table-column>
@@ -413,52 +419,52 @@
       />
     </el-card>
 
-    <el-dialog v-model="logDetailVisible" title="日志详情" width="60%">
+    <el-dialog v-model="logDetailVisible" :title="$t('settings.logDetail')" width="60%">
       <el-descriptions v-if="selectedLog" :column="1" border>
-        <el-descriptions-item label="时间戳">{{ formatTimestamp(selectedLog.timestamp_ms) }}</el-descriptions-item>
-        <el-descriptions-item label="AI模块">{{ getModuleName(selectedLog.ai_module) }}</el-descriptions-item>
-        <el-descriptions-item label="用户决策">{{ getDecisionName(selectedLog.user_decision) }}</el-descriptions-item>
-        <el-descriptions-item label="操作状态">{{ getStatusName(selectedLog.operation_status) }}</el-descriptions-item>
-        <el-descriptions-item label="置信度">{{ selectedLog.confidence !== null ? `${(selectedLog.confidence * 100).toFixed(2)}%` : 'N/A' }}</el-descriptions-item>
-        <el-descriptions-item label="AI推荐内容">
+        <el-descriptions-item :label="$t('settings.timestamp')">{{ formatTimestamp(selectedLog.timestamp_ms) }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('settings.aiModuleCol')">{{ getModuleName(selectedLog.ai_module) }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('settings.userDecisionCol')">{{ getDecisionName(selectedLog.user_decision) }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('settings.opStatus')">{{ getStatusName(selectedLog.operation_status) }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('settings.confidence')">{{ selectedLog.confidence !== null ? `${(selectedLog.confidence * 100).toFixed(2)}%` : 'N/A' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('settings.aiRecommend')">
           <pre>{{ JSON.stringify(selectedLog.ai_recommendation, null, 2) }}</pre>
         </el-descriptions-item>
-        <el-descriptions-item label="最终执行内容">
+        <el-descriptions-item :label="$t('settings.finalExecution')">
           <pre>{{ JSON.stringify(selectedLog.final_execution, null, 2) }}</pre>
         </el-descriptions-item>
-        <el-descriptions-item label="用户修改" v-if="selectedLog.user_modifications">
+        <el-descriptions-item :label="$t('settings.userModifications')" v-if="selectedLog.user_modifications">
           <pre>{{ JSON.stringify(selectedLog.user_modifications, null, 2) }}</pre>
         </el-descriptions-item>
-        <el-descriptions-item label="推理说明">{{ selectedLog.reasoning }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('settings.reasoningDesc')">{{ selectedLog.reasoning }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
 
     <el-card class="agent-token-card">
       <template #header>
         <div class="card-header">
-          <span>Agent Token 管理</span>
+          <span>{{ $t('settings.agentTokenManage') }}</span>
           <div class="header-actions">
             <el-button size="small" type="danger" @click="revokeAllTTokens" :loading="revokingT">
-              撤销所有T类Token
+              {{ $t('settings.revokeAllT') }}
             </el-button>
             <el-button size="small" type="primary" @click="showCreateTokenDialog = true">
-              创建Token
+              {{ $t('settings.createToken') }}
             </el-button>
           </div>
         </div>
       </template>
 
       <el-alert
-        title="Agent Token 说明"
+        :title="$t('settings.agentTokenInfo')"
         type="info"
         :closable="true"
         show-icon
         style="margin-bottom: 16px;"
       >
         <div>
-          <p>Agent Token 供外部 AI 工具（Cursor、Claude Code、Codex）调用 LNN 能力使用。</p>
-          <p>权限级别：R（读取）/ W（写入）/ B（训练）/ N（通知）/ C（管理）/ T（执行）</p>
-          <p><strong>Paper-Only 模式</strong>：默认开启，T 类操作仅模拟不实际下发到机床。</p>
+          <p>{{ $t('settings.agentTokenDesc1') }}</p>
+          <p>{{ $t('settings.agentTokenDesc2') }}</p>
+          <p><strong>{{ $t('settings.db') }}</strong>{{ $t('settings.agentTokenDesc3') }}</p>
         </div>
       </el-alert>
 
@@ -473,7 +479,7 @@
             <el-tag size="small" type="info">{{ row.token_prefix.slice(0, 16) }}...</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="权限" width="180">
+        <el-table-column :label="$t('settings.scopePermission')" width="180">
           <template #default="{ row }">
             <el-tag
               v-for="scope in row.scopes"
@@ -486,73 +492,73 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="paper_only" label="Paper-Only" width="110">
+        <el-table-column prop="paper_only" :label="$t('settings.paperOnly')" width="110">
           <template #default="{ row }">
             <el-tag :type="row.paper_only ? 'warning' : 'success'" size="small">
-              {{ row.paper_only ? '模拟模式' : '真实执行' }}
+              {{ row.paper_only ? $t('settings.simulateMode') : $t('settings.realExecute') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="is_active" label="状态" width="90">
+        <el-table-column prop="is_active" :label="$t('common.status')" width="90">
           <template #default="{ row }">
             <el-tag :type="row.is_active ? 'success' : 'info'" size="small">
-              {{ row.is_active ? '活跃' : '已撤销' }}
+              {{ row.is_active ? $t('common.active') : $t('common.revoked') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column :label="$t('common.operation')" width="120">
           <template #default="{ row }">
             <el-button type="danger" link size="small" @click="revokeToken(row.agent_id)" :disabled="!row.is_active">
-              撤销
+              {{ $t('settings.revoke') }}
             </el-button>
             <el-button type="primary" link size="small" @click="viewTokenDetail(row)">
-              详情
+              {{ $t('common.detail') }}
             </el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
-    <el-dialog v-model="showCreateTokenDialog" title="创建 Agent Token" width="500px">
+    <el-dialog v-model="showCreateTokenDialog" :title="$t('settings.createTokenTitle')" width="500px">
       <el-form :model="newTokenForm" label-width="120px">
-        <el-form-item label="权限范围">
+        <el-form-item :label="$t('settings.scopePermission')">
           <el-checkbox-group v-model="newTokenForm.scopes">
-            <el-checkbox value="R">R - 读取</el-checkbox>
-            <el-checkbox value="W">W - 写入</el-checkbox>
-            <el-checkbox value="B">B - 训练</el-checkbox>
-            <el-checkbox value="N">N - 通知</el-checkbox>
-            <el-checkbox value="C">C - 管理</el-checkbox>
-            <el-checkbox value="T">T - 执行</el-checkbox>
+            <el-checkbox value="R">R - {{ $t('settings.getScopeName_R') }}</el-checkbox>
+            <el-checkbox value="W">W - {{ $t('settings.getScopeName_W') }}</el-checkbox>
+            <el-checkbox value="B">B - {{ $t('settings.getScopeName_B') }}</el-checkbox>
+            <el-checkbox value="N">N - {{ $t('settings.getScopeName_N') }}</el-checkbox>
+            <el-checkbox value="C">C - {{ $t('settings.getScopeName_C') }}</el-checkbox>
+            <el-checkbox value="T">T - {{ $t('settings.getScopeName_T') }}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
-        <el-form-item label="有效期（秒）">
+        <el-form-item :label="$t('settings.validitySeconds')">
           <el-input-number v-model="newTokenForm.expires_in" :min="3600" :max="31536000" :step="3600" />
           <el-checkbox v-model="newTokenForm.no_expiry" style="margin-left: 12px;" @change="handleNoExpiryChange">
-            永不过期
+            {{ $t('settings.noExpiry') }}
           </el-checkbox>
         </el-form-item>
         <el-form-item label="Paper-Only">
           <el-switch v-model="newTokenForm.paper_only" />
           <span style="margin-left: 8px; font-size: 12px; color: #909399;">
-            {{ newTokenForm.paper_only ? 'T类操作仅模拟，不实际下发' : '允许真实执行T类操作（需谨慎）' }}
+            {{ newTokenForm.paper_only ? $t('settings.paperOnlyHint') : $t('settings.realExecuteHint') }}
           </span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateTokenDialog = false">取消</el-button>
-        <el-button type="primary" @click="createAgentToken" :loading="creatingToken">创建</el-button>
+        <el-button @click="showCreateTokenDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="createAgentToken" :loading="creatingToken">{{ $t('settings.createToken') }}</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showCreatedTokenDialog" title="Token 创建成功" width="600px">
+    <el-dialog v-model="showCreatedTokenDialog" :title="$t('settings.importantNotice')" width="600px">
       <el-alert
-        title="重要：请妥善保存此 Token！"
+        :title="$t('settings.importantNotice')"
         type="warning"
         :closable="false"
         show-icon
         style="margin-bottom: 16px;"
       >
-        <p>Token 完整值仅在创建时显示一次，关闭后将无法再次查看。</p>
+        <p>{{ $t('settings.importantNoticeMsg') }}</p>
       </el-alert>
 
       <el-descriptions :column="1" border>
@@ -560,10 +566,10 @@
         <el-descriptions-item label="Token">
           <div style="display: flex; align-items: center; gap: 8px;">
             <code style="word-break: break-all; font-size: 12px;">{{ createdToken?.token }}</code>
-            <el-button size="small" @click="copyTokenToClipboard(createdToken?.token)">复制</el-button>
+            <el-button size="small" @click="copyTokenToClipboard(createdToken?.token)">{{ $t('common.export') }}</el-button>
           </div>
         </el-descriptions-item>
-        <el-descriptions-item label="权限">
+        <el-descriptions-item :label="$t('settings.scopePermission')">
           <el-tag
             v-for="scope in createdToken?.scopes"
             :key="scope"
@@ -574,26 +580,26 @@
             {{ getScopeName(scope) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="Paper-Only">
+        <el-descriptions-item :label="$t('settings.paperOnly')">
           <el-tag :type="createdToken?.paper_only ? 'warning' : 'success'">
-            {{ createdToken?.paper_only ? '模拟模式' : '真实执行' }}
+            {{ createdToken?.paper_only ? $t('settings.simulateMode') : $t('settings.realExecute') }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="过期时间">
-          {{ createdToken?.expires_at ? formatTimestamp(createdToken.expires_at * 1000) : '永不过期' }}
+        <el-descriptions-item :label="$t('settings.expireTime')">
+          {{ createdToken?.expires_at ? formatTimestamp(createdToken.expires_at * 1000) : $t('settings.noExpiry') }}
         </el-descriptions-item>
       </el-descriptions>
 
       <template #footer>
-        <el-button type="primary" @click="showCreatedTokenDialog = false">我已保存</el-button>
+        <el-button type="primary" @click="showCreatedTokenDialog = false">{{ $t('settings.iHaveSaved') }}</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="tokenDetailVisible" title="Token 详情" width="50%">
+    <el-dialog v-model="tokenDetailVisible" :title="$t('settings.tokenDetail')" width="50%">
       <el-descriptions v-if="selectedToken" :column="1" border>
         <el-descriptions-item label="Agent ID">{{ selectedToken.agent_id }}</el-descriptions-item>
-        <el-descriptions-item label="Token前缀">{{ selectedToken.token_prefix }}</el-descriptions-item>
-        <el-descriptions-item label="权限">
+        <el-descriptions-item :label="$t('settings.tokenPrefix')">{{ selectedToken.token_prefix }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('settings.scopePermission')">
           <el-tag
             v-for="scope in selectedToken.scopes"
             :key="scope"
@@ -604,18 +610,18 @@
             {{ getScopeName(scope) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ formatTimestamp(selectedToken.created_at * 1000) }}</el-descriptions-item>
-        <el-descriptions-item label="过期时间">
-          {{ selectedToken.expires_at ? formatTimestamp(selectedToken.expires_at * 1000) : '永不过期' }}
+        <el-descriptions-item :label="$t('settings.createTime')">{{ formatTimestamp(selectedToken.created_at * 1000) }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('settings.expireTime')">
+          {{ selectedToken.expires_at ? formatTimestamp(selectedToken.expires_at * 1000) : $t('settings.noExpiry') }}
         </el-descriptions-item>
-        <el-descriptions-item label="Paper-Only">
+        <el-descriptions-item :label="$t('settings.paperOnly')">
           <el-tag :type="selectedToken.paper_only ? 'warning' : 'success'">
-            {{ selectedToken.paper_only ? '模拟模式' : '真实执行' }}
+            {{ selectedToken.paper_only ? $t('settings.simulateMode') : $t('settings.realExecute') }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="状态">
+        <el-descriptions-item :label="$t('common.status')">
           <el-tag :type="selectedToken.is_active ? 'success' : 'info'">
-            {{ selectedToken.is_active ? '活跃' : '已撤销' }}
+            {{ selectedToken.is_active ? $t('common.active') : $t('common.revoked') }}
           </el-tag>
         </el-descriptions-item>
       </el-descriptions>
@@ -625,173 +631,30 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { useVersionStore } from '@/stores/version'
 import axios from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
+import { setLocale, type SupportedLocale } from '@/i18n'
 
+const { t } = useI18n()
 const store = useSettingsStore()
 const versionStore = useVersionStore()
 
+const currentLocale = ref<SupportedLocale>((localStorage.getItem('app_locale') as SupportedLocale) || 'zh-CN')
+
+function handleLocaleChange(locale: string) {
+  const setter = (window as any).__setLocale
+  if (setter) {
+    setter(locale as SupportedLocale)
+  } else {
+    setLocale(locale as SupportedLocale)
+  }
+  currentLocale.value = locale as SupportedLocale
+}
+
 const showSovereigntyIntro = ref(true)
-
-// ========== System Health Dashboard ==========
-
-interface RecentInference {
-  model: string
-  duration_ms: number
-}
-
-const healthStatus = reactive({
-  backendOnline: false,
-  uptimeStr: '--',
-  totalRequests: 0,
-  avgResponseMs: 0,
-  activeModels: 0,
-  memoryPercent: 0,
-  memoryUsedMb: 0,
-  memoryTotalMb: 4096,
-  cpuPercent: 0,
-  activeTrainingTasks: 0,
-  recentInferences: [] as RecentInference[],
-  maxRecentDuration: 1,
-  p50Ms: 0,
-  p95Ms: 0,
-  dbHealthy: false,
-  redisHealthy: false,
-  prometheusHealthy: false,
-  pollInterval: 5,
-})
-
-const healthLoading = ref(false)
-let _healthTimer: ReturnType<typeof setInterval> | null = null
-
-async function refreshHealth() {
-  healthLoading.value = true
-  let backendOk = false
-  try {
-    const pingRes = await axios.get('/api/health/ping', { timeout: 3000 })
-    backendOk = pingRes.status === 200
-  } catch {
-    backendOk = false
-  }
-  healthStatus.backendOnline = backendOk
-
-  if (!backendOk) {
-    healthLoading.value = false
-    return
-  }
-
-  try {
-    const [metricRes, lnnHealthRes, lnnPerfRes] = await Promise.all([
-      axios.get('/api/metrics', { timeout: 5000 }).catch(() => null),
-      axios.get('/api/v1/lnn/health', { timeout: 5000 }).catch(() => null),
-      axios.get('/api/v1/lnn/performance', { timeout: 5000 }).catch(() => null),
-    ])
-
-    if (metricRes && typeof metricRes.data === 'string') {
-      const text = metricRes.data
-      const uptimeMatch = text.match(/sidecar_uptime_seconds\s+(\d+)/)
-      if (uptimeMatch) {
-        const secs = parseInt(uptimeMatch[1])
-        healthStatus.uptimeStr = formatUptime(secs)
-      }
-
-      const reqMatch = text.match(/http_requests_total\{[^}]*\}\s+(\d+)/)
-      if (reqMatch) healthStatus.totalRequests = parseInt(reqMatch[1])
-
-      const memMatch = text.match(/process_resident_memory_bytes\s+(\d+)/)
-      if (memMatch) {
-        healthStatus.memoryUsedMb = Math.round(parseInt(memMatch[1]) / (1024 * 1024))
-      }
-
-      const cpuMatch = text.match(/process_cpu_percent\s+([\d.]+)/)
-      if (cpuMatch) healthStatus.cpuPercent = Math.round(parseFloat(cpuMatch[1]))
-
-      if (healthStatus.memoryTotalMb > 0 && healthStatus.memoryUsedMb > 0) {
-        healthStatus.memoryPercent = Math.round((healthStatus.memoryUsedMb / healthStatus.memoryTotalMb) * 100)
-      }
-
-      const trainMatch = text.match(/lnn_active_training_tasks\s+(\d+)/)
-      if (trainMatch) healthStatus.activeTrainingTasks = parseInt(trainMatch[1])
-    }
-
-    if (lnnHealthRes?.data?.data) {
-      const d = lnnHealthRes.data.data
-      healthStatus.activeModels = d.models_available ?? d.model_count ?? 0
-    }
-
-    if (lnnPerfRes?.data?.data?.models) {
-      const models = lnnPerfRes.data.data.models
-      const allInferences: RecentInference[] = []
-      let totalP50 = 0, totalP95 = 0
-      let p50Count = 0, p95Count = 0
-      for (const m of models) {
-        if (m.recent_inferences) {
-          for (const inf of m.recent_inferences) {
-            allInferences.push({ model: m.model_name || 'unknown', duration_ms: Math.round(inf.duration_ms) })
-          }
-        }
-        if (m.p50_inference_ms) {
-          totalP50 += m.p50_inference_ms
-          p50Count++
-        }
-        if (m.p95_inference_ms) {
-          totalP95 += m.p95_inference_ms
-          p95Count++
-        }
-      }
-      healthStatus.p50Ms = p50Count > 0 ? Math.round(totalP50 / p50Count) : 0
-      healthStatus.p95Ms = p95Count > 0 ? Math.round(totalP95 / p95Count) : 0
-
-      if (allInferences.length > 0) {
-        healthStatus.recentInferences = allInferences.slice(-10)
-      }
-      if (healthStatus.recentInferences.length > 0) {
-        healthStatus.maxRecentDuration = Math.max(...healthStatus.recentInferences.map(i => i.duration_ms))
-      }
-    }
-
-    try {
-      const avgMatch = metricRes?.data?.match(/http_request_duration_seconds_bucket\{[^}]*\}\s+([\d.]+)/g)
-      if (avgMatch && avgMatch.length > 0) {
-        const vals = avgMatch.map((m: string) => parseFloat(m.split(/\s+/)[1]))
-        healthStatus.avgResponseMs = Math.round(vals.reduce((a: number, b: number) => a + b, 0) / vals.length * 1000)
-      }
-    } catch {
-      healthStatus.avgResponseMs = 0
-    }
-
-    healthStatus.dbHealthy = true
-    healthStatus.redisHealthy = true
-    healthStatus.prometheusHealthy = true
-
-  } catch (e) {
-    console.warn('Health dashboard refresh error:', e)
-  } finally {
-    healthLoading.value = false
-  }
-}
-
-function formatUptime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`
-  return `${Math.floor(seconds / 86400)}d ${Math.floor((seconds % 86400) / 3600)}h`
-}
-
-function startHealthPolling() {
-  refreshHealth()
-  _healthTimer = setInterval(refreshHealth, healthStatus.pollInterval * 1000)
-}
-
-function stopHealthPolling() {
-  if (_healthTimer) {
-    clearInterval(_healthTimer)
-    _healthTimer = null
-  }
-}
 
 // ========== AI Sovereignty ==========
 
@@ -821,26 +684,26 @@ const autonomyMarks = {
   4: '4',
 }
 
-const autonomyLabels = [
-  '完全手动',
-  '建议需确认',
-  '推荐模式',
-  '半自动',
-  '全自动',
-]
+const autonomyLabels = computed(() => [
+  t('settings.fullyManual'),
+  t('settings.confirmRequired'),
+  t('settings.recommended'),
+  t('settings.semiAuto'),
+  t('settings.fullyAuto'),
+])
 
 function formatAutonomyLevel(val: number): string {
-  return `${val} - ${autonomyLabels[val]}`
+  return `${val} - ${autonomyLabels.value[val]}`
 }
 
 const currentAutonomyDescription = computed(() => {
   const level = sovereigntySettings.ai_autonomy_level
   const descriptions = [
-    '完全手动模式：所有AI建议均需用户明确确认后方可执行，系统不进行任何自动决策。',
-    '建议需确认模式：AI提供建议，用户在审阅确认后执行。',
-    '推荐模式（默认）：AI提供推荐方案，用户可选择接受、修改或拒绝。',
-    '半自动模式：高置信度（≥80%）AI建议自动执行，低置信度需用户确认。',
-    '全自动模式：AI可直接执行推荐操作，但保留完整操作日志供事后审查和追溯。',
+    t('settings.autonomyDesc0'),
+    t('settings.autonomyDesc1'),
+    t('settings.autonomyDesc2'),
+    t('settings.autonomyDesc3'),
+    t('settings.autonomyDesc4'),
   ]
   return descriptions[level]
 })
@@ -864,9 +727,9 @@ function handleAutonomyChange(val: number) {
 async function saveSovereigntySettings() {
   try {
     localStorage.setItem('ai_sovereignty_settings', JSON.stringify(sovereigntySettings))
-    ElMessage.success('AI主权设置已保存')
+    ElMessage.success(t('settings.sovereigntySaved'))
   } catch (e) {
-    ElMessage.error('保存设置失败')
+    ElMessage.error(t('settings.saveFailed'))
   }
 }
 
@@ -877,7 +740,7 @@ function resetSovereigntySettings() {
   sovereigntySettings.show_confidence_indicator = true
   sovereigntySettings.show_alternatives = true
   sovereigntySettings.show_reasoning = true
-  ElMessage.info('已恢复默认AI主权设置')
+  ElMessage.info(t('settings.sovereigntyReset'))
 }
 
 const healthLoading = ref(false)
@@ -890,8 +753,8 @@ interface HealthStatus {
   avgResponseMs: number
   activeModels: number
   memoryPercent: number
-  memoryUsedMb: string
-  memoryTotalMb: string
+  memoryUsedMb: number
+  memoryTotalMb: number
   cpuPercent: number
   activeTrainingTasks: number
   recentInferences: Array<{ model: string; duration_ms: number }>
@@ -911,8 +774,8 @@ const healthStatus = reactive<HealthStatus>({
   avgResponseMs: 0,
   activeModels: 0,
   memoryPercent: 0,
-  memoryUsedMb: '0',
-  memoryTotalMb: '0',
+  memoryUsedMb: 0,
+  memoryTotalMb: 4096,
   cpuPercent: 0,
   activeTrainingTasks: 0,
   recentInferences: [],
@@ -967,13 +830,13 @@ async function refreshHealth() {
       const memMatch = text.match(/process_resident_memory_bytes\s+(\d+)/)
       if (memMatch) {
         const bytes = parseInt(memMatch[1], 10)
-        healthStatus.memoryUsedMb = (bytes / 1024 / 1024).toFixed(1)
+        healthStatus.memoryUsedMb = Math.round(bytes / 1024 / 1024)
         const navMem = (navigator as any).deviceMemory
         if (navMem) {
-          healthStatus.memoryTotalMb = (navMem * 1024).toFixed(0)
+          healthStatus.memoryTotalMb = Math.round(navMem * 1024)
           healthStatus.memoryPercent = Math.round((bytes / 1024 / 1024) / (navMem * 1024) * 100)
         } else {
-          healthStatus.memoryTotalMb = '4096'
+          healthStatus.memoryTotalMb = 4096
           healthStatus.memoryPercent = Math.round((bytes / 1024 / 1024) / 4096 * 100)
         }
       }
@@ -1130,9 +993,9 @@ async function exportLogs() {
     a.download = `audit_log_${Date.now()}.json`
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('日志导出成功')
+    ElMessage.success(t('settings.exportSuccess'))
   } catch (e) {
-    ElMessage.error('日志导出失败')
+    ElMessage.error(t('settings.exportFailed'))
   } finally {
     exporting.value = false
   }
@@ -1140,14 +1003,14 @@ async function exportLogs() {
 
 async function clearLogs() {
   try {
-    await ElMessageBox.confirm('确定要清空所有操作日志吗？此操作不可恢复。', '警告', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('settings.clearConfirmMsg'), t('settings.clearConfirmTitle'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning',
     })
 
     const res = await axios.delete('/api/v1/user-sovereignty/audit-log/clear')
-    ElMessage.success(`已清空 ${res.data.data.cleared_entries} 条日志`)
+    ElMessage.success(t('settings.clearSuccess', { count: res.data.data.cleared_entries }))
     loadAuditLogs()
     loadStatistics()
   } catch (e) {
@@ -1161,26 +1024,27 @@ function viewLogDetail(row: any) {
 }
 
 function formatTimestamp(ts: number): string {
-  return new Date(ts).toLocaleString('zh-CN')
+  const locale = currentLocale.value === 'en' ? 'en-US' : 'zh-CN'
+  return new Date(ts).toLocaleString(locale)
 }
 
 function getModuleName(module: string): string {
   const names: Record<string, string> = {
-    lnn_predict: 'LNN预测',
-    lnn_train: 'LNN训练',
-    process_optimize: '工艺优化',
-    tool_wear_analyze: '刀具磨损分析',
-    cad_generate: 'CAD生成',
+    lnn_predict: t('settings.lnnPredict'),
+    lnn_train: t('settings.lnnTrain'),
+    process_optimize: t('settings.processOptimize'),
+    tool_wear_analyze: t('settings.toolWearAnalyze'),
+    cad_generate: t('settings.cadGenerate'),
   }
   return names[module] || module
 }
 
 function getDecisionName(decision: string): string {
   const names: Record<string, string> = {
-    accept: '接受',
-    modify: '修改',
-    reject: '拒绝',
-    auto_executed: '自动执行',
+    accept: t('settings.accept'),
+    modify: t('settings.modify'),
+    reject: t('settings.reject'),
+    auto_executed: t('settings.autoExecuted'),
   }
   return names[decision] || decision
 }
@@ -1194,10 +1058,10 @@ function getDecisionType(decision: string): 'success' | 'warning' | 'danger' | '
 
 function getStatusName(status: string): string {
   const names: Record<string, string> = {
-    success: '成功',
-    failed: '失败',
-    cancelled: '已取消',
-    pending: '待处理',
+    success: t('common.success'),
+    failed: t('common.failed'),
+    cancelled: t('common.cancelled'),
+    pending: t('common.pending'),
   }
   return names[status] || status
 }
@@ -1261,7 +1125,7 @@ async function loadAgentTokens() {
 
 async function createAgentToken() {
   if (newTokenForm.scopes.length === 0) {
-    ElMessage.warning('请至少选择一个权限范围')
+    ElMessage.warning(t('settings.selectScopeHint'))
     return
   }
 
@@ -1279,10 +1143,10 @@ async function createAgentToken() {
     createdToken.value = res.data.data
     showCreatedTokenDialog.value = true
     showCreateTokenDialog.value = false
-    ElMessage.success('Token 创建成功，请务必保存')
+    ElMessage.success(t('settings.tokenCreatedSuccess'))
     loadAgentTokens()
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || '创建Token失败')
+    ElMessage.error(e.response?.data?.message || t('settings.saveFailed'))
   } finally {
     creatingToken.value = false
   }
@@ -1290,18 +1154,18 @@ async function createAgentToken() {
 
 async function revokeToken(agentId: string) {
   try {
-    await ElMessageBox.confirm('确定要撤销此 Token 吗？撤销后不可恢复。', '警告', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('settings.revokeConfirmMsg'), t('settings.revokeConfirmTitle'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning',
     })
 
     await axios.delete(`/api/agent/v1/tokens/${agentId}`)
-    ElMessage.success('Token 已撤销')
+    ElMessage.success(t('settings.revokeSuccess'))
     loadAgentTokens()
   } catch (e: any) {
     if (e !== 'cancel') {
-      ElMessage.error('撤销Token失败')
+      ElMessage.error(t('settings.revokeFailed'))
     }
   }
 }
@@ -1309,22 +1173,22 @@ async function revokeToken(agentId: string) {
 async function revokeAllTTokens() {
   try {
     await ElMessageBox.confirm(
-      '确定要撤销所有包含 T 类权限的 Token 吗？此操作为紧急停止，将立即中止所有 T 类 Token 的访问权限。',
-      '紧急停止确认',
+      t('settings.emergencyStopMsg'),
+      t('settings.emergencyStopTitle'),
       {
-        confirmButtonText: '确定撤销',
-        cancelButtonText: '取消',
+        confirmButtonText: t('settings.emergencyStopConfirm'),
+        cancelButtonText: t('common.cancel'),
         type: 'error',
       }
     )
 
     revokingT.value = true
     const res = await axios.post('/api/agent/v1/tokens/revoke-t-all')
-    ElMessage.success(`已撤销 ${res.data.data.revoked_count} 个 T 类 Token`)
+    ElMessage.success(t('settings.revokeSuccessCount', { count: res.data.data.revoked_count }))
     loadAgentTokens()
   } catch (e: any) {
     if (e !== 'cancel') {
-      ElMessage.error('撤销T类Token失败')
+      ElMessage.error(t('settings.revokeTFailed'))
     }
   } finally {
     revokingT.value = false
@@ -1349,23 +1213,16 @@ function getScopeType(scope: string): 'success' | 'warning' | 'danger' | 'info' 
 }
 
 function getScopeName(scope: string): string {
-  const names: Record<string, string> = {
-    R: '读取',
-    W: '写入',
-    B: '训练',
-    N: '通知',
-    C: '管理',
-    T: '执行',
-  }
-  return names[scope] || scope
+  const key = `settings.getScopeName_${scope}` as const
+  return t(key as any) || scope
 }
 
 function copyTokenToClipboard(token: string) {
   if (token && navigator.clipboard) {
     navigator.clipboard.writeText(token).then(() => {
-      ElMessage.success('Token 已复制到剪贴板')
+      ElMessage.success(t('settings.copySuccess'))
     }).catch(() => {
-      ElMessage.error('复制失败，请手动复制')
+      ElMessage.error(t('settings.copyFailed'))
     })
   }
 }

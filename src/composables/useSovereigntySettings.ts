@@ -1,5 +1,4 @@
 import { reactive, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
 
 interface SovereigntySettings {
   ai_autonomy_level: number
