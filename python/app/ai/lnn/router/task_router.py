@@ -4,6 +4,7 @@ Task Router Module
 Implements hybrid rule-based and machine learning decision algorithm for
 automatic optimal inference engine selection based on task characteristics.
 """
+
 import json
 import time
 import yaml
@@ -22,6 +23,7 @@ from app.ai.lnn.core import (
 @dataclass
 class TaskFeatures:
     """任务特征向量"""
+
     complexity_score: float = 0.0
     computation_intensity: float = 0.0
     logic_depth: float = 0.0
@@ -128,11 +130,15 @@ class ScoringModel:
 
         self.feature_importance = dict(self.DEFAULT_FEATURE_IMPORTANCE)
 
-    def _load_weights_from_config(self, config_path: str) -> Dict[str, Dict[EngineType, float]]:
+    def _load_weights_from_config(
+        self, config_path: str
+    ) -> Dict[str, Dict[EngineType, float]]:
         """从配置文件加载权重"""
         path = Path(config_path)
         if not path.exists():
-            raise FileNotFoundError(f"任务路由配置失败：找不到权重配置文件 '{config_path}'。可能原因：1) 配置文件路径错误；2) 配置文件尚未创建。请检查路由配置中的路径设置，或创建新的权重配置文件（JSON/YAML 格式）。")
+            raise FileNotFoundError(
+                f"任务路由配置失败：找不到权重配置文件 '{config_path}'。可能原因：1) 配置文件路径错误；2) 配置文件尚未创建。请检查路由配置中的路径设置，或创建新的权重配置文件（JSON/YAML 格式）。"
+            )
 
         with open(path, "r", encoding="utf-8") as f:
             if path.suffix in (".yaml", ".yml"):
@@ -140,10 +146,14 @@ class ScoringModel:
             elif path.suffix == ".json":
                 raw = json.load(f)
             else:
-                raise ValueError(f"任务路由配置失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请将配置转换为支持的格式，或检查文件扩展名是否正确。")
+                raise ValueError(
+                    f"任务路由配置失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请将配置转换为支持的格式，或检查文件扩展名是否正确。"
+                )
 
         if "weights" not in raw:
-            raise KeyError("任务路由配置解析失败：配置文件中缺少必需的 'weights' 字段。'weights' 字段定义各引擎（LNN、规则引擎、ML 模型）的权重分配，格式为 {\"lnn\": 0.6, \"rule\": 0.3, \"ml\": 0.1}。请检查并补充配置文件。")
+            raise KeyError(
+                '任务路由配置解析失败：配置文件中缺少必需的 \'weights\' 字段。\'weights\' 字段定义各引擎（LNN、规则引擎、ML 模型）的权重分配，格式为 {"lnn": 0.6, "rule": 0.3, "ml": 0.1}。请检查并补充配置文件。'
+            )
 
         weights: Dict[str, Dict[EngineType, float]] = {}
         for feature_name, engine_weights_raw in raw["weights"].items():
@@ -175,7 +185,9 @@ class ScoringModel:
         if feature not in self.weights:
             raise KeyError(f"无效的特征名称: {feature}")
         if engine not in self.weights[feature]:
-            raise KeyError(f"引擎路由映射失败：无效的引擎类型 '{engine}'。支持的引擎类型可通过 task_router.AVAILABLE_ENGINES 查看。请检查配置中的 engine 参数。")
+            raise KeyError(
+                f"引擎路由映射失败：无效的引擎类型 '{engine}'。支持的引擎类型可通过 task_router.AVAILABLE_ENGINES 查看。请检查配置中的 engine 参数。"
+            )
         self.weights[feature][engine] = float(weight)
 
     def save_config(self, config_path: str) -> None:
@@ -203,7 +215,9 @@ class ScoringModel:
             elif path.suffix == ".json":
                 json.dump(data, f, indent=2, ensure_ascii=False)
             else:
-                raise ValueError(f"任务路由配置保存失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请更改文件扩展名为支持的格式后重试。")
+                raise ValueError(
+                    f"任务路由配置保存失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请更改文件扩展名为支持的格式后重试。"
+                )
 
     def predict_scores(self, features: TaskFeatures) -> Dict[EngineType, float]:
         """
@@ -252,28 +266,77 @@ class TaskRouter:
 
     # 规则引擎关键词映射
     RULE_KEYWORDS = [
-        "if", "then", "else", "rule", "条件", "规则", "判断",
-        "阈值", "threshold", "validation", "验证", "check", "检查",
+        "if",
+        "then",
+        "else",
+        "rule",
+        "条件",
+        "规则",
+        "判断",
+        "阈值",
+        "threshold",
+        "validation",
+        "验证",
+        "check",
+        "检查",
     ]
 
     # LLM任务关键词映射
     LLM_KEYWORDS = [
-        "explain", "解释", "summarize", "总结", "translate", "翻译",
-        "generate", "生成", "write", "写", "analyze sentiment", "情感分析",
-        "conversation", "对话", "chat", "问答", "question", "问题",
+        "explain",
+        "解释",
+        "summarize",
+        "总结",
+        "translate",
+        "翻译",
+        "generate",
+        "生成",
+        "write",
+        "写",
+        "analyze sentiment",
+        "情感分析",
+        "conversation",
+        "对话",
+        "chat",
+        "问答",
+        "question",
+        "问题",
     ]
 
     # 时序任务关键词
     TEMPORAL_KEYWORDS = [
-        "time series", "时序", "predict", "预测", "forecast", "预报",
-        "trend", "趋势", "sequence", "序列", "temporal", "时间",
-        "history", "历史", "future", "未来",
+        "time series",
+        "时序",
+        "predict",
+        "预测",
+        "forecast",
+        "预报",
+        "trend",
+        "趋势",
+        "sequence",
+        "序列",
+        "temporal",
+        "时间",
+        "history",
+        "历史",
+        "future",
+        "未来",
     ]
 
     # 多模态任务关键词
     MULTIMODAL_KEYWORDS = [
-        "image", "图像", "vision", "视觉", "multimodal", "多模态",
-        "picture", "图片", "photo", "照片", "combined", "组合",
+        "image",
+        "图像",
+        "vision",
+        "视觉",
+        "multimodal",
+        "多模态",
+        "picture",
+        "图片",
+        "photo",
+        "照片",
+        "combined",
+        "组合",
     ]
 
     def __init__(
@@ -389,7 +452,11 @@ class TaskRouter:
 
         # 时间敏感性
         features.time_sensitivity = task.time_sensitivity
-        if "real-time" in description or "实时" in description or "urgent" in description:
+        if (
+            "real-time" in description
+            or "实时" in description
+            or "urgent" in description
+        ):
             features.time_sensitivity = max(features.time_sensitivity, 0.9)
 
         # 数据结构化程度
@@ -399,7 +466,9 @@ class TaskRouter:
         features.precision_requirement = task.precision_requirement
 
         # 计算密集度
-        features.computation_intensity = self._estimate_computation_intensity(description)
+        features.computation_intensity = self._estimate_computation_intensity(
+            description
+        )
 
         # 时序成分检测
         features.has_temporal_component = any(
@@ -413,7 +482,8 @@ class TaskRouter:
 
         # 可解释性需求
         features.requires_explainability = any(
-            kw in description for kw in ["explain", "解释", "why", "为什么", "reason", "原因"]
+            kw in description
+            for kw in ["explain", "解释", "why", "为什么", "reason", "原因"]
         )
 
         return features
@@ -498,10 +568,9 @@ class TaskRouter:
         """
         combined = {}
         for engine in EngineType:
-            combined[engine] = (
-                self.rule_weight * rule_scores.get(engine, 0)
-                + self.ml_weight * ml_scores.get(engine, 0)
-            )
+            combined[engine] = self.rule_weight * rule_scores.get(
+                engine, 0
+            ) + self.ml_weight * ml_scores.get(engine, 0)
 
         # 归一化
         total = sum(combined.values())
@@ -510,9 +579,15 @@ class TaskRouter:
 
         return combined
 
-    def _select_model(self, engine: EngineType, features: TaskFeatures) -> Optional[str]:
+    def _select_model(
+        self, engine: EngineType, features: TaskFeatures
+    ) -> Optional[str]:
         if engine == EngineType.LNN:
-            return ModelType.LTC.value if features.has_temporal_component else ModelType.CFC.value
+            return (
+                ModelType.LTC.value
+                if features.has_temporal_component
+                else ModelType.CFC.value
+            )
         elif engine == EngineType.HYBRID:
             return ModelType.HYBRID_LNN.value
         elif engine == EngineType.LLM:
@@ -604,28 +679,48 @@ class TaskRouter:
         alternatives = []
         for engine, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
             if engine != selected:
-                alternatives.append({
-                    "engine": engine.value,
-                    "score": round(score, 4),
-                })
+                alternatives.append(
+                    {
+                        "engine": engine.value,
+                        "score": round(score, 4),
+                    }
+                )
         return alternatives[:2]  # 最多返回2个备选
 
     def _estimate_structure_ratio(self, description: str) -> float:
         """估计数据的结构化程度"""
         structure_indicators = [
-            "table", "csv", "json", "database", "column", "row",
-            "表格", "结构化", "字段",
+            "table",
+            "csv",
+            "json",
+            "database",
+            "column",
+            "row",
+            "表格",
+            "结构化",
+            "字段",
         ]
-        indicator_count = sum(1 for kw in structure_indicators if kw in description.lower())
+        indicator_count = sum(
+            1 for kw in structure_indicators if kw in description.lower()
+        )
         return min(1.0, indicator_count / 5)
 
     def _estimate_computation_intensity(self, description: str) -> float:
         """估计计算密集度"""
         high_compute_keywords = [
-            "complex", "计算", "intensive", "optimization", "优化",
-            "simulation", "模拟", "large-scale", "大规模",
+            "complex",
+            "计算",
+            "intensive",
+            "optimization",
+            "优化",
+            "simulation",
+            "模拟",
+            "large-scale",
+            "大规模",
         ]
-        keyword_count = sum(1 for kw in high_compute_keywords if kw in description.lower())
+        keyword_count = sum(
+            1 for kw in high_compute_keywords if kw in description.lower()
+        )
         return min(1.0, keyword_count / 4)
 
     def get_decision_stats(self) -> Dict[str, Any]:

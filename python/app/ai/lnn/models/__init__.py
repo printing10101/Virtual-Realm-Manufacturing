@@ -1,4 +1,5 @@
 """LNN Models Package"""
+
 from .base_lnn import BaseLNNModel
 from .cfc_model import CFCModel
 from .ltc_model import LTCModel

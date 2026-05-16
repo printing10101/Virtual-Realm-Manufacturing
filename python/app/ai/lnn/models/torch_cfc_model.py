@@ -4,6 +4,7 @@ CFC (Circuit Foremost Network) Model
 Avoids traditional ODE solvers, achieving 160x faster inference than LSTM.
 Core mechanism: continuous liquid state updates without discrete time step discretization.
 """
+
 import torch
 import torch.nn as nn
 from typing import Tuple, Optional
@@ -46,7 +47,9 @@ class CFCLayer(nn.Module):
                 nn.init.xavier_uniform_(module.weight)
                 nn.init.zeros_(module.bias)
 
-    def forward(self, x: torch.Tensor, h: torch.Tensor, dt: float = 0.0) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, h: torch.Tensor, dt: float = 0.0
+    ) -> torch.Tensor:
         """
         Compute liquid state update
 
@@ -70,7 +73,7 @@ class CFCLayer(nn.Module):
 class CFCModel(BaseLNN):
     """
     CFC model inheriting from BaseLNN.
-    
+
     Features:
     - No ODE solver required
     - 160x faster inference than LSTM

@@ -3,6 +3,7 @@ LNN训练模块使用示例
 
 展示如何使用BoschCNCDataset、LNNTrainer和LNNEvaluator
 """
+
 import torch
 from torch.utils.data import DataLoader
 from app.ai.lnn.training import BoschCNCDataset, LNNTrainer, LNNEvaluator
@@ -10,7 +11,7 @@ from app.ai.lnn.training import BoschCNCDataset, LNNTrainer, LNNEvaluator
 
 def example_training():
     """完整训练流程示例"""
-    
+
     # 1. 创建数据集
     dataset = BoschCNCDataset(
         hdf5_path="data/bosch_cnc.hdf5",
@@ -19,7 +20,7 @@ def example_training():
         fs=1000.0,
         cache_data=True,
     )
-    
+
     # 2. 划分数据集
     train_dataset, val_dataset, test_dataset = dataset.split(
         train_ratio=0.7,
@@ -28,15 +29,15 @@ def example_training():
         shuffle=True,
         random_seed=42,
     )
-    
+
     # 3. 创建DataLoader
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-    
+
     # 4. 创建模型（使用示例模型）
     from app.ai.lnn.models.torch_cfc_model import CFCModel as TorchCFCModel
-    
+
     model_config = {
         "model_name": "ExampleModel",
         "input_dim": 9,
@@ -46,7 +47,7 @@ def example_training():
         "device": "cuda" if torch.cuda.is_available() else "cpu",
     }
     model = TorchCFCModel(**model_config)
-    
+
     # 5. 创建训练器
     trainer = LNNTrainer(
         model=model,
@@ -60,24 +61,24 @@ def example_training():
         lr_scheduler_params={"step_size": 30, "gamma": 0.1},
         device="cuda" if torch.cuda.is_available() else "cpu",
     )
-    
+
     # 6. 训练模型
     history = trainer.fit(train_loader, val_loader, epochs=100)
-    
+
     # 7. 保存检查点
     trainer.save_checkpoint("checkpoints/best_model.pth", metrics=history)
-    
+
     # 8. 创建评估器
     evaluator = LNNEvaluator(model, device=trainer.device)
-    
+
     # 9. 评估模型
     results = evaluator.evaluate(test_loader, task_type="classification")
-    
+
     # 10. 生成报告
     report = evaluator.generate_report(results)
     print(report)
     evaluator.save_report(results, "reports/evaluation_report.txt")
-    
+
     # 11. 特征重要性分析
     importance = evaluator.feature_importance(
         test_dataset._data,
@@ -89,14 +90,14 @@ def example_training():
 
 def example_data_augmentation():
     """数据增强示例"""
-    
+
     # 创建组合变换（仅用于示例）
     # transform = DataAugmentation.compose_transforms(
     #     lambda x: DataAugmentation.add_noise(x, noise_level=0.01),
     #     lambda x: DataAugmentation.time_shift(x, max_shift=10),
     #     lambda x: DataAugmentation.amplitude_scaling(x, scale_range=(0.8, 1.2)),
     # )
-    
+
     # 使用数据增强创建数据集（仅用于示例）
     # dataset = BoschCNCDataset(
     #     hdf5_path="data/bosch_cnc.hdf5",

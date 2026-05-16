@@ -8,6 +8,7 @@ LNN内存优化模块
 - 垃圾回收优化：智能触发gc
 - 内存监控：实时监控内存使用情况
 """
+
 import gc
 import time
 import psutil
@@ -19,6 +20,7 @@ from collections import OrderedDict
 
 try:
     import torch
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -29,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MemoryStats:
     """内存使用统计"""
+
     total_mb: float = 0.0
     available_mb: float = 0.0
     used_mb: float = 0.0
@@ -130,16 +133,18 @@ class LNNMemoryOptimizer:
         system_mem = psutil.virtual_memory()
 
         stats = MemoryStats(
-            total_mb=system_mem.total / (1024 ** 3),
-            available_mb=system_mem.available / (1024 ** 3),
-            used_mb=system_mem.used / (1024 ** 3),
-            process_mb=mem_info.rss / (1024 ** 2),
+            total_mb=system_mem.total / (1024**3),
+            available_mb=system_mem.available / (1024**3),
+            used_mb=system_mem.used / (1024**3),
+            process_mb=mem_info.rss / (1024**2),
         )
 
         if HAS_TORCH and torch.cuda.is_available():
-            stats.gpu_total_mb = torch.cuda.get_device_properties(0).total_mem_bytes / (1024 ** 2)
-            stats.gpu_used_mb = torch.cuda.memory_allocated(0) / (1024 ** 2)
-            stats.gpu_free_mb = torch.cuda.memory_reserved(0) / (1024 ** 2)
+            stats.gpu_total_mb = torch.cuda.get_device_properties(0).total_mem_bytes / (
+                1024**2
+            )
+            stats.gpu_used_mb = torch.cuda.memory_allocated(0) / (1024**2)
+            stats.gpu_free_mb = torch.cuda.memory_reserved(0) / (1024**2)
 
         self._historical_stats.append(stats)
         if len(self._historical_stats) > 1000:
@@ -190,7 +195,9 @@ class LNNMemoryOptimizer:
         else:
             for param in model.parameters():
                 param.requires_grad = True
-            logger.info("Gradient checkpointing not natively supported, using manual approach")
+            logger.info(
+                "Gradient checkpointing not natively supported, using manual approach"
+            )
 
     def unload_model_to_cpu(self, model: "torch.nn.Module") -> None:
         """
@@ -266,6 +273,8 @@ class LNNMemoryOptimizer:
 
             if stats.process_mb > self.gc_threshold_mb and self.enable_auto_gc:
                 self.optimize_memory()
-                logger.warning(f"High memory usage detected: {stats.process_mb:.0f}MB, auto-optimization triggered")
+                logger.warning(
+                    f"High memory usage detected: {stats.process_mb:.0f}MB, auto-optimization triggered"
+                )
 
             time.sleep(self.gc_check_interval)

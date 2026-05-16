@@ -3,6 +3,7 @@ BaseLNN Abstract Base Class
 
 Defines the unified interface for all PyTorch-based LNN models with hidden state management.
 """
+
 import torch
 import torch.nn as nn
 from abc import ABC, abstractmethod
@@ -57,7 +58,7 @@ class LNNConfig:
 class BaseLNN(nn.Module, ABC):
     """
     Abstract base class for all LNN models.
-    
+
     Inherits from both torch.nn.Module and ABC to provide
     both PyTorch functionality and abstract method enforcement.
     """
@@ -65,7 +66,11 @@ class BaseLNN(nn.Module, ABC):
     def __init__(self, config: LNNConfig):
         super().__init__()
         self.config = config
-        self.device = next(self.parameters()).device if len(list(self.parameters())) > 0 else torch.device("cpu")
+        self.device = (
+            next(self.parameters()).device
+            if len(list(self.parameters())) > 0
+            else torch.device("cpu")
+        )
         self.input_dim = config.input_size
         self.output_dim = config.output_size
         self.is_trained = False

@@ -4,6 +4,7 @@ Batch Inference Engine
 Implements asynchronous batch processing with concurrency control,
 dynamic batch sizing, and throughput monitoring.
 """
+
 import time
 from typing import Any, Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, Future
@@ -88,10 +89,16 @@ class BatchInferenceEngine:
 
         return future
 
-    def _process_batch_impl(self, data_list: List[Any], task_id: int) -> List[PredictionResult]:
+    def _process_batch_impl(
+        self, data_list: List[Any], task_id: int
+    ) -> List[PredictionResult]:
         """Internal batch processing implementation"""
         start_time = time.perf_counter()
-        batch_size = self._current_batch_size if self.enable_dynamic_batching else self.initial_batch_size
+        batch_size = (
+            self._current_batch_size
+            if self.enable_dynamic_batching
+            else self.initial_batch_size
+        )
 
         try:
             results = self.predictor.predict_batch(data_list, batch_size=batch_size)
@@ -106,7 +113,9 @@ class BatchInferenceEngine:
             self._update_stats(len(data_list), processing_time, success=False)
             raise
 
-    def _update_stats(self, count: int, processing_time_ms: float, success: bool) -> None:
+    def _update_stats(
+        self, count: int, processing_time_ms: float, success: bool
+    ) -> None:
         """Update inference statistics"""
         with self._lock:
             if success:
@@ -121,12 +130,14 @@ class BatchInferenceEngine:
                     self._stats["total_success"] / total_time_sec
                 )
 
-            self._time_window_stats.append({
-                "timestamp": time.time(),
-                "count": count,
-                "processing_time_ms": processing_time_ms,
-                "success": success,
-            })
+            self._time_window_stats.append(
+                {
+                    "timestamp": time.time(),
+                    "count": count,
+                    "processing_time_ms": processing_time_ms,
+                    "success": success,
+                }
+            )
 
             while len(self._time_window_stats) > 10000:
                 self._time_window_stats.popleft()
@@ -185,13 +196,20 @@ class BatchInferenceEngine:
 
         window_items = [s for s in self._time_window_stats if s["timestamp"] >= cutoff]
         if not window_items:
-            return {"count": 0, "success": 0, "failed": 0, "throughput_samples_per_sec": 0.0}
+            return {
+                "count": 0,
+                "success": 0,
+                "failed": 0,
+                "throughput_samples_per_sec": 0.0,
+            }
 
         total_count = sum(s["count"] for s in window_items)
         success_count = sum(s["count"] for s in window_items if s["success"])
         failed_count = total_count - success_count
         total_time_ms = sum(s["processing_time_ms"] for s in window_items)
-        throughput = success_count / (total_time_ms / 1000.0) if total_time_ms > 0 else 0.0
+        throughput = (
+            success_count / (total_time_ms / 1000.0) if total_time_ms > 0 else 0.0
+        )
 
         return {
             "count": total_count,

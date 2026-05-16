@@ -4,6 +4,7 @@ Postprocessing module for LNN system.
 Provides structured result parsing, confidence computation,
 uncertainty assessment, and visualization interfaces.
 """
+
 import numpy as np
 import json
 from typing import Any, Dict, List, Optional
@@ -58,7 +59,11 @@ class ResultPostprocessor:
             InferenceResult 标准化推理结果
         """
         confidences = self._calculate_confidence(predictions)
-        uncertainty = self._calculate_uncertainty(predictions) if self.include_uncertainty else None
+        uncertainty = (
+            self._calculate_uncertainty(predictions)
+            if self.include_uncertainty
+            else None
+        )
 
         # 构建证据列表
         evidence = self._build_evidence(predictions, confidences)
@@ -66,14 +71,20 @@ class ResultPostprocessor:
         # 合并元数据
         result_metadata = metadata or {}
         if self.include_metadata:
-            result_metadata.update({
-                "timestamp": datetime.now().isoformat(),
-                "input_shape": list(input_data.shape) if hasattr(input_data, "shape") else None,
-                "prediction_shape": list(predictions.shape),
-            })
+            result_metadata.update(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "input_shape": list(input_data.shape)
+                    if hasattr(input_data, "shape")
+                    else None,
+                    "prediction_shape": list(predictions.shape),
+                }
+            )
 
         return InferenceResult(
-            prediction=predictions.tolist() if hasattr(predictions, "tolist") else predictions,
+            prediction=predictions.tolist()
+            if hasattr(predictions, "tolist")
+            else predictions,
             confidence=float(np.mean(confidences)),
             engine_used=engine,
             model_used=model_name,
@@ -138,7 +149,9 @@ class ResultPostprocessor:
             "confidence_variance": float(np.var(np.max(softmax_preds, axis=1))),
         }
 
-    def _build_evidence(self, predictions: np.ndarray, confidences: np.ndarray) -> List[Dict[str, Any]]:
+    def _build_evidence(
+        self, predictions: np.ndarray, confidences: np.ndarray
+    ) -> List[Dict[str, Any]]:
         """
         构建支持证据列表
 
@@ -154,19 +167,25 @@ class ResultPostprocessor:
             if hasattr(pred, "__iter__") and len(pred) > 1:
                 top_class = int(np.argmax(pred))
                 top_score = float(np.max(pred))
-                evidence.append({
-                    "sample_index": i,
-                    "predicted_class": top_class,
-                    "confidence": float(conf),
-                    "score": top_score,
-                    "top_k_classes": self._get_top_k(pred, k=3),
-                })
+                evidence.append(
+                    {
+                        "sample_index": i,
+                        "predicted_class": top_class,
+                        "confidence": float(conf),
+                        "score": top_score,
+                        "top_k_classes": self._get_top_k(pred, k=3),
+                    }
+                )
             else:
-                evidence.append({
-                    "sample_index": i,
-                    "prediction": float(pred) if hasattr(pred, "__iter__") else pred,
-                    "confidence": float(conf),
-                })
+                evidence.append(
+                    {
+                        "sample_index": i,
+                        "prediction": float(pred)
+                        if hasattr(pred, "__iter__")
+                        else pred,
+                        "confidence": float(conf),
+                    }
+                )
         return evidence
 
     @staticmethod

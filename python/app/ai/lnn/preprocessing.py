@@ -4,6 +4,7 @@ Data preprocessing module for LNN system.
 Provides automated feature extraction, normalization, outlier detection,
 and handling for multi-modal inputs (numeric, categorical, text, image).
 """
+
 import numpy as np
 from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum
@@ -154,7 +155,9 @@ class DataPreprocessor:
                 values = X[:, col].copy()
                 for i in range(1, len(values)):
                     if np.isnan(values[i]):
-                        values[i] = values[i - 1] if not np.isnan(values[i - 1]) else 0.0
+                        values[i] = (
+                            values[i - 1] if not np.isnan(values[i - 1]) else 0.0
+                        )
                 X[:, col] = values
             elif self.missing_strategy == "mean":
                 fill_value = np.nanmean(X[:, col])
@@ -182,16 +185,25 @@ class DataPreprocessor:
         outlier_count = 0
 
         if self.outlier_method == "z_score":
+            means = self.mean_ if self.is_fitted and self.mean_ is not None else None
+            stds = self.std_ if self.is_fitted and self.std_ is not None else None
+
             for col in range(X.shape[1]):
                 col_data = X[:, col]
-                z_scores = np.abs((col_data - np.mean(col_data)) / (np.std(col_data) + 1e-10))
+                col_mean = means[col] if means is not None else np.mean(col_data)
+                col_std = stds[col] if stds is not None else np.std(col_data)
+
+                z_scores = np.abs(
+                    (col_data - col_mean) / (col_std + 1e-10)
+                )
                 outlier_mask = z_scores > self.outlier_threshold
                 outlier_count += int(np.sum(outlier_mask))
 
-                # Winsorization: 截断到阈值边界
-                lower_bound = np.mean(col_data) - self.outlier_threshold * np.std(col_data)
-                upper_bound = np.mean(col_data) + self.outlier_threshold * np.std(col_data)
-                X[outlier_mask, col] = np.clip(X[outlier_mask, col], lower_bound, upper_bound)
+                lower_bound = col_mean - self.outlier_threshold * col_std
+                upper_bound = col_mean + self.outlier_threshold * col_std
+                X[outlier_mask, col] = np.clip(
+                    X[outlier_mask, col], lower_bound, upper_bound
+                )
 
         elif self.outlier_method == "iqr":
             for col in range(X.shape[1]):
@@ -206,7 +218,9 @@ class DataPreprocessor:
                 outlier_mask = (col_data < lower_bound) | (col_data > upper_bound)
                 outlier_count += int(np.sum(outlier_mask))
 
-                X[outlier_mask, col] = np.clip(X[outlier_mask, col], lower_bound, upper_bound)
+                X[outlier_mask, col] = np.clip(
+                    X[outlier_mask, col], lower_bound, upper_bound
+                )
 
         return X, outlier_count
 
@@ -238,7 +252,9 @@ class DataPreprocessor:
             原始尺度数据
         """
         if not self.is_fitted:
-            raise RuntimeError("数据预处理失败：预处理器尚未完成拟合（fit），无法执行逆变换（inverse_transform）。预处理器必须先通过 fit() 方法在训练数据上进行拟合，才能使用 inverse_transform()。请先调用 preprocessor.fit(X_train) 完成拟合。")
+            raise RuntimeError(
+                "数据预处理失败：预处理器尚未完成拟合（fit），无法执行逆变换（inverse_transform）。预处理器必须先通过 fit() 方法在训练数据上进行拟合，才能使用 inverse_transform()。请先调用 preprocessor.fit(X_train) 完成拟合。"
+            )
 
         if self.normalization == NormalizationMethod.Z_SCORE:
             return X * self.std_ + self.mean_
@@ -268,7 +284,9 @@ class DataPreprocessor:
         return np.array(features)
 
     @staticmethod
-    def encode_categorical(categories: List[str], vocabulary: Optional[List[str]] = None) -> Tuple[np.ndarray, List[str]]:
+    def encode_categorical(
+        categories: List[str], vocabulary: Optional[List[str]] = None
+    ) -> Tuple[np.ndarray, List[str]]:
         """
         类别特征编码（One-Hot）
 

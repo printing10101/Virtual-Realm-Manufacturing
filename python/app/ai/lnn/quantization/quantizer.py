@@ -11,13 +11,13 @@ Features:
 - Quantized model save/load
 - Performance evaluation (size, speed, memory, accuracy)
 """
+
 import os
 import time
 import json
 import logging
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass, field, asdict
 
 import numpy as np
@@ -47,14 +47,17 @@ try:
     # Parse semantic version: major.minor.patch
     _version_parts = _torch_version.split(".")
     _major_version = int(_version_parts[0]) if _version_parts[0].isdigit() else 0
-    _minor_version = int(_version_parts[1]) if len(_version_parts) > 1 and _version_parts[1].isdigit() else 0
+    _minor_version = (
+        int(_version_parts[1])
+        if len(_version_parts) > 1 and _version_parts[1].isdigit()
+        else 0
+    )
 
     # torch.quantization introduced in PyTorch 1.3
     # API stable across 1.3-1.10 and backward compatible in 2.x
     _version_supported = (
-        (_major_version == 1 and _minor_version >= 3) or
-        _major_version >= 2
-    )
+        _major_version == 1 and _minor_version >= 3
+    ) or _major_version >= 2
 
     if _all_callable and _version_supported:
         HAS_TORCH_QUANTIZATION = True
@@ -75,8 +78,7 @@ if not HAS_TORCH_QUANTIZATION and TORCH_QUANTIZATION_ERROR:
     logger.warning("PyTorch quantization not available: %s", TORCH_QUANTIZATION_ERROR)
 else:
     logger.debug(
-        "PyTorch quantization available (version=%s)",
-        TORCH_QUANTIZATION_VERSION
+        "PyTorch quantization available (version=%s)", TORCH_QUANTIZATION_VERSION
     )
 
 
@@ -88,6 +90,7 @@ class QuantizationType(str, Enum):
 @dataclass
 class QuantizationConfig:
     """Configuration for model quantization"""
+
     quantization_type: QuantizationType = QuantizationType.DYNAMIC
     target_dtype: str = "qint8"
     target_layers: List[str] = field(default_factory=lambda: ["Linear"])
@@ -111,6 +114,7 @@ class QuantizationConfig:
 @dataclass
 class QuantizationResult:
     """Results of model quantization"""
+
     model_name: str
     quantization_type: QuantizationType
     original_size_bytes: int = 0
@@ -130,7 +134,9 @@ class QuantizationResult:
         result = asdict(self)
         result["quantization_type"] = self.quantization_type.value
         result["size_reduction_percent"] = (
-            (1.0 - self.compression_ratio) * 100.0 if self.compression_ratio > 0 else 0.0
+            (1.0 - self.compression_ratio) * 100.0
+            if self.compression_ratio > 0
+            else 0.0
         )
         result["speedup_percent"] = (
             (self.speedup_ratio - 1.0) * 100.0 if self.speedup_ratio > 0 else 0.0
@@ -171,9 +177,13 @@ class Quantizer:
         self.config = config or QuantizationConfig()
         self.logger = logging.getLogger(__name__)
 
-    def dynamic_quantize(self, model: nn.Module, calibration_data: Optional[Any] = None) -> nn.Module:
+    def dynamic_quantize(
+        self, model: nn.Module, calibration_data: Optional[Any] = None
+    ) -> nn.Module:
         if not HAS_TORCH_QUANTIZATION:
-            raise RuntimeError("模型量化失败：当前环境中不可用 PyTorch 量化模块。可能原因：1) PyTorch 未安装或版本不兼容；2) 使用了不支持量化的 PyTorch 构建版本。请确认已安装完整 PyTorch（pip install torch），并检查 PyTorch 版本是否与量化 API 兼容。")
+            raise RuntimeError(
+                "模型量化失败：当前环境中不可用 PyTorch 量化模块。可能原因：1) PyTorch 未安装或版本不兼容；2) 使用了不支持量化的 PyTorch 构建版本。请确认已安装完整 PyTorch（pip install torch），并检查 PyTorch 版本是否与量化 API 兼容。"
+            )
 
         self.logger.info("Starting dynamic quantization")
         model.eval()
@@ -196,10 +206,14 @@ class Quantizer:
 
     def static_quantize(self, model: nn.Module, calibration_data: Any) -> nn.Module:
         if not HAS_TORCH_QUANTIZATION:
-            raise RuntimeError("静态量化失败：当前环境中不可用 PyTorch 量化模块。可能原因：1) PyTorch 未安装或版本不兼容；2) 使用了不支持量化的 PyTorch 构建版本。请确认已安装完整 PyTorch（pip install torch），并检查 PyTorch 版本是否与量化 API 兼容。")
+            raise RuntimeError(
+                "静态量化失败：当前环境中不可用 PyTorch 量化模块。可能原因：1) PyTorch 未安装或版本不兼容；2) 使用了不支持量化的 PyTorch 构建版本。请确认已安装完整 PyTorch（pip install torch），并检查 PyTorch 版本是否与量化 API 兼容。"
+            )
 
         if calibration_data is None:
-            raise ValueError("静态量化失败：缺少校准数据集。静态量化需要代表性校准数据来估计激活值范围。请提供至少 100 个样本的校准数据集（numpy array 或 torch tensor），并通过 'calibration_data' 参数传入。")
+            raise ValueError(
+                "静态量化失败：缺少校准数据集。静态量化需要代表性校准数据来估计激活值范围。请提供至少 100 个样本的校准数据集（numpy array 或 torch tensor），并通过 'calibration_data' 参数传入。"
+            )
 
         self.logger.info("Starting static quantization with calibration")
         model.eval()
@@ -266,7 +280,9 @@ class Quantizer:
 
                 samples_processed += batch.shape[0]
 
-        self.logger.info(f"Calibration completed: {samples_processed} samples processed")
+        self.logger.info(
+            f"Calibration completed: {samples_processed} samples processed"
+        )
 
     def save_quantized_model(
         self,
@@ -296,7 +312,9 @@ class Quantizer:
         config: Any,
     ) -> nn.Module:
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"量化模型加载失败：找不到模型文件 '{model_path}'。可能原因：1) 模型尚未量化保存；2) 文件路径错误或文件已被删除/移动。请确认路径是否正确，或先调用量化流程生成模型文件。")
+            raise FileNotFoundError(
+                f"量化模型加载失败：找不到模型文件 '{model_path}'。可能原因：1) 模型尚未量化保存；2) 文件路径错误或文件已被删除/移动。请确认路径是否正确，或先调用量化流程生成模型文件。"
+            )
 
         model = model_class(config)
         model.eval()
@@ -322,7 +340,11 @@ class Quantizer:
         elif isinstance(test_data, torch.Tensor):
             test_tensor = test_data
         else:
-            raise ValueError("测试数据评估失败：'test_data' 参数必须为 numpy 数组（np.ndarray）或 PyTorch 张量（torch.Tensor）。当前类型：{0}。请检查数据类型转换逻辑，确保输入为数值型张量。".format(type(test_data).__name__))
+            raise ValueError(
+                "测试数据评估失败：'test_data' 参数必须为 numpy 数组（np.ndarray）或 PyTorch 张量（torch.Tensor）。当前类型：{0}。请检查数据类型转换逻辑，确保输入为数值型张量。".format(
+                    type(test_data).__name__
+                )
+            )
 
         if test_tensor.dim() == 1:
             test_tensor = test_tensor.unsqueeze(0)
@@ -332,7 +354,7 @@ class Quantizer:
         original_times = []
         with torch.no_grad():
             for i in range(len(test_tensor)):
-                sample = test_tensor[i:i+1]
+                sample = test_tensor[i : i + 1]
                 start = time.perf_counter()
                 _ = original_model(sample)
                 elapsed = (time.perf_counter() - start) * 1000
@@ -343,7 +365,7 @@ class Quantizer:
         quantized_times = []
         with torch.no_grad():
             for i in range(len(test_tensor)):
-                sample = test_tensor[i:i+1]
+                sample = test_tensor[i : i + 1]
                 start = time.perf_counter()
                 _ = quantized_model(sample)
                 elapsed = (time.perf_counter() - start) * 1000
@@ -357,7 +379,9 @@ class Quantizer:
         quantized_size = original_size // 4 if original_size > 0 else 0
 
         compression_ratio = 0.25 if original_size > 0 else 0.0
-        speedup_ratio = original_avg_time / quantized_avg_time if quantized_avg_time > 0 else 1.0
+        speedup_ratio = (
+            original_avg_time / quantized_avg_time if quantized_avg_time > 0 else 1.0
+        )
 
         result = QuantizationResult(
             model_name=getattr(original_model, "model_name", "unknown"),
@@ -390,10 +414,14 @@ class Quantizer:
             quantized_model = self.dynamic_quantize(model, calibration_data)
         elif self.config.quantization_type == QuantizationType.STATIC:
             if calibration_data is None:
-                raise ValueError("量化流程执行失败：'STATIC' 量化模式缺少校准数据。可能原因：调用量化 API 时未传入 calibration_data 参数。解决方案：1) 提供代表性校准数据集；或 2) 将 quantization_type 改为 'DYNAMIC' 模式（无需校准数据）。")
+                raise ValueError(
+                    "量化流程执行失败：'STATIC' 量化模式缺少校准数据。可能原因：调用量化 API 时未传入 calibration_data 参数。解决方案：1) 提供代表性校准数据集；或 2) 将 quantization_type 改为 'DYNAMIC' 模式（无需校准数据）。"
+                )
             quantized_model = self.static_quantize(model, calibration_data)
         else:
-            raise ValueError(f"量化流程执行失败：未知的量化类型 '{self.config.quantization_type}'。支持的量化类型为：DYNAMIC（动态量化，无需校准数据）、STATIC（静态量化，需要校准数据）。请检查 QuantizationConfig.quantization_type 配置值。")
+            raise ValueError(
+                f"量化流程执行失败：未知的量化类型 '{self.config.quantization_type}'。支持的量化类型为：DYNAMIC（动态量化，无需校准数据）、STATIC（静态量化，需要校准数据）。请检查 QuantizationConfig.quantization_type 配置值。"
+            )
 
         quantization_time = time.perf_counter() - start_time
 
@@ -411,11 +439,13 @@ class Quantizer:
 
         if save_path:
             meta = metadata or {}
-            meta.update({
-                "quantization_type": self.config.quantization_type.value,
-                "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "original_model": getattr(model, "model_name", "unknown"),
-            })
+            meta.update(
+                {
+                    "quantization_type": self.config.quantization_type.value,
+                    "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "original_model": getattr(model, "model_name", "unknown"),
+                }
+            )
             self.save_quantized_model(quantized_model, save_path, meta)
             result.quantized_model_path = save_path
             result.quantized_size_bytes = self.get_model_size(save_path)

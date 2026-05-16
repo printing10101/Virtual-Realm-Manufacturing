@@ -2,11 +2,12 @@
 LNN增强的切削参数智能决策Agent
 采用分层推理架构，根据置信度动态选择推理策略
 """
+
 from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class MaterialHardness(Enum):
     """材料硬度等级"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -94,7 +96,7 @@ class ParameterAgentLNN(BaseAgent):
     def __init__(self) -> None:
         super().__init__(
             name="ParameterAgentLNN",
-            description="基于LNN增强的切削参数智能决策Agent，采用分层推理架构"
+            description="基于LNN增强的切削参数智能决策Agent，采用分层推理架构",
         )
         self._lnn_predictor = None
         self._high_confidence_threshold = 0.8
@@ -117,41 +119,26 @@ class ParameterAgentLNN(BaseAgent):
         lnn_result = await self._lnn_predict(requirements)
 
         if lnn_result.confidence > self._high_confidence_threshold:
-            logger.info(
-                "LNN高置信度(%.3f)直接使用预测结果",
-                lnn_result.confidence
-            )
+            logger.info("LNN高置信度(%.3f)直接使用预测结果", lnn_result.confidence)
             final_params = lnn_result.parameters
-            validation = self._validate_parameters(
-                final_params, requirements
-            )
+            validation = self._validate_parameters(final_params, requirements)
         elif lnn_result.confidence > self._medium_confidence_threshold:
-            logger.info(
-                "LNN中置信度(%.3f)采用混合推理",
-                lnn_result.confidence
-            )
+            logger.info("LNN中置信度(%.3f)采用混合推理", lnn_result.confidence)
             final_params, validation = await self._hybrid_inference(
                 lnn_result, requirements
             )
         else:
-            logger.info(
-                "LNN低置信度(%.3f)降级到LLM推理",
-                lnn_result.confidence
-            )
+            logger.info("LNN低置信度(%.3f)降级到LLM推理", lnn_result.confidence)
             try:
                 final_params = await self._llm_inference(requirements)
-                validation = self._validate_parameters(
-                    final_params, requirements
-                )
+                validation = self._validate_parameters(final_params, requirements)
             except Exception as e:
                 logger.warning("LLM推理失败，降级到规则引擎: %s", e)
                 final_params = self._fallback_to_rules(requirements)
-                validation = self._validate_parameters(
-                    final_params, requirements
-                )
+                validation = self._validate_parameters(final_params, requirements)
 
-        context.cutting_parameters = final_params.dict()
-        context.verification_result = validation.dict()  # type: ignore
+        context.cutting_parameters = final_params.model_dump()
+        context.verification_result = validation.model_dump()
         context.stage_status = "completed"
 
         return context
@@ -171,6 +158,7 @@ class ParameterAgentLNN(BaseAgent):
         if self._lnn_predictor is None:
             try:
                 from app.ai.lnn.inference.registry import ModelRegistry
+
                 registry = ModelRegistry()
                 model_names = registry.list_models()
                 if model_names:
@@ -187,9 +175,9 @@ class ParameterAgentLNN(BaseAgent):
             features_np = np.array([features], dtype=np.float32)
             prediction = self._lnn_predictor.predict(features_np)
 
-            if hasattr(prediction, 'value'):
+            if hasattr(prediction, "value"):
                 pred_values = prediction.value
-                confidence = getattr(prediction, 'confidence', 0.7)
+                confidence = getattr(prediction, "confidence", 0.7)
             else:
                 pred_values = prediction
                 confidence = 0.7
@@ -201,18 +189,13 @@ class ParameterAgentLNN(BaseAgent):
             params.confidence = confidence
             params.source = ParameterSource.LNN
 
-            return LNNResult(
-                parameters=params,
-                confidence=confidence
-            )
+            return LNNResult(parameters=params, confidence=confidence)
         except Exception as e:
             logger.error("LNN预测失败: %s", e)
             return self._fallback_to_rules_result(requirements)
 
     async def _hybrid_inference(
-        self,
-        lnn_result: LNNResult,
-        requirements: Dict[str, Any]
+        self, lnn_result: LNNResult, requirements: Dict[str, Any]
     ) -> tuple[CuttingParameters, ValidationResult]:
         """
         融合LNN结果与LLM推理，优化参数
@@ -228,15 +211,11 @@ class ParameterAgentLNN(BaseAgent):
 
         llm_params = await self._llm_inference(requirements)
 
-        blended_params = self._blend_parameters(
-            lnn_params, llm_params, weight_lnn=0.6
-        )
+        blended_params = self._blend_parameters(lnn_params, llm_params, weight_lnn=0.6)
 
         validation = self._validate_parameters(blended_params, requirements)
         blended_params.source = ParameterSource.HYBRID
-        blended_params.confidence = (
-            lnn_result.confidence * 0.5 + 0.4
-        )
+        blended_params.confidence = lnn_result.confidence * 0.5 + 0.4
 
         return blended_params, validation
 
@@ -270,7 +249,7 @@ class ParameterAgentLNN(BaseAgent):
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"请为{material}的加工计算切削参数"}
+            {"role": "user", "content": f"请为{material}的加工计算切削参数"},
         ]
 
         response = await self._call_llm_via_router(
@@ -281,7 +260,7 @@ class ParameterAgentLNN(BaseAgent):
                 "material": material,
                 "tolerance": tolerance,
                 "roughness": roughness,
-            }
+            },
         )
 
         content = response.get("content", "").strip()
@@ -295,7 +274,7 @@ class ParameterAgentLNN(BaseAgent):
             material=material,
             tool_type=requirements.get("tool_type"),
             confidence=0.75,
-            source=ParameterSource.LLM
+            source=ParameterSource.LLM,
         )
 
         return params
@@ -332,13 +311,11 @@ class ParameterAgentLNN(BaseAgent):
             material=material,
             tool_type=requirements.get("tool_type"),
             confidence=0.6,
-            source=ParameterSource.RULE
+            source=ParameterSource.RULE,
         )
 
     def _validate_parameters(
-        self,
-        params: CuttingParameters,
-        requirements: Dict[str, Any]
+        self, params: CuttingParameters, requirements: Dict[str, Any]
     ) -> ValidationResult:
         """
         验证参数有效性
@@ -359,9 +336,7 @@ class ParameterAgentLNN(BaseAgent):
             )
 
         if not (0.05 <= params.feed_rate <= 1.0):
-            issues.append(
-                f"进给量{params.feed_rate}mm/r超出有效范围[0.05, 1.0]mm/r"
-            )
+            issues.append(f"进给量{params.feed_rate}mm/r超出有效范围[0.05, 1.0]mm/r")
 
         if params.depth_of_cut <= 0:
             issues.append(f"背吃刀量{params.depth_of_cut}mm必须大于0")
@@ -371,21 +346,15 @@ class ParameterAgentLNN(BaseAgent):
         if hardness:
             hardness_val = HARDNESS_VALUES[hardness]
             if hardness_val > 0.7 and params.depth_of_cut > 2.0:
-                warnings.append(
-                    f"材料{material}硬度较高，建议背吃刀量不超过2.0mm"
-                )
+                warnings.append(f"材料{material}硬度较高，建议背吃刀量不超过2.0mm")
 
         tolerance = requirements.get("tolerance", "IT8")
         precision_val = PRECISION_MAP.get(tolerance, 0.75)
         if precision_val > 0.85 and params.feed_rate > 0.15:
-            warnings.append(
-                f"高精度要求({tolerance})，建议进给量不超过0.15mm/r"
-            )
+            warnings.append(f"高精度要求({tolerance})，建议进给量不超过0.15mm/r")
 
         return ValidationResult(
-            is_valid=len(issues) == 0,
-            issues=issues,
-            warnings=warnings
+            is_valid=len(issues) == 0, issues=issues, warnings=warnings
         )
 
     def _prepare_features(self, requirements: Dict[str, Any]) -> List[float]:
@@ -405,20 +374,12 @@ class ParameterAgentLNN(BaseAgent):
             List[float]: 特征向量
         """
         material = requirements.get("material", "45钢")
-        material_encoding = MATERIAL_ENCODINGS.get(
-            material, [0.45, 0.35, 0.5, 0.4]
-        )
+        material_encoding = MATERIAL_ENCODINGS.get(material, [0.45, 0.35, 0.5, 0.4])
 
         dimensions = requirements.get("dimensions", {})
-        length = self._normalize_dimension(
-            dimensions.get("length", 100), max_val=500
-        )
-        width = self._normalize_dimension(
-            dimensions.get("width", 50), max_val=200
-        )
-        height = self._normalize_dimension(
-            dimensions.get("height", 50), max_val=200
-        )
+        length = self._normalize_dimension(dimensions.get("length", 100), max_val=500)
+        width = self._normalize_dimension(dimensions.get("width", 50), max_val=200)
+        height = self._normalize_dimension(dimensions.get("height", 50), max_val=200)
 
         tolerance = requirements.get("tolerance", "IT8")
         precision_feature = PRECISION_MAP.get(tolerance, 0.75)
@@ -448,9 +409,7 @@ class ParameterAgentLNN(BaseAgent):
         return min(max(value / max_val, 0.0), 1.0)
 
     def _decode_prediction(
-        self,
-        pred_values: List[float],
-        requirements: Dict[str, Any]
+        self, pred_values: List[float], requirements: Dict[str, Any]
     ) -> CuttingParameters:
         """
         将LNN模型输出解码为切削参数
@@ -487,14 +446,14 @@ class ParameterAgentLNN(BaseAgent):
             material=material,
             tool_type=requirements.get("tool_type"),
             confidence=0.7,
-            source=ParameterSource.LNN
+            source=ParameterSource.LNN,
         )
 
     def _blend_parameters(
         self,
         lnn_params: CuttingParameters,
         llm_params: CuttingParameters,
-        weight_lnn: float = 0.6
+        weight_lnn: float = 0.6,
     ) -> CuttingParameters:
         """
         融合LNN和LLM的参数
@@ -511,9 +470,8 @@ class ParameterAgentLNN(BaseAgent):
             lnn_params.cutting_speed * weight_lnn
             + llm_params.cutting_speed * (1 - weight_lnn)
         )
-        feed_rate = (
-            lnn_params.feed_rate * weight_lnn
-            + llm_params.feed_rate * (1 - weight_lnn)
+        feed_rate = lnn_params.feed_rate * weight_lnn + llm_params.feed_rate * (
+            1 - weight_lnn
         )
         depth_of_cut = (
             lnn_params.depth_of_cut * weight_lnn
@@ -532,7 +490,7 @@ class ParameterAgentLNN(BaseAgent):
             material=lnn_params.material,
             tool_type=lnn_params.tool_type,
             confidence=0.8,
-            source=ParameterSource.HYBRID
+            source=ParameterSource.HYBRID,
         )
 
     def _extract_requirements(self, context: AgentContext) -> Dict[str, Any]:
@@ -554,10 +512,7 @@ class ParameterAgentLNN(BaseAgent):
             "dimensions": params.get("dimensions", {}),
         }
 
-    def _fallback_to_rules_result(
-        self,
-        requirements: Dict[str, Any]
-    ) -> LNNResult:
+    def _fallback_to_rules_result(self, requirements: Dict[str, Any]) -> LNNResult:
         """
         生成规则引擎的LNNResult
 
@@ -568,7 +523,4 @@ class ParameterAgentLNN(BaseAgent):
             LNNResult: 规则引擎结果
         """
         params = self._fallback_to_rules(requirements)
-        return LNNResult(
-            parameters=params,
-            confidence=0.6
-        )
+        return LNNResult(parameters=params, confidence=0.6)

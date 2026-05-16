@@ -8,6 +8,7 @@ TaskRouter组件单元测试套件
 - 降级逻辑测试
 - 置信度阈值测试
 """
+
 import numpy as np
 
 from app.ai.lnn.router.task_router import TaskRouter, TaskFeatures, ScoringModel
@@ -21,6 +22,7 @@ from app.ai.lnn.core import (
 # ============================================================
 # 辅助函数
 # ============================================================
+
 
 def create_task(
     description: str,
@@ -45,6 +47,7 @@ def create_task(
 # ============================================================
 # 8.3.1 简单任务路由测试
 # ============================================================
+
 
 class TestSimpleTaskRouting:
     """测试单一任务类型和明确路由规则下的任务分配"""
@@ -162,6 +165,7 @@ class TestSimpleTaskRouting:
 # 8.3.2 复杂任务路由测试
 # ============================================================
 
+
 class TestComplexTaskRouting:
     """测试多任务类型、多模型选择、优先级权重等复杂场景"""
 
@@ -202,7 +206,9 @@ class TestComplexTaskRouting:
         decision = self.router.route(task)
         assert decision.decision_factors is not None
         for engine in EngineType:
-            assert engine in decision.decision_factors or engine.value in str(decision.decision_factors)
+            assert engine in decision.decision_factors or engine.value in str(
+                decision.decision_factors
+            )
 
     def test_alternatives_limited_to_two(self):
         """测试备选方案最多返回2个"""
@@ -278,6 +284,7 @@ class TestComplexTaskRouting:
 # 8.3.3 降级逻辑测试
 # ============================================================
 
+
 class TestFallbackLogic:
     """测试部分模型不可用或性能下降时的降级策略"""
 
@@ -339,6 +346,7 @@ class TestFallbackLogic:
 # ============================================================
 # 8.3.4 置信度阈值测试
 # ============================================================
+
 
 class TestConfidenceThreshold:
     """测试不同置信度阈值设置下的任务路由行为"""
@@ -407,6 +415,7 @@ class TestConfidenceThreshold:
 # ============================================================
 # ScoringModel测试
 # ============================================================
+
 
 class TestScoringModel:
     """测试评分模型功能"""
@@ -477,6 +486,7 @@ class TestScoringModel:
 # TaskFeatures测试
 # ============================================================
 
+
 class TestTaskFeatures:
     """测试任务特征向量"""
 
@@ -510,6 +520,7 @@ class TestTaskFeatures:
 # 路由决策to_dict测试
 # ============================================================
 
+
 class TestRoutingDecisionSerialization:
     """测试路由决策序列化"""
 
@@ -538,6 +549,7 @@ class TestRoutingDecisionSerialization:
     def test_to_dict_serializable_to_json(self):
         """测试to_dict可序列化为JSON"""
         import json
+
         router = TaskRouter()
         task = create_task(description="test json serialization")
         decision = router.route(task)

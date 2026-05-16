@@ -8,20 +8,25 @@ Tests cover:
 - DataLoader optimization
 - API endpoints
 """
+
 import unittest
 import os
 import sys
 import tempfile
 import shutil
-import multiprocessing
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-import numpy as np
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))
+sys.path.insert(
+    0,
+    os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        )
+    ),
+)
 
 from app.ai.lnn.training.device_manager import (
     DeviceInfo,
@@ -34,7 +39,7 @@ from app.ai.lnn.training.device_manager import (
     check_gpu_memory_safe,
 )
 from app.ai.lnn.training.trainer import LNNTrainer
-from app.ai.lnn.models.torch_base_lnn import BaseLNN, LNNConfig
+from app.ai.lnn.models.torch_base_lnn import LNNConfig
 from app.ai.lnn.models.torch_cfc_model import CFCModel as TorchCFCModel
 from app.ai.lnn.models.torch_ltc_model import LTCModel as TorchLTCModel
 
@@ -355,10 +360,7 @@ class TestLNNTrainerCPU(unittest.TestCase):
             use_amp=False,
         )
         trainer._step_lr_scheduler(0.5)
-        self.assertLess(
-            trainer.optimizer.param_groups[0]["lr"],
-            0.001
-        )
+        self.assertLess(trainer.optimizer.param_groups[0]["lr"], 0.001)
 
     def test_optimizer_types(self):
         for opt_type in ["adam", "adamw", "sgd", "rmsprop"]:

@@ -4,6 +4,7 @@ Hybrid Inference Engine
 Main orchestrator that integrates TaskRouter, LNN engines, LLM engine, Rule engine,
 and the Result Fusion Layer to provide a unified inference interface.
 """
+
 import logging
 import numpy as np
 import time
@@ -34,9 +35,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EngineConfig:
     """推理引擎配置类
-    
+
     用于组织 HybridInferenceEngine 的配置参数，减少构造函数参数数量。
-    
+
     Args:
         rule_weight: 规则决策权重 (默认 0.4)
         ml_weight: ML决策权重 (默认 0.6)
@@ -48,6 +49,7 @@ class EngineConfig:
         config_path: YAML配置文件路径 (可选)
         config: 已有的配置管理器实例 (可选)
     """
+
     rule_weight: float = 0.4
     ml_weight: float = 0.6
     enable_fusion: bool = True
@@ -57,17 +59,18 @@ class EngineConfig:
     max_retry: int = 2
     config_path: Optional[str] = None
     config: Optional[YAMLConfigManager] = None
-    
+
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "EngineConfig":
         """从字典创建配置实例"""
         valid_fields = {f.name for f in cls.__dataclass_fields__.values()}
         filtered = {k: v for k, v in config_dict.items() if k in valid_fields}
         return cls(**filtered)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """将配置转换为字典"""
         from dataclasses import asdict
+
         return asdict(self)
 
 
@@ -91,7 +94,7 @@ class HybridInferenceEngine:
         """
         if config is None:
             config = EngineConfig()
-        
+
         self.enable_fusion = config.enable_fusion
         self.enable_parallel_execution = config.enable_parallel_execution
         self.device = config.device
@@ -107,8 +110,7 @@ class HybridInferenceEngine:
 
         # 核心组件
         self.router = TaskRouter(
-            rule_weight=config.rule_weight,
-            ml_weight=config.ml_weight
+            rule_weight=config.rule_weight, ml_weight=config.ml_weight
         )
         self.fusion = DempsterShaferFusion()
         self.registry = ModelRegistry(cache_size=config.cache_size)
@@ -272,7 +274,7 @@ class HybridInferenceEngine:
             推理结果列表
         """
         # 按批次分组
-        batches = [tasks[i:i + batch_size] for i in range(0, len(tasks), batch_size)]
+        batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
         results = []
 
         for batch in batches:
@@ -281,7 +283,9 @@ class HybridInferenceEngine:
             batch_descriptions = [t["task_description"] for t in batch]
 
             # 批量推理
-            batch_results = self._batch_inference(batch_inputs, batch_descriptions, batch)
+            batch_results = self._batch_inference(
+                batch_inputs, batch_descriptions, batch
+            )
             results.extend(batch_results)
 
         return results
@@ -304,7 +308,9 @@ class HybridInferenceEngine:
             批量推理结果
         """
         results = []
-        for inputs, description, task in zip(batch_inputs, batch_descriptions, batch_tasks):
+        for inputs, description, task in zip(
+            batch_inputs, batch_descriptions, batch_tasks
+        ):
             task_input = TaskInput(
                 task_description=description,
                 input_data=inputs,
@@ -345,7 +351,10 @@ class HybridInferenceEngine:
         """
         results = []
 
-        if self.enable_parallel_execution and decision.selected_engine == EngineType.HYBRID:
+        if (
+            self.enable_parallel_execution
+            and decision.selected_engine == EngineType.HYBRID
+        ):
             # 并行执行多个引擎
             results = self._parallel_inference(task, decision)
         else:
@@ -399,7 +408,9 @@ class HybridInferenceEngine:
                 (decision.selected_engine, self._single_inference),
             ]
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(parallel_engines)) as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(parallel_engines)
+        ) as executor:
             future_to_engine = {
                 executor.submit(engine_func, task, decision): engine_type
                 for engine_type, engine_func in parallel_engines
@@ -451,14 +462,18 @@ class HybridInferenceEngine:
             logger.error("%s推理失败: 无可用模型", engine_type.value)
             return None
 
-        def _build_error_result(error: Exception, extra_meta: dict | None = None) -> InferenceResult:
+        def _build_error_result(
+            error: Exception, extra_meta: dict | None = None
+        ) -> InferenceResult:
             pt = (time.perf_counter() - start_time) * 1000
             meta: dict = {"error": str(error), "error_type": type(error).__name__}
             if extra_meta:
                 meta.update(extra_meta)
             return InferenceResult(
-                prediction=None, confidence=0.0,
-                engine_used=engine_type, processing_time_ms=pt,
+                prediction=None,
+                confidence=0.0,
+                engine_used=engine_type,
+                processing_time_ms=pt,
                 metadata=meta,
             )
 
@@ -483,11 +498,22 @@ class HybridInferenceEngine:
         except (RuntimeError, MemoryError) as e:
             logger.error("%s推理失败（运行时错误）: %s", engine_type.value, e)
             if retry_count < self.max_retry:
-                logger.info("%s推理重试: %s/%s", engine_type.value, retry_count + 1, self.max_retry)
-                return self._model_inference(task, decision, engine_type, retry_count + 1)
-            return _build_error_result(e, {"retry_count": retry_count, "max_retry": self.max_retry})
+                logger.info(
+                    "%s推理重试: %s/%s",
+                    engine_type.value,
+                    retry_count + 1,
+                    self.max_retry,
+                )
+                return self._model_inference(
+                    task, decision, engine_type, retry_count + 1
+                )
+            return _build_error_result(
+                e, {"retry_count": retry_count, "max_retry": self.max_retry}
+            )
         except Exception as e:
-            logger.error("%s推理失败（未知错误）: %s", engine_type.value, e, exc_info=True)
+            logger.error(
+                "%s推理失败（未知错误）: %s", engine_type.value, e, exc_info=True
+            )
             return _build_error_result(e)
 
     def _llm_inference(

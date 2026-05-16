@@ -8,6 +8,7 @@ LNN性能基准测试模块
 - 任务路由器性能测试
 - 结果融合性能测试
 """
+
 import os
 import gc
 import time
@@ -20,6 +21,7 @@ from dataclasses import dataclass, field
 
 try:
     import torch
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -30,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BenchmarkResult:
     """基准测试结果"""
+
     test_name: str
     total_time_ms: float = 0.0
     avg_time_ms: float = 0.0
@@ -92,7 +95,9 @@ class LNNAccelerationBenchmark:
     ) -> BenchmarkResult:
         """基准测试：模型推理延迟"""
         if not HAS_TORCH:
-            logger.warning("PyTorch not available, skipping inference latency benchmark")
+            logger.warning(
+                "PyTorch not available, skipping inference latency benchmark"
+            )
             return None
 
         model_types = model_types or ["cfc", "ltc"]
@@ -107,7 +112,9 @@ class LNNAccelerationBenchmark:
                 config = CFCConfig(input_size=20, hidden_size=64, output_size=1)
                 model = CFCModel(config).eval()
             else:
-                config = LTCConfig(input_size=20, hidden_size=64, output_size=1, num_layers=2)
+                config = LTCConfig(
+                    input_size=20, hidden_size=64, output_size=1, num_layers=2
+                )
                 model = LTCModel(config).eval()
 
             x = torch.randn(1, 20)
@@ -122,11 +129,15 @@ class LNNAccelerationBenchmark:
 
             all_times.extend(times)
 
-        result = self._compute_stats("Model Inference Latency", all_times, iterations * len(model_types))
+        result = self._compute_stats(
+            "Model Inference Latency", all_times, iterations * len(model_types)
+        )
         result.metadata["model_types"] = model_types
         self.results.append(result)
 
-        logger.info(f"Inference Latency: avg={result.avg_time_ms:.3f}ms, p95={result.p95_time_ms:.3f}ms")
+        logger.info(
+            f"Inference Latency: avg={result.avg_time_ms:.3f}ms, p95={result.p95_time_ms:.3f}ms"
+        )
         return result
 
     def benchmark_batch_throughput(
@@ -160,9 +171,13 @@ class LNNAccelerationBenchmark:
 
             all_times.extend(times)
 
-        result = self._compute_stats("Batch Throughput", all_times, iterations * len(batch_sizes))
+        result = self._compute_stats(
+            "Batch Throughput", all_times, iterations * len(batch_sizes)
+        )
         result.metadata["batch_sizes"] = batch_sizes
-        result.throughput_per_sec = sum(batch_sizes) * iterations / (result.total_time_ms / 1000)
+        result.throughput_per_sec = (
+            sum(batch_sizes) * iterations / (result.total_time_ms / 1000)
+        )
         self.results.append(result)
 
         logger.info(f"Batch Throughput: {result.throughput_per_sec:.2f} samples/sec")
@@ -185,7 +200,9 @@ class LNNAccelerationBenchmark:
         cfc_config = CFCConfig(input_size=20, hidden_size=64, output_size=1)
         cfc_model = CFCModel(cfc_config).eval()
 
-        ltc_config = LTCConfig(input_size=20, hidden_size=64, output_size=1, num_layers=2)
+        ltc_config = LTCConfig(
+            input_size=20, hidden_size=64, output_size=1, num_layers=2
+        )
         ltc_model = LTCModel(ltc_config).eval()
 
         x = torch.randn(32, 20)
@@ -208,7 +225,9 @@ class LNNAccelerationBenchmark:
         result.memory_current_mb = current / (1024 * 1024)
         self.results.append(result)
 
-        logger.info(f"Memory: peak={result.memory_peak_mb:.2f}MB, current={result.memory_current_mb:.2f}MB")
+        logger.info(
+            f"Memory: peak={result.memory_peak_mb:.2f}MB, current={result.memory_current_mb:.2f}MB"
+        )
         return result
 
     def benchmark_routing_performance(
@@ -245,7 +264,9 @@ class LNNAccelerationBenchmark:
         result = self._compute_stats("Task Router Performance", times, iterations)
         self.results.append(result)
 
-        logger.info(f"Router: avg={result.avg_time_ms:.3f}ms, p95={result.p95_time_ms:.3f}ms")
+        logger.info(
+            f"Router: avg={result.avg_time_ms:.3f}ms, p95={result.p95_time_ms:.3f}ms"
+        )
         return result
 
     def benchmark_fusion_performance(
@@ -286,7 +307,9 @@ class LNNAccelerationBenchmark:
         logger.info(f"Fusion: avg={result.avg_time_ms:.3f}ms")
         return result
 
-    def _compute_stats(self, name: str, times: List[float], iterations: int) -> BenchmarkResult:
+    def _compute_stats(
+        self, name: str, times: List[float], iterations: int
+    ) -> BenchmarkResult:
         """计算统计指标"""
         times_array = np.array(times)
         return BenchmarkResult(
@@ -330,10 +353,14 @@ class LNNAccelerationBenchmark:
 
         for result in self.results:
             print(f"\n[{result.test_name}]")
-            print(f"  Avg: {result.avg_time_ms:.3f}ms | P50: {result.p50_time_ms:.3f}ms | P95: {result.p95_time_ms:.3f}ms | P99: {result.p99_time_ms:.3f}ms")
+            print(
+                f"  Avg: {result.avg_time_ms:.3f}ms | P50: {result.p50_time_ms:.3f}ms | P95: {result.p95_time_ms:.3f}ms | P99: {result.p99_time_ms:.3f}ms"
+            )
             print(f"  Throughput: {result.throughput_per_sec:.2f} samples/sec")
             if result.memory_peak_mb > 0:
-                print(f"  Memory: peak={result.memory_peak_mb:.2f}MB, current={result.memory_current_mb:.2f}MB")
+                print(
+                    f"  Memory: peak={result.memory_peak_mb:.2f}MB, current={result.memory_current_mb:.2f}MB"
+                )
 
         print("\n" + "=" * 80)
 

@@ -3,6 +3,7 @@ Evaluator module for LNN models.
 
 Implements multi-metric evaluation and result recording.
 """
+
 import torch
 import numpy as np
 from torch.utils.data import DataLoader
@@ -12,7 +13,8 @@ import json
 from datetime import datetime
 import os
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
@@ -58,8 +60,10 @@ class LNNEvaluator:
         Returns:
             评估结果字典
         """
-        if not hasattr(self.model, 'is_trained') or not self.model.is_trained:
-            raise RuntimeError("模型评估失败：模型尚未完成训练。评估操作只能在模型训练完成后进行。可能原因：1) 训练流程尚未启动或未完成；2) 训练过程中出现中断。请先调用 POST /api/v1/lnn/models/train 完成模型训练，再进行评估。")
+        if not hasattr(self.model, "is_trained") or not self.model.is_trained:
+            raise RuntimeError(
+                "模型评估失败：模型尚未完成训练。评估操作只能在模型训练完成后进行。可能原因：1) 训练流程尚未启动或未完成；2) 训练过程中出现中断。请先调用 POST /api/v1/lnn/models/train 完成模型训练，再进行评估。"
+            )
 
         self.model.eval()
 
@@ -90,13 +94,21 @@ class LNNEvaluator:
         results = {}
 
         if task_type == "classification":
-            results.update(self.compute_classification_metrics(all_labels, all_preds, metrics))
+            results.update(
+                self.compute_classification_metrics(all_labels, all_preds, metrics)
+            )
         elif task_type == "regression":
-            results.update(self.compute_regression_metrics(all_labels, all_preds, metrics))
+            results.update(
+                self.compute_regression_metrics(all_labels, all_preds, metrics)
+            )
         else:
-            raise ValueError(f"评估指标计算失败：未知的任务类型 '{task_type}'。支持的任务类型包括：'classification'（分类任务）、'regression'（回归任务）。请检查评估配置中的 task_type 参数设置。")
+            raise ValueError(
+                f"评估指标计算失败：未知的任务类型 '{task_type}'。支持的任务类型包括：'classification'（分类任务）、'regression'（回归任务）。请检查评估配置中的 task_type 参数设置。"
+            )
 
-        results.update(self.compute_performance_metrics(inference_times, len(all_preds)))
+        results.update(
+            self.compute_performance_metrics(inference_times, len(all_preds))
+        )
 
         results["timestamp"] = datetime.now().isoformat()
         results["task_type"] = task_type
@@ -128,7 +140,9 @@ class LNNEvaluator:
         elif task_type == "regression":
             return self.compute_regression_metrics(y_true, y_pred, metrics)
         else:
-            raise ValueError(f"评估指标计算失败：未知的任务类型 '{task_type}'。支持的任务类型包括：'classification'（分类任务）、'regression'（回归任务）。请检查评估配置中的 task_type 参数设置。")
+            raise ValueError(
+                f"评估指标计算失败：未知的任务类型 '{task_type}'。支持的任务类型包括：'classification'（分类任务）、'regression'（回归任务）。请检查评估配置中的 task_type 参数设置。"
+            )
 
     def compute_classification_metrics(
         self,
@@ -164,7 +178,9 @@ class LNNEvaluator:
             results["f1"] = self.f1_score(true_classes, pred_classes)
 
         if metrics is None or "confusion_matrix" in metrics:
-            results["confusion_matrix"] = self.confusion_matrix(true_classes, pred_classes)
+            results["confusion_matrix"] = self.confusion_matrix(
+                true_classes, pred_classes
+            )
 
         return results
 
@@ -219,8 +235,10 @@ class LNNEvaluator:
         """平均绝对百分比误差"""
         mask = y_true != 0
         if np.sum(mask) == 0:
-            return float('inf')
-        return float(np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100)
+            return float("inf")
+        return float(
+            np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
+        )
 
     @staticmethod
     def r2_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -244,7 +262,9 @@ class LNNEvaluator:
         return float(np.mean(y_true == y_pred))
 
     @staticmethod
-    def precision(y_true: np.ndarray, y_pred: np.ndarray, average: str = "binary") -> float:
+    def precision(
+        y_true: np.ndarray, y_pred: np.ndarray, average: str = "binary"
+    ) -> float:
         """
         精确率
 
@@ -277,10 +297,14 @@ class LNNEvaluator:
                 precisions.append(tp / (tp + fp) if (tp + fp) > 0 else 0.0)
             return float(np.average(precisions, weights=counts))
         else:
-            raise ValueError(f"评估指标计算失败：未知的平均方式 '{average}'。支持的平均方式包括：'micro'（微平均）、'macro'（宏平均）、'weighted'（加权平均）、'samples'（样本平均）、'binary'（二分类）。请检查评估配置中的 average 参数。")
+            raise ValueError(
+                f"评估指标计算失败：未知的平均方式 '{average}'。支持的平均方式包括：'micro'（微平均）、'macro'（宏平均）、'weighted'（加权平均）、'samples'（样本平均）、'binary'（二分类）。请检查评估配置中的 average 参数。"
+            )
 
     @staticmethod
-    def recall(y_true: np.ndarray, y_pred: np.ndarray, average: str = "binary") -> float:
+    def recall(
+        y_true: np.ndarray, y_pred: np.ndarray, average: str = "binary"
+    ) -> float:
         """
         召回率
 
@@ -313,10 +337,14 @@ class LNNEvaluator:
                 recalls.append(tp / (tp + fn) if (tp + fn) > 0 else 0.0)
             return float(np.average(recalls, weights=counts))
         else:
-            raise ValueError(f"评估指标计算失败：未知的平均方式 '{average}'。支持的平均方式包括：'micro'（微平均）、'macro'（宏平均）、'weighted'（加权平均）、'samples'（样本平均）、'binary'（二分类）。请检查评估配置中的 average 参数。")
+            raise ValueError(
+                f"评估指标计算失败：未知的平均方式 '{average}'。支持的平均方式包括：'micro'（微平均）、'macro'（宏平均）、'weighted'（加权平均）、'samples'（样本平均）、'binary'（二分类）。请检查评估配置中的 average 参数。"
+            )
 
     @staticmethod
-    def f1_score(y_true: np.ndarray, y_pred: np.ndarray, average: str = "binary") -> float:
+    def f1_score(
+        y_true: np.ndarray, y_pred: np.ndarray, average: str = "binary"
+    ) -> float:
         """
         F1分数
 
@@ -401,7 +429,9 @@ class LNNEvaluator:
         elif method == "weight_based":
             return self._weight_based_importance()
         else:
-            raise ValueError(f"特征重要性分析失败：未知的方法 '{method}'。支持的方法包括：'permutation'（排列重要性）、'weight_based'（基于权重的方法）。请检查配置中的 method 参数。")
+            raise ValueError(
+                f"特征重要性分析失败：未知的方法 '{method}'。支持的方法包括：'permutation'（排列重要性）、'weight_based'（基于权重的方法）。请检查配置中的 method 参数。"
+            )
 
     def _permutation_importance(
         self,
@@ -464,7 +494,9 @@ class LNNEvaluator:
                 break
 
         if first_layer_weight is None:
-            raise ValueError("模型特征重要性分析失败：无法从模型中提取权重参数。可能原因：1) 模型尚未初始化或权重未加载；2) 模型架构不包含标准的权重层（如 Linear 层）；3) 模型使用自定义层且未暴露权重参数。请确认模型已完成训练并正确加载权重，或检查模型架构定义。")
+            raise ValueError(
+                "模型特征重要性分析失败：无法从模型中提取权重参数。可能原因：1) 模型尚未初始化或权重未加载；2) 模型架构不包含标准的权重层（如 Linear 层）；3) 模型使用自定义层且未暴露权重参数。请确认模型已完成训练并正确加载权重，或检查模型架构定义。"
+            )
 
         importance_scores = np.mean(np.abs(first_layer_weight), axis=0)
         feature_ranking = np.argsort(-importance_scores)
@@ -480,7 +512,7 @@ class LNNEvaluator:
         if metric == "accuracy":
             return float(np.mean(predictions > 0.5))
         elif metric == "mse":
-            return float(np.mean(predictions ** 2))
+            return float(np.mean(predictions**2))
         else:
             return float(np.mean(predictions))
 
@@ -528,39 +560,47 @@ class LNNEvaluator:
         ]
 
         if task_type == "classification":
-            report_parts.extend([
-                "--- Classification Metrics ---",
-                f"  Accuracy:  {results.get('accuracy', 0):.4f}",
-                f"  Precision: {results.get('precision', 0):.4f}",
-                f"  Recall:    {results.get('recall', 0):.4f}",
-                f"  F1 Score:  {results.get('f1', 0):.4f}",
-                "",
-            ])
+            report_parts.extend(
+                [
+                    "--- Classification Metrics ---",
+                    f"  Accuracy:  {results.get('accuracy', 0):.4f}",
+                    f"  Precision: {results.get('precision', 0):.4f}",
+                    f"  Recall:    {results.get('recall', 0):.4f}",
+                    f"  F1 Score:  {results.get('f1', 0):.4f}",
+                    "",
+                ]
+            )
         elif task_type == "regression":
-            report_parts.extend([
-                "--- Regression Metrics ---",
-                f"  MAE:  {results.get('mae', 0):.4f}",
-                f"  RMSE: {results.get('rmse', 0):.4f}",
-                f"  MAPE: {results.get('mape', 0):.4f}%",
-                f"  R²:   {results.get('r2', 0):.4f}",
-                "",
-            ])
+            report_parts.extend(
+                [
+                    "--- Regression Metrics ---",
+                    f"  MAE:  {results.get('mae', 0):.4f}",
+                    f"  RMSE: {results.get('rmse', 0):.4f}",
+                    f"  MAPE: {results.get('mape', 0):.4f}%",
+                    f"  R²:   {results.get('r2', 0):.4f}",
+                    "",
+                ]
+            )
 
-        report_parts.extend([
-            "--- Inference Performance ---",
-            f"  Avg Latency:    {results.get('avg_inference_time_ms', 0):.2f} ms",
-            f"  P50 Latency:    {results.get('p50_latency_ms', 0):.2f} ms",
-            f"  P95 Latency:    {results.get('p95_latency_ms', 0):.2f} ms",
-            f"  P99 Latency:    {results.get('p99_latency_ms', 0):.2f} ms",
-            f"  Throughput:     {results.get('throughput_samples_per_sec', 0):.0f} samples/sec",
-            "",
-        ])
+        report_parts.extend(
+            [
+                "--- Inference Performance ---",
+                f"  Avg Latency:    {results.get('avg_inference_time_ms', 0):.2f} ms",
+                f"  P50 Latency:    {results.get('p50_latency_ms', 0):.2f} ms",
+                f"  P95 Latency:    {results.get('p95_latency_ms', 0):.2f} ms",
+                f"  P99 Latency:    {results.get('p99_latency_ms', 0):.2f} ms",
+                f"  Throughput:     {results.get('throughput_samples_per_sec', 0):.0f} samples/sec",
+                "",
+            ]
+        )
 
         return "\n".join(report_parts)
 
     def save_report(self, results: Dict[str, float], path: str) -> None:
         """保存评估报告到文件"""
-        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+        os.makedirs(
+            os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
+        )
 
         with open(path, "w") as f:
             f.write(self.generate_report(results))
@@ -573,7 +613,9 @@ class LNNEvaluator:
         """获取评估历史"""
         return self.evaluation_history
 
-    def plot_results(self, output_dir: str, prefix: str = "evaluation") -> Dict[str, str]:
+    def plot_results(
+        self, output_dir: str, prefix: str = "evaluation"
+    ) -> Dict[str, str]:
         """
         绘制评估结果图表
 
@@ -599,18 +641,20 @@ class LNNEvaluator:
 
             cm = latest.get("confusion_matrix")
             if cm is not None:
-                im = axes[0].imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-                axes[0].set_title('Confusion Matrix')
+                im = axes[0].imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
+                axes[0].set_title("Confusion Matrix")
                 plt.colorbar(im, ax=axes[0])
-                axes[0].set_xlabel('Predicted')
-                axes[0].set_ylabel('True')
+                axes[0].set_xlabel("Predicted")
+                axes[0].set_ylabel("True")
 
-            metrics = ['accuracy', 'precision', 'recall', 'f1']
+            metrics = ["accuracy", "precision", "recall", "f1"]
             values = [latest.get(m, 0) for m in metrics]
-            axes[1].bar(metrics, values, color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'])
+            axes[1].bar(
+                metrics, values, color=["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
+            )
             axes[1].set_ylim(0, 1)
-            axes[1].set_title('Classification Metrics')
-            axes[1].set_ylabel('Score')
+            axes[1].set_title("Classification Metrics")
+            axes[1].set_ylabel("Score")
 
             plt.tight_layout()
             path = os.path.join(output_dir, f"{prefix}_classification_results.png")
@@ -620,11 +664,11 @@ class LNNEvaluator:
 
         elif task_type == "regression":
             fig, ax = plt.subplots(figsize=(8, 6))
-            metrics = ['mae', 'rmse', 'mape', 'r2']
+            metrics = ["mae", "rmse", "mape", "r2"]
             values = [latest.get(m, 0) for m in metrics]
-            ax.bar(metrics, values, color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'])
-            ax.set_title('Regression Metrics')
-            ax.set_ylabel('Value')
+            ax.bar(metrics, values, color=["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"])
+            ax.set_title("Regression Metrics")
+            ax.set_ylabel("Value")
 
             plt.tight_layout()
             path = os.path.join(output_dir, f"{prefix}_regression_results.png")
@@ -634,12 +678,17 @@ class LNNEvaluator:
 
         perf_path = os.path.join(output_dir, f"{prefix}_performance.png")
         fig, ax = plt.subplots(figsize=(8, 5))
-        perf_metrics = ['avg_inference_time_ms', 'p50_latency_ms', 'p95_latency_ms', 'p99_latency_ms']
+        perf_metrics = [
+            "avg_inference_time_ms",
+            "p50_latency_ms",
+            "p95_latency_ms",
+            "p99_latency_ms",
+        ]
         perf_values = [latest.get(m, 0) for m in perf_metrics]
-        ax.bar(perf_metrics, perf_values, color='#9467bd')
-        ax.set_title('Inference Performance')
-        ax.set_ylabel('Latency (ms)')
-        plt.xticks(rotation=30, ha='right')
+        ax.bar(perf_metrics, perf_values, color="#9467bd")
+        ax.set_title("Inference Performance")
+        ax.set_ylabel("Latency (ms)")
+        plt.xticks(rotation=30, ha="right")
         plt.tight_layout()
         plt.savefig(perf_path, dpi=150)
         plt.close()
