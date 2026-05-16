@@ -12,7 +12,9 @@ class TestLNNModelInfo:
     def test_valid_model_info(self):
         from app.models.schemas import LNNModelInfo
 
-        model = LNNModelInfo(name="test_model", version="1.0", last_updated="2026-01-01")
+        model = LNNModelInfo(
+            name="test_model", version="1.0", last_updated="2026-01-01"
+        )
         assert model.name == "test_model"
         assert model.version == "1.0"
         assert model.last_updated == "2026-01-01"

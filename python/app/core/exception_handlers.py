@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import Request, status
+from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -78,9 +78,7 @@ async def http_exception_handler(
         message,
         _request.url.path,
     )
-    return _build_json_response(
-        code=code, message=message, http_status=exc.status_code
-    )
+    return _build_json_response(code=code, message=message, http_status=exc.status_code)
 
 
 async def validation_exception_handler(
@@ -104,7 +102,9 @@ async def validation_exception_handler(
 
 async def generic_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
     error_id = f"{id(exc):x}"
-    logger.exception("Unhandled exception [id=%s] path=%s: %s", error_id, _request.url.path, exc)
+    logger.exception(
+        "Unhandled exception [id=%s] path=%s: %s", error_id, _request.url.path, exc
+    )
     exc_obj = InternalServerException(
         message="服务器内部错误",
         detail={"error_id": error_id, "type": type(exc).__name__},

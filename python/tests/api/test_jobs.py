@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestJobsList:
     """Tests for GET /api/v1/jobs (list jobs)."""
@@ -22,16 +20,19 @@ class TestJobsList:
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == 0
+
     def test_list_jobs_with_invalid_task_type(self, client):
         response = client.get("/api/v1/jobs?task_type=invalid_type")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == 1002
+
     def test_list_jobs_with_valid_status(self, client):
         response = client.get("/api/v1/jobs?status=completed")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == 0
+
     def test_list_jobs_with_invalid_status(self, client):
         response = client.get("/api/v1/jobs?status=invalid_status")
         assert response.status_code == 200

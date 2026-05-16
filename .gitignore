@@ -98,8 +98,13 @@ Thumbs.db
 # pnpm-lock.yaml
 
 # 大数据文件（CNC 加工数据）
-*.h5
-CNC_Machining-main/data/
+# 注意：以下文件类型已迁移至 Git LFS 管理，
+# .gitattributes 中配置了对应的 LFS 跟踪规则。
+# 如需获取完整数据，克隆后执行: git lfs pull
+# 轻量级克隆（跳过大型文件）: GIT_LFS_SKIP_SMUDGE=1 git clone <URL>
+# *.h5          # 已由 Git LFS 管理
+# *.hdf5        # 已由 Git LFS 管理
+# CNC_Machining-main/data/  # 已由 Git LFS 管理
 
 # 测试生成的临时目录
 python/test_chroma_db/

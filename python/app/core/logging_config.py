@@ -12,7 +12,9 @@ import sys
 from app.core.request_id import get_request_id
 
 
-LOG_FORMAT = "%(asctime)s.%(msecs)03dZ [%(levelname)-8s] [%(request_id)s] [%(name)s] %(message)s"
+LOG_FORMAT = (
+    "%(asctime)s.%(msecs)03dZ [%(levelname)-8s] [%(request_id)s] [%(name)s] %(message)s"
+)
 
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
@@ -55,4 +57,6 @@ def configure_logging(
 
     root_logger.addHandler(console_handler)
 
-    root_logger.info("Logging configured [level=%s, format=ISO8601]", logging.getLevelName(level))
+    root_logger.info(
+        "Logging configured [level=%s, format=ISO8601]", logging.getLevelName(level)
+    )

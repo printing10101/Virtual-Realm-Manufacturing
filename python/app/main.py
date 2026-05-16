@@ -24,7 +24,6 @@ from app.core.sidecar_lifecycle import (
     GracefulShutdownHandler,
 )
 from app.core.ring_buffer import get_ring_log_buffer, BUFFER_TYPES
-from app.core.response import success, error, ErrorCode
 from app.config import config
 from app.version import get_version_info, VERSION as PY_VERSION
 from app.agent.middleware import AgentAuthMiddleware
@@ -184,7 +183,12 @@ async def get_version():
 
 @app.get("/api/v1/logs/stats")
 async def get_log_stats():
-    return {"code": 0, "message": "OK", "data": ring_log.stats(), "request_id": get_request_id()}
+    return {
+        "code": 0,
+        "message": "OK",
+        "data": ring_log.stats(),
+        "request_id": get_request_id(),
+    }
 
 
 @app.get("/api/v1/logs/{buffer_type}")

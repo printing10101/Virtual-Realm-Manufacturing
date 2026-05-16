@@ -103,7 +103,9 @@ class TestClientExceptions:
             (RateLimitException, 1007, 429, "请求频率超限"),
         ],
     )
-    def test_client_exception_defaults(self, exc_class, expected_code, expected_status, default_message):
+    def test_client_exception_defaults(
+        self, exc_class, expected_code, expected_status, default_message
+    ):
         exc = exc_class()
         assert exc.code == expected_code
         assert exc.status_code == expected_status
@@ -128,7 +130,9 @@ class TestServerExceptions:
             (TimeoutException, 2004, 504, "请求超时"),
         ],
     )
-    def test_server_exception_defaults(self, exc_class, expected_code, expected_status, default_message):
+    def test_server_exception_defaults(
+        self, exc_class, expected_code, expected_status, default_message
+    ):
         exc = exc_class()
         assert exc.code == expected_code
         assert exc.status_code == expected_status
@@ -147,7 +151,9 @@ class TestRepositoryExceptions:
             (StorageException, 3003, 500, "存储操作失败"),
         ],
     )
-    def test_repository_exception_defaults(self, exc_class, expected_code, expected_status, default_message):
+    def test_repository_exception_defaults(
+        self, exc_class, expected_code, expected_status, default_message
+    ):
         exc = exc_class()
         assert exc.code == expected_code
         assert exc.status_code == expected_status

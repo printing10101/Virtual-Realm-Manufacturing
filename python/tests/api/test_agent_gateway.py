@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestAgentHealth:
     """Tests for GET /api/agent/v1/health."""

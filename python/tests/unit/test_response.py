@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from app.core.response import ErrorCode, error, success
 
 

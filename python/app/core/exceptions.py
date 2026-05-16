@@ -49,6 +49,7 @@ class AppException(Exception):
 # 客户端错误 (1xxx, HTTP 4xx)
 # ============================================================
 
+
 class NotFoundException(AppException):
     def __init__(self, message: str = "资源未找到", detail: Any = None):
         super().__init__(code=1001, message=message, status_code=404, detail=detail)
@@ -88,6 +89,7 @@ class RateLimitException(AppException):
 # 服务端错误 (2xxx, HTTP 5xx)
 # ============================================================
 
+
 class InternalServerException(AppException):
     def __init__(self, message: str = "服务器内部错误", detail: Any = None):
         super().__init__(code=2001, message=message, status_code=500, detail=detail)
@@ -112,6 +114,7 @@ class TimeoutException(AppException):
 # 仓库层错误 (3xxx)
 # ============================================================
 
+
 class RepositoryException(AppException):
     def __init__(self, message: str = "数据仓库操作异常", detail: Any = None):
         super().__init__(code=3001, message=message, status_code=500, detail=detail)
@@ -130,6 +133,7 @@ class StorageException(AppException):
 # ============================================================
 # 执行锁错误 (4xxx)
 # ============================================================
+
 
 class LockException(AppException):
     def __init__(self, message: str = "锁操作异常", detail: Any = None):
@@ -160,6 +164,7 @@ class LockOwnershipException(AppException):
 # 状态持久化错误 (5xxx)
 # ============================================================
 
+
 class StateException(AppException):
     def __init__(self, message: str = "状态操作异常", detail: Any = None):
         super().__init__(code=5001, message=message, status_code=409, detail=detail)
@@ -179,6 +184,7 @@ class StateNotFoundException(AppException):
 # AI/LLM错误 (6xxx)
 # ============================================================
 
+
 class LLMException(AppException):
     def __init__(self, message: str = "大模型调用异常", detail: Any = None):
         super().__init__(code=6001, message=message, status_code=502, detail=detail)
@@ -197,6 +203,7 @@ class LLMResponseException(AppException):
 # ============================================================
 # CAD错误 (7xxx)
 # ============================================================
+
 
 class CadException(AppException):
     def __init__(self, message: str = "CAD操作异常", detail: Any = None):

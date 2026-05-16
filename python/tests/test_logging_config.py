@@ -15,12 +15,10 @@ from datetime import datetime
 import pytest
 
 from app.core.logging_config import configure_logging, LOG_FORMAT, RequestIdFilter
-from app.core.request_id import set_request_id, get_request_id
+from app.core.request_id import set_request_id
 
 
-ISO8601_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$"
-)
+ISO8601_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
 
 
 class TestConfigureLogging:
@@ -63,8 +61,13 @@ class TestRequestIdFilter:
     def test_filter_adds_request_id_to_record(self):
         set_request_id("test-rid-abc123")
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=1,
-            msg="test message", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=1,
+            msg="test message",
+            args=(),
+            exc_info=None,
         )
         f = RequestIdFilter()
         result = f.filter(record)
@@ -72,14 +75,18 @@ class TestRequestIdFilter:
         assert record.request_id == "test-rid-abc123"
 
     def test_filter_uses_unknown_when_no_context(self):
-        import contextvars
         from app.core.request_id import _request_id_var
 
         token = _request_id_var.set("unknown")
         try:
             record = logging.LogRecord(
-                name="test", level=logging.INFO, pathname="", lineno=1,
-                msg="test", args=(), exc_info=None,
+                name="test",
+                level=logging.INFO,
+                pathname="",
+                lineno=1,
+                msg="test",
+                args=(),
+                exc_info=None,
             )
             f = RequestIdFilter()
             f.filter(record)
@@ -97,10 +104,12 @@ class TestLogFormat:
         handler = logging.StreamHandler(stream)
         handler.setLevel(logging.DEBUG)
         handler.addFilter(RequestIdFilter())
-        handler.setFormatter(logging.Formatter(
-            fmt=LOG_FORMAT,
-            datefmt="%Y-%m-%dT%H:%M:%S",
-        ))
+        handler.setFormatter(
+            logging.Formatter(
+                fmt=LOG_FORMAT,
+                datefmt="%Y-%m-%dT%H:%M:%S",
+            )
+        )
         return stream, handler
 
     def _parse_log_line(self, line):
@@ -180,7 +189,6 @@ class TestLogFormat:
         assert rid == "log-test-rid-xyz"
 
     def test_unknown_request_id_when_not_set(self, capture_stream):
-        import contextvars
         from app.core.request_id import _request_id_var
 
         stream, handler = capture_stream
@@ -208,7 +216,9 @@ class TestLogFormatEdgeCases:
         handler = logging.StreamHandler(stream)
         handler.setLevel(logging.DEBUG)
         handler.addFilter(RequestIdFilter())
-        handler.setFormatter(logging.Formatter(fmt=LOG_FORMAT, datefmt="%Y-%m-%dT%H:%M:%S"))
+        handler.setFormatter(
+            logging.Formatter(fmt=LOG_FORMAT, datefmt="%Y-%m-%dT%H:%M:%S")
+        )
         return stream, handler
 
     def test_empty_message(self, capture):

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestUserSovereigntyPredict:
     """Tests for POST /api/v1/user-sovereignty/predict."""
@@ -88,6 +86,7 @@ class TestAuditLogRecord:
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == 1002
+
     def test_record_with_invalid_status_returns_error(self, client):
         params = {
             "ai_module": "lnn_predict",
@@ -119,7 +118,9 @@ class TestAuditLogQuery:
         assert "logs" in data["data"]
 
     def test_query_with_limit(self, client):
-        response = client.post("/api/v1/user-sovereignty/audit-log/query", json={"limit": 10, "offset": 0})
+        response = client.post(
+            "/api/v1/user-sovereignty/audit-log/query", json={"limit": 10, "offset": 0}
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == 0
