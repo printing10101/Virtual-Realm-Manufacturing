@@ -4,6 +4,7 @@ Hybrid LNN (CNN + LNN) Model
 Fuses convolutional neural network with logical neural network advantages.
 Handles mixed input of images and structured data.
 """
+
 import numpy as np
 from typing import Any, Dict, List, Optional
 
@@ -32,7 +33,7 @@ class HybridLNNModel(BaseLNNModel):
         dropout_rate: float = 0.2,
         fusion_method: str = "concat",
         device: str = "cpu",
-        **kwargs
+        **kwargs,
     ):
         """
         初始化Hybrid LNN模型
@@ -79,7 +80,9 @@ class HybridLNNModel(BaseLNNModel):
 
         # 构建CNN层
         input_channels = 1  # 假设单通道输入
-        for i, (filters, kernel_size) in enumerate(zip(self.cnn_filters, self.cnn_kernel_sizes)):
+        for i, (filters, kernel_size) in enumerate(
+            zip(self.cnn_filters, self.cnn_kernel_sizes)
+        ):
             # 卷积核权重 (kernel_size, input_channels, filters)
             W = np.random.randn(kernel_size, input_channels, filters) * 0.1
             b = np.zeros(filters)
@@ -90,7 +93,11 @@ class HybridLNNModel(BaseLNNModel):
 
         # 构建LNN层
         lnn_input_dim = self.input_dim + self.cnn_filters[-1]  # 融合后的维度
-        layer_dims = [lnn_input_dim] + [self.lnn_hidden_dim] * self.lnn_num_layers + [self.output_dim]
+        layer_dims = (
+            [lnn_input_dim]
+            + [self.lnn_hidden_dim] * self.lnn_num_layers
+            + [self.output_dim]
+        )
 
         for i in range(len(layer_dims) - 1):
             fan_in = layer_dims[i]
@@ -127,8 +134,8 @@ class HybridLNNModel(BaseLNNModel):
         # 检查输入是否包含图像特征
         if x.shape[1] > self.input_dim:
             # 混合输入
-            structured_data = x[:, :self.input_dim]
-            image_features = x[:, self.input_dim:]
+            structured_data = x[:, : self.input_dim]
+            image_features = x[:, self.input_dim :]
         else:
             # 仅结构化数据
             structured_data = x
@@ -169,7 +176,7 @@ class HybridLNNModel(BaseLNNModel):
                 # 简化的特征提取
                 features = np.zeros((x.shape[0], out_channels))
                 for i in range(min(x.shape[1], kernel_size)):
-                    features += x[:, i:i+1] @ W[i] if i < x.shape[1] else 0
+                    features += x[:, i : i + 1] @ W[i] if i < x.shape[1] else 0
 
                 x = self._relu(features + b)
             else:
@@ -211,7 +218,9 @@ class HybridLNNModel(BaseLNNModel):
         padding = np.zeros((x.shape[0], target_dim - x.shape[1]))
         return np.concatenate([x, padding], axis=1)
 
-    def _attention_fusion(self, structured: np.ndarray, image: np.ndarray) -> np.ndarray:
+    def _attention_fusion(
+        self, structured: np.ndarray, image: np.ndarray
+    ) -> np.ndarray:
         """
         注意力融合
 
@@ -259,9 +268,7 @@ class HybridLNNModel(BaseLNNModel):
         return self.forward(x)
 
     def predict_multimodal(
-        self,
-        structured_data: np.ndarray,
-        image_data: Optional[np.ndarray] = None
+        self, structured_data: np.ndarray, image_data: Optional[np.ndarray] = None
     ) -> np.ndarray:
         """
         多模态预测
@@ -295,7 +302,9 @@ class HybridLNNModel(BaseLNNModel):
     def _cross_entropy_loss(self, predictions: np.ndarray, labels: np.ndarray) -> float:
         """交叉熵损失"""
         predictions = predictions - np.max(predictions, axis=-1, keepdims=True)
-        log_probs = predictions - np.log(np.sum(np.exp(predictions), axis=-1, keepdims=True))
+        log_probs = predictions - np.log(
+            np.sum(np.exp(predictions), axis=-1, keepdims=True)
+        )
 
         if labels.ndim == 1:
             labels = np.eye(predictions.shape[1])[labels.astype(int)]
@@ -307,7 +316,7 @@ class HybridLNNModel(BaseLNNModel):
         data: np.ndarray,
         labels: np.ndarray,
         batch_size: int,
-        learning_rate: float
+        learning_rate: float,
     ) -> float:
         """单步训练"""
         n_samples = data.shape[0]
@@ -335,13 +344,15 @@ class HybridLNNModel(BaseLNNModel):
     def get_model_info(self) -> Dict[str, Any]:
         """获取Hybrid模型信息"""
         info = super().get_model_info()
-        info.update({
-            "model_type": "HybridLNN",
-            "cnn_filters": self.cnn_filters,
-            "cnn_kernel_sizes": self.cnn_kernel_sizes,
-            "lnn_hidden_dim": self.lnn_hidden_dim,
-            "lnn_num_layers": self.lnn_num_layers,
-            "dropout_rate": self.dropout_rate,
-            "fusion_method": self.fusion_method,
-        })
+        info.update(
+            {
+                "model_type": "HybridLNN",
+                "cnn_filters": self.cnn_filters,
+                "cnn_kernel_sizes": self.cnn_kernel_sizes,
+                "lnn_hidden_dim": self.lnn_hidden_dim,
+                "lnn_num_layers": self.lnn_num_layers,
+                "dropout_rate": self.dropout_rate,
+                "fusion_method": self.fusion_method,
+            }
+        )
         return info

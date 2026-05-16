@@ -3,6 +3,7 @@ Dataset processing module for LNN training.
 
 Supports multi-source data loading and preprocessing.
 """
+
 import time
 import logging
 import numpy as np
@@ -109,7 +110,11 @@ class LNNDataset(Dataset):
         test_labels = self.labels[test_idx] if self.labels is not None else None
 
         train_dataset = LNNDataset(
-            train_data, train_labels, self.transform, self.target_transform, self.metadata
+            train_data,
+            train_labels,
+            self.transform,
+            self.target_transform,
+            self.metadata,
         )
         test_dataset = LNNDataset(
             test_data, test_labels, self.transform, self.target_transform, self.metadata
@@ -118,12 +123,16 @@ class LNNDataset(Dataset):
         return train_dataset, test_dataset
 
     @classmethod
-    def from_numpy(cls, data: np.ndarray, labels: Optional[np.ndarray] = None) -> "LNNDataset":
+    def from_numpy(
+        cls, data: np.ndarray, labels: Optional[np.ndarray] = None
+    ) -> "LNNDataset":
         """从numpy数组创建数据集"""
         return cls(data, labels)
 
     @classmethod
-    def from_json(cls, json_path: str, data_key: str = "data", label_key: str = "labels") -> "LNNDataset":
+    def from_json(
+        cls, json_path: str, data_key: str = "data", label_key: str = "labels"
+    ) -> "LNNDataset":
         """从JSON文件创建数据集"""
         with open(json_path, "r") as f:
             json_data = json.load(f)
@@ -134,7 +143,9 @@ class LNNDataset(Dataset):
         return cls(data, labels, metadata={"source": json_path})
 
     @classmethod
-    def from_csv(cls, csv_path: str, label_column: Optional[str] = None) -> "LNNDataset":
+    def from_csv(
+        cls, csv_path: str, label_column: Optional[str] = None
+    ) -> "LNNDataset":
         """从CSV文件创建数据集"""
         import pandas as pd
 
@@ -230,33 +241,42 @@ class FeatureExtractor:
 
         for i in range(n_samples):
             s = signal[i]
-            
+
             # RMS (均方根)
-            rms = np.sqrt(np.mean(s ** 2))
-            
+            rms = np.sqrt(np.mean(s**2))
+
             # 峰值
             peak = np.max(np.abs(s))
-            
+
             # 峰峰值
             peak_to_peak = np.max(s) - np.min(s)
-            
+
             # 波形因子 = RMS / 平均值(绝对值)
             mean_abs = np.mean(np.abs(s))
             waveform_factor = rms / (mean_abs + 1e-10)
-            
+
             # 脉冲因子 = 峰值 / RMS
             impulse_factor = peak / (rms + 1e-10)
-            
+
             # 峭度 (Kurtosis)
             std = np.std(s)
             kurtosis = np.mean(((s - np.mean(s)) / (std + 1e-10)) ** 4) - 3
 
-            features[i] = [rms, peak, peak_to_peak, waveform_factor, impulse_factor, kurtosis]
+            features[i] = [
+                rms,
+                peak,
+                peak_to_peak,
+                waveform_factor,
+                impulse_factor,
+                kurtosis,
+            ]
 
         return features
 
     @staticmethod
-    def extract_frequency_domain_features(signal: np.ndarray, fs: float = 1000.0) -> np.ndarray:
+    def extract_frequency_domain_features(
+        signal: np.ndarray, fs: float = 1000.0
+    ) -> np.ndarray:
         """
         提取频域特征
 
@@ -277,21 +297,21 @@ class FeatureExtractor:
         for i in range(n_samples):
             s = signal[i]
             n = len(s)
-            
+
             # FFT变换
             fft_vals = np.fft.rfft(s)
             fft_magnitude = np.abs(fft_vals)
-            freqs = np.fft.rfftfreq(n, d=1.0/fs)
-            
+            freqs = np.fft.rfftfreq(n, d=1.0 / fs)
+
             # 主频率 (能量最大的频率分量)
             dominant_freq = freqs[np.argmax(fft_magnitude)]
-            
+
             # 频谱重心 (Spectral Centroid)
             total_magnitude = np.sum(fft_magnitude) + 1e-10
             spectral_centroid = np.sum(freqs * fft_magnitude) / total_magnitude
-            
+
             # 频谱能量
-            spectral_energy = np.sum(fft_magnitude ** 2)
+            spectral_energy = np.sum(fft_magnitude**2)
 
             features[i] = [dominant_freq, spectral_centroid, spectral_energy]
 
@@ -319,7 +339,7 @@ class BoschCNCDataset(Dataset):
     Bosch CNC数据集类
 
     处理HDF5格式文件，包含振动信号数据、良品/不良品标签及OP00至OP14多个工序数据
-    
+
     集成数据集缓存机制：
     - 缓存优先策略：检查缓存→命中则直接返回→未命中则加载并缓存
     - 支持强制刷新缓存
@@ -360,7 +380,9 @@ class BoschCNCDataset(Dataset):
         self._dataset_cache = dataset_cache
 
         if not os.path.exists(hdf5_path):
-            raise FileNotFoundError(f"数据集加载失败：HDF5 数据文件不存在: '{hdf5_path}'。可能原因：1) 文件路径配置错误；2) 数据集文件未下载或已删除。请检查配置文件中的数据路径，或运行数据下载脚本获取 HDF5 数据集文件。")
+            raise FileNotFoundError(
+                f"数据集加载失败：HDF5 数据文件不存在: '{hdf5_path}'。可能原因：1) 文件路径配置错误；2) 数据集文件未下载或已删除。请检查配置文件中的数据路径，或运行数据下载脚本获取 HDF5 数据集文件。"
+            )
 
         self._data: Optional[np.ndarray] = None
         self._labels: Optional[np.ndarray] = None
@@ -369,14 +391,16 @@ class BoschCNCDataset(Dataset):
         self._feature_extractor = FeatureExtractor()
 
         start_time = time.time()
-        
+
         if cache_data:
             self._load_with_cache()
         else:
             self._load_dataset_info()
-        
+
         load_time = time.time() - start_time
-        logger.info(f"BoschCNCDataset loaded in {load_time*1000:.2f}ms from {hdf5_path}")
+        logger.info(
+            f"BoschCNCDataset loaded in {load_time * 1000:.2f}ms from {hdf5_path}"
+        )
 
     def _load_with_cache(self):
         """
@@ -422,26 +446,28 @@ class BoschCNCDataset(Dataset):
             cache: 数据集缓存实例
         """
         try:
-            with h5py.File(self.hdf5_path, 'r') as f:
+            with h5py.File(self.hdf5_path, "r") as f:
                 if self.operation is not None:
                     group = f.get(self.operation)
                     if group is None:
                         raise ValueError(f"工序 {self.operation} 不存在于HDF5文件中")
-                    signals = group['signals'][:]
-                    labels = group['labels'][:]
+                    signals = group["signals"][:]
+                    labels = group["labels"][:]
                 else:
                     all_signals = []
                     all_labels = []
                     for key in f.keys():
-                        if key.startswith('OP'):
+                        if key.startswith("OP"):
                             group = f[key]
-                            if 'signals' in group:
-                                all_signals.append(group['signals'][:])
-                                all_labels.append(group['labels'][:])
-                    
+                            if "signals" in group:
+                                all_signals.append(group["signals"][:])
+                                all_labels.append(group["labels"][:])
+
                     if not all_signals:
-                        raise ValueError("数据集解析失败：HDF5 文件中未找到有效的工序数据。可能原因：1) HDF5 文件结构不符合预期格式；2) 文件已损坏。请检查 HDF5 文件结构，或重新下载数据集。")
-                    
+                        raise ValueError(
+                            "数据集解析失败：HDF5 文件中未找到有效的工序数据。可能原因：1) HDF5 文件结构不符合预期格式；2) 文件已损坏。请检查 HDF5 文件结构，或重新下载数据集。"
+                        )
+
                     signals = np.concatenate(all_signals, axis=0)
                     labels = np.concatenate(all_labels, axis=0)
 
@@ -449,7 +475,9 @@ class BoschCNCDataset(Dataset):
                 self._labels_raw = labels
 
                 if self.extract_features:
-                    self._data = self._feature_extractor.extract_all_features(signals, self.fs)
+                    self._data = self._feature_extractor.extract_all_features(
+                        signals, self.fs
+                    )
                 else:
                     self._data = signals
 
@@ -475,20 +503,20 @@ class BoschCNCDataset(Dataset):
 
     def _load_dataset_info(self):
         """仅加载数据集信息（不缓存数据）"""
-        with h5py.File(self.hdf5_path, 'r') as f:
-            self._available_operations = [k for k in f.keys() if k.startswith('OP')]
+        with h5py.File(self.hdf5_path, "r") as f:
+            self._available_operations = [k for k in f.keys() if k.startswith("OP")]
 
     def __len__(self) -> int:
         """返回数据集大小"""
         if self._data is None:
-            with h5py.File(self.hdf5_path, 'r') as f:
+            with h5py.File(self.hdf5_path, "r") as f:
                 if self.operation:
-                    return f[self.operation]['signals'].shape[0]
+                    return f[self.operation]["signals"].shape[0]
                 else:
                     total = 0
                     for key in f.keys():
-                        if key.startswith('OP') and 'signals' in f[key]:
-                            total += f[key]['signals'].shape[0]
+                        if key.startswith("OP") and "signals" in f[key]:
+                            total += f[key]["signals"].shape[0]
                     return total
         return len(self._data)
 
@@ -496,13 +524,15 @@ class BoschCNCDataset(Dataset):
         """获取单个样本"""
         if self._data is None:
             # 实时读取
-            with h5py.File(self.hdf5_path, 'r') as f:
+            with h5py.File(self.hdf5_path, "r") as f:
                 if self.operation:
-                    signal = f[self.operation]['signals'][idx]
-                    label = f[self.operation]['labels'][idx]
+                    signal = f[self.operation]["signals"][idx]
+                    label = f[self.operation]["labels"][idx]
                 else:
                     # 需要更复杂的索引映射
-                    raise NotImplementedError("数据集索引映射失败：在非缓存模式下无法直接通过索引获取数据。当前未实现动态索引映射逻辑。建议解决方案：1) 启用数据缓存模式（设置 cache=True）；2) 或实现自定义的索引映射方法以支持按需加载。")
+                    raise NotImplementedError(
+                        "数据集索引映射失败：在非缓存模式下无法直接通过索引获取数据。当前未实现动态索引映射逻辑。建议解决方案：1) 启用数据缓存模式（设置 cache=True）；2) 或实现自定义的索引映射方法以支持按需加载。"
+                    )
         else:
             signal = self._data[idx]
             label = self._labels[idx]
@@ -528,7 +558,9 @@ class BoschCNCDataset(Dataset):
     def get_labels(self) -> np.ndarray:
         """获取标签数据"""
         if not self.cache_data:
-            raise RuntimeError("数据访问失败：尚未缓存数据集，无法获取标签数据。请先调用 load() 方法加载数据集到缓存，或直接访问数据集文件获取标签。")
+            raise RuntimeError(
+                "数据访问失败：尚未缓存数据集，无法获取标签数据。请先调用 load() 方法加载数据集到缓存，或直接访问数据集文件获取标签。"
+            )
         return self._labels
 
     def split(
@@ -647,7 +679,9 @@ class DataAugmentation:
         return np.roll(signal, shift)
 
     @staticmethod
-    def amplitude_scaling(signal: np.ndarray, scale_range: Tuple[float, float] = (0.8, 1.2)) -> np.ndarray:
+    def amplitude_scaling(
+        signal: np.ndarray, scale_range: Tuple[float, float] = (0.8, 1.2)
+    ) -> np.ndarray:
         """
         幅度缩放
 
@@ -662,7 +696,9 @@ class DataAugmentation:
         return signal * scale
 
     @staticmethod
-    def time_stretch(signal: np.ndarray, stretch_range: Tuple[float, float] = (0.9, 1.1)) -> np.ndarray:
+    def time_stretch(
+        signal: np.ndarray, stretch_range: Tuple[float, float] = (0.9, 1.1)
+    ) -> np.ndarray:
         """
         时间伸缩（简化版）
 
@@ -680,13 +716,13 @@ class DataAugmentation:
         stretched = np.interp(
             np.linspace(0, original_length - 1, new_length),
             np.arange(original_length),
-            signal
+            signal,
         )
         # 恢复原始长度
         return np.interp(
             np.linspace(0, new_length - 1, original_length),
             np.arange(new_length),
-            stretched
+            stretched,
         )
 
     @staticmethod
@@ -700,8 +736,10 @@ class DataAugmentation:
         Returns:
             组合变换函数
         """
+
         def composed(signal):
             for transform in transforms:
                 signal = transform(signal)
             return signal
+
         return composed

@@ -1,4 +1,5 @@
 """LLM client implementations for Ollama and cloud providers."""
+
 from __future__ import annotations
 
 import asyncio
@@ -34,7 +35,9 @@ def _classify_error(status_code: int, body: str) -> LLMError:
     if status_code == 429:
         return RateLimitError(f"Rate limit exceeded: {status_code} - {body}")
     if 500 <= status_code < 600:
-        return ServiceUnavailableError(f"Service temporarily unavailable: {status_code} - {body}")
+        return ServiceUnavailableError(
+            f"Service temporarily unavailable: {status_code} - {body}"
+        )
     return LLMError(f"API error: {status_code} - {body}")
 
 
@@ -74,14 +77,20 @@ class BaseLLMClient:
         temperature: float,
     ) -> None:
         if not messages:
-            raise ValueError("LLM API 调用失败：'messages' 参数不能为空。LLM API 需要至少一条消息（包含 role 和 content）才能发起请求。请传入格式如 [{'role': 'user', 'content': 'your prompt'}] 的消息列表。")
+            raise ValueError(
+                "LLM API 调用失败：'messages' 参数不能为空。LLM API 需要至少一条消息（包含 role 和 content）才能发起请求。请传入格式如 [{'role': 'user', 'content': 'your prompt'}] 的消息列表。"
+            )
         if max_tokens < 1:
             raise ValueError(f"max_tokens must be >= 1, got {max_tokens}")
         if not (0.0 <= temperature <= 2.0):
-            raise ValueError(f"LLM API 调用失败：'temperature' 参数值必须在 [0.0, 2.0] 区间内，当前值: {temperature}。temperature 控制生成结果的随机性（0.0=最确定，2.0=最随机）。请调整至合理区间。")
+            raise ValueError(
+                f"LLM API 调用失败：'temperature' 参数值必须在 [0.0, 2.0] 区间内，当前值: {temperature}。temperature 控制生成结果的随机性（0.0=最确定，2.0=最随机）。请调整至合理区间。"
+            )
 
     @staticmethod
-    def _safe_parse(parser, response_data: dict[str, Any], model: str) -> dict[str, Any]:
+    def _safe_parse(
+        parser, response_data: dict[str, Any], model: str
+    ) -> dict[str, Any]:
         try:
             return parser(response_data, model)
         except (LLMError, InvalidResponseError):
@@ -101,7 +110,9 @@ class BaseLLMClient:
         """Call LLM chat completion API with retry logic."""
         self._validate_inputs(messages, max_tokens, temperature)
 
-        payload, headers, endpoint = self._build_payload(messages, max_tokens, temperature, model)
+        payload, headers, endpoint = self._build_payload(
+            messages, max_tokens, temperature, model
+        )
         target_model = model or self._default_model()
 
         last_error: Exception | None = None
@@ -115,24 +126,36 @@ class BaseLLMClient:
                     )
                 if response.status_code != 200:
                     raise _classify_error(response.status_code, response.text)
-                return self._safe_parse(self._parse_response, response.json(), target_model)
+                return self._safe_parse(
+                    self._parse_response, response.json(), target_model
+                )
             except httpx.TimeoutException as e:
                 last_error = e
                 logger.warning(
                     "%s API timeout (attempt %d/%d): %s",
-                    type(self).__name__, attempt, self.max_retries, e,
+                    type(self).__name__,
+                    attempt,
+                    self.max_retries,
+                    e,
                 )
             except httpx.NetworkError as e:
                 last_error = e
                 logger.warning(
                     "%s API network error (attempt %d/%d): %s",
-                    type(self).__name__, attempt, self.max_retries, e,
+                    type(self).__name__,
+                    attempt,
+                    self.max_retries,
+                    e,
                 )
             except (ServiceUnavailableError, RateLimitError) as e:
                 last_error = e
                 logger.warning(
                     "%s API %s (attempt %d/%d): %s",
-                    type(self).__name__, type(e).__name__, attempt, self.max_retries, e,
+                    type(self).__name__,
+                    type(e).__name__,
+                    attempt,
+                    self.max_retries,
+                    e,
                 )
             except (LLMError, InvalidResponseError):
                 raise
@@ -156,7 +179,9 @@ class OllamaClient(BaseLLMClient):
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
-        super().__init__(timeout=timeout, max_retries=max_retries, retry_delay=retry_delay)
+        super().__init__(
+            timeout=timeout, max_retries=max_retries, retry_delay=retry_delay
+        )
         self.base_url = base_url.rstrip("/")
         self.model = model
 
@@ -204,7 +229,9 @@ class CloudLLMClient(BaseLLMClient):
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
-        super().__init__(timeout=timeout, max_retries=max_retries, retry_delay=retry_delay)
+        super().__init__(
+            timeout=timeout, max_retries=max_retries, retry_delay=retry_delay
+        )
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -236,7 +263,9 @@ class CloudLLMClient(BaseLLMClient):
     def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
         choices = data.get("choices", [])
         if not choices:
-            raise InvalidResponseError("LLM API 响应解析失败：API 返回的响应中未包含任何候选结果（choices 列表为空）。可能原因：1) API 服务异常或返回了空响应；2) 请求参数配置有误。请检查 API 请求参数，或调用 API 健康检查端点确认服务状态。")
+            raise InvalidResponseError(
+                "LLM API 响应解析失败：API 返回的响应中未包含任何候选结果（choices 列表为空）。可能原因：1) API 服务异常或返回了空响应；2) 请求参数配置有误。请检查 API 请求参数，或调用 API 健康检查端点确认服务状态。"
+            )
         choice = choices[0]
         message = choice.get("message", {})
         return {

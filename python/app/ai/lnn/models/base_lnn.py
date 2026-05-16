@@ -3,6 +3,7 @@ LNN (Logical Neural Network) Base Model
 
 Defines the unified interface and base functionality for all LNN models.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
@@ -18,7 +19,7 @@ class BaseLNNModel(ABC):
         input_dim: int,
         output_dim: int,
         device: str = "cpu",
-        **kwargs
+        **kwargs,
     ):
         """
         初始化LNN基类
@@ -153,7 +154,7 @@ class BaseLNNModel(ABC):
         epochs: int = 100,
         batch_size: int = 32,
         learning_rate: float = 0.001,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, List[float]]:
         """
         训练模型
@@ -192,7 +193,7 @@ class BaseLNNModel(ABC):
         data: np.ndarray,
         labels: np.ndarray,
         batch_size: int,
-        learning_rate: float
+        learning_rate: float,
     ) -> float:
         """
         单步训练
@@ -226,7 +227,7 @@ class BaseLNNModel(ABC):
         self,
         test_data: np.ndarray,
         test_labels: np.ndarray,
-        metrics: Optional[List[str]] = None
+        metrics: Optional[List[str]] = None,
     ) -> Dict[str, float]:
         """
         评估模型性能
@@ -240,7 +241,9 @@ class BaseLNNModel(ABC):
             评估结果字典
         """
         if not self.is_trained:
-            raise RuntimeError("LNN 模型评估失败：模型尚未完成训练，无法执行评估。评估操作只能在模型训练完成后进行。请先调用 train() 方法完成模型训练，或加载已训练的检查点。")
+            raise RuntimeError(
+                "LNN 模型评估失败：模型尚未完成训练，无法执行评估。评估操作只能在模型训练完成后进行。请先调用 train() 方法完成模型训练，或加载已训练的检查点。"
+            )
 
         predictions = self.predict(test_data)
 
@@ -364,7 +367,9 @@ class BaseLNNModel(ABC):
         self.output_dim = int(data["output_dim"])
         self.is_trained = bool(data["is_trained"])
 
-    def measure_inference_time(self, x: np.ndarray, n_runs: int = 100) -> Dict[str, float]:
+    def measure_inference_time(
+        self, x: np.ndarray, n_runs: int = 100
+    ) -> Dict[str, float]:
         """
         测量推理时间
 

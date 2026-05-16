@@ -4,6 +4,7 @@ LTC (Long-Term Context Network) Model
 Focused on time-series prediction tasks, supporting sequence length > 1000.
 Implements temporal processing with memory mechanisms.
 """
+
 import numpy as np
 from typing import Any, Dict, List, Optional
 
@@ -31,7 +32,7 @@ class LTCModel(BaseLNNModel):
         num_layers: int = 2,
         dropout_rate: float = 0.2,
         device: str = "cpu",
-        **kwargs
+        **kwargs,
     ):
         """
         初始化LTC模型
@@ -68,7 +69,9 @@ class LTCModel(BaseLNNModel):
             return
 
         # 初始化时序处理权重
-        layer_dims = [self.input_dim] + [self.hidden_dim] * self.num_layers + [self.output_dim]
+        layer_dims = (
+            [self.input_dim] + [self.hidden_dim] * self.num_layers + [self.output_dim]
+        )
 
         for i in range(len(layer_dims) - 1):
             fan_in = layer_dims[i]
@@ -117,7 +120,7 @@ class LTCModel(BaseLNNModel):
 
         # 确保序列长度在支持范围内
         if seq_len > self.temporal_horizon:
-            x = x[:, -self.temporal_horizon:, :]
+            x = x[:, -self.temporal_horizon :, :]
             seq_len = self.temporal_horizon
 
         # 时序处理
@@ -155,9 +158,9 @@ class LTCModel(BaseLNNModel):
             # 结合记忆信息
             if i == 0 and memory is not None:
                 memory_influence = memory @ self.memory_weights[1]
-                memory_influence = memory_influence[:, :h.shape[1]]
+                memory_influence = memory_influence[:, : h.shape[1]]
                 if h.shape[1] < memory_influence.shape[1]:
-                    memory_influence = memory_influence[:, :h.shape[1]]
+                    memory_influence = memory_influence[:, : h.shape[1]]
                 h = h + 0.1 * memory_influence
 
             z = h @ W + b
@@ -197,7 +200,9 @@ class LTCModel(BaseLNNModel):
             聚合后的输出
         """
         if not states:
-            raise ValueError("LTC 模型状态聚合失败：状态列表（states）为空。LTC 网络需要至少一个时间步的状态数据进行聚合。请检查数据生成逻辑，确保状态列表包含有效的状态数据。")
+            raise ValueError(
+                "LTC 模型状态聚合失败：状态列表（states）为空。LTC 网络需要至少一个时间步的状态数据进行聚合。请检查数据生成逻辑，确保状态列表包含有效的状态数据。"
+            )
 
         # 使用注意力机制聚合
         stacked = np.stack(states, axis=1)  # (batch_size, seq_len, hidden_dim)
@@ -262,7 +267,7 @@ class LTCModel(BaseLNNModel):
         data: np.ndarray,
         labels: np.ndarray,
         batch_size: int,
-        learning_rate: float
+        learning_rate: float,
     ) -> float:
         """
         单步训练
@@ -307,14 +312,16 @@ class LTCModel(BaseLNNModel):
     def get_model_info(self) -> Dict[str, Any]:
         """获取LTC模型信息"""
         info = super().get_model_info()
-        info.update({
-            "model_type": "LTC",
-            "hidden_dim": self.hidden_dim,
-            "memory_size": self.memory_size,
-            "temporal_horizon": self.temporal_horizon,
-            "num_layers": self.num_layers,
-            "dropout_rate": self.dropout_rate,
-        })
+        info.update(
+            {
+                "model_type": "LTC",
+                "hidden_dim": self.hidden_dim,
+                "memory_size": self.memory_size,
+                "temporal_horizon": self.temporal_horizon,
+                "num_layers": self.num_layers,
+                "dropout_rate": self.dropout_rate,
+            }
+        )
         return info
 
     def to_torch(self, device: str = "cpu"):
@@ -385,4 +392,6 @@ class LTCModel(BaseLNNModel):
             return torch_model
 
         except ImportError:
-            raise RuntimeError("LTC 模型转换失败：转换为 PyTorch 张量需要安装 PyTorch 库。当前环境中未检测到 PyTorch。请安装 PyTorch（pip install torch）后重试。")
+            raise RuntimeError(
+                "LTC 模型转换失败：转换为 PyTorch 张量需要安装 PyTorch 库。当前环境中未检测到 PyTorch。请安装 PyTorch（pip install torch）后重试。"
+            )

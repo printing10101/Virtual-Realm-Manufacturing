@@ -4,6 +4,7 @@ LTC (Liquid Time-Constant) Model
 Features learnable time constants tau for adaptive temporal pattern modeling.
 Core update formula: h_new = h + dt * (dh - h) / tau
 """
+
 import torch
 import torch.nn as nn
 from typing import Tuple
@@ -67,7 +68,7 @@ class LTCCell(nn.Module):
 class LTCModel(BaseLNN):
     """
     LTC model inheriting from BaseLNN.
-    
+
     Features:
     - Learnable time constant tau
     - Adaptive to different time-scale patterns
@@ -83,10 +84,15 @@ class LTCModel(BaseLNN):
         """
         super().__init__(config)
 
-        self.ltc_cells = nn.ModuleList([
-            LTCCell(config.input_size if i == 0 else config.hidden_size, config.hidden_size)
-            for i in range(config.num_layers)
-        ])
+        self.ltc_cells = nn.ModuleList(
+            [
+                LTCCell(
+                    config.input_size if i == 0 else config.hidden_size,
+                    config.hidden_size,
+                )
+                for i in range(config.num_layers)
+            ]
+        )
 
         self.output_layer = nn.Linear(config.hidden_size, config.output_size)
 

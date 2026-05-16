@@ -4,6 +4,7 @@ Result Fusion Layer
 Implements multi-engine result integration using Dempster-Shafer evidence theory
 with dynamic weight adjustment and multi-dimensional quality assessment.
 """
+
 import logging
 import numpy as np
 from typing import Any, Dict, List, Optional, Tuple
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EngineEvidence:
     """引擎证据"""
+
     engine: EngineType
     model: Optional[str]
     prediction: np.ndarray
@@ -71,11 +73,15 @@ class DempsterShaferFusion:
             FusionResult 融合后的结果
         """
         if not results or any(r is None for r in results):
-            raise ValueError("模型融合失败：结果列表无效，包含 None 值。可能原因：1) 部分子模型推理失败并返回了 None；2) 结果收集逻辑出现异常。请检查各子模型的推理状态，确保所有模型均正常返回 InferenceResult 结果后再进行融合操作。")
+            raise ValueError(
+                "模型融合失败：结果列表无效，包含 None 值。可能原因：1) 部分子模型推理失败并返回了 None；2) 结果收集逻辑出现异常。请检查各子模型的推理状态，确保所有模型均正常返回 InferenceResult 结果后再进行融合操作。"
+            )
 
         for i, result in enumerate(results):
             if not isinstance(result, InferenceResult):
-                raise TypeError(f"模型融合失败：结果列表中第 {i} 项类型错误。期望类型为 InferenceResult，实际类型为 {type(result).__name__}。请确保所有推理结果均为 InferenceResult 实例。")
+                raise TypeError(
+                    f"模型融合失败：结果列表中第 {i} 项类型错误。期望类型为 InferenceResult，实际类型为 {type(result).__name__}。请确保所有推理结果均为 InferenceResult 实例。"
+                )
 
         if len(results) == 1:
             return self._single_result_fusion(results[0])
@@ -132,11 +138,13 @@ class DempsterShaferFusion:
             quality_metrics=quality_metrics,
         )
 
-        self.fusion_history.append({
-            "n_engines": len(results),
-            "conflict": conflict,
-            "confidence": fusion_confidence,
-        })
+        self.fusion_history.append(
+            {
+                "n_engines": len(results),
+                "conflict": conflict,
+                "confidence": fusion_confidence,
+            }
+        )
 
         return fusion_result
 
@@ -162,7 +170,9 @@ class DempsterShaferFusion:
             evidences.append(evidence)
         return evidences
 
-    def _compute_dynamic_weights(self, evidences: List[EngineEvidence]) -> Dict[EngineType, float]:
+    def _compute_dynamic_weights(
+        self, evidences: List[EngineEvidence]
+    ) -> Dict[EngineType, float]:
         """
         基于多维度评估指标计算动态权重
 
@@ -183,9 +193,7 @@ class DempsterShaferFusion:
 
             # 综合得分
             score = (
-                0.4 * confidence_score
-                + 0.3 * efficiency_score
-                + 0.3 * historical_score
+                0.4 * confidence_score + 0.3 * efficiency_score + 0.3 * historical_score
             )
 
             weights[evidence.engine] = score
@@ -432,9 +440,13 @@ class DempsterShaferFusion:
 
         for i, result in enumerate(results):
             engine = result.engine_used.value if result.engine_used else "Unknown"
-            path.append(f"步骤{i+1}: {engine}引擎推理 -> 置信度{result.confidence:.3f}")
+            path.append(
+                f"步骤{i + 1}: {engine}引擎推理 -> 置信度{result.confidence:.3f}"
+            )
 
-        path.append(f"融合: Dempster组合规则 -> Mass(假设)={combined_mass.get('hypothesis_A', 0):.3f}")
+        path.append(
+            f"融合: Dempster组合规则 -> Mass(假设)={combined_mass.get('hypothesis_A', 0):.3f}"
+        )
 
         return path
 
@@ -445,7 +457,9 @@ class DempsterShaferFusion:
             confidence=result.confidence,
             contributing_engines=[
                 {
-                    "engine": result.engine_used.value if result.engine_used else "Unknown",
+                    "engine": result.engine_used.value
+                    if result.engine_used
+                    else "Unknown",
                     "model": result.model_used,
                     "confidence": result.confidence,
                     "weight": 1.0,
@@ -474,5 +488,7 @@ class DempsterShaferFusion:
             "total_fusions": len(self.fusion_history),
             "avg_conflict": float(np.mean(conflicts)),
             "avg_confidence": float(np.mean(confidences)),
-            "high_conflict_count": sum(1 for c in conflicts if c > self.conflict_threshold),
+            "high_conflict_count": sum(
+                1 for c in conflicts if c > self.conflict_threshold
+            ),
         }

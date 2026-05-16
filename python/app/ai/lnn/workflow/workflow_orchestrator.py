@@ -4,6 +4,7 @@ Workflow LNN Orchestrator
 Implements LNN-enhanced workflow orchestration with fallback mechanisms,
 configuration management, and execution plan generation.
 """
+
 import os
 import time
 import json
@@ -16,6 +17,7 @@ from enum import Enum
 
 try:
     import torch
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -38,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 class WorkflowStepStatus(str, Enum):
     """工作流步骤执行状态"""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -48,6 +51,7 @@ class WorkflowStepStatus(str, Enum):
 
 class FallbackStrategy(str, Enum):
     """降级策略"""
+
     RULE_ENGINE = "rule_engine"
     DEFAULT_OUTPUT = "default_output"
     CACHED_RESULT = "cached_result"
@@ -57,6 +61,7 @@ class FallbackStrategy(str, Enum):
 @dataclass
 class WorkflowStep:
     """工作流步骤定义"""
+
     name: str
     step_type: str = "lnn_inference"
     model_name: Optional[str] = None
@@ -76,6 +81,7 @@ class WorkflowStep:
 @dataclass
 class WorkflowExecutionPlan:
     """工作流执行计划"""
+
     workflow_id: str
     steps: List[WorkflowStep]
     selected_model: str = ""
@@ -89,6 +95,7 @@ class WorkflowExecutionPlan:
 @dataclass
 class WorkflowResult:
     """工作流执行结果"""
+
     workflow_id: str
     success: bool
     output: Dict[str, Any] = field(default_factory=dict)
@@ -157,25 +164,13 @@ class WorkflowLNNOrchestrator:
 
         self._workflow_history: List[WorkflowResult] = []
         self._result_cache: Dict[str, Any] = {}
-        self._fallback_threshold = self.config.get(
-            "lnn", "thresholds.fallback", 0.50
-        )
-        self._max_steps = self.config.get(
-            "workflow", "max_steps", 10
-        )
-        self._timeout_seconds = self.config.get(
-            "workflow", "timeout_seconds", 300
-        )
-        self._enable_fallback = self.config.get(
-            "workflow", "enable_fallback", True
-        )
+        self._fallback_threshold = self.config.get("lnn", "thresholds.fallback", 0.50)
+        self._max_steps = self.config.get("workflow", "max_steps", 10)
+        self._timeout_seconds = self.config.get("workflow", "timeout_seconds", 300)
+        self._enable_fallback = self.config.get("workflow", "enable_fallback", True)
         self._fallback_strategy = FallbackStrategy.RULE_ENGINE
-        self._log_dir = self.config.get(
-            "workflow", "log_dir", "logs/workflows"
-        )
-        self._log_enabled = self.config.get(
-            "workflow", "log_enabled", True
-        )
+        self._log_dir = self.config.get("workflow", "log_dir", "logs/workflows")
+        self._log_enabled = self.config.get("workflow", "log_enabled", True)
 
     def execute_workflow(self, user_input: Any) -> WorkflowResult:
         """
@@ -187,7 +182,9 @@ class WorkflowLNNOrchestrator:
         Returns:
             WorkflowResult 工作流执行结果
         """
-        workflow_id = f"wf_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(user_input) % 10000}"
+        workflow_id = (
+            f"wf_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(user_input) % 10000}"
+        )
         start_time = time.perf_counter()
 
         try:
@@ -246,11 +243,15 @@ class WorkflowLNNOrchestrator:
         Returns:
             WorkflowResult 工作流执行结果
         """
-        workflow_id = f"wf_fb_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(task_input) % 10000}"
+        workflow_id = (
+            f"wf_fb_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(task_input) % 10000}"
+        )
 
         # 检查LNN是否可用
         if not self._is_lnn_available():
-            return self._execute_fallback_path(workflow_id, task_input, "LNN not available")
+            return self._execute_fallback_path(
+                workflow_id, task_input, "LNN not available"
+            )
 
         try:
             # 尝试主路径：LNN推理
@@ -291,7 +292,9 @@ class WorkflowLNNOrchestrator:
             )
 
         if isinstance(user_input, dict):
-            description = user_input.get("task_description", user_input.get("description", ""))
+            description = user_input.get(
+                "task_description", user_input.get("description", "")
+            )
             input_data = user_input.get("input_data", user_input)
             return TaskInput(
                 task_description=description,
@@ -330,37 +333,43 @@ class WorkflowLNNOrchestrator:
         steps = []
 
         # 步骤1：数据预处理
-        steps.append(WorkflowStep(
-            name="preprocess",
-            step_type="data_preprocessing",
-            output_key="preprocessed_data",
-            timeout_ms=1000,
-        ))
+        steps.append(
+            WorkflowStep(
+                name="preprocess",
+                step_type="data_preprocessing",
+                output_key="preprocessed_data",
+                timeout_ms=1000,
+            )
+        )
 
         # 步骤2：模型推理（根据路由决策选择模型）
         model_name = routing_decision.selected_model or "CFC-Fast"
-        steps.append(WorkflowStep(
-            name="lnn_inference",
-            step_type="lnn_inference",
-            model_name=model_name,
-            input_mapping={"data": "preprocessed_data"},
-            output_key="inference_result",
-            timeout_ms=self.config.get("workflow", "timeout_seconds", 300) * 1000,
-            retry_count=self.config.get("lnn", "max_retry_count", 3),
-        ))
+        steps.append(
+            WorkflowStep(
+                name="lnn_inference",
+                step_type="lnn_inference",
+                model_name=model_name,
+                input_mapping={"data": "preprocessed_data"},
+                output_key="inference_result",
+                timeout_ms=self.config.get("workflow", "timeout_seconds", 300) * 1000,
+                retry_count=self.config.get("lnn", "max_retry_count", 3),
+            )
+        )
 
         # 步骤3：后处理与结果验证
-        steps.append(WorkflowStep(
-            name="postprocess",
-            step_type="result_postprocessing",
-            input_mapping={"result": "inference_result"},
-            output_key="final_result",
-            timeout_ms=1000,
-        ))
+        steps.append(
+            WorkflowStep(
+                name="postprocess",
+                step_type="result_postprocessing",
+                input_mapping={"result": "inference_result"},
+                output_key="final_result",
+                timeout_ms=1000,
+            )
+        )
 
         # 检查步骤数限制
         if len(steps) > self._max_steps:
-            steps = steps[:self._max_steps]
+            steps = steps[: self._max_steps]
 
         return WorkflowExecutionPlan(
             workflow_id=workflow_id,
@@ -424,16 +433,20 @@ class WorkflowLNNOrchestrator:
             finally:
                 step.completed_at = time.perf_counter()
                 step.execution_time_ms = (step.completed_at - step.started_at) * 1000
-                step_results.append({
-                    "name": step.name,
-                    "status": step.status.value,
-                    "execution_time_ms": step.execution_time_ms,
-                    "error": step.error,
-                })
+                step_results.append(
+                    {
+                        "name": step.name,
+                        "status": step.status.value,
+                        "execution_time_ms": step.execution_time_ms,
+                        "error": step.error,
+                    }
+                )
 
             plan.completed_steps += 1
 
-        plan.status = WorkflowStepStatus.COMPLETED if all_success else WorkflowStepStatus.FAILED
+        plan.status = (
+            WorkflowStepStatus.COMPLETED if all_success else WorkflowStepStatus.FAILED
+        )
 
         final_output = context.get("final_result", context.get("inference_result"))
 
@@ -495,9 +508,13 @@ class WorkflowLNNOrchestrator:
 
         if isinstance(inference_result, (InferenceResult, FusionResult)):
             return {
-                "prediction": inference_result.prediction if hasattr(inference_result, 'prediction') else inference_result.final_prediction,
+                "prediction": inference_result.prediction
+                if hasattr(inference_result, "prediction")
+                else inference_result.final_prediction,
                 "confidence": inference_result.confidence,
-                "metadata": inference_result.metadata if hasattr(inference_result, 'metadata') else {},
+                "metadata": inference_result.metadata
+                if hasattr(inference_result, "metadata")
+                else {},
             }
 
         return {"raw_result": inference_result}
@@ -521,7 +538,9 @@ class WorkflowLNNOrchestrator:
 
         elif self._fallback_strategy == FallbackStrategy.CACHED_RESULT:
             cache_key = str(hash(task.task_description))
-            return self._result_cache.get(cache_key, {"fallback": True, "cache_miss": True})
+            return self._result_cache.get(
+                cache_key, {"fallback": True, "cache_miss": True}
+            )
 
         return {"fallback": True, "strategy": self._fallback_strategy.value}
 
@@ -543,7 +562,10 @@ class WorkflowLNNOrchestrator:
                         reasoning=f"Fallback: {reason}",
                     ),
                 )
-                output = {"prediction": result.prediction, "confidence": result.confidence}
+                output = {
+                    "prediction": result.prediction,
+                    "confidence": result.confidence,
+                }
             else:
                 output = {"fallback_reason": reason, "status": "fallback_triggered"}
 
@@ -632,8 +654,7 @@ class WorkflowLNNOrchestrator:
         try:
             os.makedirs(self._log_dir, exist_ok=True)
             log_file = os.path.join(
-                self._log_dir,
-                f"workflow_{datetime.now().strftime('%Y-%m-%d')}.jsonl"
+                self._log_dir, f"workflow_{datetime.now().strftime('%Y-%m-%d')}.jsonl"
             )
 
             log_entry = result.to_dict()
@@ -651,7 +672,9 @@ class WorkflowLNNOrchestrator:
         """获取编排器统计信息"""
         total_workflows = len(self._workflow_history)
         successful = sum(1 for wf in self._workflow_history if wf.success)
-        fallback_count = sum(1 for wf in self._workflow_history if wf.fallback_triggered)
+        fallback_count = sum(
+            1 for wf in self._workflow_history if wf.fallback_triggered
+        )
 
         avg_time = (
             sum(wf.total_time_ms for wf in self._workflow_history) / total_workflows
@@ -664,7 +687,9 @@ class WorkflowLNNOrchestrator:
             "successful_workflows": successful,
             "failed_workflows": total_workflows - successful,
             "fallback_count": fallback_count,
-            "success_rate": successful / total_workflows if total_workflows > 0 else 0.0,
+            "success_rate": successful / total_workflows
+            if total_workflows > 0
+            else 0.0,
             "avg_execution_time_ms": avg_time,
             "engine_stats": self.engine.get_engine_stats(),
         }

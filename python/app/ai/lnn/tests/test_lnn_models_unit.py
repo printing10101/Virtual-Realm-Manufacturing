@@ -9,6 +9,7 @@ LNN模型组件单元测试套件
 - 梯度计算测试
 - TorchScript导出测试
 """
+
 import torch
 
 from app.ai.lnn.models.torch_base_lnn import LNNConfig
@@ -20,6 +21,7 @@ from app.ai.lnn.models.torch_hybrid_lnn import HybridLNN
 # ============================================================
 # 8.1.1 模型初始化测试
 # ============================================================
+
 
 class TestLNNConfigInitialization:
     """测试LNNConfig配置参数的正确实例化"""
@@ -180,13 +182,16 @@ class TestHybridLNNInitialization:
         """测试HybridLNN输出层包含至少2个全连接层"""
         config = LNNConfig(input_size=6, hidden_size=32, output_size=5, num_layers=3)
         model = HybridLNN(config)
-        linear_count = sum(1 for m in model.output_layer if isinstance(m, torch.nn.Linear))
+        linear_count = sum(
+            1 for m in model.output_layer if isinstance(m, torch.nn.Linear)
+        )
         assert linear_count >= 2
 
 
 # ============================================================
 # 8.1.2 前向传播测试
 # ============================================================
+
 
 class TestCFCForwardPropagation:
     """测试CFC模型前向传播"""
@@ -264,7 +269,7 @@ class TestCFCForwardPropagation:
         """Test CFC prediction"""
         x = torch.randn(5, 10)
         result, _ = self.model(x, dt=0.1)
-        
+
         assert result is not None
         assert result.shape[0] == 5
         assert result.shape[1] == 5
@@ -274,7 +279,9 @@ class TestLTCForwardPropagation:
     """测试LTC模型前向传播"""
 
     def setup_method(self):
-        self.config = LNNConfig(input_size=10, hidden_size=20, output_size=5, num_layers=2)
+        self.config = LNNConfig(
+            input_size=10, hidden_size=20, output_size=5, num_layers=2
+        )
         self.model = LTCModel(self.config)
 
     def test_single_sample_output_shape(self):
@@ -318,7 +325,9 @@ class TestHybridForwardPropagation:
     """测试HybridLNN模型前向传播"""
 
     def setup_method(self):
-        self.config = LNNConfig(input_size=6, hidden_size=32, output_size=5, num_layers=3)
+        self.config = LNNConfig(
+            input_size=6, hidden_size=32, output_size=5, num_layers=3
+        )
         self.model = HybridLNN(self.config)
 
     def test_single_sample_output_shape(self):
@@ -351,6 +360,7 @@ class TestHybridForwardPropagation:
 # ============================================================
 # 8.1.3 隐藏状态初始化测试
 # ============================================================
+
 
 class TestHiddenStateInitialization:
     """测试隐藏状态初始化逻辑"""
@@ -452,6 +462,7 @@ class TestHiddenStateInitialization:
 # 8.1.4 梯度计算测试
 # ============================================================
 
+
 class TestGradientComputation:
     """测试模型梯度计算正确性"""
 
@@ -484,7 +495,9 @@ class TestGradientComputation:
         loss.backward()
         for name, param in model.named_parameters():
             if param.requires_grad and param.grad is not None:
-                assert torch.isfinite(param.grad).all(), f"参数 {name} 的梯度包含NaN或Inf"
+                assert torch.isfinite(param.grad).all(), (
+                    f"参数 {name} 的梯度包含NaN或Inf"
+                )
 
     def test_ltc_parameters_require_grad(self):
         """测试LTC模型参数需要梯度"""
@@ -544,7 +557,9 @@ class TestGradientComputation:
         loss.backward()
         for name, param in model.named_parameters():
             if param.requires_grad and param.grad is not None:
-                assert torch.isfinite(param.grad).all(), f"参数 {name} 的梯度包含NaN或Inf"
+                assert torch.isfinite(param.grad).all(), (
+                    f"参数 {name} 的梯度包含NaN或Inf"
+                )
 
     def test_trainable_parameter_count(self):
         """测试模型可训练参数数量大于零"""
@@ -569,6 +584,7 @@ class TestGradientComputation:
 # ============================================================
 # 8.1.5 TorchScript导出测试
 # ============================================================
+
 
 class TestTorchScriptExport:
     """测试模型TorchScript导出功能"""
@@ -649,6 +665,7 @@ class TestTorchScriptExport:
 # 设备无关测试
 # ============================================================
 
+
 class TestDeviceAgnostic:
     """测试模型在CPU上正常运行"""
 
@@ -662,13 +679,17 @@ class TestDeviceAgnostic:
         out_cfc, _ = cfc(x_cfc, dt=0.1)
         assert out_cfc.device == device
 
-        ltc_config = LNNConfig(input_size=10, hidden_size=20, output_size=5, num_layers=2)
+        ltc_config = LNNConfig(
+            input_size=10, hidden_size=20, output_size=5, num_layers=2
+        )
         ltc = LTCModel(ltc_config).to(device)
         x_ltc = torch.randn(3, 10, device=device)
         out_ltc, _ = ltc(x_ltc, dt=0.1)
         assert out_ltc.device == device
 
-        hybrid_config = LNNConfig(input_size=6, hidden_size=32, output_size=5, num_layers=3)
+        hybrid_config = LNNConfig(
+            input_size=6, hidden_size=32, output_size=5, num_layers=3
+        )
         hybrid = HybridLNN(hybrid_config).to(device)
         x_hybrid = torch.randn(3, 8, 6, device=device)
         out_hybrid, _ = hybrid(x_hybrid, dt=0.1)

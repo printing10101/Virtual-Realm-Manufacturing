@@ -4,11 +4,11 @@ Device Management Module for LNN Training
 Provides automatic GPU detection, device priority management,
 and seamless CPU fallback for training operations.
 """
+
 import os
 import logging
 import torch
-import torch.nn as nn
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +75,9 @@ def detect_device(device_preference: str = "auto") -> tuple[torch.device, Device
         device = torch.device(f"cuda:{gpu_index}")
 
         props = torch.cuda.get_device_properties(gpu_index)
-        total_mem_mb = props.total_memory / (1024 ** 2)
-        allocated_mem_mb = torch.cuda.memory_allocated(gpu_index) / (1024 ** 2)
-        reserved_mem_mb = torch.cuda.memory_reserved(gpu_index) / (1024 ** 2)
+        total_mem_mb = props.total_memory / (1024**2)
+        allocated_mem_mb = torch.cuda.memory_allocated(gpu_index) / (1024**2)
+        reserved_mem_mb = torch.cuda.memory_reserved(gpu_index) / (1024**2)
         available_mem_mb = total_mem_mb - allocated_mem_mb
 
         info = DeviceInfo(
@@ -112,28 +112,32 @@ def get_available_devices() -> List[DeviceInfo]:
     """
     devices = []
 
-    devices.append(DeviceInfo(
-        device_type="cpu",
-        device_name="CPU",
-        gpu_count=1,
-    ))
+    devices.append(
+        DeviceInfo(
+            device_type="cpu",
+            device_name="CPU",
+            gpu_count=1,
+        )
+    )
 
     if torch.cuda.is_available():
         gpu_count = torch.cuda.device_count()
         for i in range(gpu_count):
             props = torch.cuda.get_device_properties(i)
-            total_mem_mb = props.total_memory / (1024 ** 2)
+            total_mem_mb = props.total_memory / (1024**2)
 
-            devices.append(DeviceInfo(
-                device_type="cuda",
-                device_index=i,
-                device_name=props.name,
-                total_memory_mb=total_mem_mb,
-                available_memory_mb=total_mem_mb,
-                cuda_version=torch.version.cuda or "",
-                compute_capability=f"{props.major}.{props.minor}",
-                gpu_count=gpu_count,
-            ))
+            devices.append(
+                DeviceInfo(
+                    device_type="cuda",
+                    device_index=i,
+                    device_name=props.name,
+                    total_memory_mb=total_mem_mb,
+                    available_memory_mb=total_mem_mb,
+                    cuda_version=torch.version.cuda or "",
+                    compute_capability=f"{props.major}.{props.minor}",
+                    gpu_count=gpu_count,
+                )
+            )
 
     return devices
 
@@ -156,16 +160,28 @@ def get_device_status(device: torch.device) -> Dict[str, Any]:
     if device.type == "cuda" and torch.cuda.is_available():
         gpu_index = device.index if device.index is not None else 0
 
-        status.update({
-            "gpu_name": torch.cuda.get_device_properties(gpu_index).name,
-            "total_memory_mb": round(torch.cuda.get_device_properties(gpu_index).total_memory / (1024 ** 2), 2),
-            "allocated_memory_mb": round(torch.cuda.memory_allocated(gpu_index) / (1024 ** 2), 2),
-            "reserved_memory_mb": round(torch.cuda.memory_reserved(gpu_index) / (1024 ** 2), 2),
-            "max_memory_mb": round(torch.cuda.max_memory_allocated(gpu_index) / (1024 ** 2), 2),
-            "cuda_version": torch.version.cuda or "",
-            "gpu_count": torch.cuda.device_count(),
-            "is_available": True,
-        })
+        status.update(
+            {
+                "gpu_name": torch.cuda.get_device_properties(gpu_index).name,
+                "total_memory_mb": round(
+                    torch.cuda.get_device_properties(gpu_index).total_memory
+                    / (1024**2),
+                    2,
+                ),
+                "allocated_memory_mb": round(
+                    torch.cuda.memory_allocated(gpu_index) / (1024**2), 2
+                ),
+                "reserved_memory_mb": round(
+                    torch.cuda.memory_reserved(gpu_index) / (1024**2), 2
+                ),
+                "max_memory_mb": round(
+                    torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2
+                ),
+                "cuda_version": torch.version.cuda or "",
+                "gpu_count": torch.cuda.device_count(),
+                "is_available": True,
+            }
+        )
 
         try:
             temp = torch.cuda.temperature(gpu_index)
@@ -184,13 +200,15 @@ def get_device_status(device: torch.device) -> Dict[str, Any]:
         cpu_percent = psutil.cpu_percent(interval=0.1)
         mem = psutil.virtual_memory()
 
-        status.update({
-            "cpu_percent": cpu_percent,
-            "total_memory_mb": round(mem.total / (1024 ** 2), 2),
-            "available_memory_mb": round(mem.available / (1024 ** 2), 2),
-            "memory_percent": mem.percent,
-            "is_available": True,
-        })
+        status.update(
+            {
+                "cpu_percent": cpu_percent,
+                "total_memory_mb": round(mem.total / (1024**2), 2),
+                "available_memory_mb": round(mem.available / (1024**2), 2),
+                "memory_percent": mem.percent,
+                "is_available": True,
+            }
+        )
 
     return status
 
@@ -208,7 +226,9 @@ def get_optimal_batch_size(device: torch.device, default_batch_size: int = 32) -
     """
     if device.type == "cuda" and torch.cuda.is_available():
         gpu_index = device.index if device.index is not None else 0
-        total_mem_mb = torch.cuda.get_device_properties(gpu_index).total_memory / (1024 ** 2)
+        total_mem_mb = torch.cuda.get_device_properties(gpu_index).total_memory / (
+            1024**2
+        )
 
         if total_mem_mb >= 16000:
             return default_batch_size * 4

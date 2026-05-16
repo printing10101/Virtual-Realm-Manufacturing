@@ -10,21 +10,20 @@ Tests for INT8 quantization functionality including:
 - Model registry quantization support
 - API endpoint tests
 """
+
 import os
 import sys
-import time
 import json
 import tempfile
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
 try:
     import torch
     import torch.nn as nn
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -70,6 +69,7 @@ def calibration_data():
     if not HAS_TORCH:
         return None
     import numpy as np
+
     return np.random.randn(100, 10).astype(np.float32)
 
 
@@ -79,6 +79,7 @@ def test_data():
     if not HAS_TORCH:
         return None
     import numpy as np
+
     return np.random.randn(50, 10).astype(np.float32)
 
 
@@ -185,7 +186,9 @@ class TestStaticQuantization:
         with pytest.raises((ValueError, AttributeError, RuntimeError)):
             quantizer.static_quantize(simple_model, None)
 
-    def test_static_quantize_preserves_output_shape(self, simple_model, calibration_data, test_data):
+    def test_static_quantize_preserves_output_shape(
+        self, simple_model, calibration_data, test_data
+    ):
         config = QuantizationConfig(quantization_type=QuantizationType.STATIC)
         quantizer = Quantizer(config)
 
@@ -203,7 +206,9 @@ class TestStaticQuantization:
             try:
                 quantized_out = quantized(x)
             except (NotImplementedError, RuntimeError):
-                pytest.skip("Static quantized model inference not supported on this platform")
+                pytest.skip(
+                    "Static quantized model inference not supported on this platform"
+                )
 
         assert original_out.shape == quantized_out.shape
 
@@ -376,6 +381,7 @@ class TestRegistryQuantizationSupport:
 
     def test_model_registry_register_quantized_model(self):
         from app.ai.lnn.core import ModelType
+
         registry = ModelRegistry()
 
         registry.register(
@@ -395,6 +401,7 @@ class TestRegistryQuantizationSupport:
 
     def test_model_registry_has_quantized_version(self):
         from app.ai.lnn.core import ModelType
+
         registry = ModelRegistry()
 
         registry.register(
@@ -415,6 +422,7 @@ class TestRegistryQuantizationSupport:
 
     def test_model_registry_get_quantized_model_path(self):
         from app.ai.lnn.core import ModelType
+
         registry = ModelRegistry()
 
         registry.register(

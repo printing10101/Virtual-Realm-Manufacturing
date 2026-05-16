@@ -9,6 +9,7 @@ Bosch数据集处理模块
 - 数据分割：训练/验证/测试集划分
 - 数据增强：噪声注入、时间序列滑动窗口
 """
+
 import logging
 import numpy as np
 import pandas as pd
@@ -19,6 +20,7 @@ from pathlib import Path
 try:
     import torch
     from torch.utils.data import Dataset, DataLoader, TensorDataset
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -34,6 +36,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BoschDataConfig:
     """Bosch数据集配置"""
+
     target_columns: List[str] = field(default_factory=lambda: ["cutting_force"])
     feature_columns: Optional[List[str]] = None
     time_column: str = "timestamp"
@@ -85,7 +88,9 @@ class BoschDatasetProcessor:
         """
         path = Path(data_path)
         if not path.exists():
-            raise FileNotFoundError(f"Bosch 数据集加载失败：找不到数据文件 '{data_path}'。可能原因：1) 文件路径配置错误；2) Bosch 数据集未下载或已删除。请检查配置文件中的数据路径，或运行 Bosch 数据集下载脚本获取数据文件。")
+            raise FileNotFoundError(
+                f"Bosch 数据集加载失败：找不到数据文件 '{data_path}'。可能原因：1) 文件路径配置错误；2) Bosch 数据集未下载或已删除。请检查配置文件中的数据路径，或运行 Bosch 数据集下载脚本获取数据文件。"
+            )
 
         suffix = path.suffix.lower()
         if suffix == ".csv":
@@ -95,7 +100,9 @@ class BoschDatasetProcessor:
         elif suffix == ".parquet":
             self.raw_data = pd.read_parquet(data_path)
         else:
-            raise ValueError(f"Bosch 数据集加载失败：不支持的文件格式 '{suffix}'。支持的文件格式包括：'.csv'（CSV 文本文件）、'.xls'/.xlsx（Excel 文件）、'.parquet'（Parquet 列式存储文件）。请将数据转换为支持的格式，或检查文件扩展名是否正确。")
+            raise ValueError(
+                f"Bosch 数据集加载失败：不支持的文件格式 '{suffix}'。支持的文件格式包括：'.csv'（CSV 文本文件）、'.xls'/.xlsx（Excel 文件）、'.parquet'（Parquet 列式存储文件）。请将数据转换为支持的格式，或检查文件扩展名是否正确。"
+            )
 
         logger.info(f"Loaded data from {data_path}: {self.raw_data.shape}")
         self._stats["raw_shape"] = self.raw_data.shape
@@ -138,7 +145,9 @@ class BoschDatasetProcessor:
             清洗后的DataFrame
         """
         if self.raw_data is None:
-            raise ValueError("Bosch 数据集清洗失败：尚未加载原始数据。请先调用 load_data() 方法加载数据文件，再进行清洗操作。")
+            raise ValueError(
+                "Bosch 数据集清洗失败：尚未加载原始数据。请先调用 load_data() 方法加载数据文件，再进行清洗操作。"
+            )
 
         df = self.raw_data.copy()
         initial_rows = len(df)
@@ -188,7 +197,9 @@ class BoschDatasetProcessor:
             特征矩阵 numpy.ndarray
         """
         if self.processed_data is None:
-            raise ValueError("Bosch 数据集特征工程失败：尚未完成数据清洗。请先调用 clean_data() 方法清洗数据，再进行特征工程操作。")
+            raise ValueError(
+                "Bosch 数据集特征工程失败：尚未完成数据清洗。请先调用 clean_data() 方法清洗数据，再进行特征工程操作。"
+            )
 
         df = self.processed_data.copy()
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -215,10 +226,12 @@ class BoschDatasetProcessor:
                 for window in rolling_windows:
                     df[f"{col}_roll_mean_{window}"] = df[col].rolling(window).mean()
                     df[f"{col}_roll_std_{window}"] = df[col].rolling(window).std()
-                    new_features.extend([
-                        f"{col}_roll_mean_{window}",
-                        f"{col}_roll_std_{window}",
-                    ])
+                    new_features.extend(
+                        [
+                            f"{col}_roll_mean_{window}",
+                            f"{col}_roll_std_{window}",
+                        ]
+                    )
 
         if add_diff_features:
             for col in feature_cols:
@@ -249,7 +262,9 @@ class BoschDatasetProcessor:
         self._stats["feature_count"] = X.shape[1]
         self._stats["sample_count"] = X.shape[0]
 
-        logger.info(f"Feature engineering complete: X={X.shape}, y={y.shape if y is not None else None}")
+        logger.info(
+            f"Feature engineering complete: X={X.shape}, y={y.shape if y is not None else None}"
+        )
 
         return X
 
@@ -270,7 +285,9 @@ class BoschDatasetProcessor:
             (X_train, X_val, X_test, y_train, y_val, y_test) 或 DataLoader
         """
         if self.feature_data is None:
-            raise ValueError("Bosch 数据集划分失败：尚未完成特征工程。请先调用 engineer_features() 方法提取特征，再进行数据集划分操作。")
+            raise ValueError(
+                "Bosch 数据集划分失败：尚未完成特征工程。请先调用 engineer_features() 方法提取特征，再进行数据集划分操作。"
+            )
 
         X = self.feature_data
         y = self.target_data
@@ -318,7 +335,9 @@ class BoschDatasetProcessor:
             (X_windows, y_windows) 窗口化后的特征和标签
         """
         if self.feature_data is None:
-            raise ValueError("Bosch 数据集窗口化失败：尚未完成特征工程。请先调用 engineer_features() 方法提取特征，再进行窗口化操作。")
+            raise ValueError(
+                "Bosch 数据集窗口化失败：尚未完成特征工程。请先调用 engineer_features() 方法提取特征，再进行窗口化操作。"
+            )
 
         window_size = self.config.window_size
         window_step = self.config.window_step
@@ -360,7 +379,9 @@ class BoschDatasetProcessor:
             (train_loader, val_loader, test_loader)
         """
         if not HAS_TORCH:
-            raise ImportError("Bosch 数据集 DataLoader 创建失败：需要安装 PyTorch 库。DataLoader 用于创建训练和验证数据加载器。请安装 PyTorch（pip install torch）后重试。")
+            raise ImportError(
+                "Bosch 数据集 DataLoader 创建失败：需要安装 PyTorch 库。DataLoader 用于创建训练和验证数据加载器。请安装 PyTorch（pip install torch）后重试。"
+            )
 
         batch_size = batch_size or self.config.batch_size
         num_workers = num_workers or self.config.num_workers
@@ -457,7 +478,9 @@ class BoschDatasetProcessor:
             原始尺度的预测值
         """
         if self.scaler is None:
-            raise ValueError("Bosch 数据集逆变换失败：尚未完成数据标准化。scale 对象在进行逆变换前必须通过数据标准化过程创建。请先调用 clean_data() 或 engineer_features() 方法处理数据。")
+            raise ValueError(
+                "Bosch 数据集逆变换失败：尚未完成数据标准化。scale 对象在进行逆变换前必须通过数据标准化过程创建。请先调用 clean_data() 或 engineer_features() 方法处理数据。"
+            )
         return self.scaler.inverse_transform(y_pred)
 
     def get_stats(self) -> Dict[str, Any]:
@@ -472,7 +495,9 @@ class BoschDatasetProcessor:
             output_path: 输出文件路径
         """
         if self.processed_data is None:
-            raise ValueError("Bosch 数据集保存失败：没有可保存的处理后数据。请先调用 clean_data() 或 engineer_features() 方法处理数据，再进行保存操作。")
+            raise ValueError(
+                "Bosch 数据集保存失败：没有可保存的处理后数据。请先调用 clean_data() 或 engineer_features() 方法处理数据，再进行保存操作。"
+            )
 
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -527,12 +552,26 @@ class BoschDataGenerator:
         }
 
         feature_names = [
-            "spindle_speed", "feed_rate", "depth_of_cut", "tool_diameter",
-            "vibration_x", "vibration_y", "vibration_z", "temperature",
-            "coolant_pressure", "coolant_flow_rate", "power_consumption",
-            "acoustic_emission", "motor_current", "chatter_index",
-            "surface_roughness", "tool_wear", "material_hardness",
-            "cutting_angle", "rake_angle", "clearance_angle",
+            "spindle_speed",
+            "feed_rate",
+            "depth_of_cut",
+            "tool_diameter",
+            "vibration_x",
+            "vibration_y",
+            "vibration_z",
+            "temperature",
+            "coolant_pressure",
+            "coolant_flow_rate",
+            "power_consumption",
+            "acoustic_emission",
+            "motor_current",
+            "chatter_index",
+            "surface_roughness",
+            "tool_wear",
+            "material_hardness",
+            "cutting_angle",
+            "rake_angle",
+            "clearance_angle",
         ][:n_features]
 
         for feat in feature_names:

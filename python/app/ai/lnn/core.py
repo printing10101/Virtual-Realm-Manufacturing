@@ -1,6 +1,7 @@
 """
 Core data models and type definitions for the LNN system.
 """
+
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -9,6 +10,7 @@ import numpy as np
 
 class EngineType(str, Enum):
     """推理引擎类型"""
+
     LNN = "LNN"
     LLM = "LLM"
     HYBRID = "Hybrid"
@@ -17,6 +19,7 @@ class EngineType(str, Enum):
 
 class ModelType(str, Enum):
     """LNN模型类型"""
+
     CFC = "CFC"
     LTC = "LTC"
     HYBRID_LNN = "HybridLNN"
@@ -24,6 +27,7 @@ class ModelType(str, Enum):
 
 class DataType(str, Enum):
     """数据类型"""
+
     STRUCTURED = "structured"
     UNSTRUCTURED = "unstructured"
     SEMI_STRUCTURED = "semi_structured"
@@ -32,6 +36,7 @@ class DataType(str, Enum):
 
 class TaskCategory(str, Enum):
     """任务类别"""
+
     CLASSIFICATION = "classification"
     REGRESSION = "regression"
     TIME_SERIES = "time_series"
@@ -44,6 +49,7 @@ class TaskCategory(str, Enum):
 @dataclass
 class TaskInput:
     """标准化任务输入"""
+
     task_description: str
     input_data: Any
     context: Optional[Dict[str, Any]] = None
@@ -58,6 +64,7 @@ class TaskInput:
 @dataclass
 class RoutingDecision:
     """路由决策结果"""
+
     selected_engine: EngineType
     selected_model: Optional[str] = None
     confidence: float = 0.0
@@ -82,6 +89,7 @@ class RoutingDecision:
 @dataclass
 class InferenceResult:
     """推理结果"""
+
     prediction: Any
     confidence: float = 0.0
     engine_used: Optional[EngineType] = None
@@ -108,6 +116,7 @@ class InferenceResult:
 @dataclass
 class FusionResult:
     """融合后的最终结果"""
+
     final_prediction: Any
     confidence: float = 0.0
     contributing_engines: List[Dict[str, Any]] = field(default_factory=list)
@@ -132,6 +141,7 @@ class FusionResult:
 @dataclass
 class ModelConfig:
     """模型配置"""
+
     model_type: ModelType
     model_name: str
     model_path: Optional[str] = None
@@ -145,6 +155,7 @@ class ModelConfig:
 @dataclass
 class PreprocessingResult:
     """预处理结果"""
+
     features: np.ndarray
     feature_names: Optional[List[str]] = None
     normalization_method: str = "z_score"

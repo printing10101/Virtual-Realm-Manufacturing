@@ -2,6 +2,7 @@
 灵境制造 - AI Agents 模块
 提供完整的类型注解支持
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -54,6 +55,7 @@ def _flatten_documents(documents: Any) -> list[str]:
 
 class ProcessStep(TypedDict, total=False):
     """工艺步骤类型"""
+
     step: int
     operation: str
     machine: str
@@ -62,6 +64,7 @@ class ProcessStep(TypedDict, total=False):
 
 class CuttingParameter(TypedDict, total=False):
     """切削参数类型"""
+
     step: int
     operation: str
     v: float
@@ -76,6 +79,7 @@ class CuttingParameter(TypedDict, total=False):
 
 class VerificationIssue(TypedDict, total=False):
     """验证问题类型"""
+
     type: str
     description: str
     severity: str
@@ -83,6 +87,7 @@ class VerificationIssue(TypedDict, total=False):
 
 class VerificationResult(TypedDict, total=False):
     """验证结果类型"""
+
     is_valid: bool
     issues: list[VerificationIssue]
     summary: str
@@ -90,6 +95,7 @@ class VerificationResult(TypedDict, total=False):
 
 class KnowledgeQueryConfig(TypedDict):
     """知识查询配置"""
+
     key: str
     query: str
     n_results: int
@@ -105,6 +111,7 @@ RepairSuggestions: TypeAlias = list[str] | str
 
 class AgentContext(BaseModel):
     """Agent 执行上下文"""
+
     user_input: str = ""
     extracted_params: ExtractedParams = {}
     process_route: ProcessRoute = []
@@ -119,12 +126,14 @@ class AgentContext(BaseModel):
 
 class ChatMessage(BaseModel):
     """聊天消息"""
+
     content: str = Field(..., description="消息内容")
     role: str = Field(default="user", description="消息角色")
 
 
 class ChatRequest(BaseModel):
     """聊天请求"""
+
     messages: list[ChatMessage] = Field(..., description="对话消息列表")
     context: dict[str, Any] | None = Field(default=None, description="上下文信息")
 
@@ -134,6 +143,7 @@ router_chat = APIRouter(prefix="/api/ai", tags=["AI Chat"])
 
 class LLMResponse(TypedDict, total=False):
     """LLM 响应"""
+
     content: str
     role: str
     usage: dict[str, Any]
@@ -162,11 +172,12 @@ class BaseAgent(ABC):
         """获取或创建 LLM 客户端（懒加载并缓存）"""
         if self._llm_client is None:
             from app.ai.llm_client import CloudLLMClient
+
             self._llm_client = CloudLLMClient(
                 api_key=config.ai.cloud_api_key,
                 base_url=config.ai.cloud_base_url,
                 model=config.ai.cloud_model,
-                timeout=config.ai.timeout
+                timeout=config.ai.timeout,
             )
         return self._llm_client
 
@@ -176,6 +187,7 @@ class BaseAgent(ABC):
             return self._model_router
         try:
             from app.ai.lnn.router.task_router import TaskRouter
+
             self._model_router = TaskRouter(
                 rule_weight=self._rule_weight,
                 ml_weight=self._ml_weight,
@@ -215,7 +227,9 @@ class BaseAgent(ABC):
         docs = docs_list[0] or []
         metas = (raw.get("metadatas", [[]])[0] or []) if raw.get("metadatas") else []
         ids = (raw.get("ids", [[]])[0] or []) if raw.get("ids") else []
-        distances = (raw.get("distances", [[]])[0] or []) if raw.get("distances") else []
+        distances = (
+            (raw.get("distances", [[]])[0] or []) if raw.get("distances") else []
+        )
 
         for i, doc in enumerate(docs):
             try:
@@ -253,20 +267,24 @@ class BaseAgent(ABC):
         max_tokens: int = 2048,
         temperature: float = 0.7,
         model: str | None = None,
-        input_data: dict[str, Any] | None = None
+        input_data: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """通过模型路由器调用 LLM"""
         model_router = await self._get_model_router()
         if model_router:
             prompt = messages[-1]["content"] if messages else ""
-            system_prompt = messages[0]["content"] if messages and messages[0]["role"] == "system" else None
+            system_prompt = (
+                messages[0]["content"]
+                if messages and messages[0]["role"] == "system"
+                else None
+            )
 
             default_input: dict[str, Any] = {
                 "material": "",
                 "tool": "",
                 "constraints": [],
                 "geometry": {},
-                "history": []
+                "history": [],
             }
             if input_data is None:
                 input_data = default_input
@@ -278,7 +296,9 @@ class BaseAgent(ABC):
                     if key not in input_data:
                         input_data[key] = default_value
                     elif not isinstance(input_data[key], type(default_value)):
-                        logger.warning(f"[{self.name}] input_data['{key}'] 类型错误，使用默认值")
+                        logger.warning(
+                            f"[{self.name}] input_data['{key}'] 类型错误，使用默认值"
+                        )
                         input_data[key] = default_value
 
             try:
@@ -288,11 +308,13 @@ class BaseAgent(ABC):
                     prompt=prompt,
                     input_data=input_data,
                     system_prompt=system_prompt,
-                    max_retries=config.ai.max_retries
+                    max_retries=config.ai.max_retries,
                 )
                 return response
             except Exception as e:
-                logger.warning(f"[{self.name}] 模型路由调用失败: {e!s}，尝试降级到直接 LLM 调用")
+                logger.warning(
+                    f"[{self.name}] 模型路由调用失败: {e!s}，尝试降级到直接 LLM 调用"
+                )
                 try:
                     return await self._call_llm_direct(
                         messages, max_tokens, temperature, system_prompt
@@ -303,8 +325,12 @@ class BaseAgent(ABC):
         else:
             logger.warning(f"[{self.name}] 模型路由器未初始化，使用直接 LLM 调用")
             return await self._call_llm_direct(
-                messages, max_tokens, temperature,
-                messages[0]["content"] if messages and messages[0]["role"] == "system" else None
+                messages,
+                max_tokens,
+                temperature,
+                messages[0]["content"]
+                if messages and messages[0]["role"] == "system"
+                else None,
             )
 
     async def _call_llm_direct(
@@ -312,7 +338,7 @@ class BaseAgent(ABC):
         messages: list[dict[str, str]],
         max_tokens: int = 2048,
         temperature: float = 0.7,
-        system_prompt: str | None = None
+        system_prompt: str | None = None,
     ) -> dict[str, Any]:
         """降级 LLM 调用：直接调用云端 LLM"""
         client = await self._get_llm_client()
@@ -323,12 +349,12 @@ class BaseAgent(ABC):
                     messages=messages,
                     max_tokens=max_tokens,
                     temperature=temperature,
-                    model=config.ai.cloud_model
+                    model=config.ai.cloud_model,
                 )
                 return response
             except Exception as e:
                 if attempt < config.ai.max_retries - 1:
-                    await asyncio.sleep(1.0 * (2 ** attempt))
+                    await asyncio.sleep(1.0 * (2**attempt))
                 else:
                     raise RuntimeError(f"[{self.name}] 降级 LLM 调用失败: {e!s}")
 
@@ -338,8 +364,7 @@ class UnderstandingAgent(BaseAgent):
 
     def __init__(self) -> None:
         super().__init__(
-            name="UnderstandingAgent",
-            description="负责理解用户需求，提取关键制造参数"
+            name="UnderstandingAgent", description="负责理解用户需求，提取关键制造参数"
         )
 
     async def execute(self, context: AgentContext) -> AgentContext:
@@ -347,8 +372,7 @@ class UnderstandingAgent(BaseAgent):
         context.stage_status = "running"
 
         knowledge_results: dict[str, Any] = self.knowledge_base.query(
-            query_text=context.user_input,
-            n_results=3
+            query_text=context.user_input, n_results=3
         )
 
         docs_flat = _flatten_documents(knowledge_results.get("documents", []))
@@ -371,7 +395,7 @@ class UnderstandingAgent(BaseAgent):
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": context.user_input}
+            {"role": "user", "content": context.user_input},
         ]
 
         response: dict[str, Any] = await self._call_llm_via_router(
@@ -383,15 +407,17 @@ class UnderstandingAgent(BaseAgent):
                 "tool": "",
                 "constraints": [],
                 "geometry": context.extracted_params.get("dimensions", {}),
-                "history": []
-            }
+                "history": [],
+            },
         )
 
         try:
             content: str = response.get("content", "").strip()
             extracted_params: ExtractedParams = extract_json_from_markdown(content)
             if not extracted_params:
-                raise ValueError("Agent 响应解析失败：解析结果为空。Agent 未能从 LLM 响应中提取有效内容。可能原因：1) LLM 返回格式不符合预期；2) 响应解析逻辑有误。请检查 Agent 的解析方法实现或 LLM 提示词模板。")
+                raise ValueError(
+                    "Agent 响应解析失败：解析结果为空。Agent 未能从 LLM 响应中提取有效内容。可能原因：1) LLM 返回格式不符合预期；2) 响应解析逻辑有误。请检查 Agent 的解析方法实现或 LLM 提示词模板。"
+                )
             context.extracted_params = extracted_params
             context.stage_status = "completed"
         except Exception as e:
@@ -406,8 +432,7 @@ class KnowledgeFetchAgent(BaseAgent):
 
     def __init__(self) -> None:
         super().__init__(
-            name="KnowledgeFetchAgent",
-            description="负责并行查询多个知识库"
+            name="KnowledgeFetchAgent", description="负责并行查询多个知识库"
         )
         self.query_configs: list[KnowledgeQueryConfig] = [
             {"key": "planning", "query": "加工工艺路线规划", "n_results": 5},
@@ -449,7 +474,9 @@ class KnowledgeFetchAgent(BaseAgent):
         return context
 
     async def _query_knowledge(self, key: str, query: str, n_results: int) -> str:
-        results: dict[str, Any] = self.knowledge_base.query(query_text=query, n_results=n_results)
+        results: dict[str, Any] = self.knowledge_base.query(
+            query_text=query, n_results=n_results
+        )
         docs_flat: list[str] = _flatten_documents(results.get("documents", []))
         if docs_flat:
             return "\n".join(docs_flat)
@@ -460,10 +487,7 @@ class PlanningAgent(BaseAgent):
     """规划 Agent - 负责制定加工工艺路线"""
 
     def __init__(self) -> None:
-        super().__init__(
-            name="PlanningAgent",
-            description="负责制定加工工艺路线"
-        )
+        super().__init__(name="PlanningAgent", description="负责制定加工工艺路线")
 
     async def execute(self, context: AgentContext) -> AgentContext:
         context.current_stage = "planning"
@@ -473,10 +497,11 @@ class PlanningAgent(BaseAgent):
             relevant_knowledge: str = context.knowledge_results["planning"]
         else:
             knowledge_results: dict[str, Any] = self.knowledge_base.query(
-                query_text="加工工艺路线规划",
-                n_results=5
+                query_text="加工工艺路线规划", n_results=5
             )
-            docs_flat: list[Any] = _flatten_documents(knowledge_results.get("documents", []))
+            docs_flat: list[Any] = _flatten_documents(
+                knowledge_results.get("documents", [])
+            )
             relevant_knowledge = "\n".join(docs_flat) if docs_flat else ""
 
         params: ExtractedParams = context.extracted_params
@@ -496,7 +521,7 @@ class PlanningAgent(BaseAgent):
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"请为{material}的{part_type}制定加工工艺路线"}
+            {"role": "user", "content": f"请为{material}的{part_type}制定加工工艺路线"},
         ]
 
         response: dict[str, Any] = await self._call_llm_via_router(
@@ -508,8 +533,8 @@ class PlanningAgent(BaseAgent):
                 "tool": "",
                 "constraints": [],
                 "geometry": context.extracted_params.get("dimensions", {}),
-                "history": []
-            }
+                "history": [],
+            },
         )
 
         try:
@@ -520,10 +545,30 @@ class PlanningAgent(BaseAgent):
         except Exception as e:
             context.stage_status = f"failed: {e!s}"
             context.process_route = [
-                {"step": 1, "operation": "下料", "machine": "锯床", "description": "按尺寸下料"},
-                {"step": 2, "operation": "粗车", "machine": "车床", "description": "粗加工外圆"},
-                {"step": 3, "operation": "精车", "machine": "车床", "description": "精加工到尺寸"},
-                {"step": 4, "operation": "检验", "machine": "量具", "description": "检验尺寸"}
+                {
+                    "step": 1,
+                    "operation": "下料",
+                    "machine": "锯床",
+                    "description": "按尺寸下料",
+                },
+                {
+                    "step": 2,
+                    "operation": "粗车",
+                    "machine": "车床",
+                    "description": "粗加工外圆",
+                },
+                {
+                    "step": 3,
+                    "operation": "精车",
+                    "machine": "车床",
+                    "description": "精加工到尺寸",
+                },
+                {
+                    "step": 4,
+                    "operation": "检验",
+                    "machine": "量具",
+                    "description": "检验尺寸",
+                },
             ]
 
         return context
@@ -533,10 +578,7 @@ class ParameterAgent(BaseAgent):
     """参数 Agent - 负责计算切削参数"""
 
     def __init__(self) -> None:
-        super().__init__(
-            name="ParameterAgent",
-            description="负责计算切削参数"
-        )
+        super().__init__(name="ParameterAgent", description="负责计算切削参数")
 
     async def execute(self, context: AgentContext) -> AgentContext:
         context.current_stage = "parameter"
@@ -546,10 +588,11 @@ class ParameterAgent(BaseAgent):
             relevant_knowledge: str = context.knowledge_results["parameter"]
         else:
             knowledge_results: dict[str, Any] = self.knowledge_base.query(
-                query_text="切削参数 切削速度 进给量",
-                n_results=5
+                query_text="切削参数 切削速度 进给量", n_results=5
             )
-            docs_flat: list[str] = _flatten_documents(knowledge_results.get("documents", []))
+            docs_flat: list[str] = _flatten_documents(
+                knowledge_results.get("documents", [])
+            )
             relevant_knowledge = "\n".join(docs_flat) if docs_flat else ""
 
         params: ExtractedParams = context.extracted_params
@@ -568,7 +611,7 @@ class ParameterAgent(BaseAgent):
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"请为{material}的加工计算切削参数"}
+            {"role": "user", "content": f"请为{material}的加工计算切削参数"},
         ]
 
         response: dict[str, Any] = await self._call_llm_via_router(
@@ -580,8 +623,8 @@ class ParameterAgent(BaseAgent):
                 "tool": "",
                 "constraints": context.cutting_parameters.get("parameters", []),
                 "geometry": {},
-                "history": context.process_route
-            }
+                "history": context.process_route,
+            },
         )
 
         try:
@@ -593,8 +636,22 @@ class ParameterAgent(BaseAgent):
             context.stage_status = f"failed: {e!s}"
             context.cutting_parameters = {
                 "parameters": [
-                    {"step": 1, "operation": "粗车", "v": 120, "f": 0.3, "ap": 2.0, "n": 800},
-                    {"step": 2, "operation": "精车", "v": 180, "f": 0.1, "ap": 0.5, "n": 1200}
+                    {
+                        "step": 1,
+                        "operation": "粗车",
+                        "v": 120,
+                        "f": 0.3,
+                        "ap": 2.0,
+                        "n": 800,
+                    },
+                    {
+                        "step": 2,
+                        "operation": "精车",
+                        "v": 180,
+                        "f": 0.1,
+                        "ap": 0.5,
+                        "n": 1200,
+                    },
                 ]
             }
 
@@ -605,20 +662,18 @@ class NCAgent(BaseAgent):
     """NC Agent - 负责生成NC代码"""
 
     def __init__(self) -> None:
-        super().__init__(
-            name="NCAgent",
-            description="负责生成NC代码"
-        )
+        super().__init__(name="NCAgent", description="负责生成NC代码")
 
     async def execute(self, context: AgentContext) -> AgentContext:
         context.current_stage = "nc_generation"
         context.stage_status = "running"
 
         knowledge_results: dict[str, Any] = self.knowledge_base.query(
-            query_text="G代码 M代码 数控编程",
-            n_results=5
+            query_text="G代码 M代码 数控编程", n_results=5
         )
-        docs_flat: list[str] = _flatten_documents(knowledge_results.get("documents", []))
+        docs_flat: list[str] = _flatten_documents(
+            knowledge_results.get("documents", [])
+        )
         relevant_knowledge: str = "\n".join(docs_flat) if docs_flat else ""
 
         system_prompt: str = f"""你是一个NC编程专家。
@@ -636,7 +691,7 @@ class NCAgent(BaseAgent):
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "请根据上述工艺路线和切削参数生成NC代码"}
+            {"role": "user", "content": "请根据上述工艺路线和切削参数生成NC代码"},
         ]
 
         response: dict[str, Any] = await self._call_llm_via_router(
@@ -648,8 +703,8 @@ class NCAgent(BaseAgent):
                 "tool": "",
                 "constraints": context.cutting_parameters.get("parameters", []),
                 "geometry": context.extracted_params.get("dimensions", {}),
-                "history": context.process_route
-            }
+                "history": context.process_route,
+            },
         )
 
         try:
@@ -672,10 +727,7 @@ class VerificationAgent(BaseAgent):
     """验证 Agent - 负责验证工艺合理性"""
 
     def __init__(self) -> None:
-        super().__init__(
-            name="VerificationAgent",
-            description="负责验证工艺合理性"
-        )
+        super().__init__(name="VerificationAgent", description="负责验证工艺合理性")
 
     async def execute(self, context: AgentContext) -> AgentContext:
         context.current_stage = "verification"
@@ -699,7 +751,7 @@ NC代码：
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": verification_content}
+            {"role": "user", "content": verification_content},
         ]
 
         response: dict[str, Any] = await self._call_llm_via_router(
@@ -711,21 +763,23 @@ NC代码：
                 "tool": "",
                 "constraints": context.cutting_parameters.get("parameters", []),
                 "geometry": context.extracted_params.get("dimensions", {}),
-                "history": context.process_route
-            }
+                "history": context.process_route,
+            },
         )
 
         try:
             content: str = response.get("content", "").strip()
-            verification_result: VerificationResult = extract_json_from_markdown(content)
+            verification_result: VerificationResult = extract_json_from_markdown(
+                content
+            )
             context.verification_result = verification_result
             context.stage_status = "completed"
         except Exception as e:
             context.stage_status = f"failed: {e!s}"
-            context.verification_result = {  # type: ignore
+            context.verification_result = {
                 "is_valid": True,
                 "issues": [],
-                "summary": "验证通过（简化模式）"
+                "summary": "验证通过（简化模式）",
             }
 
         return context
@@ -735,16 +789,13 @@ class RepairAgent(BaseAgent):
     """修复 Agent - 负责优化工艺方案"""
 
     def __init__(self) -> None:
-        super().__init__(
-            name="RepairAgent",
-            description="负责根据验证结果优化工艺方案"
-        )
+        super().__init__(name="RepairAgent", description="负责根据验证结果优化工艺方案")
 
     async def execute(self, context: AgentContext) -> AgentContext:
         context.current_stage = "repair"
         context.stage_status = "running"
 
-        verification: dict[str, Any] = context.verification_result  # type: ignore
+        verification: dict[str, Any] = context.verification_result
         is_valid: bool = verification.get("is_valid", True)
         issues: list[dict[str, Any]] = verification.get("issues", [])
 
@@ -755,11 +806,16 @@ class RepairAgent(BaseAgent):
 
         system_prompt: str = """你是一个工艺优化专家，负责根据验证结果提出优化建议。"""
 
-        issues_text: str = "\n".join([f"- {issue.get('description', '')}" for issue in issues])
+        issues_text: str = "\n".join(
+            [f"- {issue.get('description', '')}" for issue in issues]
+        )
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"验证发现的问题：\n{issues_text}\n\n请提出优化建议。"}
+            {
+                "role": "user",
+                "content": f"验证发现的问题：\n{issues_text}\n\n请提出优化建议。",
+            },
         ]
 
         response: dict[str, Any] = await self._call_llm_via_router(
@@ -771,8 +827,8 @@ class RepairAgent(BaseAgent):
                 "tool": "",
                 "constraints": context.verification_result.get("issues", []),
                 "geometry": {},
-                "history": context.repair_suggestions
-            }
+                "history": context.repair_suggestions,
+            },
         )
 
         context.repair_suggestions = response.get("content", "")
@@ -785,13 +841,16 @@ class RepairAgent(BaseAgent):
 async def get_agents_info() -> dict[str, Any]:
     """获取所有 Agent 信息"""
     agents: list[dict[str, str]] = [
-        {"name": "UnderstandingAgent", "description": "负责理解用户需求，提取关键制造参数"},
+        {
+            "name": "UnderstandingAgent",
+            "description": "负责理解用户需求，提取关键制造参数",
+        },
         {"name": "KnowledgeFetchAgent", "description": "负责并行查询多个知识库"},
         {"name": "PlanningAgent", "description": "负责制定加工工艺路线"},
         {"name": "ParameterAgent", "description": "负责计算切削参数"},
         {"name": "NCAgent", "description": "负责生成NC代码"},
         {"name": "VerificationAgent", "description": "负责验证工艺合理性"},
-        {"name": "RepairAgent", "description": "负责根据验证结果优化工艺方案"}
+        {"name": "RepairAgent", "description": "负责根据验证结果优化工艺方案"},
     ]
     return {"code": 200, "data": {"agents": agents}, "message": "success"}
 
@@ -803,14 +862,16 @@ async def ai_chat(request: ChatRequest) -> dict[str, Any]:
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message="对话消息不能为空",
-            suggestion="请提供至少一条消息"
+            suggestion="请提供至少一条消息",
         )
 
     validation_errors: list[ValidationErrorDetail] = []
     cleaned_messages: list[dict[str, str]] = []
 
     for i, msg in enumerate(request.messages):
-        cleaned, err = validate_and_clean(msg.content, field_name=f"messages[{i}].content")
+        cleaned, err = validate_and_clean(
+            msg.content, field_name=f"messages[{i}].content"
+        )
         if err:
             validation_errors.append(err)
             break
@@ -820,7 +881,7 @@ async def ai_chat(request: ChatRequest) -> dict[str, Any]:
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=f"输入验证失败: {validation_errors[0].message}",
-            detail=validation_errors[0].to_response()
+            detail=validation_errors[0].to_response(),
         )
 
     if request.context:
@@ -831,7 +892,7 @@ async def ai_chat(request: ChatRequest) -> dict[str, Any]:
                 return error(
                     code=ErrorCode.INVALID_REQUEST,
                     message=f"材料验证失败: {mat_err.message}",
-                    detail=mat_err.to_response()
+                    detail=mat_err.to_response(),
                 )
 
         size: dict[str, Any] | None = request.context.get("size")
@@ -841,7 +902,7 @@ async def ai_chat(request: ChatRequest) -> dict[str, Any]:
                 return error(
                     code=ErrorCode.INVALID_REQUEST,
                     message=f"尺寸验证失败: {size_err.message}",
-                    detail=size_err.to_response()
+                    detail=size_err.to_response(),
                 )
 
         tolerance: str | None = request.context.get("tolerance")
@@ -851,7 +912,7 @@ async def ai_chat(request: ChatRequest) -> dict[str, Any]:
                 return error(
                     code=ErrorCode.INVALID_REQUEST,
                     message=f"公差验证失败: {tol_result.message}",
-                    detail=tol_result.to_response()
+                    detail=tol_result.to_response(),
                 )
 
     try:
@@ -866,10 +927,7 @@ async def ai_chat(request: ChatRequest) -> dict[str, Any]:
                 "content": response.get("content", ""),
                 "model": response.get("model", ""),
             },
-            message="对话成功"
+            message="对话成功",
         )
     except Exception as e:
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"AI对话失败: {e!s}"
-        )
+        return error(code=ErrorCode.INTERNAL_ERROR, message=f"AI对话失败: {e!s}")

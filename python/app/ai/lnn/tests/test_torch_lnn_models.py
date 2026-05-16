@@ -3,6 +3,7 @@ Comprehensive Unit Tests for PyTorch-based LNN System
 
 Tests cover all core PyTorch modules: BaseLNN, CFC, LTC, and Hybrid models.
 """
+
 import unittest
 import torch
 import time
@@ -10,7 +11,12 @@ import os
 import sys
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+sys.path.insert(
+    0,
+    os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    ),
+)
 
 from app.ai.lnn.models.torch_base_lnn import BaseLNN, LNNConfig  # noqa: E402
 from app.ai.lnn.models.torch_cfc_model import CFCModel as TorchCFCModel, CFCLayer  # noqa: E402
@@ -395,7 +401,9 @@ class TestTorchHybridLNN(unittest.TestCase):
         self.assertTrue(has_relu)
 
     def test_output_layer_has_two_fc(self):
-        linear_count = sum(1 for m in self.model.output_layer if isinstance(m, torch.nn.Linear))
+        linear_count = sum(
+            1 for m in self.model.output_layer if isinstance(m, torch.nn.Linear)
+        )
         self.assertGreaterEqual(linear_count, 2)
 
 

@@ -6,6 +6,7 @@ Architecture:
 - LTC layers: Model temporal dependencies of extracted features
 - Fully connected layers: Final output predictions
 """
+
 import torch
 import torch.nn as nn
 from typing import Tuple
@@ -17,7 +18,7 @@ from .torch_ltc_model import LTCCell
 class HybridLNN(BaseLNN):
     """
     Hybrid LNN model combining CNN feature extraction with LTC temporal modeling.
-    
+
     Inherits from BaseLNN and conforms to unified interface specifications.
     """
 
@@ -49,10 +50,15 @@ class HybridLNN(BaseLNN):
                 time_constant=config.time_constant,
             )
 
-        self.ltc_cells = nn.ModuleList([
-            LTCCell(ltc_config.input_size if i == 0 else ltc_config.hidden_size, ltc_config.hidden_size)
-            for i in range(ltc_config.num_layers)
-        ])
+        self.ltc_cells = nn.ModuleList(
+            [
+                LTCCell(
+                    ltc_config.input_size if i == 0 else ltc_config.hidden_size,
+                    ltc_config.hidden_size,
+                )
+                for i in range(ltc_config.num_layers)
+            ]
+        )
 
         self.output_layer = self._build_output_layer(
             input_dim=ltc_config.hidden_size,
@@ -76,22 +82,31 @@ class HybridLNN(BaseLNN):
         """Set the device (for compatibility)"""
         self.to(value)
 
-    def _build_cnn(self, input_channels: int, hidden_size: int, num_layers: int = 3) -> nn.Sequential:
+    def _build_cnn(
+        self, input_channels: int, hidden_size: int, num_layers: int = 3
+    ) -> nn.Sequential:
         """
         Build CNN feature extractor with at least 3 Conv1d layers.
-        
+
         Each conv layer is followed by BatchNorm1d and ReLU.
         MaxPool1d (stride 2) is added between conv layers for downsampling.
         """
-        kernel_sizes = [5, 5, 5, 3, 3][:max(num_layers, 3)]
-        filter_sizes = [hidden_size // 4, hidden_size // 2, hidden_size] + \
-                       [hidden_size] * (max(num_layers, 3) - 3)
+        kernel_sizes = [5, 5, 5, 3, 3][: max(num_layers, 3)]
+        filter_sizes = [hidden_size // 4, hidden_size // 2, hidden_size] + [
+            hidden_size
+        ] * (max(num_layers, 3) - 3)
 
         layers = []
         in_channels = input_channels
 
-        for i, (kernel_size, out_channels) in enumerate(zip(kernel_sizes, filter_sizes)):
-            layers.append(nn.Conv1d(in_channels, out_channels, kernel_size, padding=kernel_size // 2))
+        for i, (kernel_size, out_channels) in enumerate(
+            zip(kernel_sizes, filter_sizes)
+        ):
+            layers.append(
+                nn.Conv1d(
+                    in_channels, out_channels, kernel_size, padding=kernel_size // 2
+                )
+            )
             layers.append(nn.BatchNorm1d(out_channels))
             layers.append(nn.ReLU())
 
@@ -106,7 +121,11 @@ class HybridLNN(BaseLNN):
 
     def _compute_cnn_output_dim(self, input_channels: int) -> int:
         """Compute CNN output feature dimension"""
-        return self.cnn[-1].out_channels if hasattr(self.cnn[-1], 'out_channels') else self.config.hidden_size
+        return (
+            self.cnn[-1].out_channels
+            if hasattr(self.cnn[-1], "out_channels")
+            else self.config.hidden_size
+        )
 
     def _build_output_layer(
         self,

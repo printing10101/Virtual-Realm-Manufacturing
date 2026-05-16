@@ -4,6 +4,7 @@ Model Cache Implementation
 Implements a thread-safe LRU (Least Recently Used) cache for LNN model instances.
 Caches loaded models in memory to avoid repeated disk loading, reducing cold start latency.
 """
+
 import time
 import logging
 import threading
@@ -85,7 +86,9 @@ class ModelCache:
             ValueError: If memory_size_bytes is negative
         """
         if memory_size_bytes < 0:
-            raise ValueError("模型缓存内存估算失败：内存大小（memory_size）必须为非负数。当前值为负数，这通常表示模型参数计算出现异常。请检查模型架构定义。")
+            raise ValueError(
+                "模型缓存内存估算失败：内存大小（memory_size）必须为非负数。当前值为负数，这通常表示模型参数计算出现异常。请检查模型架构定义。"
+            )
 
         with self._lock:
             if model_name in self._cache:
@@ -214,6 +217,7 @@ class ModelCache:
         """Check if cache has reached maximum capacity."""
         with self._lock:
             return len(self._cache) >= self._max_size
+
 
 _instance: Optional[ModelCache] = None
 _lock = threading.Lock()

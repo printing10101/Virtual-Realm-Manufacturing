@@ -1,4 +1,5 @@
 """Ollama status and model management routes."""
+
 from __future__ import annotations
 
 import logging
@@ -24,23 +25,25 @@ async def get_ollama_status() -> dict[str, Any]:
             if response.status_code == 200:
                 data = response.json()
                 models = data.get("models", [])
-                return success(data={
-                    "status": "running",
-                    "base_url": config.ai.ollama_base_url,
-                    "model_count": len(models),
-                    "models": [m.get("name", "unknown") for m in models]
-                })
+                return success(
+                    data={
+                        "status": "running",
+                        "base_url": config.ai.ollama_base_url,
+                        "model_count": len(models),
+                        "models": [m.get("name", "unknown") for m in models],
+                    }
+                )
             else:
                 logger.warning("Ollama returned status %d", response.status_code)
                 return error(
                     code=ErrorCode.SERVICE_UNAVAILABLE,
-                    message=f"Ollama returned status {response.status_code}"
+                    message=f"Ollama returned status {response.status_code}",
                 )
     except Exception as e:
         logger.error("Ollama status check failed: %s", e)
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
-            message=f"Ollama service unavailable: {e!s}"
+            message=f"Ollama service unavailable: {e!s}",
         )
 
 
@@ -53,25 +56,29 @@ async def list_ollama_models() -> dict[str, Any]:
             if response.status_code == 200:
                 data = response.json()
                 models = data.get("models", [])
-                return success(data={
-                    "models": [
-                        {
-                            "name": m.get("name", "unknown"),
-                            "size": m.get("size", 0),
-                            "digest": m.get("digest", ""),
-                        }
-                        for m in models
-                    ]
-                })
+                return success(
+                    data={
+                        "models": [
+                            {
+                                "name": m.get("name", "unknown"),
+                                "size": m.get("size", 0),
+                                "digest": m.get("digest", ""),
+                            }
+                            for m in models
+                        ]
+                    }
+                )
             else:
-                logger.warning("Ollama returned status %d for model listing", response.status_code)
+                logger.warning(
+                    "Ollama returned status %d for model listing", response.status_code
+                )
                 return error(
                     code=ErrorCode.SERVICE_UNAVAILABLE,
-                    message=f"Ollama returned status {response.status_code}"
+                    message=f"Ollama returned status {response.status_code}",
                 )
     except Exception as e:
         logger.error("Failed to list Ollama models: %s", e)
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
-            message=f"Failed to list Ollama models: {e!s}"
+            message=f"Failed to list Ollama models: {e!s}",
         )

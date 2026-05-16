@@ -13,13 +13,13 @@ Features:
 - Comprehensive error handling
 - Performance monitoring and statistics
 """
+
 import os
 import time
 import pickle
 import hashlib
 import logging
 import threading
-from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheEntry:
     """Represents a single cache entry with data, labels, and metadata."""
+
     cache_key: str
     data: Any
     labels: Any
@@ -87,11 +88,17 @@ class DatasetCache:
             cache_eviction_policy: Cache eviction policy (default: LRU)
         """
         if max_cache_size < 1:
-            raise ValueError(f"数据集缓存配置失败：'max_cache_size' 参数值必须大于等于 1，当前值: {max_cache_size}。该参数控制缓存中最多可存储的文件数量，请设置为合理的正整数（如 50）。")
+            raise ValueError(
+                f"数据集缓存配置失败：'max_cache_size' 参数值必须大于等于 1，当前值: {max_cache_size}。该参数控制缓存中最多可存储的文件数量，请设置为合理的正整数（如 50）。"
+            )
         if memory_cache_size < 1:
-            raise ValueError(f"数据集缓存配置失败：'memory_cache_size' 参数值必须大于等于 1，当前值: {memory_cache_size}。该参数控制内存缓存的最大大小（单位: MB），请设置为合理的正整数（如 100）。")
+            raise ValueError(
+                f"数据集缓存配置失败：'memory_cache_size' 参数值必须大于等于 1，当前值: {memory_cache_size}。该参数控制内存缓存的最大大小（单位: MB），请设置为合理的正整数（如 100）。"
+            )
         if cache_eviction_policy.lower() not in ("lru",):
-            raise ValueError(f"数据集缓存配置失败：不支持的缓存淘汰策略 '{cache_eviction_policy}'。当前支持的淘汰策略为：'lru'（最近最少使用）。请检查缓存配置中的 eviction_policy 参数。")
+            raise ValueError(
+                f"数据集缓存配置失败：不支持的缓存淘汰策略 '{cache_eviction_policy}'。当前支持的淘汰策略为：'lru'（最近最少使用）。请检查缓存配置中的 eviction_policy 参数。"
+            )
 
         self._cache_directory = os.path.expanduser(cache_directory)
         self._max_cache_size = max_cache_size
@@ -138,7 +145,9 @@ class DatasetCache:
                             self._current_disk_usage += os.path.getsize(filepath)
                         except OSError:
                             pass
-                logger.debug(f"Loaded disk cache metadata: {self._current_disk_usage} bytes")
+                logger.debug(
+                    f"Loaded disk cache metadata: {self._current_disk_usage} bytes"
+                )
         except Exception as e:
             logger.warning(f"Failed to load disk cache metadata: {e}")
 
@@ -164,7 +173,9 @@ class DatasetCache:
         abs_path = os.path.abspath(file_path)
 
         if not os.path.exists(abs_path):
-            raise FileNotFoundError(f"数据集缓存加载失败：找不到文件 '{abs_path}'。可能原因：1) 文件路径配置错误；2) 文件已被删除或移动。请确认文件路径正确，或检查数据集是否已完整下载。")
+            raise FileNotFoundError(
+                f"数据集缓存加载失败：找不到文件 '{abs_path}'。可能原因：1) 文件路径配置错误；2) 文件已被删除或移动。请确认文件路径正确，或检查数据集是否已完整下载。"
+            )
 
         file_stat = os.stat(abs_path)
         file_mtime = file_stat.st_mtime
@@ -265,13 +276,19 @@ class DatasetCache:
                 memory_result = self._get_from_memory(cache_key)
                 if memory_result is not None:
                     self._cache_hits += 1
-                    logger.info(f"Cache hit (memory): {file_path}, key={cache_key[:8]}...")
+                    logger.info(
+                        f"Cache hit (memory): {file_path}, key={cache_key[:8]}..."
+                    )
                     return memory_result
 
-                disk_result = self._get_from_disk(cache_key, file_path, file_mtime, file_size)
+                disk_result = self._get_from_disk(
+                    cache_key, file_path, file_mtime, file_size
+                )
                 if disk_result is not None:
                     self._cache_hits += 1
-                    logger.info(f"Cache hit (disk): {file_path}, key={cache_key[:8]}...")
+                    logger.info(
+                        f"Cache hit (disk): {file_path}, key={cache_key[:8]}..."
+                    )
                     return disk_result
 
         with self._lock:
@@ -279,7 +296,9 @@ class DatasetCache:
             logger.info(f"Cache miss: {file_path}")
             return None
 
-    def _get_from_memory(self, cache_key: str) -> Optional[Tuple[Any, Any, Dict[str, Any]]]:
+    def _get_from_memory(
+        self, cache_key: str
+    ) -> Optional[Tuple[Any, Any, Dict[str, Any]]]:
         """
         从内存缓存获取数据
 
@@ -345,7 +364,9 @@ class DatasetCache:
             return entry.data, entry.labels, entry.metadata
 
         except (pickle.UnpicklingError, EOFError, KeyError) as e:
-            logger.warning(f"Failed to load cache from disk: {e}, removing corrupted file")
+            logger.warning(
+                f"Failed to load cache from disk: {e}, removing corrupted file"
+            )
             try:
                 os.remove(cache_file)
             except OSError:
@@ -432,7 +453,8 @@ class DatasetCache:
             return
 
         while (
-            self._current_memory_usage + entry.memory_size_bytes > self._memory_cache_size
+            self._current_memory_usage + entry.memory_size_bytes
+            > self._memory_cache_size
             and len(self._memory_cache) > 0
         ):
             self._evict_from_memory()
@@ -495,7 +517,7 @@ class DatasetCache:
 
         except OSError as e:
             if "No space left on device" in str(e):
-                logger.error(f"Disk cache failed: no space left on device")
+                logger.error("Disk cache failed: no space left on device")
                 self._clear_disk_cache()
             else:
                 logger.error(f"Failed to save cache to disk: {e}")
@@ -636,7 +658,9 @@ class DatasetCache:
                 self._current_disk_usage = 0
                 count += disk_count
                 freed += disk_freed
-                logger.info(f"Disk cache cleared: {disk_count} files, {disk_freed} bytes")
+                logger.info(
+                    f"Disk cache cleared: {disk_count} files, {disk_freed} bytes"
+                )
 
             return count, freed
 
@@ -668,11 +692,17 @@ class DatasetCache:
                 "average_load_time_ms": round(avg_load_time * 1000, 2),
                 "memory_cache_entries": len(self._memory_cache),
                 "memory_cache_usage_bytes": self._current_memory_usage,
-                "memory_cache_usage_mb": round(self._current_memory_usage / (1024 * 1024), 2),
+                "memory_cache_usage_mb": round(
+                    self._current_memory_usage / (1024 * 1024), 2
+                ),
                 "memory_cache_limit_bytes": self._memory_cache_size,
-                "memory_cache_limit_mb": round(self._memory_cache_size / (1024 * 1024), 2),
+                "memory_cache_limit_mb": round(
+                    self._memory_cache_size / (1024 * 1024), 2
+                ),
                 "disk_cache_usage_bytes": self._current_disk_usage,
-                "disk_cache_usage_mb": round(self._current_disk_usage / (1024 * 1024), 2),
+                "disk_cache_usage_mb": round(
+                    self._current_disk_usage / (1024 * 1024), 2
+                ),
                 "disk_cache_limit_bytes": self._max_cache_size,
                 "disk_cache_limit_mb": round(self._max_cache_size / (1024 * 1024), 2),
                 "eviction_policy": self._eviction_policy,

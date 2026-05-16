@@ -4,6 +4,7 @@ CFC (Context-Free Grammar Network) Model
 Optimized for fast inference scenarios with response time < 100ms.
 Uses context-free grammar principles for efficient pattern matching and classification.
 """
+
 import numpy as np
 from typing import Any, Dict, List
 
@@ -29,7 +30,7 @@ class CFCModel(BaseLNNModel):
         num_layers: int = 2,
         dropout_rate: float = 0.1,
         device: str = "cpu",
-        **kwargs
+        **kwargs,
     ):
         """
         初始化CFC模型
@@ -61,7 +62,9 @@ class CFCModel(BaseLNNModel):
             return
 
         # 初始化网络权重
-        layer_dims = [self.input_dim] + [self.hidden_dim] * self.num_layers + [self.output_dim]
+        layer_dims = (
+            [self.input_dim] + [self.hidden_dim] * self.num_layers + [self.output_dim]
+        )
 
         for i in range(len(layer_dims) - 1):
             # He初始化 (适用于ReLU激活函数)
@@ -135,7 +138,9 @@ class CFCModel(BaseLNNModel):
         """交叉熵损失"""
         # 数值稳定性处理
         predictions = predictions - np.max(predictions, axis=-1, keepdims=True)
-        log_probs = predictions - np.log(np.sum(np.exp(predictions), axis=-1, keepdims=True))
+        log_probs = predictions - np.log(
+            np.sum(np.exp(predictions), axis=-1, keepdims=True)
+        )
 
         if labels.ndim == 1:
             # 转换为one-hot
@@ -148,7 +153,7 @@ class CFCModel(BaseLNNModel):
         data: np.ndarray,
         labels: np.ndarray,
         batch_size: int,
-        learning_rate: float
+        learning_rate: float,
     ) -> float:
         """
         单步训练（使用数值梯度近似）
@@ -183,9 +188,7 @@ class CFCModel(BaseLNNModel):
             eps = 1e-5
             # 随机采样部分参数计算数值梯度以加速
             sample_indices = np.random.choice(
-                self.weights[i].size,
-                min(100, self.weights[i].size),
-                replace=False
+                self.weights[i].size, min(100, self.weights[i].size), replace=False
             )
             flat_w = self.weights[i].flatten().copy()
             for idx in sample_indices:
@@ -254,13 +257,15 @@ class CFCModel(BaseLNNModel):
     def get_model_info(self) -> Dict[str, Any]:
         """获取CFC模型信息"""
         info = super().get_model_info()
-        info.update({
-            "model_type": "CFC",
-            "hidden_dim": self.hidden_dim,
-            "num_layers": self.num_layers,
-            "dropout_rate": self.dropout_rate,
-            "target_latency_ms": 100,
-        })
+        info.update(
+            {
+                "model_type": "CFC",
+                "hidden_dim": self.hidden_dim,
+                "num_layers": self.num_layers,
+                "dropout_rate": self.dropout_rate,
+                "target_latency_ms": 100,
+            }
+        )
         return info
 
     def to_torch(self, device: str = "cpu"):
@@ -324,4 +329,6 @@ class CFCModel(BaseLNNModel):
             return torch_model
 
         except ImportError:
-            raise RuntimeError("CFC 模型转换失败：转换为 PyTorch 张量需要安装 PyTorch 库。当前环境中未检测到 PyTorch。请安装 PyTorch（pip install torch）后重试。")
+            raise RuntimeError(
+                "CFC 模型转换失败：转换为 PyTorch 张量需要安装 PyTorch 库。当前环境中未检测到 PyTorch。请安装 PyTorch（pip install torch）后重试。"
+            )

@@ -4,12 +4,13 @@ Model Registry
 Manages model metadata, version control, and validation.
 Provides a centralized registry for all LNN models with predefined model support.
 """
+
 import os
 import json
 import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from app.ai.lnn.core import ModelConfig, ModelType
 from app.ai.lnn.models.base_lnn import BaseLNNModel
@@ -20,21 +21,21 @@ from app.ai.lnn.models.hybrid_lnn import HybridLNNModel
 
 class BaseModelRegistry(ABC):
     """Abstract base class for model registries.
-    
+
     Defines the minimal interface required for model loading.
     All registry implementations should inherit from this class.
     """
-    
+
     @abstractmethod
     def get(self, model_name: str) -> Any:
         """Get a model instance by name.
-        
+
         Args:
             model_name: Unique model identifier
-            
+
         Returns:
             Model instance
-            
+
         Raises:
             KeyError: If model not found
         """
@@ -63,6 +64,7 @@ def get_quantized_model_name(model_name: str) -> str:
 @dataclass
 class ModelInfo:
     """Model information dataclass with validation"""
+
     name: str
     model_type: str
     model_path: str
@@ -73,15 +75,25 @@ class ModelInfo:
     def __post_init__(self):
         """Validate required fields"""
         if not self.name:
-            raise ValueError("模型配置注册失败：'name' 字段不能为空。模型名称用于唯一标识每个已注册模型，请使用有意义的名称（如 'cutting_force_45steel'）。")
+            raise ValueError(
+                "模型配置注册失败：'name' 字段不能为空。模型名称用于唯一标识每个已注册模型，请使用有意义的名称（如 'cutting_force_45steel'）。"
+            )
         if not self.model_type:
-            raise ValueError("模型配置注册失败：'model_type' 字段不能为空。支持的模型类型包括：LNN（神经逻辑网络）、CTC（连续时间分类）、CFC（连续-离散混合模型）、LTC（液体时间常数网络）。请调用 GET /api/v1/lnn/models 查看支持的模型类型列表。")
+            raise ValueError(
+                "模型配置注册失败：'model_type' 字段不能为空。支持的模型类型包括：LNN（神经逻辑网络）、CTC（连续时间分类）、CFC（连续-离散混合模型）、LTC（液体时间常数网络）。请调用 GET /api/v1/lnn/models 查看支持的模型类型列表。"
+            )
         if not self.model_path:
-            raise ValueError("模型配置注册失败：'model_path' 字段不能为空。模型路径应指向已训练的模型权重文件（.pt 或 .pth 格式），例如 'models/cutting_force_v1.pt'。")
+            raise ValueError(
+                "模型配置注册失败：'model_path' 字段不能为空。模型路径应指向已训练的模型权重文件（.pt 或 .pth 格式），例如 'models/cutting_force_v1.pt'。"
+            )
         if not self.input_features:
-            raise ValueError("模型配置注册失败：'input_features' 列表不能为空。输入特征定义模型预测所需的输入变量（如 'cutting_speed'、'feed_rate'、'depth_of_cut'）。请根据模型的实际输入要求提供完整的特征列表。")
+            raise ValueError(
+                "模型配置注册失败：'input_features' 列表不能为空。输入特征定义模型预测所需的输入变量（如 'cutting_speed'、'feed_rate'、'depth_of_cut'）。请根据模型的实际输入要求提供完整的特征列表。"
+            )
         if not self.output_features:
-            raise ValueError("模型配置注册失败：'output_features' 列表不能为空。输出特征定义模型预测的目标变量（如 'cutting_force'、'tool_wear'）。请根据模型的实际预测目标提供完整的特征列表。")
+            raise ValueError(
+                "模型配置注册失败：'output_features' 列表不能为空。输出特征定义模型预测的目标变量（如 'cutting_force'、'tool_wear'）。请根据模型的实际预测目标提供完整的特征列表。"
+            )
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize to dictionary"""
@@ -110,6 +122,7 @@ class ModelInfo:
 @dataclass
 class ModelEntry:
     """Model registry entry"""
+
     config: Optional[ModelConfig] = None
     info: Optional[ModelInfo] = None
     model: Optional[BaseLNNModel] = None
@@ -135,7 +148,13 @@ class LNNModelRegistry(BaseModelRegistry):
             name="cutting_force",
             model_type="CFC",
             model_path="models/cutting_force.pt",
-            input_features=["force_x", "force_y", "force_z", "spindle_speed", "feed_rate"],
+            input_features=[
+                "force_x",
+                "force_y",
+                "force_z",
+                "spindle_speed",
+                "feed_rate",
+            ],
             output_features=["predicted_cutting_force"],
             version="1.0.0",
         ),
@@ -183,7 +202,9 @@ class LNNModelRegistry(BaseModelRegistry):
         """Register all predefined models"""
         for name, info in self.PREDEFINED_MODELS.items():
             if self.model_dir:
-                model_path = os.path.join(self.model_dir, os.path.basename(info.model_path))
+                model_path = os.path.join(
+                    self.model_dir, os.path.basename(info.model_path)
+                )
                 info.model_path = model_path
             entry = ModelEntry(info=info)
             self.registry[name] = entry
@@ -197,7 +218,9 @@ class LNNModelRegistry(BaseModelRegistry):
             entry = self.registry.get(model_name)
             return entry.info if entry else None
 
-        matches = [name for name in self.registry.keys() if model_name.lower() in name.lower()]
+        matches = [
+            name for name in self.registry.keys() if model_name.lower() in name.lower()
+        ]
         if matches:
             return self.registry[matches[0]].info
         return None
@@ -221,7 +244,11 @@ class LNNModelRegistry(BaseModelRegistry):
         quantization_type: str = "dynamic",
         metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
-        quantized_name = f"{base_model_name}_int8" if not base_model_name.endswith("_int8") else base_model_name
+        quantized_name = (
+            f"{base_model_name}_int8"
+            if not base_model_name.endswith("_int8")
+            else base_model_name
+        )
 
         if quantized_name in self.registry:
             return False
@@ -246,12 +273,14 @@ class LNNModelRegistry(BaseModelRegistry):
         )
 
         quant_meta = metadata or {}
-        quant_meta.update({
-            "is_quantized": True,
-            "quantization_type": quantization_type,
-            "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "base_model": base_model_name,
-        })
+        quant_meta.update(
+            {
+                "is_quantized": True,
+                "quantization_type": quantization_type,
+                "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "base_model": base_model_name,
+            }
+        )
 
         entry = ModelEntry(info=quantized_info, metadata=quant_meta)
         self.registry[quantized_name] = entry
@@ -264,7 +293,9 @@ class LNNModelRegistry(BaseModelRegistry):
             raise KeyError(f"Model '{model_name}' not found in registry")
         return entry
 
-    def validate_model(self, model_name: str, model_path: Optional[str] = None) -> Dict[str, Any]:
+    def validate_model(
+        self, model_name: str, model_path: Optional[str] = None
+    ) -> Dict[str, Any]:
         entry = self.registry.get(model_name)
         if not entry:
             return {
@@ -347,7 +378,9 @@ class ModelRegistry(BaseModelRegistry):
         metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         if model_name in self.registry:
-            raise ValueError(f"模型注册失败：模型名称 '{model_name}' 已被注册。已注册的模型名称必须唯一。请调用 GET /api/v1/lnn/models 查看当前已注册的模型列表，或使用其他名称注册。")
+            raise ValueError(
+                f"模型注册失败：模型名称 '{model_name}' 已被注册。已注册的模型名称必须唯一。请调用 GET /api/v1/lnn/models 查看当前已注册的模型列表，或使用其他名称注册。"
+            )
 
         model_config = ModelConfig(
             model_type=model_type,
@@ -367,7 +400,9 @@ class ModelRegistry(BaseModelRegistry):
 
     def get(self, model_name: str, load_if_needed: bool = True) -> BaseLNNModel:
         if model_name not in self.registry:
-            raise KeyError(f"模型获取失败：模型 '{model_name}' 未在注册表中找到。可能原因：1) 模型尚未注册；2) 模型名称拼写错误。请调用 GET /api/v1/lnn/models 查看所有已注册的模型列表，确认模型名称后重试。")
+            raise KeyError(
+                f"模型获取失败：模型 '{model_name}' 未在注册表中找到。可能原因：1) 模型尚未注册；2) 模型名称拼写错误。请调用 GET /api/v1/lnn/models 查看所有已注册的模型列表，确认模型名称后重试。"
+            )
 
         entry = self.registry[model_name]
         entry.last_accessed = time.time()
@@ -383,7 +418,9 @@ class ModelRegistry(BaseModelRegistry):
             self._load_model(model_name)
             return entry.model
 
-        raise RuntimeError(f"模型获取失败：模型 '{model_name}' 尚未加载到内存中。可能原因：1) 模型尚未从磁盘加载；2) 模型已卸载。解决方案：1) 设置 load_if_needed=True 以自动加载模型；2) 调用 POST /api/v1/lnn/models/{{name}}/load 手动加载模型。")
+        raise RuntimeError(
+            f"模型获取失败：模型 '{model_name}' 尚未加载到内存中。可能原因：1) 模型尚未从磁盘加载；2) 模型已卸载。解决方案：1) 设置 load_if_needed=True 以自动加载模型；2) 调用 POST /api/v1/lnn/models/{{name}}/load 手动加载模型。"
+        )
 
     def load_model(self, model_name: str) -> None:
         self._load_model(model_name)
@@ -394,7 +431,9 @@ class ModelRegistry(BaseModelRegistry):
 
         model_class = self.MODEL_CLASS_MAP.get(config.model_type)
         if model_class is None:
-            raise ValueError(f"模型加载失败：未知的模型类型 '{config.model_type}'。支持的模型类型可通过 registry.MODEL_CLASS_MAP.keys() 查看。请检查 ModelConfig 中的 model_type 配置，或调用 GET /api/v1/lnn/models 查看支持的模型类型。")
+            raise ValueError(
+                f"模型加载失败：未知的模型类型 '{config.model_type}'。支持的模型类型可通过 registry.MODEL_CLASS_MAP.keys() 查看。请检查 ModelConfig 中的 model_type 配置，或调用 GET /api/v1/lnn/models 查看支持的模型类型。"
+            )
 
         hyperparams = config.hyperparameters or {}
         model = model_class(
@@ -419,32 +458,34 @@ class ModelRegistry(BaseModelRegistry):
             return
 
         loaded_models = [
-            (name, entry)
-            for name, entry in self.registry.items()
-            if entry.is_loaded
+            (name, entry) for name, entry in self.registry.items() if entry.is_loaded
         ]
 
         if len(loaded_models) > self.cache_size:
             loaded_models.sort(key=lambda x: x[1].last_accessed)
-            for name, _ in loaded_models[:len(loaded_models) - self.cache_size]:
+            for name, _ in loaded_models[: len(loaded_models) - self.cache_size]:
                 self.registry[name].model = None
                 self.registry[name].is_loaded = False
 
     def list_models(self) -> List[Dict[str, Any]]:
         models = []
         for name, entry in self.registry.items():
-            models.append({
-                "name": name,
-                "type": entry.config.model_type.value,
-                "is_loaded": entry.is_loaded,
-                "access_count": entry.access_count,
-                "version": entry.config.version,
-            })
+            models.append(
+                {
+                    "name": name,
+                    "type": entry.config.model_type.value,
+                    "is_loaded": entry.is_loaded,
+                    "access_count": entry.access_count,
+                    "version": entry.config.version,
+                }
+            )
         return models
 
     def get_model_info(self, model_name: str) -> Dict[str, Any]:
         if model_name not in self.registry:
-            raise KeyError(f"模型信息获取失败：模型 '{model_name}' 未找到。可能原因：1) 模型尚未注册；2) 模型名称拼写错误。请调用 GET /api/v1/lnn/models 查看所有已注册的模型列表。")
+            raise KeyError(
+                f"模型信息获取失败：模型 '{model_name}' 未找到。可能原因：1) 模型尚未注册；2) 模型名称拼写错误。请调用 GET /api/v1/lnn/models 查看所有已注册的模型列表。"
+            )
 
         entry = self.registry[model_name]
         info = {
@@ -526,10 +567,12 @@ class ModelRegistry(BaseModelRegistry):
         model_name: str,
         model_class: Type[BaseLNNModel],
         model_type: Optional[ModelType] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         if model_name in self.registry:
-            raise ValueError(f"模型注册失败：模型名称 '{model_name}' 已被注册。已注册的模型名称必须唯一。请调用 GET /api/v1/lnn/models 查看当前已注册的模型列表，或使用其他名称注册。")
+            raise ValueError(
+                f"模型注册失败：模型名称 '{model_name}' 已被注册。已注册的模型名称必须唯一。请调用 GET /api/v1/lnn/models 查看当前已注册的模型列表，或使用其他名称注册。"
+            )
 
         mtype = model_type or ModelType.CFC
         self.MODEL_CLASS_MAP[mtype] = model_class
@@ -554,13 +597,17 @@ class ModelRegistry(BaseModelRegistry):
         metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         if model_name in self.registry:
-            raise ValueError(f"模型注册失败：模型名称 '{model_name}' 已被注册。已注册的模型名称必须唯一。请调用 GET /api/v1/lnn/models 查看当前已注册的模型列表，或使用其他名称注册。")
+            raise ValueError(
+                f"模型注册失败：模型名称 '{model_name}' 已被注册。已注册的模型名称必须唯一。请调用 GET /api/v1/lnn/models 查看当前已注册的模型列表，或使用其他名称注册。"
+            )
 
         quant_meta = metadata or {}
-        quant_meta.update({
-            "is_quantized": True,
-            "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
-        })
+        quant_meta.update(
+            {
+                "is_quantized": True,
+                "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
 
         model_config = ModelConfig(
             model_type=model_type,
@@ -610,10 +657,13 @@ def _init_torch_model_map() -> None:
         from app.ai.lnn.models.torch_cfc_model import CFCModel as TorchCFCModel
         from app.ai.lnn.models.torch_ltc_model import LTCModel as TorchLTCModel
         from app.ai.lnn.models.torch_hybrid_lnn import HybridLNN as TorchHybridLNNModel
-        ModelRegistry._torch_model_class_map.update({
-            "CFC": TorchCFCModel,
-            "LTC": TorchLTCModel,
-            "HybridLNN": TorchHybridLNNModel,
-        })
+
+        ModelRegistry._torch_model_class_map.update(
+            {
+                "CFC": TorchCFCModel,
+                "LTC": TorchLTCModel,
+                "HybridLNN": TorchHybridLNNModel,
+            }
+        )
     except ImportError:
         pass

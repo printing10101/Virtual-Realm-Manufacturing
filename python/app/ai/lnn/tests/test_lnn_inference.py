@@ -9,6 +9,7 @@ Tests for:
 - LNNModelRegistry class
 - BatchInferenceEngine class
 """
+
 import pytest
 import numpy as np
 import json
@@ -16,6 +17,7 @@ from unittest.mock import MagicMock
 
 try:
     import torch
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -75,9 +77,11 @@ class TestLNNPredictor:
     def mock_model(self):
         model = MagicMock()
         model.model_name = "test_model"
+
         def mock_forward(x):
-            batch_size = x.shape[0] if hasattr(x, 'shape') else 1
+            batch_size = x.shape[0] if hasattr(x, "shape") else 1
             return np.array([[0.8]] * batch_size)
+
         model.return_value = np.array([[0.8]])
         model.side_effect = mock_forward
         return model
@@ -308,11 +312,13 @@ class TestBatchInferenceEngine:
     @pytest.fixture
     def mock_predictor(self):
         predictor = MagicMock(spec=LNNPredictor)
+
         def mock_predict_batch(data_list, batch_size=32):
             return [
                 PredictionResult(value=[0.8], confidence=0.9, inference_time=20.0)
                 for _ in range(len(data_list))
             ]
+
         predictor.predict_batch = mock_predict_batch
         return predictor
 
@@ -391,6 +397,7 @@ class TestBatchInferenceEngine:
 # 8.2.1 模型加载测试
 # ============================================================
 
+
 class TestPredictorModelLoading:
     """测试预测器模型加载功能"""
 
@@ -441,7 +448,10 @@ class TestPredictorModelLoading:
 
         mock_model.side_effect = mock_forward
         predictor = LNNPredictor(
-            model=mock_model, model_name="my_predictor", use_amp=False, auto_device=False
+            model=mock_model,
+            model_name="my_predictor",
+            use_amp=False,
+            auto_device=False,
         )
         assert predictor.model_name == "my_predictor"
 
@@ -449,6 +459,7 @@ class TestPredictorModelLoading:
 # ============================================================
 # 8.2.2 单次预测测试
 # ============================================================
+
 
 class TestPredictorSinglePrediction:
     """测试预测器单次预测功能"""
@@ -493,6 +504,7 @@ class TestPredictorSinglePrediction:
 # ============================================================
 # 8.2.3 批量预测测试
 # ============================================================
+
 
 class TestPredictorBatchPrediction:
     """测试预测器批量预测功能"""
@@ -541,6 +553,7 @@ class TestPredictorBatchPrediction:
 # ============================================================
 # 8.2.4 预处理/后处理测试
 # ============================================================
+
 
 class TestDataPreprocessing:
     """测试数据预处理逻辑"""
@@ -670,7 +683,9 @@ class TestDataPostprocessing:
 
     def test_postprocess_without_metadata(self):
         """测试不包含元数据的后处理"""
-        postprocessor = ResultPostprocessor(include_metadata=False, include_uncertainty=False)
+        postprocessor = ResultPostprocessor(
+            include_metadata=False, include_uncertainty=False
+        )
         predictions = np.array([[0.8, 0.2]])
         result = postprocessor.process_result(
             predictions=predictions, engine=EngineType.LNN
@@ -681,6 +696,7 @@ class TestDataPostprocessing:
 # ============================================================
 # 8.2.5 错误处理测试
 # ============================================================
+
 
 class TestPredictorErrorHandling:
     """测试预测器错误处理机制"""

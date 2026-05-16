@@ -4,23 +4,25 @@ Predictor Module
 Implements single-sample, batch, and streaming inference interfaces for LNN models.
 Supports automatic device selection and AMP (Automatic Mixed Precision) acceleration.
 """
+
 import os
 import numpy as np
 import time
 import logging
 import psutil
-import statistics
 from typing import Any, Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass, field
 
 try:
     import torch
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
 
 try:
     from torch.cuda.amp import autocast
+
     HAS_AMP = True
 except ImportError:
     HAS_AMP = False
@@ -28,9 +30,8 @@ except ImportError:
 from app.ai.lnn.core import EngineType
 from app.ai.lnn.preprocessing import DataPreprocessor
 from app.ai.lnn.postprocessing import ResultPostprocessor
-from app.ai.lnn.inference.registry import ModelRegistry, BaseModelRegistry, ModelEntry
+from app.ai.lnn.inference.registry import BaseModelRegistry, ModelEntry
 from app.ai.lnn.inference.model_cache import get_model_cache
-from app.ai.lnn.inference.registry import is_quantized_model
 from app.ai.lnn.models.base_lnn import BaseLNNModel
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PredictionResult:
     """Prediction result dataclass with serialization support"""
+
     value: Any
     confidence: float = 0.0
     inference_time: float = 0.0
@@ -73,7 +75,7 @@ class PredictionResult:
 class LNNPredictor:
     """
     LNN Predictor with single, batch, and streaming inference support.
-    
+
     Features:
     - Single sample prediction
     - Batch prediction with configurable batch size
@@ -95,7 +97,7 @@ class LNNPredictor:
     ):
         """
         Initialize LNN Predictor
-        
+
         Args:
             model: LNN model instance
             preprocessor: Optional data preprocessor
@@ -142,10 +144,10 @@ class LNNPredictor:
     def _preprocess(self, data: Any) -> Tuple[np.ndarray, Optional[Dict[str, Any]]]:
         """
         Preprocess input data
-        
+
         Args:
             data: Raw input data
-            
+
         Returns:
             Tuple of (processed features, metadata dict)
         """
@@ -159,11 +161,11 @@ class LNNPredictor:
     def _postprocess(self, output: Any, hidden: Optional[Dict[str, Any]] = None) -> Any:
         """
         Postprocess model output
-        
+
         Args:
             output: Raw model output
             hidden: Intermediate computation results
-            
+
         Returns:
             Processed output
         """
@@ -178,11 +180,11 @@ class LNNPredictor:
     ) -> Union[PredictionResult, Any]:
         """
         Single sample prediction
-        
+
         Args:
             input_data: Input data (numpy array, Tensor, list, dict, etc.)
             return_confidence: Whether to return confidence score
-            
+
         Returns:
             PredictionResult if return_confidence=True, else prediction value
         """
@@ -212,6 +214,7 @@ class LNNPredictor:
 
             try:
                 from app.core.utils import get_metrics_collector
+
                 m = get_metrics_collector()
                 m.record_lnn_inference(self.model_name, inference_time / 1000.0)
                 m.record_lnn_prediction(self.model_name, "success")
@@ -236,11 +239,14 @@ class LNNPredictor:
             self._update_stats(inference_time, self._get_memory_usage_mb())
             try:
                 from app.core.utils import get_metrics_collector
+
                 m = get_metrics_collector()
                 m.record_lnn_prediction(self.model_name, "error")
             except Exception:
                 pass
-            raise RuntimeError(f"模型预测失败：推理过程出现异常。错误详情: {str(e)}。可能原因：1) 模型输入数据格式不匹配；2) 模型权重加载异常；3) GPU 内存不足。请检查输入数据格式，确认模型已正确加载，如使用 GPU 请检查显存使用情况。")
+            raise RuntimeError(
+                f"模型预测失败：推理过程出现异常。错误详情: {str(e)}。可能原因：1) 模型输入数据格式不匹配；2) 模型权重加载异常；3) GPU 内存不足。请检查输入数据格式，确认模型已正确加载，如使用 GPU 请检查显存使用情况。"
+            )
 
     def predict_batch(
         self,
@@ -249,11 +255,11 @@ class LNNPredictor:
     ) -> List[PredictionResult]:
         """
         Batch prediction with memory control
-        
+
         Args:
             batch_data: List of input data
             batch_size: Batch size for memory management
-            
+
         Returns:
             List of PredictionResult objects
         """
@@ -319,11 +325,11 @@ class LNNPredictor:
     ):
         """
         Streaming prediction for continuous data
-        
+
         Args:
             data_stream: Iterator or generator of input data
             return_confidence: Whether to return confidence scores
-            
+
         Yields:
             Prediction results one by one
         """
@@ -343,7 +349,11 @@ class LNNPredictor:
 
     def get_performance(self) -> Dict[str, Any]:
         total = self._stats["total_inferences"]
-        times = sorted(self._stats["inference_times"]) if self._stats["inference_times"] else []
+        times = (
+            sorted(self._stats["inference_times"])
+            if self._stats["inference_times"]
+            else []
+        )
         n = len(times)
 
         avg_ms = (self._stats["total_inference_time_ms"] / total) if total > 0 else 0.0
@@ -353,7 +363,11 @@ class LNNPredictor:
 
         now = time.perf_counter()
         window_elapsed = now - self._stats["window_start"]
-        throughput = self._stats["window_inferences"] / window_elapsed if window_elapsed > 0 else 0.0
+        throughput = (
+            self._stats["window_inferences"] / window_elapsed
+            if window_elapsed > 0
+            else 0.0
+        )
         if window_elapsed > 60.0:
             self._stats["window_start"] = now
             self._stats["window_inferences"] = 0
@@ -369,13 +383,20 @@ class LNNPredictor:
             "device": device_type,
             "device_type": str(self.device),
             "amp_enabled": self.use_amp,
-            "engine_type": self.engine_type.value if hasattr(self.engine_type, "value") else str(self.engine_type),
+            "engine_type": self.engine_type.value
+            if hasattr(self.engine_type, "value")
+            else str(self.engine_type),
             "total_inferences": total,
             "avg_inference_ms": round(avg_ms, 4),
             "p50_inference_ms": round(p50, 4),
             "p95_inference_ms": round(p95, 4),
             "p99_inference_ms": round(p99, 4),
-            "min_inference_ms": round(self._stats["min_inference_time_ms"] if self._stats["min_inference_time_ms"] != float("inf") else 0.0, 4),
+            "min_inference_ms": round(
+                self._stats["min_inference_time_ms"]
+                if self._stats["min_inference_time_ms"] != float("inf")
+                else 0.0,
+                4,
+            ),
             "max_inference_ms": round(self._stats["max_inference_time_ms"], 4),
             "throughput_inf_per_sec": round(throughput, 2),
             "current_memory_mb": round(self._get_memory_usage_mb(), 2),
@@ -406,8 +427,10 @@ class LNNPredictor:
         elif isinstance(input_data, (int, float)):
             result = np.array([input_data])
         else:
-            raise ValueError(f"模型预测失败：不支持的输入数据类型 '{type(input_data).__name__}'。支持的输入类型包括：dict（字典格式）、list（列表格式）、numpy.ndarray（数组格式）、torch.Tensor（张量格式）。请将输入数据转换为支持的格式后重试。")
-        
+            raise ValueError(
+                f"模型预测失败：不支持的输入数据类型 '{type(input_data).__name__}'。支持的输入类型包括：dict（字典格式）、list（列表格式）、numpy.ndarray（数组格式）、torch.Tensor（张量格式）。请将输入数据转换为支持的格式后重试。"
+            )
+
         if result.ndim == 1:
             result = result.reshape(1, -1)
         return result
@@ -433,13 +456,11 @@ class LNNPredictor:
         self._stats["min_inference_time_ms"] = min(
             self._stats["min_inference_time_ms"], inference_time_ms
         )
-        self._stats["peak_memory_mb"] = max(
-            self._stats["peak_memory_mb"], memory_mb
-        )
+        self._stats["peak_memory_mb"] = max(self._stats["peak_memory_mb"], memory_mb)
         times = self._stats["inference_times"]
         times.append(inference_time_ms)
         if len(times) > self._max_recent_times:
-            self._stats["inference_times"] = times[-self._max_recent_times:]
+            self._stats["inference_times"] = times[-self._max_recent_times :]
         self._stats["window_inferences"] += 1
 
     @classmethod
@@ -470,6 +491,7 @@ class LNNPredictor:
 
         try:
             from app.core.utils import get_metrics_collector
+
             get_metrics_collector().record_lnn_model_load(model_name, load_duration)
         except Exception:
             pass
@@ -492,39 +514,43 @@ class LNNPredictor:
     @staticmethod
     def _load_model_from_registry(registry: BaseModelRegistry, model_name: str) -> Any:
         """Load model from registry using the standard get() interface.
-        
+
         Args:
             registry: Model registry instance (must implement BaseModelRegistry)
             model_name: Name of the model to load
-            
+
         Returns:
             Model instance
-            
+
         Raises:
             KeyError: If model not found in registry
             RuntimeError: If registry type is unsupported
         """
         if not isinstance(registry, BaseModelRegistry):
-            if not (hasattr(registry, 'get') and callable(getattr(registry, 'get'))):
+            if not (hasattr(registry, "get") and callable(getattr(registry, "get"))):
                 supported = [BaseModelRegistry.__name__, "dict", "dict-like with get()"]
                 actual = type(registry).__name__
                 raise RuntimeError(
                     f"模型加载失败：注册表类型不兼容。错误详情: 不支持的注册表类型 '{actual}'。预期类型为: {', '.join(supported)}。请将注册表包装为 BaseModelRegistry 适配器，或使用支持 get() 方法的字典类对象。"
                 )
-        
+
         try:
             model = registry.get(model_name)
             if model is None:
-                raise KeyError(f"模型加载异常：模型 '{model_name}' 在注册表中存在但返回为空（None）。可能原因：1) 模型文件已损坏或丢失；2) 模型加载过程出现异常。请检查模型文件完整性，或调用 POST /api/v1/lnn/models/{{name}}/load 重新加载模型。")
-            
+                raise KeyError(
+                    f"模型加载异常：模型 '{model_name}' 在注册表中存在但返回为空（None）。可能原因：1) 模型文件已损坏或丢失；2) 模型加载过程出现异常。请检查模型文件完整性，或调用 POST /api/v1/lnn/models/{{name}}/load 重新加载模型。"
+                )
+
             if isinstance(model, ModelEntry):
                 return LNNPredictor._build_model_from_entry(model)
-            
+
             return model
         except KeyError:
             raise
         except Exception as e:
-            raise RuntimeError(f"模型加载失败：无法加载模型 '{model_name}'。错误详情: {e}。可能原因：1) 模型权重文件不存在或已损坏；2) 模型配置与权重不匹配；3) 内存/GPU 显存不足。请检查模型文件路径和完整性，或查看日志获取详细错误信息。") from e
+            raise RuntimeError(
+                f"模型加载失败：无法加载模型 '{model_name}'。错误详情: {e}。可能原因：1) 模型权重文件不存在或已损坏；2) 模型配置与权重不匹配；3) 内存/GPU 显存不足。请检查模型文件路径和完整性，或查看日志获取详细错误信息。"
+            ) from e
 
     @staticmethod
     def _build_model_from_entry(entry: ModelEntry) -> Any:
@@ -535,28 +561,30 @@ class LNNPredictor:
                 f"operation=build_model status=FROM_CACHED_ENTRY input_dim={entry.model.input_dim}"
             )
             return entry.model
-        
+
         from app.ai.lnn.inference.registry import LNNModelRegistry
-        
+
         model_cls = LNNModelRegistry.MODEL_CLASS_MAP.get(entry.info.model_type)
         if model_cls is None:
             raise ValueError(f"Unsupported model type: {entry.info.model_type}")
-        
+
         input_dim = len(entry.info.input_features) if entry.info.input_features else 1
-        output_dim = len(entry.info.output_features) if entry.info.output_features else 1
-        
+        output_dim = (
+            len(entry.info.output_features) if entry.info.output_features else 1
+        )
+
         logger.info(
             f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={entry.info.name} "
             f"operation=build_model status=CREATING input_dim={input_dim} output_dim={output_dim} "
             f"input_features={entry.info.input_features}"
         )
-        
+
         model = model_cls(
             model_name=entry.info.name,
             input_dim=input_dim,
             output_dim=output_dim,
         )
-        
+
         model_path = entry.info.model_path
         if model_path and os.path.exists(model_path):
             logger.info(
@@ -567,14 +595,14 @@ class LNNPredictor:
                 model.load(model_path)
             except Exception:
                 pass
-        
+
         model.build()
-        
+
         logger.info(
             f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={entry.info.name} "
             f"operation=build_model status=BUILT model_input_dim={model.input_dim}"
         )
-        
+
         entry.model = model
         entry.is_loaded = True
         return model

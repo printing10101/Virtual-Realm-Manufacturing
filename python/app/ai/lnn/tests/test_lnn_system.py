@@ -3,6 +3,7 @@ Comprehensive Unit Tests for LNN System
 
 Tests cover all core modules: models, router, fusion, preprocessing, inference, and engine.
 """
+
 import unittest
 import numpy as np
 import os
@@ -13,7 +14,12 @@ import json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.ai.lnn.core import (
-    EngineType, ModelType, TaskInput, RoutingDecision, InferenceResult, FusionResult
+    EngineType,
+    ModelType,
+    TaskInput,
+    RoutingDecision,
+    InferenceResult,
+    FusionResult,
 )
 from app.ai.lnn.models.cfc_model import CFCModel
 from app.ai.lnn.models.ltc_model import LTCModel
@@ -36,7 +42,7 @@ class TestCoreModels(unittest.TestCase):
         task = TaskInput(
             task_description="Test task",
             input_data=np.array([1, 2, 3]),
-            precision_requirement=0.95
+            precision_requirement=0.95,
         )
         self.assertEqual(task.task_description, "Test task")
         self.assertEqual(task.precision_requirement, 0.95)
@@ -44,9 +50,7 @@ class TestCoreModels(unittest.TestCase):
     def test_routing_decision_serialization(self):
         """Test RoutingDecision to_dict"""
         decision = RoutingDecision(
-            selected_engine=EngineType.LNN,
-            confidence=0.85,
-            reasoning="Test reasoning"
+            selected_engine=EngineType.LNN, confidence=0.85, reasoning="Test reasoning"
         )
         result = decision.to_dict()
         self.assertEqual(result["selected_engine"], "LNN")
@@ -55,9 +59,7 @@ class TestCoreModels(unittest.TestCase):
     def test_inference_result_serialization(self):
         """Test InferenceResult to_dict"""
         result = InferenceResult(
-            prediction=[0.8, 0.2],
-            confidence=0.85,
-            engine_used=EngineType.LNN
+            prediction=[0.8, 0.2], confidence=0.85, engine_used=EngineType.LNN
         )
         d = result.to_dict()
         self.assertEqual(d["confidence"], 0.85)
@@ -66,9 +68,7 @@ class TestCoreModels(unittest.TestCase):
     def test_fusion_result_serialization(self):
         """Test FusionResult to_dict"""
         result = FusionResult(
-            final_prediction=[0.9],
-            confidence=0.92,
-            fusion_method="dempster_shafer"
+            final_prediction=[0.9], confidence=0.92, fusion_method="dempster_shafer"
         )
         d = result.to_dict()
         self.assertEqual(d["fusion_method"], "dempster_shafer")
@@ -84,7 +84,7 @@ class TestCFCModel(unittest.TestCase):
             input_dim=10,
             output_dim=3,
             hidden_dim=20,
-            num_layers=2
+            num_layers=2,
         )
         self.model.build()
 
@@ -144,7 +144,7 @@ class TestLTCModel(unittest.TestCase):
             input_dim=8,
             output_dim=4,
             hidden_dim=16,
-            temporal_horizon=100
+            temporal_horizon=100,
         )
         self.model.build()
 
@@ -190,7 +190,7 @@ class TestHybridLNNModel(unittest.TestCase):
             input_dim=20,
             output_dim=5,
             cnn_filters=[16, 32],
-            lnn_hidden_dim=32
+            lnn_hidden_dim=32,
         )
         self.model.build()
 
@@ -220,7 +220,7 @@ class TestHybridLNNModel(unittest.TestCase):
                 model_name=f"TestHybrid_{method}",
                 input_dim=10,
                 output_dim=3,
-                fusion_method=method
+                fusion_method=method,
             )
             model.build()
             x = np.random.randn(2, 10)
@@ -239,7 +239,7 @@ class TestTaskRouter(unittest.TestCase):
         """Test routing to LNN for temporal tasks"""
         task = TaskInput(
             task_description="Predict time series trend for next week",
-            input_data=np.array([1, 2, 3])
+            input_data=np.array([1, 2, 3]),
         )
         decision = self.router.route(task)
         self.assertIsNotNone(decision.selected_engine)
@@ -250,7 +250,7 @@ class TestTaskRouter(unittest.TestCase):
         task = TaskInput(
             task_description="Apply validation rules: if value > threshold then flag",
             input_data=np.array([1, 2, 3]),
-            max_latency_ms=30
+            max_latency_ms=30,
         )
         decision = self.router.route(task)
         self.assertIsNotNone(decision.selected_engine)
@@ -260,7 +260,7 @@ class TestTaskRouter(unittest.TestCase):
         task = TaskInput(
             task_description="Process image and structured data together with high precision",
             input_data=np.array([1, 2, 3]),
-            precision_requirement=0.95
+            precision_requirement=0.95,
         )
         decision = self.router.route(task)
         self.assertIsNotNone(decision.selected_engine)
@@ -269,7 +269,7 @@ class TestTaskRouter(unittest.TestCase):
         """Test routing decision output format"""
         task = TaskInput(
             task_description="Simple classification task",
-            input_data=np.array([1, 2, 3])
+            input_data=np.array([1, 2, 3]),
         )
         decision = self.router.route(task)
         self.assertIsInstance(decision, RoutingDecision)
@@ -279,8 +279,7 @@ class TestTaskRouter(unittest.TestCase):
         """Test decision statistics"""
         for i in range(5):
             task = TaskInput(
-                task_description=f"Task {i}",
-                input_data=np.array([1, 2, 3])
+                task_description=f"Task {i}", input_data=np.array([1, 2, 3])
             )
             self.router.route(task)
 
@@ -291,9 +290,7 @@ class TestTaskRouter(unittest.TestCase):
         """Test scoring model"""
         model = ScoringModel()
         features = TaskFeatures(
-            complexity_score=0.7,
-            time_sensitivity=0.9,
-            has_temporal_component=True
+            complexity_score=0.7, time_sensitivity=0.9, has_temporal_component=True
         )
         scores = model.predict_scores(features)
         self.assertEqual(len(scores), len(EngineType))
@@ -311,9 +308,7 @@ class TestDempsterShaferFusion(unittest.TestCase):
     def test_single_result_fusion(self):
         """Test fusion with single result"""
         result = InferenceResult(
-            prediction=[0.8, 0.2],
-            confidence=0.85,
-            engine_used=EngineType.LNN
+            prediction=[0.8, 0.2], confidence=0.85, engine_used=EngineType.LNN
         )
         fused = self.fusion.fuse([result])
         self.assertEqual(fused.confidence, 0.85)
@@ -325,13 +320,13 @@ class TestDempsterShaferFusion(unittest.TestCase):
                 prediction=[0.8, 0.2],
                 confidence=0.85,
                 engine_used=EngineType.LNN,
-                processing_time_ms=50
+                processing_time_ms=50,
             ),
             InferenceResult(
                 prediction=[0.7, 0.3],
                 confidence=0.75,
                 engine_used=EngineType.RULE,
-                processing_time_ms=20
+                processing_time_ms=20,
             ),
         ]
         fused = self.fusion.fuse(results)
@@ -355,13 +350,13 @@ class TestDempsterShaferFusion(unittest.TestCase):
                 prediction=[0.8],
                 confidence=0.85,
                 processing_time_ms=50,
-                engine_used=EngineType.LNN
+                engine_used=EngineType.LNN,
             ),
             InferenceResult(
                 prediction=[0.7],
                 confidence=0.75,
                 processing_time_ms=30,
-                engine_used=EngineType.RULE
+                engine_used=EngineType.RULE,
             ),
         ]
         metrics = self.fusion._compute_quality_metrics(results, 0.88)
@@ -375,7 +370,7 @@ class TestDempsterShaferFusion(unittest.TestCase):
                 prediction=[0.8],
                 confidence=0.85,
                 engine_used=EngineType.LNN,
-                processing_time_ms=50
+                processing_time_ms=50,
             )
         ]
         report = self.fusion._generate_explainability(
@@ -386,9 +381,7 @@ class TestDempsterShaferFusion(unittest.TestCase):
     def test_fusion_stats(self):
         """Test fusion statistics"""
         result = InferenceResult(
-            prediction=[0.8],
-            confidence=0.85,
-            engine_used=EngineType.LNN
+            prediction=[0.8], confidence=0.85, engine_used=EngineType.LNN
         )
         self.fusion.fuse([result])
         stats = self.fusion.get_fusion_stats()
@@ -473,7 +466,7 @@ class TestPostprocessing(unittest.TestCase):
             predictions=predictions,
             engine=EngineType.LNN,
             model_name="TestModel",
-            processing_time_ms=50
+            processing_time_ms=50,
         )
         self.assertIsInstance(result, InferenceResult)
         self.assertGreater(result.confidence, 0)
@@ -482,9 +475,7 @@ class TestPostprocessing(unittest.TestCase):
         """Test JSON output"""
         predictions = np.array([0.8, 0.2])
         result = self.postprocessor.process_result(
-            predictions=predictions,
-            engine=EngineType.LNN,
-            processing_time_ms=30
+            predictions=predictions, engine=EngineType.LNN, processing_time_ms=30
         )
         json_str = self.postprocessor.to_json(result)
         parsed = json.loads(json_str)
@@ -494,9 +485,7 @@ class TestPostprocessing(unittest.TestCase):
         """Test XML output"""
         predictions = np.array([0.8, 0.2])
         result = self.postprocessor.process_result(
-            predictions=predictions,
-            engine=EngineType.LNN,
-            processing_time_ms=30
+            predictions=predictions, engine=EngineType.LNN, processing_time_ms=30
         )
         xml_str = self.postprocessor.to_xml(result)
         self.assertIn("InferenceResult", xml_str)
@@ -504,9 +493,7 @@ class TestPostprocessing(unittest.TestCase):
     def test_visualization_data(self):
         """Test visualization data generation"""
         result = InferenceResult(
-            prediction=[0.8, 0.2],
-            confidence=0.85,
-            engine_used=EngineType.LNN
+            prediction=[0.8, 0.2], confidence=0.85, engine_used=EngineType.LNN
         )
         viz_data = self.postprocessor.generate_visualization_data(result)
         self.assertIn("prediction_distribution", viz_data)
@@ -581,10 +568,7 @@ class TestPredictor(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.model = CFCModel(
-            model_name="TestPredictor",
-            input_dim=10,
-            output_dim=3,
-            hidden_dim=20
+            model_name="TestPredictor", input_dim=10, output_dim=3, hidden_dim=20
         )
         self.model.build()
         self.predictor = Predictor(model=self.model)
@@ -627,17 +611,12 @@ class TestBatchPredictor(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.model = CFCModel(
-            model_name="TestBatch",
-            input_dim=10,
-            output_dim=3,
-            hidden_dim=20
+            model_name="TestBatch", input_dim=10, output_dim=3, hidden_dim=20
         )
         self.model.build()
         self.predictor = Predictor(model=self.model)
         self.batch_predictor = BatchPredictor(
-            predictor=self.predictor,
-            batch_size=2,
-            max_workers=2
+            predictor=self.predictor, batch_size=2, max_workers=2
         )
 
     def test_batch_predict(self):
@@ -677,7 +656,7 @@ class TestHybridInferenceEngine(unittest.TestCase):
         """Test single inference"""
         result = self.engine.infer(
             task_description="Predict time series trend",
-            input_data=np.random.randn(10, 5)
+            input_data=np.random.randn(10, 5),
         )
         self.assertIsNotNone(result)
 
@@ -687,15 +666,14 @@ class TestHybridInferenceEngine(unittest.TestCase):
         engine.initialize_models()
         result = engine.infer(
             task_description="Simple classification task",
-            input_data=np.random.randn(5, 10)
+            input_data=np.random.randn(5, 10),
         )
         self.assertIsNotNone(result)
 
     def test_engine_stats(self):
         """Test engine statistics"""
         self.engine.infer(
-            task_description="Test task",
-            input_data=np.random.randn(5, 5)
+            task_description="Test task", input_data=np.random.randn(5, 5)
         )
         stats = self.engine.get_engine_stats()
         self.assertIn("inference_count", stats)
@@ -703,11 +681,7 @@ class TestHybridInferenceEngine(unittest.TestCase):
 
     def test_register_custom_model(self):
         """Test custom model registration"""
-        custom_model = CFCModel(
-            model_name="CustomModel",
-            input_dim=20,
-            output_dim=5
-        )
+        custom_model = CFCModel(model_name="CustomModel", input_dim=20, output_dim=5)
         custom_model.build()
         self.engine.register_custom_model("CustomModel", custom_model)
         self.assertIn("CustomModel", self.engine.lnn_models)
@@ -724,7 +698,7 @@ class TestIntegration(unittest.TestCase):
         result = engine.infer(
             task_description="Classify input data with high precision",
             input_data=np.random.randn(10, 20),
-            precision_requirement=0.9
+            precision_requirement=0.9,
         )
         self.assertIsNotNone(result)
 
@@ -734,14 +708,8 @@ class TestIntegration(unittest.TestCase):
         engine.initialize_models()
 
         tasks = [
-            {
-                "task_description": "Task 1",
-                "input_data": np.random.randn(5, 10)
-            },
-            {
-                "task_description": "Task 2",
-                "input_data": np.random.randn(5, 10)
-            },
+            {"task_description": "Task 1", "input_data": np.random.randn(5, 10)},
+            {"task_description": "Task 2", "input_data": np.random.randn(5, 10)},
         ]
         results = engine.infer_batch(tasks)
         self.assertEqual(len(results), 2)
@@ -752,19 +720,11 @@ class TestIntegration(unittest.TestCase):
         from app.ai.lnn.training.evaluator import LNNEvaluator
 
         model = CFCModel(
-            model_name="IntegrationTest",
-            input_dim=10,
-            output_dim=2,
-            hidden_dim=20
+            model_name="IntegrationTest", input_dim=10, output_dim=2, hidden_dim=20
         )
         model.build()
 
-        trainer = LNNTrainer(
-            model=model,
-            learning_rate=0.01,
-            epochs=10,
-            batch_size=8
-        )
+        trainer = LNNTrainer(model=model, learning_rate=0.01, epochs=10, batch_size=8)
 
         train_data = np.random.randn(50, 10)
         train_labels = np.random.randint(0, 2, 50)
