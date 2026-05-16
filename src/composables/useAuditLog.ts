@@ -1,6 +1,5 @@
 import { ref, reactive, onMounted } from 'vue'
 import axios from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
 
 export function useAuditLog() {
   const auditLogs = ref<any[]>([])

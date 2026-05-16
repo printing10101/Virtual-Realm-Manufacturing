@@ -1,48 +1,55 @@
 <template>
-  <div id="app">
-    <el-container class="app-container">
-      <el-header class="app-header">
-        <div class="header-left">
-          <h1 class="app-title">
-            {{ title }}
-          </h1>
-          <span class="app-version">v{{ frontendVersion }}</span>
-        </div>
-        <el-menu
-          :default-active="activeRoute"
-          mode="horizontal"
-          router
-          class="header-menu"
-        >
-          <el-menu-item index="/">
-            首页
-          </el-menu-item>
-          <el-menu-item index="/workspace">
-            工作区
-          </el-menu-item>
-          <el-menu-item index="/settings">
-            设置
-          </el-menu-item>
-          <el-menu-item index="/about">
-            关于
-          </el-menu-item>
-        </el-menu>
-      </el-header>
-      <el-main class="app-main">
-        <router-view />
-      </el-main>
-    </el-container>
-  </div>
+  <el-config-provider :locale="elLocale">
+    <div id="app">
+      <el-container class="app-container">
+        <el-header class="app-header">
+          <div class="header-left">
+            <h1 class="app-title">
+              {{ title }}
+            </h1>
+            <span class="app-version">v{{ frontendVersion }}</span>
+          </div>
+          <el-menu
+            :default-active="activeRoute"
+            mode="horizontal"
+            router
+            class="header-menu"
+          >
+            <el-menu-item index="/">
+              {{ $t('navigation.home') }}
+            </el-menu-item>
+            <el-menu-item index="/workspace">
+              {{ $t('navigation.workspace') }}
+            </el-menu-item>
+            <el-menu-item index="/settings">
+              {{ $t('navigation.settings') }}
+            </el-menu-item>
+            <el-menu-item index="/about">
+              {{ $t('navigation.about') }}
+            </el-menu-item>
+          </el-menu>
+        </el-header>
+        <el-main class="app-main">
+          <router-view />
+        </el-main>
+      </el-container>
+    </div>
+  </el-config-provider>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, inject, ref, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useVersionStore } from '@/stores/version'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import en from 'element-plus/es/locale/lang/en'
 
 const title = '灵境制造 V4'
 const route = useRoute()
 const activeRoute = computed(() => route.path)
+
+const elLocaleRef = inject<Ref<typeof zhCn>>('locale', ref(zhCn))
+const elLocale = computed(() => elLocaleRef.value)
 
 const versionStore = useVersionStore()
 const frontendVersion = computed(() => versionStore.frontendVersion)

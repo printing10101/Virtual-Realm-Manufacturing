@@ -1,6 +1,5 @@
 import { ref, reactive, onMounted } from 'vue'
 import axios from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
 
 interface NewTokenForm {
   scopes: string[]

@@ -134,7 +134,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Promotion, ChatDotRound, Grid, Check, Edit, Close } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
 
 interface AlternativePlan {
   plan_id: string
