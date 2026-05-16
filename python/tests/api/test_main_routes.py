@@ -34,7 +34,9 @@ class TestHealthEndpoints:
         response = client.get("/health")
         assert response.headers.get("X-Content-Type-Options") == "nosniff"
         assert response.headers.get("X-Frame-Options") == "DENY"
-        assert response.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+        assert (
+            response.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+        )
 
 
 class TestVersionEndpoint:
@@ -125,7 +127,9 @@ class TestAPIDocumentation:
     def test_docs_page_accessible(self, client):
         response = client.get("/api/docs")
         assert response.status_code == 200
-        assert "swagger" in response.text.lower() or "html" in response.headers.get("content-type", "")
+        assert "swagger" in response.text.lower() or "html" in response.headers.get(
+            "content-type", ""
+        )
 
     def test_redoc_page_accessible(self, client):
         response = client.get("/api/redoc")

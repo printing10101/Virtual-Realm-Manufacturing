@@ -126,7 +126,9 @@ class SecurityConfig:
         default_factory=lambda: _env("LNN_AUTH_ENABLED", "true").lower() == "true"
     )
     permission_enforced: bool = field(
-        default_factory=lambda: _env("LNN_PERMISSION_ENFORCED", "false").lower() == "true"
+        default_factory=lambda: (
+            _env("LNN_PERMISSION_ENFORCED", "false").lower() == "true"
+        )
     )
     agent_auth_enabled: bool = field(
         default_factory=lambda: _env("AGENT_AUTH_ENABLED", "true").lower() == "true"
@@ -154,8 +156,10 @@ class PathsConfig:
         default_factory=lambda: _env("LNN_GSTACK_DIR", ".lingjing/.gstack")
     )
     skills_dir: str = field(
-        default_factory=lambda: _env("LNN_SKILLS_DIR",
-            str(Path(__file__).resolve().parent.parent.parent / ".trae" / "skills"))
+        default_factory=lambda: _env(
+            "LNN_SKILLS_DIR",
+            str(Path(__file__).resolve().parent.parent.parent / ".trae" / "skills"),
+        )
     )
 
 

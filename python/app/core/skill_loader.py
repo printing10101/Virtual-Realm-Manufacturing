@@ -506,8 +506,8 @@ class SkillLoader:
 
     @staticmethod
     def _sanitize_path_segment(segment: str) -> str:
-        sanitized = re.sub(r'[<>:"|?*\\/]', '_', str(segment))
-        sanitized = sanitized.strip('. ')
+        sanitized = re.sub(r'[<>:"|?*\\/]', "_", str(segment))
+        sanitized = sanitized.strip(". ")
         if not sanitized:
             raise ValueError(f"路径段净化后为空: '{segment}'")
         return sanitized

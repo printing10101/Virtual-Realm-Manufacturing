@@ -46,7 +46,9 @@ class TestAppException:
         assert exc.detail == {"field": "x"}
 
     def test_full_customization(self):
-        exc = AppException(code=1004, message="Forbidden", status_code=403, detail="no access")
+        exc = AppException(
+            code=1004, message="Forbidden", status_code=403, detail="no access"
+        )
         assert exc.code == 1004
         assert exc.message == "Forbidden"
         assert exc.status_code == 403

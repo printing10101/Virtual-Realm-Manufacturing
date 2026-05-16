@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestLNNPredict:
     """Tests for POST /api/v1/lnn/predict."""
@@ -14,12 +12,14 @@ class TestLNNPredict:
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == 1001
+
     def test_predict_empty_input_returns_error(self, client):
         payload = {"model_name": "test_model", "input_data": []}
         response = client.post("/api/v1/lnn/predict", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert data["code"] in (1002, 1001)
+
     def test_predict_non_numeric_input_returns_error(self, client):
         payload = {"model_name": "test_model", "input_data": ["abc", 123]}
         response = client.post("/api/v1/lnn/predict", json=payload)
@@ -83,6 +83,7 @@ class TestLNNCache:
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == 0
+
     def test_cache_clear_returns_success(self, client):
         response = client.delete("/api/v1/lnn/cache/clear")
         assert response.status_code == 200
@@ -137,7 +138,9 @@ class TestLNNValidate:
 
     def test_validate_nonexistent_model_returns_error(self, client):
         payload = {"validation_data": [1.0, 2.0]}
-        response = client.post("/api/v1/lnn/models/nonexistent_xyz/validate", json=payload)
+        response = client.post(
+            "/api/v1/lnn/models/nonexistent_xyz/validate", json=payload
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] in (1001, 2001)

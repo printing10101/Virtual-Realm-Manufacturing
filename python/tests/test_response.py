@@ -180,7 +180,9 @@ class TestErrorResponseDirect:
         assert "request_id" in result
 
     def test_error_response_with_detail(self):
-        result = error_response(code=2001, message="Server error", detail={"error_id": "abc"})
+        result = error_response(
+            code=2001, message="Server error", detail={"error_id": "abc"}
+        )
         assert result["code"] == 2001
         assert result["detail"] == {"error_id": "abc"}
 
