@@ -43,7 +43,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { Refresh, Download } from '@element-plus/icons-vue'
 import { usePluginStore } from '../stores/plugin'
-import { ElMessage } from 'element-plus'
 
 const pluginStore = usePluginStore()
 const selectedPlugin = ref('')

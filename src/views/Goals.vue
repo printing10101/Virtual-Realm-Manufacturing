@@ -39,7 +39,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import GoalTreeView from '../components/goals/GoalTreeView.vue'
 import GoalDetail from '../components/goals/GoalDetail.vue'
