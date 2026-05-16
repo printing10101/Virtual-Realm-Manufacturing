@@ -65,6 +65,9 @@ def error(
     message: str = "Error",
     detail: Any = None,
     suggestion: str | None = None,
+    severity: str | None = None,
+    recoverable: bool = False,
+    adjusted_values: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
         "code": code_to_numeric(code),
@@ -75,6 +78,12 @@ def error(
         result["detail"] = detail
     if suggestion is not None:
         result["suggestion"] = suggestion
+    if severity is not None:
+        result["severity"] = severity
+    if recoverable:
+        result["recoverable"] = True
+    if adjusted_values:
+        result["adjusted_values"] = adjusted_values
     return result
 
 
@@ -82,6 +91,10 @@ def error_response(
     code: int,
     message: str,
     detail: Any = None,
+    suggestion: str | None = None,
+    severity: str | None = None,
+    recoverable: bool = False,
+    adjusted_values: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """使用数值错误码直接构建错误响应（供异常处理器使用）。"""
     result: dict[str, Any] = {
@@ -91,4 +104,38 @@ def error_response(
     }
     if detail is not None:
         result["detail"] = detail
+    if suggestion is not None:
+        result["suggestion"] = suggestion
+    if severity is not None:
+        result["severity"] = severity
+    if recoverable:
+        result["recoverable"] = True
+    if adjusted_values:
+        result["adjusted_values"] = adjusted_values
+    return result
+
+
+def manufacturing_error(
+    mfg_error: Any,  # ManufacturingError (lazy import to avoid circular deps)
+) -> dict[str, Any]:
+    """将ManufacturingError转换为标准API错误响应。
+
+    参数:
+        mfg_error: app.core.error_taxonomy.ManufacturingError 实例
+    """
+    result: dict[str, Any] = {
+        "code": mfg_error.code,
+        "error_code": mfg_error.code,
+        "message": mfg_error.message,
+        "severity": mfg_error.severity,
+        "request_id": get_request_id(),
+    }
+    if mfg_error.detail:
+        result["detail"] = mfg_error.detail
+    if mfg_error.suggestion:
+        result["suggestion"] = mfg_error.suggestion
+    if mfg_error.recoverable:
+        result["recoverable"] = True
+    if mfg_error.adjusted_values:
+        result["adjusted_values"] = mfg_error.adjusted_values
     return result

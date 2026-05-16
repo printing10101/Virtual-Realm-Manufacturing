@@ -1,0 +1,205 @@
+{
+  "timestamp": "2026-05-16 19:54:27",
+  "summary": "✅ 未检测到性能回退",
+  "entries": [
+    {
+      "metric": "avg_per_part_s",
+      "current": 0.067,
+      "previous": 0.067,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "batch_100_inference_ms",
+      "current": 7.57,
+      "previous": 7.57,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "batch_100_throughput_sps",
+      "current": 66075.5,
+      "previous": 66075.5,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "batch_10_inference_ms",
+      "current": 17.92,
+      "previous": 17.92,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "batch_10_throughput_sps",
+      "current": 11158.0,
+      "previous": 11158.0,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "batch_50_inference_ms",
+      "current": 9.12,
+      "previous": 9.12,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "batch_50_throughput_sps",
+      "current": 54833.0,
+      "previous": 54833.0,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "drawing_parse_s",
+      "current": 0.057,
+      "previous": 0.057,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "drawing_parse_s_max",
+      "current": 0.017,
+      "previous": 0.017,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "drawing_parse_s_mean",
+      "current": 0.016,
+      "previous": 0.016,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "drawing_parse_s_min",
+      "current": 0.015,
+      "previous": 0.015,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "drawing_parse_s_p50",
+      "current": 0.016,
+      "previous": 0.016,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "drawing_parse_s_p95",
+      "current": 0.017,
+      "previous": 0.017,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "drawing_parse_views",
+      "current": 3,
+      "previous": 3,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "lnn_inference_ms_max",
+      "current": 2.455,
+      "previous": 2.455,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "lnn_inference_ms_mean",
+      "current": 1.205,
+      "previous": 1.205,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "lnn_inference_ms_min",
+      "current": 0.943,
+      "previous": 0.943,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "lnn_inference_ms_p50",
+      "current": 1.169,
+      "previous": 1.169,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "lnn_inference_ms_p95",
+      "current": 1.481,
+      "previous": 1.481,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "lnn_inference_ms_p99",
+      "current": 2.455,
+      "previous": 2.455,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "lnn_inference_samples",
+      "current": 1,
+      "previous": 1,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "model_load_s",
+      "current": 0.011,
+      "previous": 0.011,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "nc_generation_total_s",
+      "current": 0.201,
+      "previous": 0.201,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "parts_processed",
+      "current": 3,
+      "previous": 3,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "post_processing_s",
+      "current": 0.004,
+      "previous": 0.004,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "process_planning_s",
+      "current": 0.036,
+      "previous": 0.036,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "reconstruction_s",
+      "current": 0.088,
+      "previous": 0.088,
+      "change_pct": 0.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "toolpath_generation_s",
+      "current": 0.015,
+      "previous": 0.015,
+      "change_pct": 0.0,
+      "status": "PASS"
+    }
+  ],
+  "violations": [],
+  "has_regression": false,
+  "has_critical": false
+}

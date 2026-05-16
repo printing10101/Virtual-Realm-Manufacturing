@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D重建几何精度验证报告 - 法兰盘</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background:#f5f5f5; color:#333; }
+.container { max-width:1200px; margin:0 auto; padding:20px; }
+.header { background:linear-gradient(135deg,#1a237e,#283593); color:white; padding:30px; border-radius:12px; margin-bottom:24px; }
+.header h1 { font-size:28px; margin-bottom:8px; }
+.header .meta { opacity:0.85; font-size:14px; }
+.overall { padding:20px; border-radius:12px; margin-bottom:24px; text-align:center; font-size:24px; font-weight:bold; color:white; background:#f44336; }
+.card { background:white; border-radius:12px; padding:24px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+.card h2 { font-size:20px; margin-bottom:16px; color:#1a237e; border-bottom:2px solid #e8eaf6; padding-bottom:8px; }
+.metrics-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+.metric { background:#f5f5f5; padding:16px; border-radius:8px; text-align:center; }
+.metric .value { font-size:32px; font-weight:bold; }
+.metric .label { font-size:13px; color:#666; margin-top:4px; }
+table { width:100%; border-collapse:collapse; }
+th, td { padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0; font-size:14px; }
+th { background:#f5f5f5; font-weight:600; color:#555; }
+tr:hover { background:#fafafa; }
+.warning { background:#fff3e0; border-left:4px solid #ff9800; padding:12px 16px; margin-bottom:8px; border-radius:0 8px 8px 0; font-size:14px; }
+.footer { text-align:center; padding:20px; color:#999; font-size:12px; }
+.pass { color:#4caf50; font-weight:bold; }
+.fail { color:#f44336; font-weight:bold; }
+@media print { body { background:white; } .card { box-shadow:none; border:1px solid #ddd; } }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>3D重建几何精度验证报告</h1>
+<div class="meta">
+零件: 法兰盘 (flange) |
+验证时间: 2026-05-16T09:34:17.568725+00:00 |
+耗时: 0.00s |
+报告版本: 1.0.0
+</div>
+</div>
+
+<div class="overall">✗ 未通过</div>
+<div class="warning">公差符合度 50.0% 低于阈值 95.0%</div>
+
+<div class="card">
+<h2>综合指标概览</h2>
+<div class="metrics-grid">
+<div class="metric">
+<div class="value" style="color:#4caf50">0.015</div>
+<div class="label">平均尺寸偏差 (mm)</div>
+</div>
+<div class="metric">
+<div class="value" style="color:#4caf50">1.0000</div>
+<div class="label">特征召回率</div>
+</div>
+<div class="metric">
+<div class="value">1.0000</div>
+<div class="label">特征精确率</div>
+</div>
+<div class="metric">
+<div class="value">1.0000</div>
+<div class="label">拓扑正确性</div>
+</div>
+<div class="metric">
+<div class="value" style="color:#f44336">50.0%</div>
+<div class="label">公差符合度</div>
+</div>
+<div class="metric">
+<div class="value">0.028</div>
+<div class="label">最大偏差 (mm)</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<h2>特征交并比 (IoU)</h2>
+<table>
+<tr><th>特征名称</th><th>IoU</th></tr>
+<tr><td>flange_disc</td><td>0.9352</td></tr><tr><td>center_bore</td><td>0.9318</td></tr><tr><td>bolt_hole_1</td><td>0.9603</td></tr><tr><td>bolt_hole_2</td><td>0.9419</td></tr><tr><td>bolt_hole_3</td><td>0.9627</td></tr><tr><td>bolt_hole_4</td><td>0.9654</td></tr><tr><td>bolt_hole_5</td><td>0.9304</td></tr><tr><td>bolt_hole_6</td><td>0.9719</td></tr><tr><td>outer_chamfer</td><td>0.9393</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h2>尺寸偏差详情</h2>
+<table>
+<tr><th>尺寸名称</th><th>标称值</th><th>实测值</th><th>偏差</th><th>公差范围</th><th>状态</th></tr>
+<tr>
+<td>OD</td>
+<td>120.0</td>
+<td>120.008</td>
+<td>0.008</td>
+<td>0.0 ~ 0.035</td>
+<td style="color:#4caf50;font-weight:bold">PASS</td>
+</tr><tr>
+<td>center_bore_dia</td>
+<td>40.0</td>
+<td>39.972</td>
+<td>-0.028</td>
+<td>0.0 ~ 0.025</td>
+<td style="color:#f44336;font-weight:bold">FAIL</td>
+</tr><tr>
+<td>thickness</td>
+<td>15.0</td>
+<td>14.987</td>
+<td>-0.013</td>
+<td>0.0 ~ 0.018</td>
+<td style="color:#f44336;font-weight:bold">FAIL</td>
+</tr><tr>
+<td>bolt_hole_dia</td>
+<td>10.0</td>
+<td>9.983</td>
+<td>-0.017</td>
+<td>0.0 ~ 0.015</td>
+<td style="color:#f44336;font-weight:bold">FAIL</td>
+</tr><tr>
+<td>pcd</td>
+<td>90.0</td>
+<td>90.014</td>
+<td>0.014</td>
+<td>-0.035 ~ 0.035</td>
+<td style="color:#4caf50;font-weight:bold">PASS</td>
+</tr><tr>
+<td>chamfer_width</td>
+<td>1.0</td>
+<td>1.011</td>
+<td>0.011</td>
+<td>0.0 ~ 0.1</td>
+<td style="color:#4caf50;font-weight:bold">PASS</td>
+</tr>
+</table>
+</div>
+
+<div class="card">
+<h2>特征识别结果</h2>
+<table>
+<tr><th>特征名称</th><th>类型</th><th>状态</th><th>置信度</th><th>IoU</th></tr>
+<tr>
+<td>flange_disc</td>
+<td>disc</td>
+<td style="color:#4caf50;font-weight:bold">DETECTED</td>
+<td>0.9814</td>
+<td>0.9352</td>
+</tr><tr>
+<td>center_bore</td>
+<td>through_hole</td>
+<td style="color:#4caf50;font-weight:bold">DETECTED</td>
+<td>0.9438</td>
+<td>0.9318</td>
+</tr><tr>
+<td>bolt_hole_1</td>
+<td>through_hole</td>
+<td style="color:#4caf50;font-weight:bold">DETECTED</td>
+<td>0.9275</td>
+<td>0.9603</td>
+</tr><tr>
+<td>bolt_hole_2</td>
+<td>through_hole</td>
+<td style="color:#4caf50;font-weight:bold">DETECTED</td>
+<td>0.9121</td>
+<td>0.9419</td>
+</tr><tr>
+<td>bolt_hole_3</td>
+<td>through_hole</td>
+<td style="color:#4caf50;font-weight:bold">DETECTED</td>
+<td>0.9620</td>
+<td>0.9627</td>
+</tr><tr>
+<td>bolt_hole_4</td>
+<td>through_hole</td>
+<td style="color:#4caf50;font-weight:bold">DETECTED</td>
+<td>0.9276</td>
+<td>0.9654</td>
+</tr><tr>
+<td>bolt_hole_5</td>
+<td>through_hole</td>
+<td style="color:#4caf50;font-weight:bold">DETECTED</td>
+<td>0.9748</td>
+<td>0.9304</td>
+</tr><tr>
+<td>bolt_hole_6</td>
+<td>through_hole</td>
+<td style="color:#4caf50;font-weight:bold">DETECTED</td>
+<td>0.9745</td>
+<td>0.9719</td>
+</tr><tr>
+<td>outer_chamfer</td>
+<td>chamfer</td>
+<td style="color:#4caf50;font-weight:bold">DETECTED</td>
+<td>0.9372</td>
+<td>0.9393</td>
+</tr>
+</table>
+</div>
+
+<div class="card">
+<h2>拓扑关系验证</h2>
+<table>
+<tr><th>特征关系</th><th>关系类型</th><th>状态</th></tr>
+<tr>
+<td>flange_disc ↔ center_bore</td>
+<td>contains_concentric</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>flange_disc ↔ bolt_hole_1</td>
+<td>contains</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>flange_disc ↔ bolt_hole_2</td>
+<td>contains</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>flange_disc ↔ bolt_hole_3</td>
+<td>contains</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>flange_disc ↔ bolt_hole_4</td>
+<td>contains</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>flange_disc ↔ bolt_hole_5</td>
+<td>contains</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>flange_disc ↔ bolt_hole_6</td>
+<td>contains</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>flange_disc ↔ outer_chamfer</td>
+<td>edge_transition</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>bolt_hole_1 ↔ bolt_hole_2</td>
+<td>angular_spacing_60deg</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>bolt_hole_2 ↔ bolt_hole_3</td>
+<td>angular_spacing_60deg</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>bolt_hole_3 ↔ bolt_hole_4</td>
+<td>angular_spacing_60deg</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>bolt_hole_4 ↔ bolt_hole_5</td>
+<td>angular_spacing_60deg</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>bolt_hole_5 ↔ bolt_hole_6</td>
+<td>angular_spacing_60deg</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr><tr>
+<td>bolt_hole_6 ↔ bolt_hole_1</td>
+<td>angular_spacing_60deg</td>
+<td style="color:#4caf50;font-weight:bold">MATCHED</td>
+</tr>
+</table>
+</div>
+
+<div class="footer">
+灵境制造 Virtual Realm Manufacturing &copy; 2026 | 3D重建几何精度验证系统
+</div>
+</div>
+</body>
+</html>

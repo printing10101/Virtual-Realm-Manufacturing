@@ -5,19 +5,19 @@ async function mockApiRoutes(page: Page) {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ version: '1.7.1', commit: 'test-abc' }),
+      body: JSON.stringify({ version: '1.8.0', commit: 'test-abc' }),
     })
   })
   await page.route('**/api/health/ping', (route) => {
     route.fulfill({ status: 200, body: JSON.stringify({ ping: true }) })
   })
   await page.route('**/api/health', (route) => {
-    route.fulfill({ status: 200, body: JSON.stringify({ status: 'ok', version: '1.7.1' }) })
+    route.fulfill({ status: 200, body: JSON.stringify({ status: 'ok', version: '1.8.0' }) })
   })
   await page.route('**/health', (route) => {
     route.fulfill({
       status: 200,
-      body: JSON.stringify({ status: 'healthy', timestamp: Date.now(), version: '1.7.1', uptime: 3600 }),
+      body: JSON.stringify({ status: 'healthy', timestamp: Date.now(), version: '1.8.0', uptime: 3600 }),
     })
   })
   await page.route('**/api/v1/lnn/models', (route) => {
