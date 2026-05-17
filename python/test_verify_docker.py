@@ -56,7 +56,7 @@ def get(path, timeout=5):
         )
         token = open(token_path).read().strip()
         req.add_header("Authorization", f"Bearer {token}")
-    except:
+    except Exception:
         pass
     try:
         r = urllib.request.urlopen(req, timeout=timeout)
@@ -222,7 +222,7 @@ def verify_high_latency_scenario():
     # 先执行几次推理来确保有性能数据
     print("  执行5次推理请求以填充性能数据...")
     for i in range(5):
-        result = get("/api/v1/lnn/predict")
+        get("/api/v1/lnn/predict")
         time.sleep(0.2)
 
     # 获取性能统计
@@ -289,7 +289,7 @@ def verify_high_latency_scenario():
                 ):
                     print(f"  [OK] 检测到延迟警告日志: {msg[:100]}")
                     return True
-    except:
+    except Exception:
         pass
 
     print("  [OK] 高延迟监控已配置（实际触发需真实高延迟场景）")

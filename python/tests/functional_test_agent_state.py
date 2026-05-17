@@ -129,7 +129,7 @@ class TestTrainingInterruptionRecovery:
         # ── 1b. Simulate crash: keep on-disk, clear memory ──
         # The StatePersistenceManager persists to filesystem via checkpoint manager.
         # We preserve active_states to simulate DB-backed recovery in a test env.
-        cached_state = persistence._active_states.get(agent_id)
+        persistence._active_states.get(agent_id)
 
         # ── 1c. Verify state persisted to file-system (checkpoint files exist) ──
         chk_dir = persistence._checkpoint_manager.get_agent_checkpoint_dir(agent_id)

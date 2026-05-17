@@ -132,7 +132,7 @@ class TestAuthMiddleware:
         async def health():
             return {"status": "healthy"}
 
-        middleware = AuthMiddleware(app, enabled=True)
+        AuthMiddleware(app, enabled=True)
         app.add_middleware(AuthMiddleware, enabled=True, permission_enforced=False)
 
         return app

@@ -85,11 +85,7 @@ class HeidenhainPostProcessor(BasePostProcessor):
         return "\n".join(lines)
 
     def format_coolant(self, state: str) -> str:
-        if state.lower() == "on":
-            return "M08"
-        if state.lower() == "off":
-            return "M09"
-        return "M09"
+        return self._format_coolant(state) or "M09"
 
     def format_tool_compensation(
         self,

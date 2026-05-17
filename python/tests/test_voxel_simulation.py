@@ -24,7 +24,6 @@ from app.simulation.voxel_cutter import (
     CollisionInfo,
 )
 from app.simulation.toolpath_parser import ToolpathParser, ToolpathSegment
-from app.simulation.stock_model import StockModel
 
 
 class TestToolModel:
@@ -73,10 +72,14 @@ class TestToolModel:
         tool = ToolModel(diameter=10.0, tool_type="flat")
         mask = tool.voxel_mask(voxel_size=1.0)
         c = mask.shape[0] // 2
-        assert np.array_equal(mask[c, :, :], mask[c, ::-1, :]), "体素掩码应具有XZ平面对称性"
+        assert np.array_equal(mask[c, :, :], mask[c, ::-1, :]), (
+            "体素掩码应具有XZ平面对称性"
+        )
 
     def test_tool_to_dict(self):
-        tool = ToolModel(diameter=10.0, length=50.0, tool_type="flat", corner_radius=1.0)
+        tool = ToolModel(
+            diameter=10.0, length=50.0, tool_type="flat", corner_radius=1.0
+        )
         d = tool.to_dict()
         assert d["diameter"] == 10.0
         assert d["tool_type"] == "flat"
@@ -137,7 +140,14 @@ class TestVoxelSimulationResult:
             voxel_count=10000,
             removed_voxel_count=2500,
             voxel_size=1.0,
-            original_bbox={"x_min": -50.0, "x_max": 50.0, "y_min": -30.0, "y_max": 30.0, "z_min": 0.0, "z_max": 30.0},
+            original_bbox={
+                "x_min": -50.0,
+                "x_max": 50.0,
+                "y_min": -30.0,
+                "y_max": 30.0,
+                "z_min": 0.0,
+                "z_max": 30.0,
+            },
             toolpath_segment_count=15,
         )
         d = result.to_dict()
@@ -242,8 +252,9 @@ G00 Z50."""
             assert result.toolpath_segment_count == len(segments)
 
     def test_trimesh_collision_overcut(self):
-        trimesh = pytest.importorskip("trimesh",
-            reason="trimesh未安装，跳过体素化碰撞检测测试")
+        trimesh = pytest.importorskip(
+            "trimesh", reason="trimesh未安装，跳过体素化碰撞检测测试"
+        )
         cutter = VoxelCutter(voxel_size=3.0)
         tool = ToolModel(diameter=10.0, tool_type="flat")
 
@@ -272,8 +283,9 @@ G00 Z80."""
             assert result.collision.collided
 
     def test_trimesh_collision_rapid(self):
-        trimesh = pytest.importorskip("trimesh",
-            reason="trimesh未安装，跳过体素化碰撞检测测试")
+        trimesh = pytest.importorskip(
+            "trimesh", reason="trimesh未安装，跳过体素化碰撞检测测试"
+        )
         cutter = VoxelCutter(voxel_size=3.0)
         tool = ToolModel(diameter=10.0, tool_type="flat")
 
@@ -354,10 +366,15 @@ G00 Z80."""
             )
             d = result.to_dict()
             required = [
-                "task_id", "stock_stl_url", "collision",
-                "duration_seconds", "voxel_count",
-                "removed_voxel_count", "voxel_size",
-                "original_bbox", "toolpath_segment_count",
+                "task_id",
+                "stock_stl_url",
+                "collision",
+                "duration_seconds",
+                "voxel_count",
+                "removed_voxel_count",
+                "voxel_size",
+                "original_bbox",
+                "toolpath_segment_count",
             ]
             for key in required:
                 assert key in d, f"结果缺失字段: {key}"
@@ -421,8 +438,9 @@ G00 Z80."""
             assert "url_test" in result.stock_stl_url or result.stock_stl_url == ""
 
     def test_trimesh_collision_unique_positions(self):
-        trimesh = pytest.importorskip("trimesh",
-            reason="trimesh未安装，跳过体素化碰撞检测测试")
+        trimesh = pytest.importorskip(
+            "trimesh", reason="trimesh未安装，跳过体素化碰撞检测测试"
+        )
         cutter = VoxelCutter(voxel_size=3.0)
         tool = ToolModel(diameter=10.0, tool_type="flat")
 
@@ -456,8 +474,9 @@ G00 Z80."""
             assert len(result.collision.collision_positions) <= 20
 
     def test_trimesh_collision_severity(self):
-        trimesh = pytest.importorskip("trimesh",
-            reason="trimesh未安装，跳过体素化碰撞检测测试")
+        trimesh = pytest.importorskip(
+            "trimesh", reason="trimesh未安装，跳过体素化碰撞检测测试"
+        )
         cutter = VoxelCutter(voxel_size=3.0)
         tool = ToolModel(diameter=10.0, tool_type="flat")
 

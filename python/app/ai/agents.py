@@ -27,6 +27,27 @@ from app.core.input_validator import (
 )
 from app.core.response import ErrorCode, error, success
 from app.rag.knowledge_base import get_knowledge_base
+from enum import StrEnum
+
+
+class AgentStage(StrEnum):
+    UNDERSTANDING = "understanding"
+    KNOWLEDGE_FETCH = "knowledge_fetch"
+    PLANNING = "planning"
+    PARAMETER = "parameter"
+    NC_GENERATION = "nc_generation"
+    VERIFICATION = "verification"
+    REPAIR = "repair"
+
+
+class StageStatus(StrEnum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+
+
+def failed_status(e: Exception) -> str:
+    return f"failed: {e!s}"
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/agents", tags=["AI Agents"])
@@ -368,8 +389,8 @@ class UnderstandingAgent(BaseAgent):
         )
 
     async def execute(self, context: AgentContext) -> AgentContext:
-        context.current_stage = "understanding"
-        context.stage_status = "running"
+        context.current_stage = AgentStage.UNDERSTANDING
+        context.stage_status = StageStatus.RUNNING
 
         knowledge_results: dict[str, Any] = self.knowledge_base.query(
             query_text=context.user_input, n_results=3
@@ -419,9 +440,9 @@ class UnderstandingAgent(BaseAgent):
                     "Agent 响应解析失败：解析结果为空。Agent 未能从 LLM 响应中提取有效内容。可能原因：1) LLM 返回格式不符合预期；2) 响应解析逻辑有误。请检查 Agent 的解析方法实现或 LLM 提示词模板。"
                 )
             context.extracted_params = extracted_params
-            context.stage_status = "completed"
+            context.stage_status = StageStatus.COMPLETED
         except Exception as e:
-            context.stage_status = f"failed: {e!s}"
+            context.stage_status = failed_status(e)
             context.extracted_params = {"raw_input": context.user_input}
 
         return context
@@ -442,8 +463,8 @@ class KnowledgeFetchAgent(BaseAgent):
         ]
 
     async def execute(self, context: AgentContext) -> AgentContext:
-        context.current_stage = "knowledge_fetch"
-        context.stage_status = "running"
+        context.current_stage = AgentStage.KNOWLEDGE_FETCH
+        context.stage_status = StageStatus.RUNNING
 
         material: str = context.extracted_params.get("material", "")
         part_type: str = context.extracted_params.get("part_type", "")
@@ -469,7 +490,7 @@ class KnowledgeFetchAgent(BaseAgent):
                 knowledge_data[cfg["key"]] = result
 
         context.knowledge_results = knowledge_data
-        context.stage_status = "completed"
+        context.stage_status = StageStatus.COMPLETED
 
         return context
 
@@ -490,8 +511,8 @@ class PlanningAgent(BaseAgent):
         super().__init__(name="PlanningAgent", description="负责制定加工工艺路线")
 
     async def execute(self, context: AgentContext) -> AgentContext:
-        context.current_stage = "planning"
-        context.stage_status = "running"
+        context.current_stage = AgentStage.PLANNING
+        context.stage_status = StageStatus.RUNNING
 
         if context.knowledge_results.get("planning"):
             relevant_knowledge: str = context.knowledge_results["planning"]
@@ -541,9 +562,9 @@ class PlanningAgent(BaseAgent):
             content: str = response.get("content", "").strip()
             route_data: dict[str, Any] = extract_json_from_markdown(content)
             context.process_route = route_data.get("route", [])
-            context.stage_status = "completed"
+            context.stage_status = StageStatus.COMPLETED
         except Exception as e:
-            context.stage_status = f"failed: {e!s}"
+            context.stage_status = failed_status(e)
             context.process_route = [
                 {
                     "step": 1,
@@ -581,8 +602,8 @@ class ParameterAgent(BaseAgent):
         super().__init__(name="ParameterAgent", description="负责计算切削参数")
 
     async def execute(self, context: AgentContext) -> AgentContext:
-        context.current_stage = "parameter"
-        context.stage_status = "running"
+        context.current_stage = AgentStage.PARAMETER
+        context.stage_status = StageStatus.RUNNING
 
         if context.knowledge_results.get("parameter"):
             relevant_knowledge: str = context.knowledge_results["parameter"]
@@ -631,9 +652,9 @@ class ParameterAgent(BaseAgent):
             content: str = response.get("content", "").strip()
             param_data: dict[str, Any] = extract_json_from_markdown(content)
             context.cutting_parameters = param_data.get("parameters", {})
-            context.stage_status = "completed"
+            context.stage_status = StageStatus.COMPLETED
         except Exception as e:
-            context.stage_status = f"failed: {e!s}"
+            context.stage_status = failed_status(e)
             context.cutting_parameters = {
                 "parameters": [
                     {
@@ -665,8 +686,8 @@ class NCAgent(BaseAgent):
         super().__init__(name="NCAgent", description="负责生成NC代码")
 
     async def execute(self, context: AgentContext) -> AgentContext:
-        context.current_stage = "nc_generation"
-        context.stage_status = "running"
+        context.current_stage = AgentStage.NC_GENERATION
+        context.stage_status = StageStatus.RUNNING
 
         knowledge_results: dict[str, Any] = self.knowledge_base.query(
             query_text="G代码 M代码 数控编程", n_results=5
@@ -715,9 +736,9 @@ class NCAgent(BaseAgent):
                 context.nc_code = content.split("```")[1].split("```")[0].strip()
             else:
                 context.nc_code = content
-            context.stage_status = "completed"
+            context.stage_status = StageStatus.COMPLETED
         except Exception as e:
-            context.stage_status = f"failed: {e!s}"
+            context.stage_status = failed_status(e)
             context.nc_code = "; NC代码生成失败\nG00 X0 Y0 Z0\nM30"
 
         return context
@@ -730,8 +751,8 @@ class VerificationAgent(BaseAgent):
         super().__init__(name="VerificationAgent", description="负责验证工艺合理性")
 
     async def execute(self, context: AgentContext) -> AgentContext:
-        context.current_stage = "verification"
-        context.stage_status = "running"
+        context.current_stage = AgentStage.VERIFICATION
+        context.stage_status = StageStatus.RUNNING
 
         system_prompt: str = """你是一个工艺验证专家。
 请以JSON格式返回验证结果：
@@ -773,9 +794,9 @@ NC代码：
                 content
             )
             context.verification_result = verification_result
-            context.stage_status = "completed"
+            context.stage_status = StageStatus.COMPLETED
         except Exception as e:
-            context.stage_status = f"failed: {e!s}"
+            context.stage_status = failed_status(e)
             context.verification_result = {
                 "is_valid": True,
                 "issues": [],
@@ -792,8 +813,8 @@ class RepairAgent(BaseAgent):
         super().__init__(name="RepairAgent", description="负责根据验证结果优化工艺方案")
 
     async def execute(self, context: AgentContext) -> AgentContext:
-        context.current_stage = "repair"
-        context.stage_status = "running"
+        context.current_stage = AgentStage.REPAIR
+        context.stage_status = StageStatus.RUNNING
 
         verification: dict[str, Any] = context.verification_result
         is_valid: bool = verification.get("is_valid", True)
@@ -801,7 +822,7 @@ class RepairAgent(BaseAgent):
 
         if is_valid and not issues:
             context.repair_suggestions = []
-            context.stage_status = "completed (no repair needed)"
+            context.stage_status = StageStatus.COMPLETED
             return context
 
         system_prompt: str = """你是一个工艺优化专家，负责根据验证结果提出优化建议。"""
@@ -832,7 +853,7 @@ class RepairAgent(BaseAgent):
         )
 
         context.repair_suggestions = response.get("content", "")
-        context.stage_status = "completed"
+        context.stage_status = StageStatus.COMPLETED
 
         return context
 
@@ -852,7 +873,7 @@ async def get_agents_info() -> dict[str, Any]:
         {"name": "VerificationAgent", "description": "负责验证工艺合理性"},
         {"name": "RepairAgent", "description": "负责根据验证结果优化工艺方案"},
     ]
-    return {"code": 200, "data": {"agents": agents}, "message": "success"}
+    return success(data={"agents": agents})
 
 
 @router_chat.post("/chat")

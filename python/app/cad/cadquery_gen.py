@@ -121,14 +121,15 @@ class CadQueryGenerator:
                 logger.info("Using cached script from model library")
                 return cached_script
 
-        shape_type = params.get("shape_type", "box")
-        dimensions = params.get("dimensions", {})
-        length = dimensions.get("length", 50)
-        width = dimensions.get("width", 30)
-        height = dimensions.get("height", 20)
-        position = params.get("position", {"x": 0, "y": 0, "z": 0})
+        if params.get("dimensions") is None:
+            raise ValueError(
+                "参数错误：dimensions 不能为 None。请确保传入的参数字典中包含有效的 dimensions 字段，"
+                "例如 {'length': 50, 'width': 30, 'height': 20}。"
+            )
 
-        script = _build_shape_script(shape_type, length, width, height, position)
+        shape_type, dimensions, position = _unpack_generation_params(params)
+
+        script = _build_shape_script(shape_type, dimensions, position)
         logger.info("Generated CadQuery script (%d chars)", len(script))
         return script
 
@@ -177,15 +178,11 @@ class CadQueryGenerator:
     def generate_3d_model(self, params: dict[str, Any]) -> str:
         """Generate a 3D model from parameters and return the model path."""
         logger.info("Generating 3D model with params: %s", params)
-        shape_type = params.get("shape_type", "box")
-        dimensions = params.get("dimensions", {})
-        length = dimensions.get("length", 50)
-        width = dimensions.get("width", 30)
-        height = dimensions.get("height", 20)
-        position = params.get("position", {"x": 0, "y": 0, "z": 0})
+
+        shape_type, dimensions, position = _unpack_generation_params(params)
 
         try:
-            result = _build_solid(shape_type, length, width, height, position)
+            result = _build_solid(shape_type, dimensions, position)
             output_dir = Path(tempfile.gettempdir()) / "cadquery_models"
             output_dir.mkdir(parents=True, exist_ok=True)
             output_path = output_dir / f"model_{shape_type}.stl"
@@ -215,54 +212,47 @@ class CadQueryGenerator:
         return self.generate_3d_model(params)
 
 
-def _build_shape_script(
+def _unpack_generation_params(
+    params: dict[str, Any],
+) -> tuple[str, dict[str, float], dict[str, float]]:
+    shape_type = params.get("shape_type", "box")
+    dimensions = params.get("dimensions") or {}
+    position = params.get("position", {"x": 0, "y": 0, "z": 0})
+    return shape_type, dimensions, position
+
+
+def _build_shape_params(
     shape_type: str,
-    length: float,
-    width: float,
-    height: float,
-    position: dict[str, float],
-) -> str:
+    dimensions: dict[str, float],
+) -> dict[str, Any]:
+    length = dimensions.get("length", 50)
+    width = dimensions.get("width", 30)
+    height = dimensions.get("height", 20)
+
     if shape_type == "box":
-        return (
-            f"result = cq.Workplane('XY').box({length}, {width}, {height})"
-            f".translate(("
-            f"{position.get('x', 0)}, "
-            f"{position.get('y', 0)}, "
-            f"{position.get('z', 0)}"
-            f"))"
-        )
+        return {"method_name": "box", "method_args": [length, width, height]}
     if shape_type == "sphere":
         radius = max(length, width, height) / 2
-        return (
-            f"result = cq.Workplane('XY').sphere({radius})"
-            f".translate(("
-            f"{position.get('x', 0)}, "
-            f"{position.get('y', 0)}, "
-            f"{position.get('z', 0)}"
-            f"))"
-        )
+        return {"method_name": "sphere", "method_args": [radius]}
     if shape_type == "cylinder":
-        return (
-            f"result = cq.Workplane('XY').cylinder({height}, {width / 2})"
-            f".translate(("
-            f"{position.get('x', 0)}, "
-            f"{position.get('y', 0)}, "
-            f"{position.get('z', 0)}"
-            f"))"
-        )
+        return {"method_name": "cylinder", "method_args": [height, width / 2]}
     if shape_type == "cone":
-        return (
-            f"result = cq.Workplane('XY').cone({height}, {width}, {length})"
-            f".translate(("
-            f"{position.get('x', 0)}, "
-            f"{position.get('y', 0)}, "
-            f"{position.get('z', 0)}"
-            f"))"
-        )
+        return {"method_name": "cone", "method_args": [height, width, length]}
 
     logger.warning("Unknown shape type '%s', falling back to box", shape_type)
+    return {"method_name": "box", "method_args": [length, width, height]}
+
+
+def _build_shape_script(
+    shape_type: str,
+    dimensions: dict[str, float],
+    position: dict[str, float],
+) -> str:
+    params = _build_shape_params(shape_type, dimensions)
+    method_name = params["method_name"]
+    args_str = ", ".join(str(a) for a in params["method_args"])
     return (
-        f"result = cq.Workplane('XY').box({length}, {width}, {height})"
+        f"result = cq.Workplane('XY').{method_name}({args_str})"
         f".translate(("
         f"{position.get('x', 0)}, "
         f"{position.get('y', 0)}, "
@@ -273,27 +263,18 @@ def _build_shape_script(
 
 def _build_solid(
     shape_type: str,
-    length: float,
-    width: float,
-    height: float,
+    dimensions: dict[str, float],
     position: dict[str, float],
 ) -> cq.Workplane:
     px = position.get("x", 0)
     py = position.get("y", 0)
     pz = position.get("z", 0)
 
-    if shape_type == "box":
-        return cq.Workplane("XY").box(length, width, height).translate((px, py, pz))
-    if shape_type == "sphere":
-        radius = max(length, width, height) / 2
-        return cq.Workplane("XY").sphere(radius).translate((px, py, pz))
-    if shape_type == "cylinder":
-        return cq.Workplane("XY").cylinder(height, width / 2).translate((px, py, pz))
-    if shape_type == "cone":
-        return cq.Workplane("XY").cone(height, width, length).translate((px, py, pz))
-
-    logger.warning("Unknown shape type '%s', falling back to box", shape_type)
-    return cq.Workplane("XY").box(length, width, height).translate((px, py, pz))
+    params = _build_shape_params(shape_type, dimensions)
+    method_name = params["method_name"]
+    method_args = params["method_args"]
+    method = getattr(cq.Workplane("XY"), method_name)
+    return method(*method_args).translate((px, py, pz))
 
 
 def _wrap_script(script: str, output_path: str, output_format: str) -> str:
@@ -370,7 +351,13 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
         f.seek(0)
         data = f.read()
         i = 2
+        _iter = 0
         while i < len(data) - 9:
+            _iter += 1
+            if _iter > 1000:
+                raise ValueError(
+                    "JPEG 图像解析失败：解析循环超过最大迭代次数（1000），可能存在损坏或恶意构造的数据。"
+                )
             if data[i] != 0xFF:
                 i += 1
                 continue

@@ -432,7 +432,7 @@ class WorkspaceResolver:
             return
 
         if keep_outputs:
-            outputs_dir = os.path.join(workspace_dir, "outputs")
+            os.path.join(workspace_dir, "outputs")
             temp_dir = os.path.join(workspace_dir, "temp")
             logs_dir = os.path.join(workspace_dir, "logs")
 

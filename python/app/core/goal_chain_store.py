@@ -210,7 +210,7 @@ class GoalChainStore:
 
     def get_goal_tree(self) -> List[Dict[str, Any]]:
         all_goals = self.get_all_goals()
-        goal_map = {g.id: g for g in all_goals}
+        {g.id: g for g in all_goals}
         root_goals = [
             g for g in all_goals if g.parent_id is None or g.level == GoalLevel.MISSION
         ]

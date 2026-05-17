@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "exported_at": "2026-05-17 00:59:36",
+  "groups": [],
+  "rules": [
+    {
+      "id": 1,
+      "name": "45钢粗铣切深限制",
+      "description": "45钢粗铣加工时切深不超过2mm",
+      "group_id": null,
+      "conditions": [
+        {
+          "parameter": "材料",
+          "operator": "=",
+          "value": "45钢",
+          "unit": null
+        },
+        {
+          "parameter": "工序",
+          "operator": "=",
+          "value": "粗铣",
+          "unit": null
+        }
+      ],
+      "logic_operator": "AND",
+      "result": {
+        "parameter": "切深",
+        "operator": "<=",
+        "value": "2",
+        "unit": "mm"
+      },
+      "status": "active",
+      "priority": 10,
+      "created_at": "2026-05-17 00:59:36",
+      "updated_at": "2026-05-17 00:59:36"
+    }
+  ],
+  "total_rules": 1,
+  "total_groups": 0
+}

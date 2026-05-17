@@ -41,7 +41,7 @@ for i in range(30):
         if r.status == 200:
             print(f"Server ready after {i + 1}s")
             break
-    except:
+    except Exception:
         pass
     if proc.poll() is not None:
         print(f"SERVER DIED! Exit: {proc.poll()}")

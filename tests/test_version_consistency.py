@@ -4,11 +4,10 @@ Version Consistency Mechanism Tests
 Tests for the complete version detection, synchronization, and auto-restart system.
 """
 import unittest
-import os
 import sys
 import json
 import re
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "python"))
@@ -99,9 +98,9 @@ class TestVersionConsistencyLogic(unittest.TestCase):
     def test_versions_consistent(self):
         """Test consistent version detection."""
         versions = {
-            'frontend': '1.8.0',
-            'rust': '1.8.0',
-            'python': '1.8.0',
+            'frontend': '1.9.0',
+            'rust': '1.9.0',
+            'python': '1.9.0',
         }
         
         is_consistent = (
@@ -115,8 +114,8 @@ class TestVersionConsistencyLogic(unittest.TestCase):
         """Test inconsistent frontend version detection."""
         versions = {
             'frontend': '1.6.0',
-            'rust': '1.8.0',
-            'python': '1.8.0',
+            'rust': '1.9.0',
+            'python': '1.9.0',
         }
         
         is_consistent = (
@@ -129,8 +128,8 @@ class TestVersionConsistencyLogic(unittest.TestCase):
     def test_versions_inconsistent_python(self):
         """Test inconsistent python version detection."""
         versions = {
-            'frontend': '1.8.0',
-            'rust': '1.8.0',
+            'frontend': '1.9.0',
+            'rust': '1.9.0',
             'python': '1.6.0',
         }
         

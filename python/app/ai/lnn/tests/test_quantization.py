@@ -251,7 +251,7 @@ class TestQuantizationSaveLoad:
 
             from app.ai.lnn.models.torch_base_lnn import LNNConfig
 
-            config = LNNConfig(input_size=10, hidden_size=20, output_size=5)
+            LNNConfig(input_size=10, hidden_size=20, output_size=5)
 
             class TestModel(nn.Module):
                 def __init__(self):
@@ -263,7 +263,7 @@ class TestQuantizationSaveLoad:
                     return self.linear2(torch.relu(self.linear1(x)))
 
             loaded_model = TestModel()
-            state_dict = torch.load(save_path, map_location="cpu")
+            state_dict = torch.load(save_path, map_location="cpu", weights_only=True)
 
             try:
                 loaded_model.load_state_dict(state_dict)

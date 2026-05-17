@@ -20,15 +20,15 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.ai.lnn.training.bosch_dataset import (
+from app.ai.lnn.training.bosch_dataset import (  # noqa: E402
     BoschDatasetProcessor,
     BoschDataConfig,
     BoschDataGenerator,
 )
-from app.ai.lnn.training.trainer import LNNTrainer
-from app.ai.lnn.training.evaluator import LNNEvaluator
-from app.ai.lnn.models.torch_cfc_model import CFCModel, LNNConfig as CFCConfig
-from app.ai.lnn.models.torch_ltc_model import LTCModel, LNNConfig as LTCConfig
+from app.ai.lnn.training.trainer import LNNTrainer  # noqa: E402
+from app.ai.lnn.training.evaluator import LNNEvaluator  # noqa: E402
+from app.ai.lnn.models.torch_cfc_model import CFCModel, LNNConfig as CFCConfig  # noqa: E402
+from app.ai.lnn.models.torch_ltc_model import LTCModel, LNNConfig as LTCConfig  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -120,14 +120,14 @@ def train_cutting_force_model(
     )
 
     start_time = time.perf_counter()
-    history = trainer.fit(train_loader, val_loader)
+    trainer.fit(train_loader, val_loader)
     training_time = time.perf_counter() - start_time
 
     logger.info(f"Training completed in {training_time:.2f}s")
     logger.info(f"Best validation loss: {trainer.best_val_loss:.6f}")
 
     save_path = os.path.join(output_dir, "cutting_force_v1.pt")
-    checkpoint_path = trainer.save_checkpoint(save_path)
+    trainer.save_checkpoint(save_path)
 
     example_input = torch.randn(1, feature_dim, device=device)
     torchscript_path = os.path.join(output_dir, "cutting_force_v1.torchscript.pt")
@@ -238,14 +238,14 @@ def train_wear_prediction_model(
     )
 
     start_time = time.perf_counter()
-    history = trainer.fit(train_loader, val_loader)
+    trainer.fit(train_loader, val_loader)
     training_time = time.perf_counter() - start_time
 
     logger.info(f"Training completed in {training_time:.2f}s")
     logger.info(f"Best validation loss: {trainer.best_val_loss:.6f}")
 
     save_path = os.path.join(output_dir, "wear_prediction_v1.pt")
-    checkpoint_path = trainer.save_checkpoint(save_path)
+    trainer.save_checkpoint(save_path)
 
     example_input = torch.randn(1, feature_dim, device=device)
     torchscript_path = os.path.join(output_dir, "wear_prediction_v1.torchscript.pt")

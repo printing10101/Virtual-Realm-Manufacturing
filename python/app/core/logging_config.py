@@ -31,6 +31,7 @@ def configure_logging(
     level: int = logging.INFO,
     log_format: str = LOG_FORMAT,
     date_format: str = DATE_FORMAT,
+    log_file: str | None = None,
 ) -> None:
     """配置全局日志系统。
 
@@ -38,6 +39,7 @@ def configure_logging(
         level: 日志级别，默认 INFO
         log_format: 日志格式字符串
         date_format: 时间格式字符串（ISO 8601）
+        log_file: 可选的日志文件路径；提供时将同时输出到文件
     """
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
@@ -54,8 +56,18 @@ def configure_logging(
         datefmt=date_format,
     )
     console_handler.setFormatter(formatter)
-
     root_logger.addHandler(console_handler)
+
+    if log_file:
+        from pathlib import Path
+
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setLevel(level)
+        file_handler.addFilter(RequestIdFilter())
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+        root_logger.info("File logging enabled: %s", log_file)
 
     root_logger.info(
         "Logging configured [level=%s, format=ISO8601]", logging.getLevelName(level)

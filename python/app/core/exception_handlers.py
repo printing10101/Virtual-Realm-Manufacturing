@@ -15,12 +15,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.exceptions import (
     AppException,
-    InternalServerException,
     NotFoundException,
     ValidationException,
 )
 from app.core.repository.exceptions import RecordNotFoundError, RepositoryError
-from app.core.response import error_response
+from app.core.response import error_response, manufacturing_error
+from app.core.error_taxonomy import ManufacturingError
 
 logger = logging.getLogger(__name__)
 
@@ -102,18 +102,19 @@ async def validation_exception_handler(
 
 async def generic_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
     error_id = f"{id(exc):x}"
-    logger.exception(
-        "Unhandled exception [id=%s] path=%s: %s", error_id, _request.url.path, exc
-    )
-    exc_obj = InternalServerException(
-        message="服务器内部错误",
-        detail={"error_id": error_id, "type": type(exc).__name__},
+    logger.error(
+        "[UnhandledException] id=%s path=%s type=%s message=%s",
+        error_id,
+        _request.url.path,
+        type(exc).__name__,
+        str(exc),
+        exc_info=True,
     )
     return _build_json_response(
-        code=exc_obj.code,
-        message=exc_obj.message,
-        http_status=exc_obj.status_code,
-        detail=exc_obj.detail,
+        code=2001,
+        message="系统内部错误，请联系管理员",
+        http_status=500,
+        detail={"error_id": error_id},
     )
 
 
@@ -141,7 +142,23 @@ async def repository_error_handler(
     )
 
 
+async def manufacturing_error_handler(
+    _request: Request, exc: ManufacturingError
+) -> JSONResponse:
+    logger.warning(
+        "[ManufacturingError] code=%s severity=%s message=%s path=%s detail=%s",
+        exc.code,
+        exc.severity,
+        exc.message,
+        _request.url.path,
+        exc.detail,
+    )
+    body = manufacturing_error(exc)
+    return JSONResponse(status_code=409, content=body)
+
+
 def register_exception_handlers(app: Any) -> None:
+    app.add_exception_handler(ManufacturingError, manufacturing_error_handler)
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)

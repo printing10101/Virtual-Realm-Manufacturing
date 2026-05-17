@@ -144,7 +144,7 @@ def cleanup_test_dbs():
     for conn in _active_connections:
         try:
             conn.close()
-        except:
+        except Exception:
             pass
     _active_connections.clear()
 
@@ -157,7 +157,7 @@ def cleanup_test_dbs():
             time.sleep(0.5)
             try:
                 db_file.unlink(missing_ok=True)
-            except:
+            except Exception:
                 pass
 
 
@@ -696,7 +696,6 @@ async def test_6_task_concurrent_control():
     )
 
     execution_count = 0
-    skipped_count = 0
 
     async def slow_task_callback(task):
         nonlocal execution_count

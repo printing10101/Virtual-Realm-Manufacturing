@@ -249,7 +249,7 @@ class TestAsyncTaskManagerCancellation:
         async def executor(cancel_event, progress_updater):
             await asyncio.sleep(10)
 
-        task = asyncio.create_task(task_manager.execute_task(record.job_id, executor))
+        asyncio.create_task(task_manager.execute_task(record.job_id, executor))
         await asyncio.sleep(0.01)
 
         result = await task_manager.cancel_task(record.job_id)

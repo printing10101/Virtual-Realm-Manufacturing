@@ -15,7 +15,7 @@ import json
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.database.rule_db import RuleDatabase, ProcessRule, RuleCondition, RuleResult, RuleGroup, _global_db
+from app.database.rule_db import RuleDatabase
 import app.rules.api as rules_api
 import app.database.rule_db as rule_db_module
 
@@ -75,21 +75,29 @@ class TestRuleCrudApi:
         assert data["data"]["id"] is not None
 
     def test_create_rule_validation_error(self, client):
-        response = client.post("/api/rules/create", json={
-            "name": "test",
-            "conditions": [],
-            "result": {"parameter": "", "operator": "=", "value": ""},
-        })
+        response = client.post(
+            "/api/rules/create",
+            json={
+                "name": "test",
+                "conditions": [],
+                "result": {"parameter": "", "operator": "=", "value": ""},
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == 1002
 
     def test_create_rule_invalid_operator(self, client):
-        response = client.post("/api/rules/create", json={
-            "name": "test",
-            "conditions": [{"parameter": "材料", "operator": "~~", "value": "45钢"}],
-            "result": {"parameter": "切深", "operator": "<=", "value": "2"},
-        })
+        response = client.post(
+            "/api/rules/create",
+            json={
+                "name": "test",
+                "conditions": [
+                    {"parameter": "材料", "operator": "~~", "value": "45钢"}
+                ],
+                "result": {"parameter": "切深", "operator": "<=", "value": "2"},
+            },
+        )
         data = response.json()
         assert data["code"] == 1002
 
@@ -120,10 +128,13 @@ class TestRuleCrudApi:
         create_resp = client.post("/api/rules/create", json=sample_rule_data)
         rule_id = create_resp.json()["data"]["id"]
 
-        response = client.put(f"/api/rules/update/{rule_id}", json={
-            "name": "更新名称",
-            "priority": 20,
-        })
+        response = client.put(
+            f"/api/rules/update/{rule_id}",
+            json={
+                "name": "更新名称",
+                "priority": 20,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["data"]["name"] == "更新名称"
@@ -141,12 +152,17 @@ class TestRuleCrudApi:
 
     def test_filter_rules_by_status(self, client):
         for i in range(5):
-            client.post("/api/rules/create", json={
-                "name": f"规则{i}",
-                "conditions": [{"parameter": "材料", "operator": "=", "value": "45钢"}],
-                "result": {"parameter": "切深", "operator": "<=", "value": "2"},
-                "status": "active" if i < 3 else "draft",
-            })
+            client.post(
+                "/api/rules/create",
+                json={
+                    "name": f"规则{i}",
+                    "conditions": [
+                        {"parameter": "材料", "operator": "=", "value": "45钢"}
+                    ],
+                    "result": {"parameter": "切深", "operator": "<=", "value": "2"},
+                    "status": "active" if i < 3 else "draft",
+                },
+            )
 
         response = client.get("/api/rules/list?status=active")
         assert response.json()["data"]["total"] == 3
@@ -155,17 +171,23 @@ class TestRuleCrudApi:
         assert response.json()["data"]["total"] == 2
 
     def test_search_rules_by_keyword(self, client):
-        client.post("/api/rules/create", json={
-            "name": "45钢规则",
-            "description": "这是45钢的加工规则",
-            "conditions": [{"parameter": "材料", "operator": "=", "value": "45钢"}],
-            "result": {"parameter": "切深", "operator": "<=", "value": "2"},
-        })
-        client.post("/api/rules/create", json={
-            "name": "铝合金规则",
-            "conditions": [{"parameter": "材料", "operator": "=", "value": "6061"}],
-            "result": {"parameter": "切深", "operator": "<=", "value": "3"},
-        })
+        client.post(
+            "/api/rules/create",
+            json={
+                "name": "45钢规则",
+                "description": "这是45钢的加工规则",
+                "conditions": [{"parameter": "材料", "operator": "=", "value": "45钢"}],
+                "result": {"parameter": "切深", "operator": "<=", "value": "2"},
+            },
+        )
+        client.post(
+            "/api/rules/create",
+            json={
+                "name": "铝合金规则",
+                "conditions": [{"parameter": "材料", "operator": "=", "value": "6061"}],
+                "result": {"parameter": "切深", "operator": "<=", "value": "3"},
+            },
+        )
 
         response = client.get("/api/rules/list?keyword=45钢")
         assert response.json()["data"]["total"] == 1
@@ -196,9 +218,12 @@ class TestGroupApi:
         create_resp = client.post("/api/rules/groups/create", json=sample_group_data)
         group_id = create_resp.json()["data"]["id"]
 
-        response = client.put(f"/api/rules/groups/update/{group_id}", json={
-            "name": "更新分组",
-        })
+        response = client.put(
+            f"/api/rules/groups/update/{group_id}",
+            json={
+                "name": "更新分组",
+            },
+        )
         assert response.status_code == 200
         assert response.json()["data"]["name"] == "更新分组"
 
@@ -234,15 +259,19 @@ class TestImportExportApi:
         export_data = {
             "version": "1.0",
             "groups": [{"name": "导入分组", "description": ""}],
-            "rules": [{
-                "name": "导入规则",
-                "description": "",
-                "conditions": [{"parameter": "材料", "operator": "=", "value": "45钢"}],
-                "logic_operator": "AND",
-                "result": {"parameter": "切深", "operator": "<=", "value": "2"},
-                "status": "active",
-                "priority": 0,
-            }],
+            "rules": [
+                {
+                    "name": "导入规则",
+                    "description": "",
+                    "conditions": [
+                        {"parameter": "材料", "operator": "=", "value": "45钢"}
+                    ],
+                    "logic_operator": "AND",
+                    "result": {"parameter": "切深", "operator": "<=", "value": "2"},
+                    "status": "active",
+                    "priority": 0,
+                }
+            ],
         }
 
         response = client.post(
@@ -287,10 +316,12 @@ class TestStatsApi:
 
 class TestPreviewApi:
     def test_preview_rule_text(self, client):
-        conditions = json.dumps([
-            {"parameter": "材料", "operator": "=", "value": "45钢"},
-            {"parameter": "工序", "operator": "=", "value": "粗铣"},
-        ])
+        conditions = json.dumps(
+            [
+                {"parameter": "材料", "operator": "=", "value": "45钢"},
+                {"parameter": "工序", "operator": "=", "value": "粗铣"},
+            ]
+        )
         result = json.dumps({"parameter": "切深", "operator": "<=", "value": "2"})
 
         response = client.get(

@@ -26,7 +26,7 @@ async def test_process_service_with_trace():
         material="45钢", part_type="轴类"
     )
     print(f"结果: {result1.get('trace_node_id', 'N/A')}")
-    task_id1 = (
+    (
         result1.get("trace_node_id", "").split("-")[0]
         if result1.get("trace_node_id")
         else None

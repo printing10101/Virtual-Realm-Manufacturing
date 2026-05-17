@@ -106,7 +106,7 @@ class TestExperienceStoreInitialization:
     """Test store initialization"""
 
     def test_creates_storage_directory(self, temp_storage_dir):
-        store = ExperienceStore(storage_dir=temp_storage_dir)
+        ExperienceStore(storage_dir=temp_storage_dir)
         assert Path(temp_storage_dir).exists()
 
     def test_initializes_empty(self, store):

@@ -319,7 +319,7 @@ class Quantizer:
         model = model_class(config)
         model.eval()
 
-        state_dict = torch.load(model_path, map_location="cpu")
+        state_dict = torch.load(model_path, map_location="cpu", weights_only=True)
         model.load_state_dict(state_dict)
 
         self.logger.info(f"Quantized model loaded from {model_path}")

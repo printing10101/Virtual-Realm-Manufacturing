@@ -196,6 +196,16 @@ class LNNPredictor:
             output = output.detach().cpu().numpy()
         return output
 
+    def _maybe_inverse_transform(self, predictions: np.ndarray) -> np.ndarray:
+        if (
+            self.preprocessor.is_fitted
+            and hasattr(self.preprocessor, "mean_")
+            and self.preprocessor.mean_ is not None
+        ):
+            if predictions.shape[-1] == self.preprocessor.mean_.shape[0]:
+                return self.preprocessor.inverse_transform(predictions)
+        return predictions
+
     def predict(
         self,
         input_data: Any,
@@ -230,6 +240,8 @@ class LNNPredictor:
                         output = self.model(features_tensor)
 
             processed_output = self._postprocess(output, hidden)
+            if isinstance(processed_output, np.ndarray):
+                processed_output = self._maybe_inverse_transform(processed_output)
 
             inference_time = (time.perf_counter() - start_time) * 1000
             mem_after = self._get_memory_usage_mb()
@@ -351,6 +363,9 @@ class LNNPredictor:
 
         if HAS_TORCH and isinstance(outputs, torch.Tensor):
             outputs = outputs.detach().cpu().numpy()
+
+        if isinstance(outputs, np.ndarray):
+            outputs = self._maybe_inverse_transform(outputs)
 
         results = []
         per_sample_time = inference_time / len(chunk)
@@ -677,3 +692,6 @@ class LNNPredictor:
             return param_size + buffer_size
         except Exception:
             return 0
+
+
+Predictor = LNNPredictor

@@ -64,18 +64,14 @@ class FanucPostProcessor(BasePostProcessor):
         clockwise: bool = True,
     ) -> str:
         g_code = "G02" if clockwise else "G03"
-        radius = ((end[0] - center[0]) ** 2 + (end[1] - center[1]) ** 2) ** 0.5
+        radius = self._calc_arc_radius(end, center)
         return (
             f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} "
             f"R{self._fmt(radius)} F{self._fmt(self.rapid_feed)}"
         )
 
     def format_coolant(self, state: str) -> str:
-        if state.lower() == "on":
-            return "M08"
-        if state.lower() == "off":
-            return "M09"
-        return "M09"
+        return self._format_coolant(state) or "M09"
 
     def format_tool_compensation(
         self,

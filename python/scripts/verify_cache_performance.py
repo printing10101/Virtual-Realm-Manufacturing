@@ -70,7 +70,7 @@ def verify_cache_performance():
         registry=registry,
         model_name=model_name,
     )
-    result1 = predictor1.predict(input_data=input_data, return_confidence=False)
+    predictor1.predict(input_data=input_data, return_confidence=False)
     time1 = (time.perf_counter() - start) * 1000
     print(f"Response time: {time1:.2f} ms")
     print("Expected: > 500ms (model loading from disk)")
@@ -84,7 +84,7 @@ def verify_cache_performance():
         registry=registry,
         model_name=model_name,
     )
-    result2 = predictor2.predict(input_data=input_data, return_confidence=False)
+    predictor2.predict(input_data=input_data, return_confidence=False)
     time2 = (time.perf_counter() - start) * 1000
     print(f"Response time: {time2:.2f} ms")
     print("Expected: < 200ms (model loaded from cache)")
@@ -104,7 +104,7 @@ def verify_cache_performance():
             registry=registry,
             model_name=model_name,
         )
-        result = predictor.predict(input_data=input_data, return_confidence=False)
+        predictor.predict(input_data=input_data, return_confidence=False)
         elapsed = (time.perf_counter() - start) * 1000
         times.append(elapsed)
         print(f"  Call {i + 1}: {elapsed:.2f} ms")

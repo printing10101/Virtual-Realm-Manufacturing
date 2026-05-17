@@ -30,8 +30,15 @@ from app.agent.middleware import AgentAuthMiddleware
 from app.api.v1 import lnn, wear_prediction, user_sovereignty, agent_gateway, jobs
 from app.rag import routes as rag_routes
 from app.ai import ollama_routes
+from app.simulation import api as simulation_api
+from app.projects import project_api as project_routes
+from app.step_import import api as step_import_api
+from app.rules import router as rules_router
 
-configure_logging(level=logging.INFO)
+configure_logging(
+    level=logging.INFO,
+    log_file=str(Path(config.paths.gstack_dir) / "app.log"),
+)
 logger = logging.getLogger(__name__)
 
 metrics = get_metrics_collector()
@@ -51,7 +58,7 @@ def get_state_file_path() -> str:
 
 app = FastAPI(
     title="灵境制造 API",
-    version="1.8.0",
+    version="1.9.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -168,7 +175,7 @@ async def health_check():
 
 @app.get("/api/health")
 async def api_health_check():
-    return {"status": "ok", "version": "1.8.0"}
+    return {"status": "ok", "version": "1.9.0"}
 
 
 @app.get("/api/health/ping")
@@ -231,6 +238,10 @@ app.include_router(agent_gateway.router)
 app.include_router(jobs.router)
 app.include_router(rag_routes.router)
 app.include_router(ollama_routes.router)
+app.include_router(simulation_api.router)
+app.include_router(project_routes.router)
+app.include_router(step_import_api.router)
+app.include_router(rules_router)
 
 register_exception_handlers(app)
 

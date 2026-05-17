@@ -8,12 +8,10 @@
   T4. 工程恢复：重新打开 .vrm → 验证所有数据完整恢复
   T5. 异常兼容性：损坏文件/版本不匹配 → 验证友好错误提示
 """
-import base64
+
 import httpx
 import json
-import os
 import sys
-import time
 import zipfile
 from pathlib import Path
 from datetime import datetime, timezone
@@ -27,11 +25,13 @@ P = 0
 F = 0
 LOG_LINES: list[str] = []
 
+
 def log(msg: str):
     ts = datetime.now().strftime("%H:%M:%S")
     line = f"[{ts}] {msg}"
     LOG_LINES.append(line)
     print(line)
+
 
 def chk(name: str, condition: bool, detail: str = ""):
     global P, F
@@ -42,11 +42,13 @@ def chk(name: str, condition: bool, detail: str = ""):
         F += 1
         log(f"  [FAIL] {name}  {detail}")
 
+
 def section(title: str):
     log("")
     log("=" * 64)
     log(f"  {title}")
     log("=" * 64)
+
 
 # ============================================================================
 # T1: 工程创建与操作测试
@@ -55,11 +57,15 @@ section("T1: 工程创建与操作测试")
 
 # 1a. 新建工程
 log("1a. 新建工程")
-resp = httpx.post(f"{BASE}/api/projects/new", json={
-    "name": "VrmTest-法兰盘加工",
-    "author": "测试工程师",
-    "description": "法兰盘铣削加工——全流程验证测试",
-}, timeout=15)
+resp = httpx.post(
+    f"{BASE}/api/projects/new",
+    json={
+        "name": "VrmTest-法兰盘加工",
+        "author": "测试工程师",
+        "description": "法兰盘铣削加工——全流程验证测试",
+    },
+    timeout=15,
+)
 data = resp.json()
 chk("新建HTTP200", resp.status_code == 200)
 chk("新建code=0", data["code"] == 0)
@@ -77,6 +83,7 @@ log("")
 log("1b. 导入STL模型文件")
 try:
     import trimesh
+
     stock_mesh = trimesh.creation.box(extents=[120, 80, 40])
     stock_mesh.apply_translation([0, 0, 20])
     stock_path = TEST_DIR / "flange_stock.stl"
@@ -111,7 +118,7 @@ stock_def = {
     "origin_z": 0.0,
     "unit": "mm",
     "material": "6061-T6铝合金",
-    "stock_stl_path": f"models/flange_stock.stl",
+    "stock_stl_path": "models/flange_stock.stl",
 }
 mf["data"]["stock_definition"] = stock_def
 chk("毛坯length=120", stock_def["length"] == 120)
@@ -195,8 +202,10 @@ process_steps = [
         "tool_id": "T03",
         "operation": "drill",
         "hole_positions": [
-            [35.0, 25.0, 0.0], [35.0, -25.0, 0.0],
-            [-35.0, 25.0, 0.0], [-35.0, -25.0, 0.0],
+            [35.0, 25.0, 0.0],
+            [35.0, -25.0, 0.0],
+            [-35.0, 25.0, 0.0],
+            [-35.0, -25.0, 0.0],
         ],
         "depth": 40.0,
         "toolpath_segments": 8,
@@ -245,11 +254,15 @@ chk("工程名含非空值", bool(mf["metadata"]["name"]))
 chk("工程含3刀具", len(mf["data"]["tool_selection"]) == 3)
 chk("工程含4工序", len(mf["data"]["process_steps"]) == 4)
 
-save_resp = httpx.post(f"{BASE}/api/projects/save", json={
-    "manifest": mf,
-    "project_id": pid,
-    "output_name": output_name,
-}, timeout=30)
+save_resp = httpx.post(
+    f"{BASE}/api/projects/save",
+    json={
+        "manifest": mf,
+        "project_id": pid,
+        "output_name": output_name,
+    },
+    timeout=30,
+)
 sdata = save_resp.json()
 chk("保存HTTP200", save_resp.status_code == 200)
 chk("保存code=0", sdata["code"] == 0)
@@ -260,7 +273,7 @@ chk("文件大小>0", sdata["data"]["file_size"] > 0)
 saved_path = sdata["data"]["file_path"]
 file_size = sdata["data"]["file_size"]
 log(f"  .vrm文件: {Path(saved_path).name}")
-log(f"  文件大小: {file_size} bytes ({file_size/1024:.1f} KB)")
+log(f"  文件大小: {file_size} bytes ({file_size / 1024:.1f} KB)")
 log(f"  完整路径: {saved_path}")
 
 # 验证文件在项目output目录下
@@ -319,13 +332,15 @@ with zipfile.ZipFile(saved_path, "r") as zf:
         chk("T01直径20", tools[0]["diameter"] == 20)
         chk("T02=ball", tools[1]["type"] == "ball")
         chk("T03=drill", tools[2]["type"] == "drill")
-        log(f"  保存的刀具: {[t['id']+'='+t['name'] for t in tools]}")
+        log(f"  保存的刀具: {[t['id'] + '=' + t['name'] for t in tools]}")
 
     # 3g. 工艺步骤
     steps = proj_data.get("data", {}).get("process_steps", [])
     chk("工艺步骤数量=4", len(steps) == 4)
     log(f"  保存的工序: {[s['name'] for s in steps]}")
-    log(f"  刀路总段数: {proj_data.get('data', {}).get('toolpath_config', {}).get('total_segments')}")
+    log(
+        f"  刀路总段数: {proj_data.get('data', {}).get('toolpath_config', {}).get('total_segments')}"
+    )
 
     # 3h. 后处理配置
     post = proj_data.get("data", {}).get("postprocessor_config", {})
@@ -347,9 +362,13 @@ log("  project.json 完整性检查全部通过")
 section("T4: 工程恢复测试 — 重新打开 .vrm")
 
 # 4a. 通过API打开
-reopen_resp = httpx.post(f"{BASE}/api/projects/open", json={
-    "file_path": saved_path,
-}, timeout=15)
+reopen_resp = httpx.post(
+    f"{BASE}/api/projects/open",
+    json={
+        "file_path": saved_path,
+    },
+    timeout=15,
+)
 rdata = reopen_resp.json()
 chk("重新打开HTTP200", reopen_resp.status_code == 200)
 chk("重新打开code=0", rdata["code"] == 0)
@@ -379,7 +398,9 @@ chk("恢复毛坯length", re_stock.get("length") == 120)
 chk("恢复毛坯width", re_stock.get("width") == 80)
 chk("恢复毛坯height", re_stock.get("height") == 40)
 chk("恢复毛坯材质", re_stock.get("material") == "6061-T6铝合金")
-log(f"  恢复的毛坯: {re_stock.get('length')}x{re_stock.get('width')}x{re_stock.get('height')}")
+log(
+    f"  恢复的毛坯: {re_stock.get('length')}x{re_stock.get('width')}x{re_stock.get('height')}"
+)
 
 # 4e. 验证刀路配置恢复
 re_tp = reloaded.get("data", {}).get("toolpath_config", {})
@@ -406,17 +427,24 @@ section("T5: 异常兼容性测试")
 # 5a. 损坏的 .vrm 文件
 log("5a. 损坏文件测试")
 corrupt_path = TEST_DIR / "corrupted.vrm"
-corrupt_path.write_bytes(b"THIS IS NOT A VALID ZIP FILE\x00\xFF\xFE")
+corrupt_path.write_bytes(b"THIS IS NOT A VALID ZIP FILE\x00\xff\xfe")
 chk("损坏文件已创建", corrupt_path.exists())
 
-corrupt_resp = httpx.post(f"{BASE}/api/projects/open", json={
-    "file_path": str(corrupt_path),
-}, timeout=10)
+corrupt_resp = httpx.post(
+    f"{BASE}/api/projects/open",
+    json={
+        "file_path": str(corrupt_path),
+    },
+    timeout=10,
+)
 corrupt_data = corrupt_resp.json()
-chk("损坏文件返回错误码(非0)", corrupt_data["code"] != 0,
-    f"code={corrupt_data['code']}")
+chk(
+    "损坏文件返回错误码(非0)", corrupt_data["code"] != 0, f"code={corrupt_data['code']}"
+)
 chk("损坏文件含错误消息", len(corrupt_data.get("message", "")) > 0)
-log(f"  损坏文件响应: code={corrupt_data['code']}, message={corrupt_data.get('message','')[:80]}")
+log(
+    f"  损坏文件响应: code={corrupt_data['code']}, message={corrupt_data.get('message', '')[:80]}"
+)
 
 # 5b. 无效的ZIP头
 log("")
@@ -425,13 +453,19 @@ trunc_path = TEST_DIR / "truncated.vrm"
 trunc_path.write_bytes(b"PK\x03\x04\x00\x00\x00\x00")  # 只有ZIP头
 chk("截断文件已创建", trunc_path.exists())
 
-trunc_resp = httpx.post(f"{BASE}/api/projects/open", json={
-    "file_path": str(trunc_path),
-}, timeout=10)
+trunc_resp = httpx.post(
+    f"{BASE}/api/projects/open",
+    json={
+        "file_path": str(trunc_path),
+    },
+    timeout=10,
+)
 trunc_data = trunc_resp.json()
 chk("截断文件返回错误码", trunc_data["code"] != 0)
 chk("截断文件有错误提示", "message" in trunc_data)
-log(f"  截断文件响应: code={trunc_data['code']}, message={trunc_data.get('message','')[:80]}")
+log(
+    f"  截断文件响应: code={trunc_data['code']}, message={trunc_data.get('message', '')[:80]}"
+)
 
 # 5c. 不支持的扩展名
 log("")
@@ -440,15 +474,22 @@ wrong_ext_path = TEST_DIR / "test.txt"
 wrong_ext_path.write_text("hello")
 chk("错误扩展名文件已创建", wrong_ext_path.exists())
 
-wrong_ext_resp = httpx.post(f"{BASE}/api/projects/open", json={
-    "file_path": str(wrong_ext_path),
-}, timeout=10)
+wrong_ext_resp = httpx.post(
+    f"{BASE}/api/projects/open",
+    json={
+        "file_path": str(wrong_ext_path),
+    },
+    timeout=10,
+)
 wrong_ext_data = wrong_ext_resp.json()
 chk("错误扩展名返回错误", wrong_ext_data["code"] != 0)
-chk("提示仅支持.vrm", ".vrm" in wrong_ext_data.get("message", "").lower() or
-     "不支持" in wrong_ext_data.get("message", "") or
-     "格式" in wrong_ext_data.get("message", ""))
-log(f"  错误扩展名响应: message={wrong_ext_data.get('message','')[:80]}")
+chk(
+    "提示仅支持.vrm",
+    ".vrm" in wrong_ext_data.get("message", "").lower()
+    or "不支持" in wrong_ext_data.get("message", "")
+    or "格式" in wrong_ext_data.get("message", ""),
+)
+log(f"  错误扩展名响应: message={wrong_ext_data.get('message', '')[:80]}")
 
 # 5d. 高版本文件
 log("")
@@ -457,31 +498,37 @@ future_mf = dict(mf)
 future_mf["version"] = "3.0"
 future_mf["metadata"]["modified_at"] = datetime.now(timezone.utc).isoformat()
 
-future_resp = httpx.post(f"{BASE}/api/projects/save", json={
-    "manifest": future_mf,
-    "project_id": pid,
-    "output_name": "future_version.vrm",
-}, timeout=30)
+future_resp = httpx.post(
+    f"{BASE}/api/projects/save",
+    json={
+        "manifest": future_mf,
+        "project_id": pid,
+        "output_name": "future_version.vrm",
+    },
+    timeout=30,
+)
 
 if future_resp.status_code == 200 and future_resp.json()["code"] == 0:
     future_path = future_resp.json()["data"]["file_path"]
     chk("高版本文件已创建", Path(future_path).exists())
 
-    future_open = httpx.post(f"{BASE}/api/projects/open", json={
-        "file_path": future_path,
-    }, timeout=10)
-    fdata = future_open.json()
-    chk("高版本被拒绝打开", fdata["code"] != 0,
-        f"(预期错误但code={fdata['code']})")
-    version_rejected = (
-        "版本" in fdata.get("message", "") or
-        "升级" in fdata.get("message", "") or
-        "不支持" in fdata.get("message", "") or
-        "高于" in fdata.get("message", "")
+    future_open = httpx.post(
+        f"{BASE}/api/projects/open",
+        json={
+            "file_path": future_path,
+        },
+        timeout=10,
     )
-    chk("高版本提示升级", version_rejected,
-        f"message={fdata.get('message','')[:80]}")
-    log(f"  高版本文件响应: {fdata.get('message','')[:100]}")
+    fdata = future_open.json()
+    chk("高版本被拒绝打开", fdata["code"] != 0, f"(预期错误但code={fdata['code']})")
+    version_rejected = (
+        "版本" in fdata.get("message", "")
+        or "升级" in fdata.get("message", "")
+        or "不支持" in fdata.get("message", "")
+        or "高于" in fdata.get("message", "")
+    )
+    chk("高版本提示升级", version_rejected, f"message={fdata.get('message', '')[:80]}")
+    log(f"  高版本文件响应: {fdata.get('message', '')[:100]}")
 else:
     log("  [WARN] 保存高版本文件失败，跳过打开测试")
 
@@ -493,41 +540,53 @@ with zipfile.ZipFile(str(empty_zip_path), "w") as zf:
     zf.writestr("readme.txt", "this is not a project file")
 chk("空ZIP已创建", empty_zip_path.exists())
 
-empty_resp = httpx.post(f"{BASE}/api/projects/open", json={
-    "file_path": str(empty_zip_path),
-}, timeout=10)
+empty_resp = httpx.post(
+    f"{BASE}/api/projects/open",
+    json={
+        "file_path": str(empty_zip_path),
+    },
+    timeout=10,
+)
 empty_data = empty_resp.json()
 chk("缺失project.json返回错误", empty_data["code"] != 0)
-chk("提示project.json缺失",
-    "缺少" in empty_data.get("message", "") or
-    "project.json" in empty_data.get("message", "").lower() or
-    "损坏" in empty_data.get("message", ""))
-log(f"  缺失project.json响应: {empty_data.get('message','')[:80]}")
+chk(
+    "提示project.json缺失",
+    "缺少" in empty_data.get("message", "")
+    or "project.json" in empty_data.get("message", "").lower()
+    or "损坏" in empty_data.get("message", ""),
+)
+log(f"  缺失project.json响应: {empty_data.get('message', '')[:80]}")
 
 # 5f. 不存在文件
 log("")
 log("5f. 文件不存在测试")
-nofile_resp = httpx.post(f"{BASE}/api/projects/open", json={
-    "file_path": str(TEST_DIR / "nonexistent_xyz999.vrm"),
-}, timeout=10)
+nofile_resp = httpx.post(
+    f"{BASE}/api/projects/open",
+    json={
+        "file_path": str(TEST_DIR / "nonexistent_xyz999.vrm"),
+    },
+    timeout=10,
+)
 nofile_data = nofile_resp.json()
 chk("不存在文件返回错误", nofile_data["code"] != 0)
-chk("文件不存在友好提示",
-    "未找到" in nofile_data.get("message", "") or
-    "不存在" in nofile_data.get("message", "") or
-    "not found" in nofile_data.get("message", "").lower() or
-    "FILE_NOT_FOUND" in str(nofile_data))
-log(f"  不存在文件响应: {nofile_data.get('message','')[:80]}")
+chk(
+    "文件不存在友好提示",
+    "未找到" in nofile_data.get("message", "")
+    or "不存在" in nofile_data.get("message", "")
+    or "not found" in nofile_data.get("message", "").lower()
+    or "FILE_NOT_FOUND" in str(nofile_data),
+)
+log(f"  不存在文件响应: {nofile_data.get('message', '')[:80]}")
 
 # ============================================================================
 # SUMMARY
 # ============================================================================
 section("测试汇总报告")
 total = P + F
-log(f"")
+log("")
 log(f"  {'ALL PASSED' if F == 0 else 'SOME FAILED'}")
 log(f"  {P} 通过, {F} 失败, {total} 总计")
-log(f"")
+log("")
 
 # 写入日志文件
 log_path = TEST_DIR / f"test_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"

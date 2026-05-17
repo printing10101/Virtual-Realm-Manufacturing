@@ -407,7 +407,7 @@ class TestStatePersistenceManager:
         ]
         state.memory = entries
         await persistence.save_state(state)
-        pruned = await persistence.prune_memory("mem_prune")
+        await persistence.prune_memory("mem_prune")
         loaded = await persistence.load_state("mem_prune")
         assert len(loaded.memory) <= MEMORY_PRUNING_THRESHOLD
 

@@ -526,7 +526,7 @@ class TaskCheckoutManager:
         except (LockNotFoundError, LockConflictError):
             pass
 
-        now_iso = datetime.now().isoformat()
+        datetime.now().isoformat()
         conn = self._get_conn()
         conn.execute(
             "UPDATE checkout_tasks SET status = ?, assigned_to = NULL WHERE id = ?",

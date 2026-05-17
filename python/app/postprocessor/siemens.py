@@ -73,7 +73,7 @@ class SiemensPostProcessor(BasePostProcessor):
         clockwise: bool = True,
     ) -> str:
         g_code = "G02" if clockwise else "G03"
-        radius = ((end[0] - center[0]) ** 2 + (end[1] - center[1]) ** 2) ** 0.5
+        radius = self._calc_arc_radius(end, center)
         return (
             f"N{self._next_block():05d} {g_code} "
             f"X{self._fmt(end[0])} Y{self._fmt(end[1])} "
@@ -82,11 +82,8 @@ class SiemensPostProcessor(BasePostProcessor):
 
     def format_coolant(self, state: str) -> str:
         n = self._next_block()
-        if state.lower() == "on":
-            return f"N{n:05d} M08"
-        if state.lower() == "off":
-            return f"N{n:05d} M09"
-        return f"N{n:05d} M09"
+        code = self._format_coolant(state) or "M09"
+        return f"N{n:05d} {code}"
 
     def format_tool_compensation(
         self,

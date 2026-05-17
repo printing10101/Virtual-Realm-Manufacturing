@@ -117,7 +117,7 @@ class ValidationCalibrator:
         """Generate calibrated thresholds for all processes."""
         summary = self.loader.get_dataset_summary()
         all_processes = summary.get("available_processes", [])
-        all_machines = summary.get("available_machines", [])
+        summary.get("available_machines", [])
 
         calibrated: dict = {}
         for process in all_processes:
@@ -452,11 +452,7 @@ class ValidationCalibrator:
         }
 
         try:
-            bosch_baselines = (
-                self.calibrate_vibration_thresholds(process=process)
-                if process
-                else None
-            )
+            (self.calibrate_vibration_thresholds(process=process) if process else None)
             bosch_all = self._load_or_calibrate()
 
             cross_validation: dict = {}

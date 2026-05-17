@@ -9,6 +9,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AcceptModifyReject: typeof import('./components/AcceptModifyReject.vue')['default']
     AlignmentChecker: typeof import('./components/goals/AlignmentChecker.vue')['default']
+    CollisionAlertModal: typeof import('./components/simulation/CollisionAlertModal.vue')['default']
     ConfidenceIndicator: typeof import('./components/ConfidenceIndicator.vue')['default']
     DependencyTree: typeof import('./components/plugin/DependencyTree.vue')['default']
     DependencyTreeNode: typeof import('./components/plugin/DependencyTreeNode.vue')['default']
@@ -50,10 +51,13 @@ declare module 'vue' {
     ElTabs: typeof import('element-plus/es')['ElTabs']
     ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
+    ErrorNotification: typeof import('./components/ErrorNotification.vue')['default']
     GoalDetail: typeof import('./components/goals/GoalDetail.vue')['default']
     GoalTreeView: typeof import('./components/goals/GoalTreeView.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SimulationControlPanel: typeof import('./components/simulation/SimulationControlPanel.vue')['default']
+    SimulationViewer: typeof import('./components/simulation/SimulationViewer.vue')['default']
     TaskWizard: typeof import('./components/goals/TaskWizard.vue')['default']
     ThreeViewer: typeof import('./components/ThreeViewer.vue')['default']
   }

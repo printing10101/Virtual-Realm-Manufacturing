@@ -57,13 +57,13 @@ for i in range(30):
         if r.status == 200:
             print(f"Server ready after {i + 1}s")
             break
-    except:
+    except Exception:
         pass
     if proc.poll() is not None:
         print(f"SERVER DIED! Exit: {proc.poll()}")
         print("Server logs:")
-        for l in server_logs[-50:]:
-            print(f"  {l}")
+        for line in server_logs[-50:]:
+            print(f"  {line}")
         sys.exit(1)
     time.sleep(1)
 
@@ -99,23 +99,23 @@ time.sleep(1)
 
 # Show server debug logs
 print("\n=== Server debug logs (filtered) ===")
-for l in server_logs:
+for line in server_logs:
     if (
-        "DEBUG-TRAIN" in l
-        or "ERROR" in l.upper()
-        or "Exception" in l
-        or "Traceback" in l
+        "DEBUG-TRAIN" in line
+        or "ERROR" in line.upper()
+        or "Exception" in line
+        or "Traceback" in line
     ):
-        print(f"  {l}")
+        print(f"  {line}")
 
 # Check if handler was reached
-reached = any("DEBUG-TRAIN" in l for l in server_logs)
+reached = any("DEBUG-TRAIN" in line for line in server_logs)
 print(f"\nHandler reached: {reached}")
 
 print(f"\nAlive: {proc.poll() is None}")
 proc.terminate()
 try:
     proc.wait(timeout=5)
-except:
+except Exception:
     proc.kill()
 print("Done.")
