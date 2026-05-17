@@ -142,7 +142,7 @@ class UniwearKnowledgeBuilder:
             stats = self.loader.compute_statistics(
                 UniwearDataset.NUAA, experiment_tag=exp
             )
-            wear_df = self.loader.get_wear_data(UniwearDataset.NUAA, experiment_tag=exp)
+            self.loader.get_wear_data(UniwearDataset.NUAA, experiment_tag=exp)
 
             lines: list[str] = []
             lines.append(f"【NUAA 钛合金TC4 实验报告】{exp}")
@@ -297,7 +297,7 @@ class UniwearKnowledgeBuilder:
         return doc_ids
 
     def build_material_comparison(self) -> str:
-        mat_comparison = self.loader.get_material_comparison()
+        self.loader.get_material_comparison()
 
         lines: list[str] = []
         lines.append("【TC4钛合金 vs HRC52不锈钢 刀具磨损对比分析】")

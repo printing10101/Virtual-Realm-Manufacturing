@@ -86,6 +86,7 @@ class KnowledgeStore:
 
     def __init__(self):
         self._documents: list[dict[str, Any]] = []
+        self._by_id: dict[str, dict[str, Any]] = {}
         self._next_id = 1
 
     def add(
@@ -93,21 +94,20 @@ class KnowledgeStore:
     ) -> str:
         doc_id = doc_id or f"doc_{self._next_id}"
         self._next_id += 1
-        existing = [d for d in self._documents if d["id"] == doc_id]
-        if existing:
-            existing[0]["document"] = document
-            existing[0]["metadata"] = metadata or {}
-            existing[0]["updated_at"] = time.time()
+        if doc_id in self._by_id:
+            self._by_id[doc_id]["document"] = document
+            self._by_id[doc_id]["metadata"] = metadata or {}
+            self._by_id[doc_id]["updated_at"] = time.time()
         else:
-            self._documents.append(
-                {
-                    "id": doc_id,
-                    "document": document,
-                    "metadata": metadata or {},
-                    "created_at": time.time(),
-                    "updated_at": time.time(),
-                }
-            )
+            entry = {
+                "id": doc_id,
+                "document": document,
+                "metadata": metadata or {},
+                "created_at": time.time(),
+                "updated_at": time.time(),
+            }
+            self._documents.append(entry)
+            self._by_id[doc_id] = entry
         return doc_id
 
     def query(
@@ -165,21 +165,26 @@ class KnowledgeStore:
         return list(self._documents)
 
     def get_by_id(self, doc_id: str) -> dict[str, Any] | None:
-        for d in self._documents:
-            if d["id"] == doc_id:
-                return d
-        return None
+        return self._by_id.get(doc_id)
 
     def delete(self, doc_id: str) -> bool:
         before = len(self._documents)
         self._documents = [d for d in self._documents if d["id"] != doc_id]
+        self._by_id.pop(doc_id, None)
         return len(self._documents) < before
 
     def delete_by_source(self, source: str) -> int:
         before = len(self._documents)
+        removed_ids = [
+            d["id"]
+            for d in self._documents
+            if d.get("metadata", {}).get("source") == source
+        ]
         self._documents = [
             d for d in self._documents if d.get("metadata", {}).get("source") != source
         ]
+        for rid in removed_ids:
+            self._by_id.pop(rid, None)
         return before - len(self._documents)
 
     def count(self) -> int:

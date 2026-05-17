@@ -94,6 +94,7 @@ class ResourceTracker:
     """多维度资源追踪系统"""
 
     def __init__(self):
+        self._lock = threading.RLock()
         self._gpu_memory_mb = 0.0
         self._gpu_hours_today = 0.0
         self._inference_count_today = 0
@@ -103,18 +104,17 @@ class ResourceTracker:
         self._update_current_metrics()
 
     def _update_current_metrics(self) -> None:
-        """更新当前资源使用指标"""
         try:
             process = psutil.Process()
             mem_info = process.memory_info()
-            self._memory_peak_mb = max(
-                self._memory_peak_mb, mem_info.rss / (1024 * 1024)
-            )
+            with self._lock:
+                self._memory_peak_mb = max(
+                    self._memory_peak_mb, mem_info.rss / (1024 * 1024)
+                )
         except Exception as e:
             logger.warning("Failed to update memory metrics: %s", e)
 
     def get_gpu_memory_available(self) -> float:
-        """获取GPU显存可用量（MB）"""
         try:
             import torch
 
@@ -127,7 +127,6 @@ class ResourceTracker:
             return 0.0
 
     def get_gpu_memory_total(self) -> float:
-        """获取GPU显存总量（MB）"""
         try:
             import torch
 
@@ -138,45 +137,44 @@ class ResourceTracker:
             return 0.0
 
     def increment_inference_count(self) -> None:
-        """增加推理次数计数"""
-        self._inference_count_today += 1
+        with self._lock:
+            self._inference_count_today += 1
 
     def increment_gpu_hours(self, hours: float) -> None:
-        """增加GPU使用小时数"""
-        self._gpu_hours_today += hours
+        with self._lock:
+            self._gpu_hours_today += hours
 
     def increment_api_calls(self) -> None:
-        """增加API调用次数"""
-        self._api_calls_today += 1
+        with self._lock:
+            self._api_calls_today += 1
 
     def get_current_usage(self, resource_type: ResourceType) -> float:
-        """获取当前资源使用量"""
         self._update_current_metrics()
-
-        if resource_type == ResourceType.GPU_MEMORY:
-            return self.get_gpu_memory_total() - self.get_gpu_memory_available()
-        elif resource_type == ResourceType.GPU_HOURS:
-            return self._gpu_hours_today
-        elif resource_type == ResourceType.INFERENCE_COUNT:
-            return self._inference_count_today
-        elif resource_type == ResourceType.MEMORY_PEAK:
-            return self._memory_peak_mb
-        elif resource_type == ResourceType.API_CALLS:
-            return self._api_calls_today
-        else:
-            raise ValueError(f"Unknown resource type: {resource_type}")
+        with self._lock:
+            if resource_type == ResourceType.GPU_MEMORY:
+                return self.get_gpu_memory_total() - self.get_gpu_memory_available()
+            elif resource_type == ResourceType.GPU_HOURS:
+                return self._gpu_hours_today
+            elif resource_type == ResourceType.INFERENCE_COUNT:
+                return self._inference_count_today
+            elif resource_type == ResourceType.MEMORY_PEAK:
+                return self._memory_peak_mb
+            elif resource_type == ResourceType.API_CALLS:
+                return self._api_calls_today
+            else:
+                raise ValueError(f"Unknown resource type: {resource_type}")
 
     def reset_daily(self) -> None:
-        """重置每日计数"""
         now = time.time()
-        elapsed = now - self._last_reset
+        with self._lock:
+            elapsed = now - self._last_reset
 
-        if elapsed >= 86400:
-            self._inference_count_today = 0
-            self._gpu_hours_today = 0.0
-            self._api_calls_today = 0
-            self._last_reset = now
-            logger.info("Daily resource counters reset")
+            if elapsed >= 86400:
+                self._inference_count_today = 0
+                self._gpu_hours_today = 0.0
+                self._api_calls_today = 0
+                self._last_reset = now
+                logger.info("Daily resource counters reset")
 
 
 class BudgetManager:
@@ -221,7 +219,7 @@ class BudgetManager:
                 created_at REAL DEFAULT (strftime('%s', 'now')),
                 UNIQUE(resource_type, budget_level, scope_id)
             );
-            
+
             CREATE TABLE IF NOT EXISTS budget_usage_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 agent_id TEXT NOT NULL,
@@ -232,7 +230,7 @@ class BudgetManager:
                 status TEXT NOT NULL,
                 recorded_at REAL DEFAULT (strftime('%s', 'now'))
             );
-            
+
             CREATE TABLE IF NOT EXISTS budget_notifications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 agent_id TEXT NOT NULL,
@@ -274,8 +272,8 @@ class BudgetManager:
             for budget in defaults:
                 try:
                     self._conn.execute(
-                        """INSERT OR IGNORE INTO budget_limits 
-                           (resource_type, limit_value, warning_threshold, hard_stop_threshold, 
+                        """INSERT OR IGNORE INTO budget_limits
+                           (resource_type, limit_value, warning_threshold, hard_stop_threshold,
                             budget_level, scope_id, reset_interval)
                            VALUES (?, ?, ?, ?, ?, ?, ?)""",
                         (
@@ -297,8 +295,8 @@ class BudgetManager:
         """设置预算限制"""
         with self._lock:
             self._conn.execute(
-                """INSERT OR REPLACE INTO budget_limits 
-                   (resource_type, limit_value, warning_threshold, hard_stop_threshold, 
+                """INSERT OR REPLACE INTO budget_limits
+                   (resource_type, limit_value, warning_threshold, hard_stop_threshold,
                     budget_level, scope_id, reset_interval)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
@@ -440,7 +438,7 @@ class BudgetManager:
                 (BudgetLevel.GLOBAL.value, "default"),
             ]:
                 row = self._conn.execute(
-                    """SELECT * FROM budget_limits 
+                    """SELECT * FROM budget_limits
                        WHERE resource_type = ? AND budget_level = ? AND scope_id = ?""",
                     (resource_type.value, level, scope),
                 ).fetchone()
@@ -471,7 +469,7 @@ class BudgetManager:
         try:
             with self._lock:
                 self._conn.execute(
-                    """INSERT INTO budget_usage_log 
+                    """INSERT INTO budget_usage_log
                        (agent_id, resource_type, usage_value, limit_value, usage_ratio, status)
                        VALUES (?, ?, ?, ?, ?, ?)""",
                     (agent_id, resource_type.value, usage, limit, ratio, status.value),
@@ -492,7 +490,7 @@ class BudgetManager:
         try:
             with self._lock:
                 self._conn.execute(
-                    """INSERT INTO budget_notifications 
+                    """INSERT INTO budget_notifications
                        (agent_id, notification_type, message, resource_type, usage_ratio)
                        VALUES (?, ?, ?, ?, ?)""",
                     (agent_id, notification_type, message, resource_type, usage_ratio),
@@ -540,13 +538,13 @@ class BudgetManager:
         with self._lock:
             if agent_id:
                 rows = self._conn.execute(
-                    """SELECT * FROM budget_notifications 
+                    """SELECT * FROM budget_notifications
                        WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?""",
                     (agent_id, limit),
                 ).fetchall()
             else:
                 rows = self._conn.execute(
-                    """SELECT * FROM budget_notifications 
+                    """SELECT * FROM budget_notifications
                        ORDER BY created_at DESC LIMIT ?""",
                     (limit,),
                 ).fetchall()

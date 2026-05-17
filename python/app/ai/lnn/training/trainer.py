@@ -547,7 +547,7 @@ class LNNTrainer:
                 f"训练检查点加载失败：找不到检查点文件 '{path}'。可能原因：文件路径错误或检查点已被删除/移动。请确认：1) 路径 '{path}' 是否正确；2) 文件是否存在于预期位置；3) 如需重新训练，请调用 POST /api/v1/lnn/models/train 启动新训练任务。"
             )
 
-        checkpoint = torch.load(path, map_location=self.device)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
 
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])

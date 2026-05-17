@@ -73,7 +73,7 @@ class AuditLog:
         Path(self.log_dir).mkdir(parents=True, exist_ok=True)
 
         if not os.path.exists(self.log_file):
-            with open(self.log_file, "w", encoding="utf-8") as f:
+            with open(self.log_file, "w", encoding="utf-8"):
                 pass
 
     def log_decision(

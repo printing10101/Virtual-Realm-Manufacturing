@@ -1,4 +1,4 @@
-"""Vitest setup file for frontend test utilities and mocks."""
+// Vitest setup file for frontend test utilities and mocks.
 
 import { config } from '@vue/test-utils'
 

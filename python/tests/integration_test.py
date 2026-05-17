@@ -10,11 +10,10 @@
  6. 前端页面可访问性
  7. 仿真前后数据一致性
 """
+
 import httpx
-import json
 import time
 import sys
-import os
 
 BASE_API = "http://localhost:8001"
 BASE_WEB = "http://localhost:1420"
@@ -55,8 +54,11 @@ except Exception as e:
 
 try:
     r = httpx.get(f"{BASE_WEB}", timeout=5)
-    check(f"前端页面 HTTP {r.status_code}", r.status_code in (200, 301, 302),
-          f"got {r.status_code}")
+    check(
+        f"前端页面 HTTP {r.status_code}",
+        r.status_code in (200, 301, 302),
+        f"got {r.status_code}",
+    )
 except Exception as e:
     check("前端页面可达", False, str(e))
 
@@ -107,24 +109,33 @@ d = data.get("data", {})
 check("[字段] collision_detected 存在", "collision_detected" in d)
 check("[字段] collision_detected 布尔型", isinstance(d.get("collision_detected"), bool))
 check("[字段] simulation_result 存在", "simulation_result" in d)
-check("[字段] workpiece_stl_path 存在",
-      "workpiece_stl_path" in d.get("simulation_result", {}))
-check("[字段] workpiece_stl_path 非空",
-      bool(d.get("simulation_result", {}).get("workpiece_stl_path")))
+check(
+    "[字段] workpiece_stl_path 存在",
+    "workpiece_stl_path" in d.get("simulation_result", {}),
+)
+check(
+    "[字段] workpiece_stl_path 非空",
+    bool(d.get("simulation_result", {}).get("workpiece_stl_path")),
+)
 check("[字段] collision_details 存在", "collision_details" in d)
-check("[字段] collision_details.timestamp",
-      "timestamp" in d.get("collision_details", {}))
-check("[字段] collision_details.positions",
-      "positions" in d.get("collision_details", {}))
-check("[字段] collision_details.severity",
-      "severity" in d.get("collision_details", {}))
-check("[字段] collision_details.count",
-      isinstance(d.get("collision_details", {}).get("count"), int))
+check(
+    "[字段] collision_details.timestamp", "timestamp" in d.get("collision_details", {})
+)
+check(
+    "[字段] collision_details.positions", "positions" in d.get("collision_details", {})
+)
+check("[字段] collision_details.severity", "severity" in d.get("collision_details", {}))
+check(
+    "[字段] collision_details.count",
+    isinstance(d.get("collision_details", {}).get("count"), int),
+)
 check("[字段] task_id 非空", len(d.get("task_id", "")) > 0)
 check("[字段] duration_seconds > 0", d.get("duration_seconds", 0) > 0)
-check("[字段] toolpath_segment_count >= 5",
-      d.get("toolpath_segment_count", 0) >= 5,
-      f"got {d.get('toolpath_segment_count')}")
+check(
+    "[字段] toolpath_segment_count >= 5",
+    d.get("toolpath_segment_count", 0) >= 5,
+    f"got {d.get('toolpath_segment_count')}",
+)
 
 # 安全路径不应该触发碰撞
 normal_collision = d.get("collision_detected")
@@ -166,14 +177,18 @@ payload_collision = {
     "stock_stl_path": "",
 }
 
-resp2 = httpx.post(f"{BASE_API}/api/simulation/run",
-                   json=payload_collision, timeout=120)
+resp2 = httpx.post(
+    f"{BASE_API}/api/simulation/run", json=payload_collision, timeout=120
+)
 check("碰撞仿真 HTTP 200", resp2.status_code == 200)
 check("碰撞仿真 code=0", resp2.json().get("code") == 0)
 
 d2 = resp2.json().get("data", {})
-check("collision_detected == true", d2.get("collision_detected") == True,
-      f"got {d2.get('collision_detected')}")
+check(
+    "collision_detected == true",
+    d2.get("collision_detected"),
+    f"got {d2.get('collision_detected')}",
+)
 
 cd = d2.get("collision_details", {})
 check("collision_details.count > 0", cd.get("count", 0) > 0)
@@ -182,8 +197,7 @@ check("collision_details.timestamp 存在", bool(cd.get("timestamp")))
 
 if cd.get("positions"):
     fp = cd["positions"][0]
-    check("碰撞位置Z < 0 (切入工作台)", fp[2] < 0,
-          f"Z={fp[2]:.2f}")
+    check("碰撞位置Z < 0 (切入工作台)", fp[2] < 0, f"Z={fp[2]:.2f}")
     print(f"  [INFO] 首个碰撞位置: ({fp[0]:.2f}, {fp[1]:.2f}, {fp[2]:.2f})")
     print(f"  [INFO] severity={cd.get('severity')}, count={cd.get('count')}")
 
@@ -197,14 +211,23 @@ batch_results = []
 for i in range(5):
     t_start = time.time()
     try:
-        r = httpx.post(f"{BASE_API}/api/simulation/run",
-                       json=payload_normal, timeout=60)
+        r = httpx.post(
+            f"{BASE_API}/api/simulation/run", json=payload_normal, timeout=60
+        )
         t_end = time.time()
         ok = r.status_code == 200 and r.json().get("code") == 0
-        batch_results.append({"i": i, "ok": ok, "t": t_end - t_start,
-                              "tid": r.json().get("data", {}).get("task_id")})
+        batch_results.append(
+            {
+                "i": i,
+                "ok": ok,
+                "t": t_end - t_start,
+                "tid": r.json().get("data", {}).get("task_id"),
+            }
+        )
         status = "OK" if ok else "FAIL"
-        print(f"  #{i}: {status} | {t_end-t_start:.2f}s | task={batch_results[-1]['tid']}")
+        print(
+            f"  #{i}: {status} | {t_end - t_start:.2f}s | task={batch_results[-1]['tid']}"
+        )
     except Exception as e:
         batch_results.append({"i": i, "ok": False, "t": 0, "tid": str(e)})
         print(f"  #{i}: ERROR - {e}")
@@ -215,8 +238,7 @@ if batch_results:
     times = [r["t"] for r in batch_results if r["ok"]]
     if times:
         avg_time = sum(times) / len(times)
-        check(f"平均响应时间 < 10s", avg_time < 10,
-              f"avg={avg_time:.2f}s")
+        check("平均响应时间 < 10s", avg_time < 10, f"avg={avg_time:.2f}s")
 
 
 # ================================================================
@@ -224,14 +246,20 @@ if batch_results:
 # ================================================================
 section("5. 数据一致性验证")
 
-check("task_id 不同 (不同请求)", d.get("task_id") != d2.get("task_id"),
-      f"{d.get('task_id')} vs {d2.get('task_id')}")
+check(
+    "task_id 不同 (不同请求)",
+    d.get("task_id") != d2.get("task_id"),
+    f"{d.get('task_id')} vs {d2.get('task_id')}",
+)
 
 check("voxel_count > 0 (正常)", d.get("voxel_count", 0) > 0)
 check("voxel_count > 0 (碰撞)", d2.get("voxel_count", 0) > 0)
 
-check("正常路径 removed > 0 (有切削)", d.get("removed_voxel_count", 0) > 0,
-      f"removed={d.get('removed_voxel_count')}")
+check(
+    "正常路径 removed > 0 (有切削)",
+    d.get("removed_voxel_count", 0) > 0,
+    f"removed={d.get('removed_voxel_count')}",
+)
 
 # ================================================================
 # SECTION 6: 状态查询端点
@@ -249,10 +277,8 @@ check("result 非空", sdata.get("result") is not None)
 # 验证 status 端点中的碰撞字段
 if sdata.get("result"):
     sr = sdata["result"]
-    check("status result 含 collision_detected",
-          "collision_detected" in sr)
-    check("status result 含 simulation_result",
-          "simulation_result" in sr)
+    check("status result 含 collision_detected", "collision_detected" in sr)
+    check("status result 含 simulation_result", "simulation_result" in sr)
 
 # ================================================================
 # SECTION 7: 错误处理
@@ -261,20 +287,22 @@ section("7. 错误处理验证")
 
 # 无效的voxel_size
 payload_bad = {**payload_normal, "voxel_size": 100.0}
-resp_bad = httpx.post(f"{BASE_API}/api/simulation/run",
-                      json=payload_bad, timeout=30)
+resp_bad = httpx.post(f"{BASE_API}/api/simulation/run", json=payload_bad, timeout=30)
 # Pydantic 会拒绝超过范围的值 (ge=0.1, le=10.0)
-check("无效参数返回 422", resp_bad.status_code == 422,
-      f"got {resp_bad.status_code}")
+check("无效参数返回 422", resp_bad.status_code == 422, f"got {resp_bad.status_code}")
 
 # 空G代码
 payload_empty = {**payload_normal, "gcode": ""}
-resp_empty = httpx.post(f"{BASE_API}/api/simulation/run",
-                        json=payload_empty, timeout=60)
+resp_empty = httpx.post(
+    f"{BASE_API}/api/simulation/run", json=payload_empty, timeout=60
+)
 check("空G代码 HTTP 200", resp_empty.status_code == 200)
 edata = resp_empty.json().get("data", {})
-check("空G代码 segment_count=0", edata.get("toolpath_segment_count", -1) == 0,
-      f"got {edata.get('toolpath_segment_count')}")
+check(
+    "空G代码 segment_count=0",
+    edata.get("toolpath_segment_count", -1) == 0,
+    f"got {edata.get('toolpath_segment_count')}",
+)
 
 
 # ================================================================

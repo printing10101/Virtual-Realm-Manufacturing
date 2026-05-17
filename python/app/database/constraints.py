@@ -16,6 +16,8 @@ from app.database.machines import MachineDatabase, MachineEntry
 
 logger = logging.getLogger(__name__)
 
+_UNBOUNDED_UPPER = 99999
+
 
 @dataclass
 class ConstraintViolation:
@@ -194,9 +196,9 @@ class CuttingConstraintValidator:
         mat_range = material.get_cutting_speed("roughing")
 
         mat_min = mat_range[0] if mat_range[0] > 0 else 0
-        mat_max = mat_range[1] if mat_range[1] > 0 else 99999
+        mat_max = mat_range[1] if mat_range[1] > 0 else _UNBOUNDED_UPPER
         tool_min = tool_range[0] if tool_range[0] > 0 else 0
-        tool_max = tool_range[1] if tool_range[1] > 0 else 99999
+        tool_max = tool_range[1] if tool_range[1] > 0 else _UNBOUNDED_UPPER
         lo = max(mat_min, tool_min)
         hi = min(mat_max, tool_max) if tool_max > 0 else mat_max
 
@@ -242,9 +244,9 @@ class CuttingConstraintValidator:
         tool_range = tool.get_feed_per_tooth("roughing")
 
         mat_lo = mat_range[0] if mat_range[0] > 0 else 0
-        mat_hi = mat_range[1] if mat_range[1] > 0 else 99999
+        mat_hi = mat_range[1] if mat_range[1] > 0 else _UNBOUNDED_UPPER
         tool_lo = tool_range[0] if tool_range[0] > 0 else 0
-        tool_hi = tool_range[1] if tool_range[1] > 0 else 99999
+        tool_hi = tool_range[1] if tool_range[1] > 0 else _UNBOUNDED_UPPER
 
         if tool.flutes > 0 and tool.type != "turning" and tool.type != "tap":
             tool_lo *= tool.flutes
@@ -349,7 +351,7 @@ class CuttingConstraintValidator:
             hi = (
                 machine.spindle_speed_rpm[1]
                 if len(machine.spindle_speed_rpm) > 1
-                else 99999
+                else _UNBOUNDED_UPPER
             )
             if spindle < lo:
                 violations.append(
@@ -383,7 +385,6 @@ class CuttingConstraintValidator:
         tool: ToolEntry,
     ) -> list[str]:
         warnings: list[str] = []
-        params.get("cutting_speed", params.get("vc", 0.0))  # noqa: F841
         feed = params.get("feed", params.get("f", 0.0))
         doc = params.get("depth_of_cut", params.get("ap", 0.0))
         if doc == 0 or feed == 0:

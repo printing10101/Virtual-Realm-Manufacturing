@@ -11,12 +11,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import io
-import os
-import tempfile
 import time
-import uuid
 from pathlib import Path
 
 import cadquery as cq
@@ -27,17 +23,15 @@ from app.step_import.step_parser import (
     StepParseResult,
     StepParseError,
     ModelInfo,
-    BoundingBox,
     EntityInfo,
 )
 from app.step_import.step_converter import (
     StepConverter,
-    StlExportOptions,
     ConvertResult,
     BatchConvertResult,
     PRECISION_PRESETS,
 )
-from app.step_import.step_cache import StepCache, CacheEntry, get_step_cache
+from app.step_import.step_cache import StepCache, get_step_cache
 
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output" / "step_import"
@@ -418,9 +412,16 @@ class TestStepImportAPI:
             import_endpoints = [p for p in paths if "/api/import/step" in p]
             assert len(import_endpoints) > 0, "STEP导入路由未注册"
         else:
-            response = client.post("/api/import/step", files={
-                "file": ("test.step", io.BytesIO(b"ISO-10303-21;"), "application/octet-stream")
-            })
+            response = client.post(
+                "/api/import/step",
+                files={
+                    "file": (
+                        "test.step",
+                        io.BytesIO(b"ISO-10303-21;"),
+                        "application/octet-stream",
+                    )
+                },
+            )
             assert response.status_code == 200
 
     def test_import_without_file(self, client):
@@ -442,7 +443,13 @@ class TestStepImportAPI:
         """T37: 上传损坏的STEP文件返回错误。"""
         response = client.post(
             "/api/import/step",
-            files={"file": ("corrupt.step", io.BytesIO(b"garbage data"), "application/octet-stream")},
+            files={
+                "file": (
+                    "corrupt.step",
+                    io.BytesIO(b"garbage data"),
+                    "application/octet-stream",
+                )
+            },
         )
         assert response.status_code == 200
         data = response.json()
@@ -489,8 +496,13 @@ class TestStepImportAPI:
 
         mi = result["model_info"]
         required_fields = [
-            "volume", "surface_area", "bounding_box",
-            "center_of_mass", "entity_count", "face_count", "vertex_count",
+            "volume",
+            "surface_area",
+            "bounding_box",
+            "center_of_mass",
+            "entity_count",
+            "face_count",
+            "vertex_count",
         ]
         for field in required_fields:
             assert field in mi, f"model_info缺少{field}"
@@ -629,21 +641,26 @@ class TestStepIntegration:
         parse_result = parser.parse(step_path)
         start1 = time.perf_counter()
         shape = parser.get_cadquery_shape(step_path)
-        batch1 = converter.convert_all_entities(shape, "e2e_cache.step", parse_result)
+        converter.convert_all_entities(shape, "e2e_cache.step", parse_result)
         elapsed1 = time.perf_counter() - start1
 
-        cache.put(step_path, parse_result_data={
-            "file_name": parse_result.file_name,
-            "file_size": parse_result.file_size,
-            "model_info": {},
-        })
+        cache.put(
+            step_path,
+            parse_result_data={
+                "file_name": parse_result.file_name,
+                "file_size": parse_result.file_size,
+                "model_info": {},
+            },
+        )
 
         start2 = time.perf_counter()
         cached = cache.get(step_path)
         elapsed2 = time.perf_counter() - start2
 
         assert cached is not None
-        assert elapsed2 < max(elapsed1 * 0.5, 0.001), f"缓存加速不足: {elapsed2:.3f}s vs {elapsed1:.3f}s"
+        assert elapsed2 < max(elapsed1 * 0.5, 0.001), (
+            f"缓存加速不足: {elapsed2:.3f}s vs {elapsed1:.3f}s"
+        )
 
     def test_multi_format_conversion(self):
         """T51: STL和BREP双格式转换。"""
@@ -653,8 +670,12 @@ class TestStepIntegration:
         parse_result = parser.parse(step_path)
         converter = StepConverter(output_dir=OUTPUT_DIR)
 
-        stl_batch = converter.convert_all_entities(shape, "e2e_formats.step", parse_result, "stl")
-        brep_batch = converter.convert_all_entities(shape, "e2e_formats.step", parse_result, "brep")
+        stl_batch = converter.convert_all_entities(
+            shape, "e2e_formats.step", parse_result, "stl"
+        )
+        brep_batch = converter.convert_all_entities(
+            shape, "e2e_formats.step", parse_result, "brep"
+        )
 
         assert stl_batch.success
         assert brep_batch.success

@@ -430,7 +430,7 @@ result = input_value * 2
         loader, skills_base, global_dir = hot_reload_setup
 
         skills_before = loader.get_skills_for_task(task_type="prediction")
-        before_versions = {
+        {
             s.metadata.skill_id: s.metadata.version
             for s in skills_before
             if s.metadata.skill_id == "hot_reload_test"

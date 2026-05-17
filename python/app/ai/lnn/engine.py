@@ -7,6 +7,7 @@ and the Result Fusion Layer to provide a unified inference interface.
 
 import logging
 import numpy as np
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
@@ -28,6 +29,7 @@ from .preprocessing import DataPreprocessor
 from .postprocessing import ResultPostprocessor
 from .inference.registry import ModelRegistry
 from .config.config_manager import YAMLConfigManager
+from .rule_converter import load_rules_to_lnn_engine, LnnRuleEngine
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +121,7 @@ class HybridInferenceEngine:
 
         # 引擎实例
         self.lnn_models: Dict[str, Any] = {}
-        self.rule_engine: Optional[Any] = None
+        self.rule_engine: Optional[LnnRuleEngine] = None
         self._initialized = False
         self._degraded_mode = False
 
@@ -192,6 +194,9 @@ class HybridInferenceEngine:
         else:
             self._degraded_mode = False
             logger.info(f"引擎初始化完成，已注册 {len(self.lnn_models)} 个模型")
+
+        # 加载工艺规则到LNN规则引擎
+        self._load_process_rules()
 
         self._initialized = True
 
@@ -485,6 +490,13 @@ class HybridInferenceEngine:
                 else self.preprocessor.transform(input_array)
             )
             predictions = model.predict(preprocessed.features)
+            if (
+                self.preprocessor.is_fitted
+                and hasattr(self.preprocessor, "mean_")
+                and self.preprocessor.mean_ is not None
+            ):
+                if predictions.shape[-1] == self.preprocessor.mean_.shape[0]:
+                    predictions = self.preprocessor.inverse_transform(predictions)
             processing_time = (time.perf_counter() - start_time) * 1000
             return self.postprocessor.process_result(
                 predictions=predictions,
@@ -521,12 +533,13 @@ class HybridInferenceEngine:
         task: TaskInput,
         decision: RoutingDecision,
     ) -> Optional[InferenceResult]:
-        """LLM引擎推理（模拟实现）"""
+        logger.warning(
+            "LLM引擎使用mock实现，返回硬编码预测值。生产环境需接入真实LLM API。"
+        )
+
         start_time = time.perf_counter()
 
         try:
-            # 模拟LLM推理结果
-            # 实际应用中应调用真实LLM API
             mock_prediction = np.array([0.8, 0.15, 0.05])
 
             processing_time = (time.perf_counter() - start_time) * 1000
@@ -535,6 +548,10 @@ class HybridInferenceEngine:
                 engine=EngineType.LLM,
                 model_name="LLM-GPT",
                 processing_time_ms=processing_time,
+                metadata={
+                    "mock": True,
+                    "note": "LLM engine is a stub — hardcoded prediction",
+                },
             )
 
             return result
@@ -552,13 +569,29 @@ class HybridInferenceEngine:
         task: TaskInput,
         decision: RoutingDecision,
     ) -> Optional[InferenceResult]:
-        """规则引擎推理（简化实现）"""
         start_time = time.perf_counter()
 
         try:
-            # 简单规则匹配（实际应用应使用规则引擎框架）
-            description = task.task_description.lower()
+            if self.rule_engine and self.rule_engine.active_count > 0:
+                context = self._build_rule_context(task)
+                matched_rules = self.rule_engine.evaluate(context)
 
+                if matched_rules:
+                    processing_time = (time.perf_counter() - start_time) * 1000
+                    return InferenceResult(
+                        prediction=self._apply_rule_results(matched_rules),
+                        confidence=0.7,
+                        engine_used=EngineType.RULE,
+                        model_name="ProcessRuleEngine",
+                        processing_time_ms=processing_time,
+                        metadata={
+                            "matched_rules": len(matched_rules),
+                            "rules": matched_rules,
+                            "context": context,
+                        },
+                    )
+
+            description = task.task_description.lower()
             if "urgent" in description or "紧急" in description:
                 mock_prediction = np.array([0.9, 0.1])
             else:
@@ -570,6 +603,10 @@ class HybridInferenceEngine:
                 engine=EngineType.RULE,
                 model_name="RuleEngine-v1",
                 processing_time_ms=processing_time,
+                metadata={
+                    "fallback": True,
+                    "note": "No matching process rules, using default",
+                },
             )
 
             return result
@@ -581,6 +618,48 @@ class HybridInferenceEngine:
                 engine_used=EngineType.RULE,
                 metadata={"error": str(e)},
             )
+
+    def _load_process_rules(self) -> None:
+        """从SQLite数据库加载工艺规则并转换为LNN约束"""
+        try:
+            self.rule_engine = load_rules_to_lnn_engine()
+            if self.rule_engine and self.rule_engine.rule_count > 0:
+                logger.info(
+                    f"LNN规则引擎加载成功: {self.rule_engine.rule_count} 条规则 "
+                    f"({self.rule_engine.active_count} 条激活)"
+                )
+            else:
+                logger.info("未找到工艺规则，规则引擎将为空")
+                self.rule_engine = LnnRuleEngine()
+        except Exception as e:
+            logger.error(f"工艺规则加载失败: {e}")
+            self.rule_engine = LnnRuleEngine()
+
+    def _build_rule_context(self, task: TaskInput) -> Dict[str, Any]:
+        """从任务输入构建规则评估上下文"""
+        context = {}
+        if task.context:
+            context.update(task.context)
+        if isinstance(task.input_data, dict):
+            context.update(task.input_data)
+        return context
+
+    def _apply_rule_results(self, matched_rules: List[Dict[str, Any]]) -> np.ndarray:
+        """将匹配的规则结果转换为预测数组"""
+        if not matched_rules:
+            return np.array([0.5, 0.5])
+
+        highest = matched_rules[0]
+        result = highest.get("result", {})
+        value_str = result.get("value", "0.5")
+
+        try:
+            numeric = re.sub(r"[^\d.\-]", "", str(value_str))
+            value = float(numeric) if numeric else 0.5
+        except (ValueError, TypeError):
+            value = 0.5
+
+        return np.array([value, 1.0 - value if value <= 1.0 else 0.0])
 
     def _prepare_input(self, input_data: Any) -> np.ndarray:
         """准备输入数据"""

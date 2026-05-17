@@ -230,8 +230,12 @@ class StatePersistenceManager:
             await asyncio.to_thread(
                 self._redis.setex, key, self._heartbeat_interval * 2, data
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "Failed to save heartbeat state to Redis: agent=%s error=%s",
+                state.agent_id,
+                e,
+            )
 
     async def _load_redis(self, agent_id: str) -> Optional[AgentState]:
         if not self._redis:
@@ -245,8 +249,10 @@ class StatePersistenceManager:
                 )
                 raw = self._migration_engine.migrate(raw)
                 return AgentState.from_dict(raw)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "Failed to load state from Redis: agent=%s error=%s", agent_id, e
+            )
         return None
 
     async def _save_db(self, state: AgentState):
@@ -254,7 +260,7 @@ class StatePersistenceManager:
             return
         try:
             session = await self._db_session_factory()
-            raw_data = json.dumps(state.to_dict(), ensure_ascii=False)
+            json.dumps(state.to_dict(), ensure_ascii=False)
             compressed = self._compressor.should_compress(state.session_context)
             import sqlalchemy as sa
 
@@ -475,8 +481,10 @@ class StatePersistenceManager:
         if self._redis:
             try:
                 await asyncio.to_thread(self._redis.delete, self._redis_key(agent_id))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    "Failed to delete state from Redis: agent=%s error=%s", agent_id, e
+                )
         if self._db_session_factory:
             try:
                 session = await self._db_session_factory()
@@ -757,7 +765,7 @@ class StateRecoveryManager:
             if task_status and task_status_str in ("in_progress", "running"):
                 if state.checkpoint and task_runner:
                     try:
-                        run_result = (
+                        (
                             await task_runner(state.current_task_id, state.checkpoint)
                             if asyncio.iscoroutinefunction(task_runner)
                             else task_runner(state.current_task_id, state.checkpoint)
@@ -775,7 +783,7 @@ class StateRecoveryManager:
                         result["error"] = str(e)
                 if task_runner:
                     try:
-                        run_result = (
+                        (
                             await task_runner(state.current_task_id, None)
                             if asyncio.iscoroutinefunction(task_runner)
                             else task_runner(state.current_task_id, None)
@@ -944,7 +952,8 @@ async def create_state_persistence(
                     )
                 from sqlalchemy.orm import Session  # noqa: F811
 
-                db_session_factory = lambda: Session(sync_engine)
+                def db_session_factory():
+                    return Session(sync_engine)
             except Exception:
                 db_session_factory = None
 
@@ -952,5 +961,4 @@ async def create_state_persistence(
         redis_client=redis_client,
         db_session_factory=db_session_factory,
         checkpoint_base_dir=checkpoint_dir,
-        audit_logger=audit_logger,
     )

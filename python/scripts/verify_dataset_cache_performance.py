@@ -15,15 +15,15 @@ import io
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-import time
-import json
-import tempfile
-import shutil
-import numpy as np
+import time  # noqa: E402
+import json  # noqa: E402
+import tempfile  # noqa: E402
+import shutil  # noqa: E402
+import numpy as np  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.ai.lnn.training.dataset_cache import DatasetCache
+from app.ai.lnn.training.dataset_cache import DatasetCache  # noqa: E402
 
 
 def simulate_hdf5_load_and_extract(
@@ -96,7 +96,7 @@ def verify_performance():
 
         features, labels, original_load_time = simulate_hdf5_load_and_extract(test_file)
 
-        cache_key = cache.put(test_file, features, labels)
+        cache.put(test_file, features, labels)
         print(f"  首次加载时间（无缓存）: {original_load_time * 1000:.2f}ms")
 
         cache_hit_times = []

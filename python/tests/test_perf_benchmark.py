@@ -403,7 +403,7 @@ class TestPerformanceBenchmarkRunner:
             current_before = list(Path(tmp).glob("current_results_*.json"))
             assert len(current_before) >= 1
 
-            original = current_before[-1]
+            current_before[-1]
             runner2 = PerformanceBenchmarkRunner(
                 history_dir=tmp,
                 output_dir=tmp,

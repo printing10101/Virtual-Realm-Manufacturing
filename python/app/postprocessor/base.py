@@ -29,6 +29,12 @@ class BasePostProcessor(ABC):
         safe_z_height: float = 50.0,
         rapid_feed: float = 10000,
     ) -> None:
+        if decimal_places < 0:
+            raise ValueError(f"decimal_places must be >= 0, got {decimal_places}")
+        if safe_z_height <= 0:
+            raise ValueError(f"safe_z_height must be > 0, got {safe_z_height}")
+        if rapid_feed <= 0:
+            raise ValueError(f"rapid_feed must be > 0, got {rapid_feed}")
         self.decimal_places = decimal_places
         self.safe_z_height = safe_z_height
         self.rapid_feed = rapid_feed
@@ -36,6 +42,31 @@ class BasePostProcessor(ABC):
     def _fmt(self, value: float) -> str:
         """将数值格式化为指定小数位数的字符串。"""
         return f"{value:.{self.decimal_places}f}"
+
+    @staticmethod
+    def _calc_arc_radius(
+        end: Tuple[float, float, float],
+        center: Tuple[float, float, float],
+    ) -> float:
+        """计算圆弧半径 sqrt((ex-cx)² + (ey-cy)²)。"""
+        return ((end[0] - center[0]) ** 2 + (end[1] - center[1]) ** 2) ** 0.5
+
+    @staticmethod
+    def _format_coolant(state: str) -> str:
+        """统一冷却液格式化。
+
+        Args:
+            state: 冷却液状态，"on"开启，"off"关闭
+
+        Returns:
+            "on" -> "M08", "off" -> "M09", 否则返回空字符串
+        """
+        state_lower = state.lower()
+        if state_lower == "on":
+            return "M08"
+        if state_lower == "off":
+            return "M09"
+        return ""
 
     @abstractmethod
     def format_header(self, program_number: int = 1) -> str:

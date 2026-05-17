@@ -12,10 +12,7 @@
 
 from __future__ import annotations
 
-import json
 import tempfile
-import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -25,7 +22,6 @@ from app.projects.project_store import (
     ProjectMetadata,
     ResourceEntry,
     ProjectManifest,
-    PROJECT_FORMAT_VERSION,
     PROJECT_FILE_EXTENSION,
     PROJECT_FORMAT_VERSION as CURRENT_VERSION,
 )
@@ -52,6 +48,7 @@ class TestProjectMetadata:
         m = ProjectMetadata()
         old = m.modified_at
         import time
+
         time.sleep(0.002)
         m.touch()
         assert m.modified_at != old
@@ -97,7 +94,9 @@ class TestProjectManifest:
         m = ProjectManifest(
             metadata=ProjectMetadata(name="测试工程"),
             resources=[
-                ResourceEntry(type="model", path="models/stock.stl", original_name="stock.stl")
+                ResourceEntry(
+                    type="model", path="models/stock.stl", original_name="stock.stl"
+                )
             ],
             data={"stock_definition": {"length": 100}},
             extensions={"custom_plugin": {"enabled": True}},
@@ -199,7 +198,10 @@ class TestProjectManifest:
 
     def test_extensions_field(self):
         m = ProjectManifest()
-        m.extensions = {"simulation_result": {"task_id": "sim_001"}, "lnn_model": {"name": "CFC-Fast"}}
+        m.extensions = {
+            "simulation_result": {"task_id": "sim_001"},
+            "lnn_model": {"name": "CFC-Fast"},
+        }
         d = m.to_dict()
         assert "extensions" in d
         assert d["extensions"]["lnn_model"]["name"] == "CFC-Fast"
@@ -208,7 +210,7 @@ class TestProjectManifest:
 class TestProjectStore:
     def test_init(self):
         with tempfile.TemporaryDirectory() as tmp:
-            store = ProjectStore(tmp)
+            ProjectStore(tmp)
             assert Path(tmp).exists()
 
     def test_create_project(self):
@@ -229,7 +231,11 @@ class TestProjectStore:
             manifest = store.create_project(name="保存测试")
 
             manifest.add_resource("model", "models/stock.stl", "stock.stl")
-            manifest.data["stock_definition"] = {"length": 100, "width": 80, "height": 30}
+            manifest.data["stock_definition"] = {
+                "length": 100,
+                "width": 80,
+                "height": 30,
+            }
 
             output = Path(tmp) / "save_test.vrm"
             save_path = store.save_project(manifest, output)
@@ -331,7 +337,7 @@ class TestProjectStore:
             path = Path(tmp) / "to_delete.vrm"
             store.save_project(manifest, path)
             assert path.exists() or (path.parent / (path.name + ".vrm")).exists()
-            actual_path = path if path.exists() else (path.parent / (path.name + ".vrm"))
+            path if path.exists() else (path.parent / (path.name + ".vrm"))
             store.delete_project(path)
             assert not path.exists()
 
@@ -351,7 +357,9 @@ class TestProjectStore:
             metadata=ProjectMetadata(name="完整测试", author="测试者"),
             resources=[
                 ResourceEntry(type="model", path="models/a.stl", original_name="a.stl"),
-                ResourceEntry(type="drawing", path="drawings/b.dxf", original_name="b.dxf"),
+                ResourceEntry(
+                    type="drawing", path="drawings/b.dxf", original_name="b.dxf"
+                ),
             ],
             data={
                 "stock_definition": {"length": 200, "width": 150, "height": 50},
@@ -381,7 +389,13 @@ class TestProjectStore:
         assert d1["version"] == d2["version"]
         assert d1["metadata"]["name"] == d2["metadata"]["name"]
         assert len(d1["resources"]) == len(d2["resources"])
-        assert d1["data"]["stock_definition"]["length"] == d2["data"]["stock_definition"]["length"]
+        assert (
+            d1["data"]["stock_definition"]["length"]
+            == d2["data"]["stock_definition"]["length"]
+        )
         assert len(d1["data"]["tool_selection"]) == len(d2["data"]["tool_selection"])
         assert len(d1["data"]["process_steps"]) == len(d2["data"]["process_steps"])
-        assert d1["extensions"]["lnn_model"]["name"] == d2["extensions"]["lnn_model"]["name"]
+        assert (
+            d1["extensions"]["lnn_model"]["name"]
+            == d2["extensions"]["lnn_model"]["name"]
+        )

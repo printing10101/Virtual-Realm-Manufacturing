@@ -27,6 +27,16 @@ const router = createRouter({
       path: '/task-history',
       name: 'task-history',
       component: () => import('../views/TaskHistory.vue')
+    },
+    {
+      path: '/rule-editor',
+      name: 'rule-editor',
+      component: () => import('../views/RuleEditor.vue')
+    },
+    {
+      path: '/toolpath-editor',
+      name: 'toolpath-editor',
+      component: () => import('../components/toolpath-editor/ToolpathEditor.vue')
     }
   ]
 })

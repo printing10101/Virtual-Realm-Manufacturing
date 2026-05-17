@@ -404,7 +404,7 @@ class Test4_DashboardDataValidation:
         budget_enforcer.record_usage(
             BudgetLevel.GLOBAL, "default", ResourceType.GPU_TIME, 2000.0
         )
-        result = budget_enforcer.enforce(
+        budget_enforcer.enforce(
             BudgetLevel.GLOBAL, "default", ResourceType.GPU_TIME, 0.0
         )
 
@@ -715,7 +715,7 @@ class Test7_BudgetPeriodReset:
             agent_id="agent_01",
         )
 
-        yesterday = now - 172800
+        now - 172800
         cost_tracker.record_gpu_time(
             task_id="yesterday_task",
             gpu_seconds=3600.0,

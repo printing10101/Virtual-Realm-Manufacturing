@@ -8,14 +8,13 @@
 - LNN集成: 引擎规则加载和推理
 """
 
-import json
 import os
 import pytest
 import tempfile
 from pathlib import Path
-from datetime import datetime
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.database.rule_db import (
@@ -102,7 +101,9 @@ class TestRuleDatabase:
         for i in range(5):
             rule = ProcessRule(
                 name=f"规则{i}",
-                conditions=[RuleCondition(parameter="材料", operator="=", value="45钢")],
+                conditions=[
+                    RuleCondition(parameter="材料", operator="=", value="45钢")
+                ],
                 result=RuleResult(parameter="切深", operator="<=", value="2"),
                 status="active" if i < 3 else "draft",
                 group_id=group.id if i < 2 else None,
@@ -126,7 +127,9 @@ class TestRuleDatabase:
         for i in range(3):
             rule = ProcessRule(
                 name=f"规则{i}",
-                conditions=[RuleCondition(parameter="材料", operator="=", value="45钢")],
+                conditions=[
+                    RuleCondition(parameter="材料", operator="=", value="45钢")
+                ],
                 result=RuleResult(parameter="切深", operator="<=", value="2"),
                 status="active" if i < 2 else "draft",
             )
@@ -140,7 +143,9 @@ class TestRuleDatabase:
         for i in range(3):
             rule = ProcessRule(
                 name=f"规则{i}",
-                conditions=[RuleCondition(parameter="材料", operator="=", value="45钢")],
+                conditions=[
+                    RuleCondition(parameter="材料", operator="=", value="45钢")
+                ],
                 result=RuleResult(parameter="切深", operator="<=", value="2"),
                 status="active" if i < 2 else "inactive",
                 priority=i,
@@ -174,7 +179,9 @@ class TestRuleDatabase:
             rule = ProcessRule(
                 name=f"规则{i}",
                 group_id=group.id,
-                conditions=[RuleCondition(parameter="材料", operator="=", value="45钢")],
+                conditions=[
+                    RuleCondition(parameter="材料", operator="=", value="45钢")
+                ],
                 result=RuleResult(parameter="切深", operator="<=", value="2"),
             )
             temp_db.create_rule(rule)
@@ -255,7 +262,9 @@ class TestRuleToLnnConverter:
         rules = [
             ProcessRule(
                 name=f"规则{i}",
-                conditions=[RuleCondition(parameter="材料", operator="=", value="45钢")],
+                conditions=[
+                    RuleCondition(parameter="材料", operator="=", value="45钢")
+                ],
                 result=RuleResult(parameter="切深", operator="<=", value=str(i + 1)),
                 status="active" if i < 2 else "inactive",
                 priority=i,
@@ -275,26 +284,39 @@ class TestRuleToLnnConverter:
         assert RuleToLnnConverter._map_parameter("切削速度") == "cutting_speed"
 
     def test_constraint_type_determination(self):
-        assert RuleToLnnConverter._determine_constraint_type("切深") == "cutting_parameter"
-        assert RuleToLnnConverter._determine_constraint_type("切削速度") == "cutting_parameter"
-        assert RuleToLnnConverter._determine_constraint_type("进给量") == "cutting_parameter"
-        assert RuleToLnnConverter._determine_constraint_type("材料") == "process_constraint"
+        assert (
+            RuleToLnnConverter._determine_constraint_type("切深") == "cutting_parameter"
+        )
+        assert (
+            RuleToLnnConverter._determine_constraint_type("切削速度")
+            == "cutting_parameter"
+        )
+        assert (
+            RuleToLnnConverter._determine_constraint_type("进给量")
+            == "cutting_parameter"
+        )
+        assert (
+            RuleToLnnConverter._determine_constraint_type("材料")
+            == "process_constraint"
+        )
 
 
 class TestLnnRuleEngine:
     def test_evaluate_matching_rules(self):
         engine = LnnRuleEngine()
-        engine.add_constraint(LnnConstraint(
-            name="切深限制",
-            constraint_type="process_rule",
-            conditions=[
-                {"parameter": "material", "operator": "=", "value": "45钢"},
-                {"parameter": "process_type", "operator": "=", "value": "粗铣"},
-            ],
-            logic_operator="AND",
-            result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
-            priority=10,
-        ))
+        engine.add_constraint(
+            LnnConstraint(
+                name="切深限制",
+                constraint_type="process_rule",
+                conditions=[
+                    {"parameter": "material", "operator": "=", "value": "45钢"},
+                    {"parameter": "process_type", "operator": "=", "value": "粗铣"},
+                ],
+                logic_operator="AND",
+                result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
+                priority=10,
+            )
+        )
 
         context = {"material": "45钢", "process_type": "粗铣"}
         results = engine.evaluate(context)
@@ -303,16 +325,18 @@ class TestLnnRuleEngine:
 
     def test_evaluate_non_matching_rules(self):
         engine = LnnRuleEngine()
-        engine.add_constraint(LnnConstraint(
-            name="切深限制",
-            constraint_type="process_rule",
-            conditions=[
-                {"parameter": "material", "operator": "=", "value": "45钢"},
-            ],
-            logic_operator="AND",
-            result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
-            priority=10,
-        ))
+        engine.add_constraint(
+            LnnConstraint(
+                name="切深限制",
+                constraint_type="process_rule",
+                conditions=[
+                    {"parameter": "material", "operator": "=", "value": "45钢"},
+                ],
+                logic_operator="AND",
+                result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
+                priority=10,
+            )
+        )
 
         context = {"material": "6061铝合金"}
         results = engine.evaluate(context)
@@ -320,17 +344,19 @@ class TestLnnRuleEngine:
 
     def test_evaluate_or_logic(self):
         engine = LnnRuleEngine()
-        engine.add_constraint(LnnConstraint(
-            name="OR规则",
-            constraint_type="process_rule",
-            conditions=[
-                {"parameter": "material", "operator": "=", "value": "45钢"},
-                {"parameter": "material", "operator": "=", "value": "304不锈钢"},
-            ],
-            logic_operator="OR",
-            result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
-            priority=10,
-        ))
+        engine.add_constraint(
+            LnnConstraint(
+                name="OR规则",
+                constraint_type="process_rule",
+                conditions=[
+                    {"parameter": "material", "operator": "=", "value": "45钢"},
+                    {"parameter": "material", "operator": "=", "value": "304不锈钢"},
+                ],
+                logic_operator="OR",
+                result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
+                priority=10,
+            )
+        )
 
         context = {"material": "304不锈钢"}
         results = engine.evaluate(context)
@@ -338,16 +364,18 @@ class TestLnnRuleEngine:
 
     def test_numeric_comparison(self):
         engine = LnnRuleEngine()
-        engine.add_constraint(LnnConstraint(
-            name="直径限制",
-            constraint_type="process_rule",
-            conditions=[
-                {"parameter": "tool_diameter", "operator": "<", "value": "12"},
-            ],
-            logic_operator="AND",
-            result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
-            priority=10,
-        ))
+        engine.add_constraint(
+            LnnConstraint(
+                name="直径限制",
+                constraint_type="process_rule",
+                conditions=[
+                    {"parameter": "tool_diameter", "operator": "<", "value": "12"},
+                ],
+                logic_operator="AND",
+                result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
+                priority=10,
+            )
+        )
 
         context = {"tool_diameter": 10}
         results = engine.evaluate(context)
@@ -359,20 +387,28 @@ class TestLnnRuleEngine:
 
     def test_priority_sorting(self):
         engine = LnnRuleEngine()
-        engine.add_constraint(LnnConstraint(
-            name="低优先级",
-            constraint_type="process_rule",
-            conditions=[{"parameter": "material", "operator": "=", "value": "45钢"}],
-            result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
-            priority=1,
-        ))
-        engine.add_constraint(LnnConstraint(
-            name="高优先级",
-            constraint_type="process_rule",
-            conditions=[{"parameter": "material", "operator": "=", "value": "45钢"}],
-            result={"parameter": "depth_of_cut", "operator": "<=", "value": "1"},
-            priority=10,
-        ))
+        engine.add_constraint(
+            LnnConstraint(
+                name="低优先级",
+                constraint_type="process_rule",
+                conditions=[
+                    {"parameter": "material", "operator": "=", "value": "45钢"}
+                ],
+                result={"parameter": "depth_of_cut", "operator": "<=", "value": "2"},
+                priority=1,
+            )
+        )
+        engine.add_constraint(
+            LnnConstraint(
+                name="高优先级",
+                constraint_type="process_rule",
+                conditions=[
+                    {"parameter": "material", "operator": "=", "value": "45钢"}
+                ],
+                result={"parameter": "depth_of_cut", "operator": "<=", "value": "1"},
+                priority=10,
+            )
+        )
 
         context = {"material": "45钢"}
         results = engine.evaluate(context)
@@ -382,18 +418,22 @@ class TestLnnRuleEngine:
 
     def test_get_active_constraints(self):
         engine = LnnRuleEngine()
-        engine.add_constraint(LnnConstraint(
-            name="激活规则",
-            constraint_type="process_rule",
-            conditions=[],
-            is_active=True,
-        ))
-        engine.add_constraint(LnnConstraint(
-            name="停用规则",
-            constraint_type="process_rule",
-            conditions=[],
-            is_active=False,
-        ))
+        engine.add_constraint(
+            LnnConstraint(
+                name="激活规则",
+                constraint_type="process_rule",
+                conditions=[],
+                is_active=True,
+            )
+        )
+        engine.add_constraint(
+            LnnConstraint(
+                name="停用规则",
+                constraint_type="process_rule",
+                conditions=[],
+                is_active=False,
+            )
+        )
 
         active = engine.get_active_constraints()
         assert len(active) == 1
@@ -428,7 +468,7 @@ class TestRuleIntegration:
             status="active",
             priority=5,
         )
-        created = temp_db.create_rule(rule)
+        temp_db.create_rule(rule)
 
         engine = load_rules_to_lnn_engine(temp_db)
         assert engine.rule_count == 1
@@ -472,7 +512,9 @@ class TestRuleIntegration:
         for i in range(3):
             rule = ProcessRule(
                 name=f"规则{i}",
-                conditions=[RuleCondition(parameter="材料", operator="=", value="45钢")],
+                conditions=[
+                    RuleCondition(parameter="材料", operator="=", value="45钢")
+                ],
                 result=RuleResult(parameter="切深", operator="<=", value=str(i + 1)),
                 priority=i * 10,
             )
@@ -506,7 +548,11 @@ class TestRuleIntegration:
                 engine = load_rules_to_lnn_engine(db2)
                 assert engine.rule_count == 1
 
-                context = {"material": "45钢", "process_type": "粗铣", "tool_type": "立铣刀"}
+                context = {
+                    "material": "45钢",
+                    "process_type": "粗铣",
+                    "tool_type": "立铣刀",
+                }
                 results = engine.evaluate(context)
                 assert len(results) == 1
                 assert results[0]["result"]["value"] == "2"

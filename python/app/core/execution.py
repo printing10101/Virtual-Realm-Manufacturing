@@ -19,7 +19,10 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 from pathlib import Path
 
+from app.core.budget import get_budget_manager
 from app.core.cost_tracker import get_cost_tracker
+from app.core.skill_loader import get_skill_loader
+from app.core.workspace import get_resolver
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +257,7 @@ class SessionManager:
                 max_retries INTEGER DEFAULT 3,
                 created_at REAL DEFAULT (strftime('%s', 'now'))
             );
-            
+
             CREATE INDEX IF NOT EXISTS idx_session_task ON execution_sessions(task_id);
             CREATE INDEX IF NOT EXISTS idx_session_status ON execution_sessions(status);
         """)
@@ -263,8 +266,8 @@ class SessionManager:
     def create_session(self, session: ExecutionSession) -> None:
         """创建执行会话"""
         self._conn.execute(
-            """INSERT OR REPLACE INTO execution_sessions 
-               (session_id, task_id, status, checkpoint_data, started_at, 
+            """INSERT OR REPLACE INTO execution_sessions
+               (session_id, task_id, status, checkpoint_data, started_at,
                 last_updated, retry_count, max_retries)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
@@ -368,7 +371,7 @@ class SessionManager:
         cutoff = time.time() - timeout_seconds
 
         rows = self._conn.execute(
-            """SELECT * FROM execution_sessions 
+            """SELECT * FROM execution_sessions
                WHERE status IN ('running', 'preparing') AND last_updated < ?""",
             (cutoff,),
         ).fetchall()
@@ -505,24 +508,58 @@ class TaskExecutor:
     def _execute_lnn_training(
         self, workspace_context: Any, params: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """执行LNN训练任务"""
+        from app.ai.lnn.training.trainer import LNNTrainer
+
         logger.info("Executing LNN training for task %s", workspace_context.task_id)
 
+        if not workspace_context.dataset_path:
+            raise RuntimeError(
+                "LNN训练任务缺少数据集路径。请指定训练数据集的文件路径。"
+            )
+
+        trainer = LNNTrainer(
+            model_name=workspace_context.model_name,
+            dataset_path=workspace_context.dataset_path,
+            output_dir=workspace_context.model_path,
+        )
+        trainer.train(params)
+
         return {
-            "status": "training_started",
+            "status": "training_completed",
             "model_path": workspace_context.model_path,
             "dataset_path": workspace_context.dataset_path,
+            "metrics": trainer.get_metrics(),
         }
 
     def _execute_lnn_analysis(
         self, workspace_context: Any, params: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """执行LNN分析任务"""
+        from app.ai.lnn.inference.predictor import LNNPredictor
+        import numpy as np
+
         logger.info("Executing LNN analysis for task %s", workspace_context.task_id)
+
+        input_data = params.get("input_data")
+        if input_data is None:
+            raise ValueError("分析任务缺少输入数据。请在params中提供input_data。")
+
+        input_array = np.array(input_data)
+        if input_array.ndim == 1:
+            input_array = input_array.reshape(1, -1)
+
+        predictor = LNNPredictor.from_registry(
+            registry={},
+            model_name=workspace_context.model_path or "default",
+        )
+        result = predictor.predict(input_array, return_confidence=True)
 
         return {
             "status": "analysis_completed",
             "workspace": workspace_context.workspace_dir,
+            "prediction": result.value.tolist()
+            if hasattr(result.value, "tolist")
+            else result.value,
+            "confidence": result.confidence,
         }
 
 

@@ -6,7 +6,7 @@
       </template>
       <div class="about-content">
         <h3>灵境制造 V4</h3>
-        <p>版本：1.3.0</p>
+        <p>版本：1.9.0</p>
         <p>基于神经逻辑网络(LNN)的智能制造AI推理与训练API服务</p>
 
         <el-divider />

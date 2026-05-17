@@ -1,0 +1,31 @@
+[flake8]
+max-line-length = 120
+extend-ignore =
+    E203,
+    W503,
+per-file-ignores =
+    python/app/ai/agents.py:E501
+    python/app/ai/lnn/engine.py:E203
+    python/app/ai/lnn/inference/predictor.py:E501,E203
+    python/app/ai/lnn/quantization/quantizer.py:E501,E203
+    python/app/ai/lnn/tests/test_quantization.py:E402
+    python/app/ai/lnn/training/trainer.py:E501
+    python/app/cad/cadquery_gen.py:E501,E203
+    python/app/core/audit_log.py:E203
+    python/app/core/goal_chain_store.py:E501,F811
+    python/app/core/task_checkout.py:E501
+    python/app/database/rule_db.py:E501
+    python/app/rag/knowledge_base.py:E501
+    python/app/services/tool_wear_predictor.py:E501
+    python/app/services/validation_calibrator.py:E501
+    python/app/simulation/toolpath_visualizer.py:E501
+    python/app/step_import/api.py:E501
+    python/scripts/verify_cache_performance.py:E402
+    python/tests/test_error_handling_e2e.py:E501,E402
+    python/tests/test_gpu_budget_system.py:E402
+    python/tests/test_heartbeat_system.py:E402,F824
+    python/tests/test_process_trace_e2e.py:E402
+    python/tests/test_rule_api.py:E402
+    python/tests/test_rule_editor.py:E402
+    python/tests/test_skill_injection_functional.py:E402
+    python/tests/integration_test.py:F824

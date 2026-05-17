@@ -176,7 +176,7 @@ def test4_task_cancel():
     try:
         cancel_resp = requests.delete(f"{BASE_URL}/api/v1/jobs/{job_id}", timeout=10)
         elapsed = time.time() - start
-        cdata = cancel_resp.json()
+        cancel_resp.json()
 
         if cancel_resp.status_code == 200 and elapsed < 10:
             log_result(
@@ -308,7 +308,7 @@ def main():
         print("\n>>> 测试1失败，跳过测试2、3")
     else:
         # Test 2
-        stream_resp = test2_sse_connection(job_id)
+        test2_sse_connection(job_id)
         # Test 3 - needs new task since previous one might be done
         time.sleep(0.5)
 

@@ -77,7 +77,7 @@ def detect_device(device_preference: str = "auto") -> tuple[torch.device, Device
         props = torch.cuda.get_device_properties(gpu_index)
         total_mem_mb = props.total_memory / (1024**2)
         allocated_mem_mb = torch.cuda.memory_allocated(gpu_index) / (1024**2)
-        reserved_mem_mb = torch.cuda.memory_reserved(gpu_index) / (1024**2)
+        torch.cuda.memory_reserved(gpu_index) / (1024**2)
         available_mem_mb = total_mem_mb - allocated_mem_mb
 
         info = DeviceInfo(

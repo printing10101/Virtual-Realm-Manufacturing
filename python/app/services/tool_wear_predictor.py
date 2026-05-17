@@ -359,7 +359,7 @@ class ToolWearPredictor:
     def predict_remaining_life(
         self, current_wear: float, input_parameters: dict
     ) -> float:
-        material_type = input_parameters.get("material_type", "steel_45")
+        input_parameters.get("material_type", "steel_45")
         tool_type = input_parameters.get("tool_type", "carbide")
 
         tool = self._get_tool_params(tool_type)
@@ -509,7 +509,7 @@ class ToolWearPredictor:
     def calibrate_with_measurement(
         self, measured_wear: float, elapsed_time: float, input_parameters: dict
     ) -> dict[str, Any]:
-        material_type = input_parameters.get("material_type", "steel_45")
+        input_parameters.get("material_type", "steel_45")
 
         predicted_curve = self.predict_wear_curve(input_parameters)
         predicted_at_time = None

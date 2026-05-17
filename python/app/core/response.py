@@ -124,7 +124,9 @@ def manufacturing_error(
         mfg_error: app.core.error_taxonomy.ManufacturingError 实例
     """
     result: dict[str, Any] = {
-        "code": mfg_error.code,
+        "code": int(mfg_error.code[1:])
+        if mfg_error.code.startswith("E") and mfg_error.code[1:].isdigit()
+        else int(mfg_error.code),
         "error_code": mfg_error.code,
         "message": mfg_error.message,
         "severity": mfg_error.severity,

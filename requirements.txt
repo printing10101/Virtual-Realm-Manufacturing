@@ -9,6 +9,11 @@ uvicorn[standard]==0.47.0   # 0.27.0→0.47.0 (major upgrade: performance+securi
 pydantic==2.13.3        # 2.5.3→2.13.3 (feature updates, bug fixes)
 pydantic-settings==2.14.1   # 2.1.0→2.14.1 (feature updates)
 
+# 3D Geometry & Simulation
+trimesh>=4.0.0          # 三角网格处理与体素化
+rtree>=1.0.0            # 空间索引加速(trimesh依赖)
+cadquery>=2.4.0         # 参数化CAD几何生成
+
 # AI & Deep Learning
 torch==2.12.0           # 2.1.2→2.12.0 (major upgrade: stability+features)
 numpy==1.26.4           # 1.26.3→1.26.4 (minor)
@@ -18,6 +23,7 @@ scikit-learn==1.8.0     # 1.3.2→1.8.0 (major upgrade)
 # Data & Config
 pyyaml==6.0.3           # 6.0.1→6.0.3 (minor)
 python-dotenv==1.2.2    # 1.0.0→1.2.2 (CVE-2026-28684 修复)
+packaging>=24.0         # 版本解析（plugin_system, tool_wear_predictor依赖）
 matplotlib==3.10.8      # 3.8.2→3.10.8 (major upgrade)
 seaborn==0.13.2         # 0.13.1→0.13.2 (minor)
 

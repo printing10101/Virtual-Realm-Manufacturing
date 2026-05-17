@@ -1,6 +1,6 @@
 """仿真API完整测试脚本。"""
+
 import httpx
-import json
 import os
 import sys
 
@@ -28,7 +28,7 @@ print("=" * 60)
 r = httpx.get(f"{BASE}/api/health", timeout=5)
 check("HTTP 200", r.status_code == 200, f"got {r.status_code}")
 check("status=ok", r.json().get("status") == "ok", r.text)
-check("ping", httpx.get(f"{BASE}/api/health/ping").json().get("ping") == True)
+check("ping", httpx.get(f"{BASE}/api/health/ping").json().get("ping"))
 
 # ============================================================
 # TEST 2: Normal Simulation - 5+ point linear toolpath
@@ -80,7 +80,10 @@ check("collision_detected 存在", "collision_detected" in d)
 check("collision_detected 布尔类型", isinstance(d.get("collision_detected"), bool))
 check("simulation_result 存在", "simulation_result" in d)
 check("workpiece_stl_path 存在", "workpiece_stl_path" in d.get("simulation_result", {}))
-check("workpiece_stl_path 非空", bool(d.get("simulation_result", {}).get("workpiece_stl_path")))
+check(
+    "workpiece_stl_path 非空",
+    bool(d.get("simulation_result", {}).get("workpiece_stl_path")),
+)
 check("collision_details 存在", "collision_details" in d)
 check("collision_details.timestamp 存在", "timestamp" in d.get("collision_details", {}))
 check("collision_details.positions 存在", "positions" in d.get("collision_details", {}))
@@ -88,17 +91,24 @@ check("collision_details.severity 存在", "severity" in d.get("collision_detail
 check("collision_details.count 存在", "count" in d.get("collision_details", {}))
 check("task_id 存在", "task_id" in d and len(d["task_id"]) > 0)
 check("duration_seconds > 0", d.get("duration_seconds", 0) > 0)
-check("toolpath_segment_count > 5", d.get("toolpath_segment_count", 0) >= 5,
-      f"segments={d.get('toolpath_segment_count')}")
+check(
+    "toolpath_segment_count > 5",
+    d.get("toolpath_segment_count", 0) >= 5,
+    f"segments={d.get('toolpath_segment_count')}",
+)
 
 print()
 print(f"  task_id: {d.get('task_id')}")
 print(f"  collision_detected: {d.get('collision_detected')}")
-print(f"  workpiece_stl_path: {d.get('simulation_result',{}).get('workpiece_stl_path')}")
+print(
+    f"  workpiece_stl_path: {d.get('simulation_result', {}).get('workpiece_stl_path')}"
+)
 print(f"  duration_seconds: {d.get('duration_seconds')}")
-print(f"  collision_details.severity: {d.get('collision_details',{}).get('severity')}")
-print(f"  collision_details.count: {d.get('collision_details',{}).get('count')}")
-print(f"  voxel_count: {d.get('voxel_count')} / removed: {d.get('removed_voxel_count')}")
+print(f"  collision_details.severity: {d.get('collision_details', {}).get('severity')}")
+print(f"  collision_details.count: {d.get('collision_details', {}).get('count')}")
+print(
+    f"  voxel_count: {d.get('voxel_count')} / removed: {d.get('removed_voxel_count')}"
+)
 
 # ============================================================
 # TEST 3: Collision Verification - Toolpath cuts into workbench
@@ -145,9 +155,14 @@ data2 = resp2.json()
 d2 = data2.get("data", {})
 
 check("碰撞 code=0", data2.get("code") == 0)
-check("collision_detected == true", d2.get("collision_detected") == True,
-      f"got {d2.get('collision_detected')}")
-check("collision_details.count > 0", d2.get("collision_details", {}).get("count", 0) > 0)
+check(
+    "collision_detected == true",
+    d2.get("collision_detected"),
+    f"got {d2.get('collision_detected')}",
+)
+check(
+    "collision_details.count > 0", d2.get("collision_details", {}).get("count", 0) > 0
+)
 
 cd = d2.get("collision_details", {})
 print()
@@ -156,10 +171,12 @@ print(f"  collision_details.severity: {cd.get('severity')}")
 print(f"  collision_details.count: {cd.get('count')}")
 print(f"  collision_details.timestamp: {cd.get('timestamp')}")
 if cd.get("positions"):
-    print(f"  First collision position: ("
-          f"{cd['positions'][0][0]:.2f}, "
-          f"{cd['positions'][0][1]:.2f}, "
-          f"{cd['positions'][0][2]:.2f})")
+    print(
+        f"  First collision position: ("
+        f"{cd['positions'][0][0]:.2f}, "
+        f"{cd['positions'][0][1]:.2f}, "
+        f"{cd['positions'][0][2]:.2f})"
+    )
 if cd.get("segment_indices"):
     print(f"  Collision segment indices: {cd.get('segment_indices')[:5]}")
 
