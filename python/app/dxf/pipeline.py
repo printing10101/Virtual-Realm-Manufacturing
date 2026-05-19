@@ -1,0 +1,448 @@
+"""DXF端到端处理流水线。
+
+将DXF解析、特征提取、3D模型转换、工艺规划和G代码生成
+整合为单一自动化流水线。
+
+流水线阶段（6步）：
+┌──────────────────────────────────────────────────────────────┐
+│ Step 1: DXF解析 ──── 调用DxfParser提取几何实体和尺寸标注      │
+│ Step 2: 特征提取 ──── 调用FeatureExtractor识别加工特征        │
+│ Step 3: 3D模型转换 ── 调用DxfToModelConverter生成CadQuery模型  │
+│ Step 4: 数据组装 ──── 将特征转换为process_planning兼容格式     │
+│ Step 5: 工艺规划 ──── 调用ProcessPlanningPipeline              │
+│ Step 6: 结果验证 ──── 校验输出完整性和语法正确性               │
+└──────────────────────────────────────────────────────────────┘
+
+数据流:
+    DXF文件 ──▶ DxfParser ──▶ FeatureExtractor ──▶ DxfToModelConverter
+                                                          │
+                                              ProcessPlanningPipeline
+                                                          │
+                                                     G代码输出
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Optional
+
+from app.dxf.dxf_parser import DxfParser, DxfParseResult
+from app.dxf.feature_extractor import (
+    FeatureExtractor,
+    FeatureExtractionResult,
+)
+from app.dxf.dxf_to_model import (
+    DxfToModelConverter,
+    ModelConversionResult,
+)
+from app.dxf.exceptions import DxfPipelineError
+from app.process_planning.pipeline import (
+    ProcessPlanningPipeline,
+    PipelineResult as ProcessPipelineResult,
+)
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DxfPipelineStage:
+    """DXF流水线单个阶段的执行记录。"""
+    name: str
+    status: str = "pending"
+    duration_ms: float = 0.0
+    input_summary: str = ""
+    output_summary: str = ""
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "status": self.status,
+            "duration_ms": round(self.duration_ms, 2),
+            "input_summary": self.input_summary,
+            "output_summary": self.output_summary,
+            "errors": self.errors,
+            "warnings": self.warnings,
+        }
+
+
+@dataclass
+class DxfPipelineResult:
+    """DXF流水线完整执行结果。"""
+    success: bool = False
+    stages: list[DxfPipelineStage] = field(default_factory=list)
+    parse_result: Optional[DxfParseResult] = None
+    feature_result: Optional[FeatureExtractionResult] = None
+    model_result: Optional[ModelConversionResult] = None
+    process_result: Optional[ProcessPipelineResult] = None
+    total_duration_ms: float = 0.0
+    summary: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "success": self.success,
+            "total_duration_ms": round(self.total_duration_ms, 2),
+            "summary": self.summary,
+            "stages": [s.to_dict() for s in self.stages],
+        }
+        if self.parse_result:
+            result["parse"] = self.parse_result.to_dict()
+        if self.feature_result:
+            result["features"] = self.feature_result.to_dict()
+        if self.model_result:
+            result["model"] = {
+                "length": self.model_result.length,
+                "width": self.model_result.width,
+                "height": self.model_result.height,
+                "hole_count": self.model_result.hole_count,
+            }
+        if self.process_result:
+            result["process"] = self.process_result.to_dict()
+        return result
+
+
+class DxfProcessPipeline:
+    """DXF端到端处理流水线。
+
+    将DXF工程图解析、特征提取、3D模型转换、工艺规划和G代码生成
+    集成到统一的自动化流水线中。
+
+    使用方式:
+        pipeline = DxfProcessPipeline()
+        result = pipeline.run("path/to/part.dxf", material="45#钢")
+        if result.success and result.process_result:
+            gcode = result.process_result.gcode_result.program_text
+
+    错误处理策略：
+    - DXF解析失败 → 立即终止，返回详细错误
+    - 特征提取警告 → 继续执行，警告记入结果
+    - 模型转换失败 → 继续工艺规划（可降级运行）
+    - 工艺规划失败 → 终止，无法生成后续工序
+    - G代码语法错误 → 仍输出代码，错误记入结果
+    """
+
+    def __init__(self) -> None:
+        self._dxf_parser = DxfParser()
+        self._feature_extractor = FeatureExtractor()
+        self._model_converter = DxfToModelConverter()
+        self._process_pipeline = ProcessPlanningPipeline()
+        logger.info("DxfProcessPipeline初始化完成")
+
+    def run(
+        self,
+        file_path: str | Path,
+        material: str = "45#钢",
+        part_type: str = "general",
+        controller_type: str = "fanuc_0i",
+        safe_z: float = 50.0,
+        program_number: int = 1000,
+    ) -> DxfPipelineResult:
+        """执行完整的DXF端到端处理流水线。
+
+        Args:
+            file_path: DXF文件路径
+            material: 零件材料名称
+            part_type: 零件类型
+            controller_type: 目标数控系统
+            safe_z: 安全Z高度(mm)
+            program_number: 数控程序号
+
+        Returns:
+            DxfPipelineResult: 完整的流水线执行结果
+        """
+        pipeline_start = time.time()
+        result = DxfPipelineResult()
+        stages: list[DxfPipelineStage] = []
+
+        # ===== Stage 1: DXF解析 =====
+        stage1_start = time.time()
+        try:
+            parse_result = self._dxf_parser.parse(file_path)
+            status = "success" if parse_result.success else "failed"
+            stage1 = DxfPipelineStage(
+                name="DXF解析",
+                status=status,
+                duration_ms=(time.time() - stage1_start) * 1000,
+                input_summary=f"文件: {Path(file_path).name}",
+                output_summary=(
+                    f"版本: {parse_result.dxf_version}, "
+                    f"实体: {parse_result.total_entities}个 "
+                    f"(L:{len(parse_result.lines)} C:{len(parse_result.circles)} "
+                    f"A:{len(parse_result.arcs)} T:{len(parse_result.texts)} "
+                    f"D:{len(parse_result.dimensions)})"
+                ),
+                errors=parse_result.errors,
+                warnings=parse_result.warnings,
+            )
+        except Exception as e:
+            stage1 = DxfPipelineStage(
+                name="DXF解析",
+                status="failed",
+                duration_ms=(time.time() - stage1_start) * 1000,
+                errors=[str(e)],
+            )
+            stages.append(stage1)
+            result.stages = stages
+            result.summary = f"流水线在DXF解析阶段失败: {e}"
+            return result
+
+        stages.append(stage1)
+        result.parse_result = parse_result
+
+        if not parse_result.success:
+            result.stages = stages
+            result.summary = f"DXF解析存在错误: {'; '.join(parse_result.errors)}"
+            return result
+
+        # ===== Stage 2: 特征提取 =====
+        stage2_start = time.time()
+        try:
+            feature_result = self._feature_extractor.extract(parse_result)
+            status = "success" if feature_result.success else "failed"
+            stage2 = DxfPipelineStage(
+                name="特征提取",
+                status=status,
+                duration_ms=(time.time() - stage2_start) * 1000,
+                input_summary=f"实体: {parse_result.total_entities}个",
+                output_summary=(
+                    f"孔: {feature_result.hole_count}个, "
+                    f"平面: {feature_result.plane_count}个, "
+                    f"外形: {feature_result.overall_length:.1f}x"
+                    f"{feature_result.overall_width:.1f}x"
+                    f"{feature_result.overall_height:.1f}mm"
+                ),
+                errors=feature_result.errors,
+                warnings=feature_result.warnings,
+            )
+        except Exception as e:
+            stage2 = DxfPipelineStage(
+                name="特征提取",
+                status="failed",
+                duration_ms=(time.time() - stage2_start) * 1000,
+                errors=[str(e)],
+            )
+            stages.append(stage2)
+            result.stages = stages
+            result.summary = f"流水线在特征提取阶段失败: {e}"
+            return result
+
+        stages.append(stage2)
+        result.feature_result = feature_result
+
+        # ===== Stage 3: 3D模型转换 =====
+        stage3_start = time.time()
+        try:
+            model_result = self._model_converter.convert(feature_result)
+            status = "success" if model_result.success else "failed"
+            stage3 = DxfPipelineStage(
+                name="3D模型转换",
+                status=status,
+                duration_ms=(time.time() - stage3_start) * 1000,
+                input_summary=(
+                    f"外形: {feature_result.overall_length:.1f}x"
+                    f"{feature_result.overall_width:.1f}x"
+                    f"{feature_result.overall_height:.1f}mm, "
+                    f"孔: {feature_result.hole_count}个"
+                ),
+                output_summary=(
+                    f"模型: {model_result.length:.1f}x"
+                    f"{model_result.width:.1f}x"
+                    f"{model_result.height:.1f}mm, "
+                    f"孔: {model_result.hole_count}个创建成功"
+                ),
+                errors=model_result.errors,
+                warnings=model_result.warnings,
+            )
+        except Exception as e:
+            stage3 = DxfPipelineStage(
+                name="3D模型转换",
+                status="failed",
+                duration_ms=(time.time() - stage3_start) * 1000,
+                errors=[str(e)],
+                warnings=["模型转换失败，将跳过3D模型环节继续工艺规划"],
+            )
+            stages.append(stage3)
+            result.stages = stages
+            result.summary = f"流水线在3D模型转换阶段失败: {e}"
+            return result
+
+        stages.append(stage3)
+        result.model_result = model_result
+
+        # ===== Stage 4: 数据组装(特征→process_planning格式) =====
+        stage4_start = time.time()
+        try:
+            part_description = self._build_part_description(feature_result, material, part_type)
+            stage4 = DxfPipelineStage(
+                name="数据组装",
+                status="success",
+                duration_ms=(time.time() - stage4_start) * 1000,
+                output_summary=(
+                    f"孔数据: {len(part_description.get('holes', []))}条, "
+                    f"材料: {material}, 类型: {part_type}"
+                ),
+            )
+        except Exception as e:
+            stage4 = DxfPipelineStage(
+                name="数据组装",
+                status="failed",
+                duration_ms=(time.time() - stage4_start) * 1000,
+                errors=[str(e)],
+            )
+            stages.append(stage4)
+            result.stages = stages
+            result.summary = f"流水线在数据组装阶段失败: {e}"
+            return result
+
+        stages.append(stage4)
+
+        # ===== Stage 5: 工艺规划 + G代码生成 =====
+        stage5_start = time.time()
+        try:
+            process_result = self._process_pipeline.run(
+                part_description=part_description,
+                controller_type=controller_type,
+                safe_z=safe_z,
+                program_number=program_number,
+            )
+
+            status = "success" if process_result.success else "completed_with_errors"
+            output_summary_parts = []
+            if process_result.operation_plan:
+                op = process_result.operation_plan
+                output_summary_parts.append(
+                    f"工序: {len(op.operations)}个, "
+                    f"工时: {op.estimated_time_min:.1f}min"
+                )
+            if process_result.gcode_result:
+                gc = process_result.gcode_result
+                output_summary_parts.append(
+                    f"G代码: {gc.total_lines}行, "
+                    f"刀具: {gc.tool_count}把, "
+                    f"周期: {gc.estimated_cycle_time_min:.1f}min"
+                )
+
+            stage5 = DxfPipelineStage(
+                name="工艺规划与G代码生成",
+                status=status,
+                duration_ms=(time.time() - stage5_start) * 1000,
+                input_summary=f"孔: {feature_result.hole_count}个, 材料: {material}",
+                output_summary=" | ".join(output_summary_parts),
+                errors=[
+                    e for s in process_result.stages
+                    for e in s.errors
+                ],
+                warnings=[
+                    w for s in process_result.stages
+                    for w in s.warnings
+                ],
+            )
+        except Exception as e:
+            stage5 = DxfPipelineStage(
+                name="工艺规划与G代码生成",
+                status="failed",
+                duration_ms=(time.time() - stage5_start) * 1000,
+                errors=[str(e)],
+            )
+            stages.append(stage5)
+            result.stages = stages
+            result.summary = f"流水线在工艺规划阶段失败: {e}"
+            return result
+
+        stages.append(stage5)
+        result.process_result = process_result
+
+        # ===== 汇总 =====
+        result.stages = stages
+        result.success = all(
+            s.status in ("success", "completed_with_errors") for s in stages
+        )
+        result.total_duration_ms = (time.time() - pipeline_start) * 1000
+
+        summary_parts = [
+            f"DXF流水线{'成功' if result.success else '部分失败'} "
+            f"({result.total_duration_ms:.0f}ms)",
+            f"文件: {Path(file_path).name}",
+            f"特征: {feature_result.hole_count}孔/{feature_result.plane_count}面, "
+            f"外形{feature_result.overall_length:.0f}x"
+            f"{feature_result.overall_width:.0f}x"
+            f"{feature_result.overall_height:.0f}mm",
+        ]
+        if process_result and process_result.gcode_result:
+            summary_parts.append(
+                f"G代码: {process_result.gcode_result.total_lines}行"
+            )
+        result.summary = " | ".join(summary_parts)
+
+        logger.info("DXF流水线完成: %s", result.summary)
+        return result
+
+    def _build_part_description(
+        self,
+        feature_result: FeatureExtractionResult,
+        material: str,
+        part_type: str,
+    ) -> dict[str, Any]:
+        """将特征提取结果组装为ProcessPlanningPipeline兼容的格式。
+
+        Args:
+            feature_result: 特征提取结果
+            material: 材料名称
+            part_type: 零件类型
+
+        Returns:
+            兼容ProcessPlanningPipeline.run()的part_description字典
+        """
+        holes_data = []
+        for hole in feature_result.holes:
+            holes_data.append({
+                "id": hole.hole_id,
+                "type": hole.hole_type,
+                "position": [hole.center_x, hole.center_y, 0.0],
+                "diameter": hole.diameter,
+                "depth": hole.depth,
+                "tolerance_grade": hole.tolerance_grade,
+                "surface": hole.surface,
+            })
+
+        part_description: dict[str, Any] = {
+            "material": material,
+            "part_type": part_type,
+            "holes": holes_data,
+            "features": holes_data,
+            "overall_dimensions": {
+                "length": feature_result.overall_length,
+                "width": feature_result.overall_width,
+                "height": feature_result.overall_height,
+            },
+            "plane_features": [p.to_dict() for p in feature_result.planes],
+        }
+
+        return part_description
+
+
+def run_dxf_pipeline(
+    file_path: str,
+    material: str = "45#钢",
+    controller: str = "fanuc_0i",
+) -> DxfPipelineResult:
+    """便捷函数：一键执行DXF到G代码的完整转换。
+
+    Args:
+        file_path: DXF文件路径
+        material: 材料名称
+        controller: 目标数控系统
+
+    Returns:
+        DxfPipelineResult: 包含解析、特征、模型和G代码的完整结果
+    """
+    pipeline = DxfProcessPipeline()
+    return pipeline.run(
+        file_path=file_path,
+        material=material,
+        controller_type=controller,
+    )

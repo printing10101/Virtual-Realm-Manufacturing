@@ -1,20 +1,45 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
+export interface LogSettings {
+  logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+  maxFileSizeMB: number
+  retentionDays: number
+  exportDays: number
+}
+
 export interface AppSettings {
   aiMode: 'local' | 'cloud'
   localModel: string
   device: 'cpu' | 'cuda'
   offlineMode: boolean
+  logSettings: LogSettings
 }
 
 const STORAGE_KEY = 'lingjing_settings'
+
+function getDefaultLogSettings(): LogSettings {
+  return {
+    logLevel: 'INFO',
+    maxFileSizeMB: 50,
+    retentionDays: 30,
+    exportDays: 7,
+  }
+}
 
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      return { ...getDefaultSettings(), ...JSON.parse(raw) }
+      const parsed = JSON.parse(raw)
+      return {
+        ...getDefaultSettings(),
+        ...parsed,
+        logSettings: {
+          ...getDefaultLogSettings(),
+          ...(parsed.logSettings || {}),
+        },
+      }
     }
   } catch {
     // ignore parse errors
@@ -28,6 +53,7 @@ function getDefaultSettings(): AppSettings {
     localModel: 'qwen2.5:7b',
     device: 'cpu',
     offlineMode: false,
+    logSettings: getDefaultLogSettings(),
   }
 }
 
@@ -46,5 +72,12 @@ export const useSettingsStore = defineStore('settings', () => {
     settings.value = getDefaultSettings()
   }
 
-  return { settings, saveSettings, resetSettings }
+  function updateLogSettings(partial: Partial<LogSettings>) {
+    settings.value.logSettings = {
+      ...settings.value.logSettings,
+      ...partial,
+    }
+  }
+
+  return { settings, saveSettings, resetSettings, updateLogSettings }
 })

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "material_45steel",
+    "name": "45#钢",
+    "category": "carbon_steel",
+    "density_gcm3": 7.85,
+    "hardness_hb": 200,
+    "tensile_strength_mpa": 600,
+    "cutting_performance": "good",
+    "description": "常用中碳钢，切削性能良好，广泛用于机械零件加工"
+  },
+  {
+    "id": "material_al6061",
+    "name": "铝合金6061",
+    "category": "aluminum",
+    "density_gcm3": 2.7,
+    "hardness_hb": 95,
+    "tensile_strength_mpa": 310,
+    "cutting_performance": "excellent",
+    "description": "常用铝合金，切削性能优良，适合高速加工"
+  },
+  {
+    "id": "material_ss304",
+    "name": "不锈钢304",
+    "category": "stainless_steel",
+    "density_gcm3": 7.93,
+    "hardness_hb": 187,
+    "tensile_strength_mpa": 520,
+    "cutting_performance": "fair",
+    "description": "常用奥氏体不锈钢，切削性能一般，需注意加工硬化"
+  },
+  {
+    "id": "material_40cr",
+    "name": "40Cr",
+    "category": "alloy_steel",
+    "density_gcm3": 7.85,
+    "hardness_hb": 241,
+    "tensile_strength_mpa": 980,
+    "cutting_performance": "good_after_treatment",
+    "description": "合金结构钢，调质后切削性能改善，用于重要零件"
+  }
+]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging.config
+import os
 import time
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from starlette.responses import Response, JSONResponse
 from app.api.v1.sse import sse_manager
 from app.core.cors_config import cors_settings
 from app.core.auth import AuthMiddleware
+from app.core.jwt_auth import JwtAuthMiddleware
 from app.core.exception_handlers import register_exception_handlers
 from app.core.request_id import RequestIdMiddleware, get_request_id
 from app.core.logging_config import configure_logging
@@ -27,7 +29,7 @@ from app.core.ring_buffer import get_ring_log_buffer, BUFFER_TYPES
 from app.config import config
 from app.version import get_version_info, VERSION as PY_VERSION
 from app.agent.middleware import AgentAuthMiddleware
-from app.api.v1 import lnn, wear_prediction, user_sovereignty, agent_gateway, jobs
+from app.api.v1 import lnn, wear_prediction, user_sovereignty, agent_gateway, jobs, health, auth, users
 from app.rag import routes as rag_routes
 from app.ai import ollama_routes
 from app.simulation import api as simulation_api
@@ -35,9 +37,13 @@ from app.projects import project_api as project_routes
 from app.step_import import api as step_import_api
 from app.rules import router as rules_router
 
+_log_root = os.environ.get("LNN_LOG_DIR", str(Path(config.paths.gstack_dir).parent / "logs"))
 configure_logging(
     level=logging.INFO,
-    log_file=str(Path(config.paths.gstack_dir) / "app.log"),
+    log_root=_log_root,
+    module_name="python",
+    max_bytes=50 * 1024 * 1024,
+    retention_days=30,
 )
 logger = logging.getLogger(__name__)
 
@@ -78,6 +84,17 @@ async def startup_event():
     shutdown_handler.setup()
     await ring_log.start()
     await idle_middleware.start_idle_checker()
+
+    from app.database.models import init_db
+    from app.core.task_system import AsyncTaskManager
+    from app.services.redis_client import get_redis
+
+    await init_db()
+    await get_redis()
+
+    task_mgr = AsyncTaskManager()
+    await task_mgr.initialize(max_concurrent=config.tasks.max_concurrent)
+
     ring_log.append(
         "system_event",
         level="INFO",
@@ -100,6 +117,16 @@ async def shutdown_event():
     )
     await ring_log.stop()
     await sse_manager.shutdown()
+
+    from app.core.task_system import AsyncTaskManager
+    from app.database.connection import close_db
+    from app.services.redis_client import close_redis
+
+    task_mgr = AsyncTaskManager()
+    await task_mgr.shutdown()
+    await close_redis()
+    await close_db()
+
     logger.info("FastAPI shutdown event completed")
 
 
@@ -156,6 +183,9 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     AuthMiddleware, enabled=auth_enabled, permission_enforced=permission_enforced
 )
+
+jwt_auth_enabled = os.environ.get("LNN_JWT_AUTH_ENABLED", "true").lower() == "true"
+app.add_middleware(JwtAuthMiddleware, enabled=jwt_auth_enabled)
 
 
 @app.get("/api/metrics")
@@ -242,6 +272,9 @@ app.include_router(simulation_api.router)
 app.include_router(project_routes.router)
 app.include_router(step_import_api.router)
 app.include_router(rules_router)
+app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(users.router)
 
 register_exception_handlers(app)
 

@@ -29,7 +29,19 @@ PUBLIC_ENDPOINTS = {
     "/api/health",
     "/api/health/ping",
     "/api/metrics",
+    "/api/v1/auth/register",
+    "/api/v1/auth/login",
+    "/api/v1/auth/refresh",
+    "/api/v1/auth/logout",
+    "/api/v1/auth/me",
+    "/health",
 }
+
+JWT_PUBLIC_PREFIXES = [
+    "/api/docs",
+    "/api/redoc",
+    "/api/openapi",
+]
 
 
 def _get_token_metadata(token: str) -> dict:
@@ -119,9 +131,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         if (
             path in PUBLIC_ENDPOINTS
-            or path.startswith("/api/docs")
-            or path.startswith("/api/redoc")
-            or path.startswith("/api/openapi")
+            or any(path.startswith(prefix) for prefix in JWT_PUBLIC_PREFIXES)
         ):
             return await call_next(request)
 

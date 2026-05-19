@@ -68,6 +68,8 @@ MAX_CONCURRENT_TRAINING_TASKS = 3
 _active_training_tasks: set[str] = set()
 _training_semaphore = asyncio.Semaphore(MAX_CONCURRENT_TRAINING_TASKS)
 
+task_manager = AsyncTaskManager()
+
 
 async def _broadcast_error(task_id: str, code: str, message: str):
     """Broadcast error message via SSE."""
@@ -662,8 +664,6 @@ async def dry_run_training(request: LNNTrainDryRunRequest):
 async def _execute_training_task(
     task_id, model_name, data_path, hyperparameters, device
 ):
-    mgr = AsyncTaskManager()
-
     async def training_executor(cancel_evt, progress_updater):
         return await run_training_task_v2(
             task_id,
@@ -675,7 +675,7 @@ async def _execute_training_task(
             progress_updater,
         )
 
-    await mgr.execute_task(task_id, training_executor)
+    await task_manager.execute_task(task_id, training_executor)
 
 
 _TRAINING_QUEUES: dict = {}
@@ -792,7 +792,6 @@ def _run_training_in_thread(task_id, model_name, data_path, hyperparameters, dev
 async def _broadcast_training_events(task_id):
     import queue as std_queue
 
-    mgr = AsyncTaskManager()
     q = _TRAINING_QUEUES.get(task_id)
     if not q:
         return
@@ -806,35 +805,55 @@ async def _broadcast_training_events(task_id):
             log_msg = f"[BROADCAST] {task_id}: {event_type}"
             print(f"  {log_msg}", flush=True)
             if event_type == "progress":
-                await mgr._broadcast_event(task_id, "progress", data)
+                await task_manager._broadcast_event(task_id, "progress", data)
             elif event_type == "complete":
-                async with mgr._task_lock:
-                    if task_id in mgr._tasks:
-                        mgr._tasks[task_id].status = TaskStatus.COMPLETED
-                        mgr._tasks[task_id].progress = 100.0
-                        mgr._tasks[task_id].completed_at = __import__("time").time()
-                await mgr._broadcast_event(task_id, "complete", data)
+                record = await task_manager.get_task(task_id)
+                if record:
+                    record.status = TaskStatus.COMPLETED
+                    record.progress = 100.0
+                    record.completed_at = __import__("time").time()
+                    record.result = data.get("result")
+                    await task_manager._persist_task_to_db(record)
+                    await task_manager._broadcast_event(task_id, "complete", data)
+                    if task_id in task_manager._tasks:
+                        task_manager._tasks[task_id].status = TaskStatus.COMPLETED
+                        task_manager._tasks[task_id].progress = 100.0
+                        task_manager._tasks[task_id].completed_at = __import__("time").time()
+                        task_manager._tasks[task_id].result = data.get("result")
                 break
             elif event_type == "cancelled":
-                async with mgr._task_lock:
-                    if task_id in mgr._tasks:
-                        mgr._tasks[task_id].status = TaskStatus.CANCELLED
-                        mgr._tasks[task_id].completed_at = __import__("time").time()
-                await mgr._broadcast_event(task_id, "cancelled", data)
+                record = await task_manager.get_task(task_id)
+                if record:
+                    record.status = TaskStatus.CANCELLED
+                    record.completed_at = __import__("time").time()
+                    await task_manager._persist_task_to_db(record)
+                    await task_manager._broadcast_event(task_id, "cancelled", data)
+                    if task_id in task_manager._tasks:
+                        task_manager._tasks[task_id].status = TaskStatus.CANCELLED
+                        task_manager._tasks[task_id].completed_at = __import__("time").time()
                 break
             elif event_type == "failed":
-                async with mgr._task_lock:
-                    if task_id in mgr._tasks:
-                        mgr._tasks[task_id].status = TaskStatus.FAILED
-                        mgr._tasks[task_id].error = data.get("error", "")
-                        mgr._tasks[task_id].completed_at = __import__("time").time()
-                await mgr._broadcast_event(task_id, "failed", data)
+                record = await task_manager.get_task(task_id)
+                if record:
+                    record.status = TaskStatus.FAILED
+                    record.error = data.get("error", "")
+                    record.completed_at = __import__("time").time()
+                    await task_manager._persist_task_to_db(record)
+                    await task_manager._broadcast_event(task_id, "failed", data)
+                    if task_id in task_manager._tasks:
+                        task_manager._tasks[task_id].status = TaskStatus.FAILED
+                        task_manager._tasks[task_id].error = data.get("error", "")
+                        task_manager._tasks[task_id].completed_at = __import__("time").time()
                 break
             elif event_type == "started":
-                async with mgr._task_lock:
-                    if task_id in mgr._tasks:
-                        mgr._tasks[task_id].status = TaskStatus.RUNNING
-                await mgr._broadcast_event(task_id, "started", data)
+                record = await task_manager.get_task(task_id)
+                if record:
+                    record.status = TaskStatus.RUNNING
+                    record.started_at = __import__("time").time()
+                    await task_manager._persist_task_to_db(record)
+                    await task_manager._broadcast_event(task_id, "started", data)
+                    if task_id in task_manager._tasks:
+                        task_manager._tasks[task_id].status = TaskStatus.RUNNING
         except std_queue.Empty:
             if cancel_evt.is_set():
                 break
@@ -850,9 +869,7 @@ async def train_lnn(
 ):
     """Start LNN training asynchronously. Returns job_id immediately."""
     try:
-        mgr = AsyncTaskManager()
-
-        existing = await mgr.create_task(
+        existing = await task_manager.create_task(
             TaskType.LNN_TRAINING,
             {
                 "model_name": request.model_name,
@@ -887,7 +904,7 @@ async def train_lnn(
         def cancel_training_hook():
             cancel_evt.set()
 
-        mgr.register_cancel_hook(task_id, cancel_training_hook)
+        task_manager.register_cancel_hook(task_id, cancel_training_hook)
 
         thread = threading.Thread(
             target=_run_training_in_thread,
@@ -1026,11 +1043,17 @@ async def validate_model(model_name: str):
 
 @router.get("/health")
 async def health_check():
-    """LNN 系统健康检查"""
+    """LNN 系统健康检查（包含持久层状态）"""
     try:
         model_count = len(model_registry.registry)
         active_tasks = len(_active_training_tasks)
         total_slots = MAX_CONCURRENT_TRAINING_TASKS
+
+        from app.database.connection import check_db_health
+        from app.services.redis_client import check_redis_health
+
+        db_health = await check_db_health()
+        redis_health = await check_redis_health()
 
         health_status = {
             "status": "healthy" if model_count > 0 else "degraded",
@@ -1038,6 +1061,10 @@ async def health_check():
             "active_training_tasks": active_tasks,
             "available_training_slots": total_slots - active_tasks,
             "max_concurrent_tasks": total_slots,
+            "persistence": {
+                "postgres": db_health,
+                "redis": redis_health,
+            },
         }
 
         return success(data=health_status, message="Health check completed")
@@ -1053,15 +1080,22 @@ async def health_check():
 async def list_training_tasks():
     """列出所有训练任务"""
     try:
+        tasks = await task_manager.list_tasks(
+            task_type=TaskType.LNN_TRAINING, limit=200, offset=0
+        )
+
         tasks_list = []
-        for task_id, task_info in training_tasks.items():
+        for t in tasks:
+            td = t.to_dict()
             tasks_list.append(
                 {
-                    "task_id": task_id,
-                    "status": task_info["status"],
-                    "message": task_info["message"],
-                    "metrics": task_info.get("metrics"),
-                    "is_active": task_id in _active_training_tasks,
+                    "task_id": t.job_id,
+                    "status": t.status.value,
+                    "progress": t.progress,
+                    "message": td.get("error", ""),
+                    "metrics": td.get("metrics"),
+                    "created_at": td.get("created_at_iso", ""),
+                    "duration_seconds": td.get("duration_seconds"),
                 }
             )
 
@@ -1300,18 +1334,16 @@ async def sse_event_generator(task_id: str, client_id: str):
 async def stream_training_status(task_id: str):
     """
     SSE endpoint for real-time training status updates.
-
-    Clients connect to this endpoint to receive live training progress,
-    completion, and error events for the specified task.
     """
-    if task_id not in training_tasks:
+    record = await task_manager.get_task(task_id)
+    if not record:
         return error(
             code=ErrorCode.NOT_FOUND,
             message=f"Training task '{task_id}' not found",
         )
 
     client_id = f"client_{uuid.uuid4().hex[:8]}"
-    logger.info(f"Client {client_id} connecting to SSE stream for task {task_id}")
+    logger.info("Client %s connecting to SSE stream for task %s", client_id, task_id)
 
     return StreamingResponse(
         sse_event_generator(task_id, client_id),
@@ -1326,26 +1358,32 @@ async def stream_training_status(task_id: str):
 
 @router.post("/train/{task_id}/cancel")
 async def cancel_training_task(task_id: str):
-    """Cancel a running training task via SSE signal."""
-    if task_id not in training_tasks:
+    """Cancel a running training task."""
+
+    record = await task_manager.get_task(task_id)
+    if not record:
         return error(
             code=ErrorCode.NOT_FOUND,
             message=f"Training task '{task_id}' not found",
         )
 
-    if task_id not in _active_training_tasks:
+    if record.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"Training task '{task_id}' is not currently running",
+            message=f"Training task '{task_id}' is already {record.status.value}",
         )
 
     await sse_manager.signal_cancel(task_id)
-    training_tasks[task_id]["status"] = "cancelling"
-    training_tasks[task_id]["message"] = "Training cancellation requested"
+
+    if task_id in training_tasks:
+        training_tasks[task_id]["status"] = "cancelling"
+        training_tasks[task_id]["message"] = "Training cancellation requested"
+
+    result = await task_manager.cancel_task(task_id)
 
     return success(
-        data={"task_id": task_id, "status": "cancelling"},
-        message="Training cancellation requested",
+        data={"task_id": task_id, "status": "cancelled" if result else "cancelling"},
+        message="Training cancellation processed",
     )
 
 
@@ -1907,9 +1945,7 @@ async def batch_inference(
 ):
     """Start batch inference asynchronously. Returns job_id immediately."""
     try:
-        mgr = AsyncTaskManager()
-
-        record = await mgr.create_task(
+        record = await task_manager.create_task(
             TaskType.LNN_BATCH_INFERENCE,
             {
                 "model_name": request.model_name,
@@ -1929,7 +1965,7 @@ async def batch_inference(
                 progress_updater,
             )
 
-        asyncio.create_task(mgr.execute_task(record.job_id, batch_executor))
+        asyncio.create_task(task_manager.execute_task(record.job_id, batch_executor))
 
         return success(
             data={"job_id": record.job_id, "status": "queued"},

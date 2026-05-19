@@ -1,0 +1,637 @@
+"""DXF文件解析模块。
+
+基于ezdxf库实现DXF工程图文件的完整解析。
+支持DXF R12、R14及AutoCAD 2000-2021版本（AC1009-AC1032）。
+
+提取的实体类型：
+- LINE: 直线段，含起点/终点坐标、图层、颜色
+- CIRCLE: 圆，含圆心坐标、半径、图层、颜色
+- ARC: 圆弧，含圆心坐标、半径、起止角度、图层、颜色
+- TEXT/MTEXT: 文字标注，含内容、位置、高度、图层
+- DIMENSION: 尺寸标注，含类型、测量值、关联实体、文本内容
+
+处理流程：
+    DXF文件 ──▶ ezdxf.readfile() ──▶ 遍历modelspace ──▶ 结构化数据输出
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Optional
+
+import ezdxf
+from ezdxf.document import Drawing
+from ezdxf.entities import (
+    DXFGraphic,
+    Line as EzdxfLine,
+    Circle as EzdxfCircle,
+    Arc as EzdxfArc,
+    Text as EzdxfText,
+    MText as EzdxfMText,
+    Dimension as EzdxfDimension,
+)
+
+from app.dxf.exceptions import DxfParseError, DxfFormatError
+
+logger = logging.getLogger(__name__)
+
+DXF_VERSION_MAP: dict[str, str] = {
+    "AC1009": "R12",
+    "AC1012": "R13",
+    "AC1014": "R14",
+    "AC1015": "2000",
+    "AC1018": "2004",
+    "AC1021": "2007",
+    "AC1024": "2010",
+    "AC1027": "2013",
+    "AC1032": "2018",
+}
+
+SUPPORTED_VERSIONS = frozenset(DXF_VERSION_MAP.keys())
+
+
+@dataclass
+class DxfLine:
+    """DXF直线实体。
+
+    Attributes:
+        start: 起点坐标 (x, y, z)
+        end: 终点坐标 (x, y, z)
+        layer: 图层名称
+        color: 颜色索引号 (ACI)，0=BYBLOCK, 256=BYLAYER
+        handle: 实体句柄
+        lineweight: 线宽枚举值
+    """
+    start: tuple[float, float, float]
+    end: tuple[float, float, float]
+    layer: str = "0"
+    color: int = 256
+    handle: str = ""
+    lineweight: int = -1
+
+
+@dataclass
+class DxfCircle:
+    """DXF圆实体。
+
+    Attributes:
+        center: 圆心坐标 (x, y, z)
+        radius: 半径
+        layer: 图层名称
+        color: 颜色索引号
+        handle: 实体句柄
+    """
+    center: tuple[float, float, float]
+    radius: float
+    layer: str = "0"
+    color: int = 256
+    handle: str = ""
+
+
+@dataclass
+class DxfArc:
+    """DXF圆弧实体。
+
+    Attributes:
+        center: 圆心坐标 (x, y, z)
+        radius: 半径
+        start_angle: 起始角度(度)
+        end_angle: 终止角度(度)
+        layer: 图层名称
+        color: 颜色索引号
+        handle: 实体句柄
+    """
+    center: tuple[float, float, float]
+    radius: float
+    start_angle: float
+    end_angle: float
+    layer: str = "0"
+    color: int = 256
+    handle: str = ""
+
+
+@dataclass
+class DxfText:
+    """DXF文字实体。
+
+    Attributes:
+        content: 文本内容
+        position: 插入点坐标 (x, y, z)
+        height: 文字高度
+        rotation: 旋转角度(度)
+        layer: 图层名称
+        color: 颜色索引号
+        handle: 实体句柄
+        entity_type: 实体类型 ("TEXT" 或 "MTEXT")
+    """
+    content: str
+    position: tuple[float, float, float]
+    height: float = 2.5
+    rotation: float = 0.0
+    layer: str = "0"
+    color: int = 256
+    handle: str = ""
+    entity_type: str = "TEXT"
+
+
+@dataclass
+class DxfDimension:
+    """DXF尺寸标注实体。
+
+    Attributes:
+        dim_type: 标注类型 (LINEAR/ALIGNED/ANGULAR/RADIUS/DIAMETER/ORDINATE)
+        measurement: 测量值(图形单位)
+        text: 标注文本内容(可能含公差)
+        position: 标注文本位置 (x, y, z)
+        layer: 图层名称
+        color: 颜色索引号
+        handle: 实体句柄
+        associated_entities: 关联的实体句柄列表
+    """
+    dim_type: str
+    measurement: float
+    text: str = ""
+    position: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    layer: str = "0"
+    color: int = 256
+    handle: str = ""
+    associated_entities: list[str] = field(default_factory=list)
+
+
+@dataclass
+class DxfParseResult:
+    """DXF解析结果。
+
+    Attributes:
+        file_name: 源文件名
+        file_size: 文件大小(字节)
+        dxf_version: DXF版本字符串
+        parse_time_ms: 解析耗时(毫秒)
+        lines: 直线列表
+        circles: 圆列表
+        arcs: 圆弧列表
+        texts: 文字列表
+        dimensions: 尺寸标注列表
+        entity_counts: 各类型实体数量统计
+        warnings: 解析过程中的警告
+        errors: 解析过程中的错误
+        extents: 图形范围 (min_x, min_y, max_x, max_y)
+    """
+    file_name: str = ""
+    file_size: int = 0
+    dxf_version: str = ""
+    parse_time_ms: float = 0.0
+    lines: list[DxfLine] = field(default_factory=list)
+    circles: list[DxfCircle] = field(default_factory=list)
+    arcs: list[DxfArc] = field(default_factory=list)
+    texts: list[DxfText] = field(default_factory=list)
+    dimensions: list[DxfDimension] = field(default_factory=list)
+    entity_counts: dict[str, int] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    extents: dict[str, float] = field(default_factory=dict)
+
+    @property
+    def success(self) -> bool:
+        return len(self.errors) == 0
+
+    @property
+    def total_entities(self) -> int:
+        return sum(self.entity_counts.values())
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "file_name": self.file_name,
+            "file_size": self.file_size,
+            "dxf_version": self.dxf_version,
+            "parse_time_ms": round(self.parse_time_ms, 2),
+            "entity_counts": self.entity_counts,
+            "total_entities": self.total_entities,
+            "lines_count": len(self.lines),
+            "circles_count": len(self.circles),
+            "arcs_count": len(self.arcs),
+            "texts_count": len(self.texts),
+            "dimensions_count": len(self.dimensions),
+            "extents": self.extents,
+            "warnings": self.warnings,
+            "errors": self.errors,
+            "success": self.success,
+        }
+
+
+class DxfParser:
+    """DXF文件解析器。
+
+    基于ezdxf库解析DXF文件，提取几何实体和尺寸标注信息。
+    支持AutoCAD R12至2021版本的DXF格式。
+
+    使用方式:
+        parser = DxfParser()
+        result = parser.parse("path/to/part.dxf")
+        for line in result.lines:
+            print(f"直线: {line.start} -> {line.end}")
+    """
+
+    def __init__(self) -> None:
+        logger.info("DxfParser初始化完成")
+
+    def parse(self, file_path: str | Path) -> DxfParseResult:
+        """解析DXF文件并返回结构化数据。
+
+        Args:
+            file_path: DXF文件路径
+
+        Returns:
+            DxfParseResult: 包含所有提取的几何实体和元数据
+
+        Raises:
+            DxfParseError: 文件不存在或读取失败
+            DxfFormatError: DXF格式无效或版本不支持
+        """
+        path = Path(file_path)
+        start_time = time.time()
+        result = DxfParseResult(file_name=path.name)
+
+        if not path.exists():
+            raise DxfParseError(f"DXF文件不存在: {file_path}。请检查文件路径是否正确，"
+                                f"并确认文件未被移动或删除。")
+
+        if not path.is_file():
+            raise DxfParseError(f"路径不是有效的文件: {file_path}。"
+                                f"请提供DXF文件的完整路径。")
+
+        result.file_size = path.stat().st_size
+
+        if result.file_size == 0:
+            raise DxfParseError(f"DXF文件为空(0字节): {file_path}。"
+                                f"请确认文件未被损坏。")
+
+        if result.file_size > 100 * 1024 * 1024:
+            result.warnings.append(
+                f"DXF文件过大({result.file_size / 1024 / 1024:.1f}MB)，"
+                f"解析可能需要较长时间"
+            )
+
+        try:
+            doc = ezdxf.readfile(str(path))
+        except ezdxf.DXFStructureError as e:
+            raise DxfFormatError(
+                f"DXF文件结构错误: {file_path}。文件可能已损坏或不完整。"
+                f"技术详情: {e}"
+            ) from e
+        except ezdxf.DXFVersionError as e:
+            raise DxfFormatError(
+                f"DXF版本不兼容: {file_path}。支持的版本包括R12、R14、"
+                f"AutoCAD 2000-2021。技术详情: {e}"
+            ) from e
+        except Exception as e:
+            raise DxfParseError(
+                f"DXF文件读取失败: {file_path}。错误: {e}"
+            ) from e
+
+        dxf_version = doc.dxfversion
+        result.dxf_version = f"{dxf_version} ({DXF_VERSION_MAP.get(dxf_version, '未知')})"
+
+        if dxf_version not in SUPPORTED_VERSIONS:
+            result.warnings.append(
+                f"DXF版本 {dxf_version} 不在明确支持的版本列表中，"
+                f"解析可能不完全准确"
+            )
+
+        modelspace = doc.modelspace()
+        self._extract_lines(modelspace, result)
+        self._extract_circles(modelspace, result)
+        self._extract_arcs(modelspace, result)
+        self._extract_texts(modelspace, result)
+        self._extract_dimensions(modelspace, result)
+        self._compute_extents(result)
+
+        result.entity_counts = {
+            "LINE": len(result.lines),
+            "CIRCLE": len(result.circles),
+            "ARC": len(result.arcs),
+            "TEXT": len(result.texts),
+            "DIMENSION": len(result.dimensions),
+        }
+        result.parse_time_ms = (time.time() - start_time) * 1000
+
+        logger.info(
+            "DXF解析完成: %s (版本=%s, 实体数=%d, 耗时=%.1fms)",
+            path.name,
+            dxf_version,
+            result.total_entities,
+            result.parse_time_ms,
+        )
+
+        if result.total_entities == 0:
+            result.warnings.append("DXF文件中未发现任何可识别的几何实体")
+
+        return result
+
+    def _extract_lines(
+        self, modelspace, result: DxfParseResult
+    ) -> None:
+        """提取所有LINE实体。"""
+        try:
+            query = modelspace.query("LINE")
+            for entity in query:
+                try:
+                    line = DxfLine(
+                        start=(
+                            float(entity.dxf.start.x),
+                            float(entity.dxf.start.y),
+                            float(entity.dxf.start.z) if entity.dxf.hasattr("start") and hasattr(entity.dxf.start, 'z') else 0.0,
+                        ),
+                        end=(
+                            float(entity.dxf.end.x),
+                            float(entity.dxf.end.y),
+                            float(entity.dxf.end.z) if entity.dxf.hasattr("end") and hasattr(entity.dxf.end, 'z') else 0.0,
+                        ),
+                        layer=str(entity.dxf.layer),
+                        color=self._safe_color(entity),
+                        handle=str(entity.dxf.handle),
+                    )
+                    result.lines.append(line)
+                except Exception as e:
+                    logger.debug("LINE实体提取跳过(handle=%s): %s", entity.dxf.handle, e)
+        except Exception as e:
+            result.warnings.append(f"LINE实体查询异常: {e}")
+
+    def _extract_circles(
+        self, modelspace, result: DxfParseResult
+    ) -> None:
+        """提取所有CIRCLE实体。"""
+        try:
+            query = modelspace.query("CIRCLE")
+            for entity in query:
+                try:
+                    circle = DxfCircle(
+                        center=(
+                            float(entity.dxf.center.x),
+                            float(entity.dxf.center.y),
+                            float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, 'z') else 0.0,
+                        ),
+                        radius=float(entity.dxf.radius),
+                        layer=str(entity.dxf.layer),
+                        color=self._safe_color(entity),
+                        handle=str(entity.dxf.handle),
+                    )
+                    if circle.radius > 0:
+                        result.circles.append(circle)
+                except Exception as e:
+                    logger.debug("CIRCLE实体提取跳过(handle=%s): %s", entity.dxf.handle, e)
+        except Exception as e:
+            result.warnings.append(f"CIRCLE实体查询异常: {e}")
+
+    def _extract_arcs(
+        self, modelspace, result: DxfParseResult
+    ) -> None:
+        """提取所有ARC实体。"""
+        try:
+            query = modelspace.query("ARC")
+            for entity in query:
+                try:
+                    arc = DxfArc(
+                        center=(
+                            float(entity.dxf.center.x),
+                            float(entity.dxf.center.y),
+                            float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, 'z') else 0.0,
+                        ),
+                        radius=float(entity.dxf.radius),
+                        start_angle=float(entity.dxf.start_angle),
+                        end_angle=float(entity.dxf.end_angle),
+                        layer=str(entity.dxf.layer),
+                        color=self._safe_color(entity),
+                        handle=str(entity.dxf.handle),
+                    )
+                    result.arcs.append(arc)
+                except Exception as e:
+                    logger.debug("ARC实体提取跳过(handle=%s): %s", entity.dxf.handle, e)
+        except Exception as e:
+            result.warnings.append(f"ARC实体查询异常: {e}")
+
+    def _extract_texts(
+        self, modelspace, result: DxfParseResult
+    ) -> None:
+        """提取所有TEXT和MTEXT实体。"""
+        _extract_single_text = self._extract_text_entity
+        _extract_single_mtext = self._extract_mtext_entity
+
+        try:
+            for entity in modelspace.query("TEXT"):
+                try:
+                    result.texts.append(_extract_single_text(entity))
+                except Exception:
+                    pass
+        except Exception as e:
+            result.warnings.append(f"TEXT实体查询异常: {e}")
+
+        try:
+            for entity in modelspace.query("MTEXT"):
+                try:
+                    result.texts.append(_extract_single_mtext(entity))
+                except Exception:
+                    pass
+        except Exception as e:
+            result.warnings.append(f"MTEXT实体查询异常: {e}")
+
+    @staticmethod
+    def _extract_text_entity(entity) -> DxfText:
+        return DxfText(
+            content=str(entity.dxf.text),
+            position=(
+                float(entity.dxf.insert.x),
+                float(entity.dxf.insert.y),
+                float(entity.dxf.insert.z) if entity.dxf.hasattr("insert") and hasattr(entity.dxf.insert, 'z') else 0.0,
+            ),
+            height=float(entity.dxf.height) if entity.dxf.hasattr("height") else 2.5,
+            rotation=float(entity.dxf.rotation) if entity.dxf.hasattr("rotation") else 0.0,
+            layer=str(entity.dxf.layer),
+            color=DxfParser._safe_color(entity),
+            handle=str(entity.dxf.handle),
+            entity_type="TEXT",
+        )
+
+    @staticmethod
+    def _extract_mtext_entity(entity) -> DxfText:
+        raw_text = entity.plain_text() if hasattr(entity, 'plain_text') else str(entity.dxf.text)
+        return DxfText(
+            content=raw_text,
+            position=(
+                float(entity.dxf.insert.x),
+                float(entity.dxf.insert.y),
+                float(entity.dxf.insert.z) if entity.dxf.hasattr("insert") and hasattr(entity.dxf.insert, 'z') else 0.0,
+            ),
+            height=float(entity.dxf.char_height) if entity.dxf.hasattr("char_height") else 2.5,
+            rotation=float(entity.dxf.rotation) if entity.dxf.hasattr("rotation") else 0.0,
+            layer=str(entity.dxf.layer),
+            color=DxfParser._safe_color(entity),
+            handle=str(entity.dxf.handle),
+            entity_type="MTEXT",
+        )
+
+    def _extract_dimensions(
+        self, modelspace, result: DxfParseResult
+    ) -> None:
+        """提取所有DIMENSION实体。
+
+        对每种标注类型（线性/对齐/角度/半径/直径）调用专门的提取方法。
+        对于无法确定类型的标注，尝试从文本内容推断。
+        """
+        try:
+            for entity in modelspace.query("DIMENSION"):
+                try:
+                    dim = self._extract_single_dimension(entity)
+                    if dim is not None:
+                        result.dimensions.append(dim)
+                except Exception as e:
+                    logger.debug("DIMENSION实体提取跳过(handle=%s): %s", entity.dxf.handle, e)
+        except Exception as e:
+            result.warnings.append(f"DIMENSION实体查询异常: {e}")
+
+    def _extract_single_dimension(self, entity) -> Optional[DxfDimension]:
+        """提取单个尺寸标注实体的完整信息。
+
+        利用ezdxf的Dimension对象API获取标注的几何信息、
+        测量值和关联实体，并安全包装所有属性访问以防数据缺失。
+        """
+        dim_type = self._get_dimension_type(entity)
+        measurement = self._get_measurement(entity)
+        text_content = self._get_dimension_text(entity)
+        position = self._get_dimension_position(entity)
+
+        associated = []
+        try:
+            if hasattr(entity.dxf, 'geometry'):
+                geo_handle = entity.dxf.geometry
+                if geo_handle:
+                    associated.append(str(geo_handle))
+        except Exception:
+            pass
+
+        return DxfDimension(
+            dim_type=dim_type,
+            measurement=measurement,
+            text=text_content,
+            position=position,
+            layer=str(entity.dxf.layer),
+            color=self._safe_color(entity),
+            handle=str(entity.dxf.handle),
+            associated_entities=associated,
+        )
+
+    @staticmethod
+    def _get_dimension_type(entity) -> str:
+        """根据DXF组码70判断标注类型。"""
+        dimtype_map = {
+            0: "LINEAR_ROTATED",
+            1: "ALIGNED",
+            2: "ANGULAR",
+            3: "DIAMETER",
+            4: "RADIUS",
+            5: "ANGULAR_3PT",
+            6: "ORDINATE",
+            32: "ORDINATE_X",
+            64: "ORDINATE_Y",
+            160: "ARC_LENGTH",
+        }
+        try:
+            flag = entity.dxf.dimtype
+            return dimtype_map.get(flag & 0x7F, f"UNKNOWN_{flag}")
+        except Exception:
+            return "UNKNOWN"
+
+    @staticmethod
+    def _get_measurement(entity) -> float:
+        """安全获取标注的测量值。"""
+        try:
+            return float(entity.dxf.measurement)
+        except Exception:
+            try:
+                raw_text = DxfParser._get_dimension_text(entity)
+                import re
+                nums = re.findall(r'[\d.]+', raw_text)
+                if nums:
+                    return float(nums[0])
+            except Exception:
+                pass
+            return 0.0
+
+    @staticmethod
+    def _get_dimension_text(entity) -> str:
+        """安全获取标注文本。"""
+        try:
+            text = entity.dxf.text
+            if text:
+                return str(text).strip()
+        except Exception:
+            pass
+        try:
+            return str(entity.dxf.measurement)
+        except Exception:
+            return ""
+
+    @staticmethod
+    def _get_dimension_position(entity) -> tuple[float, float, float]:
+        """安全获取标注文本位置。"""
+        try:
+            return (
+                float(entity.dxf.text_midpoint.x),
+                float(entity.dxf.text_midpoint.y),
+                float(entity.dxf.text_midpoint.z) if hasattr(entity.dxf.text_midpoint, 'z') else 0.0,
+            )
+        except Exception:
+            try:
+                return (
+                    float(entity.dxf.def_point.x),
+                    float(entity.dxf.def_point.y),
+                    float(entity.dxf.def_point.z) if hasattr(entity.dxf.def_point, 'z') else 0.0,
+                )
+            except Exception:
+                return (0.0, 0.0, 0.0)
+
+    @staticmethod
+    def _safe_color(entity) -> int:
+        """安全获取实体颜色索引。"""
+        try:
+            return int(entity.dxf.color)
+        except Exception:
+            return 256
+
+    def _compute_extents(self, result: DxfParseResult) -> None:
+        """计算图形范围。"""
+        min_x = min_y = float("inf")
+        max_x = max_y = float("-inf")
+
+        for line in result.lines:
+            min_x = min(min_x, line.start[0], line.end[0])
+            max_x = max(max_x, line.start[0], line.end[0])
+            min_y = min(min_y, line.start[1], line.end[1])
+            max_y = max(max_y, line.start[1], line.end[1])
+
+        for circle in result.circles:
+            min_x = min(min_x, circle.center[0] - circle.radius)
+            max_x = max(max_x, circle.center[0] + circle.radius)
+            min_y = min(min_y, circle.center[1] - circle.radius)
+            max_y = max(max_y, circle.center[1] + circle.radius)
+
+        for arc in result.arcs:
+            min_x = min(min_x, arc.center[0] - arc.radius)
+            max_x = max(max_x, arc.center[0] + arc.radius)
+            min_y = min(min_y, arc.center[1] - arc.radius)
+            max_y = max(max_y, arc.center[1] + arc.radius)
+
+        if min_x == float("inf"):
+            min_x = min_y = max_x = max_y = 0.0
+
+        result.extents = {
+            "min_x": round(min_x, 4),
+            "min_y": round(min_y, 4),
+            "max_x": round(max_x, 4),
+            "max_y": round(max_y, 4),
+            "width": round(max_x - min_x, 4),
+            "height": round(max_y - min_y, 4),
+        }

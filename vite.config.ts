@@ -44,6 +44,10 @@ export default defineConfig({
   envPrefix: ['VITE_', 'TAURI_'],
   build: {
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        splashscreen: resolve(__dirname, 'splashscreen.html'),
+      },
       output: {
         manualChunks: {
           'framework-vendor': ['vue', 'vue-router', 'pinia'],

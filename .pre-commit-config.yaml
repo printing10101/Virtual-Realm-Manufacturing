@@ -19,6 +19,13 @@ repos:
         additional_dependencies: []
   - repo: local
     hooks:
+      - id: version-check
+        name: Version Consistency Check
+        entry: node version-sync.js --dry-run
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
       - id: pytest
         name: Run Pytest
         entry: python -m pytest python/tests/ --tb=short

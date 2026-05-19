@@ -1,6 +1,7 @@
 """Knowledge base management for RAG system.
 
-Provides an in-memory knowledge base with ChromaDB-compatible query interface.
+Provides ChromaDB-backed semantic search with CollectionProxy adapter
+for backward compatibility.
 """
 
 from __future__ import annotations
@@ -11,6 +12,9 @@ import os
 import time
 from typing import Any
 
+from app.rag.embeddings import get_embedding_service
+from app.rag.vector_store import get_vector_store
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_KNOWLEDGE_JSON_PATH = os.path.join(
@@ -19,7 +23,7 @@ DEFAULT_KNOWLEDGE_JSON_PATH = os.path.join(
 
 
 class CollectionProxy:
-    """Proxy object that mimics ChromaDB collection API for the in-memory store."""
+    """Proxy object that mimics ChromaDB collection API for the KnowledgeStore."""
 
     def __init__(self, store: KnowledgeStore):
         self._store = store
@@ -27,7 +31,7 @@ class CollectionProxy:
     def get(self, ids=None, include=None, **kwargs):
         if include is None:
             include = ["documents", "metadatas"]
-        records = self._store.get_all()
+        records = self._store.get_all(limit=kwargs.get("limit", 100))
         if ids:
             records = [r for r in records if r["id"] in ids]
         result: dict[str, list] = {
@@ -63,10 +67,12 @@ class CollectionProxy:
         documents = documents or []
         metadatas = metadatas or []
         ids = ids or []
+        embeddings = kwargs.get("embeddings")
         for i, doc in enumerate(documents):
             doc_id = ids[i] if i < len(ids) else None
             meta = metadatas[i] if i < len(metadatas) else {}
-            self._store.add(doc, metadata=meta, doc_id=doc_id)
+            emb = embeddings[i] if embeddings and i < len(embeddings) else None
+            self._store.add(doc, metadata=meta, doc_id=doc_id, embedding=emb)
 
     def count(self):
         return self._store.count()
@@ -82,113 +88,102 @@ class CollectionProxy:
 
 
 class KnowledgeStore:
-    """Thread-safe in-memory document store with keyword-based retrieval."""
+    """ChromaDB-backed document store with semantic vector search."""
 
     def __init__(self):
-        self._documents: list[dict[str, Any]] = []
-        self._by_id: dict[str, dict[str, Any]] = {}
+        self._vs = get_vector_store()
+        self._emb = get_embedding_service()
         self._next_id = 1
 
     def add(
-        self, document: str, metadata: dict | None = None, doc_id: str | None = None
+        self,
+        document: str,
+        metadata: dict | None = None,
+        doc_id: str | None = None,
+        embedding: list[float] | None = None,
     ) -> str:
         doc_id = doc_id or f"doc_{self._next_id}"
         self._next_id += 1
-        if doc_id in self._by_id:
-            self._by_id[doc_id]["document"] = document
-            self._by_id[doc_id]["metadata"] = metadata or {}
-            self._by_id[doc_id]["updated_at"] = time.time()
-        else:
-            entry = {
-                "id": doc_id,
-                "document": document,
-                "metadata": metadata or {},
-                "created_at": time.time(),
-                "updated_at": time.time(),
-            }
-            self._documents.append(entry)
-            self._by_id[doc_id] = entry
+        if embedding is None:
+            embedding = self._emb.embed(document)
+        metadata = metadata or {}
+        metadata["updated_at"] = time.time()
+        self._vs.add(
+            ids=doc_id,
+            documents=document,
+            embeddings=embedding,
+            metadatas=metadata,
+        )
         return doc_id
 
     def query(
         self, text: str, top_k: int = 5, filters: dict | None = None
     ) -> list[dict[str, Any]]:
-        query_terms = set(text.lower().split())
-        scored: list[tuple[float, dict]] = []
-        for doc in self._documents:
-            if filters:
-                meta = doc.get("metadata", {})
-                if not all(meta.get(k) == v for k, v in filters.items()):
-                    continue
-            doc_text = doc.get("document", "").lower()
-            doc_terms = set(doc_text.split())
-            overlap = len(query_terms & doc_terms)
-            score = overlap / max(len(query_terms), 1)
-            scored.append((score, doc))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [
-            {
-                "id": d["id"],
-                "document": d["document"],
-                "metadata": d.get("metadata", {}),
-                "distance": round(1.0 - s, 4),
-            }
-            for s, d in scored[:top_k]
-        ]
+        query_embedding = self._emb.embed(text)
+        chroma_filters = None
+        if filters:
+            chroma_filters = filters
+        result = self._vs.query(
+            query_embedding=query_embedding,
+            n_results=top_k,
+            where=chroma_filters,
+        )
+        records: list[dict[str, Any]] = []
+        ids_list = result.get("ids", [[]])[0]
+        docs_list = result.get("documents", [[]])[0]
+        metas_list = result.get("metadatas", [[]])[0]
+        dists_list = result.get("distances", [[]])[0]
+        for i in range(len(ids_list)):
+            records.append({
+                "id": ids_list[i],
+                "document": docs_list[i] if i < len(docs_list) else "",
+                "metadata": metas_list[i] if i < len(metas_list) else {},
+                "distance": dists_list[i] if i < len(dists_list) else 1.0,
+            })
+        return records
 
     def query_by_source(self, source: str, query: str = "", n_results: int = 5) -> dict:
-        filtered = [
-            d for d in self._documents if d.get("metadata", {}).get("source") == source
-        ]
-        if not query:
-            records = filtered[:n_results]
+        if query:
+            query_embedding = self._emb.embed(query)
+            result = self._vs.query(
+                query_embedding=query_embedding,
+                n_results=n_results,
+                where={"source": source},
+            )
         else:
-            query_terms = set(query.lower().split())
-            scored: list[tuple[float, dict]] = []
-            for doc in filtered:
-                doc_text = doc.get("document", "").lower()
-                doc_terms = set(doc_text.split())
-                overlap = len(query_terms & doc_terms)
-                score = overlap / max(len(query_terms), 1)
-                scored.append((score, doc))
-            scored.sort(key=lambda x: x[0], reverse=True)
-            records = [d for _, d in scored[:n_results]]
-        result = {"ids": [[]], "documents": [[]], "metadatas": [[]], "distances": [[]]}
-        for r in records:
-            result["ids"][0].append(r["id"])
-            result["documents"][0].append(r["document"])
-            result["metadatas"][0].append(r.get("metadata", {}))
-            result["distances"][0].append(0.0)
+            result = self._vs.get(where={"source": source}, limit=n_results)
+            result.setdefault("distances", [[0.0] * len(result.get("ids", [[]])[0])])
+
         return result
 
     def get_all(self) -> list[dict[str, Any]]:
-        return list(self._documents)
+        return self._vs.list_documents(limit=10000)
 
     def get_by_id(self, doc_id: str) -> dict[str, Any] | None:
-        return self._by_id.get(doc_id)
+        result = self._vs.get(ids=[doc_id], limit=1)
+        ids_list = result.get("ids", [])
+        if not ids_list:
+            return None
+        docs_list = result.get("documents", [])
+        metas_list = result.get("metadatas", [])
+        return {
+            "id": ids_list[0],
+            "document": docs_list[0] if docs_list else "",
+            "metadata": metas_list[0] if metas_list else {},
+        }
 
     def delete(self, doc_id: str) -> bool:
-        before = len(self._documents)
-        self._documents = [d for d in self._documents if d["id"] != doc_id]
-        self._by_id.pop(doc_id, None)
-        return len(self._documents) < before
+        before = self._vs.count()
+        self._vs.delete(ids=[doc_id])
+        return self._vs.count() < before
 
     def delete_by_source(self, source: str) -> int:
-        before = len(self._documents)
-        removed_ids = [
-            d["id"]
-            for d in self._documents
-            if d.get("metadata", {}).get("source") == source
-        ]
-        self._documents = [
-            d for d in self._documents if d.get("metadata", {}).get("source") != source
-        ]
-        for rid in removed_ids:
-            self._by_id.pop(rid, None)
-        return before - len(self._documents)
+        before = self._vs.count()
+        self._vs.delete(where={"source": source})
+        return before - self._vs.count()
 
     def count(self) -> int:
-        return len(self._documents)
+        return self._vs.count()
 
     def load_default_knowledge(self) -> int:
         default_entries = [
@@ -238,15 +233,12 @@ class KnowledgeStore:
                 },
             },
         ]
-        added = 0
-        for entry in default_entries:
-            self.add(
-                entry["document"],
-                metadata=entry.get("metadata", {}),
-                doc_id=entry["id"],
-            )
-            added += 1
-        return added
+        documents = [e["document"] for e in default_entries]
+        embeddings = self._emb.embed_batch(documents)
+        ids = [e["id"] for e in default_entries]
+        metadatas = [e["metadata"] for e in default_entries]
+        self._vs.add(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)
+        return len(default_entries)
 
     def load_rag_json_knowledge(self, json_path: str | None = None) -> dict[str, int]:
         if json_path is None:
@@ -259,6 +251,9 @@ class KnowledgeStore:
             with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             items = data if isinstance(data, list) else data.get("entries", [])
+            batch_docs = []
+            batch_ids = []
+            batch_metas = []
             for item in items:
                 try:
                     doc_id = item.get("id") or item.get("doc_id")
@@ -271,10 +266,20 @@ class KnowledgeStore:
                     if not document:
                         stats["skipped"] += 1
                         continue
-                    self.add(document, metadata=metadata, doc_id=doc_id)
-                    stats["success"] += 1
+                    batch_docs.append(document)
+                    batch_ids.append(doc_id)
+                    batch_metas.append(metadata)
                 except Exception:
                     stats["skipped"] += 1
+            if batch_docs:
+                embeddings = self._emb.embed_batch(batch_docs)
+                self._vs.add(
+                    ids=batch_ids,
+                    documents=batch_docs,
+                    embeddings=embeddings,
+                    metadatas=batch_metas,
+                )
+                stats["success"] = len(batch_docs)
         except json.JSONDecodeError:
             stats["errors"] += 1
         except Exception:
@@ -282,11 +287,11 @@ class KnowledgeStore:
         return stats
 
     def get_stats(self) -> dict[str, Any]:
-        return {"total_documents": len(self._documents)}
+        return self._vs.get_stats()
 
 
 class KnowledgeBase:
-    """KnowledgeBase with ChromaDB-compatible API surface for in-memory store."""
+    """KnowledgeBase with ChromaDB-compatible API surface."""
 
     def __init__(self):
         self._store = KnowledgeStore()
@@ -321,7 +326,7 @@ class KnowledgeBase:
             {
                 "id": d["id"],
                 "metadata": d.get("metadata", {}),
-                "created_at": d.get("created_at"),
+                "created_at": d["metadata"].get("created_at"),
             }
             for d in self._store.get_all()[:limit]
         ]
@@ -343,5 +348,5 @@ def get_knowledge_base() -> KnowledgeBase:
     global _knowledge_base
     if _knowledge_base is None:
         _knowledge_base = KnowledgeBase()
-        logger.info("Initialized in-memory knowledge base")
+        logger.info("Initialized ChromaDB-backed knowledge base")
     return _knowledge_base

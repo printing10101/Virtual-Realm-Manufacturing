@@ -393,17 +393,19 @@ class RagRetrievalEngine:
         scored: list[tuple[dict, float]] = []
 
         for r in results:
-            score = 1.0 - min(r.get("distance", 1.0) or 1.0, 1.0)
+            distance = r.get("distance", 1.0) or 1.0
+            semantic_score = 1.0 - min(distance, 1.0)
+            score = semantic_score
             doc = r.get("document", "").lower()
             meta = r.get("metadata", {})
 
             for kw, boost in keyword_boost.items():
                 if kw.lower() in query_lower:
                     if kw.lower() in doc:
-                        score += boost * 0.15
+                        score += boost * 0.05
                     meta_str = str(meta).lower()
                     if kw.lower() in meta_str:
-                        score += boost * 0.1
+                        score += boost * 0.03
 
             scored.append((r, score))
 

@@ -36,4 +36,21 @@ app.use(router)
 
 app.config.globalProperties.$setLocale = setLocaleWithEl
 
+app.directive('permission', {
+  async mounted(el: HTMLElement, binding: any) {
+    const permCode = binding.value as string
+    if (!permCode) return
+
+    const permStore = (await import('@/stores/permissions')).usePermissionsStore()
+
+    if (!permStore.loaded) {
+      await permStore.fetchPermissions()
+    }
+
+    if (!permStore.hasPermission(permCode)) {
+      el.remove()
+    }
+  },
+})
+
 app.mount('#app')

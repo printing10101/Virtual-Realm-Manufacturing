@@ -41,6 +41,8 @@ python-multipart==0.0.28    # 0.0.6→0.0.28 (CVE-2024-53981/2026-24486/40347/42
 # Security
 cryptography==48.0.0    # 46.0.6→48.0.0 (CVE-2026-39892 修复)
 python-jose==3.5.0      # 3.3.0→3.5.0 (PYSEC-2024-232/233 修复)
+bcrypt==4.2.1           # 密码哈希
+passlib==1.7.4          # bcrypt 兼容层
 pygments==2.20.0        # 2.19.2→2.20.0 (CVE-2026-4539 修复)
 
 # LangChain Ecosystem (Security Fixes)
@@ -63,6 +65,10 @@ h5py==3.16.0            # 3.10.0→3.16.0 (major upgrade)
 # Infrastructure
 pip==26.1.1             # 26.0.1→26.1.1 (CVE-2026-3219/6357 修复)
 setuptools==81.0.0      # 63.2.0→81.0.0 (PYSEC-2022-43012/2025-49/CVE-2024-6345 修复)
+
+# Vector DB & Embedding (RAG Semantic Search)
+chromadb>=0.5.0         # 向量数据库引擎
+sentence-transformers>=3.0.0  # 本地Embedding模型（BGE-small-zh）
 
 # Testing & Dev
 pytest==9.0.3           # 7.4.4→9.0.3 (major upgrade)

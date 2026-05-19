@@ -12,13 +12,16 @@
             <el-menu :default-active="activeRoute" mode="horizontal" router class="header-menu">
               <el-menu-item index="/">{{ $t('navigation.home') }}</el-menu-item>
               <el-menu-item index="/workspace">{{ $t('navigation.workspace') }}</el-menu-item>
-              <el-menu-item index="/settings">{{ $t('navigation.settings') }}</el-menu-item>
+              <el-menu-item index="/settings" v-permission="'system:config'">{{ $t('navigation.settings') }}</el-menu-item>
               <el-menu-item index="/about">{{ $t('navigation.about') }}</el-menu-item>
-              <el-menu-item index="/rule-editor">
+              <el-menu-item index="/rule-editor" v-permission="'rule:edit'">
                 <el-icon><Setting /></el-icon>工艺规则
               </el-menu-item>
-              <el-menu-item index="/toolpath-editor">
+              <el-menu-item index="/toolpath-editor" v-permission="'toolpath:edit'">
                 <el-icon><EditPen /></el-icon>刀路编辑
+              </el-menu-item>
+              <el-menu-item index="/admin/users" v-permission="'user:manage'">
+                <el-icon><UserFilled /></el-icon>用户管理
               </el-menu-item>
             </el-menu>
           </div>

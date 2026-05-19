@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
 
 from app.rag.knowledge_base import get_knowledge_base
+from app.rag.vector_store import get_vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -119,3 +121,90 @@ async def delete_by_source(source: str):
     except Exception as e:
         logger.exception("Failed to delete by source: %s", e)
         raise HTTPException(status_code=500, detail=f"删除失败: {e}")
+
+
+@router.post("/import/file")
+async def import_document(
+    file: UploadFile = File(...),
+    chunk_size: int = Form(400),
+    chunk_overlap: int = Form(60),
+):
+    try:
+        from app.rag.document_importer import DocumentImportService
+
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=os.path.splitext(file.filename or "doc.txt")[1]
+        ) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        try:
+            service = DocumentImportService(kb)
+            result = service.import_document(
+                tmp_path,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+            )
+            return result
+        finally:
+            os.unlink(tmp_path)
+    except Exception as e:
+        logger.exception("Document import failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"文档导入失败: {e}")
+
+
+@router.post("/backup/export")
+async def export_backup(backup_dir: str = Query("./backups/rag")):
+    try:
+        vs = get_vector_store()
+        path = vs.export_backup(backup_dir)
+        return {"backup_path": path, "message": "备份导出成功"}
+    except Exception as e:
+        logger.exception("Backup export failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"备份导出失败: {e}")
+
+
+@router.post("/backup/import")
+async def import_backup(backup_dir: str = Query(..., description="备份目录路径")):
+    try:
+        vs = get_vector_store()
+        success = vs.import_backup(backup_dir)
+        if not success:
+            raise HTTPException(status_code=400, detail="备份目录不存在或无效")
+        return {"message": "备份导入成功", "document_count": vs.count()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Backup import failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"备份导入失败: {e}")
+
+
+@router.post("/maintenance/optimize")
+async def optimize_index():
+    try:
+        vs = get_vector_store()
+        success = vs.optimize_index()
+        return {"optimized": success, "document_count": vs.count()}
+    except Exception as e:
+        logger.exception("Index optimization failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"索引优化失败: {e}")
+
+
+@router.post("/maintenance/cleanup")
+async def cleanup_orphaned():
+    try:
+        vs = get_vector_store()
+        before = vs.count()
+        vs.optimize_index()
+        after = vs.count()
+        return {
+            "before": before,
+            "after": after,
+            "removed": before - after,
+        }
+    except Exception as e:
+        logger.exception("Cleanup failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"清理失败: {e}")

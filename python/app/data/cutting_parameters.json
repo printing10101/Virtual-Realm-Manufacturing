@@ -1,0 +1,54 @@
+[
+  {
+    "id": "param_45steel_hss_drill",
+    "material_id": "material_45steel",
+    "material_name": "45#钢",
+    "tool_series": "twist_drill",
+    "tool_material": "HSS",
+    "cutting_speed_min_mpm": 20,
+    "cutting_speed_max_mpm": 30,
+    "feed_min_mmpr": 0.1,
+    "feed_max_mmpr": 0.2,
+    "feed_unit": "mm/r",
+    "description": "45#钢使用HSS钻头加工的推荐切削参数"
+  },
+  {
+    "id": "param_45steel_carbide_endmill",
+    "material_id": "material_45steel",
+    "material_name": "45#钢",
+    "tool_series": "endmill",
+    "tool_material": "carbide",
+    "cutting_speed_min_mpm": 80,
+    "cutting_speed_max_mpm": 120,
+    "feed_min_mmpr": 0.05,
+    "feed_max_mmpr": 0.1,
+    "feed_unit": "mm/齿",
+    "description": "45#钢使用硬质合金立铣刀加工的推荐切削参数"
+  },
+  {
+    "id": "param_al6061_carbide_endmill",
+    "material_id": "material_al6061",
+    "material_name": "铝合金6061",
+    "tool_series": "endmill",
+    "tool_material": "carbide",
+    "cutting_speed_min_mpm": 200,
+    "cutting_speed_max_mpm": 400,
+    "feed_min_mmpr": 0.05,
+    "feed_max_mmpr": 0.15,
+    "feed_unit": "mm/齿",
+    "description": "铝合金6061使用硬质合金立铣刀加工的推荐切削参数"
+  },
+  {
+    "id": "param_ss304_hss_drill",
+    "material_id": "material_ss304",
+    "material_name": "不锈钢304",
+    "tool_series": "twist_drill",
+    "tool_material": "HSS",
+    "cutting_speed_min_mpm": 10,
+    "cutting_speed_max_mpm": 20,
+    "feed_min_mmpr": 0.08,
+    "feed_max_mmpr": 0.15,
+    "feed_unit": "mm/r",
+    "description": "不锈钢304使用HSS钻头加工的推荐切削参数"
+  }
+]
