@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>灵境制造 - 启动中</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes drawLine {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+        'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #1a1a3e 30%, #24243e 70%, #0f0c29 100%);
+      background-size: 400% 400%;
+      animation: gradientShift 8s ease infinite;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: rgba(64, 158, 255, 0.4);
+      border-radius: 50%;
+      animation: floatUp linear infinite;
+    }
+
+    @keyframes floatUp {
+      0% {
+        opacity: 0;
+        transform: translateY(0) scale(0);
+      }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% {
+        opacity: 0;
+        transform: translateY(-500px) scale(1.5);
+      }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 40px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .logo-wrapper {
+      animation: scaleIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-bottom: 24px;
+    }
+
+    .logo-svg {
+      width: 72px;
+      height: 72px;
+      filter: drop-shadow(0 0 20px rgba(64, 158, 255, 0.3));
+    }
+
+    .app-name {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #409EFF 0%, #67C3FF 50%, #409EFF 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+    }
+
+    .app-subtitle {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+      animation: fadeIn 1s ease 0.3s both;
+    }
+
+    .progress-section {
+      animation: fadeInUp 0.6s ease 0.2s both;
+      margin-bottom: 16px;
+    }
+
+    .progress-bar-outer {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-inner {
+      height: 100%;
+      background: linear-gradient(90deg, #409EFF 0%, #67C3FF 50%, #409EFF 100%);
+      background-size: 200% 100%;
+      border-radius: 3px;
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: shimmer 2s linear infinite;
+      position: relative;
+    }
+
+    .progress-bar-inner::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 100%
+      );
+      animation: shimmer 1.5s linear infinite;
+    }
+
+    .progress-percent {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.55);
+      margin-top: 8px;
+      text-align: right;
+      transition: color 0.3s ease;
+    }
+
+    .status-section {
+      animation: fadeInUp 0.6s ease 0.3s both;
+      margin-top: 20px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .status-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .status-icon.spinning {
+      animation: spin 1.2s linear infinite;
+    }
+
+    .status-text {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.8);
+      letter-spacing: 1px;
+      transition: color 0.3s ease;
+    }
+
+    .elapsed-time {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.35);
+      margin-top: 28px;
+      animation: fadeIn 1s ease 0.5s both;
+    }
+
+    .slow-warning {
+      font-size: 12px;
+      color: #e6a23c;
+      margin-top: 8px;
+      display: none;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .error-section {
+      display: none;
+      margin-top: 24px;
+      animation: fadeInUp 0.4s ease;
+    }
+
+    .error-card {
+      background: rgba(245, 108, 108, 0.1);
+      border: 1px solid rgba(245, 108, 108, 0.3);
+      border-radius: 8px;
+      padding: 16px 20px;
+      text-align: left;
+    }
+
+    .error-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .error-icon-svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .error-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f56c6c;
+    }
+
+    .error-message {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.6;
+      margin-bottom: 6px;
+    }
+
+    .error-detail {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.45);
+      line-height: 1.5;
+      word-break: break-all;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 9px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      transition: all 0.25s ease;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid #409EFF;
+      outline-offset: 2px;
+    }
+
+    .btn-retry {
+      background: linear-gradient(135deg, #409EFF 0%, #337ECC 100%);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(64, 158, 255, 0.35);
+    }
+
+    .btn-retry:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(64, 158, 255, 0.5);
+    }
+
+    .btn-retry:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 8px rgba(64, 158, 255, 0.3);
+    }
+
+    .btn-retry:disabled {
+      background: rgba(64, 158, 255, 0.4);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-log {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-log:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+
+    .btn-log:active {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .log-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 100;
+      animation: fadeIn 0.25s ease;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .log-modal {
+      background: #1e1e36;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      width: 90%;
+      max-width: 560px;
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      animation: scaleIn 0.3s ease;
+    }
+
+    .log-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .log-modal-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .log-modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .log-modal-close:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .log-modal-close:focus-visible {
+      outline: 2px solid #409EFF;
+      outline-offset: 2px;
+    }
+
+    .log-modal-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.7);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .log-modal-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .log-modal-body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+    }
+
+    .log-modal-footer {
+      display: flex;
+      gap: 8px;
+      padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      justify-content: flex-end;
+    }
+
+    .btn-export {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      padding: 7px 18px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-export:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+      .app-name {
+        font-size: 22px;
+        letter-spacing: 2px;
+      }
+      .logo-svg {
+        width: 56px;
+        height: 56px;
+      }
+      .error-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="particles" id="particles" aria-hidden="true"></div>
+
+  <main class="container" role="main" aria-label="应用启动画面">
+    <div class="logo-wrapper">
+      <svg class="logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
+        aria-label="灵境制造Logo">
+        <defs>
+          <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#409EFF"/>
+            <stop offset="50%" stop-color="#67C3FF"/>
+            <stop offset="100%" stop-color="#409EFF"/>
+          </linearGradient>
+        </defs>
+        <rect x="6" y="6" width="24" height="24" rx="4" stroke="url(#logoGrad)" stroke-width="2.5" fill="none"/>
+        <rect x="34" y="6" width="24" height="24" rx="4" stroke="url(#logoGrad)" stroke-width="2.5" fill="none"/>
+        <rect x="6" y="34" width="24" height="24" rx="4" stroke="url(#logoGrad)" stroke-width="2.5" fill="none"/>
+        <rect x="34" y="34" width="24" height="24" rx="4" stroke="url(#logoGrad)" stroke-width="2.5" fill="none"/>
+        <circle cx="18" cy="18" r="3" fill="url(#logoGrad)" opacity="0.6"/>
+        <circle cx="46" cy="18" r="3" fill="url(#logoGrad)" opacity="0.6"/>
+        <circle cx="18" cy="46" r="3" fill="url(#logoGrad)" opacity="0.6"/>
+        <circle cx="46" cy="46" r="3" fill="url(#logoGrad)" opacity="0.6"/>
+        <line x1="18" y1="24" x2="18" y2="31" stroke="url(#logoGrad)" stroke-width="1" opacity="0.4"/>
+        <line x1="46" y1="24" x2="46" y2="31" stroke="url(#logoGrad)" stroke-width="1" opacity="0.4"/>
+        <line x1="24" y1="18" x2="31" y2="18" stroke="url(#logoGrad)" stroke-width="1" opacity="0.4"/>
+        <line x1="24" y1="46" x2="31" y2="46" stroke="url(#logoGrad)" stroke-width="1" opacity="0.4"/>
+      </svg>
+    </div>
+
+    <h1 class="app-name" aria-label="灵境制造">灵境制造 V4</h1>
+    <p class="app-subtitle" role="doc-subtitle">AI驱动的智能工艺平台</p>
+
+    <div class="progress-section" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+      aria-label="启动进度 0%">
+      <div class="progress-bar-outer">
+        <div class="progress-bar-inner" id="progressBar" style="width: 0%"></div>
+      </div>
+      <div class="progress-percent" id="progressPercent">0%</div>
+    </div>
+
+    <div class="status-section">
+      <svg class="status-icon spinning" id="statusIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" stroke="#409EFF" stroke-width="2" stroke-dasharray="12 40"
+          stroke-linecap="round"/>
+      </svg>
+      <span class="status-text" id="statusText" role="status" aria-live="polite">正在准备启动环境...</span>
+    </div>
+
+    <div class="error-section" id="errorSection" role="alert">
+      <div class="error-card">
+        <div class="error-header">
+          <svg class="error-icon-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" stroke="#f56c6c" stroke-width="2"/>
+            <line x1="12" y1="8" x2="12" y2="13" stroke="#f56c6c" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="16.5" r="1.2" fill="#f56c6c"/>
+          </svg>
+          <span class="error-title">启动失败</span>
+        </div>
+        <div class="error-message" id="errorMessage"></div>
+        <div class="error-detail" id="errorDetail"></div>
+      </div>
+      <div class="error-actions">
+        <button class="btn btn-retry" id="btnRetry" type="button">
+          重试
+        </button>
+        <button class="btn btn-log" id="btnViewLog" type="button">
+          查看日志
+        </button>
+      </div>
+    </div>
+
+    <p class="elapsed-time" id="elapsedTime" aria-live="off">已用时 0 秒</p>
+    <p class="slow-warning" id="slowWarning" role="alert">启动较慢，请检查配置或网络环境</p>
+  </main>
+
+  <div class="log-modal-overlay" id="logModalOverlay" role="dialog" aria-modal="true" aria-label="启动日志">
+    <div class="log-modal">
+      <div class="log-modal-header">
+        <span class="log-modal-title">启动日志</span>
+        <button class="log-modal-close" id="btnCloseLog" aria-label="关闭日志" type="button">✕</button>
+      </div>
+      <div class="log-modal-body" id="logModalBody"></div>
+      <div class="log-modal-footer">
+        <button class="btn-export" id="btnExportLog" type="button">导出日志 (.log)</button>
+        <button class="btn-export" id="btnCopyLog" type="button">复制到剪贴板</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var progressBar = document.getElementById('progressBar');
+      var progressPercent = document.getElementById('progressPercent');
+      var progressSection = document.querySelector('.progress-section');
+      var statusText = document.getElementById('statusText');
+      var statusIcon = document.getElementById('statusIcon');
+      var elapsedTime = document.getElementById('elapsedTime');
+      var slowWarning = document.getElementById('slowWarning');
+      var errorSection = document.getElementById('errorSection');
+      var errorMessage = document.getElementById('errorMessage');
+      var errorDetail = document.getElementById('errorDetail');
+      var btnRetry = document.getElementById('btnRetry');
+      var btnViewLog = document.getElementById('btnViewLog');
+      var logModalOverlay = document.getElementById('logModalOverlay');
+      var logModalBody = document.getElementById('logModalBody');
+      var btnCloseLog = document.getElementById('btnCloseLog');
+      var btnExportLog = document.getElementById('btnExportLog');
+      var btnCopyLog = document.getElementById('btnCopyLog');
+
+      var startTime = Date.now();
+      var currentProgress = 0;
+      var currentStep = '';
+      var launchLogs = [];
+      var retrying = false;
+      var completed = false;
+
+      function appendLog(message) {
+        var now = new Date();
+        var ts = now.toISOString();
+        launchLogs.push('[' + ts + '] ' + message);
+      }
+
+      function updateElapsed() {
+        var secs = Math.floor((Date.now() - startTime) / 1000);
+        elapsedTime.textContent = '已用时 ' + secs + ' 秒';
+
+        if (secs > 30 && !completed) {
+          slowWarning.style.display = 'block';
+        }
+
+        return secs;
+      }
+
+      function setStatusIcon(type) {
+        var svgContent;
+        switch (type) {
+          case 'loading':
+            svgContent =
+              '<circle cx="12" cy="12" r="10" stroke="#409EFF" stroke-width="2" stroke-dasharray="12 40" stroke-linecap="round"/>';
+            statusIcon.className.baseVal = 'status-icon spinning';
+            break;
+          case 'success':
+            svgContent =
+              '<circle cx="12" cy="12" r="10" stroke="#67c23a" stroke-width="2" fill="none"/>' +
+              '<polyline points="7,12 10.5,16 17,9" stroke="#67c23a" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+            statusIcon.className.baseVal = 'status-icon';
+            break;
+          case 'error':
+            svgContent =
+              '<circle cx="12" cy="12" r="10" stroke="#f56c6c" stroke-width="2" fill="none"/>' +
+              '<line x1="8" y1="8" x2="16" y2="16" stroke="#f56c6c" stroke-width="2" stroke-linecap="round"/>' +
+              '<line x1="16" y1="8" x2="8" y2="16" stroke="#f56c6c" stroke-width="2" stroke-linecap="round"/>';
+            statusIcon.className.baseVal = 'status-icon';
+            break;
+          default:
+            return;
+        }
+        statusIcon.innerHTML = svgContent;
+      }
+
+      function animateProgress(target) {
+        var start = currentProgress;
+        var diff = target - start;
+        if (diff <= 0) return;
+
+        var duration = Math.min(600, Math.max(200, diff * 6));
+        var startTime = performance.now();
+
+        function step(timestamp) {
+          var elapsed = timestamp - startTime;
+          var ratio = Math.min(elapsed / duration, 1);
+          var eased = 1 - Math.pow(1 - ratio, 3);
+          var val = start + diff * eased;
+
+          progressBar.style.width = val + '%';
+          progressPercent.textContent = Math.round(val) + '%';
+          progressSection.setAttribute('aria-valuenow', Math.round(val));
+          progressSection.setAttribute('aria-label', '启动进度 ' + Math.round(val) + '%');
+
+          currentProgress = val;
+
+          if (ratio < 1 && !completed) {
+            requestAnimationFrame(step);
+          }
+        }
+
+        requestAnimationFrame(step);
+      }
+
+      function showError(payload) {
+        completed = false;
+        errorSection.style.display = 'block';
+        errorMessage.textContent = payload.error || '未知错误';
+        errorDetail.textContent = payload.error_detail || '';
+        statusText.textContent = '';
+        setStatusIcon('error');
+        btnRetry.disabled = false;
+        retrying = false;
+
+        appendLog('[ERROR] Step: ' + payload.step + ' | ' + (payload.error || '') + ' | Detail: ' + (payload.error_detail || ''));
+      }
+
+      function hideError() {
+        errorSection.style.display = 'none';
+        errorMessage.textContent = '';
+        errorDetail.textContent = '';
+        setStatusIcon('loading');
+      }
+
+      function showLogModal() {
+        logModalBody.textContent = launchLogs.join('\n');
+        logModalOverlay.style.display = 'flex';
+        btnCloseLog.focus();
+      }
+
+      function hideLogModal() {
+        logModalOverlay.style.display = 'none';
+        btnViewLog.focus();
+      }
+
+      function exportLog() {
+        var content = launchLogs.join('\n');
+        var blob = new Blob([content], { type: 'text/plain' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'lingjing_startup_' + new Date().toISOString().replace(/[:.]/g, '-') + '.log';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function copyLog() {
+        var content = launchLogs.join('\n');
+        navigator.clipboard.writeText(content).then(function () {
+          var btn = document.getElementById('btnCopyLog');
+          var orig = btn.textContent;
+          btn.textContent = '已复制!';
+          setTimeout(function () { btn.textContent = orig; }, 1500);
+        }).catch(function () {
+          alert('复制失败，请手动选择文本');
+        });
+      }
+
+      function startRetry() {
+        if (retrying) return;
+        retrying = true;
+        btnRetry.disabled = true;
+        hideError();
+        setStatusIcon('loading');
+        statusText.textContent = '正在重试...';
+
+        appendLog('[RETRY] Retrying step: ' + currentStep);
+
+        if (window.__TAURI__ && window.__TAURI__.core) {
+          window.__TAURI__.core.invoke('retry_launch_step', { step: currentStep }).catch(function (e) {
+            appendLog('[ERROR] Retry command failed: ' + e);
+            btnRetry.disabled = false;
+            retrying = false;
+          });
+        }
+      }
+
+      function createParticles() {
+        var container = document.getElementById('particles');
+        var count = 30;
+        for (var i = 0; i < count; i++) {
+          var particle = document.createElement('div');
+          particle.className = 'particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.top = (60 + Math.random() * 40) + '%';
+          particle.style.animationDuration = (6 + Math.random() * 12) + 's';
+          particle.style.animationDelay = Math.random() * 8 + 's';
+          particle.style.width = (1 + Math.random() * 2) + 'px';
+          particle.style.height = particle.style.width;
+          container.appendChild(particle);
+        }
+      }
+
+      function onProgress(payload) {
+        if (completed && payload.status !== 'error') return;
+
+        currentStep = payload.step || currentStep;
+        var secs = updateElapsed();
+
+        appendLog(
+          '[PROGRESS] ' + payload.step + ' | ' + payload.progress + '% | ' +
+          (payload.description || '') + ' | Status: ' + payload.status + ' | Elapsed: ' + secs + 's'
+        );
+
+        switch (payload.status) {
+          case 'loading':
+            hideError();
+            animateProgress(payload.progress || 0);
+            statusText.textContent = payload.description || '';
+            setStatusIcon('loading');
+            break;
+
+          case 'success':
+            animateProgress(payload.progress || 0);
+            statusText.textContent = payload.description || '';
+            setStatusIcon('success');
+            break;
+
+          case 'error':
+            animateProgress(payload.progress || 0);
+            showError(payload);
+            break;
+
+          case 'complete':
+            completed = true;
+            animateProgress(100);
+            statusText.textContent = '启动完成';
+            setStatusIcon('success');
+            slowWarning.style.display = 'none';
+            hideError();
+            appendLog('[COMPLETE] All services ready. Total time: ' + secs + 's');
+            break;
+
+          default:
+            animateProgress(payload.progress || 0);
+            statusText.textContent = payload.description || '';
+        }
+      }
+
+      function setupTauriListener() {
+        if (window.__TAURI__ && window.__TAURI__.event) {
+          window.__TAURI__.event.listen('launch-progress', function (event) {
+            var payload = event.payload;
+            if (payload) {
+              onProgress(payload);
+            }
+          }).catch(function (err) {
+            appendLog('[ERROR] Failed to listen for launch-progress events: ' + err);
+          });
+        } else {
+          var checkInterval = setInterval(function () {
+            if (window.__TAURI__ && window.__TAURI__.event) {
+              clearInterval(checkInterval);
+              window.__TAURI__.event.listen('launch-progress', function (event) {
+                var payload = event.payload;
+                if (payload) {
+                  onProgress(payload);
+                }
+              }).catch(function (err) {
+                appendLog('[ERROR] Failed to listen for launch-progress events: ' + err);
+              });
+            }
+          }, 50);
+
+          setTimeout(function () { clearInterval(checkInterval); }, 5000);
+        }
+      }
+
+      btnRetry.addEventListener('click', startRetry);
+      btnViewLog.addEventListener('click', showLogModal);
+      btnCloseLog.addEventListener('click', hideLogModal);
+      btnExportLog.addEventListener('click', exportLog);
+      btnCopyLog.addEventListener('click', copyLog);
+
+      logModalOverlay.addEventListener('click', function (e) {
+        if (e.target === logModalOverlay) {
+          hideLogModal();
+        }
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && logModalOverlay.style.display === 'flex') {
+          hideLogModal();
+        }
+      });
+
+      createParticles();
+      setupTauriListener();
+
+      appendLog('[START] Splashscreen initialized at ' + new Date().toISOString());
+    })();
+  </script>
+</body>
+</html>

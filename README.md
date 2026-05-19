@@ -169,3 +169,108 @@ git commit -m "chore: 添加新文件类型至Git LFS"
 ### CI/CD 环境
 
 所有 GitHub Actions 工作流已配置自动拉取 LFS 文件，无需额外操作。
+
+---
+
+## 安全认证令牌配置
+
+灵境制造使用 Bearer Token 进行 API 认证。每个部署实例应拥有独立的令牌，**切勿将令牌提交到版本控制系统**。
+
+### 令牌加载优先级
+
+系统按以下顺序查找令牌（优先级从高到低）：
+
+| 优先级 | 来源 | 说明 |
+|--------|------|------|
+| 1 | `LNN_TOKEN` 环境变量 | **生产环境推荐方式** |
+| 2 | `.lnn_token` 文件 | 开发环境便捷方式，自动生成 |
+| 3 | 自动生成 | 首次运行时系统自动生成 UUID 令牌 |
+
+### 配置方式
+
+#### 方式一：环境变量（推荐，用于生产环境）
+
+```bash
+# Windows PowerShell
+$env:LNN_TOKEN = "你的UUID令牌值"
+
+# macOS / Linux
+export LNN_TOKEN="你的UUID令牌值"
+```
+
+你也可以在 `.env` 文件中配置（需确保 `.env` 已在 `.gitignore` 中）：
+
+```bash
+# .env（不要提交到 Git）
+LNN_TOKEN=你的UUID令牌值
+```
+
+#### 方式二：令牌文件（用于开发环境）
+
+首次启动后端服务时，系统会自动在项目根目录生成 `.lnn_token` 文件。你也可以手动创建：
+
+```bash
+# 生成 UUID 格式的令牌
+python -c "import uuid; print(str(uuid.uuid4()))" > .lnn_token
+```
+
+> **重要**：`.lnn_token` 和 `.lnn_token_meta.json` 已在 `.gitignore` 中配置，不会被 Git 追踪。请在每次克隆仓库后重新生成令牌。
+
+### 令牌使用示例
+
+```python
+# 在 API 请求中使用令牌
+import requests
+
+headers = {
+    "Authorization": "Bearer 你的令牌值",
+    "Content-Type": "application/json",
+}
+
+response = requests.get("http://localhost:8000/api/v1/lnn/status", headers=headers)
+```
+
+```bash
+# cURL 示例
+curl -H "Authorization: Bearer 你的令牌值" http://localhost:8000/api/v1/lnn/status
+```
+
+### 令牌轮换
+
+定期轮换令牌是安全最佳实践。可通过以下方式：
+
+```bash
+# 删除现有令牌文件，重启服务将自动生成新令牌
+rm .lnn_token
+
+# 或使用环境变量覆盖
+export LNN_TOKEN=$(python -c "import uuid; print(str(uuid.uuid4()))")
+```
+
+### 安全最佳实践
+
+- **永远不要**将令牌提交到 Git 仓库
+- **定期轮换**令牌（建议每 30-90 天）
+- **生产环境**必须使用环境变量方式，不要依赖自动生成
+- **如果令牌被意外提交**，立即按以下步骤处理：
+  1. 立即在系统中使旧令牌失效
+  2. 使用 `git filter-repo` 清理 Git 历史
+  3. 生成新令牌并更新所有配置
+  4. 强制推送到远程仓库（通知团队成员）
+- **团队协作**时，每个开发者使用独立令牌
+- **CI/CD 环境**通过 Secrets 管理工具（GitHub Secrets 等）注入令牌
+
+### 令牌元数据
+
+令牌权限级别通过 `.lnn_token_meta.json` 文件管理：
+
+```json
+[
+  {
+    "token": "你的UUID令牌",
+    "level": "R"
+  }
+]
+```
+
+权限级别：`R`（只读）、`W`（读写）、`T`（训练/管理）、`A`（管理员）

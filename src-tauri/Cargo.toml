@@ -1,6 +1,6 @@
 [package]
 name = "lingjing-v4"
-version = "1.9.0"
+version = "1.10.0"
 description = "灵境制造 V4 - AI驱动的3D建模与工艺规划系统"
 edition = "2021"
 
@@ -26,10 +26,12 @@ gethostname = "0.4"
 open = "5"
 reqwest = { version = "0.11", features = ["json", "stream", "gzip", "brotli", "deflate", "blocking"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
 once_cell = "1.19"
 futures = "0.3"
 libc = "0.2"
+zip = "0.6"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

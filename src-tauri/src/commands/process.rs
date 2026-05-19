@@ -10,7 +10,6 @@ use std::time::Duration;
 use tauri::State;
 use tracing::{error, info, warn};
 
-static RESTART_ATTEMPTS: Mutex<usize> = Mutex::new(0);
 const MAX_RESTART_ATTEMPTS: usize = 3;
 const RETRY_DELAYS: [Duration; MAX_RESTART_ATTEMPTS] = [
     Duration::from_secs(1),
@@ -251,7 +250,7 @@ pub fn auto_reconnect_sidecar(
     let version = version_info.version.clone();
 
     let mut attempts = {
-        let mut lock = RESTART_ATTEMPTS.lock().map_err(|e| e.to_string())?;
+        let mut lock = state.restart_attempts.lock().map_err(|e| e.to_string())?;
         let current = *lock;
         if current >= MAX_RESTART_ATTEMPTS {
             *lock = 0;

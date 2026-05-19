@@ -1,5 +1,8 @@
 """
 Jobs API - Async task management and SSE streaming.
+
+Supports PostgreSQL-persisted task queries, Redis progress retrieval,
+and real-time SSE event streaming.
 """
 
 import asyncio
@@ -12,6 +15,9 @@ from fastapi.responses import StreamingResponse
 from app.core.response import ErrorCode, error, success
 from app.core.task_manager import TaskType, TaskStatus
 from app.core.task_system import AsyncTaskManager
+from app.models.schemas import (
+    TaskHistoryQueryRequest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +27,40 @@ task_manager = AsyncTaskManager()
 
 @router.get("/{job_id}")
 async def get_job(job_id: str):
-    """Get job status and details"""
     record = await task_manager.get_task(job_id)
     if not record:
         return error(code=ErrorCode.NOT_FOUND, message=f"Job '{job_id}' not found")
-    return success(data=record.to_dict(), message="Job retrieved")
+
+    progress_data = await task_manager.get_task_progress_from_redis(job_id)
+    result = record.to_dict()
+    if progress_data:
+        result["progress_redis"] = progress_data
+
+    return success(data=result, message="Job retrieved")
+
+
+@router.get("/{job_id}/progress")
+async def get_job_progress(job_id: str):
+    record = await task_manager.get_task(job_id)
+    if not record:
+        return error(code=ErrorCode.NOT_FOUND, message=f"Job '{job_id}' not found")
+
+    progress_data = await task_manager.get_task_progress_from_redis(job_id)
+    return success(
+        data={
+            "job_id": job_id,
+            "status": record.status.value,
+            "progress_db": record.progress,
+            "progress_redis": progress_data.get("progress"),
+            "message": progress_data.get("message", ""),
+            "metrics": progress_data.get("metrics"),
+        },
+        message="Progress retrieved",
+    )
 
 
 @router.get("/{job_id}/stream")
 async def stream_job_events(job_id: str):
-    """SSE endpoint for real-time job event streaming"""
     record = await task_manager.get_task(job_id)
     if not record:
         return error(code=ErrorCode.NOT_FOUND, message=f"Job '{job_id}' not found")
@@ -54,7 +84,7 @@ async def stream_job_events(job_id: str):
                         break
                     yield ": heartbeat\n\n"
         except asyncio.CancelledError:
-            logger.info(f"SSE stream cancelled for job {job_id}")
+            logger.info("SSE stream cancelled for job %s", job_id)
         finally:
             task_manager.unsubscribe(job_id, queue)
 
@@ -71,7 +101,6 @@ async def stream_job_events(job_id: str):
 
 @router.post("/{job_id}/cancel")
 async def cancel_job(job_id: str):
-    """Cancel a running job"""
     result = await task_manager.cancel_task(job_id)
     if not result:
         return error(
@@ -84,7 +113,6 @@ async def cancel_job(job_id: str):
 
 @router.delete("/{job_id}")
 async def delete_job(job_id: str):
-    """Cancel a running job (RESTful DELETE alias)"""
     result = await task_manager.cancel_task(job_id)
     if not result:
         return error(
@@ -99,10 +127,10 @@ async def delete_job(job_id: str):
 async def list_jobs(
     task_type: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    owner_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    """List all jobs with filters"""
     try:
         tt = TaskType(task_type) if task_type else None
     except ValueError:
@@ -122,7 +150,7 @@ async def list_jobs(
         )
 
     tasks = await task_manager.list_tasks(
-        task_type=tt, status=st, limit=limit, offset=offset
+        task_type=tt, status=st, owner_id=owner_id, limit=limit, offset=offset
     )
     total = len(tasks)
 
@@ -138,6 +166,7 @@ async def list_jobs(
                 "created_at": td.get("created_at_iso", ""),
                 "duration_seconds": td.get("duration_seconds"),
                 "owner_id": t.owner_id,
+                "error": t.error,
             }
         )
 
@@ -145,7 +174,8 @@ async def list_jobs(
         data={
             "jobs": items,
             "total": total,
-            "has_more": total >= limit,
+            "limit": limit,
+            "offset": offset,
         },
         message="Jobs retrieved",
     )
@@ -153,5 +183,4 @@ async def list_jobs(
 
 @router.get("/stats")
 async def get_task_stats():
-    """Get task system statistics"""
     return success(data=task_manager.get_stats(), message="Stats retrieved")

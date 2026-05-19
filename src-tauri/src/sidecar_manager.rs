@@ -380,6 +380,17 @@ impl SidecarManager {
         let python_path = python_dir.join("python").join("app");
         let working_dir = python_path.parent().unwrap_or(&python_dir);
 
+        let log_dir = self.state_file_manager.state_file_path
+            .parent()
+            .and_then(|p| p.parent())
+            .map(|p| p.join("logs"))
+            .unwrap_or_else(|| {
+                dirs::home_dir()
+                    .unwrap_or_default()
+                    .join(".lingjing")
+                    .join("logs")
+            });
+
         let child = Command::new("python")
             .arg("-m")
             .arg("uvicorn")
@@ -390,6 +401,7 @@ impl SidecarManager {
             .arg(&port.to_string())
             .arg("--log-level")
             .arg("warning")
+            .env("LNN_LOG_DIR", log_dir.to_string_lossy().to_string())
             .current_dir(working_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

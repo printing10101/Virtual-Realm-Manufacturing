@@ -1,5 +1,5 @@
 """
-Capability-Based Permission Model
+Capability-Based Permission Model + RBAC Permission Code Check
 
 Implements R/W/B/N/C/T six-level permission classification:
 - R (Read): LNN prediction queries, model lists, dataset info - default allow
@@ -9,16 +9,21 @@ Implements R/W/B/N/C/T six-level permission classification:
 - C (Credentials): System config, API key management - default deny, admin only
 - T (Execute): Process parameter dispatch to machines - default deny, explicit auth required
 
+Also provides RBAC permission-code-based decorators and dependency injection.
+
 Reference: QuantDinger permission model design
 """
 
 from __future__ import annotations
 import os
-import logging
 import time
+import logging
 from enum import Enum
-from typing import Dict
+from functools import wraps
+from typing import Dict, Callable, Optional, List, Set
+
 from dataclasses import dataclass, field
+from fastapi import HTTPException, status, Request
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +143,217 @@ class PermissionChecker:
 
 
 permission_checker = PermissionChecker()
+
+
+class RBACPermissionCache:
+    _instance: Optional[RBACPermissionCache] = None
+    _cache: Dict[str, tuple[Set[str], float]] = {}
+    _ttl: float = 60.0
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def get(self, role_code: str) -> Optional[Set[str]]:
+        entry = self._cache.get(role_code)
+        if entry is None:
+            return None
+        perms, expiry = entry
+        if time.time() > expiry:
+            del self._cache[role_code]
+            return None
+        return perms
+
+    def set(self, role_code: str, permissions: Set[str]):
+        self._cache[role_code] = (permissions, time.time() + self._ttl)
+
+    def invalidate(self, role_code: Optional[str] = None):
+        if role_code:
+            self._cache.pop(role_code, None)
+        else:
+            self._cache.clear()
+
+
+rbac_cache = RBACPermissionCache()
+
+
+async def _get_role_permissions_from_db(role_code: str) -> Set[str]:
+    from app.database.connection import get_sessionmaker
+    from sqlalchemy import select
+    from app.database.models import Role, Permission, RolePermission
+
+    cached = rbac_cache.get(role_code)
+    if cached is not None:
+        return cached
+
+    sessionmaker = get_sessionmaker()
+    if sessionmaker is None:
+        logger.warning("Database not configured, using default empty permissions for role: %s", role_code)
+        return set()
+
+    async with sessionmaker() as session:
+        stmt = select(Role).where(Role.code == role_code)
+        result = await session.execute(stmt)
+        role = result.scalar_one_or_none()
+        if role is None:
+            return set()
+
+        perm_stmt = (
+            select(Permission.code)
+            .join(RolePermission, RolePermission.permission_id == Permission.id)
+            .where(RolePermission.role_id == role.id)
+        )
+        result = await session.execute(perm_stmt)
+        perms = {row[0] for row in result.fetchall()}
+
+    rbac_cache.set(role_code, perms)
+    return perms
+
+
+async def get_user_permissions(username: str) -> Set[str]:
+    from app.models.user import get_user_store
+
+    store = get_user_store()
+    user = store.get_user(username)
+    if user is None:
+        return set()
+
+    return await _get_role_permissions_from_db(user.role)
+
+
+async def check_user_has_permission(username: str, required: str) -> bool:
+    perms = await get_user_permissions(username)
+    return required in perms
+
+
+async def check_user_has_any_permission(username: str, required: List[str]) -> bool:
+    perms = await get_user_permissions(username)
+    return any(p in perms for p in required)
+
+
+async def check_user_has_all_permissions(username: str, required: List[str]) -> bool:
+    perms = await get_user_permissions(username)
+    return all(p in perms for p in required)
+
+
+def require_permission(permission: str):
+    """
+    FastAPI dependency: check single permission.
+    Usage: @router.get("/path", dependencies=[Depends(require_permission("project:create"))])
+    """
+
+    async def checker(request: Request):
+        if not hasattr(request.state, "username") or not request.state.username:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+        username = request.state.username
+        has_perm = await check_user_has_permission(username, permission)
+        if not has_perm:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permission: {permission}",
+            )
+
+    return checker
+
+
+def require_any_permission(*permissions: str):
+    """
+    FastAPI dependency: check if user has at least one of the given permissions (OR logic).
+    """
+
+    async def checker(request: Request):
+        if not hasattr(request.state, "username") or not request.state.username:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+        username = request.state.username
+        has_perm = await check_user_has_any_permission(username, list(permissions))
+        if not has_perm:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permission: need any of {permissions}",
+            )
+
+    return checker
+
+
+def require_all_permissions(*permissions: str):
+    """
+    FastAPI dependency: check if user has ALL given permissions (AND logic).
+    """
+
+    async def checker(request: Request):
+        if not hasattr(request.state, "username") or not request.state.username:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+        username = request.state.username
+        has_perm = await check_user_has_all_permissions(username, list(permissions))
+        if not has_perm:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permission: need all of {permissions}",
+            )
+
+    return checker
+
+
+def permission_required(permission: str):
+    """
+    Decorator for route functions: check single permission.
+    Usage:
+        @router.get("/path")
+        @permission_required("project:create")
+        async def my_route(...):
+            ...
+    """
+
+    def decorator(func: Callable):
+        setattr(func, "_required_permission", permission)
+
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            request = kwargs.get("request")
+            if request is None:
+                for arg in args:
+                    if hasattr(arg, "state") and hasattr(arg.state, "username"):
+                        request = arg
+                        break
+
+            if request is not None and hasattr(request.state, "username") and request.state.username:
+                username = request.state.username
+                has_perm = await check_user_has_permission(username, permission)
+                if not has_perm:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Insufficient permission: {permission}",
+                    )
+
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def require_role(*roles: str):
+    """
+    FastAPI dependency: check user role.
+    Usage: @router.get("/path", dependencies=[Depends(require_role("admin"))])
+    """
+
+    async def role_checker(request: Request):
+        if not hasattr(request.state, "username") or not request.state.username:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+        role = request.state.user_role
+        if role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient role: need {roles}",
+            )
+
+    return role_checker
 
 
 class PaperOnlyGuard:

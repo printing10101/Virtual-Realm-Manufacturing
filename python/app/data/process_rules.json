@@ -1,0 +1,42 @@
+[
+  {
+    "id": "rule_rough_finish",
+    "name": "先粗后精规则",
+    "category": "sequence",
+    "description": "粗加工留0.3-0.5mm余量给精加工",
+    "details": {
+      "roughing_allowance_mm": {
+        "min": 0.3,
+        "max": 0.5
+      },
+      "rationale": "粗加工去除大部分余量，精加工保证尺寸精度和表面质量"
+    }
+  },
+  {
+    "id": "rule_face_before_hole",
+    "name": "先面后孔规则",
+    "category": "sequence",
+    "description": "先加工定位平面，再加工孔",
+    "details": {
+      "rationale": "平面为孔加工提供稳定定位基准，保证孔的位置精度"
+    }
+  },
+  {
+    "id": "rule_datum_first",
+    "name": "基准先行规则",
+    "category": "sequence",
+    "description": "先加工定位基准面",
+    "details": {
+      "rationale": "基准面是后续加工的定位依据，优先加工保证后续工序的定位精度"
+    }
+  },
+  {
+    "id": "rule_same_direction_concentration",
+    "name": "同向集中规则",
+    "category": "sequence",
+    "description": "同一方向的加工特征尽量集中加工",
+    "details": {
+      "rationale": "减少刀具更换和机床调整次数，提高加工效率和一致性"
+    }
+  }
+]

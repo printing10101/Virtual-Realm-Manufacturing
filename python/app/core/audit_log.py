@@ -2,6 +2,7 @@ import os
 import json
 import time
 import logging
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, asdict
@@ -66,15 +67,21 @@ class AuditLogEntry:
 
 class AuditLog:
     def __init__(self, log_dir: Optional[str] = None, max_entries: int = 10000):
-        self.log_dir = log_dir or os.path.join(os.getcwd(), "logs", "audit")
+        if log_dir is None:
+            _default_root = os.environ.get(
+                "LNN_LOG_DIR",
+                os.path.join(os.getcwd(), "logs"),
+            )
+            self._log_root = Path(_default_root)
+        else:
+            self._log_root = Path(log_dir)
         self.max_entries = max_entries
-        self.log_file = os.path.join(self.log_dir, "audit_log.jsonl")
 
-        Path(self.log_dir).mkdir(parents=True, exist_ok=True)
-
-        if not os.path.exists(self.log_file):
-            with open(self.log_file, "w", encoding="utf-8"):
-                pass
+    def _get_current_log_file(self) -> Path:
+        today = datetime.now().strftime("%Y-%m-%d")
+        date_dir = self._log_root / today
+        date_dir.mkdir(parents=True, exist_ok=True)
+        return date_dir / "audit.log"
 
     def log_decision(
         self,
@@ -102,20 +109,33 @@ class AuditLog:
         )
 
         try:
-            with open(self.log_file, "a", encoding="utf-8") as f:
+            log_file = self._get_current_log_file()
+            with open(log_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry.to_dict(), ensure_ascii=False) + "\n")
 
-            self._rotate_if_needed()
+            self._rotate_if_needed(log_file)
 
             logger.info(
-                f"Audit log entry created: module={ai_module.value}, "
-                f"decision={user_decision.value}, status={operation_status.value}"
+                "Audit log entry created: module=%s, decision=%s, status=%s",
+                ai_module.value,
+                user_decision.value,
+                operation_status.value,
             )
 
         except Exception as e:
-            logger.error(f"Failed to write audit log: {e}")
+            logger.error("Failed to write audit log: %s", e)
 
         return entry
+
+    def _get_all_log_files(self) -> list[Path]:
+        files: list[Path] = []
+        if self._log_root.exists():
+            for date_dir in sorted(self._log_root.iterdir()):
+                if date_dir.is_dir():
+                    audit_file = date_dir / "audit.log"
+                    if audit_file.exists():
+                        files.append(audit_file)
+        return files
 
     def get_logs(
         self,
@@ -128,32 +148,33 @@ class AuditLog:
     ) -> list[AuditLogEntry]:
         logs = []
 
-        try:
-            with open(self.log_file, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-
-                    try:
-                        data = json.loads(line)
-                        entry = AuditLogEntry.from_dict(data)
-
-                        if start_time and entry.timestamp_ms < start_time:
+        for log_file in reversed(self._get_all_log_files()):
+            if len(logs) >= offset + limit:
+                break
+            try:
+                with open(log_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
                             continue
-                        if end_time and entry.timestamp_ms > end_time:
-                            continue
-                        if ai_module and entry.ai_module != ai_module:
-                            continue
-                        if user_decision and entry.user_decision != user_decision:
-                            continue
+                        try:
+                            data = json.loads(line)
+                            entry = AuditLogEntry.from_dict(data)
 
-                        logs.append(entry)
-                    except json.JSONDecodeError:
-                        continue
+                            if start_time and entry.timestamp_ms < start_time:
+                                continue
+                            if end_time and entry.timestamp_ms > end_time:
+                                continue
+                            if ai_module and entry.ai_module != ai_module:
+                                continue
+                            if user_decision and entry.user_decision != user_decision:
+                                continue
 
-        except FileNotFoundError:
-            return []
+                            logs.append(entry)
+                        except json.JSONDecodeError:
+                            continue
+            except FileNotFoundError:
+                continue
 
         logs.sort(key=lambda x: x.timestamp_ms, reverse=True)
         return logs[offset : offset + limit]
@@ -256,33 +277,37 @@ class AuditLog:
 
         return stats
 
-    def _rotate_if_needed(self):
+    def _rotate_if_needed(self, log_file: Path):
         try:
-            with open(self.log_file, "r", encoding="utf-8") as f:
+            with open(log_file, "r", encoding="utf-8") as f:
                 lines = f.readlines()
 
             if len(lines) > self.max_entries:
                 lines = lines[-self.max_entries :]
 
-                with open(self.log_file, "w", encoding="utf-8") as f:
+                with open(log_file, "w", encoding="utf-8") as f:
                     f.writelines(lines)
 
-                logger.info(f"Audit log rotated: kept last {self.max_entries} entries")
+                logger.info(
+                    "Audit log rotated: kept last %d entries in %s",
+                    self.max_entries,
+                    log_file,
+                )
 
         except Exception as e:
-            logger.error(f"Failed to rotate audit log: {e}")
+            logger.error("Failed to rotate audit log: %s", e)
 
     def clear_logs(self) -> int:
-        try:
-            with open(self.log_file, "r", encoding="utf-8") as f:
-                count = sum(1 for line in f if line.strip())
+        count = 0
+        for log_file in self._get_all_log_files():
+            try:
+                with open(log_file, "r", encoding="utf-8") as f:
+                    count += sum(1 for line in f if line.strip())
 
-            with open(self.log_file, "w", encoding="utf-8") as f:
-                pass
+                with open(log_file, "w", encoding="utf-8") as f:
+                    pass
+            except Exception as e:
+                logger.error("Failed to clear audit log %s: %s", log_file, e)
 
-            logger.info(f"Audit log cleared: {count} entries removed")
-            return count
-
-        except Exception as e:
-            logger.error(f"Failed to clear audit log: {e}")
-            return 0
+        logger.info("Audit log cleared: %d entries removed", count)
+        return count

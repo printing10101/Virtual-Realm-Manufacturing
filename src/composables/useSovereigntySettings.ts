@@ -58,11 +58,12 @@ export function useSovereigntySettings() {
     return 'error'
   }
 
-  function handleAutonomyChange(val: number) {
-    if (val >= 3) {
+  function handleAutonomyChange(val: number | number[]) {
+    const v = Array.isArray(val) ? val[0] : val
+    if (v >= 3) {
       sovereigntySettings.require_confirmation_for_predict = false
     }
-    if (val >= 4) {
+    if (v >= 4) {
       sovereigntySettings.require_confirmation_for_train = false
     }
   }
