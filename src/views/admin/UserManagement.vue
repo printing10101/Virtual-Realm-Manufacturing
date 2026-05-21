@@ -2,43 +2,78 @@
   <div class="user-management-page">
     <div class="page-header">
       <h2>用户管理</h2>
-      <el-tag type="info">管理员专用</el-tag>
+      <el-tag type="info">
+        管理员专用
+      </el-tag>
     </div>
 
     <el-card>
-      <el-table :data="users" v-loading="loading" stripe border style="width: 100%">
-        <el-table-column prop="username" label="用户名" min-width="120" />
-        <el-table-column label="角色" min-width="140">
+      <el-table
+        v-loading="loading"
+        :data="users"
+        stripe
+        border
+        style="width: 100%"
+      >
+        <el-table-column
+          prop="username"
+          label="用户名"
+          min-width="120"
+        />
+        <el-table-column
+          label="角色"
+          min-width="140"
+        >
           <template #default="{ row }">
             <el-select
               :model-value="row.role"
-              @change="(val: string) => handleRoleChange(row.username, val)"
               size="small"
               :disabled="row.username === currentUsername"
+              @change="(val: string) => handleRoleChange(row.username, val)"
             >
-              <el-option label="管理员" value="admin" />
-              <el-option label="工程师" value="engineer" />
-              <el-option label="操作员" value="operator" />
+              <el-option
+                label="管理员"
+                value="admin"
+              />
+              <el-option
+                label="工程师"
+                value="engineer"
+              />
+              <el-option
+                label="操作员"
+                value="operator"
+              />
             </el-select>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column
+          label="状态"
+          width="100"
+        >
           <template #default="{ row }">
             <el-switch
               :model-value="row.is_active"
-              @change="(val: string | number | boolean) => handleStatusChange(row.username, Boolean(val))"
               :disabled="row.username === currentUsername"
               active-text="启用"
               inactive-text="禁用"
+              @change="(val: string | number | boolean) => handleStatusChange(row.username, Boolean(val))"
             />
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" min-width="170">
+        <el-table-column
+          prop="created_at"
+          label="创建时间"
+          min-width="170"
+        >
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column prop="last_login" label="最后登录" min-width="170">
+        <el-table-column
+          prop="last_login"
+          label="最后登录"
+          min-width="170"
+        >
           <template #default="{ row }">
             {{ formatDate(row.last_login) }}
           </template>
@@ -53,6 +88,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '@/utils/http'
 import { useAuthStore } from '@/stores/auth'
+import { formatDate } from '@/utils/formatters'
 
 interface UserItem {
   username: string
@@ -67,12 +103,6 @@ const currentUsername = authStore.currentUsername
 
 const users = ref<UserItem[]>([])
 const loading = ref(false)
-
-function formatDate(iso: string | null) {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  return d.toLocaleString('zh-CN', { hour12: false })
-}
 
 async function fetchUsers() {
   loading.value = true

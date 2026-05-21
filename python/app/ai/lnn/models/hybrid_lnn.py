@@ -1,8 +1,22 @@
-"""
-Hybrid LNN (CNN + LNN) Model
+"""Hybrid LNN (CNN + LNN) Model for Multi-Modal Input Processing.
 
-Fuses convolutional neural network with logical neural network advantages.
-Handles mixed input of images and structured data.
+Fuses convolutional neural network (CNN) features with logical neural network
+capabilities to handle mixed inputs including images and structured data.
+Supports configurable CNN and LNN depth/width and feature-level fusion.
+
+Key components:
+    - HybridLNNModel: Hybrid model inheriting from BaseLNNModel.
+
+Example:
+    >>> model = HybridLNNModel(
+    ...     model_name="Hybrid-Vision",
+    ...     input_dim=128,
+    ...     output_dim=10,
+    ...     cnn_hidden_dim=64,
+    ...     lnn_hidden_dim=128,
+    ... )
+    >>> model.build()
+    >>> output = model.predict(np.random.randn(32, 128))
 """
 
 import numpy as np
@@ -12,13 +26,31 @@ from .base_lnn import BaseLNNModel
 
 
 class HybridLNNModel(BaseLNNModel):
-    """
-    混合模型实现，集成CNN与LNN组件
+    """Hybrid model integrating CNN feature extraction with LNN logical reasoning.
 
-    特点：
-    - 融合卷积神经网络与神经逻辑网络优势
-    - 处理图像与结构化数据混合输入
-    - 支持多模态输入
+    Combines a CNN pathway for spatial feature extraction with an LNN pathway
+    for logical inference, fusing features at the concatenation level before
+    a shared output layer. Supports multi-modal inputs including images and
+    structured data.
+
+    Attributes:
+        cnn_hidden_dim: CNN hidden layer dimension.
+        cnn_num_layers: Number of CNN layers.
+        lnn_hidden_dim: LNN hidden layer dimension.
+        lnn_num_layers: Number of LNN layers.
+        dropout_rate: Dropout probability.
+        cnn_weights: CNN weight matrices.
+        cnn_biases: CNN bias vectors.
+        lnn_weights: LNN weight matrices.
+        lnn_biases: LNN bias vectors.
+        fusion_weights: Weights for the fusion output layer.
+        fusion_bias: Bias for the fusion output layer.
+
+    Example:
+        >>> model = HybridLNNModel(input_dim=128, output_dim=10, cnn_hidden_dim=64, lnn_hidden_dim=128)
+        >>> model.build()
+        >>> x = np.random.randn(5, 128)
+        >>> output = model.predict(x)
     """
 
     def __init__(
@@ -157,31 +189,33 @@ class HybridLNNModel(BaseLNNModel):
         CNN前向传播
 
         Args:
-            x: 图像特征输入
+            x: 图像特征输入 (batch_size, features)
 
         Returns:
-            CNN提取的特征
+            CNN提取的特征 (batch_size, last_cnn_filters)
         """
         if x.ndim == 1:
             x = x.reshape(1, -1)
 
-        # 简化的CNN处理（实际应用应使用真正的卷积操作）
+        # 简化的CNN处理：将一维特征向量视为1D信号，使用全连接层模拟卷积
         for W, b in zip(self.cnn_weights, self.cnn_biases):
-            # 模拟卷积操作
-            if x.shape[1] >= W.shape[0]:
-                # 使用一维卷积近似
-                kernel_size = W.shape[0]
-                out_channels = W.shape[-1]
+            out_channels = W.shape[-1]
 
-                # 简化的特征提取
-                features = np.zeros((x.shape[0], out_channels))
-                for i in range(min(x.shape[1], kernel_size)):
-                    features += x[:, i : i + 1] @ W[i] if i < x.shape[1] else 0
+            # 将CNN权重展平为全连接层
+            # 如果输入维度匹配则直接做矩阵乘，否则做适配
+            w_flat = W.reshape(-1, out_channels)  # (kernel_size * in_channels, out_channels)
 
-                x = self._relu(features + b)
+            if x.shape[1] == w_flat.shape[0]:
+                # 维度匹配，直接使用
+                x = self._relu(x @ w_flat + b)
+            elif x.shape[1] >= w_flat.shape[0]:
+                # 输入更大，截断
+                x = self._relu(x[:, :w_flat.shape[0]] @ w_flat + b)
             else:
-                # 维度不匹配时直接传递
-                break
+                # 输入更小，填充
+                padded = np.zeros((x.shape[0], w_flat.shape[0]))
+                padded[:, :x.shape[1]] = x
+                x = self._relu(padded @ w_flat + b)
 
         return x
 

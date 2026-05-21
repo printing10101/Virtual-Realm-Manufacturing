@@ -20,7 +20,7 @@ from datetime import datetime
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.ai.lnn.config.config_manager import (
+from app.ai.lnn.config.config_manager import (  # noqa: E402
     YAMLConfigManager,
     ModelConfig,
     ThresholdConfig,
@@ -29,7 +29,7 @@ from app.ai.lnn.config.config_manager import (
     EnvironmentConfig,
     AppConfig,
 )
-from app.ai.lnn.workflow.workflow_orchestrator import (
+from app.ai.lnn.workflow.workflow_orchestrator import (  # noqa: E402
     WorkflowLNNOrchestrator,
     WorkflowStep,
     WorkflowStepStatus,
@@ -37,7 +37,7 @@ from app.ai.lnn.workflow.workflow_orchestrator import (
     WorkflowResult,
     FallbackStrategy,
 )
-from app.ai.lnn.core import (
+from app.ai.lnn.core import (  # noqa: E402
     EngineType,
     TaskInput,
     RoutingDecision,

@@ -1,51 +1,107 @@
 <template>
-  <div class="agent-detail-page" v-loading="agentStore.detailLoading">
+  <div
+    v-loading="agentStore.detailLoading"
+    class="agent-detail-page"
+  >
     <div class="detail-header">
-      <el-button :icon="ArrowLeft" @click="$router.push({ name: 'agent-dashboard' })">
+      <el-button
+        :icon="ArrowLeft"
+        @click="$router.push({ name: 'agent-dashboard' })"
+      >
         返回列表
       </el-button>
       <h2 v-if="agentStore.currentAgent">
         代理详情: {{ agentStore.currentAgent.agent_id }}
       </h2>
-      <div class="detail-actions" v-if="agentStore.currentAgent">
-        <el-tag :type="agentStore.statusTagType(agentStore.currentAgent.status)" size="large">
+      <div
+        v-if="agentStore.currentAgent"
+        class="detail-actions"
+      >
+        <el-tag
+          :type="agentStore.statusTagType(agentStore.currentAgent.status)"
+          size="large"
+        >
           {{ agentStore.statusLabel(agentStore.currentAgent.status) }}
         </el-tag>
-        <el-button type="primary" size="small" @click="refreshDetail">
+        <el-button
+          type="primary"
+          size="small"
+          @click="refreshDetail"
+        >
           刷新
         </el-button>
-        <el-button type="warning" size="small" @click="showCloneDialog = true">
+        <el-button
+          type="warning"
+          size="small"
+          @click="showCloneDialog = true"
+        >
           克隆
         </el-button>
       </div>
     </div>
 
-    <el-empty v-if="!agentStore.currentAgent && !agentStore.detailLoading" description="未找到代理信息" />
+    <el-empty
+      v-if="!agentStore.currentAgent && !agentStore.detailLoading"
+      description="未找到代理信息"
+    />
 
     <template v-if="agentStore.currentAgent">
-      <el-row :gutter="16" class="info-row">
+      <el-row
+        :gutter="16"
+        class="info-row"
+      >
         <el-col :span="8">
           <el-card shadow="hover">
-            <template #header>基本信息</template>
-            <el-descriptions :column="1" size="small" border>
-              <el-descriptions-item label="代理ID">{{ agentStore.currentAgent.agent_id }}</el-descriptions-item>
-              <el-descriptions-item label="当前任务">{{ agentStore.currentAgent.current_task_id || '无' }}</el-descriptions-item>
-              <el-descriptions-item label="最后心跳">{{ agentStore.formatTime(agentStore.currentAgent.last_heartbeat) }}</el-descriptions-item>
-              <el-descriptions-item label="创建时间">{{ agentStore.formatTime(agentStore.currentAgent.created_at) }}</el-descriptions-item>
-              <el-descriptions-item label="更新时间">{{ agentStore.formatTime(agentStore.currentAgent.updated_at) }}</el-descriptions-item>
-              <el-descriptions-item label="Schema版本">{{ agentStore.currentAgent.state_version?.schema_version || '-' }}</el-descriptions-item>
+            <template #header>
+              基本信息
+            </template>
+            <el-descriptions
+              :column="1"
+              size="small"
+              border
+            >
+              <el-descriptions-item label="代理ID">
+                {{ agentStore.currentAgent.agent_id }}
+              </el-descriptions-item>
+              <el-descriptions-item label="当前任务">
+                {{ agentStore.currentAgent.current_task_id || '无' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="最后心跳">
+                {{ agentStore.formatTime(agentStore.currentAgent.last_heartbeat) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="创建时间">
+                {{ agentStore.formatTime(agentStore.currentAgent.created_at) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="更新时间">
+                {{ agentStore.formatTime(agentStore.currentAgent.updated_at) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="Schema版本">
+                {{ agentStore.currentAgent.state_version?.schema_version || '-' }}
+              </el-descriptions-item>
             </el-descriptions>
           </el-card>
         </el-col>
 
         <el-col :span="8">
           <el-card shadow="hover">
-            <template #header>会话上下文</template>
-            <el-descriptions :column="1" size="small" border>
-              <el-descriptions-item label="任务类型">{{ agentStore.currentAgent.session_context?.task_type || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="当前阶段">{{ agentStore.currentAgent.session_context?.current_stage || '-' }}</el-descriptions-item>
+            <template #header>
+              会话上下文
+            </template>
+            <el-descriptions
+              :column="1"
+              size="small"
+              border
+            >
+              <el-descriptions-item label="任务类型">
+                {{ agentStore.currentAgent.session_context?.task_type || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="当前阶段">
+                {{ agentStore.currentAgent.session_context?.current_stage || '-' }}
+              </el-descriptions-item>
               <el-descriptions-item label="任务描述">
-                <el-text truncated>{{ agentStore.currentAgent.session_context?.task_description || '无' }}</el-text>
+                <el-text truncated>
+                  {{ agentStore.currentAgent.session_context?.task_description || '无' }}
+                </el-text>
               </el-descriptions-item>
               <el-descriptions-item label="已注入技能">
                 <el-tag
@@ -70,46 +126,79 @@
                 </el-tag>
                 <span v-if="!(agentStore.currentAgent.session_context?.active_context_keys || []).length">-</span>
               </el-descriptions-item>
-              <el-descriptions-item label="对话历史">{{ (agentStore.currentAgent.session_context?.conversation_history || []).length }} 条</el-descriptions-item>
+              <el-descriptions-item label="对话历史">
+                {{ (agentStore.currentAgent.session_context?.conversation_history || []).length }} 条
+              </el-descriptions-item>
             </el-descriptions>
           </el-card>
         </el-col>
 
         <el-col :span="8">
-          <el-card shadow="hover" class="checkpoint-card">
+          <el-card
+            shadow="hover"
+            class="checkpoint-card"
+          >
             <template #header>
               <div class="card-header-flex">
                 <span>当前检查点</span>
-                <el-button size="small" type="primary" @click="showCheckpointDialog = true">
+                <el-button
+                  size="small"
+                  type="primary"
+                  @click="showCheckpointDialog = true"
+                >
                   手动保存
                 </el-button>
               </div>
             </template>
             <template v-if="agentStore.currentAgent.checkpoint">
-              <el-descriptions :column="1" size="small" border>
-                <el-descriptions-item label="检查点ID">{{ agentStore.currentAgent.checkpoint.checkpoint_id }}</el-descriptions-item>
-                <el-descriptions-item label="Epoch">{{ agentStore.currentAgent.checkpoint.epoch }}</el-descriptions-item>
-                <el-descriptions-item label="Step">{{ agentStore.currentAgent.checkpoint.step }}</el-descriptions-item>
+              <el-descriptions
+                :column="1"
+                size="small"
+                border
+              >
+                <el-descriptions-item label="检查点ID">
+                  {{ agentStore.currentAgent.checkpoint.checkpoint_id }}
+                </el-descriptions-item>
+                <el-descriptions-item label="Epoch">
+                  {{ agentStore.currentAgent.checkpoint.epoch }}
+                </el-descriptions-item>
+                <el-descriptions-item label="Step">
+                  {{ agentStore.currentAgent.checkpoint.step }}
+                </el-descriptions-item>
                 <el-descriptions-item label="最佳指标">
                   {{ agentStore.currentAgent.checkpoint.best_metric ?? '-' }}
                   <span v-if="agentStore.currentAgent.checkpoint.best_metric !== null">
                     ({{ agentStore.currentAgent.checkpoint.best_metric_name }})
                   </span>
                 </el-descriptions-item>
-                <el-descriptions-item label="类型">{{ agentStore.currentAgent.checkpoint.checkpoint_type }}</el-descriptions-item>
-                <el-descriptions-item label="文件大小">{{ formatBytes(agentStore.currentAgent.checkpoint.file_size_bytes) }}</el-descriptions-item>
+                <el-descriptions-item label="类型">
+                  {{ agentStore.currentAgent.checkpoint.checkpoint_type }}
+                </el-descriptions-item>
+                <el-descriptions-item label="文件大小">
+                  {{ formatBytes(agentStore.currentAgent.checkpoint.file_size_bytes) }}
+                </el-descriptions-item>
               </el-descriptions>
             </template>
-            <el-empty v-else description="暂无检查点" :image-size="60" />
+            <el-empty
+              v-else
+              description="暂无检查点"
+              :image-size="60"
+            />
           </el-card>
         </el-col>
       </el-row>
 
-      <el-card shadow="hover" class="memory-card">
+      <el-card
+        shadow="hover"
+        class="memory-card"
+      >
         <template #header>
           <div class="card-header-flex">
             <span>代理记忆 ({{ agentStore.currentAgent.memory?.length || 0 }} 条)</span>
-            <el-button size="small" @click="viewMode = viewMode === 'list' ? 'chart' : 'list'">
+            <el-button
+              size="small"
+              @click="viewMode = viewMode === 'list' ? 'chart' : 'list'"
+            >
               {{ viewMode === 'list' ? '可视化' : '列表' }}
             </el-button>
           </div>
@@ -121,17 +210,34 @@
             stripe
             max-height="300"
           >
-            <el-table-column prop="memory_type" label="类型" width="100">
+            <el-table-column
+              prop="memory_type"
+              label="类型"
+              width="100"
+            >
               <template #default="{ row }">
-                <el-tag size="small">{{ row.memory_type }}</el-tag>
+                <el-tag size="small">
+                  {{ row.memory_type }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="content" label="内容" min-width="200">
+            <el-table-column
+              prop="content"
+              label="内容"
+              min-width="200"
+            >
               <template #default="{ row }">
-                <el-text truncated>{{ row.content }}</el-text>
+                <el-text truncated>
+                  {{ row.content }}
+                </el-text>
               </template>
             </el-table-column>
-            <el-table-column prop="importance" label="重要性" width="120" sortable>
+            <el-table-column
+              prop="importance"
+              label="重要性"
+              width="120"
+              sortable
+            >
               <template #default="{ row }">
                 <el-progress
                   :percentage="Math.round(row.importance * 100)"
@@ -140,19 +246,34 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column prop="tags" label="标签" width="160">
+            <el-table-column
+              prop="tags"
+              label="标签"
+              width="160"
+            >
               <template #default="{ row }">
                 <el-tag
                   v-for="tag in (row.tags || [])"
                   :key="tag"
                   size="small"
                   style="margin: 1px"
-                >{{ tag }}</el-tag>
+                >
+                  {{ tag }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="访问次数" width="80" sortable prop="access_count" />
+            <el-table-column
+              label="访问次数"
+              width="80"
+              sortable
+              prop="access_count"
+            />
           </el-table>
-          <el-empty v-else description="空记忆" :image-size="50" />
+          <el-empty
+            v-else
+            description="空记忆"
+            :image-size="50"
+          />
         </template>
         <template v-else>
           <div class="memory-chart-container">
@@ -162,10 +283,18 @@
               class="memory-bar-item"
             >
               <div class="memory-bar-label">
-                <el-tag size="small" :type="entry.memory_type === 'observation' ? 'info' : entry.memory_type === 'decision' ? 'warning' : 'success'">
+                <el-tag
+                  size="small"
+                  :type="entry.memory_type === 'observation' ? 'info' : entry.memory_type === 'decision' ? 'warning' : 'success'"
+                >
                   {{ entry.memory_type }}
                 </el-tag>
-                <el-text truncated class="memory-bar-text">{{ entry.content.substring(0, 60) }}</el-text>
+                <el-text
+                  truncated
+                  class="memory-bar-text"
+                >
+                  {{ entry.content.substring(0, 60) }}
+                </el-text>
               </div>
               <div class="memory-bar-track">
                 <div
@@ -178,12 +307,20 @@
               </div>
               <span class="memory-bar-value">{{ Math.round(entry.importance * 100) }}%</span>
             </div>
-            <el-empty v-if="sortedMemory.length === 0" description="空记忆" :image-size="50" />
+            <el-empty
+              v-if="sortedMemory.length === 0"
+              description="空记忆"
+              :image-size="50"
+            />
           </div>
         </template>
       </el-card>
 
-      <el-card shadow="hover" class="history-card" v-if="(agentStore.currentAgent.checkpoints_history || []).length > 0">
+      <el-card
+        v-if="(agentStore.currentAgent.checkpoints_history || []).length > 0"
+        shadow="hover"
+        class="history-card"
+      >
         <template #header>
           <span>检查点历史 ({{ agentStore.currentAgent.checkpoints_history.length }} 个)</span>
         </template>
@@ -194,9 +331,14 @@
             :timestamp="agentStore.formatTime(ckpt.created_at)"
             placement="top"
           >
-            <el-card shadow="hover" size="small">
+            <el-card
+              shadow="hover"
+              size="small"
+            >
               <div class="checkpoint-timeline-item">
-                <el-tag size="small">{{ ckpt.checkpoint_type }}</el-tag>
+                <el-tag size="small">
+                  {{ ckpt.checkpoint_type }}
+                </el-tag>
                 <span>Epoch {{ ckpt.epoch }}, Step {{ ckpt.step }}</span>
                 <span v-if="ckpt.best_metric !== null">
                   最佳 {{ ckpt.best_metric_name }}: {{ ckpt.best_metric }}
@@ -215,43 +357,89 @@
       </el-card>
     </template>
 
-    <el-dialog v-model="showCheckpointDialog" title="手动保存检查点" width="480px">
+    <el-dialog
+      v-model="showCheckpointDialog"
+      title="手动保存检查点"
+      width="480px"
+    >
       <el-form label-position="top">
         <el-form-item label="Epoch">
-          <el-input-number v-model="checkpointForm.epoch" :min="0" />
+          <el-input-number
+            v-model="checkpointForm.epoch"
+            :min="0"
+          />
         </el-form-item>
         <el-form-item label="Step">
-          <el-input-number v-model="checkpointForm.step" :min="0" />
+          <el-input-number
+            v-model="checkpointForm.step"
+            :min="0"
+          />
         </el-form-item>
         <el-form-item label="最佳指标值">
-          <el-input v-model="checkpointForm.best_metric" placeholder="可选" />
+          <el-input
+            v-model="checkpointForm.best_metric"
+            placeholder="可选"
+          />
         </el-form-item>
         <el-form-item label="指标名称">
-          <el-input v-model="checkpointForm.best_metric_name" placeholder="如 loss, accuracy" />
+          <el-input
+            v-model="checkpointForm.best_metric_name"
+            placeholder="如 loss, accuracy"
+          />
         </el-form-item>
         <el-form-item label="检查点类型">
           <el-select v-model="checkpointForm.checkpoint_type">
-            <el-option label="手动" value="manual" />
-            <el-option label="自动" value="auto" />
-            <el-option label="Epoch" value="epoch" />
+            <el-option
+              label="手动"
+              value="manual"
+            />
+            <el-option
+              label="自动"
+              value="auto"
+            />
+            <el-option
+              label="Epoch"
+              value="epoch"
+            />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCheckpointDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveCheckpoint">保存</el-button>
+        <el-button @click="showCheckpointDialog = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="handleSaveCheckpoint"
+        >
+          保存
+        </el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showCloneDialog" title="克隆代理状态" width="400px">
+    <el-dialog
+      v-model="showCloneDialog"
+      title="克隆代理状态"
+      width="400px"
+    >
       <el-form label-position="top">
         <el-form-item label="目标代理ID">
-          <el-input v-model="cloneTargetId" placeholder="输入新代理ID" />
+          <el-input
+            v-model="cloneTargetId"
+            placeholder="输入新代理ID"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCloneDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleClone">克隆</el-button>
+        <el-button @click="showCloneDialog = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="handleClone"
+        >
+          克隆
+        </el-button>
       </template>
     </el-dialog>
   </div>

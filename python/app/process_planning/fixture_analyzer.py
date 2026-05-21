@@ -1,6 +1,7 @@
-"""装夹方案分析器。
+"""Fixture analysis module.
 
-实现装夹方案评估与优化，基于标准模板库推荐最佳装夹方式。
+Implements fixture plan evaluation and optimization, recommending the
+best clamping method based on a standard template library.
 """
 
 from __future__ import annotations
@@ -15,6 +16,20 @@ from app.process_planning.feature_dependency import MachiningFeature, Setup
 
 @dataclass
 class FixtureRecommendation:
+    """A recommended fixture configuration for a machining setup.
+
+    Attributes:
+        fixture_id: Unique fixture identifier.
+        fixture_name: Human-readable fixture name.
+        fixture_type: Fixture category/type.
+        locating_method: Locating method description.
+        clamping_points: List of clamping point dictionaries.
+        clamping_force_n: Clamping force in Newtons.
+        degrees_constrained: Number of degrees of freedom constrained.
+        precautions: List of operational precautions.
+        suitability_score: Suitability score (0-100).
+        reasoning: List of reasoning strings explaining the recommendation.
+    """
     fixture_id: str
     fixture_name: str
     fixture_type: str
@@ -27,6 +42,11 @@ class FixtureRecommendation:
     reasoning: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the fixture recommendation to a dictionary representation.
+
+        Returns:
+            A dictionary containing all fixture recommendation properties.
+        """
         return {
             "fixture_id": self.fixture_id,
             "fixture_name": self.fixture_name,
@@ -43,12 +63,26 @@ class FixtureRecommendation:
 
 @dataclass
 class FixtureAnalysis:
+    """Complete fixture analysis result for a part.
+
+    Attributes:
+        recommendations: List of fixture recommendations per surface.
+        best_fixture: Best overall fixture recommendation.
+        setup_count: Number of required setups.
+        face_changes: List of face change descriptions.
+    """
     recommendations: list[FixtureRecommendation] = field(default_factory=list)
     best_fixture: FixtureRecommendation | None = None
     setup_count: int = 0
     face_changes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the fixture analysis to a dictionary representation.
+
+        Returns:
+            A dictionary containing recommendations, best fixture, setup
+            count, and face changes.
+        """
         return {
             "recommendations": [r.to_dict() for r in self.recommendations],
             "best_fixture": self.best_fixture.to_dict() if self.best_fixture else None,
@@ -58,6 +92,12 @@ class FixtureAnalysis:
 
 
 class FixtureAnalyzer:
+    """Fixture analyzer that recommends clamping solutions.
+
+    Evaluates fixture options based on part type, material, and
+    machining features, then recommends the best clamping method
+    from a template library.
+    """
     def __init__(self, templates_path: str | None = None) -> None:
         if templates_path is None:
             data_dir = Path(__file__).resolve().parent / "data"

@@ -189,8 +189,8 @@ class BudgetEnforcer:
         )
 
         self._conn.execute(
-            """INSERT OR REPLACE INTO budget_policies 
-               (level, scope_id, resource_type, limit_value, period, 
+            """INSERT OR REPLACE INTO budget_policies
+               (level, scope_id, resource_type, limit_value, period,
                 warning_threshold, hard_stop, auto_notify, enabled,
                 current_usage, last_reset_at, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -518,8 +518,8 @@ class BudgetEnforcer:
         old_usage = policy.current_usage
 
         self._conn.execute(
-            """INSERT INTO budget_reset_log 
-               (level, scope_id, resource_type, period, usage_before_reset, 
+            """INSERT INTO budget_reset_log
+               (level, scope_id, resource_type, period, usage_before_reset,
                 limit_at_reset, reset_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
@@ -537,7 +537,7 @@ class BudgetEnforcer:
         policy.last_reset_at = time.time()
 
         self._conn.execute(
-            """UPDATE budget_policies 
+            """UPDATE budget_policies
                SET current_usage = 0.0, last_reset_at = ?, updated_at = ?
                WHERE level = ? AND scope_id = ? AND resource_type = ?""",
             (
@@ -570,7 +570,7 @@ class BudgetEnforcer:
                 policy.last_reset_at = now
 
                 self._conn.execute(
-                    """UPDATE budget_policies 
+                    """UPDATE budget_policies
                        SET current_usage = 0.0, last_reset_at = ?, updated_at = ?
                        WHERE level = ? AND scope_id = ? AND resource_type = ?""",
                     (
@@ -583,8 +583,8 @@ class BudgetEnforcer:
                 )
 
                 self._conn.execute(
-                    """INSERT INTO budget_reset_log 
-                       (level, scope_id, resource_type, period, 
+                    """INSERT INTO budget_reset_log
+                       (level, scope_id, resource_type, period,
                         usage_before_reset, limit_at_reset, reset_at)
                        VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     (
@@ -643,7 +643,7 @@ class BudgetEnforcer:
             policy.last_reset_at = now
 
             self._conn.execute(
-                """UPDATE budget_policies 
+                """UPDATE budget_policies
                    SET current_usage = 0.0, last_reset_at = ?, updated_at = ?
                    WHERE level = ? AND scope_id = ? AND resource_type = ?""",
                 (
@@ -655,8 +655,8 @@ class BudgetEnforcer:
                 ),
             )
             self._conn.execute(
-                """INSERT INTO budget_reset_log 
-                   (level, scope_id, resource_type, period, 
+                """INSERT INTO budget_reset_log
+                   (level, scope_id, resource_type, period,
                     usage_before_reset, limit_at_reset, reset_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
@@ -708,8 +708,8 @@ class BudgetEnforcer:
         )
 
         self._conn.execute(
-            """INSERT INTO budget_alerts 
-               (level, scope_id, resource_type, status, current_usage, 
+            """INSERT INTO budget_alerts
+               (level, scope_id, resource_type, status, current_usage,
                 limit_value, usage_ratio, message, is_read, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)""",
             (
@@ -753,7 +753,7 @@ class BudgetEnforcer:
         where = " AND ".join(conditions) if conditions else "1=1"
 
         rows = self._conn.execute(
-            f"""SELECT * FROM budget_alerts 
+            f"""SELECT * FROM budget_alerts
                 WHERE {where}
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?""",
@@ -820,7 +820,7 @@ class BudgetEnforcer:
             }
         )
         self._conn.execute(
-            """INSERT INTO enforcement_log 
+            """INSERT INTO enforcement_log
                (action, level, scope_id, resource_type, details, executed_at)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (

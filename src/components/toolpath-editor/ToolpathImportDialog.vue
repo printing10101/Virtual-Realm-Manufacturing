@@ -6,7 +6,10 @@
     :close-on-click-modal="false"
   >
     <el-tabs v-model="importMode">
-      <el-tab-pane label="粘贴G代码" name="paste">
+      <el-tab-pane
+        label="粘贴G代码"
+        name="paste"
+      >
         <el-input
           v-model="gcodeText"
           type="textarea"
@@ -15,7 +18,10 @@
           style="font-family: monospace; font-size: 12px"
         />
       </el-tab-pane>
-      <el-tab-pane label="上传文件" name="upload">
+      <el-tab-pane
+        label="上传文件"
+        name="upload"
+      >
         <el-upload
           drag
           :auto-upload="false"
@@ -24,28 +30,41 @@
           :on-change="handleFileChange"
           :on-remove="handleFileRemove"
         >
-          <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+          <el-icon class="el-icon--upload">
+            <UploadFilled />
+          </el-icon>
           <div class="el-upload__text">
             拖拽文件到此处或 <em>点击选择</em>
           </div>
           <template #tip>
-            <div class="el-upload__tip">支持 .nc / .h / .txt 格式</div>
+            <div class="el-upload__tip">
+              支持 .nc / .h / .txt 格式
+            </div>
           </template>
         </el-upload>
       </el-tab-pane>
     </el-tabs>
 
-    <div v-if="previewLines.length > 0" class="preview-section">
+    <div
+      v-if="previewLines.length > 0"
+      class="preview-section"
+    >
       <h4>预览 ({{ previewLines.length }} 行)</h4>
       <div class="preview-content">
-        <div v-for="(line, i) in previewLines" :key="i" class="preview-line">
+        <div
+          v-for="(line, i) in previewLines"
+          :key="i"
+          class="preview-line"
+        >
           {{ line }}
         </div>
       </div>
     </div>
 
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
+      <el-button @click="visible = false">
+        取消
+      </el-button>
       <el-button
         type="primary"
         :disabled="!gcodeText.trim()"

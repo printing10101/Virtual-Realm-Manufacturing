@@ -126,7 +126,7 @@ for e in events:
         try:
             d = json.loads(e["data"])
             print(f"  Progress: {d.get('percent', '?')}% - {d.get('message', '')}")
-        except:
+        except Exception:
             pass
 
 # Print detailed results
@@ -140,6 +140,6 @@ else:
 
 print("\n" + "=" * 50)
 print(
-    f"SUMMARY: Test 1 {'PASS' if elapsed1 < 3 else 'FAIL'} | Test 2 {'PASS' if pass2 else 'FAIL'} | Test 3 {'PASS' if valid_sequence and event_types[-1] == 'complete' else 'FAIL'}"
+    f"SUMMARY: Test 1 {'PASS' if elapsed1 < 3 else 'FAIL'} | Test 2 {'PASS' if pass2 else 'FAIL'} | Test 3 {'PASS' if valid_sequence and event_types[-1] == 'complete' else 'FAIL'}"  # noqa: E501
 )
 print("=" * 50)

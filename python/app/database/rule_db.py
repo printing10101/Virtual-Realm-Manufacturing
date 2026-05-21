@@ -11,10 +11,67 @@ import logging
 import shutil
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# 数据格式版本（用于区分导出数据结构的版本）
+CURRENT_FORMAT_VERSION = "1.0"
+
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+VERSION_FILE = PROJECT_ROOT / "VERSION"
+
+
+def get_project_version() -> str:
+    """从项目根目录的VERSION文件动态读取版本号"""
+    try:
+        return VERSION_FILE.read_text(encoding="utf-8").strip()
+    except Exception as e:
+        logger.warning(f"无法读取VERSION文件: {e}，使用默认版本 0.0.0")
+        return "0.0.0"
+
+
+def parse_version(version_str: str) -> Tuple[int, int, int]:
+    """解析版本字符串为 (major, minor, patch) 元组"""
+    try:
+        parts = version_str.strip().split(".")
+        major = int(parts[0]) if len(parts) > 0 else 0
+        minor = int(parts[1]) if len(parts) > 1 else 0
+        patch = int(parts[2]) if len(parts) > 2 else 0
+        return (major, minor, patch)
+    except (ValueError, IndexError):
+        return (0, 0, 0)
+
+
+def check_version_compatibility(import_version: str, current_version: str) -> Tuple[bool, str]:
+    """
+    检查导入文件版本与当前项目版本的兼容性
+
+    兼容规则：
+    - 主版本号相同 → 兼容
+    - 主版本号不同 → 不兼容
+
+    Returns:
+        (是否兼容, 提示信息)
+    """
+    import_major, _, _ = parse_version(import_version)
+    current_major, current_minor, current_patch = parse_version(current_version)
+
+    if import_major == current_major:
+        if import_version == current_version:
+            return True, f"版本完全匹配 ({current_version})"
+        else:
+            return True, (
+                f"版本兼容 (导入文件: {import_version}, 当前项目: {current_version})。"
+                f"主版本号相同，数据格式兼容。"
+            )
+    else:
+        return False, (
+            f"版本不兼容！导入文件版本 {import_version} 与当前项目版本 {current_version} 主版本号不同。"
+            f"强制导入可能导致数据异常，请确认文件来源或使用匹配版本的项目。"
+        )
+
 
 DB_DIR = Path(__file__).parent.parent.parent / "data"
 DB_DIR.mkdir(parents=True, exist_ok=True)
@@ -285,7 +342,10 @@ class RuleDatabase:
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO rules (name, description, group_id, conditions_json, logic_operator, result_json, status, priority, created_at, updated_at)
+            INSERT INTO rules (
+                name, description, group_id, conditions_json, logic_operator,
+                result_json, status, priority, created_at, updated_at
+            )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -503,8 +563,11 @@ class RuleDatabase:
         rules = self.list_rules(limit=100000)
         groups = self.list_groups()
 
+        project_version = get_project_version()
+
         data = {
-            "version": "1.0",
+            "version": project_version,
+            "format_version": CURRENT_FORMAT_VERSION,
             "exported_at": self._now(),
             "groups": [g.to_dict() for g in groups],
             "rules": [r.to_dict() for r in rules],
@@ -516,14 +579,41 @@ class RuleDatabase:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
         logger.info(
-            f"导出规则到: {output_path} ({len(rules)} 条规则, {len(groups)} 个分组)"
+            f"导出规则到: {output_path} ({len(rules)} 条规则, {len(groups)} 个分组, 版本: {project_version})"
         )
         return data
 
     def import_rules(self, input_path: str) -> Dict[str, Any]:
-        """从JSON文件导入规则和分组"""
+        """从JSON文件导入规则和分组
+
+        Returns:
+            导入结果字典，包含 imported_groups, imported_rules, total_rules, total_groups,
+            version_check (版本检查结果: compatible/warning/incompatible), version_message (版本提示信息)
+        """
         with open(input_path, "r", encoding="utf-8") as f:
             data = json.load(f)
+
+        # 版本兼容性检查
+        current_version = get_project_version()
+        import_version = data.get("version", "1.0")
+        is_compatible, version_message = check_version_compatibility(
+            import_version, current_version
+        )
+
+        if not is_compatible:
+            logger.warning(f"规则导入版本不兼容: {version_message}")
+            return {
+                "imported_groups": 0,
+                "imported_rules": 0,
+                "total_rules": len(data.get("rules", [])),
+                "total_groups": len(data.get("groups", [])),
+                "version_check": "incompatible",
+                "version_message": version_message,
+                "error": version_message,
+            }
+
+        if import_version != current_version:
+            logger.info(f"规则导入版本提示: {version_message}")
 
         imported_groups = 0
         imported_rules = 0
@@ -558,12 +648,18 @@ class RuleDatabase:
             self.create_rule(rule)
             imported_rules += 1
 
+        version_check = (
+            "compatible" if import_version == current_version else "warning"
+        )
+
         logger.info(f"导入规则完成: {imported_groups} 个分组, {imported_rules} 条规则")
         return {
             "imported_groups": imported_groups,
             "imported_rules": imported_rules,
             "total_rules": len(data.get("rules", [])),
             "total_groups": len(data.get("groups", [])),
+            "version_check": version_check,
+            "version_message": version_message,
         }
 
     def backup_database(self, backup_path: Optional[str] = None) -> str:

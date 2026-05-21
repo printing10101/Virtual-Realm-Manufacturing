@@ -1,0 +1,8 @@
+node_modules/
+dist/
+python/htmlcov/
+coverage/
+*.min.js
+*.min.js.map
+version-sync.js
+tests/screenshots/*.spec.ts

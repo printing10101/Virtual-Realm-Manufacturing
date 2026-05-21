@@ -1,13 +1,13 @@
 import asyncio
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.core.process_trace import ProcessTrace
-from app.core.task_manager import TaskManager
-from app.core.workflow_logger import AIWorkflowLogger
-from app.services.process_service import ProcessService
+from app.core.process_trace import ProcessTrace  # noqa: E402
+from app.core.task_manager import TaskManager  # noqa: E402
+from app.services.process_service import ProcessService  # noqa: E402
+from app.core.workflow_logger import AIWorkflowLogger  # noqa: E402
 
 
 class MockConfig:

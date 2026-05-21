@@ -21,14 +21,14 @@ import threading
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.core.execution_lock import (
+from app.core.execution_lock import (  # noqa: E402
     ExecutionLockStore,
     LockConflictError,
     LockNotFoundError,
     LockOwnershipError,
     LockStatus,
 )
-from app.core.task_checkout import (
+from app.core.task_checkout import (  # noqa: E402
     TaskCheckoutManager,
     CheckoutStatus,
     CheckoutFailureReason,

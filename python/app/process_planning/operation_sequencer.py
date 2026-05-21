@@ -1,7 +1,8 @@
-"""工序排序引擎。
+"""Operation sequencing engine.
 
-基于特征依赖关系和工艺规则，生成优化的加工工序序列。
-实现完整的操作规划、装夹建议和时间估算。
+Generates optimized machining operation sequences based on feature
+dependency relationships and manufacturing rules. Implements complete
+operation planning, fixture suggestions, and time estimation.
 """
 
 from __future__ import annotations
@@ -23,6 +24,20 @@ from app.process_planning.fixture_analyzer import (
 
 @dataclass
 class Operation:
+    """A single machining operation in the process plan.
+
+    Attributes:
+        seq: Operation sequence number.
+        name: Operation name, e.g. 'OP01-Surface A'.
+        feature_name: Name of the machining feature this operation processes.
+        machining_method: Machining method, e.g. '钻孔', '精铣平面'.
+        surface: Surface identifier this operation works on.
+        tolerance_grade: Required tolerance grade.
+        tool_type: Tool type description.
+        cutting_params: Cutting parameters dictionary.
+        estimated_time_min: Estimated operation time (minutes).
+        notes: Additional operation notes.
+    """
     seq: int
     name: str
     feature_name: str
@@ -35,6 +50,12 @@ class Operation:
     notes: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the operation to a dictionary representation.
+
+        Returns:
+            A dictionary containing all operation properties suitable
+            for serialization.
+        """
         return {
             "seq": self.seq,
             "name": self.name,
@@ -51,6 +72,15 @@ class Operation:
 
 @dataclass
 class OperationPlan:
+    """Complete operation plan for a part.
+
+    Attributes:
+        operations: Ordered list of machining operations.
+        setups: List of fixture setups (one per surface/group).
+        estimated_time_min: Total estimated machining time (minutes).
+        face_change_count: Number of face changes (setup transitions).
+        fixture_recommendations: Recommended fixtures for each setup.
+    """
     operations: list[Operation] = field(default_factory=list)
     setups: list[Setup] = field(default_factory=list)
     estimated_time_min: float = 0.0
@@ -58,6 +88,12 @@ class OperationPlan:
     fixture_recommendations: list[FixtureRecommendation] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the operation plan to a dictionary representation.
+
+        Returns:
+            A dictionary containing operations, setups, estimated time,
+            face change count, and fixture recommendations.
+        """
         return {
             "operations": [op.to_dict() for op in self.operations],
             "setups": [
@@ -78,6 +114,11 @@ class OperationPlan:
 
 
 class OperationSequencer:
+    """Operation sequencer that generates machining operation plans.
+
+    Uses feature dependency graphs, datum selection, and fixture analysis
+    to produce an optimized sequence of machining operations.
+    """
     def __init__(self) -> None:
         self._dep_graph = FeatureDependencyGraph()
         self._datum_selector = DatumSelector()
@@ -90,6 +131,17 @@ class OperationSequencer:
         blank_type: str = "",
         part_type: str = "general",
     ) -> OperationPlan:
+        """Generate an optimized machining operation plan from a list of features.
+
+        Args:
+            features: List of machining features to plan operations for.
+            material: Material name for feed rate adjustment.
+            blank_type: Blank/stock type.
+            part_type: Part type category (general/shaft/plate etc.).
+
+        Returns:
+            OperationPlan with ordered operations, setups, and time estimates.
+        """
         self._dep_graph.build_graph(features)
         sequence = self._dep_graph.get_machining_sequence()
 
@@ -157,6 +209,15 @@ class OperationSequencer:
         setup: Setup,
         part_type: str = "general",
     ) -> FixtureRecommendation:
+        """Suggest a fixture for a given setup.
+
+        Args:
+            setup: Setup to suggest a fixture for.
+            part_type: Part type category.
+
+        Returns:
+            FixtureRecommendation with fixture details and suitability score.
+        """
         return self._fixture_analyzer.suggest_fixture(setup, part_type)
 
     def _select_machining_method(

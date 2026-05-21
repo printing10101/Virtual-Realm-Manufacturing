@@ -437,7 +437,9 @@ class UnderstandingAgent(BaseAgent):
             extracted_params: ExtractedParams = extract_json_from_markdown(content)
             if not extracted_params:
                 raise ValueError(
-                    "Agent 响应解析失败：解析结果为空。Agent 未能从 LLM 响应中提取有效内容。可能原因：1) LLM 返回格式不符合预期；2) 响应解析逻辑有误。请检查 Agent 的解析方法实现或 LLM 提示词模板。"
+                    "Agent 响应解析失败：解析结果为空。Agent 未能从 LLM 响应中提取有效内容。"
+                    "可能原因：1) LLM 返回格式不符合预期；2) 响应解析逻辑有误。"
+                    "请检查 Agent 的解析方法实现或 LLM 提示词模板。"
                 )
             context.extracted_params = extracted_params
             context.stage_status = StageStatus.COMPLETED

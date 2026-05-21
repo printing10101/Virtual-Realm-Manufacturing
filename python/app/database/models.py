@@ -5,18 +5,15 @@ Defines TrainingTask, Role, Permission, and RolePermission models.
 """
 
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import (
     Column,
     String,
     Integer,
-    Float,
     DateTime,
     JSON,
     ForeignKey,
     UniqueConstraint,
-    Enum as SAEnum,
     Index,
     text,
 )

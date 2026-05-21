@@ -1,7 +1,17 @@
-"""
-Dataset processing module for LNN training.
+"""LNN Dataset Processing Module.
 
-Supports multi-source data loading and preprocessing.
+Provides multi-source data loading (CSV, JSON, HDF5, NumPy) with preprocessing,
+transform functions, and dataset caching support. Compatible with PyTorch's
+Dataset interface for seamless DataLoader integration.
+
+Key components:
+    - LNNDataset: PyTorch-compatible dataset wrapper.
+
+Example:
+    >>> dataset = LNNDataset(data=X, labels=y, metadata={"source": "sensor"})
+    >>> len(dataset)
+    1000
+    >>> sample, label = dataset[0]
 """
 
 import time
@@ -84,27 +94,44 @@ class LNNDataset(Dataset):
         return self.data[indices[:batch_size]]
 
     def split(
-        self, train_ratio: float = 0.8, shuffle: bool = True
-    ) -> Tuple["LNNDataset", "LNNDataset"]:
+        self,
+        train_ratio: float = 0.7,
+        val_ratio: float = 0.15,
+        test_ratio: float = 0.15,
+        shuffle: bool = True,
+        random_seed: Optional[int] = None,
+    ) -> Tuple["LNNDataset", "LNNDataset", "LNNDataset"]:
         """
-        划分训练集和测试集
+        划分训练集/验证集/测试集
 
         Args:
-            train_ratio: 训练集比例
+            train_ratio: 训练集比例 (默认0.7)
+            val_ratio: 验证集比例 (默认0.15)
+            test_ratio: 测试集比例 (默认0.15)
             shuffle: 是否打乱
+            random_seed: 随机种子，确保划分可复现
 
         Returns:
-            (训练集, 测试集)
+            (训练集, 验证集, 测试集)
         """
-        n = len(self)
-        indices = np.random.permutation(n) if shuffle else np.arange(n)
-        split_idx = int(n * train_ratio)
+        assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, "比例之和必须为1"
 
-        train_idx = indices[:split_idx]
-        test_idx = indices[split_idx:]
+        n = len(self)
+        rng = np.random.RandomState(random_seed)
+        indices = rng.permutation(n) if shuffle else np.arange(n)
+
+        train_end = int(n * train_ratio)
+        val_end = int(n * (train_ratio + val_ratio))
+
+        train_idx = indices[:train_end]
+        val_idx = indices[train_end:val_end]
+        test_idx = indices[val_end:]
 
         train_data = self.data[train_idx]
         train_labels = self.labels[train_idx] if self.labels is not None else None
+
+        val_data = self.data[val_idx]
+        val_labels = self.labels[val_idx] if self.labels is not None else None
 
         test_data = self.data[test_idx]
         test_labels = self.labels[test_idx] if self.labels is not None else None
@@ -114,13 +141,31 @@ class LNNDataset(Dataset):
             train_labels,
             self.transform,
             self.target_transform,
-            self.metadata,
+            {**self.metadata, "split": "train"},
+        )
+        val_dataset = LNNDataset(
+            val_data,
+            val_labels,
+            self.transform,
+            self.target_transform,
+            {**self.metadata, "split": "val"},
         )
         test_dataset = LNNDataset(
-            test_data, test_labels, self.transform, self.target_transform, self.metadata
+            test_data,
+            test_labels,
+            self.transform,
+            self.target_transform,
+            {**self.metadata, "split": "test"},
         )
 
-        return train_dataset, test_dataset
+        logger.info(
+            "Train: %d samples, Val: %d samples, Test: %d samples",
+            len(train_dataset),
+            len(val_dataset),
+            len(test_dataset),
+        )
+
+        return train_dataset, val_dataset, test_dataset
 
     @classmethod
     def from_numpy(
@@ -381,7 +426,7 @@ class BoschCNCDataset(Dataset):
 
         if not os.path.exists(hdf5_path):
             raise FileNotFoundError(
-                f"数据集加载失败：HDF5 数据文件不存在: '{hdf5_path}'。可能原因：1) 文件路径配置错误；2) 数据集文件未下载或已删除。请检查配置文件中的数据路径，或运行数据下载脚本获取 HDF5 数据集文件。"
+                f"数据集加载失败：HDF5 数据文件不存在: '{hdf5_path}'。可能原因：1) 文件路径配置错误；2) 数据集文件未下载或已删除。请检查配置文件中的数据路径，或运行数据下载脚本获取 HDF5 数据集文件。"  # noqa: E501
             )
 
         self._data: Optional[np.ndarray] = None
@@ -531,7 +576,7 @@ class BoschCNCDataset(Dataset):
                 else:
                     # 需要更复杂的索引映射
                     raise NotImplementedError(
-                        "数据集索引映射失败：在非缓存模式下无法直接通过索引获取数据。当前未实现动态索引映射逻辑。建议解决方案：1) 启用数据缓存模式（设置 cache=True）；2) 或实现自定义的索引映射方法以支持按需加载。"
+                        "数据集索引映射失败：在非缓存模式下无法直接通过索引获取数据。当前未实现动态索引映射逻辑。建议解决方案：1) 启用数据缓存模式（设置 cache=True）；2) 或实现自定义的索引映射方法以支持按需加载。"  # noqa: E501
                     )
         else:
             signal = self._data[idx]
@@ -587,12 +632,8 @@ class BoschCNCDataset(Dataset):
         assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, "比例之和必须为1"
 
         n = len(self)
-        indices = np.arange(n)
-
-        if shuffle:
-            if random_seed is not None:
-                np.random.seed(random_seed)
-            indices = np.random.permutation(n)
+        rng = np.random.RandomState(random_seed)
+        indices = rng.permutation(n) if shuffle else np.arange(n)
 
         train_end = int(n * train_ratio)
         val_end = int(n * (train_ratio + val_ratio))

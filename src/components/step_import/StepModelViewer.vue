@@ -5,22 +5,33 @@
     width="900px"
     top="3vh"
     :close-on-click-modal="false"
+    destroy-on-close
     @opened="initViewer"
     @close="disposeViewer"
-    destroy-on-close
   >
     <div class="model-viewer-container">
-      <div ref="canvasContainer" class="canvas-container"></div>
+      <div
+        ref="canvasContainer"
+        class="canvas-container"
+      />
 
       <div class="viewer-controls">
         <el-button-group size="small">
           <el-button @click="fitView">
             <el-icon><aim /></el-icon> 居中
           </el-button>
-          <el-button @click="viewFront">前</el-button>
-          <el-button @click="viewTop">顶</el-button>
-          <el-button @click="viewRight">右</el-button>
-          <el-button @click="viewIso">3D</el-button>
+          <el-button @click="viewFront">
+            前
+          </el-button>
+          <el-button @click="viewTop">
+            顶
+          </el-button>
+          <el-button @click="viewRight">
+            右
+          </el-button>
+          <el-button @click="viewIso">
+            3D
+          </el-button>
         </el-button-group>
 
         <el-divider direction="vertical" />
@@ -40,8 +51,8 @@
         <el-switch
           v-model="showGrid"
           active-text="网格"
-          @change="toggleGrid"
           size="small"
+          @change="toggleGrid"
         />
 
         <el-divider direction="vertical" />
@@ -49,8 +60,8 @@
         <el-switch
           v-model="lodEnabled"
           active-text="LOD"
-          @change="toggleLOD"
           size="small"
+          @change="toggleLOD"
         />
 
         <el-divider direction="vertical" />
@@ -58,7 +69,10 @@
         <span class="fps-display">{{ fps }} FPS</span>
       </div>
 
-      <div class="model-info-bar" v-if="modelStats">
+      <div
+        v-if="modelStats"
+        class="model-info-bar"
+      >
         <span>顶点: {{ modelStats.vertexCount?.toLocaleString() }}</span>
         <span>三角面: {{ modelStats.faceCount?.toLocaleString() }}</span>
         <span>文件: {{ modelStats.fileSize ? formatFileSize(modelStats.fileSize) : '-' }}</span>
@@ -66,7 +80,9 @@
     </div>
 
     <template #footer>
-      <el-button @click="visible = false">关闭</el-button>
+      <el-button @click="visible = false">
+        关闭
+      </el-button>
     </template>
   </el-dialog>
 </template>
@@ -76,6 +92,7 @@ import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { formatFileSize } from '@/utils/formatters'
 
 const props = defineProps<{
   modelUrl: string
@@ -426,15 +443,6 @@ function disposeViewer() {
   modelMesh = null
   gridHelper = null
   lod = null
-}
-
-function formatFileSize(bytes: number): string {
-  if (!bytes) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  let s = bytes
-  while (s >= 1024 && i < units.length - 1) { s /= 1024; i++ }
-  return s.toFixed(i > 0 ? 1 : 0) + ' ' + units[i]
 }
 
 watch(() => props.modelUrl, (newUrl) => {

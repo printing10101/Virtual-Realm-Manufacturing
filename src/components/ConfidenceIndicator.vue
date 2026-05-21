@@ -1,11 +1,15 @@
 <template>
-  <div class="confidence-indicator" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+  <div
+    class="confidence-indicator"
+    @mouseenter="showTooltip = true"
+    @mouseleave="showTooltip = false"
+  >
     <div class="confidence-bar-container">
       <div
         class="confidence-bar-fill"
         :style="{
           width: `${confidence * 100}%`,
-          backgroundColor: barColor,
+          backgroundColor: getConfidenceColor(confidence),
         }"
       />
       <div class="confidence-bar-label">
@@ -13,30 +17,44 @@
       </div>
     </div>
 
-    <div v-if="showTooltip && showTooltipOnHover" class="confidence-tooltip">
+    <div
+      v-if="showTooltip && showTooltipOnHover"
+      class="confidence-tooltip"
+    >
       <div class="tooltip-header">
         <span class="tooltip-title">置信度详情</span>
-        <span class="tooltip-value" :style="{ color: barColor }">
+        <span
+          class="tooltip-value"
+          :style="{ color: getConfidenceColor(confidence) }"
+        >
           {{ (confidence * 100).toFixed(2) }}%
         </span>
       </div>
       <div class="tooltip-body">
-        <p><strong>等级:</strong> {{ confidenceLevel }}</p>
+        <p><strong>等级:</strong> {{ getConfidenceLabel(confidence) }}</p>
         <p><strong>说明:</strong> {{ confidenceDescription }}</p>
-        <div v-if="recommendation" class="tooltip-recommendation">
+        <div
+          v-if="recommendation"
+          class="tooltip-recommendation"
+        >
           <strong>建议:</strong> {{ recommendation }}
         </div>
       </div>
     </div>
 
-    <div v-if="showLabel" class="confidence-text" :style="{ color: barColor }">
-      {{ confidenceLevel }}
+    <div
+      v-if="showLabel"
+      class="confidence-text"
+      :style="{ color: getConfidenceColor(confidence) }"
+    >
+      {{ getConfidenceLabel(confidence) }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { getConfidenceColor, getConfidenceLabel } from '@/utils/statusHelpers'
 
 interface Props {
   confidence: number
@@ -52,18 +70,6 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const showTooltip = ref(false)
-
-const barColor = computed(() => {
-  if (props.confidence >= 0.8) return '#67c23a'
-  if (props.confidence >= 0.5) return '#e6a23c'
-  return '#f56c6c'
-})
-
-const confidenceLevel = computed(() => {
-  if (props.confidence >= 0.8) return '高置信度'
-  if (props.confidence >= 0.5) return '中置信度'
-  return '低置信度'
-})
 
 const confidenceDescription = computed(() => {
   if (props.confidence >= 0.8) {

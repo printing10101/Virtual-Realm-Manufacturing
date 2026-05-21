@@ -5,8 +5,8 @@ import {
   countVertices,
   simplifyGeometry,
   calculateDistanceToModel,
-  estimateMemoryUsage,
-  type LODConfig,
+  estimateMemoryUsage as _estimateMemoryUsage,
+  type LODConfig as _LODConfig,
 } from '@/utils/lodHelper'
 
 function createTestModel(vertexCount: number): THREE.Object3D {

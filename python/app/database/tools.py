@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -99,31 +98,22 @@ class ToolDatabase:
         if data_path is None:
             data_dir = Path(__file__).resolve().parent / "data"
             data_path = str(data_dir / "tools.json")
-        self._data_path = data_path
-        self._tools: dict[str, ToolEntry] = {}
-        self._load()
-
-    def _load(self) -> None:
-        with open(self._data_path, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-        for item in raw:
-            entry = ToolEntry.from_dict(item)
-            self._tools[entry.id] = entry
+        from app.database.repository import JsonRepository
+        self._repo: JsonRepository[ToolEntry] = JsonRepository(
+            data_path, ToolEntry.from_dict, lambda t: t.id
+        )
 
     def get(self, tool_id: str) -> ToolEntry:
-        if tool_id not in self._tools:
-            available = ", ".join(self._tools.keys())
-            raise KeyError(f"刀具 '{tool_id}' 不在数据库中。可用刀具: {available}")
-        return self._tools[tool_id]
+        return self._repo.get(tool_id)
 
     def list_all(self) -> list[ToolEntry]:
-        return sorted(self._tools.values(), key=lambda t: t.name)
+        return sorted(self._repo.list_all(), key=lambda t: t.name)
 
     def list_ids(self) -> list[str]:
-        return sorted(self._tools.keys())
+        return self._repo.list_keys()
 
     def filter_by_type(self, tool_type: str) -> list[ToolEntry]:
-        return [t for t in self._tools.values() if t.type == tool_type]
+        return self._repo.filter(lambda t: t.type == tool_type)
 
     def filter_by_material(self, tool_material: str) -> list[ToolEntry]:
-        return [t for t in self._tools.values() if t.material == tool_material]
+        return self._repo.filter(lambda t: t.material == tool_material)

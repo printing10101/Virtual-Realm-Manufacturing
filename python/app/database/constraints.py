@@ -297,7 +297,7 @@ class CuttingConstraintValidator:
             return adjusted, violations
 
         key = "depth_of_cut" if "depth_of_cut" in params else "ap"
-        mat_range = material.get_doc("roughing")
+        mat_range = material.get_depth_of_cut("roughing")
         lo = mat_range[0]
         hi = min(mat_range[1], tool.max_doc) if tool.max_doc > 0 else mat_range[1]
 

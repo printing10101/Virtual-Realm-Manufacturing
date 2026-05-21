@@ -12,18 +12,15 @@
 from __future__ import annotations
 
 import logging
-import math
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import cadquery as cq
 
 from app.dxf.feature_extractor import (
     FeatureExtractionResult,
     HoleFeatureInfo,
-    PlaneFeatureInfo,
 )
 from app.dxf.exceptions import DxfModelError
 
@@ -92,7 +89,7 @@ class DxfToModelConverter:
         """
         if feature_result is None:
             raise DxfModelError("特征提取结果为空，无法生成3D模型。"
-                               "请先调用FeatureExtractor.extract()获取特征数据。")
+                                 "请先调用FeatureExtractor.extract()获取特征数据。")  # noqa: E127
 
         result = ModelConversionResult()
         length = feature_result.overall_length
@@ -229,7 +226,7 @@ class DxfToModelConverter:
         """
         if not conversion_result.success:
             raise DxfModelError("模型转换未成功，无法导出STL。"
-                               f"错误: {'; '.join(conversion_result.errors)}")
+                                 f"错误: {'; '.join(conversion_result.errors)}")  # noqa: E127
 
         path = Path(output_path)
         try:
@@ -263,7 +260,7 @@ class DxfToModelConverter:
         """
         if not conversion_result.success:
             raise DxfModelError("模型转换未成功，无法导出STEP。"
-                               f"错误: {'; '.join(conversion_result.errors)}")
+                                 f"错误: {'; '.join(conversion_result.errors)}")  # noqa: E127
 
         path = Path(output_path)
         try:

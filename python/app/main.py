@@ -15,8 +15,6 @@ from starlette.responses import Response, JSONResponse
 
 from app.api.v1.sse import sse_manager
 from app.core.cors_config import cors_settings
-from app.core.auth import AuthMiddleware
-from app.core.jwt_auth import JwtAuthMiddleware
 from app.core.exception_handlers import register_exception_handlers
 from app.core.request_id import RequestIdMiddleware, get_request_id
 from app.core.logging_config import configure_logging
@@ -26,9 +24,10 @@ from app.core.sidecar_lifecycle import (
     GracefulShutdownHandler,
 )
 from app.core.ring_buffer import get_ring_log_buffer, BUFFER_TYPES
+from app.core.middleware.security_headers_asgi import SecurityHeadersMiddleware
+from app.core.middleware.unified_auth import UnifiedAuthMiddleware
 from app.config import config
 from app.version import get_version_info, VERSION as PY_VERSION
-from app.agent.middleware import AgentAuthMiddleware
 from app.api.v1 import lnn, wear_prediction, user_sovereignty, agent_gateway, jobs, health, auth, users
 from app.rag import routes as rag_routes
 from app.ai import ollama_routes
@@ -64,7 +63,7 @@ def get_state_file_path() -> str:
 
 app = FastAPI(
     title="灵境制造 API",
-    version="1.9.0",
+    version="1.11.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -72,22 +71,38 @@ app = FastAPI(
 )
 
 shutdown_handler = GracefulShutdownHandler(app=app, state_file_path=STATE_FILE_PATH)
-idle_middleware = IdleAutoShutdownMiddleware(
-    app=app,
-    idle_timeout=1800,
-    state_file_path=STATE_FILE_PATH,
-)
+
+# Ensure state file directory exists
+Path(STATE_FILE_PATH).parent.mkdir(parents=True, exist_ok=True)
+
+# IdleAutoShutdownMiddleware configuration
+IDLE_TIMEOUT_SECONDS = 1800
 
 
 @app.on_event("startup")
 async def startup_event():
     shutdown_handler.setup()
     await ring_log.start()
-    await idle_middleware.start_idle_checker()
 
     from app.database.models import init_db
     from app.core.task_system import AsyncTaskManager
     from app.services.redis_client import get_redis
+    from alembic.config import Config
+    from alembic import command
+    import os
+
+    # Run Alembic auto-migration on startup
+    try:
+        alembic_cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
+        # Override DB_URL from environment if set
+        db_url = os.environ.get("DB_URL")
+        if db_url:
+            alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migration completed successfully")
+    except Exception as e:
+        logger.error("Database migration failed: %s", e)
+        raise
 
     await init_db()
     await get_redis()
@@ -103,7 +118,7 @@ async def startup_event():
         data={"version": PY_VERSION},
     )
     logger.info("Graceful shutdown handler and signal processors registered")
-    logger.info("Idle auto-shutdown middleware registered (timeout: 1800s)")
+    logger.info("Idle auto-shutdown middleware registered (timeout: %ds)", IDLE_TIMEOUT_SECONDS)
     logger.info("State file path: %s", STATE_FILE_PATH)
 
 
@@ -130,7 +145,27 @@ async def shutdown_event():
     logger.info("FastAPI shutdown event completed")
 
 
+# Middleware registration order (outermost first):
+#   RequestIdMiddleware  -> generates X-Request-ID
+#   SecurityHeadersMiddleware -> pure ASGI, adds security headers
+#   CORSMiddleware
+#   MetricsMiddleware -> records request metrics (BaseHTTPMiddleware)
+#   UnifiedAuthMiddleware -> pure ASGI, merged LNN+JWT+Agent auth
+#   IdleAutoShutdownMiddleware -> tracks idle time (BaseHTTPMiddleware)
+#
+# Only 2 BaseHTTPMiddleware remain: MetricsMiddleware, IdleAutoShutdownMiddleware
+
 app.add_middleware(RequestIdMiddleware)
+
+# Pure ASGI SecurityHeadersMiddleware (no body buffering)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# IdleAutoShutdownMiddleware - tracks idle time and auto-shutdown (BaseHTTPMiddleware)
+app.add_middleware(
+    IdleAutoShutdownMiddleware,
+    idle_timeout=IDLE_TIMEOUT_SECONDS,
+    state_file_path=STATE_FILE_PATH,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -142,19 +177,6 @@ app.add_middleware(
     expose_headers=cors_settings.get_expose_headers(),
     max_age=cors_settings.max_age,
 )
-
-
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        response: Response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=()"
-        )
-        return response
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
@@ -179,13 +201,16 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(MetricsMiddleware)
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(
-    AuthMiddleware, enabled=auth_enabled, permission_enforced=permission_enforced
-)
 
+# Unified ASGI auth middleware (merges AuthMiddleware, JwtAuthMiddleware, AgentAuthMiddleware)
 jwt_auth_enabled = os.environ.get("LNN_JWT_AUTH_ENABLED", "true").lower() == "true"
-app.add_middleware(JwtAuthMiddleware, enabled=jwt_auth_enabled)
+app.add_middleware(
+    UnifiedAuthMiddleware,
+    lnn_auth_enabled=auth_enabled,
+    lnn_permission_enforced=permission_enforced,
+    jwt_auth_enabled=jwt_auth_enabled,
+    agent_auth_enabled=config.security.agent_auth_enabled,
+)
 
 
 @app.get("/api/metrics")
@@ -205,7 +230,7 @@ async def health_check():
 
 @app.get("/api/health")
 async def api_health_check():
-    return {"status": "ok", "version": "1.9.0"}
+    return {"status": "ok", "version": "1.11.0"}
 
 
 @app.get("/api/health/ping")
@@ -257,9 +282,6 @@ async def query_logs(
     )
     return {"code": 0, "message": "OK", "data": result, "request_id": get_request_id()}
 
-
-agent_auth_enabled = config.security.agent_auth_enabled
-app.add_middleware(AgentAuthMiddleware, enabled=agent_auth_enabled)
 
 app.include_router(lnn.router)
 app.include_router(wear_prediction.router)

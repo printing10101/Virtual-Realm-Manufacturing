@@ -354,7 +354,7 @@ class LNNAccelerationBenchmark:
         for result in self.results:
             print(f"\n[{result.test_name}]")
             print(
-                f"  Avg: {result.avg_time_ms:.3f}ms | P50: {result.p50_time_ms:.3f}ms | P95: {result.p95_time_ms:.3f}ms | P99: {result.p99_time_ms:.3f}ms"
+                f"  Avg: {result.avg_time_ms:.3f}ms | P50: {result.p50_time_ms:.3f}ms | P95: {result.p95_time_ms:.3f}ms | P99: {result.p99_time_ms:.3f}ms"  # noqa: E501
             )
             print(f"  Throughput: {result.throughput_per_sec:.2f} samples/sec")
             if result.memory_peak_mb > 0:

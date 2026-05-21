@@ -256,7 +256,7 @@
           width="180"
         >
           <template #default="{ row }">
-            {{ formatTime(row.created_at) }}
+            {{ formatSecondsTimestamp(row.created_at) }}
           </template>
         </el-table-column>
         <el-table-column
@@ -418,6 +418,7 @@ import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import axios from 'axios'
 import * as echarts from 'echarts'
 import { Refresh } from '@element-plus/icons-vue'
+import { formatSecondsTimestamp } from '@/utils/formatters'
 
 const API_BASE = '/api/v1/cost-budget'
 
@@ -450,11 +451,6 @@ function formatCost(value: number): string {
   if (value >= 1) return `$${value.toFixed(2)}`
   if (value >= 0.01) return `$${value.toFixed(4)}`
   return `$${value.toFixed(6)}`
-}
-
-function formatTime(ts: number | null): string {
-  if (!ts) return '-'
-  return new Date(ts * 1000).toLocaleString('zh-CN')
 }
 
 function budgetLevelLabel(level: string): string {

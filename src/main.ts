@@ -25,7 +25,7 @@ function setLocaleWithEl(locale: SupportedLocale) {
   originalSetLocale(locale)
   syncElLocale(locale)
 }
-;(window as any).__setLocale = setLocaleWithEl
+(window as any).__setLocale = setLocaleWithEl
 
 const app = createApp(App)
 const pinia = createPinia()

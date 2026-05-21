@@ -55,6 +55,12 @@ class GCodeResult:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the G-code result to a dictionary representation.
+
+        Returns:
+            A dictionary containing program text, controller type, program
+            metadata, and any warnings or errors.
+        """
         return {
             "program_text": self.program_text,
             "controller_type": self.controller_type,
@@ -188,7 +194,7 @@ class GCodeGenerator:
         lines.append("")
 
         # ========== 逐工序生成G代码 ==========
-        current_tool = ""
+        _current_tool = ""  # noqa: F841
         tool_index = 0
         tool_registry: dict[str, int] = {}
 
@@ -199,7 +205,7 @@ class GCodeGenerator:
             if tool_key not in tool_registry:
                 tool_index += 1
                 tool_registry[tool_key] = tool_index
-                current_tool = tool_key
+                _current_tool = tool_key  # noqa: F841
 
                 lines.append("")
                 lines.append(postprocessor._comment(
@@ -330,10 +336,10 @@ class GCodeGenerator:
 
         # 单刀具设置
         lines.append(postprocessor.format_tool_change(
-        tool_id=tool_number,
-        length_comp=float(tool_number),
-        radius_comp=float(tool_number),
-    ))
+            tool_id=tool_number,
+            length_comp=float(tool_number),
+            radius_comp=float(tool_number),
+        ))
         lines.append(f"S{spindle_speed} M03")
         lines.append(postprocessor.format_coolant("on"))
 
@@ -443,20 +449,20 @@ class GCodeGenerator:
         elif "铣" in method:
             # === 铣削类工序 ===
             lines.append(postprocessor._comment(f"铣削: {op.feature_name}"))
-            lines.append(f"S2500 M03")
+            lines.append("S2500 M03")
             feed_rate = int(300 * feed_factor)
             lines.append(f"G01 Z{-5.0:.3f} F{feed_rate}")
 
         elif "车" in method:
             # === 车削类工序 ===
             lines.append(postprocessor._comment(f"车削: {op.feature_name}"))
-            lines.append(f"S1500 M03")
-            lines.append(f"G01 X50.0 Z-20.0 F0.15")
+            lines.append("S1500 M03")
+            lines.append("G01 X50.0 Z-20.0 F0.15")
 
         elif "镗" in method:
             lines.append(postprocessor._comment(f"镗孔: {op.feature_name}"))
-            lines.append(f"S800 M03")
-            lines.append(f"G85 X0 Y0 Z-30.0 R3.0 F80")
+            lines.append("S800 M03")
+            lines.append("G85 X0 Y0 Z-30.0 R3.0 F80")
             lines.append("G80")
 
         else:

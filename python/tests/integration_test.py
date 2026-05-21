@@ -23,7 +23,7 @@ RESULTS = []
 
 
 def check(name, condition, detail=""):
-    global PASSED, FAILED, RESULTS
+    global PASSED, FAILED
     if condition:
         PASSED += 1
         RESULTS.append(f"  [PASS] {name}")

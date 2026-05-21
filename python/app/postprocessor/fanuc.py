@@ -1,28 +1,49 @@
-"""Fanuc 0i系列CNC控制器后处理器。
+"""Fanuc 0i/18i/31i系列CNC控制器后处理器。
 
 实现Fanuc 0i系列控制器特有的G代码方言，包括：
 - G43/G44刀具长度补偿
 - G41/G42刀具半径补偿
 - G02/G03圆弧插补（R半径模式）
-- G73高速深孔啄钻 / G83深孔啄钻循环
+- G73高速深孔啄钻 / G81/G83钻孔循环
+- G84攻丝循环（主轴同步）
+- G86/G89镗孔循环
+- G76精镗/螺纹加工循环
+- M98/M99子程序调用
+- 宏变量 #1-#33 / #100-#199 / #1000+# 支持
 - M03/M04/M05主轴控制
 - M08/M09冷却液控制
 """
 
 from __future__ import annotations
 
-from typing import Tuple
+import logging
+from typing import Any, Dict, Optional, Tuple
 
 from app.postprocessor.base import BasePostProcessor
 
+logger = logging.getLogger(__name__)
+
 
 class FanucPostProcessor(BasePostProcessor):
-    """Fanuc 0i系列CNC控制器后处理器。
+    """Fanuc 0i/18i/31i系列CNC控制器后处理器。
 
-    生成符合Fanuc 0i语法规范的G代码。
+    生成符合Fanuc 0i/18i/31i语法规范的G代码。
+    支持G54-G59工件坐标系、G76螺纹加工、M98/M99子程序。
     """
 
+    def __init__(
+        self,
+        decimal_places: int = 3,
+        safe_z_height: float = 50.0,
+        rapid_feed: float = 10000,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(decimal_places, safe_z_height, rapid_feed, config)
+
     def format_header(self, program_number: int = 1) -> str:
+        wcs = self._default_coordinate_system
+        default_rpm = int(self.get_spindle_rpm())
+
         lines = [
             "%",
             f"O{program_number:04d} (PROGRAM {program_number} - {self._date_string()})",
@@ -30,9 +51,9 @@ class FanucPostProcessor(BasePostProcessor):
             "G21 G17 G40 G49 G80 G90 G94",
             "G00 G91 G28 Z0.",
             "G00 G91 G28 X0. Y0.",
-            "G00 G90 G54 X0. Y0.",
+            f"G00 G90 {wcs} X0. Y0.",
             f"G00 G43 Z{self._fmt(self.safe_z_height)} H00",
-            "M03 S8000",
+            f"M03 S{default_rpm}",
             "M08",
             "",
         ]
@@ -44,16 +65,20 @@ class FanucPostProcessor(BasePostProcessor):
         length_comp: float = 0.0,
         radius_comp: float = 0.0,
     ) -> str:
+        wcs = self._default_coordinate_system
+        default_rpm = int(self.get_spindle_rpm())
+        feed = self._fmt(self.get_feed_rate(self.rapid_feed))
+
         lines = [
             "G00 G91 G28 Z0.",
             "G00 G91 G28 X0. Y0.",
             f"T{tool_id:02d} M06",
-            "G00 G90 G54 X0. Y0.",
+            f"G00 G90 {wcs} X0. Y0.",
             f"G43 Z{self._fmt(self.safe_z_height)} H{tool_id:02d}",
-            f"G01 Z{self._fmt(length_comp)} F{self._fmt(self.rapid_feed)}",
+            f"G01 Z{self._fmt(length_comp)} F{feed}",
         ]
         if radius_comp != 0.0:
-            lines.append("M03 S8000")
+            lines.append(f"M03 S{default_rpm}")
         return "\n".join(lines)
 
     def format_arc(
@@ -65,9 +90,10 @@ class FanucPostProcessor(BasePostProcessor):
     ) -> str:
         g_code = "G02" if clockwise else "G03"
         radius = self._calc_arc_radius(end, center)
+        feed = self._fmt(self.get_feed_rate(self.rapid_feed))
         return (
             f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} "
-            f"R{self._fmt(radius)} F{self._fmt(self.rapid_feed)}"
+            f"R{self._fmt(radius)} F{feed}"
         )
 
     def format_coolant(self, state: str) -> str:
@@ -93,26 +119,187 @@ class FanucPostProcessor(BasePostProcessor):
         depth: float,
         dwell: float = 0.0,
     ) -> str:
+        cfg = self.get_cycle_config("drilling", "G83" if dwell > 0 else "G81")
+        retract_mode = cfg.get("retract_mode", "G98")
+        peck_depth = cfg.get("peck_depth", 5.0)
+        _retract_dist = cfg.get("retract_distance", 1.0)  # noqa: F841
         r_plane = self.safe_z_height
-        retract = depth - 1.0 if depth > 1.0 else 0.0
+        drill_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.3))
 
         if dwell > 0:
+            dwell_ms = int(dwell * 1000)
             lines = [
-                f"G98 G73 X{self._fmt(x)} Y{self._fmt(y)} "
-                f"Z{self._fmt(depth)} R{self._fmt(r_plane)} "
-                f"Q{self._fmt(abs(retract))} P{int(dwell * 1000)} "
-                f"F{self._fmt(self.rapid_feed * 0.3)}",
+                f"{retract_mode} G83 X{self._fmt(x)} Y{self._fmt(y)} "
+                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"Q{self._fmt(peck_depth)} P{dwell_ms} "
+                f"F{drill_feed}",
                 "G80",
             ]
         else:
             lines = [
-                f"G98 G83 X{self._fmt(x)} Y{self._fmt(y)} "
-                f"Z{self._fmt(depth)} R{self._fmt(r_plane)} "
-                f"Q{self._fmt(abs(retract))} "
-                f"F{self._fmt(self.rapid_feed * 0.3)}",
+                f"{retract_mode} G81 X{self._fmt(x)} Y{self._fmt(y)} "
+                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"F{drill_feed}",
                 "G80",
             ]
         return "\n".join(lines)
+
+    def format_cycle_tapping(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        depth: float,
+        pitch: float = 1.0,
+        spindle_rpm: Optional[float] = None,
+    ) -> str:
+        cfg = self.get_cycle_config("tapping", "G84")
+        rpm = self.get_spindle_rpm(spindle_rpm)
+        spindle_dir = cfg.get("spindle_direction", "M03")
+        r_plane = self.safe_z_height
+        feed_per_rev = cfg.get("feed_per_rev", True)
+
+        if feed_per_rev:
+            tap_feed = pitch
+        else:
+            tap_feed = pitch * rpm
+
+        dwell_ms = int(cfg.get("dwell_time", 0.0) * 1000)
+
+        lines = [
+            f"{spindle_dir} S{int(rpm)}",
+            f"G99 G84 X{self._fmt(x)} Y{self._fmt(y)} "
+            f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+            f"F{self._fmt(tap_feed)}",
+        ]
+        if dwell_ms > 0:
+            lines[-1] += f" P{dwell_ms}"
+
+        lines.append("G80")
+        return "\n".join(lines)
+
+    def format_cycle_boring(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        depth: float,
+        cycle_type: str = "G86",
+        dwell: float = 0.5,
+    ) -> str:
+        cfg = self.get_cycle_config("boring", cycle_type)
+        retract_mode = cfg.get("retract_mode", "G98")
+        _retract_type = cfg.get("retract_type", "rapid")  # noqa: F841
+        r_plane = self.safe_z_height
+        bore_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.15))
+        dwell_ms = int(dwell * 1000)
+
+        lines = []
+        if cycle_type == "G86":
+            lines.append(
+                f"{retract_mode} G86 X{self._fmt(x)} Y{self._fmt(y)} "
+                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"F{bore_feed}"
+            )
+            if dwell_ms > 0:
+                lines[-1] += f" P{dwell_ms}"
+        elif cycle_type == "G89":
+            lines.append(
+                f"{retract_mode} G89 X{self._fmt(x)} Y{self._fmt(y)} "
+                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"P{dwell_ms} F{bore_feed}"
+            )
+        else:
+            lines.append(
+                f"{retract_mode} G86 X{self._fmt(x)} Y{self._fmt(y)} "
+                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"F{bore_feed}"
+            )
+
+        lines.append("G80")
+        return "\n".join(lines)
+
+    def format_cycle_threading(
+        self,
+        x: float,
+        y: float,
+        depth: float,
+        lead: float = 1.0,
+        passes: Optional[int] = None,
+        depth_cut_first: Optional[float] = None,
+        depth_cut_last: Optional[float] = None,
+        finishing_passes: Optional[int] = None,
+        tool_angle: Optional[float] = None,
+        taper: Optional[float] = None,
+    ) -> str:
+        cfg = self.get_cycle_config("threading", "G76")
+
+        _p = passes if passes is not None else cfg.get("passes", 5)  # noqa: F841
+        d_first = depth_cut_first if depth_cut_first is not None else cfg.get("depth_cut_first", 0.2)
+        d_last = depth_cut_last if depth_cut_last is not None else cfg.get("depth_cut_last", 0.05)
+        _finish = finishing_passes if finishing_passes is not None else cfg.get("finishing_passes", 2)  # noqa: F841
+        angle = tool_angle if tool_angle is not None else cfg.get("tool_angle", 60.0)
+        taper_val = taper if taper is not None else cfg.get("taper", 0.0)
+        _shift_axis = cfg.get("shift_axis", "X")  # noqa: F841
+        _shift_dist = cfg.get("shift_distance", 0.1)  # noqa: F841
+
+        r_plane = self.safe_z_height
+        retract_mode = cfg.get("retract_mode", "G99")
+        infeed = cfg.get("infeed_method", "compound")
+
+        infeed_map = {"compound": 1, "radial": 2, "flank": 3}
+        infeed_code = infeed_map.get(infeed, 1)
+
+        _thread_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.05))  # noqa: F841
+
+        lines = [
+            f"{retract_mode} G76 X{self._fmt(x)} Y{self._fmt(y)} "
+            f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+            f"P{infeed_code}{int(angle):02d}{int(taper_val * 10):02d}"
+            f"Q{self._fmt(d_first)} R{self._fmt(d_last)} "
+            f"F{self._fmt(lead)}",
+            "G80",
+        ]
+        return "\n".join(lines)
+
+    def format_subprogram_call(
+        self,
+        program_number: int,
+        repeat: int = 1,
+    ) -> str:
+        sub_cfg = self.get_subprogram_config()
+        prog_cfg = sub_cfg.get("program_number", {})
+        repeat_cfg = sub_cfg.get("repeat", {})
+
+        prog_min = prog_cfg.get("minimum", 1)
+        prog_max = prog_cfg.get("maximum", 9999)
+        rep_min = repeat_cfg.get("minimum", 1)
+        rep_max = repeat_cfg.get("maximum", 9999)
+
+        program_number = max(prog_min, min(prog_max, program_number))
+        repeat = max(rep_min, min(rep_max, repeat))
+
+        call_fmt = sub_cfg.get("call_format", "M98 P{program_num:04d} L{repeat}")
+
+        try:
+            formatted = call_fmt.format(program_num=program_number, repeat=repeat)
+        except KeyError:
+            formatted = f"M98 P{program_number:04d}"
+            if repeat > 1:
+                formatted += f" L{repeat}"
+
+        return formatted
+
+    def format_subprogram_end(
+        self,
+        return_value: Optional[str] = None,
+    ) -> str:
+        sub_cfg = self.get_subprogram_config()
+        end_code = sub_cfg.get("end_code", "M99")
+
+        if return_value:
+            return f"{end_code} P{return_value}"
+        return end_code
 
     def format_footer(self) -> str:
         lines = [

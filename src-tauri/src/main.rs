@@ -14,6 +14,7 @@ mod path_security;
 mod version;
 mod sidecar_manager;
 mod launch;
+mod compute;
 
 use state::AppState;
 use tauri::Manager;

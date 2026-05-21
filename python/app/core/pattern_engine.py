@@ -213,7 +213,7 @@ class PatternEngine:
                     self._patterns.append(p)
                     self._db.execute(
                         """INSERT OR REPLACE INTO patterns
-                           (pattern_id, pattern_type, description, elements, conditions, metrics, sample_size, suggestion, created_at)
+                           (pattern_id, pattern_type, description, elements, conditions, metrics, sample_size, suggestion, created_at)  # noqa: E501
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
                             p.pattern_id,
@@ -358,7 +358,7 @@ class PatternEngine:
                     pattern = Pattern(
                         pattern_id=f"cp_{uuid.uuid4().hex[:8]}",
                         pattern_type="combination",
-                        description=f"Combination optimization: {', '.join(f'{k}={v}' for k, v in elements.items())} under {', '.join(f'{k}={v}' for k, v in conditions.items())}",
+                        description=f"Combination optimization: {', '.join(f'{k}={v}' for k, v in elements.items())} under {', '.join(f'{k}={v}' for k, v in conditions.items())}",  # noqa: E501
                         elements=elements,
                         conditions=conditions,
                         metrics={

@@ -132,7 +132,7 @@ class TemplateUpdateService:
             self._notifications[notif.notification_id] = notif
             self._db.execute(
                 """INSERT INTO update_notifications
-                   (notification_id, project_id, suggestion_id, priority, title, description, change_preview, expected_impact, created_at, status)
+                   (notification_id, project_id, suggestion_id, priority, title, description, change_preview, expected_impact, created_at, status)  # noqa: E501
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     notif.notification_id,

@@ -1,8 +1,21 @@
-"""
-CFC (Context-Free Grammar Network) Model
+"""CFC (Context-Free Continuous-time) Model for Fast Inference.
 
-Optimized for fast inference scenarios with response time < 100ms.
-Uses context-free grammar principles for efficient pattern matching and classification.
+Implements a lightweight feed-forward neural network optimized for low-latency
+inference scenarios (< 100ms response time). Uses ReLU activations with
+He initialization and supports both inference and training workflows.
+
+Key components:
+    - CFCModel: Fast inference model inheriting from BaseLNNModel.
+
+Example:
+    >>> model = CFCModel(
+    ...     model_name="CFC-Fast",
+    ...     input_dim=128,
+    ...     output_dim=10,
+    ...     hidden_dim=256,
+    ... )
+    >>> model.build()
+    >>> output = model.predict(np.random.randn(32, 128))
 """
 
 import numpy as np
@@ -12,13 +25,27 @@ from .base_lnn import BaseLNNModel
 
 
 class CFCModel(BaseLNNModel):
-    """
-    CFC模型实现，优化快速推理场景
+    """CFC model optimized for fast inference (< 100ms latency).
 
-    特点：
-    - 响应时间 < 100ms
-    - 适用于快速分类和模式识别
-    - 使用无上下文文法网络结构
+    A feed-forward neural network with configurable depth and width,
+    using ReLU activations and He initialization. Supports NumPy-based
+    inference and can be converted to PyTorch for GPU training.
+
+    Attributes:
+        hidden_dim: Hidden layer dimension.
+        num_layers: Number of hidden layers.
+        dropout_rate: Dropout probability during training.
+        weights: List of weight matrices for each layer.
+        biases: List of bias vectors for each layer.
+        training: Whether the model is in training mode (enables dropout).
+
+    Example:
+        >>> model = CFCModel(input_dim=10, output_dim=2, hidden_dim=64)
+        >>> model.build()
+        >>> x = np.random.randn(5, 10)
+        >>> predictions = model.predict(x)
+        >>> predictions.shape
+        (5, 2)
     """
 
     def __init__(

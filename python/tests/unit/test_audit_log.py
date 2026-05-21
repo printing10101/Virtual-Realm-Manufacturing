@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.audit_log import AuditLog, AIModule, UserDecision, OperationStatus
+from app.core.audit_log import AuditLog, AIModule, UserDecision, OperationStatus, AuditLogEntry
 
 
 class TestAIModuleEnum:
@@ -61,9 +61,35 @@ class TestAuditLog:
         assert entry is not None
         assert entry.timestamp_ms > 0
 
+    def test_log_decision_with_user_id(self):
+        audit = AuditLog()
+        entry = audit.log_decision(
+            ai_module=AIModule.LNN_PREDICT,
+            ai_recommendation={"value": 0.95},
+            user_decision=UserDecision.ACCEPT,
+            final_execution={"result": "success"},
+            operation_status=OperationStatus.SUCCESS,
+            user_id="user-001",
+            username="测试用户",
+            input_parameters={"model_name": "test_model"},
+            confidence=0.95,
+        )
+        assert entry.user_id == "user-001"
+        assert entry.username == "测试用户"
+        assert entry.input_parameters == {"model_name": "test_model"}
+
     def test_get_logs_returns_list(self):
         audit = AuditLog()
         logs = audit.get_logs(limit=10, offset=0)
+        assert isinstance(logs, list)
+
+    def test_get_logs_with_user_id_filter(self):
+        audit = AuditLog()
+        logs = audit.get_logs(
+            limit=10,
+            offset=0,
+            user_id="user-001",
+        )
         assert isinstance(logs, list)
 
     def test_get_statistics_returns_dict(self):
@@ -101,3 +127,48 @@ class TestAuditLog:
             user_decision="accept",
         )
         assert isinstance(logs, list)
+
+
+class TestAuditLogEntryNewFields:
+    def test_entry_user_id_default(self):
+        entry = AuditLogEntry(
+            timestamp_ms=1234567890123,
+            ai_module="lnn_predict",
+            ai_recommendation={"v": 0.5},
+            user_decision="accept",
+            final_execution={"v": 0.5},
+            operation_status="success",
+        )
+        assert entry.user_id is None
+        assert entry.username is None
+
+    def test_entry_from_dict_backward_compat(self):
+        data = {
+            "timestamp_ms": 9999999999999,
+            "ai_module": "lnn_predict",
+            "ai_recommendation": {"v": 0.5},
+            "user_decision": "accept",
+            "final_execution": {"v": 0.5},
+            "operation_status": "success",
+        }
+        entry = AuditLogEntry.from_dict(data)
+        assert entry.user_id is None
+        assert entry.username is None
+        assert entry.input_parameters == {}
+
+    def test_entry_to_dict_includes_new_fields(self):
+        entry = AuditLogEntry(
+            timestamp_ms=1234567890123,
+            ai_module="lnn_predict",
+            ai_recommendation={"v": 0.5},
+            user_decision="accept",
+            final_execution={"v": 0.5},
+            operation_status="success",
+            user_id="u001",
+            username="张三",
+            input_parameters={"p1": "v1"},
+        )
+        d = entry.to_dict()
+        assert d["user_id"] == "u001"
+        assert d["username"] == "张三"
+        assert d["input_parameters"] == {"p1": "v1"}

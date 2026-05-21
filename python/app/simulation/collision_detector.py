@@ -1,7 +1,14 @@
-"""基础碰撞检测引擎。
+"""Basic collision detection engine for CNC toolpath validation.
 
-采用AABB（轴对齐包围盒）进行高效碰撞检测，
-覆盖刀具-毛坯碰撞、过切边界检测、换刀点安全检查。
+Uses AABB (Axis-Aligned Bounding Box) for efficient collision detection,
+covering tool-stock collision, overcut boundary detection, and tool-change
+point safety checks.
+
+Example:
+    >>> stock = StockModel(length=200, width=150, height=50)
+    >>> detector = CollisionDetector(stock, safe_z_height=10.0)
+    >>> report = detector.check_segments(parsed_segments)
+    >>> print(f"Safe: {report.safe}, Collisions: {report.collision_count}")
 """
 
 from __future__ import annotations
@@ -15,6 +22,17 @@ from app.simulation.toolpath_parser import ToolpathSegment
 
 @dataclass
 class CollisionEvent:
+    """Represents a single collision event detected during toolpath validation.
+
+    Attributes:
+        collision_type: Type of collision (e.g., "rapid_into_stock", "overcut_z").
+        severity: Severity level ("high", "medium", "low").
+        block_number: NC block number where the collision occurred.
+        position: (x, y, z) coordinates of the collision point.
+        message: Human-readable description of the collision.
+        suggestion: Suggested corrective action.
+    """
+
     collision_type: str
     severity: str
     block_number: int
@@ -23,6 +41,11 @@ class CollisionEvent:
     suggestion: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the collision event to a dictionary.
+
+        Returns:
+            Dictionary with all collision event fields.
+        """
         return {
             "collision_type": self.collision_type,
             "severity": self.severity,
@@ -35,6 +58,16 @@ class CollisionEvent:
 
 @dataclass
 class CollisionReport:
+    """Aggregated report from a full toolpath collision check.
+
+    Attributes:
+        total_segments: Total number of toolpath segments in the input.
+        segments_checked: Number of segments actually checked.
+        collisions: List of detected collision events.
+        warnings: List of boundary warning messages.
+        safe: Whether the toolpath is collision-free.
+    """
+
     total_segments: int
     segments_checked: int
     collisions: list[CollisionEvent] = field(default_factory=list)
@@ -42,6 +75,11 @@ class CollisionReport:
     safe: bool = True
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the collision report to a dictionary.
+
+        Returns:
+            Dictionary with all collision report fields and collision count.
+        """
         return {
             "total_segments": self.total_segments,
             "segments_checked": self.segments_checked,
@@ -53,12 +91,39 @@ class CollisionReport:
 
 
 class CollisionDetector:
+    """AABB-based collision detector for CNC toolpaths.
+
+    Checks toolpath segments against the stock bounding box for:
+    - Rapid move (G00) collision with stock material
+    - Z-axis safety during rapid moves
+    - Overcut beyond stock boundaries
+
+    Attributes:
+        stock: The stock model to check against.
+        safe_z_height: Minimum safe clearance above stock (mm).
+        spindle_clearance: Spindle clearance margin (mm).
+
+    Example:
+        >>> detector = CollisionDetector(stock_model, safe_z_height=10.0)
+        >>> report = detector.check_segments(segments)
+        >>> if not report.safe:
+        ...     for c in report.collisions:
+        ...         print(c.message)
+    """
+
     def __init__(
         self,
         stock: StockModel | None = None,
         safe_z_height: float = 10.0,
         spindle_clearance: float = 5.0,
     ) -> None:
+        """Initialize the collision detector.
+
+        Args:
+            stock: Stock model defining the workpiece boundaries.
+            safe_z_height: Safe Z clearance above the stock in mm.
+            spindle_clearance: Spindle clearance margin in mm.
+        """
         self.stock = stock
         self.safe_z_height = safe_z_height
         self.spindle_clearance = spindle_clearance
@@ -67,6 +132,18 @@ class CollisionDetector:
         self,
         segments: list[ToolpathSegment],
     ) -> CollisionReport:
+        """Check all toolpath segments for collisions.
+
+        Iterates through each segment and performs type-specific checks:
+        rapid moves are checked for stock collision and Z safety, while
+        cutting moves (linear/arc) are checked for overcut.
+
+        Args:
+            segments: List of toolpath segments to validate.
+
+        Returns:
+            CollisionReport summarizing all detected collisions and warnings.
+        """
         bbox = self.stock.get_bbox() if self.stock else None
         stock_z_top = bbox.z_max if bbox else 100.0
 
@@ -95,6 +172,17 @@ class CollisionDetector:
         bbox: StockBoundingBox | None,
         collisions: list[CollisionEvent],
     ) -> None:
+        """Check if a rapid move intersects the stock bounding box.
+
+        Constructs an AABB for the rapid move line segment and checks
+        intersection with the stock. If intersecting, samples points
+        along the path to detect actual stock penetration.
+
+        Args:
+            seg: The rapid move toolpath segment.
+            bbox: Stock bounding box (None skips the check).
+            collisions: List to append detected collision events to.
+        """
         if bbox is None:
             return
 
@@ -130,8 +218,11 @@ class CollisionDetector:
                             severity="high",
                             block_number=seg.block_number,
                             position=(round(px, 3), round(py, 3), round(pz, 3)),
-                            message=f"G00快速移动在N{seg.block_number}处切入毛坯",
-                            suggestion=f"增加安全Z高度至≥{safe_plane}mm，或先抬刀至安全平面再定位",
+                            message=f"G00 rapid move cuts into stock at N{seg.block_number}",
+                            suggestion=(
+                                f"Increase safe Z height to >= {safe_plane}mm, "
+                                "or retract to safe plane before positioning"
+                            ),
                         )
                     )
                     break
@@ -142,6 +233,16 @@ class CollisionDetector:
         stock_z_top: float,
         collisions: list[CollisionEvent],
     ) -> None:
+        """Check Z-axis safety for rapid moves.
+
+        Verifies that the rapid move starts above the safe Z plane
+        (stock top + safe_z_height).
+
+        Args:
+            seg: The rapid move toolpath segment.
+            stock_z_top: Z coordinate of the stock top surface.
+            collisions: List to append detected collision events to.
+        """
         if seg.type != "rapid":
             return
 
@@ -156,8 +257,8 @@ class CollisionDetector:
                     severity="medium",
                     block_number=seg.block_number,
                     position=seg.start_point,
-                    message=f"G00起点Z={sz:.1f}低于安全高度{safe_z:.1f}",
-                    suggestion=f"在快速移动前先抬刀至G00 Z{safe_z}",
+                    message=f"G00 start Z={sz:.1f} is below safe height {safe_z:.1f}",
+                    suggestion=f"Retract to G00 Z{safe_z} before rapid movement",
                 )
             )
 
@@ -168,6 +269,17 @@ class CollisionDetector:
         collisions: list[CollisionEvent],
         warnings: list[str],
     ) -> None:
+        """Check for overcut beyond stock boundaries.
+
+        Detects when the toolpath endpoint extends beyond the stock
+        bounding box with a 0.5mm tolerance margin.
+
+        Args:
+            seg: The cutting toolpath segment (linear or arc).
+            bbox: Stock bounding box (None skips the check).
+            collisions: List to append detected collision events to.
+            warnings: List to append boundary warning messages to.
+        """
         if bbox is None:
             return
 
@@ -176,12 +288,12 @@ class CollisionDetector:
 
         if ex < bbox.x_min - margin or ex > bbox.x_max + margin:
             warnings.append(
-                f"N{seg.block_number}: 刀具路径X={ex:.2f}超出毛坯边界"
+                f"N{seg.block_number}: Tool path X={ex:.2f} exceeds stock boundary "
                 f"[{bbox.x_min:.2f}, {bbox.x_max:.2f}]"
             )
         if ey < bbox.y_min - margin or ey > bbox.y_max + margin:
             warnings.append(
-                f"N{seg.block_number}: 刀具路径Y={ey:.2f}超出毛坯边界"
+                f"N{seg.block_number}: Tool path Y={ey:.2f} exceeds stock boundary "
                 f"[{bbox.y_min:.2f}, {bbox.y_max:.2f}]"
             )
         if ez < bbox.z_min - margin:
@@ -191,8 +303,8 @@ class CollisionDetector:
                     severity="high",
                     block_number=seg.block_number,
                     position=seg.end_point,
-                    message=f"刀具路径Z={ez:.3f}低于毛坯底面Z={bbox.z_min}，存在过切风险",
-                    suggestion=f"检查Z轴切深，毛坯底面为Z={bbox.z_min}",
+                    message=f"Tool path Z={ez:.3f} is below stock bottom Z={bbox.z_min}, risk of overcut",
+                    suggestion=f"Check Z-axis cutting depth; stock bottom is at Z={bbox.z_min}",
                 )
             )
 
@@ -200,6 +312,16 @@ class CollisionDetector:
         self,
         seg: ToolpathSegment,
     ) -> list[CollisionEvent]:
+        """Check a single rapid move segment for collisions.
+
+        Convenience method for checking one rapid segment at a time.
+
+        Args:
+            seg: A rapid move toolpath segment.
+
+        Returns:
+            List of collision events (empty if safe or segment is not rapid).
+        """
         if seg.type != "rapid":
             return []
         bbox = self.stock.get_bbox() if self.stock else None

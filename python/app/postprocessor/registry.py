@@ -10,6 +10,7 @@ import logging
 from typing import Any, Optional, Type
 
 from app.postprocessor.base import BasePostProcessor
+from app.postprocessor.config_loader import ConfigLoader
 from app.postprocessor.fanuc import FanucPostProcessor
 from app.postprocessor.siemens import SiemensPostProcessor
 from app.postprocessor.heidenhain import HeidenhainPostProcessor
@@ -27,6 +28,7 @@ class PostProcessorRegistry:
         _instance: 单例实例
         _processors: 已注册的后处理器类型映射
         _instances: 已创建的实例缓存
+        _config_loader: 配置加载器实例
     """
 
     _instance: Optional[PostProcessorRegistry] = None
@@ -36,6 +38,7 @@ class PostProcessorRegistry:
             cls._instance = super().__new__(cls)
             cls._instance._processors: dict[str, Type[BasePostProcessor]] = {}
             cls._instance._instances: dict[str, BasePostProcessor] = {}
+            cls._instance._config_loader = ConfigLoader()
             cls._instance._register_builtin()
         return cls._instance
 
@@ -78,7 +81,7 @@ class PostProcessorRegistry:
 
         Args:
             controller_id: 控制器标识符
-            **config: 传递给后处理器构造函数的配置参数
+            **config: 传递给后处理器构造函数的配置参数（支持旧版接口）
 
         Returns:
             后处理器实例
@@ -112,48 +115,69 @@ class PostProcessorRegistry:
     def load_from_config(
         self,
         config_path: Optional[str] = None,
+        use_cache: bool = True,
     ) -> BasePostProcessor:
         """从配置文件加载并实例化后处理器。
 
+        使用ConfigLoader加载YAML配置，合并基础配置和控制器特定配置，
+        验证配置完整性，并将完整配置传递给后处理器。
+
         Args:
             config_path: YAML配置文件路径，默认查找"config/postprocessor_config.yaml"
+            use_cache: 是否使用配置缓存
 
         Returns:
             配置好的后处理器实例
 
         Raises:
             FileNotFoundError: 如果配置文件不存在
+            ConfigLoadError: 配置加载失败
+            ConfigValidationError: 配置验证失败
         """
-        import os
+        merged_config = self._config_loader.load(
+            config_path=config_path,
+            use_cache=use_cache,
+        )
 
-        import yaml
+        controller_id = merged_config.get("_controller_id", "fanuc")
 
-        if config_path is None:
-            project_root = os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
-            )
-            config_path = os.path.join(
-                project_root, "config", "postprocessor_config.yaml"
-            )
-
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Config file not found: {config_path}")
-
-        with open(config_path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
-
-        controller_id = cfg.get("target_controller", "fanuc_0i")
-        processor_config = {
-            "decimal_places": cfg.get("decimal_places", 3),
-            "safe_z_height": float(cfg.get("safe_z_height", 50.0)),
-            "rapid_feed": float(cfg.get("rapid_feed", 10000)),
+        controller_map = {
+            "fanuc": "fanuc_0i",
+            "siemens": "siemens_840d",
+            "heidenhain": "heidenhain_tnc",
         }
+        full_id = controller_map.get(controller_id, "fanuc_0i")
+
+        decimal_places = merged_config.get("decimal_places", 3)
+        safe_z_height = float(merged_config.get("safe_z_height", 50.0))
+        rapid_feed = float(merged_config.get("rapid_feed", 10000))
+
+        instance = self.get_processor(
+            full_id,
+            decimal_places=decimal_places,
+            safe_z_height=safe_z_height,
+            rapid_feed=rapid_feed,
+            config=merged_config,
+        )
 
         logger.info(
-            "Loaded post-processor from config: %s with %s",
+            "Loaded post-processor from config: %s (%s) with full configuration",
+            full_id,
             controller_id,
-            processor_config,
         )
-        return self.get_processor(controller_id, **processor_config)
+        return instance
+
+    def reload_config(self, config_path: Optional[str] = None) -> BasePostProcessor:
+        """强制重新加载配置并返回新实例。
+
+        清除所有缓存后重新加载配置。
+
+        Args:
+            config_path: 配置文件路径
+
+        Returns:
+            新配置的后处理器实例
+        """
+        self.clear_instances()
+        self._config_loader.clear_cache()
+        return self.load_from_config(config_path=config_path, use_cache=False)

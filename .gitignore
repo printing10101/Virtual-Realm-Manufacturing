@@ -80,6 +80,7 @@ htmlcov/
 test-results/
 playwright-report/
 coverage/
+coverage-reports/
 benchmarks/results/
 benchmarks/performance/history/
 

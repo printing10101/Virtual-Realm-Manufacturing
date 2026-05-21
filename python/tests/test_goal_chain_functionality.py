@@ -21,19 +21,19 @@ import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.models.goals import (
+from app.models.goals import (  # noqa: E402
     Goal,
     GoalLevel,
     GoalStatus,
 )
-from app.models.tasks import (
+from app.models.tasks import (  # noqa: E402
     EnhancedTask,
     EnhancedTaskType,
     EnhancedTaskStatus,
 )
-from app.core.goal_chain_store import GoalChainStore
-from app.core.goal_alignment import GoalAlignmentChecker, GoalAlignmentError
-from app.core.context_builder import ContextBuilder
+from app.core.goal_chain_store import GoalChainStore  # noqa: E402
+from app.core.goal_alignment import GoalAlignmentChecker, GoalAlignmentError  # noqa: E402
+from app.core.context_builder import ContextBuilder  # noqa: E402
 
 
 @pytest.fixture

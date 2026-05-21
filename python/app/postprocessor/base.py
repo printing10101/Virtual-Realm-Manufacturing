@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import datetime
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Any, Dict, Optional, Tuple
+
+from app.postprocessor.config_loader import ConfigLimiter, create_limiter
 
 
 class BasePostProcessor(ABC):
@@ -21,6 +23,14 @@ class BasePostProcessor(ABC):
         decimal_places: 数值保留的小数位数
         safe_z_height: 安全Z轴高度(mm)
         rapid_feed: 快速进给速度(mm/min)
+        config: 完整的合并后配置字典
+        limiter: 主轴/进给速度限幅器
+        _spindle_min_rpm: 主轴最小转速
+        _spindle_max_rpm: 主轴最大转速
+        _spindle_default_rpm: 主轴默认转速
+        _feed_min_rate: 进给最小速度
+        _feed_max_rate: 进给最大速度
+        _feed_default_rate: 进给默认速度
     """
 
     def __init__(
@@ -28,6 +38,7 @@ class BasePostProcessor(ABC):
         decimal_places: int = 3,
         safe_z_height: float = 50.0,
         rapid_feed: float = 10000,
+        config: Optional[Dict[str, Any]] = None,
     ) -> None:
         if decimal_places < 0:
             raise ValueError(f"decimal_places must be >= 0, got {decimal_places}")
@@ -38,6 +49,108 @@ class BasePostProcessor(ABC):
         self.decimal_places = decimal_places
         self.safe_z_height = safe_z_height
         self.rapid_feed = rapid_feed
+
+        self.config = config or {}
+        self.limiter: Optional[ConfigLimiter] = None
+        if self.config:
+            self.limiter = create_limiter(self.config)
+            self._init_from_config()
+
+    def _init_from_config(self) -> None:
+        """从配置字典初始化派生参数。"""
+        spindle = self.config.get("spindle", {})
+        self._spindle_min_rpm = spindle.get("min_rpm", 50)
+        self._spindle_max_rpm = spindle.get("max_rpm", 24000)
+        self._spindle_default_rpm = spindle.get("default_rpm", 8000)
+
+        feed = self.config.get("feed", {})
+        self._feed_min_rate = feed.get("min_rate", 10.0)
+        self._feed_max_rate = feed.get("max_rate", 20000.0)
+        self._feed_default_rate = feed.get("default_rate", 1000.0)
+
+        wcs = self.config.get("work_coordinate", {})
+        self._work_coordinates: Dict[str, Dict[str, Any]] = {}
+        for cs in ("G54", "G55", "G56", "G57", "G58", "G59"):
+            self._work_coordinates[cs] = wcs.get(cs, {})
+        self._default_coordinate_system = wcs.get("default_coordinate_system", "G54")
+
+    def get_spindle_rpm(self, requested_rpm: Optional[float] = None) -> float:
+        """获取限制后的主轴转速。
+
+        Args:
+            requested_rpm: 请求的转速，None则返回默认值
+
+        Returns:
+            限制后的主轴转速（RPM）
+        """
+        if self.limiter is not None and requested_rpm is not None:
+            return self.limiter.limit_spindle_rpm(requested_rpm, "spindle")
+        if requested_rpm is not None:
+            return requested_rpm
+        if self.limiter is not None:
+            return self.limiter.get_spindle_default()
+        return float(self._spindle_default_rpm)
+
+    def get_feed_rate(self, requested_feed: Optional[float] = None) -> float:
+        """获取限制后的进给速度。
+
+        Args:
+            requested_feed: 请求的进给速度，None则返回默认值
+
+        Returns:
+            限制后的进给速度（mm/min）
+        """
+        if self.limiter is not None and requested_feed is not None:
+            return self.limiter.limit_feed_rate(requested_feed, "feed")
+        if requested_feed is not None:
+            return requested_feed
+        if self.limiter is not None:
+            return self.limiter.get_feed_default()
+        return float(self._feed_default_rate)
+
+    def get_work_coordinate(self, system: str = "G54") -> Dict[str, Any]:
+        """获取指定工件坐标系的配置。
+
+        Args:
+            system: 坐标系名称 (G54-G59)
+
+        Returns:
+            坐标系配置字典
+        """
+        cs = system.upper()
+        if cs not in self._work_coordinates:
+            raise ValueError(f"无效的工件坐标系: {system}，有效值: G54-G59")
+        return self._work_coordinates[cs]
+
+    def get_enabled_coordinate_systems(self) -> list:
+        """获取所有已启用的工件坐标系列表。"""
+        return [
+            cs
+            for cs, cfg in self._work_coordinates.items()
+            if cfg.get("enabled", False)
+        ] or [self._default_coordinate_system]
+
+    def get_cycle_config(self, group: str, cycle: str) -> Dict[str, Any]:
+        """获取指定固定循环的配置参数。
+
+        Args:
+            group: 循环组名 (drilling/tapping/boring/threading)
+            cycle: 循环代码 (G81/G83/G84/G86/G89/G76)
+
+        Returns:
+            循环配置字典
+        """
+        cycles = self.config.get("fixed_cycles", {})
+        group_cfg = cycles.get(group, {})
+        return group_cfg.get(cycle, {})
+
+    def get_tool_offset_config(self) -> Dict[str, Any]:
+        """获取刀具补偿寄存器配置。"""
+        return self.config.get("tool_offset", {})
+
+    def get_subprogram_config(self) -> Dict[str, Any]:
+        """获取子程序/宏程序配置。"""
+        return self.config.get("subprogram", {})
 
     def _fmt(self, value: float) -> str:
         """将数值格式化为指定小数位数的字符串。"""
@@ -166,6 +279,116 @@ class BasePostProcessor(ABC):
 
         Returns:
             钻孔循环NC代码字符串
+        """
+
+    @abstractmethod
+    def format_cycle_tapping(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        depth: float,
+        pitch: float = 1.0,
+        spindle_rpm: Optional[float] = None,
+    ) -> str:
+        """生成攻丝固定循环指令（G84）。
+
+        Args:
+            x: 孔位X坐标
+            y: 孔位Y坐标
+            z: 孔位Z坐标（起始高度）
+            depth: 攻丝深度
+            pitch: 螺距 (mm)
+            spindle_rpm: 主轴转速，None使用默认值
+
+        Returns:
+            攻丝循环NC代码字符串
+        """
+
+    @abstractmethod
+    def format_cycle_boring(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        depth: float,
+        cycle_type: str = "G86",
+        dwell: float = 0.5,
+    ) -> str:
+        """生成镗孔固定循环指令（G86/G89）。
+
+        Args:
+            x: 孔位X坐标
+            y: 孔位Y坐标
+            z: 孔位Z坐标（起始高度）
+            depth: 镗孔深度
+            cycle_type: 循环类型 "G86"（粗镗）或 "G89"（精镗）
+            dwell: 孔底暂停时间(秒)
+
+        Returns:
+            镗孔循环NC代码字符串
+        """
+
+    @abstractmethod
+    def format_cycle_threading(
+        self,
+        x: float,
+        y: float,
+        depth: float,
+        lead: float = 1.0,
+        passes: Optional[int] = None,
+        depth_cut_first: Optional[float] = None,
+        depth_cut_last: Optional[float] = None,
+        finishing_passes: Optional[int] = None,
+        tool_angle: Optional[float] = None,
+        taper: Optional[float] = None,
+    ) -> str:
+        """生成螺纹加工固定循环指令（G76）。
+
+        Args:
+            x: 孔位X坐标
+            y: 孔位Y坐标
+            depth: 螺纹深度
+            lead: 螺纹导程 (mm)
+            passes: 切削次数，None使用配置默认值
+            depth_cut_first: 第一次切削深度，None使用配置默认值
+            depth_cut_last: 最后一次切削深度，None使用配置默认值
+            finishing_passes: 精加工次数，None使用配置默认值
+            tool_angle: 刀尖角度，None使用配置默认值
+            taper: 锥度角，None使用配置默认值
+
+        Returns:
+            螺纹加工循环NC代码字符串
+        """
+
+    @abstractmethod
+    def format_subprogram_call(
+        self,
+        program_number: int,
+        repeat: int = 1,
+    ) -> str:
+        """生成子程序调用指令。
+
+        Args:
+            program_number: 子程序号
+            repeat: 重复调用次数
+
+        Returns:
+            子程序调用NC代码字符串
+        """
+
+    @abstractmethod
+    def format_subprogram_end(
+        self,
+        return_value: Optional[str] = None,
+    ) -> str:
+        """生成子程序结束指令。
+
+        Args:
+            return_value: 可选的返回参数
+
+        Returns:
+            子程序结束NC代码字符串
         """
 
     @abstractmethod

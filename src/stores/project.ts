@@ -6,6 +6,7 @@
  */
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { extractErrorMessage } from '@/utils/errorUtils'
 import type {
   ProjectManifest,
   ProjectMetadata,
@@ -43,14 +44,27 @@ function emptySummary(): ProjectSummary {
   return { path: '', name: '', created_at: '', modified_at: '', resource_count: 0, file_size: 0 }
 }
 
+/**
+ * 工程管理 Store
+ * 管理加工工程的完整生命周期：新建、打开、保存、另存为。
+ * 负责前端状态与后端 project.json 之间的双向同步。
+ */
 export const useProjectStore = defineStore('project', () => {
+  /** 当前项目ID */
   const projectId = ref('')
+  /** 工程清单 */
   const manifest = ref<ProjectManifest>(defaultManifest())
+  /** 当前文件路径 */
   const currentFilePath = ref('')
+  /** 是否已修改 */
   const isModified = ref(false)
+  /** 加载状态 */
   const loading = ref(false)
+  /** 错误信息 */
   const error = ref<string | null>(null)
+  /** 项目列表 */
   const projectList = ref<ProjectSummary[]>([])
+  /** 列表加载状态 */
   const listLoading = ref(false)
 
   const projectName = computed(() => manifest.value.metadata.name)
@@ -78,8 +92,8 @@ export const useProjectStore = defineStore('project', () => {
       }
       error.value = resp.data.message || '创建工程失败'
       return false
-    } catch (e: any) {
-      error.value = e.response?.data?.message || e.message
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '创建工程失败')
       return false
     } finally {
       loading.value = false
@@ -102,8 +116,8 @@ export const useProjectStore = defineStore('project', () => {
       }
       error.value = resp.data.message || '打开工程失败'
       return false
-    } catch (e: any) {
-      error.value = e.response?.data?.message || e.message
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '打开工程失败')
       return false
     } finally {
       loading.value = false
@@ -127,8 +141,8 @@ export const useProjectStore = defineStore('project', () => {
       }
       error.value = resp.data.message || '保存工程失败'
       return false
-    } catch (e: any) {
-      error.value = e.response?.data?.message || e.message
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '保存工程失败')
       return false
     } finally {
       loading.value = false
@@ -153,8 +167,8 @@ export const useProjectStore = defineStore('project', () => {
       }
       error.value = resp.data.message || '另存为失败'
       return false
-    } catch (e: any) {
-      error.value = e.response?.data?.message || e.message
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '另存为失败')
       return false
     } finally {
       loading.value = false
@@ -168,8 +182,8 @@ export const useProjectStore = defineStore('project', () => {
       if (resp.data.code === 0) {
         projectList.value = resp.data.data.items as ProjectSummary[]
       }
-    } catch (e: any) {
-      error.value = e.response?.data?.message || e.message
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '获取工程列表失败')
     } finally {
       listLoading.value = false
     }

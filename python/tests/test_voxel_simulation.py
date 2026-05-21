@@ -28,7 +28,7 @@ from app.simulation.toolpath_parser import ToolpathParser, ToolpathSegment
 
 class TestToolModel:
     def test_flat_tool_creation(self):
-        tool = ToolModel(diameter=10.0, length=50.0, tool_type="flat")
+        tool = ToolModel(diameter=10.0, cutting_length=50.0, tool_type="flat")
         assert tool.diameter == 10.0
         assert tool.length == 50.0
         assert tool.tool_type == "flat"
@@ -43,7 +43,7 @@ class TestToolModel:
         assert tool.corner_radius == 4.0
 
     def test_drill_tool_creation(self):
-        tool = ToolModel(diameter=6.0, length=80.0, tool_type="drill")
+        tool = ToolModel(diameter=6.0, cutting_length=80.0, tool_type="drill")
         assert tool.tool_type == "drill"
 
     def test_flat_tool_voxel_mask_shape(self):
@@ -78,7 +78,7 @@ class TestToolModel:
 
     def test_tool_to_dict(self):
         tool = ToolModel(
-            diameter=10.0, length=50.0, tool_type="flat", corner_radius=1.0
+            diameter=10.0, cutting_length=50.0, tool_type="flat", corner_radius=1.0
         )
         d = tool.to_dict()
         assert d["diameter"] == 10.0
@@ -529,3 +529,318 @@ G00 Z80."""
             assert bbox["x_min"] < bbox["x_max"]
             assert bbox["y_min"] < bbox["y_max"]
             assert bbox["z_min"] < bbox["z_max"]
+
+
+class TestStlAutoGeneration:
+    """STL文件自动生成机制单元测试。
+
+    覆盖:
+    - STL文件存在性检查（已存在 → 跳过生成）
+    - STL文件不存在时的自动生成流程
+    - 源文件推断逻辑（_infer_source_paths）
+    - 重试逻辑（_ensure_stl_file）
+    - 结构化错误信息格式
+    - 边界条件与异常场景
+    """
+
+    def test_ensure_stl_file_already_exists(self):
+        """STL文件已存在时，应跳过生成并返回exists=True, generated=False。"""
+        from app.simulation.voxel_cutter import VoxelCutter
+
+        cutter = VoxelCutter(voxel_size=1.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            stl_path = tmp_path / "existing.stl"
+            stl_path.write_bytes(b"dummy stl content")
+
+            output_dir = tmp_path / "output"
+            output_dir.mkdir()
+
+            result = cutter._ensure_stl_file(
+                stl_path=stl_path,
+                source_file_paths=None,
+                output_dir=output_dir,
+            )
+            assert result["exists"] is True
+            assert result["generated"] is False
+            assert result["error"] is None
+
+    def test_ensure_stl_file_missing_no_source(self):
+        """STL不存在且无源文件时，应返回exists=False及结构化错误信息。"""
+        from app.simulation.voxel_cutter import VoxelCutter
+
+        cutter = VoxelCutter(voxel_size=1.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            stl_path = tmp_path / "nonexistent.stl"
+            output_dir = tmp_path / "output"
+            output_dir.mkdir()
+
+            result = cutter._ensure_stl_file(
+                stl_path=stl_path,
+                source_file_paths=None,
+                output_dir=output_dir,
+            )
+            assert result["exists"] is False
+            assert result["generated"] is False
+            assert result["error"] is not None
+            assert result["suggestion"] is not None
+            assert "STL文件不存在" in result["error"]
+
+    def test_ensure_stl_file_missing_with_nonexistent_source(self):
+        """STL不存在且指定的源文件也不存在时，应返回结构化错误。"""
+        from app.simulation.voxel_cutter import VoxelCutter
+
+        cutter = VoxelCutter(voxel_size=1.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            stl_path = tmp_path / "nonexistent.stl"
+            source_path = tmp_path / "nonexistent.step"
+            output_dir = tmp_path / "output"
+            output_dir.mkdir()
+
+            result = cutter._ensure_stl_file(
+                stl_path=stl_path,
+                source_file_paths=[source_path],
+                output_dir=output_dir,
+            )
+            assert result["exists"] is False
+            assert result["generated"] is False
+            assert result["error"] is not None
+            assert result["suggestion"] is not None
+
+    def test_infer_source_paths_finds_step(self):
+        """推断源文件路径时，应发现同名的STEP文件。"""
+        from app.simulation.voxel_cutter import _infer_source_paths
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            stl_path = tmp_path / "part.stl"
+            step_path = tmp_path / "part.step"
+            step_path.write_bytes(b"dummy step")
+
+            candidates = _infer_source_paths(stl_path)
+            assert len(candidates) >= 1
+            assert any(p.suffix == ".step" for p in candidates)
+
+    def test_infer_source_paths_finds_dxf(self):
+        """推断源文件路径时，应发现同名的DXF文件。"""
+        from app.simulation.voxel_cutter import _infer_source_paths
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            stl_path = tmp_path / "part.stl"
+            dxf_path = tmp_path / "part.dxf"
+            dxf_path.write_bytes(b"dummy dxf")
+
+            candidates = _infer_source_paths(stl_path)
+            assert len(candidates) >= 1
+            assert any(p.suffix == ".dxf" for p in candidates)
+
+    def test_infer_source_paths_finds_both(self):
+        """当STEP和DXF同时存在时，应返回两者。"""
+        from app.simulation.voxel_cutter import _infer_source_paths
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            stl_path = tmp_path / "part.stl"
+            (tmp_path / "part.step").write_bytes(b"step")
+            (tmp_path / "part.dxf").write_bytes(b"dxf")
+
+            candidates = _infer_source_paths(stl_path)
+            assert len(candidates) == 2
+
+    def test_infer_source_paths_empty(self):
+        """无源文件时返回空列表。"""
+        from app.simulation.voxel_cutter import _infer_source_paths
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            stl_path = tmp_path / "isolated.stl"
+            candidates = _infer_source_paths(stl_path)
+            assert len(candidates) == 0
+
+    def test_generate_stl_from_step_nonexistent_file(self):
+        """STEP源文件不存在时，应返回失败结果。"""
+        from app.simulation.voxel_cutter import _generate_stl_from_step
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            result = _generate_stl_from_step(
+                step_path=tmp_path / "nonexistent.step",
+                stl_target_path=tmp_path / "output.stl",
+                output_dir=tmp_path / "output",
+            )
+            assert result["success"] is False
+            assert result["error"] is not None
+            assert result["suggestion"] is not None
+
+    def test_generate_stl_from_dxf_nonexistent_file(self):
+        """DXF源文件不存在时，应返回失败结果。"""
+        from app.simulation.voxel_cutter import _generate_stl_from_dxf
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            result = _generate_stl_from_dxf(
+                dxf_path=tmp_path / "nonexistent.dxf",
+                stl_target_path=tmp_path / "output.stl",
+                output_dir=tmp_path / "output",
+            )
+            assert result["success"] is False
+            assert result["error"] is not None
+            assert result["suggestion"] is not None
+
+    def test_run_simulation_with_existing_stl(self):
+        """已存在STL文件时，仿真应正常执行。"""
+        trimesh = pytest.importorskip(
+            "trimesh", reason="trimesh未安装，跳过此测试"
+        )
+        from app.simulation.voxel_cutter import VoxelCutter, ToolModel
+
+        cutter = VoxelCutter(voxel_size=3.0)
+        tool = ToolModel(diameter=10.0, tool_type="flat")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            stock_mesh = trimesh.creation.box(extents=[60, 60, 30])
+            stock_mesh.apply_translation([0, 0, 15])
+            stock_path = tmp_path / "stock.stl"
+            stock_mesh.export(str(stock_path), file_type="stl")
+
+            output_dir = tmp_path / "output"
+            result = cutter.run_simulation(
+                stock_stl_path=stock_path,
+                tool=tool,
+                segments=[],
+                output_dir=output_dir,
+                task_id="existing_stl_test",
+            )
+            assert result.task_id == "existing_stl_test"
+            assert result.voxel_count > 0
+
+    def test_run_simulation_missing_stl_fallback(self):
+        """STL不存在且无源文件时，应优雅降级（fallback），不抛出异常。"""
+        from app.simulation.voxel_cutter import VoxelCutter, ToolModel
+
+        cutter = VoxelCutter(voxel_size=2.0)
+        tool = ToolModel(diameter=10.0, tool_type="flat")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            result = cutter.run_simulation(
+                stock_stl_path=tmp_path / "missing.stl",
+                tool=tool,
+                segments=[],
+                output_dir=tmp_path / "output",
+                task_id="missing_test",
+            )
+            assert result.task_id == "missing_test"
+            assert result.voxel_count > 0
+            assert result.original_bbox is not None
+
+    def test_run_simulation_with_source_file_paths(self):
+        """指定source_file_paths时，若STL不存在应尝试自动生成再降级。"""
+        from app.simulation.voxel_cutter import VoxelCutter, ToolModel
+
+        cutter = VoxelCutter(voxel_size=2.0)
+        tool = ToolModel(diameter=10.0, tool_type="flat")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            result = cutter.run_simulation(
+                stock_stl_path=tmp_path / "missing.stl",
+                tool=tool,
+                segments=[],
+                output_dir=tmp_path / "output",
+                task_id="source_paths_test",
+                source_file_paths=[tmp_path / "source.step"],
+            )
+            assert result.task_id == "source_paths_test"
+            assert result.voxel_count > 0
+
+    def test_ensure_stl_file_retry_count_params(self):
+        """验证重试次数参数可配置，默认值为3。"""
+        from app.simulation.voxel_cutter import (
+            VoxelCutter,
+            MAX_STL_RETRIES,
+            STL_RETRY_INTERVAL,
+        )
+
+        assert MAX_STL_RETRIES == 3
+        assert STL_RETRY_INTERVAL == 1.0
+
+        cutter = VoxelCutter(voxel_size=1.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            output_dir = tmp_path / "output"
+            output_dir.mkdir()
+
+            result = cutter._ensure_stl_file(
+                stl_path=tmp_path / "nope.stl",
+                source_file_paths=None,
+                output_dir=output_dir,
+                max_retries=2,
+                retry_interval=0.1,
+            )
+            assert result["exists"] is False
+            assert result["error"] is not None
+
+    def test_structured_error_response_format(self):
+        """验证结构化错误信息包含所有必要字段。"""
+        from app.simulation.voxel_cutter import VoxelCutter
+
+        cutter = VoxelCutter(voxel_size=1.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            output_dir = tmp_path / "output"
+            output_dir.mkdir()
+
+            result = cutter._ensure_stl_file(
+                stl_path=tmp_path / "missing.stl",
+                source_file_paths=[tmp_path / "missing.step"],
+                output_dir=output_dir,
+            )
+
+            assert "exists" in result
+            assert "generated" in result
+            assert "error" in result
+            assert "suggestion" in result
+            assert "source_file" in result
+            assert isinstance(result["exists"], bool)
+            assert isinstance(result["generated"], bool)
+
+    def test_generate_stl_from_step_invalid_format(self):
+        """无效的STEP文件应返回结构化错误。"""
+        from app.simulation.voxel_cutter import _generate_stl_from_step
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            bad_step = tmp_path / "bad.step"
+            bad_step.write_bytes(b"not a valid step file")
+
+            result = _generate_stl_from_step(
+                step_path=bad_step,
+                stl_target_path=tmp_path / "out.stl",
+                output_dir=tmp_path / "output",
+            )
+            assert result["success"] is False
+            assert result["error"] is not None
+            assert result["suggestion"] is not None
+
+    def test_generate_stl_from_dxf_invalid_format(self):
+        """无效的DXF文件应返回结构化错误。"""
+        from app.simulation.voxel_cutter import _generate_stl_from_dxf
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            bad_dxf = tmp_path / "bad.dxf"
+            bad_dxf.write_bytes(b"not a valid dxf file")
+
+            result = _generate_stl_from_dxf(
+                dxf_path=bad_dxf,
+                stl_target_path=tmp_path / "out.stl",
+                output_dir=tmp_path / "output",
+            )
+            assert result["success"] is False
+            assert result["error"] is not None
+            assert result["suggestion"] is not None

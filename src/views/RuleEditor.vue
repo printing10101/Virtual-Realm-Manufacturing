@@ -2,32 +2,81 @@
   <div class="rule-editor">
     <div class="page-header">
       <h2>工艺规则编辑器</h2>
-      <p class="subtitle">管理LNN切削参数推荐系统的工艺规则知识</p>
+      <p class="subtitle">
+        管理LNN切削参数推荐系统的工艺规则知识
+      </p>
     </div>
 
-    <el-row :gutter="16" class="stats-cards">
-      <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-value">{{ ruleStore.stats?.total_rules || 0 }}</div>
-          <div class="stat-label">总规则数</div>
+    <el-row
+      :gutter="16"
+      class="stats-cards"
+    >
+      <el-col
+        :xs="12"
+        :sm="8"
+        :md="4"
+      >
+        <el-card
+          shadow="hover"
+          class="stat-card"
+        >
+          <div class="stat-value">
+            {{ ruleStore.stats?.total_rules || 0 }}
+          </div>
+          <div class="stat-label">
+            总规则数
+          </div>
         </el-card>
       </el-col>
-      <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card active">
-          <div class="stat-value">{{ ruleStore.stats?.active_rules || 0 }}</div>
-          <div class="stat-label">启用规则</div>
+      <el-col
+        :xs="12"
+        :sm="8"
+        :md="4"
+      >
+        <el-card
+          shadow="hover"
+          class="stat-card active"
+        >
+          <div class="stat-value">
+            {{ ruleStore.stats?.active_rules || 0 }}
+          </div>
+          <div class="stat-label">
+            启用规则
+          </div>
         </el-card>
       </el-col>
-      <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card draft">
-          <div class="stat-value">{{ ruleStore.stats?.draft_rules || 0 }}</div>
-          <div class="stat-label">草稿规则</div>
+      <el-col
+        :xs="12"
+        :sm="8"
+        :md="4"
+      >
+        <el-card
+          shadow="hover"
+          class="stat-card draft"
+        >
+          <div class="stat-value">
+            {{ ruleStore.stats?.draft_rules || 0 }}
+          </div>
+          <div class="stat-label">
+            草稿规则
+          </div>
         </el-card>
       </el-col>
-      <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card groups">
-          <div class="stat-value">{{ ruleStore.stats?.total_groups || 0 }}</div>
-          <div class="stat-label">规则分组</div>
+      <el-col
+        :xs="12"
+        :sm="8"
+        :md="4"
+      >
+        <el-card
+          shadow="hover"
+          class="stat-card groups"
+        >
+          <div class="stat-value">
+            {{ ruleStore.stats?.total_groups || 0 }}
+          </div>
+          <div class="stat-label">
+            规则分组
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -65,13 +114,25 @@
             style="width: 140px; margin-left: 12px"
             @change="handleSearch"
           >
-            <el-option label="启用" value="active" />
-            <el-option label="停用" value="inactive" />
-            <el-option label="草稿" value="draft" />
+            <el-option
+              label="启用"
+              value="active"
+            />
+            <el-option
+              label="停用"
+              value="inactive"
+            />
+            <el-option
+              label="草稿"
+              value="draft"
+            />
           </el-select>
         </div>
         <div class="toolbar-right">
-          <el-button type="primary" @click="ruleStore.openCreateDialog()">
+          <el-button
+            type="primary"
+            @click="ruleStore.openCreateDialog()"
+          >
             <el-icon><Plus /></el-icon>
             新建规则
           </el-button>
@@ -103,45 +164,99 @@
 
     <el-card class="table-card">
       <el-table
-        :data="ruleStore.rules"
         v-loading="ruleStore.loading"
+        :data="ruleStore.rules"
         stripe
         border
         style="width: 100%"
         @sort-change="handleSortChange"
       >
-        <el-table-column prop="id" label="ID" width="70" sortable="custom" />
-        <el-table-column prop="name" label="规则名称" min-width="180" sortable="custom">
+        <el-table-column
+          prop="id"
+          label="ID"
+          width="70"
+          sortable="custom"
+        />
+        <el-table-column
+          prop="name"
+          label="规则名称"
+          min-width="180"
+          sortable="custom"
+        >
           <template #default="{ row }">
-            <el-link type="primary" @click="handleViewDetail(row)">{{ row.name }}</el-link>
+            <el-link
+              type="primary"
+              @click="handleViewDetail(row)"
+            >
+              {{ row.name }}
+            </el-link>
           </template>
         </el-table-column>
-        <el-table-column prop="preview_text" label="规则预览" min-width="300">
+        <el-table-column
+          prop="preview_text"
+          label="规则预览"
+          min-width="300"
+        >
           <template #default="{ row }">
             <span class="preview-text">{{ row.preview_text }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100" sortable="custom">
+        <el-table-column
+          prop="status"
+          label="状态"
+          width="100"
+          sortable="custom"
+        >
           <template #default="{ row }">
             <el-tag
-              :type="statusTagType(row.status)"
+              :type="getRuleStatusTagType(row.status)"
               size="small"
             >
-              {{ statusLabel(row.status) }}
+              {{ getRuleStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="priority" label="优先级" width="90" sortable="custom" />
-        <el-table-column prop="group_id" label="分组" width="120">
+        <el-table-column
+          prop="priority"
+          label="优先级"
+          width="90"
+          sortable="custom"
+        />
+        <el-table-column
+          prop="group_id"
+          label="分组"
+          width="120"
+        >
           <template #default="{ row }">
             {{ getGroupName(row.group_id) }}
           </template>
         </el-table-column>
-        <el-table-column prop="updated_at" label="更新时间" width="170" sortable="custom" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column
+          prop="updated_at"
+          label="更新时间"
+          width="170"
+          sortable="custom"
+        />
+        <el-table-column
+          label="操作"
+          width="200"
+          fixed="right"
+        >
           <template #default="{ row }">
-            <el-button size="small" type="primary" link @click="ruleStore.openEditDialog(row)">编辑</el-button>
-            <el-button size="small" type="success" link @click="handleToggleStatus(row)">
+            <el-button
+              size="small"
+              type="primary"
+              link
+              @click="ruleStore.openEditDialog(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              size="small"
+              type="success"
+              link
+              @click="handleToggleStatus(row)"
+            >
               {{ row.status === 'active' ? '停用' : '启用' }}
             </el-button>
             <el-popconfirm
@@ -151,7 +266,13 @@
               @confirm="handleDelete(row.id)"
             >
               <template #reference>
-                <el-button size="small" type="danger" link>删除</el-button>
+                <el-button
+                  size="small"
+                  type="danger"
+                  link
+                >
+                  删除
+                </el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -183,45 +304,104 @@
       @saved="ruleStore.refreshAll()"
     />
 
-    <el-dialog v-model="detailDialogVisible" title="规则详情" width="700px">
-      <div v-if="currentDetailRule" class="rule-detail">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="规则ID">{{ currentDetailRule.id }}</el-descriptions-item>
-          <el-descriptions-item label="规则名称">{{ currentDetailRule.name }}</el-descriptions-item>
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="规则详情"
+      width="700px"
+    >
+      <div
+        v-if="currentDetailRule"
+        class="rule-detail"
+      >
+        <el-descriptions
+          :column="2"
+          border
+        >
+          <el-descriptions-item label="规则ID">
+            {{ currentDetailRule.id }}
+          </el-descriptions-item>
+          <el-descriptions-item label="规则名称">
+            {{ currentDetailRule.name }}
+          </el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="statusTagType(currentDetailRule.status)">
-              {{ statusLabel(currentDetailRule.status) }}
+            <el-tag :type="getRuleStatusTagType(currentDetailRule.status)">
+              {{ getRuleStatusLabel(currentDetailRule.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="优先级">{{ currentDetailRule.priority }}</el-descriptions-item>
-          <el-descriptions-item label="分组">{{ getGroupName(currentDetailRule.group_id) }}</el-descriptions-item>
-          <el-descriptions-item label="逻辑运算符">{{ currentDetailRule.logic_operator }}</el-descriptions-item>
+          <el-descriptions-item label="优先级">
+            {{ currentDetailRule.priority }}
+          </el-descriptions-item>
+          <el-descriptions-item label="分组">
+            {{ getGroupName(currentDetailRule.group_id) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="逻辑运算符">
+            {{ currentDetailRule.logic_operator }}
+          </el-descriptions-item>
         </el-descriptions>
 
-        <h4 class="section-title">条件项</h4>
-        <el-table :data="currentDetailRule.conditions" border size="small">
-          <el-table-column prop="parameter" label="参数" />
-          <el-table-column prop="operator" label="运算符" width="100" />
-          <el-table-column prop="value" label="值" />
-          <el-table-column prop="unit" label="单位" width="80" />
+        <h4 class="section-title">
+          条件项
+        </h4>
+        <el-table
+          :data="currentDetailRule.conditions"
+          border
+          size="small"
+        >
+          <el-table-column
+            prop="parameter"
+            label="参数"
+          />
+          <el-table-column
+            prop="operator"
+            label="运算符"
+            width="100"
+          />
+          <el-table-column
+            prop="value"
+            label="值"
+          />
+          <el-table-column
+            prop="unit"
+            label="单位"
+            width="80"
+          />
         </el-table>
 
-        <h4 class="section-title">结果</h4>
-        <el-descriptions :column="4" border size="small">
-          <el-descriptions-item label="参数">{{ currentDetailRule.result?.parameter }}</el-descriptions-item>
-          <el-descriptions-item label="运算符">{{ currentDetailRule.result?.operator }}</el-descriptions-item>
-          <el-descriptions-item label="值">{{ currentDetailRule.result?.value }}</el-descriptions-item>
-          <el-descriptions-item label="单位">{{ currentDetailRule.result?.unit || '-' }}</el-descriptions-item>
+        <h4 class="section-title">
+          结果
+        </h4>
+        <el-descriptions
+          :column="4"
+          border
+          size="small"
+        >
+          <el-descriptions-item label="参数">
+            {{ currentDetailRule.result?.parameter }}
+          </el-descriptions-item>
+          <el-descriptions-item label="运算符">
+            {{ currentDetailRule.result?.operator }}
+          </el-descriptions-item>
+          <el-descriptions-item label="值">
+            {{ currentDetailRule.result?.value }}
+          </el-descriptions-item>
+          <el-descriptions-item label="单位">
+            {{ currentDetailRule.result?.unit || '-' }}
+          </el-descriptions-item>
         </el-descriptions>
 
-        <h4 class="section-title">规则预览</h4>
+        <h4 class="section-title">
+          规则预览
+        </h4>
         <el-alert
           :title="currentDetailRule.preview_text"
           type="info"
           :closable="false"
         />
 
-        <p class="description" v-if="currentDetailRule.description">
+        <p
+          v-if="currentDetailRule.description"
+          class="description"
+        >
           <strong>描述：</strong>{{ currentDetailRule.description }}
         </p>
         <p class="time-info">
@@ -240,6 +420,7 @@ import { useRuleStore } from '@/stores/rules'
 import type { ProcessRule } from '@/types'
 import RuleEditDialog from '@/components/rule_editor/RuleEditDialog.vue'
 import GroupManagerDialog from '@/components/rule_editor/GroupManagerDialog.vue'
+import { getRuleStatusTagType, getRuleStatusLabel } from '@/utils/statusHelpers'
 
 const ruleStore = useRuleStore()
 
@@ -319,31 +500,6 @@ function getGroupName(groupId?: number): string {
   return group?.name || '-'
 }
 
-function statusTagType(status: string): 'success' | 'warning' | 'info' | 'danger' {
-  switch (status) {
-    case 'active':
-      return 'success'
-    case 'inactive':
-      return 'info'
-    case 'draft':
-      return 'warning'
-    default:
-      return 'info'
-  }
-}
-
-function statusLabel(status: string): string {
-  switch (status) {
-    case 'active':
-      return '启用'
-    case 'inactive':
-      return '停用'
-    case 'draft':
-      return '草稿'
-    default:
-      return status
-  }
-}
 </script>
 
 <style scoped>

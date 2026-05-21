@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.core.template_evolution import TemplateEvolutionEngine
+from app.core.template_evolution import TemplateEvolutionEngine  # noqa: E402
 
 
 @pytest.fixture

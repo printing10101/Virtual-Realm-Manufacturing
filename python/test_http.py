@@ -48,7 +48,7 @@ else:
     sys.exit(1)
 
 print("Training...")
-import json
+import json  # noqa: E402
 
 token_path = PYTHON_DIR / ".lnn_token"
 TOKEN = token_path.read_text().strip() if token_path.exists() else "test"

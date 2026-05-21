@@ -348,9 +348,9 @@ class MultiDimensionCostTracker:
         )
 
         cursor = self._conn.execute(
-            """INSERT INTO cost_events 
-               (task_id, agent_id, project_id, goal_id, provider, model, 
-                cost_type, resource_value, cost_value, start_time, end_time, 
+            """INSERT INTO cost_events
+               (task_id, agent_id, project_id, goal_id, provider, model,
+                cost_type, resource_value, cost_value, start_time, end_time,
                 metadata, recorded_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
@@ -536,7 +536,7 @@ class MultiDimensionCostTracker:
         where = " AND ".join(conditions)
 
         rows = self._conn.execute(
-            f"""SELECT cost_type, 
+            f"""SELECT cost_type,
                        SUM(resource_value) as total_resource,
                        SUM(cost_value) as total_cost,
                        COUNT(DISTINCT task_id) as task_count
@@ -643,8 +643,8 @@ class MultiDimensionCostTracker:
             event.recorded_at = time.time()
 
         self._conn.execute(
-            """INSERT INTO budget_events 
-               (budget_level, scope_id, resource_type, current_usage, 
+            """INSERT INTO budget_events
+               (budget_level, scope_id, resource_type, current_usage,
                 limit_value, usage_ratio, status, recorded_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
@@ -685,7 +685,7 @@ class MultiDimensionCostTracker:
         where = " AND ".join(conditions) if conditions else "1=1"
 
         rows = self._conn.execute(
-            f"""SELECT * FROM budget_events 
+            f"""SELECT * FROM budget_events
                 WHERE {where}
                 ORDER BY recorded_at DESC
                 LIMIT ? OFFSET ?""",
@@ -707,8 +707,8 @@ class MultiDimensionCostTracker:
     ) -> None:
         """记录预算调整历史"""
         self._conn.execute(
-            """INSERT INTO budget_adjustments 
-               (budget_level, scope_id, resource_type, old_limit, new_limit, 
+            """INSERT INTO budget_adjustments
+               (budget_level, scope_id, resource_type, old_limit, new_limit,
                 reason, adjusted_by, adjusted_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
@@ -747,7 +747,7 @@ class MultiDimensionCostTracker:
         cutoff = time.time() - (days * 86400)
 
         rows = self._conn.execute(
-            """SELECT 
+            """SELECT
                    CAST(recorded_at / ? AS INTEGER) * ? as bucket,
                    cost_type,
                    SUM(cost_value) as total_cost,

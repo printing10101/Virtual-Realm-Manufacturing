@@ -28,7 +28,7 @@ sys.path.insert(
     ),
 )
 
-from app.ai.lnn.training.device_manager import (
+from app.ai.lnn.training.device_manager import (  # noqa: E402
     DeviceInfo,
     detect_device,
     get_available_devices,
@@ -38,10 +38,10 @@ from app.ai.lnn.training.device_manager import (
     clear_gpu_memory,
     check_gpu_memory_safe,
 )
-from app.ai.lnn.training.trainer import LNNTrainer
-from app.ai.lnn.models.torch_base_lnn import LNNConfig
-from app.ai.lnn.models.torch_cfc_model import CFCModel as TorchCFCModel
-from app.ai.lnn.models.torch_ltc_model import LTCModel as TorchLTCModel
+from app.ai.lnn.training.trainer import LNNTrainer  # noqa: E402
+from app.ai.lnn.models.torch_base_lnn import LNNConfig  # noqa: E402
+from app.ai.lnn.models.torch_cfc_model import CFCModel as TorchCFCModel  # noqa: E402
+from app.ai.lnn.models.torch_ltc_model import LTCModel as TorchLTCModel  # noqa: E402
 
 
 class TestDeviceInfo(unittest.TestCase):

@@ -14,14 +14,14 @@ from app.models.schemas import (
     AuditLogExportRequest,
     UserSovereigntySettings,
 )
-from app.ai.lnn.inference.registry import LNNModelRegistry
+from app.services.model_registry_service import get_model_registry_service
 from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/user-sovereignty", tags=["User Sovereignty"])
 
-model_registry = LNNModelRegistry()
+model_registry = get_model_registry_service().model_registry
 audit_log = AuditLog()
 
 
@@ -248,6 +248,9 @@ async def record_user_decision(
     user_decision: str,
     final_execution: dict,
     operation_status: str,
+    user_id: str | None = None,
+    username: str | None = None,
+    input_parameters: dict | None = None,
     confidence: float | None = None,
     reasoning: str | None = None,
     user_modifications: dict | None = None,
@@ -303,6 +306,9 @@ async def record_user_decision(
             user_decision=user_decision_enum,
             final_execution=final_execution,
             operation_status=status_enum,
+            user_id=user_id,
+            username=username,
+            input_parameters=input_parameters,
             confidence=confidence,
             reasoning=reasoning,
             user_modifications=user_modifications,

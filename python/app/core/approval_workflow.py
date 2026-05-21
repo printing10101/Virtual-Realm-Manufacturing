@@ -446,7 +446,7 @@ class ApprovalWorkflowEngine:
         )
 
         self._conn.execute(
-            """INSERT INTO approval_delegations 
+            """INSERT INTO approval_delegations
                (id, delegator_id, delegate_id, start_time, end_time, reason, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
@@ -499,8 +499,8 @@ class ApprovalWorkflowEngine:
         emergency_id = f"EMG-{uuid.uuid4().hex[:8].upper()}"
 
         self._conn.execute(
-            """INSERT INTO emergency_operations 
-               (id, request_id, task_id, operator_id, reason, emergency_type, 
+            """INSERT INTO emergency_operations
+               (id, request_id, task_id, operator_id, reason, emergency_type,
                 executed_at, retroactive_approval_required, retroactive_approval_completed, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?)""",
             (
@@ -554,7 +554,7 @@ class ApprovalWorkflowEngine:
     def complete_retroactive_approval(self, emergency_id: str) -> bool:
         """完成事后审批"""
         self._conn.execute(
-            """UPDATE emergency_operations 
+            """UPDATE emergency_operations
                SET retroactive_approval_completed = 1
                WHERE id = ?""",
             (emergency_id,),
@@ -696,7 +696,7 @@ class ApprovalWorkflowEngine:
     def _save_request(self, request: ApprovalRequest) -> None:
         """保存审批请求到数据库"""
         self._conn.execute(
-            """INSERT OR REPLACE INTO approval_requests 
+            """INSERT OR REPLACE INTO approval_requests
                (request_id, task_id, requester, requested_at, priority, context,
                 status, assigned_approver, approvers, decisions, required_approvals,
                 risk_score, risk_factors, suggested_decision, escalated_from,

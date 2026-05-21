@@ -1,8 +1,22 @@
-"""
-Trainer module for LNN models.
+"""LNN Model Trainer.
 
-Implements training loop with optimizer, loss function configuration,
-mixed precision training, and GPU acceleration support.
+Implements the training loop for PyTorch-based LNN models with optimizer
+configuration, loss function selection, mixed precision training (AMP),
+GPU acceleration, gradient clipping, learning rate scheduling, and
+early stopping.
+
+Key components:
+    - LNNTrainer: Main training class with comprehensive training pipeline.
+
+Example:
+    >>> trainer = LNNTrainer(
+    ...     model=my_cfc_model,
+    ...     learning_rate=0.001,
+    ...     optimizer_type="adam",
+    ...     epochs=100,
+    ...     device="cuda",
+    ... )
+    >>> history = trainer.train(train_loader, val_loader)
 """
 
 import torch
@@ -362,6 +376,15 @@ class LNNTrainer:
         """
         epochs = epochs or self.epochs
 
+        train_size = len(train_loader.dataset)
+        val_size = len(val_loader.dataset)
+
+        logger.info(
+            "Train: %d samples, Val: %d samples",
+            train_size,
+            val_size,
+        )
+
         device_info = self.device.type.upper()
         if self.device.type == "cuda":
             gpu_index = self.device.index if self.device.index is not None else 0
@@ -544,7 +567,11 @@ class LNNTrainer:
         """
         if not os.path.exists(path):
             raise FileNotFoundError(
-                f"训练检查点加载失败：找不到检查点文件 '{path}'。可能原因：文件路径错误或检查点已被删除/移动。请确认：1) 路径 '{path}' 是否正确；2) 文件是否存在于预期位置；3) 如需重新训练，请调用 POST /api/v1/lnn/models/train 启动新训练任务。"
+                f"训练检查点加载失败：找不到检查点文件 '{path}'。"
+                "可能原因：文件路径错误或检查点已被删除/移动。"
+                f"请确认：1) 路径 '{path}' 是否正确；"
+                "2) 文件是否存在于预期位置；"
+                "3) 如需重新训练，请调用 POST /api/v1/lnn/models/train 启动新训练任务。"
             )
 
         checkpoint = torch.load(path, map_location=self.device, weights_only=False)

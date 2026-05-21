@@ -1,6 +1,9 @@
 <template>
   <div class="dependency-tree">
-    <TreeNode v-if="tree" :node="tree" />
+    <TreeNode
+      v-if="tree"
+      :node="tree"
+    />
   </div>
 </template>
 

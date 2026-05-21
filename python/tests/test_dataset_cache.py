@@ -25,7 +25,7 @@ import numpy as np
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from app.ai.lnn.training.dataset_cache import DatasetCache
+from app.ai.lnn.training.dataset_cache import DatasetCache  # noqa: E402
 
 
 class TestDatasetCacheKeyGeneration(unittest.TestCase):

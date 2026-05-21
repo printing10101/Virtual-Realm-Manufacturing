@@ -1,7 +1,20 @@
-"""
-LNN (Logical Neural Network) Base Model
+"""Base LNN (Liquid Neural Network) Model Interface.
 
-Defines the unified interface and base functionality for all LNN models.
+Defines the unified interface and base functionality for all LNN model implementations.
+Provides abstract methods for building, training, and evaluating models, along with
+concrete utility methods for confidence calculation, uncertainty estimation, and
+performance measurement.
+
+Key components:
+    - BaseLNNModel: Abstract base class defining the LNN model contract.
+
+Example:
+    >>> class MyLNNModel(BaseLNNModel):
+    ...     def build(self): pass
+    ...     def forward(self, x): return x
+    ...     def predict(self, x): return self.forward(x)
+    ...     def _train_step(self, data, labels, batch_size, lr): return 0.0
+    ...     def _validate(self, val_data, val_labels): return 0.0
 """
 
 from abc import ABC, abstractmethod
@@ -11,7 +24,34 @@ import time
 
 
 class BaseLNNModel(ABC):
-    """LNN模型基类，定义统一接口与基础功能"""
+    """Abstract base class defining the LNN model contract.
+
+    All LNN model implementations must inherit from this class and implement
+    the abstract methods: build(), forward(), predict(), _train_step(), and _validate().
+
+    Provides concrete methods for:
+    - Confidence-based prediction (predict_with_confidence)
+    - Uncertainty calculation (calculate_uncertainty)
+    - Training loop orchestration (train)
+    - Model evaluation with multiple metrics (evaluate)
+    - Model serialization (save/load)
+    - Inference time benchmarking (measure_inference_time)
+
+    Attributes:
+        model_name: Human-readable model name.
+        input_dim: Input feature dimension.
+        output_dim: Output prediction dimension.
+        device: Computation device ('cpu', 'cuda').
+        is_trained: Whether the model has been trained.
+        training_history: Dictionary tracking loss and accuracy over epochs.
+        config: Additional model configuration parameters.
+
+    Example:
+        >>> model = CFCModel(model_name="Test", input_dim=10, output_dim=2)
+        >>> model.build()
+        >>> model.input_dim
+        10
+    """
 
     def __init__(
         self,

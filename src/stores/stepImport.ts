@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { extractErrorMessage } from '@/utils/errorUtils'
 import type {
   StepImportResult,
   ImportHistoryEntry,
@@ -8,28 +9,52 @@ import type {
   StlFileInfo,
 } from '@/types'
 
+/**
+ * STEP 文件导入管理 Store
+ * 管理 STEP 文件的上传、解析、STL 预览和导入历史记录。
+ */
 export const useStepImportStore = defineStore('stepImport', () => {
+  /** 当前导入状态 */
   const importState = ref<ImportState>('idle')
+  /** 上传进度百分比 (0-100) */
   const uploadProgress = ref(0)
+  /** 当前导入结果 */
   const currentResult = ref<StepImportResult | null>(null)
+  /** 错误信息 */
   const errorMessage = ref('')
+  /** 导入历史记录 */
   const importHistory = ref<ImportHistoryEntry[]>([])
+  /** 历史记录加载状态 */
   const historyLoading = ref(false)
+  /** 当前激活的 STL 文件 URL */
   const activeStlUrl = ref('')
+  /** 当前激活的 STL 文件列表 */
   const activeStlFiles = ref<StlFileInfo[]>([])
+  /** 选中实体索引 */
   const selectedEntityIndex = ref(0)
+  /** 对话框显示状态 */
   const showDialog = ref(false)
 
+  /** 是否处于空闲状态 */
   const isIdle = computed(() => importState.value === 'idle')
+  /** 是否正在上传 */
   const isUploading = computed(() => importState.value === 'uploading')
+  /** 是否正在处理 */
   const isProcessing = computed(() => importState.value === 'processing')
+  /** 是否导入成功 */
   const isSuccess = computed(() => importState.value === 'success')
+  /** 是否导入出错 */
   const isError = computed(() => importState.value === 'error')
+  /** 是否处于活动状态（上传或处理中） */
   const isActive = computed(() => importState.value === 'uploading' || importState.value === 'processing')
 
+  /** 是否有 STL 文件 */
   const hasStlFiles = computed(() => activeStlFiles.value.length > 0)
+  /** 模型信息 */
   const modelInfo = computed(() => currentResult.value?.model_info ?? null)
+  /** 实体列表 */
   const entities = computed(() => currentResult.value?.entities ?? [])
+  /** 警告信息列表 */
   const warnings = computed(() => currentResult.value?.warnings ?? [])
 
   function reset() {
@@ -87,16 +112,15 @@ export const useStepImportStore = defineStore('stepImport', () => {
         importState.value = 'error'
         return false
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       importState.value = 'error'
-      if (err.response?.status === 413) {
+      const axiosErr = err as { response?: { status?: number }; code?: string }
+      if (axiosErr.response?.status === 413) {
         errorMessage.value = '文件过大，请选择小于50MB的STEP文件'
-      } else if (err.code === 'ECONNABORTED') {
+      } else if (axiosErr.code === 'ECONNABORTED') {
         errorMessage.value = '请求超时，文件可能过大或网络不稳定'
-      } else if (err.response?.data?.message) {
-        errorMessage.value = err.response.data.message
       } else {
-        errorMessage.value = err.message || '网络错误，导入失败'
+        errorMessage.value = extractErrorMessage(err, '网络错误，导入失败')
       }
       return false
     }

@@ -1,12 +1,19 @@
 <template>
   <div class="task-wizard">
-    <el-steps :active="currentStep" finish-status="success" style="margin-bottom: 24px">
+    <el-steps
+      :active="currentStep"
+      finish-status="success"
+      style="margin-bottom: 24px"
+    >
       <el-step title="选择父目标" />
       <el-step title="填写任务信息" />
       <el-step title="确认创建" />
     </el-steps>
 
-    <div v-if="currentStep === 0" class="step-content">
+    <div
+      v-if="currentStep === 0"
+      class="step-content"
+    >
       <h4>选择任务所属目标</h4>
       <el-input
         v-model="searchQuery"
@@ -14,7 +21,10 @@
         prefix-icon="Search"
         style="margin-bottom: 16px"
       />
-      <el-radio-group v-model="selectedParentId" class="goal-radio-group">
+      <el-radio-group
+        v-model="selectedParentId"
+        class="goal-radio-group"
+      >
         <el-card
           v-for="goal in filteredGoals"
           :key="goal.id"
@@ -23,53 +33,118 @@
           shadow="hover"
           @click="selectedParentId = goal.id"
         >
-          <el-radio :value="goal.id" style="width: 100%">
+          <el-radio
+            :value="goal.id"
+            style="width: 100%"
+          >
             <div class="goal-option-content">
-              <el-tag size="small" :type="levelTagType(goal.level)">
-                {{ levelLabel(goal.level) }}
+              <el-tag
+                size="small"
+                :type="getGoalLevelTagType(goal.level)"
+              >
+                {{ getGoalLevelLabel(goal.level) }}
               </el-tag>
               <strong>{{ goal.name }}</strong>
-              <p class="goal-option-desc">{{ goal.description }}</p>
+              <p class="goal-option-desc">
+                {{ goal.description }}
+              </p>
             </div>
           </el-radio>
         </el-card>
       </el-radio-group>
-      <el-empty v-if="filteredGoals.length === 0" description="没有找到匹配的目标" />
+      <el-empty
+        v-if="filteredGoals.length === 0"
+        description="没有找到匹配的目标"
+      />
     </div>
 
-    <div v-if="currentStep === 1" class="step-content">
-      <el-form :model="taskForm" label-width="100px">
+    <div
+      v-if="currentStep === 1"
+      class="step-content"
+    >
+      <el-form
+        :model="taskForm"
+        label-width="100px"
+      >
         <el-form-item label="任务标题">
-          <el-input v-model="taskForm.title" placeholder="请输入任务标题" />
+          <el-input
+            v-model="taskForm.title"
+            placeholder="请输入任务标题"
+          />
         </el-form-item>
         <el-form-item label="任务描述">
-          <el-input v-model="taskForm.description" type="textarea" :rows="3" placeholder="请输入任务详细描述" />
+          <el-input
+            v-model="taskForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入任务详细描述"
+          />
         </el-form-item>
         <el-form-item label="任务类型">
-          <el-select v-model="taskForm.task_type" style="width: 100%">
-            <el-option label="预测 (prediction)" value="prediction" />
-            <el-option label="训练 (training)" value="training" />
-            <el-option label="分析 (analysis)" value="analysis" />
-            <el-option label="执行 (execution)" value="execution" />
-            <el-option label="审查 (review)" value="review" />
+          <el-select
+            v-model="taskForm.task_type"
+            style="width: 100%"
+          >
+            <el-option
+              label="预测 (prediction)"
+              value="prediction"
+            />
+            <el-option
+              label="训练 (training)"
+              value="training"
+            />
+            <el-option
+              label="分析 (analysis)"
+              value="analysis"
+            />
+            <el-option
+              label="执行 (execution)"
+              value="execution"
+            />
+            <el-option
+              label="审查 (review)"
+              value="review"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="阻塞依赖">
-          <el-select v-model="taskForm.blockers" multiple filterable style="width: 100%">
-            <el-option label="无" value="" />
+          <el-select
+            v-model="taskForm.blockers"
+            multiple
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              label="无"
+              value=""
+            />
           </el-select>
           <span class="form-hint">该任务必须等待这些依赖任务完成后才能开始</span>
         </el-form-item>
       </el-form>
     </div>
 
-    <div v-if="currentStep === 2" class="step-content">
+    <div
+      v-if="currentStep === 2"
+      class="step-content"
+    >
       <h4>确认任务信息</h4>
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="父目标">{{ selectedParentGoal?.name || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="任务标题">{{ taskForm.title }}</el-descriptions-item>
-        <el-descriptions-item label="任务描述">{{ taskForm.description }}</el-descriptions-item>
-        <el-descriptions-item label="任务类型">{{ taskForm.task_type }}</el-descriptions-item>
+      <el-descriptions
+        :column="1"
+        border
+      >
+        <el-descriptions-item label="父目标">
+          {{ selectedParentGoal?.name || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="任务标题">
+          {{ taskForm.title }}
+        </el-descriptions-item>
+        <el-descriptions-item label="任务描述">
+          {{ taskForm.description }}
+        </el-descriptions-item>
+        <el-descriptions-item label="任务类型">
+          {{ taskForm.task_type }}
+        </el-descriptions-item>
       </el-descriptions>
       <el-alert
         v-if="goalChainPreview.length > 0"
@@ -79,7 +154,10 @@
         style="margin-top: 16px"
       >
         <el-breadcrumb separator=" > ">
-          <el-breadcrumb-item v-for="g in goalChainPreview" :key="g.id">
+          <el-breadcrumb-item
+            v-for="g in goalChainPreview"
+            :key="g.id"
+          >
             {{ g.name }}
           </el-breadcrumb-item>
         </el-breadcrumb>
@@ -87,9 +165,28 @@
     </div>
 
     <div class="wizard-actions">
-      <el-button v-if="currentStep > 0" @click="currentStep--">上一步</el-button>
-      <el-button v-if="currentStep < 2" type="primary" :disabled="!canProceed" @click="currentStep++">下一步</el-button>
-      <el-button v-if="currentStep === 2" type="primary" :loading="loading" @click="submitTask">创建任务</el-button>
+      <el-button
+        v-if="currentStep > 0"
+        @click="currentStep--"
+      >
+        上一步
+      </el-button>
+      <el-button
+        v-if="currentStep < 2"
+        type="primary"
+        :disabled="!canProceed"
+        @click="currentStep++"
+      >
+        下一步
+      </el-button>
+      <el-button
+        v-if="currentStep === 2"
+        type="primary"
+        :loading="loading"
+        @click="submitTask"
+      >
+        创建任务
+      </el-button>
     </div>
   </div>
 </template>
@@ -97,6 +194,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { getGoalLevelLabel, getGoalLevelTagType } from '@/utils/statusHelpers'
 
 const props = defineProps<{
   goals: any[]
@@ -109,7 +207,7 @@ const emit = defineEmits<{
 
 const currentStep = ref(0)
 const searchQuery = ref('')
-const selectedParentId = ref<string | null>(null)
+const selectedParentId = ref<string | undefined>(undefined)
 const taskForm = ref({
   title: '',
   description: '',
@@ -166,20 +264,11 @@ const submitTask = async () => {
     })
     emit('created')
     taskForm.value = { title: '', description: '', task_type: 'prediction', blockers: [] }
-    selectedParentId.value = null
+    selectedParentId.value = undefined
     currentStep.value = 0
   } catch (e: any) {
     ElMessage.error('任务创建失败: ' + (e.response?.data?.message || e.message))
   }
-}
-
-const levelLabel = (level: string) => {
-  const map: Record<string, string> = { mission: '使命', strategic_goal: '战略目标', project: '项目', task: '任务' }
-  return map[level] || level
-}
-const levelTagType = (level: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
-  const map: Record<string, 'primary' | 'success' | 'warning' | 'info' | 'danger'> = { mission: 'danger', strategic_goal: 'warning', project: 'primary', task: 'success' }
-  return map[level] || 'info'
 }
 </script>
 

@@ -1,6 +1,10 @@
 <template>
   <Teleport to="body">
-    <TransitionGroup name="error-notification" tag="div" class="error-notification-container">
+    <TransitionGroup
+      name="error-notification"
+      tag="div"
+      class="error-notification-container"
+    >
       <div
         v-for="notification in visibleNotifications"
         :key="notification.id"
@@ -9,26 +13,96 @@
         @click="toggleDetail(notification.id)"
       >
         <!-- 关闭按钮 -->
-        <button class="error-close-btn" @click.stop="dismiss(notification.id)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        <button
+          class="error-close-btn"
+          @click.stop="dismiss(notification.id)"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <line
+              x1="18"
+              y1="6"
+              x2="6"
+              y2="18"
+            /><line
+              x1="6"
+              y1="6"
+              x2="18"
+              y2="18"
+            />
           </svg>
         </button>
 
         <!-- 严重程度图标 -->
         <div class="error-header">
           <span class="error-icon">
-            <svg v-if="notification.severity === 'critical'" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="12" r="10" fill="#ff1744" />
-              <text x="12" y="17" text-anchor="middle" fill="white" font-size="14" font-weight="bold">!</text>
+            <svg
+              v-if="notification.severity === 'critical'"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                fill="#ff1744"
+              />
+              <text
+                x="12"
+                y="17"
+                text-anchor="middle"
+                fill="white"
+                font-size="14"
+                font-weight="bold"
+              >!</text>
             </svg>
-            <svg v-else-if="notification.severity === 'error'" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="12,3 22,21 2,21" fill="#ff9800" />
-              <text x="12" y="17" text-anchor="middle" fill="white" font-size="12" font-weight="bold">!</text>
+            <svg
+              v-else-if="notification.severity === 'error'"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <polygon
+                points="12,3 22,21 2,21"
+                fill="#ff9800"
+              />
+              <text
+                x="12"
+                y="17"
+                text-anchor="middle"
+                fill="white"
+                font-size="12"
+                font-weight="bold"
+              >!</text>
             </svg>
-            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="12,3 22,21 2,21" fill="#ffc107" />
-              <text x="12" y="17" text-anchor="middle" fill="#333" font-size="12" font-weight="bold">!</text>
+            <svg
+              v-else
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <polygon
+                points="12,3 22,21 2,21"
+                fill="#ffc107"
+              />
+              <text
+                x="12"
+                y="17"
+                text-anchor="middle"
+                fill="#333"
+                font-size="12"
+                font-weight="bold"
+              >!</text>
             </svg>
           </span>
           <span class="error-code">{{ notification.errorCode || notification.code }}</span>
@@ -36,23 +110,54 @@
         </div>
 
         <!-- 详细信息 -->
-        <div v-if="notification.expanded || notification.severity === 'critical'" class="error-body">
-          <p v-if="notification.detail" class="error-detail">{{ notification.detail }}</p>
-          <p v-if="notification.suggestion" class="error-suggestion">
+        <div
+          v-if="notification.expanded || notification.severity === 'critical'"
+          class="error-body"
+        >
+          <p
+            v-if="notification.detail"
+            class="error-detail"
+          >
+            {{ notification.detail }}
+          </p>
+          <p
+            v-if="notification.suggestion"
+            class="error-suggestion"
+          >
             <strong>建议：</strong>{{ notification.suggestion }}
           </p>
-          <div v-if="notification.adjusted_values && Object.keys(notification.adjusted_values).length" class="error-adjusted">
+          <div
+            v-if="notification.adjusted_values && Object.keys(notification.adjusted_values).length"
+            class="error-adjusted"
+          >
             <strong>已调整参数：</strong>
-            <span v-for="(val, key) in notification.adjusted_values" :key="key" class="adjusted-item">
+            <span
+              v-for="(val, key) in notification.adjusted_values"
+              :key="key"
+              class="adjusted-item"
+            >
               {{ key }}: {{ val }}
             </span>
           </div>
         </div>
 
         <!-- 操作按钮 -->
-        <div v-if="notification.recoverable" class="error-actions">
-          <button class="btn-accept" @click.stop="accept(notification)">接受调整</button>
-          <button class="btn-manual" @click.stop="manualEdit(notification)">手动修改</button>
+        <div
+          v-if="notification.recoverable"
+          class="error-actions"
+        >
+          <button
+            class="btn-accept"
+            @click.stop="accept(notification)"
+          >
+            接受调整
+          </button>
+          <button
+            class="btn-manual"
+            @click.stop="manualEdit(notification)"
+          >
+            手动修改
+          </button>
         </div>
       </div>
     </TransitionGroup>

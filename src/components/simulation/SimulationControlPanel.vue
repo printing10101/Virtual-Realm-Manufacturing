@@ -2,7 +2,10 @@
   <div class="simulation-control-panel">
     <div class="panel-header">
       <h3>仿真控制</h3>
-      <span class="status-badge" :class="simulationStatusClass">
+      <span
+        class="status-badge"
+        :class="simulationStatusClass"
+      >
         {{ simulationStatusLabel }}
       </span>
     </div>
@@ -29,9 +32,18 @@
             :disabled="isRunning"
             style="width: 100%"
           >
-            <el-option label="平底刀 (Flat)" value="flat" />
-            <el-option label="球头刀 (Ball)" value="ball" />
-            <el-option label="钻头 (Drill)" value="drill" />
+            <el-option
+              label="平底刀 (Flat)"
+              value="flat"
+            />
+            <el-option
+              label="球头刀 (Ball)"
+              value="ball"
+            />
+            <el-option
+              label="钻头 (Drill)"
+              value="drill"
+            />
           </el-select>
         </div>
 
@@ -85,18 +97,31 @@
 
       <div class="divider" />
 
-      <div class="playback-section" v-if="resultLoaded">
+      <div
+        v-if="resultLoaded"
+        class="playback-section"
+      >
         <h4>刀路回放</h4>
 
         <div class="playback-controls">
           <el-button-group>
-            <el-button :icon="VideoPlay" :disabled="playState === 'playing'" @click="togglePlay">
+            <el-button
+              :icon="VideoPlay"
+              :disabled="playState === 'playing'"
+              @click="togglePlay"
+            >
               {{ playState === 'playing' ? '暂停' : '播放' }}
             </el-button>
-            <el-button :disabled="playState === 'playing'" @click="stepForward">
+            <el-button
+              :disabled="playState === 'playing'"
+              @click="stepForward"
+            >
               步进
             </el-button>
-            <el-button :disabled="playState === 'playing'" @click="resetPlayback">
+            <el-button
+              :disabled="playState === 'playing'"
+              @click="resetPlayback"
+            >
               重置
             </el-button>
           </el-button-group>
@@ -128,9 +153,15 @@
         </div>
       </div>
 
-      <div class="divider" v-if="resultLoaded" />
+      <div
+        v-if="resultLoaded"
+        class="divider"
+      />
 
-      <div class="stats-section" v-if="resultLoaded && simulationResult">
+      <div
+        v-if="resultLoaded && simulationResult"
+        class="stats-section"
+      >
         <h4>仿真统计</h4>
         <div class="stat-row">
           <span>耗时</span>
@@ -155,7 +186,10 @@
       </div>
     </div>
 
-    <div class="panel-footer" v-if="errorMessage">
+    <div
+      v-if="errorMessage"
+      class="panel-footer"
+    >
       <el-alert
         :title="errorMessage"
         type="error"

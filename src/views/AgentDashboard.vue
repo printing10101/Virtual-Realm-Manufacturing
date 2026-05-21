@@ -10,93 +10,191 @@
           style="width: 140px; margin-right: 12px"
           @change="agentStore.fetchAgents()"
         >
-          <el-option label="全部" value="" />
-          <el-option label="空闲" value="idle" />
-          <el-option label="忙碌" value="busy" />
-          <el-option label="暂停" value="paused" />
-          <el-option label="恢复中" value="recovering" />
-          <el-option label="错误" value="error" />
-          <el-option label="已停止" value="stopped" />
+          <el-option
+            label="全部"
+            value=""
+          />
+          <el-option
+            label="空闲"
+            value="idle"
+          />
+          <el-option
+            label="忙碌"
+            value="busy"
+          />
+          <el-option
+            label="暂停"
+            value="paused"
+          />
+          <el-option
+            label="恢复中"
+            value="recovering"
+          />
+          <el-option
+            label="错误"
+            value="error"
+          />
+          <el-option
+            label="已停止"
+            value="stopped"
+          />
         </el-select>
-        <el-button :icon="Refresh" @click="agentStore.fetchAgents()" :loading="agentStore.loading">
+        <el-button
+          :icon="Refresh"
+          :loading="agentStore.loading"
+          @click="agentStore.fetchAgents()"
+        >
           刷新
         </el-button>
       </div>
     </div>
 
-    <el-row :gutter="16" class="stats-row">
+    <el-row
+      :gutter="16"
+      class="stats-row"
+    >
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card stat-total">
-          <div class="stat-value">{{ agentStore.statusStats.total }}</div>
-          <div class="stat-label">代理总数</div>
+        <el-card
+          shadow="hover"
+          class="stat-card stat-total"
+        >
+          <div class="stat-value">
+            {{ agentStore.statusStats.total }}
+          </div>
+          <div class="stat-label">
+            代理总数
+          </div>
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card stat-active">
-          <div class="stat-value">{{ agentStore.statusStats.active }}</div>
-          <div class="stat-label">活跃代理</div>
+        <el-card
+          shadow="hover"
+          class="stat-card stat-active"
+        >
+          <div class="stat-value">
+            {{ agentStore.statusStats.active }}
+          </div>
+          <div class="stat-label">
+            活跃代理
+          </div>
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card stat-idle">
-          <div class="stat-value">{{ agentStore.statusStats.idle }}</div>
-          <div class="stat-label">空闲代理</div>
+        <el-card
+          shadow="hover"
+          class="stat-card stat-idle"
+        >
+          <div class="stat-value">
+            {{ agentStore.statusStats.idle }}
+          </div>
+          <div class="stat-label">
+            空闲代理
+          </div>
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card stat-error">
-          <div class="stat-value">{{ agentStore.statusStats.error }}</div>
-          <div class="stat-label">异常代理</div>
+        <el-card
+          shadow="hover"
+          class="stat-card stat-error"
+        >
+          <div class="stat-value">
+            {{ agentStore.statusStats.error }}
+          </div>
+          <div class="stat-label">
+            异常代理
+          </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-card class="agent-table-card" v-loading="agentStore.loading">
+    <el-card
+      v-loading="agentStore.loading"
+      class="agent-table-card"
+    >
       <template #header>
         <span>代理列表</span>
       </template>
-      <el-table :data="agentStore.agents" stripe style="width: 100%">
-        <el-table-column prop="agent_id" label="代理ID" min-width="180">
+      <el-table
+        :data="agentStore.agents"
+        stripe
+        style="width: 100%"
+      >
+        <el-table-column
+          prop="agent_id"
+          label="代理ID"
+          min-width="180"
+        >
           <template #default="{ row }">
-            <el-link type="primary" @click="viewDetail(row.agent_id)">
+            <el-link
+              type="primary"
+              @click="viewDetail(row.agent_id)"
+            >
               {{ row.agent_id }}
             </el-link>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column
+          prop="status"
+          label="状态"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="agentStore.statusTagType(row.status)" size="small">
+            <el-tag
+              :type="agentStore.statusTagType(row.status)"
+              size="small"
+            >
               {{ agentStore.statusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="current_task_id" label="当前任务" min-width="160">
+        <el-table-column
+          prop="current_task_id"
+          label="当前任务"
+          min-width="160"
+        >
           <template #default="{ row }">
             <span v-if="row.current_task_id">{{ row.current_task_id }}</span>
-            <span v-else class="text-muted">-</span>
+            <span
+              v-else
+              class="text-muted"
+            >-</span>
           </template>
         </el-table-column>
-        <el-table-column label="最后心跳" width="180">
+        <el-table-column
+          label="最后心跳"
+          width="180"
+        >
           <template #default="{ row }">
             {{ agentStore.formatTime(row.last_heartbeat) }}
           </template>
         </el-table-column>
-        <el-table-column label="更新时间" width="180">
+        <el-table-column
+          label="更新时间"
+          width="180"
+        >
           <template #default="{ row }">
             {{ agentStore.formatTime(row.updated_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column
+          label="操作"
+          width="280"
+          fixed="right"
+        >
           <template #default="{ row }">
             <el-button-group>
-              <el-button size="small" type="primary" @click="viewDetail(row.agent_id)">
+              <el-button
+                size="small"
+                type="primary"
+                @click="viewDetail(row.agent_id)"
+              >
                 详情
               </el-button>
               <el-button
                 size="small"
                 type="success"
-                @click="handleResume(row.agent_id)"
                 :disabled="row.status !== 'idle' && row.status !== 'error'"
+                @click="handleResume(row.agent_id)"
               >
                 恢复
               </el-button>
@@ -112,7 +210,10 @@
                 @confirm="handleDelete(row.agent_id)"
               >
                 <template #reference>
-                  <el-button size="small" type="danger">
+                  <el-button
+                    size="small"
+                    type="danger"
+                  >
                     删除
                   </el-button>
                 </template>
@@ -121,7 +222,10 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="agentStore.agents.length === 0 && !agentStore.loading" description="暂无代理数据" />
+      <el-empty
+        v-if="agentStore.agents.length === 0 && !agentStore.loading"
+        description="暂无代理数据"
+      />
     </el-card>
   </div>
 </template>

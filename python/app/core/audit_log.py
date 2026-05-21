@@ -2,7 +2,7 @@ import os
 import json
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, asdict
@@ -41,10 +41,17 @@ class AuditLogEntry:
     user_decision: str
     final_execution: dict
     operation_status: str
+    input_parameters: dict = None
+    user_id: Optional[str] = None
+    username: Optional[str] = None
     confidence: Optional[float] = None
     reasoning: Optional[str] = None
     user_modifications: Optional[dict] = None
     metadata: Optional[dict] = None
+
+    def __post_init__(self):
+        if self.input_parameters is None:
+            object.__setattr__(self, "input_parameters", {})
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -58,6 +65,9 @@ class AuditLogEntry:
             user_decision=data.get("user_decision"),
             final_execution=data.get("final_execution", {}),
             operation_status=data.get("operation_status"),
+            input_parameters=data.get("input_parameters", {}),
+            user_id=data.get("user_id"),
+            username=data.get("username"),
             confidence=data.get("confidence"),
             reasoning=data.get("reasoning"),
             user_modifications=data.get("user_modifications"),
@@ -90,6 +100,9 @@ class AuditLog:
         user_decision: UserDecision,
         final_execution: dict,
         operation_status: OperationStatus,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        input_parameters: Optional[dict] = None,
         confidence: Optional[float] = None,
         reasoning: Optional[str] = None,
         user_modifications: Optional[dict] = None,
@@ -102,6 +115,9 @@ class AuditLog:
             user_decision=user_decision.value,
             final_execution=final_execution,
             operation_status=operation_status.value,
+            user_id=user_id,
+            username=username,
+            input_parameters=input_parameters or {},
             confidence=confidence,
             reasoning=reasoning,
             user_modifications=user_modifications,
@@ -143,6 +159,7 @@ class AuditLog:
         end_time: Optional[int] = None,
         ai_module: Optional[str] = None,
         user_decision: Optional[str] = None,
+        user_id: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[AuditLogEntry]:
@@ -168,6 +185,8 @@ class AuditLog:
                             if ai_module and entry.ai_module != ai_module:
                                 continue
                             if user_decision and entry.user_decision != user_decision:
+                                continue
+                            if user_id and entry.user_id != user_id:
                                 continue
 
                             logs.append(entry)
@@ -216,6 +235,8 @@ class AuditLog:
                 "ai_module",
                 "user_decision",
                 "operation_status",
+                "user_id",
+                "username",
                 "confidence",
                 "reasoning",
             ]
@@ -227,6 +248,8 @@ class AuditLog:
                     entry.ai_module,
                     entry.user_decision,
                     entry.operation_status,
+                    entry.user_id or "",
+                    entry.username or "",
                     str(entry.confidence if entry.confidence is not None else ""),
                     f'"{(entry.reasoning or "").replace(chr(34), chr(34) + chr(34))}"',
                 ]

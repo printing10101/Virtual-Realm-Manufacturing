@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 # Import app directly
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
-from app.main import app
+from app.main import app  # noqa: E402
 
 PYTHON_DIR = Path(__file__).parent.resolve()
 LOG_FILE = PYTHON_DIR / "test_8step_result.log"

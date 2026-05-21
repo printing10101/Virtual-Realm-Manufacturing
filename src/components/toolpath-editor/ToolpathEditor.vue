@@ -2,8 +2,14 @@
   <div class="toolpath-editor-page">
     <div class="editor-toolbar">
       <div class="toolbar-left">
-        <h2 class="page-title">刀路编辑器</h2>
-        <el-button size="small" type="primary" @click="showImportDialog = true">
+        <h2 class="page-title">
+          刀路编辑器
+        </h2>
+        <el-button
+          size="small"
+          type="primary"
+          @click="showImportDialog = true"
+        >
           <el-icon><FolderOpened /></el-icon>
           导入G代码
         </el-button>
@@ -14,8 +20,8 @@
           <el-button
             size="small"
             :disabled="!store.canUndo"
-            @click="store.undo()"
             title="Ctrl+Z"
+            @click="store.undo()"
           >
             <el-icon><RefreshLeft /></el-icon>
             撤销 ({{ store.undoCount }}) <kbd>Ctrl+Z</kbd>
@@ -23,8 +29,8 @@
           <el-button
             size="small"
             :disabled="!store.canRedo"
-            @click="store.redo()"
             title="Ctrl+Y"
+            @click="store.redo()"
           >
             <el-icon><RefreshRight /></el-icon>
             重做 ({{ store.redoCount }}) <kbd>Ctrl+Y</kbd>
@@ -33,10 +39,19 @@
       </div>
 
       <div class="toolbar-right">
-        <el-tag v-if="store.isDirty" type="warning" effect="dark">
+        <el-tag
+          v-if="store.isDirty"
+          type="warning"
+          effect="dark"
+        >
           有未保存的编辑
         </el-tag>
-        <el-button size="small" type="success" @click="showExportDialog = true" :disabled="store.activeSegments.length === 0">
+        <el-button
+          size="small"
+          type="success"
+          :disabled="store.activeSegments.length === 0"
+          @click="showExportDialog = true"
+        >
           <el-icon><Download /></el-icon>
           导出G代码
         </el-button>
@@ -71,11 +86,17 @@
           </div>
         </div>
 
-        <div class="sidebar-section" v-if="selectedSegment">
+        <div
+          v-if="selectedSegment"
+          class="sidebar-section"
+        >
           <h4>选中刀路段</h4>
           <div class="stat-row">
             <span>类型</span>
-            <el-tag :type="segmentTypeTag(selectedSegment.type)" size="small">
+            <el-tag
+              :type="segmentTypeTag(selectedSegment.type)"
+              size="small"
+            >
               {{ selectedSegment.type.toUpperCase() }}
             </el-tag>
           </div>
@@ -255,11 +276,11 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-function segmentTypeTag(type: string): '' | 'success' | 'warning' | 'danger' | 'info' {
+function segmentTypeTag(type: string): 'success' | 'warning' | 'danger' | 'info' | 'primary' {
   switch (type) {
     case 'rapid': return 'danger'
     case 'linear': return 'success'
-    case 'arc': return ''
+    case 'arc': return 'info'
     case 'dwell': return 'warning'
     default: return 'info'
   }

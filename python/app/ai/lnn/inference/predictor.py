@@ -307,7 +307,10 @@ class LNNPredictor:
             except Exception:
                 pass
             raise RuntimeError(
-                f"模型预测失败：推理过程出现异常。错误详情: {str(e)}。可能原因：1) 模型输入数据格式不匹配；2) 模型权重加载异常；3) GPU 内存不足。请检查输入数据格式，确认模型已正确加载，如使用 GPU 请检查显存使用情况。"
+                f"模型预测失败：推理过程出现异常。错误详情: {str(e)}。"
+                "可能原因：1) 模型输入数据格式不匹配；2) 模型权重加载异常；"
+                "3) GPU 内存不足。请检查输入数据格式，确认模型已正确加载，"
+                "如使用 GPU 请检查显存使用情况。"
             )
 
     def predict_batch(
@@ -493,7 +496,10 @@ class LNNPredictor:
             result = np.array([input_data])
         else:
             raise ValueError(
-                f"模型预测失败：不支持的输入数据类型 '{type(input_data).__name__}'。支持的输入类型包括：dict（字典格式）、list（列表格式）、numpy.ndarray（数组格式）、torch.Tensor（张量格式）。请将输入数据转换为支持的格式后重试。"
+                f"模型预测失败：不支持的输入数据类型 '{type(input_data).__name__}'。"
+                "支持的输入类型包括：dict（字典格式）、list（列表格式）、"
+                "numpy.ndarray（数组格式）、torch.Tensor（张量格式）。"
+                "请将输入数据转换为支持的格式后重试。"
             )
 
         if result.ndim == 1:
@@ -596,14 +602,19 @@ class LNNPredictor:
                 supported = [BaseModelRegistry.__name__, "dict", "dict-like with get()"]
                 actual = type(registry).__name__
                 raise RuntimeError(
-                    f"模型加载失败：注册表类型不兼容。错误详情: 不支持的注册表类型 '{actual}'。预期类型为: {', '.join(supported)}。请将注册表包装为 BaseModelRegistry 适配器，或使用支持 get() 方法的字典类对象。"
+                    f"模型加载失败：注册表类型不兼容。错误详情: 不支持的注册表类型 '{actual}'。"
+                    f"预期类型为: {', '.join(supported)}。"
+                    "请将注册表包装为 BaseModelRegistry 适配器，"
+                    "或使用支持 get() 方法的字典类对象。"
                 )
 
         try:
             model = registry.get(model_name)
             if model is None:
                 raise KeyError(
-                    f"模型加载异常：模型 '{model_name}' 在注册表中存在但返回为空（None）。可能原因：1) 模型文件已损坏或丢失；2) 模型加载过程出现异常。请检查模型文件完整性，或调用 POST /api/v1/lnn/models/{{name}}/load 重新加载模型。"
+                    f"模型加载异常：模型 '{model_name}' 在注册表中存在但返回为空（None）。"
+                    "可能原因：1) 模型文件已损坏或丢失；2) 模型加载过程出现异常。"
+                    "请检查模型文件完整性，或调用 POST /api/v1/lnn/models/{name}/load 重新加载模型。"
                 )
 
             if isinstance(model, ModelEntry):
@@ -614,7 +625,10 @@ class LNNPredictor:
             raise
         except Exception as e:
             raise RuntimeError(
-                f"模型加载失败：无法加载模型 '{model_name}'。错误详情: {e}。可能原因：1) 模型权重文件不存在或已损坏；2) 模型配置与权重不匹配；3) 内存/GPU 显存不足。请检查模型文件路径和完整性，或查看日志获取详细错误信息。"
+                f"模型加载失败：无法加载模型 '{model_name}'。错误详情: {e}。"
+                "可能原因：1) 模型权重文件不存在或已损坏；"
+                "2) 模型配置与权重不匹配；3) 内存/GPU 显存不足。"
+                "请检查模型文件路径和完整性，或查看日志获取详细错误信息。"
             ) from e
 
     @staticmethod

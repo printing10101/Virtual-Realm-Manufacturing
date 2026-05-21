@@ -15,27 +15,27 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.heartbeat import (
-    WakeupQueue,
-    ScheduledTask,
-    ScheduleStatus,
-    CronParser,
-    HeartbeatScheduler,
-)
-from app.core.budget import (
-    BudgetManager,
-    BudgetLimit,
+from app.core.budget import (  # noqa: E402
     BudgetLevel,
-    ResourceType,
+    BudgetLimit,
+    BudgetManager,
     BudgetStatus,
+    ResourceType,
 )
-from app.core.execution import (
+from app.core.cost_tracker import MultiDimensionCostTracker  # noqa: E402
+from app.core.execution import (  # noqa: E402
     ExecutionEngine,
     ExecutionSession,
     ExecutionStatus,
     SessionManager,
 )
-from app.core.cost_tracker import MultiDimensionCostTracker
+from app.core.heartbeat import (  # noqa: E402
+    CronParser,
+    HeartbeatScheduler,
+    ScheduleStatus,
+    ScheduledTask,
+    WakeupQueue,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -140,7 +140,6 @@ _active_connections = []
 
 
 def cleanup_test_dbs():
-    global _active_connections
     for conn in _active_connections:
         try:
             conn.close()

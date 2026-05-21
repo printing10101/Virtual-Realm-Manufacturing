@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
-const API_BASE = '/api/v1/agents'
+const _API_BASE = '/api/v1/agents'
 
 interface AgentSummary {
   agent_id: string

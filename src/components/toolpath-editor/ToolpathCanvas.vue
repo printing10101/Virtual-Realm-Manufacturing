@@ -1,11 +1,25 @@
 <template>
-  <div class="toolpath-canvas" ref="canvasRef" @contextmenu.prevent>
-    <div v-if="!initialized" class="canvas-placeholder">
+  <div
+    ref="canvasRef"
+    class="toolpath-canvas"
+    @contextmenu.prevent
+  >
+    <div
+      v-if="!initialized"
+      class="canvas-placeholder"
+    >
       <p>3D 刀路编辑场景</p>
-      <p class="hint">请加载刀路数据以开始编辑</p>
+      <p class="hint">
+        请加载刀路数据以开始编辑
+      </p>
     </div>
 
-    <div class="fps-counter" v-if="fps > 0">FPS: {{ fps }}</div>
+    <div
+      v-if="fps > 0"
+      class="fps-counter"
+    >
+      FPS: {{ fps }}
+    </div>
 
     <div class="coordinate-axes">
       <span class="axis-x">X</span>

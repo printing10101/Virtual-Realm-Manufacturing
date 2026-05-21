@@ -277,7 +277,7 @@ M30
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'fatal-error.png') });
   } finally {
     const finalScreenshot = path.join(SCREENSHOT_DIR, '99-final-state.png');
-    try { await page.screenshot({ path: finalScreenshot }); } catch (_) {}
+    try { await page.screenshot({ path: finalScreenshot }); } catch (_) { /* ignore screenshot errors */ }
 
     await browser.close();
   }

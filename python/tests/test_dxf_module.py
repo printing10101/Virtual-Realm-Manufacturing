@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-import math
 import tempfile
 from pathlib import Path
 
@@ -28,7 +27,6 @@ from app.dxf.feature_extractor import (
     FeatureExtractor,
     FeatureExtractionResult,
     HoleFeatureInfo,
-    PlaneFeatureInfo,
     extract_tolerance_from_text,
     is_counterbore_text,
 )

@@ -71,7 +71,9 @@ http.interceptors.request.use(
           config.headers.Authorization = `Bearer ${token}`
         }
       }
-    } catch {}
+    } catch (_e) {
+      // Silently ignore token parse errors
+    }
     return config
   },
   (error) => Promise.reject(error),
@@ -117,7 +119,9 @@ http.interceptors.response.use(
         try {
           const store = await getAuthStore()
           if (store) store.logout()
-        } catch {}
+        } catch (_e) {
+          // Silently ignore logout errors
+        }
         window.location.href = '/login'
         return Promise.reject(error)
       }
@@ -137,7 +141,9 @@ http.interceptors.response.use(
       let store: any = null
       try {
         store = await getAuthStore()
-      } catch {}
+      } catch (_e) {
+        // Silently ignore store fetch errors
+      }
       if (!store) {
         isRefreshing = false
         return Promise.reject(error)

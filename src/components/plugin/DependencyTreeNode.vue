@@ -1,16 +1,39 @@
 <template>
   <div class="tree-node">
     <div class="node-content">
-      <el-icon v-if="node.dependencies?.length" class="expand-icon" @click="expanded = !expanded">
+      <el-icon
+        v-if="node.dependencies?.length"
+        class="expand-icon"
+        @click="expanded = !expanded"
+      >
         <ArrowRight v-if="!expanded" />
         <ArrowDown v-else />
       </el-icon>
       <span class="node-name">{{ node.name }}</span>
-      <el-tag size="small" style="margin-left: 5px">{{ node.version }}</el-tag>
-      <el-tag v-if="node.status === 'missing'" type="danger" size="small" style="margin-left: 5px">缺失</el-tag>
+      <el-tag
+        size="small"
+        style="margin-left: 5px"
+      >
+        {{ node.version }}
+      </el-tag>
+      <el-tag
+        v-if="node.status === 'missing'"
+        type="danger"
+        size="small"
+        style="margin-left: 5px"
+      >
+        缺失
+      </el-tag>
     </div>
-    <div v-if="expanded && node.dependencies?.length" class="children">
-      <TreeNode v-for="child in node.dependencies" :key="child.id" :node="child" />
+    <div
+      v-if="expanded && node.dependencies?.length"
+      class="children"
+    >
+      <TreeNode
+        v-for="child in node.dependencies"
+        :key="child.id"
+        :node="child"
+      />
     </div>
   </div>
 </template>

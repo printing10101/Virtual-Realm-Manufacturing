@@ -1,16 +1,30 @@
 <template>
   <div class="simulation-viewer">
-    <div ref="containerRef" class="viewer-canvas" />
+    <div
+      ref="containerRef"
+      class="viewer-canvas"
+    />
 
-    <div v-if="!initialized" class="viewer-placeholder">
+    <div
+      v-if="!initialized"
+      class="viewer-placeholder"
+    >
       <p>3D仿真场景已就绪</p>
-      <p class="hint">请运行仿真以加载模型</p>
+      <p class="hint">
+        请运行仿真以加载模型
+      </p>
     </div>
 
-    <div v-if="loading" class="viewer-overlay">
+    <div
+      v-if="loading"
+      class="viewer-overlay"
+    >
       <span class="loading-text">仿真计算中...</span>
       <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: progress + '%' }" />
+        <div
+          class="progress-fill"
+          :style="{ width: progress + '%' }"
+        />
       </div>
     </div>
 
@@ -20,7 +34,10 @@
       <span class="axis-z">Z</span>
     </div>
 
-    <div class="fps-counter" v-if="fps > 0">
+    <div
+      v-if="fps > 0"
+      class="fps-counter"
+    >
       FPS: {{ fps }}
     </div>
   </div>
@@ -28,9 +45,9 @@
 
 <script setup lang="ts">
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import type { SimulationResult, CollisionInfo, ToolpathSegmentData } from '@/types'
+import { useThreeScene } from '@/composables/useThreeScene'
 
 const props = defineProps<{
   stockStlUrl?: string
@@ -56,11 +73,7 @@ const loading = ref(false)
 const progress = ref(0)
 const fps = ref(0)
 
-let scene: THREE.Scene | null = null
-let camera: THREE.PerspectiveCamera | null = null
-let renderer: THREE.WebGLRenderer | null = null
-let controls: OrbitControls | null = null
-let animationId: number | null = null
+let threeScene: ReturnType<typeof useThreeScene> | null = null
 
 let stockMesh: THREE.Mesh | null = null
 let resultMesh: THREE.Mesh | null = null
@@ -114,7 +127,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  cleanup()
+  threeScene?.cleanup()
 })
 
 watch(() => props.stockStlUrl, (url) => {
@@ -142,45 +155,30 @@ watch(() => props.currentSegmentIndex, (idx) => {
 function initScene() {
   if (!containerRef.value) return
 
-  const w = containerRef.value.clientWidth
-  const h = containerRef.value.clientHeight
+  threeScene = useThreeScene({
+    container: containerRef.value,
+    backgroundColor: props.backgroundColor,
+    fov: 50,
+    cameraPosition: [200, -200, 150],
+    dampingFactor: 0.08,
+    showGrid: props.showGrid !== false,
+    gridSize: 300,
+  })
 
-  scene = new THREE.Scene()
-  scene.background = new THREE.Color(props.backgroundColor || '#1a1a2e')
-
-  camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 10000)
-  camera.position.set(200, -200, 150)
-  camera.lookAt(0, 0, 30)
-
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
-  renderer.setSize(w, h)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.0
-  renderer.shadowMap.enabled = true
-
-  containerRef.value.appendChild(renderer.domElement)
-
-  controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true
-  controls.dampingFactor = 0.08
-  controls.target.set(0, 0, 25)
+  const { scene, addLight } = threeScene
 
   const ambient = new THREE.AmbientLight(0xffffff, 0.6)
-  scene.add(ambient)
+  addLight(ambient)
 
   const dir1 = new THREE.DirectionalLight(0xffffff, 0.8)
   dir1.position.set(100, 100, 150)
-  scene.add(dir1)
+  addLight(dir1)
 
   const dir2 = new THREE.DirectionalLight(0xffffff, 0.3)
   dir2.position.set(-100, -50, 50)
-  scene.add(dir2)
+  addLight(dir2)
 
   if (props.showGrid !== false) {
-    const grid = new THREE.GridHelper(300, 20, 0x444444, 0x222222)
-    scene.add(grid)
-
     const grid2 = new THREE.GridHelper(300, 20, 0x333333, 0x111111)
     grid2.position.z = 40
     scene.add(grid2)
@@ -189,29 +187,9 @@ function initScene() {
   collisionMarkers = new THREE.Group()
   scene.add(collisionMarkers)
 
-  const resizeObserver = new ResizeObserver(() => {
-    if (!containerRef.value || !camera || !renderer) return
-    const nw = containerRef.value.clientWidth
-    const nh = containerRef.value.clientHeight
-    camera.aspect = nw / nh
-    camera.updateProjectionMatrix()
-    renderer.setSize(nw, nh)
-  })
-  resizeObserver.observe(containerRef.value)
+  threeScene.controls.target.set(0, 0, 25)
 
-  startAnimation()
-}
-
-function startAnimation() {
-  const animate = () => {
-    animationId = requestAnimationFrame(animate)
-
-    if (controls) controls.update()
-
-    if (renderer && scene && camera) {
-      renderer.render(scene, camera)
-    }
-
+  threeScene.startAnimation(() => {
     fpsFrameCount++
     const now = performance.now()
     if (now - fpsLastTime >= 1000) {
@@ -220,24 +198,23 @@ function startAnimation() {
       fpsFrameCount = 0
       fpsLastTime = now
     }
-  }
-  animate()
+  })
 }
 
 async function loadStockModel(url: string): Promise<void> {
-  if (!scene) return
+  if (!threeScene) return
   loading.value = true
 
   try {
     if (stockMesh) {
-      scene.remove(stockMesh)
+      threeScene.scene.remove(stockMesh)
       stockMesh.geometry?.dispose()
       stockMesh = null
     }
 
     const geometry = await loadSTLGeometry(url)
     stockMesh = new THREE.Mesh(geometry, stockMaterial)
-    scene.add(stockMesh)
+    threeScene.scene.add(stockMesh)
 
     fitCameraToModel(stockMesh)
   } catch (err) {
@@ -248,19 +225,19 @@ async function loadStockModel(url: string): Promise<void> {
 }
 
 async function loadResultModel(url: string): Promise<void> {
-  if (!scene) return
+  if (!threeScene) return
   loading.value = true
 
   try {
     if (resultMesh) {
-      scene.remove(resultMesh)
+      threeScene.scene.remove(resultMesh)
       resultMesh.geometry?.dispose()
       resultMesh = null
     }
 
     const geometry = await loadSTLGeometry(url)
     resultMesh = new THREE.Mesh(geometry, resultMaterial)
-    scene.add(resultMesh)
+    threeScene.scene.add(resultMesh)
 
     if (!stockMesh) fitCameraToModel(resultMesh)
 
@@ -293,7 +270,9 @@ function loadSTLGeometry(url: string): Promise<THREE.BufferGeometry> {
 }
 
 function drawToolpath(segments: ToolpathSegmentData[]): void {
-  if (!scene) return
+  if (!threeScene) return
+
+  const { scene } = threeScene
 
   if (toolPathLine) {
     scene.remove(toolPathLine)
@@ -352,7 +331,7 @@ function drawToolpath(segments: ToolpathSegmentData[]): void {
 }
 
 function drawCollisionMarkers(collision: CollisionInfo): void {
-  if (!scene || !collisionMarkers) return
+  if (!threeScene || !collisionMarkers) return
 
   while (collisionMarkers.children.length > 0) {
     const child = collisionMarkers.children[0]
@@ -380,7 +359,9 @@ function drawCollisionMarkers(collision: CollisionInfo): void {
 }
 
 function focusOnCollision(position: [number, number, number]): void {
-  if (!camera || !controls) return
+  if (!threeScene) return
+
+  const { camera, controls } = threeScene
   const target = new THREE.Vector3(...position)
 
   const startPos = camera.position.clone()
@@ -399,9 +380,9 @@ function focusOnCollision(position: [number, number, number]): void {
     const t = Math.min(elapsed / duration, 1.0)
     const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
 
-    camera!.position.lerpVectors(startPos, endPos, ease)
-    controls!.target.lerpVectors(startTarget, target, ease)
-    controls!.update()
+    camera.position.lerpVectors(startPos, endPos, ease)
+    controls.target.lerpVectors(startTarget, target, ease)
+    controls.update()
 
     if (t < 1.0) {
       requestAnimationFrame(animate)
@@ -411,7 +392,9 @@ function focusOnCollision(position: [number, number, number]): void {
 }
 
 function updateToolIndicator(segmentIndex: number): void {
-  if (!scene || !props.toolpathSegments) return
+  if (!threeScene || !props.toolpathSegments) return
+
+  const { scene } = threeScene
 
   if (toolIndicator) {
     scene.remove(toolIndicator)
@@ -433,7 +416,9 @@ function updateToolIndicator(segmentIndex: number): void {
 }
 
 function fitCameraToModel(mesh: THREE.Mesh): void {
-  if (!camera || !controls) return
+  if (!threeScene) return
+
+  const { camera, controls } = threeScene
 
   const box = new THREE.Box3().setFromObject(mesh)
   const center = box.getCenter(new THREE.Vector3())
@@ -445,32 +430,6 @@ function fitCameraToModel(mesh: THREE.Mesh): void {
   controls.target.copy(center)
   camera.position.set(center.x, center.y - cameraZ * 0.5, center.z + cameraZ)
   controls.update()
-}
-
-function cleanup(): void {
-  if (animationId) {
-    cancelAnimationFrame(animationId)
-    animationId = null
-  }
-  if (controls) {
-    controls.dispose()
-    controls = null
-  }
-  if (renderer) {
-    renderer.dispose()
-    if (renderer.domElement.parentNode) {
-      renderer.domElement.parentNode.removeChild(renderer.domElement)
-    }
-    renderer = null
-  }
-  scene = null
-  camera = null
-  stockMesh = null
-  resultMesh = null
-  toolPathLine = null
-  toolPathPoints = null
-  collisionMarkers = null
-  toolIndicator = null
 }
 
 defineExpose({ focusOnCollision })

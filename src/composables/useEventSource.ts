@@ -1,8 +1,22 @@
+/**
+ * Server-Sent Events (SSE) 事件源管理
+ * 提供连接、重连、事件处理等完整功能
+ */
+
 import { ref, onUnmounted } from 'vue'
+
+/** SSE事件负载数据结构 */
+export interface SSEEventData {
+  percent?: number
+  metrics?: Record<string, unknown>
+  error?: string
+  status?: string
+  [key: string]: unknown
+}
 
 export interface SSEEvent {
   type: 'queued' | 'started' | 'progress' | 'complete' | 'failed' | 'cancelled' | 'done'
-  data: Record<string, any>
+  data: SSEEventData
   timestamp: Date
 }
 
@@ -13,7 +27,20 @@ export interface UseEventSourceOptions {
   maxDelay?: number
 }
 
-export function useEventSource(jobId: string, options: UseEventSourceOptions = {}) {
+export interface UseEventSourceReturn {
+  events: ReturnType<typeof ref<SSEEvent[]>>
+  isConnected: ReturnType<typeof ref<boolean>>
+  isDone: ReturnType<typeof ref<boolean>>
+  currentStatus: ReturnType<typeof ref<string | null>>
+  progress: ReturnType<typeof ref<number>>
+  lastProgressData: ReturnType<typeof ref<Record<string, unknown> | null>>
+  error: ReturnType<typeof ref<string | null>>
+  connect: () => void
+  close: () => void
+  reset: () => void
+}
+
+export function useEventSource(jobId: string, options: UseEventSourceOptions = {}): UseEventSourceReturn {
   const {
     autoReconnect = true,
     maxRetries = 10,
@@ -26,19 +53,26 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
   const isDone = ref(false)
   const currentStatus = ref<string | null>(null)
   const progress = ref(0)
-  const lastProgressData = ref<Record<string, any> | null>(null)
+  const lastProgressData = ref<Record<string, unknown> | null>(null)
   const error = ref<string | null>(null)
 
   let eventSource: EventSource | null = null
   let retryCount = 0
   let retryTimer: number | null = null
 
-  const getEventSourceUrl = () => {
+  /**
+   * 获取EventSource连接URL
+   * @returns SSE流地址
+   */
+  const getEventSourceUrl = (): string => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     return `${baseUrl}/api/v1/jobs/${jobId}/stream`
   }
 
-  const connect = () => {
+  /**
+   * 建立SSE连接
+   */
+  const connect = (): void => {
     if (eventSource) {
       close()
     }
@@ -46,13 +80,13 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
     const url = getEventSourceUrl()
     eventSource = new EventSource(url)
 
-    eventSource.onopen = () => {
+    eventSource.onopen = (): void => {
       isConnected.value = true
       retryCount = 0
       console.log('[SSE] Connected to event stream')
     }
 
-    eventSource.onerror = () => {
+    eventSource.onerror = (): void => {
       isConnected.value = false
       console.error('[SSE] Connection error')
 
@@ -61,26 +95,30 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
       }
     }
 
-    const eventTypes = ['queued', 'started', 'progress', 'complete', 'failed', 'cancelled', 'done']
+    const eventTypes = ['queued', 'started', 'progress', 'complete', 'failed', 'cancelled', 'done'] as const
     eventTypes.forEach(eventType => {
       eventSource!.addEventListener(eventType, (event: MessageEvent) => {
         try {
-          const data = JSON.parse(event.data)
+          const data = JSON.parse(event.data) as SSEEventData
           const sseEvent: SSEEvent = {
-            type: eventType as SSEEvent['type'],
+            type: eventType,
             data,
             timestamp: new Date(),
           }
           events.value.push(sseEvent)
           handleEvent(sseEvent)
-        } catch (e) {
+        } catch (e: unknown) {
           console.error(`[SSE] Failed to parse ${eventType} event:`, e)
         }
       })
     })
   }
 
-  const handleEvent = (event: SSEEvent) => {
+  /**
+   * 处理接收到的SSE事件
+   * @param event - SSE事件对象
+   */
+  const handleEvent = (event: SSEEvent): void => {
     switch (event.type) {
       case 'queued':
         currentStatus.value = 'queued'
@@ -94,8 +132,8 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
 
       case 'progress':
         currentStatus.value = 'running'
-        progress.value = event.data.percent || 0
-        lastProgressData.value = event.data.metrics || null
+        progress.value = event.data.percent ?? 0
+        lastProgressData.value = event.data.metrics ?? null
         break
 
       case 'complete':
@@ -107,7 +145,7 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
 
       case 'failed':
         currentStatus.value = 'failed'
-        error.value = event.data.error || 'Unknown error occurred'
+        error.value = event.data.error ?? 'Unknown error occurred'
         isDone.value = true
         close()
         break
@@ -119,14 +157,17 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
         break
 
       case 'done':
-        currentStatus.value = event.data.status || currentStatus.value
+        currentStatus.value = event.data.status ?? currentStatus.value
         isDone.value = true
         close()
         break
     }
   }
 
-  const scheduleReconnect = () => {
+  /**
+   * 安排重连（指数退避策略）
+   */
+  const scheduleReconnect = (): void => {
     retryCount++
     const delay = Math.min(baseDelay * Math.pow(2, retryCount - 1), maxDelay)
     console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${retryCount}/${maxRetries})`)
@@ -136,7 +177,10 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
     }, delay)
   }
 
-  const close = () => {
+  /**
+   * 关闭SSE连接并清理定时器
+   */
+  const close = (): void => {
     if (eventSource) {
       eventSource.close()
       eventSource = null
@@ -148,7 +192,10 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
     isConnected.value = false
   }
 
-  const reset = () => {
+  /**
+   * 重置所有状态到初始值
+   */
+  const reset = (): void => {
     events.value = []
     currentStatus.value = null
     progress.value = 0

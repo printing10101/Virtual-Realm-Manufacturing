@@ -11,7 +11,7 @@ import logging
 import random
 import sqlite3
 import time
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
 

@@ -19,20 +19,53 @@
           placeholder="描述（可选）..."
           style="width: 180px; margin-left: 8px"
         />
-        <el-button type="primary" @click="handleCreate" style="margin-left: 8px">
+        <el-button
+          type="primary"
+          style="margin-left: 8px"
+          @click="handleCreate"
+        >
           <el-icon><Plus /></el-icon>
           {{ isEditing ? '保存' : '创建' }}
         </el-button>
       </div>
 
-      <el-table :data="ruleStore.groups" border style="margin-top: 16px">
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="name" label="分组名称" />
-        <el-table-column prop="description" label="描述" />
-        <el-table-column prop="rule_count" label="规则数" width="90" />
-        <el-table-column label="操作" width="160" fixed="right">
+      <el-table
+        :data="ruleStore.groups"
+        border
+        style="margin-top: 16px"
+      >
+        <el-table-column
+          prop="id"
+          label="ID"
+          width="70"
+        />
+        <el-table-column
+          prop="name"
+          label="分组名称"
+        />
+        <el-table-column
+          prop="description"
+          label="描述"
+        />
+        <el-table-column
+          prop="rule_count"
+          label="规则数"
+          width="90"
+        />
+        <el-table-column
+          label="操作"
+          width="160"
+          fixed="right"
+        >
           <template #default="{ row }">
-            <el-button size="small" type="primary" link @click="handleEdit(row)">编辑</el-button>
+            <el-button
+              size="small"
+              type="primary"
+              link
+              @click="handleEdit(row)"
+            >
+              编辑
+            </el-button>
             <el-popconfirm
               :title="`确定删除分组「${row.name}」？`"
               confirm-button-text="删除"
@@ -40,7 +73,12 @@
               @confirm="handleDelete(row.id)"
             >
               <template #reference>
-                <el-button size="small" type="danger" link :disabled="row.rule_count > 0">
+                <el-button
+                  size="small"
+                  type="danger"
+                  link
+                  :disabled="row.rule_count > 0"
+                >
                   删除
                 </el-button>
               </template>
@@ -51,7 +89,9 @@
     </div>
 
     <template #footer>
-      <el-button @click="$emit('update:visible', false)">关闭</el-button>
+      <el-button @click="$emit('update:visible', false)">
+        关闭
+      </el-button>
     </template>
   </el-dialog>
 </template>

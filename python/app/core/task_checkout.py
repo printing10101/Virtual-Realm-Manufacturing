@@ -566,7 +566,8 @@ class TaskCheckoutManager:
 
         conn = self._get_conn()
         conn.execute(
-            "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, checked_out_at = NULL, checkout_expires_at = NULL WHERE id = ?",
+            "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, "
+            "checked_out_at = NULL, checkout_expires_at = NULL WHERE id = ?",
             (TaskStatus.PENDING.value, task_id),
         )
         conn.commit()
@@ -679,7 +680,8 @@ class TaskCheckoutManager:
 
             conn = self._get_conn()
             conn.execute(
-                "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, checked_out_at = NULL, checkout_expires_at = NULL WHERE id = ?",
+                "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, "
+                "checked_out_at = NULL, checkout_expires_at = NULL WHERE id = ?",
                 (TaskStatus.PENDING.value, task_id),
             )
             conn.commit()
@@ -720,7 +722,8 @@ class TaskCheckoutManager:
             if task and task.status == TaskStatus.IN_PROGRESS.value:
                 conn = self._get_conn()
                 conn.execute(
-                    "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, checked_out_at = NULL, checkout_expires_at = NULL WHERE id = ?",
+                    "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, "
+                    "checked_out_at = NULL, checkout_expires_at = NULL WHERE id = ?",
                     (TaskStatus.PENDING.value, lock.task_id),
                 )
                 conn.commit()

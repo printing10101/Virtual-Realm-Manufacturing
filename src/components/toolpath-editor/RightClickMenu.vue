@@ -1,14 +1,20 @@
 <template>
   <div
+    v-if="visible"
     class="right-click-menu"
     :style="{ left: position.x + 'px', top: position.y + 'px' }"
-    v-if="visible"
   >
-    <div class="menu-item" @click="handleDelete">
+    <div
+      class="menu-item"
+      @click="handleDelete"
+    >
       <el-icon><Delete /></el-icon>
       <span>删除此段</span>
     </div>
-    <div class="menu-item" @click="handleAdjustFeed">
+    <div
+      class="menu-item"
+      @click="handleAdjustFeed"
+    >
       <el-icon><Edit /></el-icon>
       <span>在此处调整进给率</span>
     </div>

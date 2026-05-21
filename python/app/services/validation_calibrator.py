@@ -51,7 +51,11 @@ class ValidationCalibrator:
 
         if not samples:
             raise ValueError(
-                f"校验数据加载失败：未找到标记为 'good'（良品）的样本数据。筛选条件: 工序={process}, 机床={machine}。可能原因：1) 数据集中不存在该工序/机床组合的良品样本；2) 数据标注有误。请检查数据筛选条件，或调用 GET /api/v1/data/samples?labels=good 查看可用样本。"
+                f"校验数据加载失败：未找到标记为 'good'（良品）的样本数据。"
+                f"筛选条件: 工序={process}, 机床={machine}。"
+                "可能原因：1) 数据集中不存在该工序/机床组合的良品样本；"
+                "2) 数据标注有误。"
+                "请检查数据筛选条件，或调用 GET /api/v1/data/samples?labels=good 查看可用样本。"
             )
 
         rms_x, rms_y, rms_z = [], [], []

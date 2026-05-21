@@ -15,9 +15,6 @@ from fastapi.responses import StreamingResponse
 from app.core.response import ErrorCode, error, success
 from app.core.task_manager import TaskType, TaskStatus
 from app.core.task_system import AsyncTaskManager
-from app.models.schemas import (
-    TaskHistoryQueryRequest,
-)
 
 logger = logging.getLogger(__name__)
 

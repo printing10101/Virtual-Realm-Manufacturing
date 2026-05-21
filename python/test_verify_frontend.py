@@ -17,7 +17,7 @@ def get(path):
     try:
         token = open(".lnn_token").read().strip()
         req.add_header("Authorization", f"Bearer {token}")
-    except:
+    except Exception:
         pass
     r = urllib.request.urlopen(req, timeout=5)
     raw = r.read().decode("utf-8")

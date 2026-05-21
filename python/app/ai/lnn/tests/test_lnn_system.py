@@ -13,25 +13,25 @@ import json
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.ai.lnn.core import (
-    EngineType,
-    ModelType,
-    TaskInput,
-    RoutingDecision,
-    InferenceResult,
-    FusionResult,
-)
-from app.ai.lnn.models.cfc_model import CFCModel
-from app.ai.lnn.models.ltc_model import LTCModel
-from app.ai.lnn.models.hybrid_lnn import HybridLNNModel
-from app.ai.lnn.router.task_router import TaskRouter, ScoringModel, TaskFeatures
-from app.ai.lnn.fusion import DempsterShaferFusion, EngineEvidence
-from app.ai.lnn.preprocessing import DataPreprocessor, NormalizationMethod
-from app.ai.lnn.postprocessing import ResultPostprocessor
-from app.ai.lnn.inference.registry import ModelRegistry
-from app.ai.lnn.inference.predictor import Predictor
-from app.ai.lnn.inference.batch_inference import BatchPredictor
-from app.ai.lnn.engine import HybridInferenceEngine, EngineConfig
+from app.ai.lnn.core import (  # noqa: E402
+    EngineType,  # noqa: E402
+    ModelType,  # noqa: E402
+    TaskInput,  # noqa: E402
+    RoutingDecision,  # noqa: E402
+    InferenceResult,  # noqa: E402
+    FusionResult,  # noqa: E402
+)  # noqa: E402
+from app.ai.lnn.models.cfc_model import CFCModel  # noqa: E402
+from app.ai.lnn.models.ltc_model import LTCModel  # noqa: E402
+from app.ai.lnn.models.hybrid_lnn import HybridLNNModel  # noqa: E402
+from app.ai.lnn.router.task_router import TaskRouter, ScoringModel, TaskFeatures  # noqa: E402
+from app.ai.lnn.fusion import DempsterShaferFusion, EngineEvidence  # noqa: E402
+from app.ai.lnn.preprocessing import DataPreprocessor, NormalizationMethod  # noqa: E402
+from app.ai.lnn.postprocessing import ResultPostprocessor  # noqa: E402
+from app.ai.lnn.inference.registry import ModelRegistry  # noqa: E402
+from app.ai.lnn.inference.predictor import Predictor  # noqa: E402
+from app.ai.lnn.inference.batch_inference import BatchPredictor  # noqa: E402
+from app.ai.lnn.engine import HybridInferenceEngine, EngineConfig  # noqa: E402
 
 
 class TestCoreModels(unittest.TestCase):

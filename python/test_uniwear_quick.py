@@ -2,7 +2,7 @@ import sys
 
 sys.path.insert(0, ".")
 
-from app.data.uniwear_loader import UniwearDataLoader, UniwearDataset
+from app.data.uniwear_loader import UniwearDataLoader, UniwearDataset  # noqa: E402
 
 loader = UniwearDataLoader(data_dir="python/data/uniwear")
 summary = loader.get_dataset_summary()
@@ -24,12 +24,12 @@ print(
 stats = loader.compute_statistics(UniwearDataset.NUAA, experiment_tag="W1")
 ws = stats.get("wear_stats", {})
 print(
-    f"\nNUAA W1 wear: initial={ws.get('initial_wear', '?')}, final={ws.get('final_wear', '?')}, increment={ws.get('total_wear_increment', '?')}"
+    f"\nNUAA W1 wear: initial={ws.get('initial_wear', '?')}, final={ws.get('final_wear', '?')}, increment={ws.get('total_wear_increment', '?')}"  # noqa: E501
 )
 
 stats2 = loader.compute_statistics(UniwearDataset.PHM2010, experiment_tag="c1")
 ws2 = stats2.get("wear_stats", {})
 print(
-    f"PHM2010 c1 wear: initial={ws2.get('initial_wear', '?')}, final={ws2.get('final_wear', '?')}, increment={ws2.get('total_wear_increment', '?')}"
+    f"PHM2010 c1 wear: initial={ws2.get('initial_wear', '?')}, final={ws2.get('final_wear', '?')}, increment={ws2.get('total_wear_increment', '?')}"  # noqa: E501
 )
 print("All tests passed!")

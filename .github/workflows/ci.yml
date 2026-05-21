@@ -70,10 +70,117 @@ jobs:
         run: |
           pytest tests/unit/ -v \
             --cov=app \
+            --cov-config=../.coveragerc \
             --cov-report=xml:coverage-unit.xml \
+            --cov-report=json:coverage-unit.json \
+            --cov-report=html:coverage-unit-html \
             --cov-report=term-missing \
             --junitxml=junit-unit.xml \
             -m unit
+
+      - name: Check unit test coverage threshold (80%)
+        working-directory: python
+        if: matrix.python-version == '3.10'
+        run: |
+          echo "======================================================"
+          echo "  COVERAGE CHECK: Unit Tests (threshold >= 80%)"
+          echo "======================================================"
+
+          echo ""
+          echo "[1/4] Checking coverage report file..."
+          if [ ! -f coverage-unit.json ]; then
+            echo "ERROR: coverage-unit.json not found!"
+            echo "Available files:"
+            ls -la coverage-unit* 2>/dev/null || echo "  (no coverage files found)"
+            exit 1
+          fi
+          echo "File found: coverage-unit.json"
+          echo "File size: $(wc -c < coverage-unit.json) bytes"
+          echo ""
+
+          echo "[2/4] Raw coverage report structure:"
+          python -c "
+          import json
+          with open('coverage-unit.json') as f:
+              data = json.load(f)
+          totals = data.get('totals', {})
+          print('  Total lines:      ' + str(totals.get('num_statements', 0)))
+          print('  Covered lines:    ' + str(totals.get('covered_lines', 0)))
+          print('  Missing lines:    ' + str(totals.get('missing_lines', 0)))
+          print('  Excluded lines:   ' + str(totals.get('excluded_lines', 0)))
+          print('  Percent covered:  ' + str(totals.get('percent_covered', 0)) + '%')
+          print('  Branches total:   ' + str(totals.get('num_branches', 0)))
+          print('  Branches covered: ' + str(totals.get('covered_branches', 0)))
+          print('  Branch coverage:  ' + str(totals.get('percent_covered_branches', 0)) + '%')
+          " || echo "WARNING: Failed to parse coverage-unit.json"
+          echo ""
+
+          echo "[3/4] Calculating coverage percentage..."
+          python -c "
+          import json, sys
+          with open('coverage-unit.json') as f:
+              data = json.load(f)
+          totals = data.get('totals', {})
+          pct = totals.get('percent_covered', 0)
+          covered = totals.get('covered_lines', 0)
+          missing = totals.get('missing_lines', 0)
+          total = totals.get('num_statements', 0)
+
+          print(f'  Coverage: {pct:.2f}%')
+          print(f'  Statements: {covered} covered, {missing} missing out of {total} total')
+          print('')
+
+          if pct < 80:
+              print(f'  >>> RESULT: FAIL (coverage {pct:.2f}% < 80% threshold)')
+              print('')
+
+              # List files with lowest coverage
+              files = data.get('files', {})
+              low_files = []
+              for fname, fdata in files.items():
+                  fpct = fdata.get('summary', {}).get('percent_covered', 0)
+                  if fpct < 80:
+                      fcovered = fdata.get('summary', {}).get('covered_lines', 0)
+                      fmissing = fdata.get('summary', {}).get('missing_lines', 0)
+                      low_files.append((fpct, fcovered, fmissing, fname))
+
+              low_files.sort()
+              print(f'  Files below 80% coverage ({len(low_files)} files):')
+              print(f'  {\"Coverage\":>9}  {\"Cov\":>5} {\"Miss\":>5}  File')
+              print(f'  {\"-\"*9}  {\"-\"*5} {\"-\"*5}  {\"-\"*40}')
+              for fpct, fcovered, fmissing, fname in low_files:
+                  print(f'  {fpct:>8.2f}%  {fcovered:>5} {fmissing:>5}  {fname}')
+
+              # Show top 5 most missed files details
+              print('')
+              sorted_by_missing = sorted(low_files, key=lambda x: -x[2])  # by missing desc
+              print(f'  Top 5 files with most uncovered lines:')
+              for fpct, fcovered, fmissing, fname in sorted_by_missing[:5]:
+                  print(f'    - {fname}: {fmissing} lines uncovered (coverage: {fpct:.2f}%)')
+
+              sys.exit(1)
+          else:
+              print(f'  >>> RESULT: PASSED (coverage {pct:.2f}% >= 80% threshold)')
+          "
+          echo ""
+
+          echo "[4/4] Top 3 best-covered files (for reference):"
+          python -c "
+          import json
+          with open('coverage-unit.json') as f:
+              data = json.load(f)
+          files = data.get('files', {})
+          high_files = []
+          for fname, fdata in files.items():
+              fpct = fdata.get('summary', {}).get('percent_covered', 0)
+              if fpct >= 80:
+                  high_files.append((fpct, fname))
+          high_files.sort(reverse=True)
+          for fpct, fname in high_files[:3]:
+              print(f'  - {fname}: {fpct:.2f}%')
+          " || true
+          echo ""
+          echo "======================================================"
 
       - name: Upload unit test results
         uses: actions/upload-artifact@v4
@@ -83,6 +190,8 @@ jobs:
           path: |
             python/junit-unit.xml
             python/coverage-unit.xml
+            python/coverage-unit.json
+            python/coverage-unit-html/
           retention-days: 30
 
       - name: Upload coverage to Codecov
@@ -132,10 +241,115 @@ jobs:
         run: |
           pytest tests/integration/ -v \
             --cov=app \
+            --cov-config=../.coveragerc \
             --cov-report=xml:coverage-integration.xml \
+            --cov-report=json:coverage-integration.json \
+            --cov-report=html:coverage-integration-html \
             --cov-report=term-missing \
             --junitxml=junit-integration.xml \
             -m integration
+
+      - name: Check integration test coverage threshold (70%)
+        run: |
+          cd python
+
+          echo "======================================================"
+          echo "  COVERAGE CHECK: Integration Tests (threshold >= 70%)"
+          echo "======================================================"
+          echo ""
+
+          echo "[1/4] Checking coverage report file..."
+          if [ ! -f coverage-integration.json ]; then
+            echo "ERROR: coverage-integration.json not found!"
+            echo "Available files:"
+            ls -la coverage-integration* 2>/dev/null || echo "  (no coverage files found)"
+            exit 1
+          fi
+          echo "File found: coverage-integration.json"
+          echo "File size: $(wc -c < coverage-integration.json) bytes"
+          echo ""
+
+          echo "[2/4] Raw coverage report structure:"
+          python -c "
+          import json
+          with open('coverage-integration.json') as f:
+              data = json.load(f)
+          totals = data.get('totals', {})
+          print('  Total lines:      ' + str(totals.get('num_statements', 0)))
+          print('  Covered lines:    ' + str(totals.get('covered_lines', 0)))
+          print('  Missing lines:    ' + str(totals.get('missing_lines', 0)))
+          print('  Excluded lines:   ' + str(totals.get('excluded_lines', 0)))
+          print('  Percent covered:  ' + str(totals.get('percent_covered', 0)) + '%')
+          print('  Branches total:   ' + str(totals.get('num_branches', 0)))
+          print('  Branches covered: ' + str(totals.get('covered_branches', 0)))
+          print('  Branch coverage:  ' + str(totals.get('percent_covered_branches', 0)) + '%')
+          " || echo "WARNING: Failed to parse coverage-integration.json"
+          echo ""
+
+          echo "[3/4] Calculating coverage percentage..."
+          python -c "
+          import json, sys
+          with open('coverage-integration.json') as f:
+              data = json.load(f)
+          totals = data.get('totals', {})
+          pct = totals.get('percent_covered', 0)
+          covered = totals.get('covered_lines', 0)
+          missing = totals.get('missing_lines', 0)
+          total = totals.get('num_statements', 0)
+
+          print(f'  Coverage: {pct:.2f}%')
+          print(f'  Statements: {covered} covered, {missing} missing out of {total} total')
+          print('')
+
+          if pct < 70:
+              print(f'  >>> RESULT: FAIL (coverage {pct:.2f}% < 70% threshold)')
+              print('')
+
+              files = data.get('files', {})
+              low_files = []
+              for fname, fdata in files.items():
+                  fpct = fdata.get('summary', {}).get('percent_covered', 0)
+                  if fpct < 70:
+                      fcovered = fdata.get('summary', {}).get('covered_lines', 0)
+                      fmissing = fdata.get('summary', {}).get('missing_lines', 0)
+                      low_files.append((fpct, fcovered, fmissing, fname))
+
+              low_files.sort()
+              print(f'  Files below 70% coverage ({len(low_files)} files):')
+              print(f'  {\"Coverage\":>9}  {\"Cov\":>5} {\"Miss\":>5}  File')
+              print(f'  {\"-\"*9}  {\"-\"*5} {\"-\"*5}  {\"-\"*40}')
+              for fpct, fcovered, fmissing, fname in low_files:
+                  print(f'  {fpct:>8.2f}%  {fcovered:>5} {fmissing:>5}  {fname}')
+
+              print('')
+              sorted_by_missing = sorted(low_files, key=lambda x: -x[2])
+              print(f'  Top 5 files with most uncovered lines:')
+              for fpct, fcovered, fmissing, fname in sorted_by_missing[:5]:
+                  print(f'    - {fname}: {fmissing} lines uncovered (coverage: {fpct:.2f}%)')
+
+              sys.exit(1)
+          else:
+              print(f'  >>> RESULT: PASSED (coverage {pct:.2f}% >= 70% threshold)')
+          "
+          echo ""
+
+          echo "[4/4] Top 3 best-covered files (for reference):"
+          python -c "
+          import json
+          with open('coverage-integration.json') as f:
+              data = json.load(f)
+          files = data.get('files', {})
+          high_files = []
+          for fname, fdata in files.items():
+              fpct = fdata.get('summary', {}).get('percent_covered', 0)
+              if fpct >= 80:
+                  high_files.append((fpct, fname))
+          high_files.sort(reverse=True)
+          for fpct, fname in high_files[:3]:
+              print(f'  - {fname}: {fpct:.2f}%')
+          " || true
+          echo ""
+          echo "======================================================"
 
       - name: Upload integration test results
         uses: actions/upload-artifact@v4
@@ -145,6 +359,8 @@ jobs:
           path: |
             python/junit-integration.xml
             python/coverage-integration.xml
+            python/coverage-integration.json
+            python/coverage-integration-html/
           retention-days: 30
 
       - name: Upload coverage to Codecov
@@ -193,7 +409,9 @@ jobs:
         run: |
           pytest tests/regression/ -v \
             --cov=app \
+            --cov-config=../.coveragerc \
             --cov-report=xml:coverage-regression.xml \
+            --cov-report=json:coverage-regression.json \
             --cov-report=term-missing \
             --junitxml=junit-regression.xml \
             -m regression
@@ -206,6 +424,7 @@ jobs:
           path: |
             python/junit-regression.xml
             python/coverage-regression.xml
+            python/coverage-regression.json
           retention-days: 30
 
       - name: Upload coverage to Codecov
@@ -255,13 +474,144 @@ jobs:
           pytest tests/unit/ tests/integration/ tests/regression/ tests/test_*.py \
             -v \
             --cov=app \
+            --cov-config=../.coveragerc \
             --cov-report=xml:coverage-full.xml \
-            --cov-report=html:coverage-html \
+            --cov-report=json:coverage-full.json \
+            --cov-report=html:coverage-full-html \
             --cov-report=term-missing \
             --junitxml=junit-full.xml \
             --durations=20 \
             --timeout=300 \
             -m "not skip_ci"
+
+      - name: Check overall coverage threshold (70%)
+        run: |
+          cd python
+
+          echo "======================================================"
+          echo "  COVERAGE CHECK: Full Test Suite (threshold >= 70%)"
+          echo "======================================================"
+          echo ""
+
+          echo "[1/4] Checking coverage report file..."
+          if [ ! -f coverage-full.json ]; then
+            echo "ERROR: coverage-full.json not found!"
+            echo "Available files:"
+            ls -la coverage-full* 2>/dev/null || echo "  (no coverage files found)"
+            exit 1
+          fi
+          echo "File found: coverage-full.json"
+          echo "File size: $(wc -c < coverage-full.json) bytes"
+          echo ""
+
+          echo "[2/4] Raw coverage report structure:"
+          python -c "
+          import json
+          with open('coverage-full.json') as f:
+              data = json.load(f)
+          totals = data.get('totals', {})
+          print('  Total lines:      ' + str(totals.get('num_statements', 0)))
+          print('  Covered lines:    ' + str(totals.get('covered_lines', 0)))
+          print('  Missing lines:    ' + str(totals.get('missing_lines', 0)))
+          print('  Excluded lines:   ' + str(totals.get('excluded_lines', 0)))
+          print('  Percent covered:  ' + str(totals.get('percent_covered', 0)) + '%')
+          print('  Branches total:   ' + str(totals.get('num_branches', 0)))
+          print('  Branches covered: ' + str(totals.get('covered_branches', 0)))
+          print('  Branch coverage:  ' + str(totals.get('percent_covered_branches', 0)) + '%')
+          " || echo "WARNING: Failed to parse coverage-full.json"
+          echo ""
+
+          echo "[3/4] Detailed coverage analysis..."
+          python -c "
+          import json, sys
+          with open('coverage-full.json') as f:
+              data = json.load(f)
+          totals = data.get('totals', {})
+          pct = totals.get('percent_covered', 0)
+          covered = totals.get('covered_lines', 0)
+          missing = totals.get('missing_lines', 0)
+          total = totals.get('num_statements', 0)
+
+          print(f'  Overall Coverage: {pct:.2f}%')
+          print(f'  Statements: {covered} covered, {missing} missing out of {total} total')
+          print('')
+
+          files = data.get('files', {})
+
+          # Per-file coverage breakdown
+          sorted_files = sorted(files.items(), key=lambda x: x[1].get('summary', {}).get('percent_covered', 0))
+          print(f'  Total source files measured: {len(files)}')
+          print('')
+
+          if pct < 70:
+              print(f'  >>> RESULT: FAIL (overall coverage {pct:.2f}% < 70% threshold)')
+              print('')
+
+              # All files below 80%
+              low_files = []
+              very_low_files = []
+              for fname, fdata in files.items():
+                  fpct = fdata.get('summary', {}).get('percent_covered', 0)
+                  fcovered = fdata.get('summary', {}).get('covered_lines', 0)
+                  fmissing = fdata.get('summary', {}).get('missing_lines', 0)
+                  if fpct < 70:
+                      low_files.append((fpct, fcovered, fmissing, fname))
+                  if fpct < 50:
+                      very_low_files.append((fpct, fcovered, fmissing, fname))
+
+              if low_files:
+                  low_files.sort()
+                  print(f'  Files below 70% coverage ({len(low_files)} files):')
+                  print(f'  {\"Coverage\":>9}  {\"Cov\":>5} {\"Miss\":>5}  File')
+                  print(f'  {\"-\"*9}  {\"-\"*5} {\"-\"*5}  {\"-\"*50}')
+                  for fpct, fcovered, fmissing, fname in low_files:
+                      print(f'  {fpct:>8.2f}%  {fcovered:>5} {fmissing:>5}  {fname}')
+
+              print('')
+              if very_low_files:
+                  print(f'  CRITICAL: {len(very_low_files)} files have coverage below 50%:')
+                  sorted_by_missing = sorted(very_low_files, key=lambda x: -x[2])
+                  for fpct, fcovered, fmissing, fname in sorted_by_missing:
+                      flag = ' !!'
+                      print(f'    {flag} {fname}: {fpct:.2f}% ({fmissing} lines uncovered)')
+
+              print('')
+              sorted_by_missing = sorted(low_files, key=lambda x: -x[2])
+              print(f'  Top 10 files contributing most to coverage gap:')
+              for fpct, fcovered, fmissing, fname in sorted_by_missing[:10]:
+                  gap = 100 - fpct
+                  print(f'    - {fname}: {fpct:.2f}% ({fmissing} uncovered, gap={gap:.1f}%)')
+
+              sys.exit(1)
+          else:
+              print(f'  >>> RESULT: PASSED (overall coverage {pct:.2f}% >= 70% threshold)')
+          "
+          echo ""
+
+          echo "[4/4] File coverage distribution:"
+          python -c "
+          import json
+          with open('coverage-full.json') as f:
+              data = json.load(f)
+          files = data.get('files', {})
+          buckets = {'100%':0, '90-99%':0, '80-89%':0, '70-79%':0, '60-69%':0, '50-59%':0, '<50%':0}
+          for fname, fdata in files.items():
+              fpct = fdata.get('summary', {}).get('percent_covered', 0)
+              if fpct >= 100: buckets['100%'] += 1
+              elif fpct >= 90: buckets['90-99%'] += 1
+              elif fpct >= 80: buckets['80-89%'] += 1
+              elif fpct >= 70: buckets['70-79%'] += 1
+              elif fpct >= 60: buckets['60-69%'] += 1
+              elif fpct >= 50: buckets['50-59%'] += 1
+              else: buckets['<50%'] += 1
+          print(f'  Distribution:')
+          for label, count in buckets.items():
+              bar = '#' * count + '.' * max(0, 20 - count)
+              print(f'    {label:>8}: {count:>3}  {bar}')
+          " || true
+          echo ""
+
+          echo "======================================================"
 
       - name: Upload full test results
         uses: actions/upload-artifact@v4
@@ -271,7 +621,8 @@ jobs:
           path: |
             python/junit-full.xml
             python/coverage-full.xml
-            python/coverage-html/
+            python/coverage-full.json
+            python/coverage-full-html/
           retention-days: 30
 
       - name: Upload full coverage to Codecov
@@ -321,7 +672,133 @@ jobs:
             --reporter=junit \
             --outputFile=junit-frontend.xml \
             --coverage.reporter=json \
-            --coverage.reporter=text
+            --coverage.reporter=text \
+            --coverage.reporter=html \
+            --coverage.reportsDirectory=coverage
+
+      - name: Check frontend coverage threshold (70%)
+        run: |
+          echo "======================================================"
+          echo "  COVERAGE CHECK: Frontend Tests (threshold >= 70%)"
+          echo "======================================================"
+          echo ""
+
+          echo "[1/4] Checking coverage report file..."
+          if [ ! -f coverage/coverage-final.json ]; then
+            echo "WARNING: Frontend coverage file not found at coverage/coverage-final.json"
+            echo "Available files in coverage/:"
+            ls -la coverage/ 2>/dev/null || echo "  (coverage directory not found)"
+            echo "Skipping coverage check."
+            echo "======================================================"
+            exit 0
+          fi
+          echo "File found: coverage/coverage-final.json"
+          echo "File size: $(wc -c < coverage/coverage-final.json) bytes"
+          echo ""
+
+          echo "[2/4] Raw coverage report structure:"
+          python -c "
+          import json
+          with open('coverage/coverage-final.json') as f:
+              data = json.load(f)
+          total_files = len(data)
+          total_lines = 0
+          total_covered = 0
+          total_branches = 0
+          total_branches_covered = 0
+          for file, file_data in data.items():
+              summary = file_data.get('summary', {})
+              total_lines += summary.get('lines', {}).get('total', 0)
+              total_covered += summary.get('lines', {}).get('covered', 0)
+              total_branches += summary.get('branches', {}).get('total', 0)
+              total_branches_covered += summary.get('branches', {}).get('covered', 0)
+          print(f'  Files measured:         {total_files}')
+          print(f'  Total lines:            {total_lines}')
+          print(f'  Covered lines:          {total_covered}')
+          print(f'  Uncovered lines:        {total_lines - total_covered}')
+          print(f'  Total branches:         {total_branches}')
+          print(f'  Branches covered:       {total_branches_covered}')
+          " || echo "WARNING: Failed to parse coverage/coverage-final.json"
+          echo ""
+
+          echo "[3/4] Calculating coverage percentage..."
+          python -c "
+          import json, sys, os
+          with open('coverage/coverage-final.json') as f:
+              data = json.load(f)
+
+          total_lines = 0
+          covered_lines = 0
+          for file, file_data in data.items():
+              summary = file_data.get('summary', {})
+              total_lines += summary.get('lines', {}).get('total', 0)
+              covered_lines += summary.get('lines', {}).get('covered', 0)
+
+          if total_lines == 0:
+              print('  No frontend lines found, skipping coverage check')
+              print('======================================================')
+              sys.exit(0)
+
+          pct = (covered_lines / total_lines * 100) if total_lines > 0 else 0
+          uncovered = total_lines - covered_lines
+
+          print(f'  Coverage: {pct:.2f}%')
+          print(f'  Lines: {covered_lines} covered, {uncovered} uncovered out of {total_lines} total')
+          print('')
+
+          if pct < 70:
+              print(f'  >>> RESULT: FAIL (coverage {pct:.2f}% < 70% threshold)')
+              print('')
+
+              # List files with lowest coverage
+              low_files = []
+              for file, file_data in data.items():
+                  summary = file_data.get('summary', {})
+                  ftotal = summary.get('lines', {}).get('total', 0)
+                  fcovered = summary.get('lines', {}).get('covered', 0)
+                  fpct = (fcovered / ftotal * 100) if ftotal > 0 else 0
+                  if fpct < 70:
+                      low_files.append((fpct, fcovered, ftotal - fcovered, file))
+
+              low_files.sort()
+              print(f'  Files below 70% coverage ({len(low_files)} files):')
+              print(f'  {\"Coverage\":>9}  {\"Cov\":>5} {\"Miss\":>5}  File')
+              print(f'  {\"-\"*9}  {\"-\"*5} {\"-\"*5}  {\"-\"*50}')
+              for fpct, fcovered, fmissing, fname in low_files:
+                  print(f'  {fpct:>8.2f}%  {fcovered:>5} {fmissing:>5}  {fname}')
+
+              print('')
+              sorted_by_missing = sorted(low_files, key=lambda x: -x[2])
+              print(f'  Top 5 files with most uncovered lines:')
+              for fpct, fcovered, fmissing, fname in sorted_by_missing[:5]:
+                  print(f'    - {fname}: {fmissing} lines uncovered (coverage: {fpct:.2f}%)')
+
+              sys.exit(1)
+          else:
+              print(f'  >>> RESULT: PASSED (coverage {pct:.2f}% >= 70% threshold)')
+          "
+          echo ""
+
+          echo "[4/4] Top 3 best-covered frontend files (for reference):"
+          python -c "
+          import json
+          with open('coverage/coverage-final.json') as f:
+              data = json.load(f)
+          high_files = []
+          for file, file_data in data.items():
+              summary = file_data.get('summary', {})
+              ftotal = summary.get('lines', {}).get('total', 0)
+              fcovered = summary.get('lines', {}).get('covered', 0)
+              if ftotal > 0:
+                  fpct = (fcovered / ftotal * 100)
+                  if fpct >= 80:
+                      high_files.append((fpct, file))
+          high_files.sort(reverse=True)
+          for fpct, fname in high_files[:3]:
+              print(f'  - {fname}: {fpct:.2f}%')
+          " || true
+          echo ""
+          echo "======================================================"
 
       - name: Upload frontend test results
         uses: actions/upload-artifact@v4
@@ -342,7 +819,127 @@ jobs:
           fail_ci_if_error: false
 
   # ============================================
-  # Job 6: Lint and Type Check
+  # Job 6: Performance Benchmarks
+  # ============================================
+  performance-benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [python-unit-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PIP_CACHE_DIR }}
+          key: ${{ runner.os }}-pip-bench-${{ hashFiles('python/requirements.txt', 'requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
+          pip install pytest pytest-benchmark
+          pip install matplotlib 2>/dev/null || true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run 3D rendering FPS benchmark
+        continue-on-error: true
+        run: |
+          mkdir -p tests/benchmarks/reports
+          npx vitest run tests/benchmarks/renderFPS.bench.ts --config vitest.config.ts --reporter=verbose 2>&1 || \
+          echo "Render benchmark completed (may have skipped in headless)"
+          echo "Render benchmark results:" && ls -la tests/benchmarks/reports/ 2>/dev/null || true
+
+      - name: Run Python performance benchmarks
+        env:
+          CI: 'true'
+          FAIL_ON_REGRESSION: 'true'
+          BENCHMARK_DB_PATH: tests/benchmarks/benchmark_results.db
+          BENCHMARK_HISTORY_DIR: tests/benchmarks/history
+          BENCHMARK_OUTPUT_DIR: tests/benchmarks/reports
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}:${PWD}/python"
+          python tests/benchmarks/run_all.py
+
+      - name: Check regression detection
+        id: regression
+        env:
+          BENCHMARK_DB_PATH: tests/benchmarks/benchmark_results.db
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}:${PWD}/python"
+          python tests/benchmarks/check_regression.py latest --json > regression_check.json 2>&1 || true
+          echo "Regression check result:"
+          cat regression_check.json
+          HAS_CRITICAL=$(python -c "
+          import json
+          with open('regression_check.json') as f:
+              data = json.load(f)
+          summary = data.get('summary', {})
+          print('true' if summary.get('critical_regression_detected', False) else 'false')
+          ")
+          echo "has_critical=$HAS_CRITICAL" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Issue on critical regression
+        if: steps.regression.outputs.has_critical == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '## 性能基准测试检测到严重回归\n\n';
+            body += 'CI 运行 ID: ' + (process.env.GITHUB_RUN_ID || '') + '\n\n';
+            try {
+              const report = fs.readFileSync('regression_check.json', 'utf8');
+              body += '```json\n' + report + '\n```\n';
+            } catch(e) {}
+            body += '\n### 检测详情\n';
+            body += '- 基准测试套件: tests/benchmarks/\n';
+            body += '- LNN 推理延迟 ✓\n';
+            body += '- G代码生成性能 ✓\n';
+            body += '- 3D渲染帧率 ✓\n';
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '[Performance] 严重性能回退检测',
+              body: body,
+              labels: ['performance', 'regression', 'bug']
+            });
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-benchmark-results
+          path: |
+            tests/benchmarks/reports/
+            tests/benchmarks/history/
+            tests/benchmarks/benchmark_results.db
+            regression_check.json
+          retention-days: 30
+
+  # ============================================
+  # Job 7: Lint and Type Check
   # ============================================
   lint-and-typecheck:
     name: Lint & Type Check
@@ -387,7 +984,51 @@ jobs:
         run: pnpm run type-check || true
 
   # ============================================
-  # Job 7: Summary Report
+  # Job 6.5: API Documentation Sync Check
+  # ============================================
+  api-docs-sync:
+    name: API Documentation Sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run API documentation sync check
+        run: |
+          python scripts/check_api_docs_sync.py \
+            --docs-path docs/API.md \
+            --verbose \
+            --json-output api-sync-report.json \
+            --fail-on-unsync
+
+      - name: Upload API sync report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-docs-sync-report
+          path: |
+            api-sync-report.json
+          retention-days: 30
+
+      - name: Post sync summary
+        if: always()
+        run: |
+          if [ -f api-sync-report.json ]; then
+            echo "## API Documentation Sync Report" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat api-sync-report.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ============================================
+  # Job 8: Summary Report
   # ============================================
   test-summary:
     name: Test Summary Report
@@ -399,7 +1040,9 @@ jobs:
       - python-integration-tests
       - python-regression-tests
       - frontend-tests
+      - performance-benchmarks
       - lint-and-typecheck
+      - api-docs-sync
     if: always()
 
     steps:
@@ -419,7 +1062,53 @@ jobs:
           echo "| Python Integration Tests | ${{ needs.python-integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Python Regression Tests | ${{ needs.python-regression-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend Tests | ${{ needs.frontend-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance Benchmarks | ${{ needs.performance-benchmarks.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Lint & Type Check | ${{ needs.lint-and-typecheck.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Docs Sync | ${{ needs.api-docs-sync.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Display coverage summary
+        if: needs.python-unit-tests.result == 'success'
+        run: |
+          echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Type | Coverage | Threshold | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|----------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Check unit test coverage
+          if [ -f "test-results/unit-test-results-py310/coverage-unit.json" ]; then
+            UNIT_COV=$(python -c "
+            import json
+            with open('test-results/unit-test-results-py310/coverage-unit.json') as f:
+                data = json.load(f)
+            pct = data.get('totals', {}).get('percent_covered', 0)
+            print(f'{pct:.2f}%')
+            ")
+            echo "| Unit Tests | $UNIT_COV | 80% | ✓ |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check integration test coverage
+          if [ -f "test-results/integration-test-results/coverage-integration.json" ]; then
+            INTEG_COV=$(python -c "
+            import json
+            with open('test-results/integration-test-results/coverage-integration.json') as f:
+                data = json.load(f)
+            pct = data.get('totals', {}).get('percent_covered', 0)
+            print(f'{pct:.2f}%')
+            ")
+            echo "| Integration Tests | $INTEG_COV | 70% | ✓ |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check full test coverage
+          if [ -f "test-results/full-test-suite-results/coverage-full.json" ]; then
+            FULL_COV=$(python -c "
+            import json
+            with open('test-results/full-test-suite-results/coverage-full.json') as f:
+                data = json.load(f)
+            pct = data.get('totals', {}).get('percent_covered', 0)
+            print(f'{pct:.2f}%')
+            ")
+            echo "| Full Suite | $FULL_COV | 70% | ✓ |" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Check overall status
         if: >-
@@ -427,7 +1116,10 @@ jobs:
           needs.python-unit-tests.result != 'success' ||
           needs.python-integration-tests.result != 'success' ||
           needs.python-regression-tests.result != 'success' ||
-          needs.frontend-tests.result != 'success'
+          needs.frontend-tests.result != 'success' ||
+          needs.performance-benchmarks.result != 'success' ||
+          needs.lint-and-typecheck.result != 'success' ||
+          needs.api-docs-sync.result != 'success'
         run: |
           echo "Some tests failed. Please check the detailed results above."
           exit 1

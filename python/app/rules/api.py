@@ -26,6 +26,7 @@ from app.database.rule_db import (
     RuleResult,
     RuleGroup,
 )
+from app.rules.conflict_detector import detect_conflicts, ConflictReport
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,31 @@ def _rule_to_dict(rule: ProcessRule) -> dict:
     }
 
 
+def _conflict_report_to_dict(report: ConflictReport) -> dict:
+    """将冲突报告转换为可序列化的字典"""
+    return {
+        "conflicting_rule_ids": report.conflicting_rule_ids,
+        "conflict_type": report.conflict_type.value,
+        "severity": report.severity.value,
+        "description": report.description,
+        "conflicting_parameters": report.conflicting_parameters,
+    }
+
+
+def _run_conflict_check(rules_to_check: List[ProcessRule]) -> Optional[List[dict]]:
+    """
+    执行冲突检测，返回警告列表（如果有冲突）
+    冲突仅作为警告，不阻塞规则保存
+    """
+    try:
+        conflicts = detect_conflicts(rules_to_check)
+        if conflicts:
+            return [_conflict_report_to_dict(c) for c in conflicts]
+    except Exception as e:
+        logger.warning(f"冲突检测失败: {e}")
+    return None
+
+
 def _group_to_dict(group: RuleGroup, rule_count: int = 0) -> dict:
     return {
         "id": group.id,
@@ -183,7 +209,15 @@ async def create_rule(request: RuleCreateRequest):
     rule = _build_rule_from_request(request)
     created = db.create_rule(rule)
 
-    return success(data=_rule_to_dict(created), message="规则创建成功")
+    # 执行冲突检测（仅警告，不阻塞保存）
+    all_rules = db.list_rules(status="active", limit=10000)
+    warnings = _run_conflict_check(all_rules)
+
+    response_data = _rule_to_dict(created)
+    if warnings:
+        response_data["warnings"] = warnings
+
+    return success(data=response_data, message="规则创建成功")
 
 
 @router.get("/list")
@@ -289,7 +323,15 @@ async def update_rule(rule_id: int, request: RuleUpdateRequest):
     if result is None:
         return error(ErrorCode.INTERNAL_ERROR, message="规则更新失败")
 
-    return success(data=_rule_to_dict(result), message="规则更新成功")
+    # 执行冲突检测（仅警告，不阻塞保存）
+    all_rules = db.list_rules(status="active", limit=10000)
+    warnings = _run_conflict_check(all_rules)
+
+    response_data = _rule_to_dict(result)
+    if warnings:
+        response_data["warnings"] = warnings
+
+    return success(data=response_data, message="规则更新成功")
 
 
 @router.delete("/delete/{rule_id}")
@@ -396,9 +438,17 @@ async def import_rules(file: UploadFile = File(...)):
     db = get_rule_db()
     try:
         result = db.import_rules(str(save_path))
+        if result.get("version_check") == "incompatible":
+            return error(
+                ErrorCode.INVALID_REQUEST,
+                message=result.get("version_message", "版本不兼容"),
+            )
+        message = f"导入成功: {result['imported_rules']} 条规则, {result['imported_groups']} 个分组"
+        if result.get("version_check") == "warning":
+            message += f" | {result['version_message']}"
         return success(
             data=result,
-            message=f"导入成功: {result['imported_rules']} 条规则, {result['imported_groups']} 个分组",
+            message=message,
         )
     except Exception as e:
         logger.error(f"规则导入失败: {e}")

@@ -28,7 +28,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -75,25 +75,50 @@ class HoleFeature:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_through(self) -> bool:
-        """判断是否为通孔"""
+        """Check whether the hole is a through-hole.
+
+        Returns:
+            True if the hole type is 'through_hole'.
+        """
         return self.type == "through_hole"
 
     def is_blind(self) -> bool:
-        """判断是否为盲孔"""
+        """Check whether the hole is a blind hole.
+
+        Returns:
+            True if the hole type is 'blind_hole'.
+        """
         return self.type == "blind_hole"
 
     def is_counterbore(self) -> bool:
-        """判断是否为沉头孔"""
+        """Check whether the hole is a counterbore hole.
+
+        Returns:
+            True if the hole type is 'counterbore'.
+        """
         return self.type == "counterbore"
 
     def aspect_ratio(self) -> float:
-        """计算孔深径比 (L/D)，用于评估加工难度：
-        - L/D < 3: 普通钻孔
-        - 3 ≤ L/D < 5: 深孔，需啄钻
-        - L/D ≥ 5: 深孔，需枪钻或多次啄钻"""
+        """Calculate the depth-to-diameter ratio (L/D) of the hole.
+
+        The ratio is used to evaluate machining difficulty:
+        - L/D < 3: Standard drilling
+        - 3 <= L/D < 5: Deep hole, requires peck drilling
+        - L/D >= 5: Deep hole, requires gun drilling or multiple peck cycles
+
+        Returns:
+            Depth-to-diameter ratio. Returns 0.0 if diameter is zero or negative.
+        """
         return self.depth / self.diameter if self.diameter > 0 else 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the hole feature to a dictionary representation.
+
+        Returns:
+            A dictionary containing all relevant hole properties suitable
+            for serialization, including position, dimensions, tolerances,
+            and computed aspect ratio.
+        """
         return {
             "hole_id": self.hole_id,
             "type": self.type,
@@ -177,6 +202,12 @@ class HoleRecognitionResult:
     accuracy_metrics: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the recognition result to a dictionary representation.
+
+        Returns:
+            A dictionary containing total count, type summary, all hole details,
+            warnings, errors, and accuracy metrics.
+        """
         return {
             "total_count": self.total_count,
             "type_summary": self.type_summary,
@@ -188,7 +219,11 @@ class HoleRecognitionResult:
 
     @property
     def is_reliable(self) -> bool:
-        """判断识别结果是否可靠（无错误且准确率达标）"""
+        """Check whether the recognition result meets the reliability threshold.
+
+        Returns:
+            True if there are no errors and the overall accuracy rate is >= 99%.
+        """
         rate = self.accuracy_metrics.get("overall", 0.0)
         return len(self.errors) == 0 and rate >= 0.99
 
@@ -264,7 +299,7 @@ class HoleFeatureRecognizer:
             f for f in raw_features
             if f.get("geometric_type") == "cylinder"
             and f.get("type") in ("through_hole", "inner_bore", "counterbore",
-                                 "center_hole", "blind_hole")
+                                  "center_hole", "blind_hole")  # noqa: E127
         ]
         # 合并 features 中的孔到 raw_holes
         for hf in hole_features:

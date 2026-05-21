@@ -5,60 +5,136 @@
         <div class="header-with-actions">
           <span>任务历史</span>
           <div class="header-actions">
-            <el-select v-model="filterStatus" placeholder="筛选状态" clearable style="width: 150px; margin-right: 10px;">
-              <el-option label="全部" value="" />
-              <el-option label="已完成" value="completed" />
-              <el-option label="训练中" value="running" />
-              <el-option label="已取消" value="cancelled" />
-              <el-option label="失败" value="failed" />
-              <el-option label="排队中" value="queued" />
+            <el-select
+              v-model="filterStatus"
+              placeholder="筛选状态"
+              clearable
+              style="width: 150px; margin-right: 10px;"
+            >
+              <el-option
+                label="全部"
+                value=""
+              />
+              <el-option
+                label="已完成"
+                value="completed"
+              />
+              <el-option
+                label="训练中"
+                value="running"
+              />
+              <el-option
+                label="已取消"
+                value="cancelled"
+              />
+              <el-option
+                label="失败"
+                value="failed"
+              />
+              <el-option
+                label="排队中"
+                value="queued"
+              />
             </el-select>
-            <el-button @click="loadTasks" :loading="loading">刷新</el-button>
+            <el-button
+              :loading="loading"
+              @click="loadTasks"
+            >
+              刷新
+            </el-button>
           </div>
         </div>
       </template>
 
-      <el-table :data="tasks" style="width: 100%" v-loading="loading" stripe>
-        <el-table-column prop="job_id" label="任务ID" width="200">
+      <el-table
+        v-loading="loading"
+        :data="tasks"
+        style="width: 100%"
+        stripe
+      >
+        <el-table-column
+          prop="job_id"
+          label="任务ID"
+          width="200"
+        >
           <template #default="{ row }">
-            <el-tag type="info" size="small" class="job-id-tag">{{ row.job_id }}</el-tag>
+            <el-tag
+              type="info"
+              size="small"
+              class="job-id-tag"
+            >
+              {{ row.job_id }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="task_type" label="任务类型" width="150">
+        <el-table-column
+          prop="task_type"
+          label="任务类型"
+          width="150"
+        >
           <template #default="{ row }">
             {{ getTaskTypeText(row.task_type) }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column
+          prop="status"
+          label="状态"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="getStatusTagType(row.status)">
-              {{ getStatusText(row.status) }}
+            <el-tag :type="getTaskStatusTagType(row.status)">
+              {{ getTaskStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="progress" label="进度" width="150">
+        <el-table-column
+          prop="progress"
+          label="进度"
+          width="150"
+        >
           <template #default="{ row }">
-            <el-progress :percentage="Math.round(row.progress)" :stroke-width="12" />
+            <el-progress
+              :percentage="Math.round(row.progress)"
+              :stroke-width="12"
+            />
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="180">
+        <el-table-column
+          prop="created_at"
+          label="创建时间"
+          width="180"
+        >
           <template #default="{ row }">
-            {{ formatTime(row.created_at) }}
+            {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column prop="duration_seconds" label="耗时" width="100">
+        <el-table-column
+          prop="duration_seconds"
+          label="耗时"
+          width="100"
+        >
           <template #default="{ row }">
             {{ row.duration_seconds ? `${row.duration_seconds.toFixed(1)}s` : '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" width="180">
+        <el-table-column
+          label="操作"
+          fixed="right"
+          width="180"
+        >
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="viewTaskDetail(row)">详情</el-button>
+            <el-button
+              size="small"
+              type="primary"
+              @click="viewTaskDetail(row)"
+            >
+              详情
+            </el-button>
             <el-button
               size="small"
               type="success"
-              @click="rerunTask(row)"
               :disabled="row.status !== 'completed' && row.status !== 'failed'"
+              @click="rerunTask(row)"
             >
               重新执行
             </el-button>
@@ -71,36 +147,84 @@
         :current-page="currentPage"
         :page-size="pageSize"
         :total="total"
-        @current-change="handlePageChange"
         style="margin-top: 20px; justify-content: center;"
         layout="prev, pager, next"
+        @current-change="handlePageChange"
       />
     </el-card>
 
-    <el-dialog v-model="detailDialogVisible" title="任务详情" width="600px">
-      <el-descriptions v-if="selectedTask" :column="1" border>
-        <el-descriptions-item label="任务ID">{{ selectedTask.job_id }}</el-descriptions-item>
-        <el-descriptions-item label="任务类型">{{ getTaskTypeText(selectedTask.task_type) }}</el-descriptions-item>
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="任务详情"
+      width="600px"
+    >
+      <el-descriptions
+        v-if="selectedTask"
+        :column="1"
+        border
+      >
+        <el-descriptions-item label="任务ID">
+          {{ selectedTask.job_id }}
+        </el-descriptions-item>
+        <el-descriptions-item label="任务类型">
+          {{ getTaskTypeText(selectedTask.task_type) }}
+        </el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="getStatusTagType(selectedTask.status)">
-            {{ getStatusText(selectedTask.status) }}
+          <el-tag :type="getTaskStatusTagType(selectedTask.status)">
+            {{ getTaskStatusLabel(selectedTask.status) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="进度">{{ Math.round(selectedTask.progress) }}%</el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ formatTime(selectedTask.created_at) }}</el-descriptions-item>
-        <el-descriptions-item label="开始时间" v-if="selectedTask.started_at">{{ formatTime(selectedTask.started_at) }}</el-descriptions-item>
-        <el-descriptions-item label="完成时间" v-if="selectedTask.completed_at">{{ formatTime(selectedTask.completed_at) }}</el-descriptions-item>
-        <el-descriptions-item label="耗时" v-if="selectedTask.duration_seconds">{{ selectedTask.duration_seconds.toFixed(1) }}秒</el-descriptions-item>
-        <el-descriptions-item label="错误信息" v-if="selectedTask.error">
-          <el-alert :title="selectedTask.error" type="error" :closable="false" show-icon />
+        <el-descriptions-item label="进度">
+          {{ Math.round(selectedTask.progress) }}%
         </el-descriptions-item>
-        <el-descriptions-item label="训练参数" v-if="selectedTask.params">
+        <el-descriptions-item label="创建时间">
+          {{ formatDate(selectedTask.created_at) }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="selectedTask.started_at"
+          label="开始时间"
+        >
+          {{ formatDate(selectedTask.started_at) }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="selectedTask.completed_at"
+          label="完成时间"
+        >
+          {{ formatDate(selectedTask.completed_at) }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="selectedTask.duration_seconds"
+          label="耗时"
+        >
+          {{ selectedTask.duration_seconds.toFixed(1) }}秒
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="selectedTask.error"
+          label="错误信息"
+        >
+          <el-alert
+            :title="selectedTask.error"
+            type="error"
+            :closable="false"
+            show-icon
+          />
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="selectedTask.params"
+          label="训练参数"
+        >
           <pre>{{ JSON.stringify(selectedTask.params, null, 2) }}</pre>
         </el-descriptions-item>
-        <el-descriptions-item label="训练指标" v-if="selectedTask.metrics">
+        <el-descriptions-item
+          v-if="selectedTask.metrics"
+          label="训练指标"
+        >
           <pre>{{ JSON.stringify(selectedTask.metrics, null, 2) }}</pre>
         </el-descriptions-item>
-        <el-descriptions-item label="结果" v-if="selectedTask.result">
+        <el-descriptions-item
+          v-if="selectedTask.result"
+          label="结果"
+        >
           <pre>{{ JSON.stringify(selectedTask.result, null, 2) }}</pre>
         </el-descriptions-item>
       </el-descriptions>
@@ -112,6 +236,8 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { formatDate } from '@/utils/formatters'
+import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 
 const router = useRouter()
 
@@ -180,7 +306,7 @@ async function rerunTask(task: any) {
       })
     }
 
-    const newJobId = res.data.data?.job_id
+    const newJobId = res?.data.data?.job_id
     if (!newJobId) {
       ElMessage.error('未获取到新任务ID')
       return
@@ -195,23 +321,6 @@ async function rerunTask(task: any) {
   }
 }
 
-function formatTime(timestamp: string): string {
-  if (!timestamp) return '-'
-  try {
-    const date = new Date(timestamp)
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
-  } catch {
-    return timestamp
-  }
-}
-
 function getTaskTypeText(type: string): string {
   const map: Record<string, string> = {
     lnn_training: 'LNN训练',
@@ -222,26 +331,6 @@ function getTaskTypeText(type: string): string {
     model_quantization: '模型量化',
   }
   return map[type] || type
-}
-
-function getStatusTagType(status: string): 'success' | 'warning' | 'danger' | 'info' {
-  if (status === 'completed') return 'success'
-  if (status === 'running') return ''
-  if (status === 'failed') return 'danger'
-  if (status === 'cancelled') return 'warning'
-  if (status === 'queued') return 'info'
-  return 'info'
-}
-
-function getStatusText(status: string): string {
-  const map: Record<string, string> = {
-    queued: '排队中',
-    running: '训练中',
-    completed: '已完成',
-    failed: '失败',
-    cancelled: '已取消',
-  }
-  return map[status] || status
 }
 
 watch(filterStatus, () => {

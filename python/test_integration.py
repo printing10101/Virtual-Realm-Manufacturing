@@ -46,7 +46,7 @@ def test(name, url, expected=200, use_auth=False, method="GET"):
                         print(f"   Models: {len(data['data']['models'])} available")
                     elif isinstance(data["data"], list):
                         print(f"   Items: {len(data['data'])}")
-            except:
+            except Exception:
                 pass
 
         passed = status == expected

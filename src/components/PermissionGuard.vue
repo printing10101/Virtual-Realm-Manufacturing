@@ -5,6 +5,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { usePermissionsStore } from '@/stores/permissions'
+import { useAuthStore } from '@/stores/auth'
 
 const props = withDefaults(
   defineProps<{
@@ -23,13 +24,11 @@ const permStore = usePermissionsStore()
 
 const canRender = computed(() => {
   if (props.role) {
-    const { useAuthStore } = require('@/stores/auth') as any
     const authStore = useAuthStore()
     if (authStore.user?.role === props.role) return true
   }
 
   if (props.roles && props.roles.length > 0) {
-    const { useAuthStore } = require('@/stores/auth') as any
     const authStore = useAuthStore()
     if (authStore.user?.role && props.roles.includes(authStore.user.role)) return true
   }

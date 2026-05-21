@@ -4,33 +4,68 @@
       <el-container class="app-container">
         <el-header class="app-header">
           <div class="header-left">
-            <h1 class="app-title">{{ title }}</h1>
+            <h1 class="app-title">
+              {{ title }}
+            </h1>
             <span class="app-version">v{{ frontendVersion }}</span>
           </div>
 
           <div class="header-center">
-            <el-menu :default-active="activeRoute" mode="horizontal" router class="header-menu">
-              <el-menu-item index="/">{{ $t('navigation.home') }}</el-menu-item>
-              <el-menu-item index="/workspace">{{ $t('navigation.workspace') }}</el-menu-item>
-              <el-menu-item index="/settings" v-permission="'system:config'">{{ $t('navigation.settings') }}</el-menu-item>
-              <el-menu-item index="/about">{{ $t('navigation.about') }}</el-menu-item>
-              <el-menu-item index="/rule-editor" v-permission="'rule:edit'">
+            <el-menu
+              :default-active="activeRoute"
+              mode="horizontal"
+              router
+              class="header-menu"
+            >
+              <el-menu-item index="/">
+                {{ $t('navigation.home') }}
+              </el-menu-item>
+              <el-menu-item index="/workspace">
+                {{ $t('navigation.workspace') }}
+              </el-menu-item>
+              <el-menu-item
+                v-permission="'system:config'"
+                index="/settings"
+              >
+                {{ $t('navigation.settings') }}
+              </el-menu-item>
+              <el-menu-item index="/about">
+                {{ $t('navigation.about') }}
+              </el-menu-item>
+              <el-menu-item
+                v-permission="'rule:edit'"
+                index="/rule-editor"
+              >
                 <el-icon><Setting /></el-icon>工艺规则
               </el-menu-item>
-              <el-menu-item index="/toolpath-editor" v-permission="'toolpath:edit'">
+              <el-menu-item
+                v-permission="'toolpath:edit'"
+                index="/toolpath-editor"
+              >
                 <el-icon><EditPen /></el-icon>刀路编辑
               </el-menu-item>
-              <el-menu-item index="/admin/users" v-permission="'user:manage'">
+              <el-menu-item
+                v-permission="'user:manage'"
+                index="/admin/users"
+              >
                 <el-icon><UserFilled /></el-icon>用户管理
               </el-menu-item>
             </el-menu>
           </div>
 
           <div class="header-right">
-            <el-dropdown trigger="click" @command="handleFileCommand">
-              <el-button type="default" size="small">
+            <el-dropdown
+              trigger="click"
+              @command="handleFileCommand"
+            >
+              <el-button
+                type="default"
+                size="small"
+              >
                 文件
-                <el-icon class="el-icon--right"><arrow-down /></el-icon>
+                <el-icon class="el-icon--right">
+                  <arrow-down />
+                </el-icon>
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -40,25 +75,42 @@
                   <el-dropdown-item command="open">
                     <el-icon><folder-opened /></el-icon>打开工程
                   </el-dropdown-item>
-                  <el-dropdown-item divided command="save">
+                  <el-dropdown-item
+                    divided
+                    command="save"
+                  >
                     <el-icon><disk /></el-icon>保存
                   </el-dropdown-item>
                   <el-dropdown-item command="save-as">
                     <el-icon><copy-document /></el-icon>另存为...
                   </el-dropdown-item>
-                  <el-dropdown-item divided command="download">
+                  <el-dropdown-item
+                    divided
+                    command="download"
+                  >
                     <el-icon><download /></el-icon>下载工程文件
                   </el-dropdown-item>
-                  <el-dropdown-item divided command="import-step">
+                  <el-dropdown-item
+                    divided
+                    command="import-step"
+                  >
                     <el-icon><upload /></el-icon>导入STEP
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
 
-            <span class="project-indicator" v-if="projectStore.projectName !== '未命名工程'">
+            <span
+              v-if="projectStore.projectName !== '未命名工程'"
+              class="project-indicator"
+            >
               {{ projectStore.projectName }}
-              <el-tag v-if="projectStore.isModified" size="small" type="warning" effect="plain">已修改</el-tag>
+              <el-tag
+                v-if="projectStore.isModified"
+                size="small"
+                type="warning"
+                effect="plain"
+              >已修改</el-tag>
             </span>
           </div>
         </el-header>
@@ -69,67 +121,156 @@
       </el-container>
 
       <!-- ==================== 新建工程对话框 ==================== -->
-      <el-dialog v-model="showNewDialog" title="新建工程" width="480px" :close-on-click-modal="false">
-        <el-form :model="newForm" label-width="80px">
-          <el-form-item label="工程名称" required>
-            <el-input v-model="newForm.name" maxlength="128" placeholder="输入工程名称" />
+      <el-dialog
+        v-model="showNewDialog"
+        title="新建工程"
+        width="480px"
+        :close-on-click-modal="false"
+      >
+        <el-form
+          :model="newForm"
+          label-width="80px"
+        >
+          <el-form-item
+            label="工程名称"
+            required
+          >
+            <el-input
+              v-model="newForm.name"
+              maxlength="128"
+              placeholder="输入工程名称"
+            />
           </el-form-item>
           <el-form-item label="作者">
-            <el-input v-model="newForm.author" maxlength="64" placeholder="输入您的姓名" />
+            <el-input
+              v-model="newForm.author"
+              maxlength="64"
+              placeholder="输入您的姓名"
+            />
           </el-form-item>
           <el-form-item label="描述">
-            <el-input v-model="newForm.description" type="textarea" :rows="3" maxlength="512"
-              placeholder="可选：输入工程描述" />
+            <el-input
+              v-model="newForm.description"
+              type="textarea"
+              :rows="3"
+              maxlength="512"
+              placeholder="可选：输入工程描述"
+            />
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button @click="showNewDialog = false">取消</el-button>
-          <el-button type="primary" :loading="creating" @click="handleCreate">
+          <el-button @click="showNewDialog = false">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="creating"
+            @click="handleCreate"
+          >
             创建工程
           </el-button>
         </template>
       </el-dialog>
 
       <!-- ==================== 打开工程对话框 ==================== -->
-      <el-dialog v-model="showOpenDialog" title="打开工程" width="600px" :close-on-click-modal="false">
+      <el-dialog
+        v-model="showOpenDialog"
+        title="打开工程"
+        width="600px"
+        :close-on-click-modal="false"
+      >
         <el-tabs v-model="openTab">
-          <el-tab-pane label="本地工程" name="local">
-            <div v-if="openListLoading" style="text-align:center;padding:20px;">
-              <el-icon class="is-loading"><loading /></el-icon> 加载中...
+          <el-tab-pane
+            label="本地工程"
+            name="local"
+          >
+            <div
+              v-if="openListLoading"
+              style="text-align:center;padding:20px;"
+            >
+              <el-icon class="is-loading">
+                <loading />
+              </el-icon> 加载中...
             </div>
-            <el-table v-else :data="projectStore.projectList" height="300" highlight-current-row
-              @row-dblclick="handleOpenFromList" @current-change="onOpenSelectChange" stripe size="small">
-              <el-table-column prop="name" label="工程名称" min-width="150" />
-              <el-table-column label="修改时间" width="170">
+            <el-table
+              v-else
+              :data="projectStore.projectList"
+              height="300"
+              highlight-current-row
+              stripe
+              size="small"
+              @row-dblclick="handleOpenFromList"
+              @current-change="onOpenSelectChange"
+            >
+              <el-table-column
+                prop="name"
+                label="工程名称"
+                min-width="150"
+              />
+              <el-table-column
+                label="修改时间"
+                width="170"
+              >
                 <template #default="{ row }">
                   {{ formatDate(row.modified_at) }}
                 </template>
               </el-table-column>
-              <el-table-column label="大小" width="90">
+              <el-table-column
+                label="大小"
+                width="90"
+              >
                 <template #default="{ row }">
                   {{ formatSize(row.file_size) }}
                 </template>
               </el-table-column>
-              <el-table-column label="资源" width="60">
-                <template #default="{ row }">{{ row.resource_count }}</template>
-              </el-table-column>
-              <el-table-column label="操作" width="120">
+              <el-table-column
+                label="资源"
+                width="60"
+              >
                 <template #default="{ row }">
-                  <el-button size="small" text type="primary" @click="handleOpenFromList(row)">
+                  {{ row.resource_count }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="操作"
+                width="120"
+              >
+                <template #default="{ row }">
+                  <el-button
+                    size="small"
+                    text
+                    type="primary"
+                    @click="handleOpenFromList(row)"
+                  >
                     打开
                   </el-button>
-                  <el-button size="small" text type="danger"
-                    @click="handleDeleteProject(row)">
+                  <el-button
+                    size="small"
+                    text
+                    type="danger"
+                    @click="handleDeleteProject(row)"
+                  >
                     删除
                   </el-button>
                 </template>
               </el-table-column>
             </el-table>
           </el-tab-pane>
-          <el-tab-pane label="从文件导入" name="import">
-            <el-upload drag :auto-upload="false" :limit="1" accept=".vrm"
-              :on-change="handleFileSelected" :file-list="importFileList">
-              <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+          <el-tab-pane
+            label="从文件导入"
+            name="import"
+          >
+            <el-upload
+              drag
+              :auto-upload="false"
+              :limit="1"
+              accept=".vrm"
+              :on-change="handleFileSelected"
+              :file-list="importFileList"
+            >
+              <el-icon class="el-icon--upload">
+                <upload-filled />
+              </el-icon>
               <div class="el-upload__text">
                 拖拽 .vrm 文件到此处或 <em>点击选择文件</em>
               </div>
@@ -137,37 +278,81 @@
           </el-tab-pane>
         </el-tabs>
         <template #footer>
-          <el-button @click="showOpenDialog = false">取消</el-button>
-          <el-button type="primary" :loading="opening" @click="handleOpen" :disabled="!canOpen">
+          <el-button @click="showOpenDialog = false">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="opening"
+            :disabled="!canOpen"
+            @click="handleOpen"
+          >
             打开工程
           </el-button>
         </template>
       </el-dialog>
 
       <!-- ==================== 另存为对话框 ==================== -->
-      <el-dialog v-model="showSaveAsDialog" title="另存为工程" width="420px" :close-on-click-modal="false">
-        <el-form :model="saveAsForm" label-width="80px">
-          <el-form-item label="文件名" required>
-            <el-input v-model="saveAsForm.outputName" maxlength="128" placeholder="输入文件名（不含扩展名）">
-              <template #append>.vrm</template>
+      <el-dialog
+        v-model="showSaveAsDialog"
+        title="另存为工程"
+        width="420px"
+        :close-on-click-modal="false"
+      >
+        <el-form
+          :model="saveAsForm"
+          label-width="80px"
+        >
+          <el-form-item
+            label="文件名"
+            required
+          >
+            <el-input
+              v-model="saveAsForm.outputName"
+              maxlength="128"
+              placeholder="输入文件名（不含扩展名）"
+            >
+              <template #append>
+                .vrm
+              </template>
             </el-input>
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button @click="showSaveAsDialog = false">取消</el-button>
-          <el-button type="primary" :loading="saving" @click="handleSaveAs">
+          <el-button @click="showSaveAsDialog = false">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="saving"
+            @click="handleSaveAs"
+          >
             另存为
           </el-button>
         </template>
       </el-dialog>
 
       <!-- ==================== 未保存提示对话框 ==================== -->
-      <el-dialog v-model="showUnsavedDialog" title="未保存的更改" width="400px">
+      <el-dialog
+        v-model="showUnsavedDialog"
+        title="未保存的更改"
+        width="400px"
+      >
         <p>当前工程有未保存的更改。是否保存后再继续？</p>
         <template #footer>
-          <el-button @click="discardAndProceed">不保存</el-button>
-          <el-button type="primary" @click="saveAndProceed" :loading="saving">保存并继续</el-button>
-          <el-button @click="cancelProceed">取消</el-button>
+          <el-button @click="discardAndProceed">
+            不保存
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="saving"
+            @click="saveAndProceed"
+          >
+            保存并继续
+          </el-button>
+          <el-button @click="cancelProceed">
+            取消
+          </el-button>
         </template>
       </el-dialog>
 

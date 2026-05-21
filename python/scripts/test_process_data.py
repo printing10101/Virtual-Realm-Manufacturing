@@ -14,14 +14,12 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.data.process_data_manager import (
-    DataLoadError,
-    DataValidationError,
+from app.data.process_data_manager import (  # noqa: E402
     ProcessPlanningDataManager,
     QueryError,
 )
@@ -188,7 +186,7 @@ def test_data_integrity() -> bool:
     result = manager.validate_data_integrity()
     all_passed = True
 
-    print(f"  统计信息:")
+    print("  统计信息:")
     for key, value in result["stats"].items():
         print(f"    {key}: {value}")
 
@@ -222,7 +220,7 @@ def test_error_handling() -> bool:
             test_func()
             print(f"  {FAIL} {test_name}: 应抛出异常但未抛出")
             all_passed = False
-        except QueryError as e:
+        except QueryError:
             print(f"  {PASS} {test_name}: 正确抛出 QueryError")
 
     return all_passed

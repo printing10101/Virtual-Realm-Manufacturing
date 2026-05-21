@@ -189,7 +189,12 @@ class KnowledgeStore:
         default_entries = [
             {
                 "id": "default_machining_001",
-                "document": "45钢推荐切削参数：粗车切削速度80-150m/min，进给量0.2-0.5mm/r，切削深度1-4mm。精车切削速度120-200m/min，进给量0.05-0.15mm/r，切削深度0.1-0.5mm。",
+                "document": (
+                    "45钢推荐切削参数：粗车切削速度80-150m/min，"
+                    "进给量0.2-0.5mm/r，切削深度1-4mm。"
+                    "精车切削速度120-200m/min，进给量0.05-0.15mm/r，"
+                    "切削深度0.1-0.5mm。"
+                ),
                 "metadata": {
                     "category": "切削参数",
                     "type": "guideline",

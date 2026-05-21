@@ -1,7 +1,18 @@
-"""刀具路径3D可视化模块。
+"""Toolpath 3D visualization module.
 
-基于matplotlib 3D实现工具路径的多角度可视化，
-支持PNG静态图和HTML交互图两种输出格式。
+Provides multi-angle visualization of CNC toolpaths using matplotlib 3D,
+supporting both PNG static images and HTML interactive output formats.
+
+The visualizer renders:
+    - Stock bounding box as a wireframe
+    - Toolpath segments colored by motion type (G00=red, G01=green, arc=blue, dwell=yellow)
+    - Axis labels and coordinate system
+    - Interactive rotation/zoom in HTML output via Three.js
+
+Example:
+    >>> viz = ToolpathVisualizer(stock_model)
+    >>> viz.render_png(segments, "output/toolpath.png")
+    >>> viz.render_html(segments, "output/toolpath.html")
 """
 
 from __future__ import annotations
@@ -20,7 +31,27 @@ from app.simulation.toolpath_parser import ToolpathSegment  # noqa: E402
 
 
 class ToolpathVisualizer:
+    """3D visualizer for CNC toolpath segments and stock geometry.
+
+    Renders toolpaths with color-coded motion types and optional stock
+    bounding box wireframe. Supports static PNG output and interactive
+    HTML output with Three.js-based 3D navigation.
+
+    Attributes:
+        stock: Optional stock model for rendering the workpiece boundary.
+
+    Example:
+        >>> viz = ToolpathVisualizer(stock)
+        >>> viz.render_png(segments, "output/view.png")
+    """
+
     def __init__(self, stock: StockModel | None = None) -> None:
+        """Initialize the visualizer with an optional stock model.
+
+        Args:
+            stock: Stock model to render as a bounding box. If None,
+                only the toolpath is rendered.
+        """
         self.stock = stock
 
     def render_png(
@@ -28,6 +59,18 @@ class ToolpathVisualizer:
         segments: list[ToolpathSegment],
         output_path: str,
     ) -> str:
+        """Render the toolpath as a static PNG image.
+
+        Creates a 3D matplotlib plot with stock wireframe (if available),
+        color-coded toolpath segments, axis labels, and title.
+
+        Args:
+            segments: List of toolpath segments to render.
+            output_path: Destination file path for the PNG image.
+
+        Returns:
+            Absolute path to the saved PNG file.
+        """
         fig = plt.figure(figsize=(12, 9))
         ax = fig.add_subplot(111, projection="3d")
         self._draw_stock(ax)
@@ -46,6 +89,18 @@ class ToolpathVisualizer:
         segments: list[ToolpathSegment],
         output_path: str,
     ) -> str:
+        """Render the toolpath as an interactive HTML page.
+
+        Generates a self-contained HTML file with Three.js-based 3D
+        viewer supporting mouse rotation, zoom, and pan controls.
+
+        Args:
+            segments: List of toolpath segments to render.
+            output_path: Destination file path for the HTML file.
+
+        Returns:
+            Absolute path to the saved HTML file.
+        """
         fig = plt.figure(figsize=(12, 9))
         ax = fig.add_subplot(111, projection="3d")
         self._draw_stock(ax)
@@ -62,6 +117,14 @@ class ToolpathVisualizer:
         return str(out)
 
     def _draw_stock(self, ax: Any) -> None:
+        """Draw the stock bounding box as a wireframe.
+
+        Renders the top, bottom, and side faces of the stock bounding
+        box as semi-transparent gray surfaces.
+
+        Args:
+            ax: Matplotlib 3D axes object.
+        """
         if self.stock is None:
             return
         bbox = self.stock.get_bbox()
@@ -96,6 +159,18 @@ class ToolpathVisualizer:
             )
 
     def _draw_segments(self, ax: Any, segments: list[ToolpathSegment]) -> None:
+        """Draw all toolpath segments with color coding by motion type.
+
+        Colors:
+            - rapid (G00): Red
+            - linear (G01): Green
+            - arc (G02/G03): Blue
+            - dwell (G04): Yellow
+
+        Args:
+            ax: Matplotlib 3D axes object.
+            segments: List of toolpath segments to draw.
+        """
         colors = {
             "rapid": "#f44336",
             "linear": "#4caf50",
@@ -131,10 +206,19 @@ class ToolpathVisualizer:
             ax.legend(loc="upper right", fontsize=9)
 
     def _apply_labels(self, ax: Any) -> None:
+        """Apply axis labels, title, and view limits.
+
+        Sets X/Y/Z labels in mm, applies a Chinese title for the
+        visualization, and adjusts the view range based on stock
+        dimensions or defaults.
+
+        Args:
+            ax: Matplotlib 3D axes object.
+        """
         ax.set_xlabel("X (mm)")
         ax.set_ylabel("Y (mm)")
         ax.set_zlabel("Z (mm)")
-        ax.set_title("NC刀具路径3D仿真可视化", fontsize=14)
+        ax.set_title("NC Toolpath 3D Simulation Visualization", fontsize=14)
 
         if self.stock:
             bbox = self.stock.get_bbox()
@@ -148,35 +232,49 @@ class ToolpathVisualizer:
             ax.set_zlim(-10, 110)
 
     def _build_interactive_html(self, fig: Any, ax: Any) -> str:
+        """Build a self-contained interactive HTML page with Three.js.
+
+        Generates HTML with embedded Three.js scene, camera, lighting,
+        and orbit controls for interactive 3D toolpath viewing.
+
+        Args:
+            fig: Matplotlib figure (used for legend extraction).
+            ax: Matplotlib 3D axes (used for legend extraction).
+
+        Returns:
+            Complete HTML string for the interactive viewer page.
+        """
         legend_html = ""
         if ax.get_legend_handles_labels()[0]:
             legend_html = (
-                "<p>图例: <b style='color:#f44336'>G00快速</b> | "
-                "<b style='color:#4caf50'>G01直线</b> | "
-                "<b style='color:#2196f3'>G02/G03圆弧</b> | "
-                "<b style='color:#ffc107'>G04暂停</b></p>"
+                "<p>Legend: <b style='color:#f44336'>G00 Rapid</b> | "
+                "<b style='color:#4caf50'>G01 Linear</b> | "
+                "<b style='color:#2196f3'>G02/G03 Arc</b> | "
+                "<b style='color:#ffc107'>G04 Dwell</b></p>"
             )
 
         return f"""<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NC刀具路径3D仿真</title>
+<title>NC Toolpath 3D Simulation</title>
 <style>
-  body {{ margin:0; overflow:hidden; font-family:'Microsoft YaHei',sans-serif; background:#1a1a2e; }}
-  #info {{ position:absolute; top:10px; left:10px; color:#ccc; font-size:12px; background:rgba(0,0,0,0.7); padding:8px 14px; border-radius:6px; z-index:10; }}
-  #controls {{ position:absolute; bottom:10px; left:10px; color:#ccc; font-size:11px; background:rgba(0,0,0,0.7); padding:6px 12px; border-radius:4px; z-index:10; }}
+  body {{ margin:0; overflow:hidden; font-family:'Segoe UI',sans-serif; background:#1a1a2e; }}
+  #info {{ position:absolute; top:10px; left:10px; color:#ccc; font-size:12px;
+           background:rgba(0,0,0,0.7); padding:8px 14px; border-radius:6px; z-index:10; }}
+  #controls {{ position:absolute; bottom:10px; left:10px; color:#ccc; font-size:11px;
+               background:rgba(0,0,0,0.7); padding:6px 12px; border-radius:4px; z-index:10; }}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 <div id="info">
-  <h2>NC刀具路径3D仿真</h2>
+  <h2>NC Toolpath 3D Simulation</h2>
   {legend_html}
 </div>
-<div id="controls">鼠标左键旋转 | 滚轮缩放 | 右键平移</div>
+<div id="controls">Left-click: rotate | Scroll: zoom | Right-click: pan</div>
 <script>
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1a2e);

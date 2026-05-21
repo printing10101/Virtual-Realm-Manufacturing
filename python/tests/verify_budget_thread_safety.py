@@ -7,7 +7,7 @@ import threading
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.core.budget import BudgetManager, BudgetLimit, BudgetLevel, ResourceType
+from app.core.budget import BudgetManager, BudgetLimit, BudgetLevel, ResourceType  # noqa: E402
 
 with tempfile.TemporaryDirectory() as tmpdir:
     db = os.path.join(tmpdir, "budget.db")

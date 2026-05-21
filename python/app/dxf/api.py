@@ -7,11 +7,10 @@
 from __future__ import annotations
 
 import logging
-import tempfile
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -123,13 +122,13 @@ async def parse_dxf(file: UploadFile = File(...)):
         result = _dxf_parser.parse(temp_path)
         lines_data = [
             {
-                "start": list(l.start),
-                "end": list(l.end),
-                "layer": l.layer,
-                "color": l.color,
-                "handle": l.handle,
+                "start": list(line.start),
+                "end": list(line.end),
+                "layer": line.layer,
+                "color": line.color,
+                "handle": line.handle,
             }
-            for l in result.lines
+            for line in result.lines
         ]
         circles_data = [
             {

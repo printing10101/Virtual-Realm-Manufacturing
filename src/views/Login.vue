@@ -2,8 +2,12 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <h1 class="login-title">{{ $t('auth.loginTitle') }}</h1>
-        <p class="login-subtitle">{{ $t('auth.loginSubtitle') }}</p>
+        <h1 class="login-title">
+          {{ $t('auth.loginTitle') }}
+        </h1>
+        <p class="login-subtitle">
+          {{ $t('auth.loginSubtitle') }}
+        </p>
       </div>
 
       <el-form
@@ -13,7 +17,10 @@
         label-position="top"
         @submit.prevent="handleLogin"
       >
-        <el-form-item :label="$t('auth.username')" prop="username">
+        <el-form-item
+          :label="$t('auth.username')"
+          prop="username"
+        >
           <el-input
             v-model="form.username"
             :placeholder="$t('auth.usernamePlaceholder')"
@@ -23,7 +30,10 @@
           />
         </el-form-item>
 
-        <el-form-item :label="$t('auth.password')" prop="password">
+        <el-form-item
+          :label="$t('auth.password')"
+          prop="password"
+        >
           <el-input
             v-model="form.password"
             type="password"
@@ -47,13 +57,25 @@
           </el-button>
         </el-form-item>
 
-        <div v-if="errorMsg" class="login-error">
-          <el-alert :title="errorMsg" type="error" show-icon :closable="false" />
+        <div
+          v-if="errorMsg"
+          class="login-error"
+        >
+          <el-alert
+            :title="errorMsg"
+            type="error"
+            show-icon
+            :closable="false"
+          />
         </div>
       </el-form>
 
       <div class="login-footer">
-        <el-button link type="primary" @click="switchToRegister">
+        <el-button
+          link
+          type="primary"
+          @click="switchToRegister"
+        >
           {{ isRegister ? $t('auth.haveAccount') : $t('auth.noAccount') }}
         </el-button>
       </div>

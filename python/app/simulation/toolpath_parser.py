@@ -1,7 +1,24 @@
-"""NC代码解析器。
+"""NC code parser for G-code toolpath extraction.
 
-解析Fanuc/Siemens/Heidenhain格式的G代码，
-提取刀具路径点序列，维护模态指令状态。
+Parses Fanuc, Siemens, and Heidenhain format G-code, extracting toolpath
+point sequences while maintaining modal command state. Supports G00/G01/G02/G03
+motion commands, coordinate systems (G90/G91), and tool/feed/spindle parameters.
+
+Supported G-codes:
+    - G00: Rapid positioning
+    - G01: Linear interpolation
+    - G02: Clockwise circular interpolation
+    - G03: Counterclockwise circular interpolation
+    - G04: Dwell
+    - G17/G18/G19: Plane selection (XY/XZ/YZ)
+    - G21: Metric units
+    - G90/G91: Absolute/incremental positioning
+
+Example:
+    >>> parser = ToolpathParser(controller_type="fanuc")
+    >>> segments = parser.parse_gcode("N1 G00 X0 Y0 Z5\\nN2 G01 X10 Y0 Z-2 F500")
+    >>> for seg in segments:
+    ...     print(f"{seg.type}: {seg.start_point} -> {seg.end_point}")
 """
 
 from __future__ import annotations
@@ -13,6 +30,22 @@ from typing import Any
 
 @dataclass
 class ToolpathSegment:
+    """A single segment of a CNC toolpath.
+
+    Represents one motion command from the parsed G-code, including start
+    and end positions and associated machining parameters.
+
+    Attributes:
+        type: Motion type - "rapid", "linear", "arc", or "dwell".
+        start_point: (x, y, z) start coordinates in mm.
+        end_point: (x, y, z) end coordinates in mm.
+        feed_rate: Feed rate in mm/min (None for rapid moves).
+        spindle_speed: Spindle speed in RPM (None if not specified).
+        tool_id: Tool number (None if not specified).
+        block_number: NC block/line number.
+        g_code: Original G-code string (e.g., "G01").
+    """
+
     type: str
     start_point: tuple[float, float, float]
     end_point: tuple[float, float, float]
@@ -23,6 +56,11 @@ class ToolpathSegment:
     g_code: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the segment to a dictionary.
+
+        Returns:
+            Dictionary with all segment fields.
+        """
         return {
             "type": self.type,
             "start_point": list(self.start_point),
@@ -36,21 +74,53 @@ class ToolpathSegment:
 
     @property
     def start(self) -> tuple[float, float, float]:
+        """Alias for start_point.
+
+        Returns:
+            Start coordinates (x, y, z).
+        """
         return self.start_point
 
     @property
     def end(self) -> tuple[float, float, float]:
+        """Alias for end_point.
+
+        Returns:
+            End coordinates (x, y, z).
+        """
         return self.end_point
 
 
 class ToolpathParser:
+    """G-code parser that extracts toolpath segments from NC programs.
+
+    Maintains modal state (current position, feed rate, spindle speed,
+    motion mode, coordinate system) across lines. Supports Fanuc, Siemens,
+    and Heidenhain controller formats.
+
+    Attributes:
+        controller_type: Controller dialect ("fanuc", "siemens", "heidenhain").
+
+    Example:
+        >>> parser = ToolpathParser(controller_type="fanuc")
+        >>> gcode = "N1 G00 X0 Y0 Z5\\nN2 G01 X50 Y0 Z-2 F1000"
+        >>> segments = parser.parse_gcode(gcode)
+        >>> print(f"Parsed {len(segments)} segments")
+    """
+
     _RE_WORD = re.compile(r"([A-Z])\s*([\-+]?\d+\.?\d*)")
 
     def __init__(self, controller_type: str = "fanuc") -> None:
+        """Initialize the parser with a controller dialect.
+
+        Args:
+            controller_type: Controller type ("fanuc", "siemens", "heidenhain").
+        """
         self.controller_type = controller_type
         self._reset_state()
 
     def _reset_state(self) -> None:
+        """Reset all modal state variables to their default values."""
         self._x = 0.0
         self._y = 0.0
         self._z = 100.0
@@ -72,6 +142,18 @@ class ToolpathParser:
         self,
         gcode_text: str,
     ) -> list[ToolpathSegment]:
+        """Parse G-code text into a list of toolpath segments.
+
+        Processes the input line by line, skipping comments (lines starting
+        with ';' or '(') and program header lines ('%' or 'O'). Maintains
+        modal state throughout the parsing process.
+
+        Args:
+            gcode_text: The complete G-code program as a string.
+
+        Returns:
+            List of ToolpathSegment objects representing the toolpath.
+        """
         self._reset_state()
         segments: list[ToolpathSegment] = []
         prev_point = (self._x, self._y, self._z)
@@ -110,6 +192,14 @@ class ToolpathParser:
         return segments
 
     def _parse_words(self, line: str) -> dict[str, float]:
+        """Extract G-code words (letter+number pairs) from a line.
+
+        Args:
+            line: A single G-code line (comments already stripped).
+
+        Returns:
+            Dictionary mapping word letters to their numeric values.
+        """
         words: dict[str, float] = {}
         for m in self._RE_WORD.finditer(line.upper()):
             key = m.group(1)
@@ -125,6 +215,20 @@ class ToolpathParser:
         words: dict[str, float],
         prev_point: tuple[float, float, float],
     ) -> str | None:
+        """Process parsed G-code words, updating modal state.
+
+        Handles G-codes (motion, plane, positioning mode), axis coordinates
+        (X, Y, Z), arc center parameters (I, J, K, R), and machining
+        parameters (F, S, T).
+
+        Args:
+            words: Dictionary of parsed G-code words.
+            prev_point: Previous tool position (x, y, z).
+
+        Returns:
+            The detected motion type ("rapid", "linear", "arc", "dwell")
+            or None if no motion occurred on this line.
+        """
         move_type = None
 
         if "G" in words:

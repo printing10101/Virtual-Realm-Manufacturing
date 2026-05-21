@@ -4,12 +4,12 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.services.incremental_solver import (
+from app.services.incremental_solver import (  # noqa: E402
     IncrementalSCIPSolver,
     SolverState,
 )
-from app.core.alternating_validator import AlternatingValidator, ValidationStrategy
-from app.services.solver_progress_service import get_solver_progress_service
+from app.core.alternating_validator import AlternatingValidator, ValidationStrategy  # noqa: E402
+from app.services.solver_progress_service import get_solver_progress_service  # noqa: E402
 
 
 async def test_incremental_solver():
@@ -173,7 +173,7 @@ async def test_alternating_validator_tolerant():
 
     if error_rate < validator.tolerance_threshold:
         print(
-            f"  PASSED: Tolerant mode correctly continued (error {error_rate:.2%} < threshold {validator.tolerance_threshold:.2%})"
+            f"  PASSED: Tolerant mode correctly continued (error {error_rate:.2%} < threshold {validator.tolerance_threshold:.2%})"  # noqa: E501
         )
     else:
         print("  NOTE: Error exceeded threshold, early termination expected")

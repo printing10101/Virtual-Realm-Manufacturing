@@ -14,16 +14,30 @@ import type {
   RuleGroupUpdateRequest,
 } from '@/types'
 import { ElMessage } from 'element-plus'
+import { extractErrorMessage } from '@/utils/errorUtils'
 
+/**
+ * 工艺规则管理 Store
+ * 管理工艺规则的增删改查、分组管理、导入导出和数据库备份。
+ */
 export const useRuleStore = defineStore('rules', () => {
+  /** 规则列表 */
   const rules = ref<ProcessRule[]>([])
+  /** 分组列表 */
   const groups = ref<RuleGroup[]>([])
+  /** 当前选中的规则 */
   const currentRule = ref<ProcessRule | null>(null)
+  /** 规则统计信息 */
   const stats = ref<RuleStats | null>(null)
+  /** 加载状态 */
   const loading = ref(false)
+  /** 创建/编辑对话框显示状态 */
   const showDialog = ref(false)
+  /** 正在编辑的规则 */
   const editingRule = ref<ProcessRule | null>(null)
+  /** 分组对话框显示状态 */
   const showGroupDialog = ref(false)
+  /** 正在编辑的分组 */
   const editingGroup = ref<RuleGroup | null>(null)
 
   const totalRules = ref(0)
@@ -52,8 +66,8 @@ export const useRuleStore = defineStore('rules', () => {
       currentPage.value = data.page
       pageSize.value = data.page_size
       totalPages.value = data.total_pages
-    } catch (e: any) {
-      ElMessage.error('获取规则列表失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '获取规则列表失败'))
     } finally {
       loading.value = false
     }
@@ -64,8 +78,8 @@ export const useRuleStore = defineStore('rules', () => {
       const response = await axios.get('/api/rules/groups/list')
       const data: RuleGroupListResponse = response.data.data
       groups.value = data.groups
-    } catch (e: any) {
-      ElMessage.error('获取规则分组失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '获取规则分组失败'))
     }
   }
 
@@ -73,7 +87,7 @@ export const useRuleStore = defineStore('rules', () => {
     try {
       const response = await axios.get('/api/rules/stats')
       stats.value = response.data.data
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('获取规则统计失败:', e)
     }
   }
@@ -85,8 +99,8 @@ export const useRuleStore = defineStore('rules', () => {
       await fetchRules()
       await fetchStats()
       return response.data.data
-    } catch (e: any) {
-      ElMessage.error('创建规则失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '创建规则失败'))
       throw e
     }
   }
@@ -98,8 +112,8 @@ export const useRuleStore = defineStore('rules', () => {
       await fetchRules()
       await fetchStats()
       return response.data.data
-    } catch (e: any) {
-      ElMessage.error('更新规则失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '更新规则失败'))
       throw e
     }
   }
@@ -110,8 +124,8 @@ export const useRuleStore = defineStore('rules', () => {
       ElMessage.success(response.data.message || '规则删除成功')
       await fetchRules()
       await fetchStats()
-    } catch (e: any) {
-      ElMessage.error('删除规则失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '删除规则失败'))
       throw e
     }
   }
@@ -121,8 +135,8 @@ export const useRuleStore = defineStore('rules', () => {
       const response = await axios.get(`/api/rules/detail/${ruleId}`)
       currentRule.value = response.data.data
       return response.data.data
-    } catch (e: any) {
-      ElMessage.error('获取规则详情失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '获取规则详情失败'))
       throw e
     }
   }
@@ -134,8 +148,8 @@ export const useRuleStore = defineStore('rules', () => {
       await fetchGroups()
       await fetchStats()
       return response.data.data
-    } catch (e: any) {
-      ElMessage.error('创建分组失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '创建分组失败'))
       throw e
     }
   }
@@ -146,8 +160,8 @@ export const useRuleStore = defineStore('rules', () => {
       ElMessage.success(response.data.message || '分组更新成功')
       await fetchGroups()
       return response.data.data
-    } catch (e: any) {
-      ElMessage.error('更新分组失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '更新分组失败'))
       throw e
     }
   }
@@ -158,8 +172,8 @@ export const useRuleStore = defineStore('rules', () => {
       ElMessage.success(response.data.message || '分组删除成功')
       await fetchGroups()
       await fetchStats()
-    } catch (e: any) {
-      ElMessage.error('删除分组失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '删除分组失败'))
       throw e
     }
   }
@@ -184,8 +198,8 @@ export const useRuleStore = defineStore('rules', () => {
       link.remove()
       window.URL.revokeObjectURL(url)
       ElMessage.success('规则导出成功')
-    } catch (e: any) {
-      ElMessage.error('规则导出失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '规则导出失败'))
       throw e
     }
   }
@@ -205,8 +219,8 @@ export const useRuleStore = defineStore('rules', () => {
       await fetchGroups()
       await fetchStats()
       return data
-    } catch (e: any) {
-      ElMessage.error('规则导入失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '规则导入失败'))
       throw e
     }
   }
@@ -216,8 +230,8 @@ export const useRuleStore = defineStore('rules', () => {
       const response = await axios.post('/api/rules/backup')
       ElMessage.success(response.data.message || '数据库备份成功')
       return response.data.data
-    } catch (e: any) {
-      ElMessage.error('数据库备份失败: ' + (e.response?.data?.message || e.message))
+    } catch (e: unknown) {
+      ElMessage.error(extractErrorMessage(e, '数据库备份失败'))
       throw e
     }
   }
