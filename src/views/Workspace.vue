@@ -4,17 +4,40 @@
       <template #header>
         <div class="header-with-actions">
           <span>工作区 - LNN模型推理</span>
-          <el-tag type="info" size="small">用户主权模式</el-tag>
+          <el-tag
+            type="info"
+            size="small"
+          >
+            用户主权模式
+          </el-tag>
         </div>
       </template>
       <el-tabs v-model="activeTab">
-        <el-tab-pane label="预测推理" name="predict">
-          <el-form :model="predictForm" label-width="120px">
+        <el-tab-pane
+          label="预测推理"
+          name="predict"
+        >
+          <el-form
+            :model="predictForm"
+            label-width="120px"
+          >
             <el-form-item label="模型名称">
-              <el-select v-model="predictForm.modelName" placeholder="选择模型">
-                <el-option label="CFC-Fast" value="CFC-Fast" />
-                <el-option label="LTC-TimeSeries" value="LTC-TimeSeries" />
-                <el-option label="Hybrid-Multimodal" value="Hybrid-Multimodal" />
+              <el-select
+                v-model="predictForm.modelName"
+                placeholder="选择模型"
+              >
+                <el-option
+                  label="CFC-Fast"
+                  value="CFC-Fast"
+                />
+                <el-option
+                  label="LTC-TimeSeries"
+                  value="LTC-TimeSeries"
+                />
+                <el-option
+                  label="Hybrid-Multimodal"
+                  value="Hybrid-Multimodal"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="输入数据">
@@ -29,7 +52,11 @@
               <el-switch v-model="predictForm.returnConfidence" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :loading="predicting" @click="handlePredict">
+              <el-button
+                type="primary"
+                :loading="predicting"
+                @click="handlePredict"
+              >
                 开始推理
               </el-button>
             </el-form-item>
@@ -37,7 +64,10 @@
 
           <el-divider />
 
-          <div v-if="predictResponse" class="result-section">
+          <div
+            v-if="predictResponse"
+            class="result-section"
+          >
             <div class="result-header">
               <h4>推理结果</h4>
               <ConfidenceIndicator
@@ -51,7 +81,10 @@
               <span class="value">{{ formatPredictionValue(predictResponse.value) }}</span>
             </div>
 
-            <div v-if="predictResponse.reasoning" class="reasoning-section">
+            <div
+              v-if="predictResponse.reasoning"
+              class="reasoning-section"
+            >
               <h5>AI推理过程</h5>
               <p>{{ predictResponse.reasoning }}</p>
             </div>
@@ -66,9 +99,19 @@
               @modify="handleModifyPrediction"
               @reject="handleRejectPrediction"
             >
+              <!-- eslint-disable-next-line vue/no-unused-vars -->
               <template #modify-form="{ recommendation }">
-                <el-alert title="您可以在此调整预测参数" type="info" :closable="false" show-icon />
-                <el-form :model="modifiedPrediction" label-width="120px" style="margin-top: 16px;">
+                <el-alert
+                  title="您可以在此调整预测参数"
+                  type="info"
+                  :closable="false"
+                  show-icon
+                />
+                <el-form
+                  :model="modifiedPrediction"
+                  label-width="120px"
+                  style="margin-top: 16px;"
+                >
                   <el-form-item label="预测值">
                     <el-input-number
                       v-if="typeof modifiedPrediction.value === 'number'"
@@ -76,7 +119,10 @@
                       :step="0.01"
                       :precision="4"
                     />
-                    <el-input v-else v-model="modifiedPrediction.value" />
+                    <el-input
+                      v-else
+                      v-model="modifiedPrediction.value"
+                    />
                   </el-form-item>
                   <el-form-item label="置信度">
                     <el-slider
@@ -89,7 +135,10 @@
                   </el-form-item>
                 </el-form>
 
-                <div v-if="showAdjustedResult" class="adjusted-result">
+                <div
+                  v-if="showAdjustedResult"
+                  class="adjusted-result"
+                >
                   <h5>调整后结果</h5>
                   <pre>{{ JSON.stringify(modifiedPrediction, null, 2) }}</pre>
                 </div>
@@ -98,15 +147,29 @@
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="模型训练" name="train">
-          <el-form :model="trainForm" label-width="140px">
+        <el-tab-pane
+          label="模型训练"
+          name="train"
+        >
+          <el-form
+            :model="trainForm"
+            label-width="140px"
+          >
             <el-form-item label="模型名称">
-              <el-input v-model="trainForm.modelName" placeholder="输入模型名称" />
+              <el-input
+                v-model="trainForm.modelName"
+                placeholder="输入模型名称"
+              />
             </el-form-item>
             <el-form-item label="数据路径">
-              <el-input v-model="trainForm.dataPath" placeholder="输入训练数据路径" />
+              <el-input
+                v-model="trainForm.dataPath"
+                placeholder="输入训练数据路径"
+              />
             </el-form-item>
-            <el-divider content-position="left">超参数配置</el-divider>
+            <el-divider content-position="left">
+              超参数配置
+            </el-divider>
             <el-form-item label="学习率">
               <el-input-number
                 v-model="trainForm.hyperparameters.learning_rate"
@@ -117,30 +180,67 @@
               />
             </el-form-item>
             <el-form-item label="训练轮数">
-              <el-input-number v-model="trainForm.hyperparameters.epochs" :min="1" :max="1000" :step="10" />
+              <el-input-number
+                v-model="trainForm.hyperparameters.epochs"
+                :min="1"
+                :max="1000"
+                :step="10"
+              />
             </el-form-item>
             <el-form-item label="批次大小">
-              <el-input-number v-model="trainForm.hyperparameters.batch_size" :min="1" :max="256" :step="8" />
+              <el-input-number
+                v-model="trainForm.hyperparameters.batch_size"
+                :min="1"
+                :max="256"
+                :step="8"
+              />
             </el-form-item>
             <el-form-item label="优化器">
               <el-select v-model="trainForm.hyperparameters.optimizer">
-                <el-option label="Adam" value="adam" />
-                <el-option label="SGD" value="sgd" />
-                <el-option label="RMSprop" value="rmsprop" />
+                <el-option
+                  label="Adam"
+                  value="adam"
+                />
+                <el-option
+                  label="SGD"
+                  value="sgd"
+                />
+                <el-option
+                  label="RMSprop"
+                  value="rmsprop"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="设备">
               <el-select v-model="trainForm.device">
-                <el-option label="自动" value="auto" />
-                <el-option label="GPU (CUDA)" value="cuda" />
-                <el-option label="CPU" value="cpu" />
+                <el-option
+                  label="自动"
+                  value="auto"
+                />
+                <el-option
+                  label="GPU (CUDA)"
+                  value="cuda"
+                />
+                <el-option
+                  label="CPU"
+                  value="cpu"
+                />
               </el-select>
             </el-form-item>
             <el-form-item>
-              <el-button type="warning" @click="handleDryRun" :loading="dryRunning">
+              <el-button
+                type="warning"
+                :loading="dryRunning"
+                @click="handleDryRun"
+              >
                 预览训练计划
               </el-button>
-              <el-button type="primary" @click="handleTrain" :loading="training" :disabled="!trainPlanConfirmed">
+              <el-button
+                type="primary"
+                :loading="training"
+                :disabled="!trainPlanConfirmed"
+                @click="handleTrain"
+              >
                 开始训练
               </el-button>
             </el-form-item>
@@ -148,7 +248,10 @@
 
           <el-divider />
 
-          <div v-if="dryRunResult" class="train-plan-section">
+          <div
+            v-if="dryRunResult"
+            class="train-plan-section"
+          >
             <h4>训练计划概要</h4>
 
             <el-alert
@@ -159,7 +262,10 @@
               style="margin-bottom: 16px;"
             />
 
-            <el-descriptions :column="2" border>
+            <el-descriptions
+              :column="2"
+              border
+            >
               <el-descriptions-item label="预估训练时长">
                 {{ dryRunResult.training_plan.estimated_duration_minutes.toFixed(1) }} 分钟
               </el-descriptions-item>
@@ -172,12 +278,18 @@
               <el-descriptions-item label="训练/验证集划分">
                 {{ dryRunResult.training_plan.train_val_split.ratio }}
               </el-descriptions-item>
-              <el-descriptions-item label="预估GPU显存" :span="2">
+              <el-descriptions-item
+                label="预估GPU显存"
+                :span="2"
+              >
                 {{ dryRunResult.training_plan.estimated_gpu_memory_mb ? `${dryRunResult.training_plan.estimated_gpu_memory_mb.toFixed(1)} MB` : 'N/A (CPU模式)' }}
               </el-descriptions-item>
             </el-descriptions>
 
-            <div v-if="dryRunResult.training_plan.potential_risks.length > 0" class="risks-section">
+            <div
+              v-if="dryRunResult.training_plan.potential_risks.length > 0"
+              class="risks-section"
+            >
               <h5>潜在风险</h5>
               <el-alert
                 v-for="(risk, idx) in dryRunResult.training_plan.potential_risks"
@@ -190,10 +302,16 @@
               />
             </div>
 
-            <div v-if="dryRunResult.training_plan.recommendations.length > 0" class="recommendations-section">
+            <div
+              v-if="dryRunResult.training_plan.recommendations.length > 0"
+              class="recommendations-section"
+            >
               <h5>训练建议</h5>
               <ul>
-                <li v-for="(rec, idx) in dryRunResult.training_plan.recommendations" :key="idx">
+                <li
+                  v-for="(rec, idx) in dryRunResult.training_plan.recommendations"
+                  :key="idx"
+                >
                   {{ rec }}
                 </li>
               </ul>
@@ -213,48 +331,87 @@
             </div>
           </div>
 
-          <div v-if="trainResult" class="train-result-section">
+          <div
+            v-if="trainResult"
+            class="train-result-section"
+          >
             <h4>训练监控</h4>
 
-            <div v-if="currentJobId" class="job-info">
-              <el-descriptions :column="2" border size="small">
+            <div
+              v-if="currentJobId"
+              class="job-info"
+            >
+              <el-descriptions
+                :column="2"
+                border
+                size="small"
+              >
                 <el-descriptions-item label="任务ID">
-                  <el-tag type="info" size="small" class="job-id-tag">{{ currentJobId }}</el-tag>
+                  <el-tag
+                    type="info"
+                    size="small"
+                    class="job-id-tag"
+                  >
+                    {{ currentJobId }}
+                  </el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item label="状态">
-                  <el-tag :type="getStatusTagType(sse.currentStatus)">
-                    {{ getStatusText(sse.currentStatus) }}
+                  <el-tag :type="getTaskStatusTagType(sse.currentStatus)">
+                    {{ getTaskStatusLabel(sse.currentStatus) }}
                   </el-tag>
                 </el-descriptions-item>
               </el-descriptions>
             </div>
 
-            <div v-if="sse.currentStatus === 'running' || sse.progress > 0" class="progress-section">
+            <div
+              v-if="sse.currentStatus === 'running' || sse.progress > 0"
+              class="progress-section"
+            >
               <el-progress
                 :percentage="Math.round(sse.progress)"
                 :stroke-width="20"
                 :status="sse.currentStatus === 'completed' ? 'success' : sse.currentStatus === 'failed' ? 'exception' : undefined"
               />
               <div class="progress-info">
-                <span v-if="sse.lastProgressData?.message" class="progress-message">
+                <span
+                  v-if="sse.lastProgressData?.message"
+                  class="progress-message"
+                >
                   {{ sse.lastProgressData.message }}
                 </span>
-                <span v-if="sse.lastProgressData" class="progress-metrics">
+                <span
+                  v-if="sse.lastProgressData"
+                  class="progress-metrics"
+                >
                   Train Loss: {{ sse.lastProgressData.train_loss?.toFixed(6) }} | 
                   Val Loss: {{ sse.lastProgressData.val_loss?.toFixed(6) }}
                 </span>
               </div>
             </div>
 
-            <div v-if="lossHistory.length > 0" class="loss-curves">
+            <div
+              v-if="lossHistory.length > 0"
+              class="loss-curves"
+            >
               <h5>Loss曲线</h5>
               <div class="chart-container">
-                <canvas ref="lossChartCanvas" width="800" height="300"></canvas>
+                <canvas
+                  ref="lossChartCanvas"
+                  width="800"
+                  height="300"
+                />
               </div>
             </div>
 
-            <div v-if="sse.currentStatus === 'running'" class="cancel-section">
-              <el-button type="danger" @click="handleCancelTraining" :loading="cancelling">
+            <div
+              v-if="sse.currentStatus === 'running'"
+              class="cancel-section"
+            >
+              <el-button
+                type="danger"
+                :loading="cancelling"
+                @click="handleCancelTraining"
+              >
                 取消训练
               </el-button>
             </div>
@@ -290,12 +447,30 @@
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="模型列表" name="models">
-          <el-table :data="modelList" style="width: 100%">
-            <el-table-column prop="name" label="名称" />
-            <el-table-column prop="model_type" label="类型" />
-            <el-table-column prop="version" label="版本" />
-            <el-table-column prop="input_features" label="输入特征">
+        <el-tab-pane
+          label="模型列表"
+          name="models"
+        >
+          <el-table
+            :data="modelList"
+            style="width: 100%"
+          >
+            <el-table-column
+              prop="name"
+              label="名称"
+            />
+            <el-table-column
+              prop="model_type"
+              label="类型"
+            />
+            <el-table-column
+              prop="version"
+              label="版本"
+            />
+            <el-table-column
+              prop="input_features"
+              label="输入特征"
+            >
               <template #default="{ row }">
                 {{ row.input_features?.join(', ') }}
               </template>
@@ -315,6 +490,7 @@ import ConfidenceIndicator from '@/components/ConfidenceIndicator.vue'
 import AcceptModifyReject from '@/components/AcceptModifyReject.vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useEventSource } from '@/composables/useEventSource'
+import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 
 const settingsStore = useSettingsStore()
 const activeTab = ref('predict')
@@ -465,26 +641,6 @@ function drawLossChart() {
 
   drawLine(lossHistory.value, '#409eff', 'Train Loss')
   drawLine(valLossHistory.value, '#e6a23c', 'Val Loss')
-}
-
-function getStatusTagType(status: string | null): 'success' | 'warning' | 'danger' | 'info' {
-  if (status === 'completed') return 'success'
-  if (status === 'running') return ''
-  if (status === 'failed') return 'danger'
-  if (status === 'cancelled') return 'warning'
-  if (status === 'queued') return 'info'
-  return 'info'
-}
-
-function getStatusText(status: string | null): string {
-  const map: Record<string, string> = {
-    queued: '排队中',
-    running: '训练中',
-    completed: '已完成',
-    failed: '失败',
-    cancelled: '已取消',
-  }
-  return map[status || ''] || status || '未知'
 }
 
 const lossHistory = computed(() => {

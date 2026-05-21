@@ -1,8 +1,21 @@
-"""
-LTC (Long-Term Context Network) Model
+"""LTC (Long-Term Context) Model for Time-Series Prediction.
 
-Focused on time-series prediction tasks, supporting sequence length > 1000.
-Implements temporal processing with memory mechanisms.
+Implements a temporal processing network with memory mechanisms, supporting
+sequence lengths greater than 1000. Features memory-based hidden state updates
+and attention-weighted temporal state aggregation.
+
+Key components:
+    - LTCModel: Time-series model inheriting from BaseLNNModel.
+
+Example:
+    >>> model = LTCModel(
+    ...     model_name="LTC-TimeSeries",
+    ...     input_dim=64,
+    ...     output_dim=32,
+    ...     temporal_horizon=1000,
+    ... )
+    >>> model.build()
+    >>> output = model.predict(np.random.randn(100, 64))
 """
 
 import numpy as np
@@ -12,13 +25,31 @@ from .base_lnn import BaseLNNModel
 
 
 class LTCModel(BaseLNNModel):
-    """
-    LTC模型实现，专注时序预测任务
+    """LTC model specialized for time-series prediction with memory.
 
-    特点：
-    - 支持序列长度 > 1000 的时间序列处理
-    - 包含时序处理特殊逻辑
-    - 适用于预测、趋势分析等场景
+    Supports sequence lengths up to temporal_horizon (default 1000) with
+    a memory mechanism that influences hidden state updates. Uses mean
+    aggregation over temporal states followed by a final output layer.
+
+    Can handle 1D (single sample), 2D (batch), and 3D (batch of sequences)
+    inputs with appropriate routing.
+
+    Attributes:
+        hidden_dim: Hidden layer dimension.
+        memory_size: Memory unit size for temporal state storage.
+        temporal_horizon: Maximum supported sequence length.
+        num_layers: Number of network layers.
+        dropout_rate: Dropout probability.
+        memory_state: Current memory state numpy array.
+        weights: List of weight matrices.
+        biases: List of bias vectors.
+        memory_weights: Weight matrices for memory read/write operations.
+
+    Example:
+        >>> model = LTCModel(input_dim=64, output_dim=32, temporal_horizon=500)
+        >>> model.build()
+        >>> x = np.random.randn(10, 64)  # batch of independent samples
+        >>> output = model.predict(x)
     """
 
     def __init__(
@@ -62,6 +93,7 @@ class LTCModel(BaseLNNModel):
         self.memory_weights: List[np.ndarray] = []
         self._initialized = False
         self.memory_state: Optional[np.ndarray] = None
+        self._output_dim = output_dim  # Track actual output dimension
 
     def build(self) -> None:
         """构建LTC网络结构"""
@@ -97,25 +129,48 @@ class LTCModel(BaseLNNModel):
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         """
-        前向传播（支持序列输入）
+        前向传播（支持序列输入与批量独立样本）
 
         Args:
             x: 输入数据
+                 - 单样本: (input_dim,)
+                 - 批量独立样本: (batch_size, input_dim)  ← 回归基准场景
                  - 单序列: (sequence_length, input_dim)
                  - 批量序列: (batch_size, sequence_length, input_dim)
 
         Returns:
-            模型输出
+            模型输出 (batch_size, output_dim) 或 (seq_len, output_dim)
         """
         if not self._initialized:
             self.build()
 
-        # 处理输入维度
+        # 单样本 → (1, input_dim)
         if x.ndim == 1:
-            x = x.reshape(1, 1, -1)
-        elif x.ndim == 2:
-            x = x.reshape(1, x.shape[0], x.shape[1])
+            x = x.reshape(1, -1)
 
+        # 批量独立样本（2D）→ 直接通过网络，不当时序处理
+        if x.ndim == 2:
+            return self._forward_batch(x)
+
+        # 3D 批量序列
+        if x.ndim == 3:
+            return self._forward_sequence(x)
+
+        raise ValueError(f"LTC 模型不支持的输入维度: {x.ndim}D")
+
+    def _forward_batch(self, x: np.ndarray) -> np.ndarray:
+        """处理批量独立样本 (batch_size, input_dim) → (batch_size, output_dim)。"""
+        h = x
+        for i, (W, b) in enumerate(zip(self.weights, self.biases)):
+            z = h @ W + b
+            if i < len(self.weights) - 1:
+                h = self._relu(z)
+            else:
+                h = z
+        return h
+
+    def _forward_sequence(self, x: np.ndarray) -> np.ndarray:
+        """处理批量序列 (batch_size, seq_len, input_dim) → (batch_size, output_dim)。"""
         batch_size, seq_len, _ = x.shape
 
         # 确保序列长度在支持范围内
@@ -128,33 +183,30 @@ class LTCModel(BaseLNNModel):
         current_memory = self.memory_state.copy()
 
         for t in range(seq_len):
-            # 获取当前时间步输入
             x_t = x[:, t, :]  # (batch_size, input_dim)
-
-            # 时序特征提取
             h_t = self._temporal_step(x_t, current_memory)
-
             hidden_states.append(h_t)
 
         # 聚合时序信息
-        final_output = self._aggregate_temporal_states(hidden_states)
-
-        return final_output
+        return self._aggregate_temporal_states(hidden_states)
 
     def _temporal_step(self, x_t: np.ndarray, memory: np.ndarray) -> np.ndarray:
         """
-        单步时序处理
+        单步时序处理（仅处理隐藏层，不含最终输出层）
 
         Args:
             x_t: 当前时间步输入
             memory: 当前记忆状态
 
         Returns:
-            当前时间步隐藏状态
+            当前时间步隐藏状态（隐藏层维度）
         """
         h = x_t
 
-        for i, (W, b) in enumerate(zip(self.weights, self.biases)):
+        # 仅处理隐藏层（排除最终输出层）
+        hidden_layers = len(self.weights) - 1
+        for i in range(hidden_layers):
+            W, b = self.weights[i], self.biases[i]
             # 结合记忆信息
             if i == 0 and memory is not None:
                 memory_influence = memory @ self.memory_weights[1]
@@ -163,14 +215,9 @@ class LTCModel(BaseLNNModel):
                     memory_influence = memory_influence[:, : h.shape[1]]
                 h = h + 0.1 * memory_influence
 
-            z = h @ W + b
+            h = self._relu(h @ W + b)
 
-            if i < len(self.weights) - 1:
-                h = self._relu(z)
-            else:
-                h = z
-
-        # 更新记忆
+        # 更新记忆：使用当前隐藏状态
         self._update_memory(h)
 
         return h
@@ -185,7 +232,16 @@ class LTCModel(BaseLNNModel):
         if self.memory_state is None:
             return
 
-        # 简化的记忆更新（实际应使用更复杂的机制）
+        # 简化的记忆更新
+        # 确保hidden_state的最后一维与memory_weights[0]的第一维一致
+        target_dim = self.memory_weights[0].shape[0]
+        if hidden_state.shape[1] != target_dim:
+            # 通过线性投影适配维度
+            pad_or_slice = np.zeros((hidden_state.shape[0], target_dim))
+            copy_dim = min(hidden_state.shape[1], target_dim)
+            pad_or_slice[:, :copy_dim] = hidden_state[:, :copy_dim]
+            hidden_state = pad_or_slice
+
         new_memory = hidden_state @ self.memory_weights[0]
         self.memory_state = 0.9 * self.memory_state + 0.1 * new_memory
 

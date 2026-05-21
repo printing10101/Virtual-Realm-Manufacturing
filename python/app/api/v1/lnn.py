@@ -28,12 +28,10 @@ from app.models.schemas import (
 from app.core.task_system import AsyncTaskManager
 from app.core.task_manager import TaskType, TaskStatus
 from app.ai.lnn.inference.registry import (
-    LNNModelRegistry,
-    ModelRegistry,
     get_torch_model_class,
 )
 from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
-from app.ai.lnn.inference.model_cache import ModelCache
+from app.services.model_registry_service import get_model_registry_service
 from app.ai.lnn.inference.registry import (
     is_quantized_model,
     get_quantized_model_name,
@@ -57,12 +55,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/lnn", tags=["LNN Models"])
 
-model_registry = LNNModelRegistry()
-pytorch_registry = ModelRegistry()
-model_cache = ModelCache()
+# Use the unified service layer — do NOT instantiate LNNModelRegistry directly
+registry_service = get_model_registry_service()
+model_registry = registry_service.model_registry
+pytorch_registry = registry_service.pytorch_registry
+model_cache = registry_service.model_cache
+training_tasks = registry_service.get_training_tasks()
 audit_log = AuditLog()
-
-training_tasks: dict[str, dict] = {}
 
 MAX_CONCURRENT_TRAINING_TASKS = 3
 _active_training_tasks: set[str] = set()
@@ -204,6 +203,11 @@ async def predict_lnn(request: LNNPredictRequest):
             user_decision=UserDecision.AUTO_EXECUTED,
             final_execution={"prediction": value},
             operation_status=OperationStatus.SUCCESS,
+            input_parameters={
+                "model_name": request.model_name,
+                "input_data": request.input_data,
+                "return_confidence": request.return_confidence,
+            },
             confidence=confidence,
             reasoning=reasoning,
         )
@@ -1840,7 +1844,7 @@ async def run_training_task_v2(
     )
     val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers)
 
-    lnn_registry = LNNModelRegistry()
+    lnn_registry = registry_service.model_registry
     entry = lnn_registry.registry.get(model_name)
     if not entry:
         raise ValueError(f"Model '{model_name}' not found")

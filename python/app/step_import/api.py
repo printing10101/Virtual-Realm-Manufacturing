@@ -74,7 +74,11 @@ def _read_file_content(file: UploadFile) -> bytes:
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=413,
-            detail=f"文件大小({len(content) / 1024 / 1024:.1f}MB)超过限制({MAX_FILE_SIZE / 1024 / 1024:.0f}MB)。请压缩模型或分割为多个文件后重试。",
+            detail=(
+                f"文件大小({len(content) / 1024 / 1024:.1f}MB)"
+                f"超过限制({MAX_FILE_SIZE / 1024 / 1024:.0f}MB)。"
+                "请压缩模型或分割为多个文件后重试。"
+            ),
         )
     return content
 

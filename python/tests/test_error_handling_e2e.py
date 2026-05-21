@@ -2,26 +2,26 @@
 
 from __future__ import annotations
 
-import json
 import asyncio
+import json
 import logging
 import sys
 from pathlib import Path
 
-import pytest
-from fastapi import FastAPI, APIRouter
-from fastapi.testclient import TestClient
-from pydantic import BaseModel, Field
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.error_taxonomy import ManufacturingError, ErrorCategory
-from app.core.exception_handlers import (
-    manufacturing_error_handler,
+import pytest  # noqa: E402
+from fastapi import APIRouter, FastAPI  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
+
+from app.core.error_taxonomy import ErrorCategory, ManufacturingError  # noqa: E402
+from app.core.exception_handlers import (  # noqa: E402
     generic_exception_handler,
+    manufacturing_error_handler,
     register_exception_handlers,
 )
-from app.core.response import success
+from app.core.response import success  # noqa: E402
 
 
 class ConflictCheckRequest(BaseModel):
@@ -43,7 +43,12 @@ def _make_test_app() -> FastAPI:
             raise ManufacturingError(
                 category=ErrorCategory.NO_SUITABLE_TOOL,
                 detail=f"刀具直径({tool_d}mm)大于槽宽({slot_w}mm)，无法进入槽内进行加工。当前材料：{request.material}，工序：{request.operation}",
-                suggestion=f"刀具直径({tool_d}mm)超出槽宽({slot_w}mm)限制。建议方案：1) 更换刀具，选用直径≤{slot_w}mm的立铣刀；2) 调整加工工艺，改用分层加工或多刀铣削策略；3) 修改零件设计，增大槽宽至≥{tool_d}mm。",
+                suggestion=(
+                    f"刀具直径({tool_d}mm)超出槽宽({slot_w}mm)限制。"
+                    f"建议方案：1) 更换刀具，选用直径≤{slot_w}mm的立铣刀；"
+                    "2) 调整加工工艺，改用分层加工或多刀铣削策略；"
+                    f"3) 修改零件设计，增大槽宽至≥{tool_d}mm。"
+                ),
                 recoverable=False,
             )
         return success(

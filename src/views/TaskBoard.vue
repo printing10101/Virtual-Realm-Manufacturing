@@ -28,7 +28,10 @@
       </div>
     </div>
 
-    <div v-loading="loading" class="kanban-container">
+    <div
+      v-loading="loading"
+      class="kanban-container"
+    >
       <el-row :gutter="16">
         <el-col
           v-for="col in columns"
@@ -42,7 +45,11 @@
             <template #header>
               <div class="column-header">
                 <span>{{ col.label }}</span>
-                <el-tag :type="col.tagType" size="small" round>
+                <el-tag
+                  :type="col.tagType"
+                  size="small"
+                  round
+                >
                   {{ getColumnTasks(col.status).length }}
                 </el-tag>
               </div>
@@ -64,13 +71,19 @@
                 @click="viewTaskDetail(task)"
               >
                 <div class="task-card-header">
-                  <el-tag :type="getPriorityTagType(task.priority)" size="small" effect="dark">
+                  <el-tag
+                    :type="getPriorityTagType(task.priority)"
+                    size="small"
+                    effect="dark"
+                  >
                     {{ getPriorityLabel(task.priority) }}
                   </el-tag>
                   <span class="task-id">{{ task.id }}</span>
                 </div>
 
-                <div class="task-title">{{ task.title || task.id }}</div>
+                <div class="task-title">
+                  {{ task.title || task.id }}
+                </div>
 
                 <div
                   v-if="task.description"
@@ -92,7 +105,7 @@
                     type="success"
                     size="small"
                   >
-                    {{ formatTime(task.completed_at) }}
+                    {{ formatDate(task.completed_at) }}
                   </el-tag>
                   <el-tag
                     v-if="task.status === 'failed'"
@@ -104,7 +117,7 @@
 
                   <el-tooltip
                     v-if="task.lock_info && task.lock_info.status === 'active'"
-                    :content="`锁剩余时间: ${formatDuration(task.lock_info.time_remaining_seconds)}`"
+                    :content="`锁剩余时间: ${formatDuration(task.lock_info.time_remaining_seconds, false)}`"
                     placement="top"
                   >
                     <el-progress
@@ -143,19 +156,30 @@
       width="700px"
       destroy-on-close
     >
-      <div v-if="detailLoading" v-loading="detailLoading" style="min-height: 200px;" />
+      <div
+        v-if="detailLoading"
+        v-loading="detailLoading"
+        style="min-height: 200px;"
+      />
 
       <template v-else-if="taskDetail">
-        <el-descriptions :column="2" border size="small">
-          <el-descriptions-item label="任务ID" :span="2">
+        <el-descriptions
+          :column="2"
+          border
+          size="small"
+        >
+          <el-descriptions-item
+            label="任务ID"
+            :span="2"
+          >
             {{ taskDetail.task.id }}
           </el-descriptions-item>
           <el-descriptions-item label="标题">
             {{ taskDetail.task.title }}
           </el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="getStatusTagType(taskDetail.task.status)">
-              {{ getStatusLabel(taskDetail.task.status) }}
+            <el-tag :type="getTaskStatusTagType(taskDetail.task.status)">
+              {{ getTaskStatusLabel(taskDetail.task.status) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="分配代理">
@@ -184,47 +208,101 @@
           </el-descriptions-item>
         </el-descriptions>
 
-        <el-divider content-position="left">执行锁历史</el-divider>
+        <el-divider content-position="left">
+          执行锁历史
+        </el-divider>
         <el-table
           v-if="taskDetail.lock_history && taskDetail.lock_history.length > 0"
           :data="taskDetail.lock_history"
           size="small"
           max-height="200"
         >
-          <el-table-column prop="action" label="操作" width="100">
+          <el-table-column
+            prop="action"
+            label="操作"
+            width="100"
+          >
             <template #default="{ row }">
-              <el-tag :type="getLockActionTagType(row.action)" size="small">
+              <el-tag
+                :type="getLockActionTagType(row.action)"
+                size="small"
+              >
                 {{ getLockActionLabel(row.action) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="agent_id" label="代理" width="120" />
-          <el-table-column prop="reason" label="原因" min-width="150" />
-          <el-table-column prop="timestamp" label="时间" width="170" />
+          <el-table-column
+            prop="agent_id"
+            label="代理"
+            width="120"
+          />
+          <el-table-column
+            prop="reason"
+            label="原因"
+            min-width="150"
+          />
+          <el-table-column
+            prop="timestamp"
+            label="时间"
+            width="170"
+          />
         </el-table>
-        <el-empty v-else description="暂无锁历史" :image-size="40" />
+        <el-empty
+          v-else
+          description="暂无锁历史"
+          :image-size="40"
+        />
 
-        <el-divider content-position="left">失败历史</el-divider>
+        <el-divider content-position="left">
+          失败历史
+        </el-divider>
         <el-table
           v-if="taskDetail.failure_history && taskDetail.failure_history.length > 0"
           :data="taskDetail.failure_history"
           size="small"
           max-height="200"
         >
-          <el-table-column prop="reason" label="失败原因" width="150">
+          <el-table-column
+            prop="reason"
+            label="失败原因"
+            width="150"
+          >
             <template #default="{ row }">
-              <el-tag type="danger" size="small">{{ row.reason }}</el-tag>
+              <el-tag
+                type="danger"
+                size="small"
+              >
+                {{ row.reason }}
+              </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="message" label="详情" min-width="200" />
-          <el-table-column prop="agent_id" label="代理" width="120" />
-          <el-table-column prop="timestamp" label="时间" width="170" />
+          <el-table-column
+            prop="message"
+            label="详情"
+            min-width="200"
+          />
+          <el-table-column
+            prop="agent_id"
+            label="代理"
+            width="120"
+          />
+          <el-table-column
+            prop="timestamp"
+            label="时间"
+            width="170"
+          />
         </el-table>
-        <el-empty v-else description="暂无失败历史" :image-size="40" />
+        <el-empty
+          v-else
+          description="暂无失败历史"
+          :image-size="40"
+        />
       </template>
 
       <template #footer>
-        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button @click="detailDialogVisible = false">
+          关闭
+        </el-button>
         <el-button
           v-if="selectedTask?.status === 'in_progress'"
           type="warning"
@@ -242,26 +320,65 @@
       destroy-on-close
     >
       <div v-loading="locksLoading">
-        <el-table :data="locks" size="small" max-height="400" stripe>
-          <el-table-column prop="task_id" label="任务ID" width="180" />
-          <el-table-column prop="agent_id" label="代理ID" width="150" />
-          <el-table-column prop="status" label="状态" width="110">
+        <el-table
+          :data="locks"
+          size="small"
+          max-height="400"
+          stripe
+        >
+          <el-table-column
+            prop="task_id"
+            label="任务ID"
+            width="180"
+          />
+          <el-table-column
+            prop="agent_id"
+            label="代理ID"
+            width="150"
+          />
+          <el-table-column
+            prop="status"
+            label="状态"
+            width="110"
+          >
             <template #default="{ row }">
-              <el-tag :type="getLockStatusTagType(row.status)" size="small">
+              <el-tag
+                :type="getLockStatusTagType(row.status)"
+                size="small"
+              >
                 {{ getLockStatusLabel(row.status) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="is_expired" label="是否过期" width="90">
+          <el-table-column
+            prop="is_expired"
+            label="是否过期"
+            width="90"
+          >
             <template #default="{ row }">
-              <el-tag :type="row.is_expired ? 'danger' : 'success'" size="small">
+              <el-tag
+                :type="row.is_expired ? 'danger' : 'success'"
+                size="small"
+              >
                 {{ row.is_expired ? '已过期' : '有效' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="created_at" label="创建时间" width="170" />
-          <el-table-column prop="expires_at" label="过期时间" width="170" />
-          <el-table-column label="操作" fixed="right" width="100">
+          <el-table-column
+            prop="created_at"
+            label="创建时间"
+            width="170"
+          />
+          <el-table-column
+            prop="expires_at"
+            label="过期时间"
+            width="170"
+          />
+          <el-table-column
+            label="操作"
+            fixed="right"
+            width="100"
+          >
             <template #default="{ row }">
               <el-button
                 v-if="row.status === 'active'"
@@ -283,6 +400,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Refresh, Delete, Lock } from '@element-plus/icons-vue'
 import axios from 'axios'
+import { formatDate, formatDuration } from '@/utils/formatters'
+import { getPriorityTagType, getPriorityLabel, getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 
 interface TaskItem {
   id: string
@@ -463,37 +582,6 @@ function getLockRemainingPercent(lockInfo: LockInfo): number {
   return Math.round((lockInfo.time_remaining_seconds / total) * 100)
 }
 
-function getPriorityTagType(priority: number): 'danger' | 'warning' | 'primary' | 'info' {
-  if (priority === 1) return 'danger'
-  if (priority === 2) return 'warning'
-  if (priority === 3) return 'primary'
-  return 'info'
-}
-
-function getPriorityLabel(priority: number): string {
-  const map: Record<number, string> = { 1: '紧急', 2: '高', 3: '普通', 4: '低' }
-  return map[priority] || '普通'
-}
-
-function getStatusTagType(status: string): 'success' | 'warning' | 'danger' | 'info' {
-  if (status === 'completed') return 'success'
-  if (status === 'in_progress') return 'warning'
-  if (status === 'failed') return 'danger'
-  if (status === 'cancelled') return 'info'
-  return 'info'
-}
-
-function getStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    pending: '待处理',
-    in_progress: '进行中',
-    completed: '已完成',
-    failed: '失败',
-    cancelled: '已取消',
-  }
-  return map[status] || status
-}
-
 function getLockActionTagType(action: string): 'success' | 'warning' | 'danger' | 'info' {
   if (action === 'created') return 'success'
   if (action === 'released') return 'info'
@@ -528,29 +616,6 @@ function getLockStatusLabel(status: string): string {
     expired: '已过期',
   }
   return map[status] || status
-}
-
-function formatTime(timestamp: string): string {
-  if (!timestamp) return '-'
-  try {
-    const date = new Date(timestamp)
-    return date.toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return timestamp
-  }
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds <= 0) return '0分钟'
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) return `${hours}小时${minutes}分钟`
-  return `${minutes}分钟`
 }
 
 onMounted(() => {

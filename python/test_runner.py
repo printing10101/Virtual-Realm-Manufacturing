@@ -25,7 +25,7 @@ def wait_for_server(timeout=30):
             if resp.status_code == 200:
                 print(f"Server ready after {i + 1}s")
                 return True
-        except:
+        except Exception:
             pass
         time.sleep(1)
     return False

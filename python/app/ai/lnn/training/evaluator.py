@@ -1,7 +1,16 @@
-"""
-Evaluator module for LNN models.
+"""LNN Model Evaluator.
 
-Implements multi-metric evaluation and result recording.
+Implements multi-metric evaluation for both classification and regression tasks,
+performance benchmarking (inference speed, throughput), feature importance
+analysis, and evaluation report generation with visualization.
+
+Key components:
+    - LNNEvaluator: Multi-metric evaluator with history tracking.
+
+Example:
+    >>> evaluator = LNNEvaluator(model=my_model, device="cuda")
+    >>> metrics = evaluator.evaluate(val_loader, task_type="classification")
+    >>> print(metrics["accuracy"])
 """
 
 import torch
@@ -15,7 +24,7 @@ import os
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # noqa: E402
 
 
 class LNNEvaluator:
@@ -62,7 +71,7 @@ class LNNEvaluator:
         """
         if not hasattr(self.model, "is_trained") or not self.model.is_trained:
             raise RuntimeError(
-                "模型评估失败：模型尚未完成训练。评估操作只能在模型训练完成后进行。可能原因：1) 训练流程尚未启动或未完成；2) 训练过程中出现中断。请先调用 POST /api/v1/lnn/models/train 完成模型训练，再进行评估。"
+                "模型评估失败：模型尚未完成训练。评估操作只能在模型训练完成后进行。可能原因：1) 训练流程尚未启动或未完成；2) 训练过程中出现中断。请先调用 POST /api/v1/lnn/models/train 完成模型训练，再进行评估。"  # noqa: E501
             )
 
         self.model.eval()
@@ -103,7 +112,7 @@ class LNNEvaluator:
             )
         else:
             raise ValueError(
-                f"评估指标计算失败：未知的任务类型 '{task_type}'。支持的任务类型包括：'classification'（分类任务）、'regression'（回归任务）。请检查评估配置中的 task_type 参数设置。"
+                f"评估指标计算失败：未知的任务类型 '{task_type}'。支持的任务类型包括：'classification'（分类任务）、'regression'（回归任务）。请检查评估配置中的 task_type 参数设置。"  # noqa: E501
             )
 
         results.update(
@@ -141,7 +150,7 @@ class LNNEvaluator:
             return self.compute_regression_metrics(y_true, y_pred, metrics)
         else:
             raise ValueError(
-                f"评估指标计算失败：未知的任务类型 '{task_type}'。支持的任务类型包括：'classification'（分类任务）、'regression'（回归任务）。请检查评估配置中的 task_type 参数设置。"
+                f"评估指标计算失败：未知的任务类型 '{task_type}'。支持的任务类型包括：'classification'（分类任务）、'regression'（回归任务）。请检查评估配置中的 task_type 参数设置。"  # noqa: E501
             )
 
     def compute_classification_metrics(
@@ -298,7 +307,7 @@ class LNNEvaluator:
             return float(np.average(precisions, weights=counts))
         else:
             raise ValueError(
-                f"评估指标计算失败：未知的平均方式 '{average}'。支持的平均方式包括：'micro'（微平均）、'macro'（宏平均）、'weighted'（加权平均）、'samples'（样本平均）、'binary'（二分类）。请检查评估配置中的 average 参数。"
+                f"评估指标计算失败：未知的平均方式 '{average}'。支持的平均方式包括：'micro'（微平均）、'macro'（宏平均）、'weighted'（加权平均）、'samples'（样本平均）、'binary'（二分类）。请检查评估配置中的 average 参数。"  # noqa: E501
             )
 
     @staticmethod
@@ -338,7 +347,7 @@ class LNNEvaluator:
             return float(np.average(recalls, weights=counts))
         else:
             raise ValueError(
-                f"评估指标计算失败：未知的平均方式 '{average}'。支持的平均方式包括：'micro'（微平均）、'macro'（宏平均）、'weighted'（加权平均）、'samples'（样本平均）、'binary'（二分类）。请检查评估配置中的 average 参数。"
+                f"评估指标计算失败：未知的平均方式 '{average}'。支持的平均方式包括：'micro'（微平均）、'macro'（宏平均）、'weighted'（加权平均）、'samples'（样本平均）、'binary'（二分类）。请检查评估配置中的 average 参数。"  # noqa: E501
             )
 
     @staticmethod
@@ -495,7 +504,7 @@ class LNNEvaluator:
 
         if first_layer_weight is None:
             raise ValueError(
-                "模型特征重要性分析失败：无法从模型中提取权重参数。可能原因：1) 模型尚未初始化或权重未加载；2) 模型架构不包含标准的权重层（如 Linear 层）；3) 模型使用自定义层且未暴露权重参数。请确认模型已完成训练并正确加载权重，或检查模型架构定义。"
+                "模型特征重要性分析失败：无法从模型中提取权重参数。可能原因：1) 模型尚未初始化或权重未加载；2) 模型架构不包含标准的权重层（如 Linear 层）；3) 模型使用自定义层且未暴露权重参数。请确认模型已完成训练并正确加载权重，或检查模型架构定义。"  # noqa: E501
             )
 
         importance_scores = np.mean(np.abs(first_layer_weight), axis=0)

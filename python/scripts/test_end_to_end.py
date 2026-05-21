@@ -6,7 +6,6 @@
 场景：加工45#钢泵体端盖（含6个孔：4×φ8mm通孔 + 2×φ5mm通孔 + 定位平面）
 """
 
-import json
 import sys
 import os
 
@@ -15,26 +14,25 @@ if sys.platform == "win32":
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.process_planning.hole_recognizer import (
+from app.process_planning.hole_recognizer import (  # noqa: E402
     HoleFeatureRecognizer,
     HoleRecognitionResult,
 )
-from app.process_planning.tool_param_matcher import (
+from app.process_planning.tool_param_matcher import (  # noqa: E402
     ToolParamMatcher,
     HoleProcessPlan,
 )
-from app.process_planning.operation_sequencer import (
+from app.process_planning.operation_sequencer import (  # noqa: E402
     OperationSequencer,
     OperationPlan,
 )
-from app.process_planning.gcode_generator import GCodeGenerator, GCodeResult
-from app.process_planning.pipeline import ProcessPlanningPipeline, PipelineResult
-from app.data.process_data_manager import ProcessPlanningDataManager
+from app.process_planning.gcode_generator import GCodeGenerator  # noqa: E402
+from app.process_planning.pipeline import ProcessPlanningPipeline  # noqa: E402
 
 PASS = "[OK]"
 FAIL = "[FAIL]"
@@ -328,7 +326,7 @@ def test_stage3_process_planning(
             all_ok = False
 
     # 显示全部工序
-    print(f"\n  完整工序列表:")
+    print("\n  完整工序列表:")
     print(f"  {'序号':<5} {'工序名称':<22} {'加工方法':<16} {'刀具':<18} {'工时':<8} {'备注'}")
     print(f"  {'-' * 5} {'-' * 22} {'-' * 16} {'-' * 18} {'-' * 8} {'-' * 20}")
     for op in plan.operations:
@@ -393,7 +391,7 @@ def test_stage4_gcode_generation(
             print(f"        -> {fail_msg}")
             all_ok = False
 
-    print(f"\n  --- G代码预览 (前40行) ---")
+    print("\n  --- G代码预览 (前40行) ---")
     for i, line in enumerate(code.split("\n")[:40], 1):
         print(f"  {i:3d}| {line}")
     if result.total_lines > 40:
@@ -437,7 +435,7 @@ def test_stage5_end_to_end_pipeline():
     # 检查最终结果
     if result.gcode_result:
         gc = result.gcode_result
-        print(f"\n  最终输出:")
+        print("\n  最终输出:")
         print(f"    G代码: {gc.total_lines}行 | "
               f"刀具{gc.tool_count}把 | "
               f"预估周期{gc.estimated_cycle_time_min}min")
@@ -544,7 +542,7 @@ def test_stage6_error_scenarios():
         )
         print(f"  {FAIL} 应抛出异常")
         all_ok = False
-    except ValueError as e:
+    except ValueError:
         print(f"  {PASS} 正确抛出 ValueError: 不支持的控制器类型")
 
     # 测试5: 大数据量 - 100个孔
@@ -625,12 +623,12 @@ def main() -> int:
 
     if passed == total:
         print(f"\n  {PASS} 全部测试通过！")
-        print(f"  > 孔特征识别准确率达到99%标准")
-        print(f"  > 知识库查询返回合理刀具和切削参数")
-        print(f"  > 工序规划遵循基准先行/先面后孔/先粗后精/同向集中原则")
-        print(f"  > G代码符合Fanuc 0i-MF语法规范，可直接用于加工")
-        print(f"  > 端到端流程实现从零件参数到可执行G代码的全自动化")
-        print(f"  > 错误处理机制完善，异常场景优雅处理")
+        print("  > 孔特征识别准确率达到99%标准")
+        print("  > 知识库查询返回合理刀具和切削参数")
+        print("  > 工序规划遵循基准先行/先面后孔/先粗后精/同向集中原则")
+        print("  > G代码符合Fanuc 0i-MF语法规范，可直接用于加工")
+        print("  > 端到端流程实现从零件参数到可执行G代码的全自动化")
+        print("  > 错误处理机制完善，异常场景优雅处理")
         return 0
     else:
         print(f"\n  {FAIL} 存在{total - passed}个失败测试")

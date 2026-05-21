@@ -6,19 +6,19 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 
 print("Importing app...")
-from app.main import app
+from app.main import app  # noqa: E402
 
 print(f"App has {len(app.routes)} routes")
 
 print("\nCreating TestClient...")
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient  # noqa: E402
 
 client = TestClient(app, raise_server_exceptions=False)
 print("TestClient ready")
 
 print("\nTest1: Train endpoint...")
-import time
-import json
+import time  # noqa: E402
+import json  # noqa: E402
 
 UNIWEAR_CSV = r"C:\Users\Lenovo\AppData\Local\Temp\uniwear.csv"
 token_path = Path(__file__).parent / ".lnn_token"

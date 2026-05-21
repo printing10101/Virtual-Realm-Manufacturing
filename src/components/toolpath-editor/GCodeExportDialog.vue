@@ -5,12 +5,27 @@
     width="700px"
     :close-on-click-modal="false"
   >
-    <el-form label-width="100px" size="default">
+    <el-form
+      label-width="100px"
+      size="default"
+    >
       <el-form-item label="控制器格式">
-        <el-select v-model="controller" style="width: 200px">
-          <el-option label="Fanuc 0i-MF" value="fanuc" />
-          <el-option label="Siemens 840D" value="siemens" />
-          <el-option label="Heidenhain TNC" value="heidenhain" />
+        <el-select
+          v-model="controller"
+          style="width: 200px"
+        >
+          <el-option
+            label="Fanuc 0i-MF"
+            value="fanuc"
+          />
+          <el-option
+            label="Siemens 840D"
+            value="siemens"
+          />
+          <el-option
+            label="Heidenhain TNC"
+            value="heidenhain"
+          />
         </el-select>
       </el-form-item>
       <el-form-item label="程序号">
@@ -24,7 +39,10 @@
       </el-form-item>
     </el-form>
 
-    <div v-if="validation && !validation.valid" class="validation-section">
+    <div
+      v-if="validation && !validation.valid"
+      class="validation-section"
+    >
       <el-alert
         v-for="(err, i) in validation.errors"
         :key="'e' + i"
@@ -36,7 +54,10 @@
       />
     </div>
 
-    <div v-if="validation && validation.warnings.length > 0" class="validation-section">
+    <div
+      v-if="validation && validation.warnings.length > 0"
+      class="validation-section"
+    >
       <el-alert
         v-for="(w, i) in validation.warnings"
         :key="'w' + i"
@@ -57,12 +78,20 @@
     />
 
     <template #footer>
-      <el-button @click="visible = false">关闭</el-button>
-      <el-button type="primary" @click="handleCopy">
+      <el-button @click="visible = false">
+        关闭
+      </el-button>
+      <el-button
+        type="primary"
+        @click="handleCopy"
+      >
         <el-icon><DocumentCopy /></el-icon>
         复制到剪贴板
       </el-button>
-      <el-button type="success" @click="handleDownload">
+      <el-button
+        type="success"
+        @click="handleDownload"
+      >
         <el-icon><Download /></el-icon>
         下载文件
       </el-button>

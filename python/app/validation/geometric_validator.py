@@ -467,11 +467,11 @@ class GeometricValidator:
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{ font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background:#f5f5f5; color:#333; }}
 .container {{ max-width:1200px; margin:0 auto; padding:20px; }}
-.header {{ background:linear-gradient(135deg,#1a237e,#283593); color:white; padding:30px; border-radius:12px; margin-bottom:24px; }}
+.header {{ background:linear-gradient(135deg,#1a237e,#283593); color:white; padding:30px; border-radius:12px; margin-bottom:24px; }}  # noqa: E501
 .header h1 {{ font-size:28px; margin-bottom:8px; }}
 .header .meta {{ opacity:0.85; font-size:14px; }}
-.overall {{ padding:20px; border-radius:12px; margin-bottom:24px; text-align:center; font-size:24px; font-weight:bold; color:white; background:{overall_color}; }}
-.card {{ background:white; border-radius:12px; padding:24px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); }}
+.overall {{ padding:20px; border-radius:12px; margin-bottom:24px; text-align:center; font-size:24px; font-weight:bold; color:white; background:{overall_color}; }}  # noqa: E501
+.card {{ background:white; border-radius:12px; padding:24px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); }}  # noqa: E501
 .card h2 {{ font-size:20px; margin-bottom:16px; color:#1a237e; border-bottom:2px solid #e8eaf6; padding-bottom:8px; }}
 .metrics-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }}
 .metric {{ background:#f5f5f5; padding:16px; border-radius:8px; text-align:center; }}
@@ -481,7 +481,7 @@ table {{ width:100%; border-collapse:collapse; }}
 th, td {{ padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0; font-size:14px; }}
 th {{ background:#f5f5f5; font-weight:600; color:#555; }}
 tr:hover {{ background:#fafafa; }}
-.warning {{ background:#fff3e0; border-left:4px solid #ff9800; padding:12px 16px; margin-bottom:8px; border-radius:0 8px 8px 0; font-size:14px; }}
+.warning {{ background:#fff3e0; border-left:4px solid #ff9800; padding:12px 16px; margin-bottom:8px; border-radius:0 8px 8px 0; font-size:14px; }}  # noqa: E501
 .footer {{ text-align:center; padding:20px; color:#999; font-size:12px; }}
 .pass {{ color:#4caf50; font-weight:bold; }}
 .fail {{ color:#f44336; font-weight:bold; }}
@@ -537,7 +537,7 @@ tr:hover {{ background:#fafafa; }}
 <h2>特征交并比 (IoU)</h2>
 <table>
 <tr><th>特征名称</th><th>IoU</th></tr>
-{"".join(f"<tr><td>{k}</td><td>{v:.4f}</td></tr>" for k, v in m.feature_iou.items()) or '<tr><td colspan="2">无数据</td></tr>'}
+{"".join(f"<tr><td>{k}</td><td>{v:.4f}</td></tr>" for k, v in m.feature_iou.items()) or '<tr><td colspan="2">无数据</td></tr>'}  # noqa: E501
 </table>
 </div>
 

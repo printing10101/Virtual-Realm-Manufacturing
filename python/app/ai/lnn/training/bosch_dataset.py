@@ -1,13 +1,22 @@
-"""
-Bosch数据集处理模块
+"""Bosch Dataset Processing Module.
 
-功能：
-- 数据加载：支持CSV/Excel格式的Bosch数据集
-- 数据清洗：缺失值处理、异常值检测与修正
-- 预处理：标准化、特征缩放、类别编码
-- 特征工程：时序特征提取、统计特征构造、交互特征
-- 数据分割：训练/验证/测试集划分
-- 数据增强：噪声注入、时间序列滑动窗口
+Provides comprehensive data loading, cleaning, preprocessing, and feature
+engineering for Bosch-format datasets (CSV/Excel). Supports missing value
+handling, outlier detection, standardization, temporal feature extraction,
+and data augmentation through noise injection and sliding windows.
+
+Key components:
+    - DatasetConfig: Configuration for dataset loading and processing.
+    - DataInfo: Dataset metadata (shape, missing values, data types).
+    - BoschDatasetProcessor: Full-featured dataset processor.
+
+Example:
+    >>> processor = BoschDatasetProcessor(
+    ...     dataset_path="data/bosch.csv",
+    ...     target_column="quality",
+    ...     task_type="classification",
+    ... )
+    >>> X_train, y_train = processor.load_and_prepare(split="train")
 """
 
 import logging
@@ -89,7 +98,7 @@ class BoschDatasetProcessor:
         path = Path(data_path)
         if not path.exists():
             raise FileNotFoundError(
-                f"Bosch 数据集加载失败：找不到数据文件 '{data_path}'。可能原因：1) 文件路径配置错误；2) Bosch 数据集未下载或已删除。请检查配置文件中的数据路径，或运行 Bosch 数据集下载脚本获取数据文件。"
+                f"Bosch 数据集加载失败：找不到数据文件 '{data_path}'。可能原因：1) 文件路径配置错误；2) Bosch 数据集未下载或已删除。请检查配置文件中的数据路径，或运行 Bosch 数据集下载脚本获取数据文件。"  # noqa: E501
             )
 
         suffix = path.suffix.lower()
@@ -101,7 +110,7 @@ class BoschDatasetProcessor:
             self.raw_data = pd.read_parquet(data_path)
         else:
             raise ValueError(
-                f"Bosch 数据集加载失败：不支持的文件格式 '{suffix}'。支持的文件格式包括：'.csv'（CSV 文本文件）、'.xls'/.xlsx（Excel 文件）、'.parquet'（Parquet 列式存储文件）。请将数据转换为支持的格式，或检查文件扩展名是否正确。"
+                f"Bosch 数据集加载失败：不支持的文件格式 '{suffix}'。支持的文件格式包括：'.csv'（CSV 文本文件）、'.xls'/.xlsx（Excel 文件）、'.parquet'（Parquet 列式存储文件）。请将数据转换为支持的格式，或检查文件扩展名是否正确。"  # noqa: E501
             )
 
         logger.info(f"Loaded data from {data_path}: {self.raw_data.shape}")

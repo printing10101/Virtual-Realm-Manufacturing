@@ -1,8 +1,20 @@
-"""
-Workflow LNN Orchestrator
+"""Workflow LNN Orchestrator.
 
 Implements LNN-enhanced workflow orchestration with fallback mechanisms,
-configuration management, and execution plan generation.
+configuration management, execution plan generation, and step-level
+timeout/retry handling. Coordinates the full inference pipeline from
+task input to fused results.
+
+Key components:
+    - WorkflowStepStatus: Step execution status enum.
+    - FallbackStrategy: Fallback strategy enum.
+    - WorkflowStep: Individual step definition with timeout and retry.
+    - WorkflowOrchestrator: Main workflow coordinator.
+
+Example:
+    >>> orchestrator = WorkflowOrchestrator(config_path="config.yaml")
+    >>> result = orchestrator.execute_workflow(task_input)
+    >>> print(result.confidence)
 """
 
 import os
@@ -39,7 +51,16 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowStepStatus(str, Enum):
-    """工作流步骤执行状态"""
+    """Workflow step execution status.
+
+    Attributes:
+        PENDING: Step has not been executed yet.
+        RUNNING: Step is currently executing.
+        COMPLETED: Step finished successfully.
+        FAILED: Step failed with an error.
+        SKIPPED: Step was intentionally skipped.
+        FALLBACK: Step used a fallback strategy after failure.
+    """
 
     PENDING = "pending"
     RUNNING = "running"
@@ -50,7 +71,14 @@ class WorkflowStepStatus(str, Enum):
 
 
 class FallbackStrategy(str, Enum):
-    """降级策略"""
+    """Fallback strategies for handling step failures.
+
+    Attributes:
+        RULE_ENGINE: Fall back to the rule-based engine.
+        DEFAULT_OUTPUT: Return a predefined default output.
+        CACHED_RESULT: Use a cached result from a previous run.
+        ERROR_RAISE: Propagate the error to the caller.
+    """
 
     RULE_ENGINE = "rule_engine"
     DEFAULT_OUTPUT = "default_output"
@@ -60,7 +88,28 @@ class FallbackStrategy(str, Enum):
 
 @dataclass
 class WorkflowStep:
-    """工作流步骤定义"""
+    """Individual workflow step definition.
+
+    Encapsulates all configuration needed to execute a single step within
+    the orchestration pipeline, including model selection, timeout, retry,
+    and failure handling.
+
+    Attributes:
+        name: Human-readable step name.
+        step_type: Step type (e.g., "lnn_inference", "preprocessing").
+        model_name: Model to use for inference (if applicable).
+        input_mapping: Mapping of input keys to step inputs.
+        output_key: Key to store the step output.
+        timeout_ms: Maximum execution time in milliseconds.
+        retry_count: Number of retries on failure.
+        on_failure: Action to take on failure.
+        status: Current execution status.
+        result: Execution result (if completed).
+        error: Error message (if failed).
+        execution_time_ms: Actual execution time.
+        started_at: Unix timestamp when step started.
+        completed_at: Unix timestamp when step finished.
+    """
 
     name: str
     step_type: str = "lnn_inference"
@@ -80,7 +129,19 @@ class WorkflowStep:
 
 @dataclass
 class WorkflowExecutionPlan:
-    """工作流执行计划"""
+    """Workflow execution plan with step ordering and configuration.
+
+    Defines the full pipeline from task input through preprocessing,
+    inference, fusion, and postprocessing. Tracks overall execution
+    state and timing.
+
+    Attributes:
+        workflow_id: Unique identifier for the plan.
+        steps: Ordered list of workflow steps.
+        fallback_strategy: Global fallback strategy.
+        created_at: Unix timestamp when plan was created.
+        status: Overall execution status.
+    """
 
     workflow_id: str
     steps: List[WorkflowStep]
@@ -495,7 +556,7 @@ class WorkflowLNNOrchestrator:
                     time.sleep(0.1 * (attempt + 1))
 
         raise RuntimeError(
-            f"工作流推理失败：已连续尝试 {max_retries} 次但全部失败。最后错误: {last_error}。可能原因：1) 模型推理服务不可用；2) 输入数据不符合模型要求；3) 系统资源不足。请检查推理日志，确认模型和输入数据状态后重试。"
+            f"工作流推理失败：已连续尝试 {max_retries} 次但全部失败。最后错误: {last_error}。可能原因：1) 模型推理服务不可用；2) 输入数据不符合模型要求；3) 系统资源不足。请检查推理日志，确认模型和输入数据状态后重试。"  # noqa: E501
         )
 
     def _execute_postprocessing_step(

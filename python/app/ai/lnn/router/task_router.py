@@ -1,8 +1,22 @@
-"""
-Task Router Module
+"""Task Router Module for Hybrid Engine Selection.
 
-Implements hybrid rule-based and machine learning decision algorithm for
-automatic optimal inference engine selection based on task characteristics.
+Implements a hybrid rule-based and machine learning decision algorithm for
+automatically selecting the optimal inference engine based on task characteristics.
+Uses keyword matching, feature extraction, and weighted scoring to route tasks
+to LNN, LLM, Rule, or Hybrid engines.
+
+Key components:
+    - TaskFeatures: Feature vector extracted from task input.
+    - ScoringModel: Lightweight weighted scoring model for engine suitability.
+    - TaskRouter: Main router combining rule-based and ML scoring.
+
+Example:
+    >>> from app.ai.lnn.core import TaskInput
+    >>> router = TaskRouter(rule_weight=0.4, ml_weight=0.6)
+    >>> task = TaskInput(task_description="Predict tool wear trend", input_data=[1,2,3])
+    >>> decision = router.route(task)
+    >>> decision.selected_engine
+    EngineType.LNN
 """
 
 import json
@@ -22,18 +36,24 @@ from app.ai.lnn.core import (
 
 @dataclass
 class TaskFeatures:
-    """任务特征向量"""
+    """Feature vector extracted from task input for routing decisions.
 
-    complexity_score: float = 0.0
-    computation_intensity: float = 0.0
-    logic_depth: float = 0.0
-    time_sensitivity: float = 0.0
-    data_structure_ratio: float = 0.0
-    precision_requirement: float = 0.0
-    input_size: float = 0.0
-    has_temporal_component: bool = False
-    has_multimodal_input: bool = False
-    requires_explainability: bool = False
+    Contains normalized scores (0.0-1.0) and boolean flags that characterize
+    the task's complexity, timing requirements, data modality, and other
+    attributes relevant to engine selection.
+
+    Attributes:
+        complexity_score: Task complexity based on description length (0.0-1.0).
+        computation_intensity: Estimated computational resource needs (0.0-1.0).
+        logic_depth: Depth of logical conditions in the task (0.0-1.0).
+        time_sensitivity: How time-critical the task is (0.0-1.0).
+        data_structure_ratio: Proportion of structured data indicators (0.0-1.0).
+        precision_requirement: Required prediction accuracy (0.0-1.0).
+        input_size: Estimated size of input data.
+        has_temporal_component: Whether the task involves time-series data.
+        has_multimodal_input: Whether the task combines multiple data modalities.
+        requires_explainability: Whether the task needs explanation of results.
+    """
 
 
 class ScoringModel:
@@ -137,7 +157,7 @@ class ScoringModel:
         path = Path(config_path)
         if not path.exists():
             raise FileNotFoundError(
-                f"任务路由配置失败：找不到权重配置文件 '{config_path}'。可能原因：1) 配置文件路径错误；2) 配置文件尚未创建。请检查路由配置中的路径设置，或创建新的权重配置文件（JSON/YAML 格式）。"
+                f"任务路由配置失败：找不到权重配置文件 '{config_path}'。可能原因：1) 配置文件路径错误；2) 配置文件尚未创建。请检查路由配置中的路径设置，或创建新的权重配置文件（JSON/YAML 格式）。"  # noqa: E501
             )
 
         with open(path, "r", encoding="utf-8") as f:
@@ -147,12 +167,12 @@ class ScoringModel:
                 raw = json.load(f)
             else:
                 raise ValueError(
-                    f"任务路由配置失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请将配置转换为支持的格式，或检查文件扩展名是否正确。"
+                    f"任务路由配置失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请将配置转换为支持的格式，或检查文件扩展名是否正确。"  # noqa: E501
                 )
 
         if "weights" not in raw:
             raise KeyError(
-                '任务路由配置解析失败：配置文件中缺少必需的 \'weights\' 字段。\'weights\' 字段定义各引擎（LNN、规则引擎、ML 模型）的权重分配，格式为 {"lnn": 0.6, "rule": 0.3, "ml": 0.1}。请检查并补充配置文件。'
+                '任务路由配置解析失败：配置文件中缺少必需的 \'weights\' 字段。\'weights\' 字段定义各引擎（LNN、规则引擎、ML 模型）的权重分配，格式为 {"lnn": 0.6, "rule": 0.3, "ml": 0.1}。请检查并补充配置文件。'  # noqa: E501
             )
 
         weights: Dict[str, Dict[EngineType, float]] = {}
@@ -216,7 +236,7 @@ class ScoringModel:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             else:
                 raise ValueError(
-                    f"任务路由配置保存失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请更改文件扩展名为支持的格式后重试。"
+                    f"任务路由配置保存失败：不支持的配置文件格式 '{path.suffix}'。支持的配置文件格式包括：'.json'（JSON 格式）、'.yaml'/.yml（YAML 格式）。请更改文件扩展名为支持的格式后重试。"  # noqa: E501
                 )
 
     def predict_scores(self, features: TaskFeatures) -> Dict[EngineType, float]:

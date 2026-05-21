@@ -28,13 +28,13 @@ try:
 except ImportError:
     HAS_TORCH = False
 
-from app.ai.lnn.quantization.quantizer import (
+from app.ai.lnn.quantization.quantizer import (  # noqa: E402
     Quantizer,
     QuantizationConfig,
     QuantizationResult,
     QuantizationType,
 )
-from app.ai.lnn.inference.registry import (
+from app.ai.lnn.inference.registry import (  # noqa: E402
     is_quantized_model,
     get_base_model_name,
     get_quantized_model_name,

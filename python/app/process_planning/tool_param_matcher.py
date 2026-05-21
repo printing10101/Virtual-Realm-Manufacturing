@@ -36,6 +36,12 @@ class MatchedTool:
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the matched tool result to a dictionary representation.
+
+        Returns:
+            A dictionary containing tool details, suitability score, match
+            reason, warnings, and cutting parameters (if available).
+        """
         result: dict[str, Any] = {
             "tool_id": self.tool.id,
             "tool_name": self.tool.name,
@@ -81,6 +87,12 @@ class HoleProcessPlan:
     estimated_time_min: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the process plan to a dictionary representation.
+
+        Returns:
+            A dictionary containing hole ID, type, operations list,
+            matched tools, and estimated time.
+        """
         return {
             "hole_id": self.hole_id,
             "hole_type": self.hole_type,
@@ -474,8 +486,8 @@ class ToolParamMatcher:
 
         if params is None:
             warnings.append(
-                f"该组合暂无切削参数数据，请根据实际工况设定"
-                f"切削速度和进给量"
+                "该组合暂无切削参数数据，请根据实际工况设定"
+                "切削速度和进给量"
             )
 
         return warnings

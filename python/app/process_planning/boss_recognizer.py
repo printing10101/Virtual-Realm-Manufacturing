@@ -1,14 +1,15 @@
-"""凸台特征识别模块。
+"""Boss feature recognition module.
 
-从DXF解析数据中识别凸台特征，包括圆形凸台、矩形凸台和阶梯凸台。
-解析流程支持同心圆形模式的阶梯凸台检测。
+Recognizes boss features (protruding features) from DXF parsing data,
+including circular bosses, rectangular bosses, and stepped bosses.
+Supports detection of coaxial circular patterns and merges them into stepped bosses.
 
-识别流程：
-1. 遍历输入轮廓/图元，区分圆形和矩形轮廓
-2. 对每个凸台轮廓提取尺寸：直径/边长、高度、位置
-3. 检测同心圆形模式，合并为阶梯凸台
-4. 提取公差等级等工艺属性
-5. 输出统一格式的BossFeature列表
+Recognition workflow:
+1. Iterate through input contours/entities, distinguish circular and rectangular profiles
+2. Extract dimensions for each boss: diameter/side length, height, position
+3. Detect coaxial circular patterns and merge into stepped bosses
+4. Extract tolerance grades and other manufacturing attributes
+5. Output a unified list of BossFeature objects
 """
 
 from __future__ import annotations
@@ -21,6 +22,15 @@ from app.core.error_taxonomy import ErrorCategory, ManufacturingError
 
 @dataclass
 class BossStep:
+    """A single step/layer in a stepped boss feature.
+
+    Attributes:
+        step_index: Step number (1-based).
+        diameter: Step diameter (mm).
+        height: Step height (mm).
+        position_z: Z position of the step (mm).
+        tolerance_grade: Tolerance grade, e.g. 'H8'.
+    """
     step_index: int
     diameter: float
     height: float
@@ -30,6 +40,24 @@ class BossStep:
 
 @dataclass
 class BossFeature:
+    """A single boss feature with complete geometric information.
+
+    Attributes:
+        boss_id: Unique identifier for the boss, e.g. 'B001'.
+        type: Boss type - circular_boss/rectangular_boss/stepped_boss.
+        diameter: Boss diameter (mm), for circular and stepped types.
+        side_length: Side length (mm), for rectangular type.
+        height: Boss height (mm).
+        center_x: Center X coordinate (mm) in world coordinates.
+        center_y: Center Y coordinate (mm) in world coordinates.
+        center_z: Center Z coordinate (mm) in world coordinates.
+        tolerance_grade: Tolerance grade, e.g. 'H8'.
+        surface_roughness_ra: Surface roughness Ra value (um).
+        surface: Machining surface identifier 'A'/'B'/'C' etc.
+        steps: Step list for stepped bosses.
+        metadata: Additional metadata dictionary.
+    """
+
     boss_id: str
     type: str
     diameter: float = 0.0
@@ -45,15 +73,39 @@ class BossFeature:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_circular(self) -> bool:
+        """Check whether the boss is circular.
+
+        Returns:
+            True if the boss type is 'circular_boss'.
+        """
         return self.type == "circular_boss"
 
     def is_rectangular(self) -> bool:
+        """Check whether the boss is rectangular.
+
+        Returns:
+            True if the boss type is 'rectangular_boss'.
+        """
         return self.type == "rectangular_boss"
 
     def is_stepped(self) -> bool:
+        """Check whether the boss is a stepped boss.
+
+        Returns:
+            True if the boss type is 'stepped_boss'.
+        """
         return self.type == "stepped_boss"
 
     def effective_diameter(self) -> float:
+        """Get the effective diameter of the boss.
+
+        For circular bosses, returns the diameter directly.
+        For stepped bosses, returns the diameter of the first step.
+        For other types, returns the diameter attribute.
+
+        Returns:
+            Effective diameter in mm.
+        """
         if self.is_circular():
             return self.diameter
         if self.is_stepped() and self.steps:
@@ -61,6 +113,12 @@ class BossFeature:
         return self.diameter
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the boss feature to a dictionary representation.
+
+        Returns:
+            A dictionary containing all relevant boss properties suitable
+            for serialization, including dimensions, steps, and tolerances.
+        """
         return {
             "boss_id": self.boss_id,
             "type": self.type,
@@ -118,6 +176,16 @@ class BossFeature:
 
 @dataclass
 class BossRecognitionResult:
+    """Complete result of boss feature recognition.
+
+    Attributes:
+        bosses: List of recognized boss features.
+        total_count: Total number of bosses.
+        type_summary: Count summary by boss type {type: count}.
+        warnings: Warning messages from the recognition process.
+        errors: Error messages from the recognition process.
+        accuracy_metrics: Recognition accuracy metrics.
+    """
     bosses: list[BossFeature] = field(default_factory=list)
     total_count: int = 0
     type_summary: dict[str, int] = field(default_factory=dict)
@@ -126,6 +194,12 @@ class BossRecognitionResult:
     accuracy_metrics: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the recognition result to a dictionary representation.
+
+        Returns:
+            A dictionary containing total count, type summary, all boss details,
+            warnings, errors, and accuracy metrics.
+        """
         return {
             "total_count": self.total_count,
             "type_summary": self.type_summary,
@@ -137,11 +211,26 @@ class BossRecognitionResult:
 
     @property
     def is_reliable(self) -> bool:
+        """Check whether the recognition result meets the reliability threshold.
+
+        Returns:
+            True if there are no errors and the overall accuracy rate is >= 99%.
+        """
         rate = self.accuracy_metrics.get("overall", 0.0)
         return len(self.errors) == 0 and rate >= 0.99
 
 
 class BossRecognizer:
+    """Boss feature recognizer.
+
+    Recognizes boss features from part description data, including
+    circular, rectangular, and stepped bosses.
+
+    Attributes:
+        MIN_BOSS_DIAMETER: Minimum recognizable boss diameter (mm).
+        MIN_BOSS_HEIGHT: Minimum recognizable boss height (mm).
+        COAXIAL_THRESHOLD: Threshold for coaxial determination (mm).
+    """
     MIN_BOSS_DIAMETER = 1.0
     MIN_BOSS_HEIGHT = 0.1
     COAXIAL_THRESHOLD = 0.05
@@ -150,6 +239,18 @@ class BossRecognizer:
         self,
         part_description: dict[str, Any],
     ) -> BossRecognitionResult:
+        """Recognize boss features from a part description dictionary.
+
+        Args:
+            part_description: Part description dictionary containing 'bosses',
+                'features', or 'contours' fields.
+
+        Returns:
+            BossRecognitionResult with all recognized boss features.
+
+        Raises:
+            ManufacturingError: If the part description is empty or None.
+        """
         if not part_description:
             raise ManufacturingError(
                 category=ErrorCategory.BOSS_RECOGNITION_FAILED,
@@ -204,7 +305,7 @@ class BossRecognizer:
                         "id": fig_id,
                         "type": boss_type,
                         "position": contour.get("center", contour.get("position", {})),
-                        "diameter": contour.get("diameter", contour.get("radius", 0) * 2 if contour.get("radius") else 0),
+                        "diameter": contour.get("diameter", contour.get("radius", 0) * 2 if contour.get("radius") else 0),  # noqa: E501
                         "side_length": contour.get("side_length", contour.get("length", 0)),
                         "height": contour.get("height", contour.get("z_height", 0)),
                     })
@@ -308,6 +409,14 @@ class BossRecognizer:
         )
 
     def _is_boss_contour(self, contour: dict[str, Any]) -> bool:
+        """Check whether a contour represents a boss feature.
+
+        Args:
+            contour: Contour dictionary with 'shape' or 'type' fields.
+
+        Returns:
+            True if the contour shape matches a known boss type.
+        """
         shape = contour.get("shape", contour.get("type", ""))
         return shape in ("circle", "circular_boss", "rectangle", "rectangular_boss", "boss")
 
@@ -316,6 +425,20 @@ class BossRecognizer:
         bosses: list[BossFeature],
         warnings: list[str],
     ) -> list[BossFeature]:
+        """Merge coaxial bosses into stepped bosses.
+
+        Detection logic:
+        - Two bosses at the same XY position (within COAXIAL_THRESHOLD)
+        - Larger diameter on top, smaller on bottom
+        - Automatically merged into a stepped_boss type
+
+        Args:
+            bosses: Original list of boss features.
+            warnings: Warning list to append merge notifications.
+
+        Returns:
+            Merged list of boss features.
+        """
         if len(bosses) < 2:
             return bosses
 
@@ -386,6 +509,24 @@ class BossRecognizer:
         result: BossRecognitionResult,
         expected_count: int | None = None,
     ) -> dict[str, Any]:
+        """Validate the boss recognition result.
+
+        Checks include:
+        1. Boss count matches expected (if provided)
+        2. All circular boss diameters are positive
+        3. All boss heights are positive
+        4. Position coordinates are valid (no NaN/Infinity)
+        5. Stepped bosses have at least 2 steps
+        6. No unhandled errors from recognition
+
+        Args:
+            result: Recognition result to validate.
+            expected_count: Expected total number of bosses (optional).
+
+        Returns:
+            Validation report dictionary with 'is_valid', 'issues', and
+            'passed_checks' keys.
+        """
         issues: list[str] = []
         passed: list[str] = []
 

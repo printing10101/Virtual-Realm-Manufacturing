@@ -25,7 +25,7 @@ print(f"Python path: {sys.path[0]}")
 print("=" * 60)
 
 # 运行基准测试
-from app.ai.lnn.tests.benchmark_lnn import LNNAccelerationBenchmark
+from app.ai.lnn.tests.benchmark_lnn import LNNAccelerationBenchmark  # noqa: E402
 
 if __name__ == "__main__":
     import logging

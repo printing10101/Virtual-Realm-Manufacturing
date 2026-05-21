@@ -1,7 +1,13 @@
 <template>
   <div class="goals-page">
-    <el-tabs v-model="activeTab" type="border-card">
-      <el-tab-pane label="目标树" name="tree">
+    <el-tabs
+      v-model="activeTab"
+      type="border-card"
+    >
+      <el-tab-pane
+        label="目标树"
+        name="tree"
+      >
         <GoalTreeView
           :tree-data="goalTree"
           :loading="treeLoading"
@@ -9,23 +15,35 @@
           @refresh="loadGoalTree"
         />
       </el-tab-pane>
-      <el-tab-pane label="目标详情" name="detail">
+      <el-tab-pane
+        label="目标详情"
+        name="detail"
+      >
         <GoalDetail
           v-if="selectedGoalId"
           :goal-id="selectedGoalId"
           :loading="detailLoading"
           @refresh="loadGoalTree"
         />
-        <el-empty v-else description="请从目标树中选择一个目标查看详情" />
+        <el-empty
+          v-else
+          description="请从目标树中选择一个目标查看详情"
+        />
       </el-tab-pane>
-      <el-tab-pane label="创建任务" name="create-task">
+      <el-tab-pane
+        label="创建任务"
+        name="create-task"
+      >
         <TaskWizard
           :goals="allGoals"
           :loading="taskCreating"
           @created="onTaskCreated"
         />
       </el-tab-pane>
-      <el-tab-pane label="对齐检查" name="alignment">
+      <el-tab-pane
+        label="对齐检查"
+        name="alignment"
+      >
         <AlignmentChecker
           :summary="alignmentSummary"
           :loading="scanLoading"

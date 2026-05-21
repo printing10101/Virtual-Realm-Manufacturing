@@ -15,8 +15,7 @@ from datetime import datetime, timezone
 from threading import Lock
 from typing import Any, Callable, Dict, List, Optional
 
-from sqlalchemy import select, update, delete, func
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import select
 
 from app.core.task_manager import TaskStatus, TaskType
 from app.database.models import TrainingTask, TaskStatusEnum
@@ -24,7 +23,6 @@ from app.database.connection import get_sessionmaker
 from app.services.redis_client import (
     save_task_progress,
     get_task_progress,
-    delete_task_progress,
     set_cancel_flag,
     clear_cancel_flag,
 )

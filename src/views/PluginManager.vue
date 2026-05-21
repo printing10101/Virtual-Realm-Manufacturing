@@ -4,7 +4,10 @@
       <div class="header-content">
         <h2>插件管理</h2>
         <div class="actions">
-          <el-button type="primary" @click="refreshPlugins">
+          <el-button
+            type="primary"
+            @click="refreshPlugins"
+          >
             <el-icon><Refresh /></el-icon> 刷新
           </el-button>
           <el-input
@@ -21,99 +24,307 @@
       </div>
     </el-card>
 
-    <el-row :gutter="16" class="stats-row">
+    <el-row
+      :gutter="16"
+      class="stats-row"
+    >
       <el-col :span="6">
         <el-card class="stat-card">
-          <div class="stat-value">{{ plugins.length }}</div>
-          <div class="stat-label">总计</div>
+          <div class="stat-value">
+            {{ plugins.length }}
+          </div>
+          <div class="stat-label">
+            总计
+          </div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card class="stat-card enabled">
-          <div class="stat-value">{{ enabledPlugins.length }}</div>
-          <div class="stat-label">已启用</div>
+          <div class="stat-value">
+            {{ enabledPlugins.length }}
+          </div>
+          <div class="stat-label">
+            已启用
+          </div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card class="stat-card disabled">
-          <div class="stat-value">{{ disabledPlugins.length }}</div>
-          <div class="stat-label">已停用</div>
+          <div class="stat-value">
+            {{ disabledPlugins.length }}
+          </div>
+          <div class="stat-label">
+            已停用
+          </div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card class="stat-card error">
-          <div class="stat-value">{{ errorPlugins.length }}</div>
-          <div class="stat-label">异常</div>
+          <div class="stat-value">
+            {{ errorPlugins.length }}
+          </div>
+          <div class="stat-label">
+            异常
+          </div>
         </el-card>
       </el-col>
     </el-row>
 
     <el-card class="plugins-card">
       <el-tabs v-model="activeTab">
-        <el-tab-pane label="全部" name="all">
-          <el-table :data="filteredPlugins" stripe>
-            <el-table-column prop="id" label="ID" width="150" />
-            <el-table-column prop="name" label="名称" width="150" />
-            <el-table-column prop="version" label="版本" width="80" />
-            <el-table-column prop="plugin_type" label="类型" width="100">
+        <el-tab-pane
+          label="全部"
+          name="all"
+        >
+          <el-table
+            :data="filteredPlugins"
+            stripe
+          >
+            <el-table-column
+              prop="id"
+              label="ID"
+              width="150"
+            />
+            <el-table-column
+              prop="name"
+              label="名称"
+              width="150"
+            />
+            <el-table-column
+              prop="version"
+              label="版本"
+              width="80"
+            />
+            <el-table-column
+              prop="plugin_type"
+              label="类型"
+              width="100"
+            >
               <template #default="{ row }">
-                <el-tag size="small">{{ row.plugin_type }}</el-tag>
+                <el-tag size="small">
+                  {{ row.plugin_type }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="status" label="状态" width="100">
+            <el-table-column
+              prop="status"
+              label="状态"
+              width="100"
+            >
               <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)" size="small">{{ row.status }}</el-tag>
+                <el-tag
+                  :type="getStatusType(row.status)"
+                  size="small"
+                >
+                  {{ row.status }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-            <el-table-column label="操作" width="200" fixed="right">
+            <el-table-column
+              prop="description"
+              label="描述"
+              min-width="200"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              label="操作"
+              width="200"
+              fixed="right"
+            >
               <template #default="{ row }">
-                <el-button size="small" @click="handleDetail(row.id)">详情</el-button>
-                <el-button v-if="row.status === 'enabled'" size="small" type="warning" @click="handleDisable(row.id)">停用</el-button>
-                <el-button v-else size="small" type="success" @click="handleEnable(row.id)">启用</el-button>
-                <el-button size="small" type="danger" @click="handleUninstall(row.id)">卸载</el-button>
+                <el-button
+                  size="small"
+                  @click="handleDetail(row.id)"
+                >
+                  详情
+                </el-button>
+                <el-button
+                  v-if="row.status === 'enabled'"
+                  size="small"
+                  type="warning"
+                  @click="handleDisable(row.id)"
+                >
+                  停用
+                </el-button>
+                <el-button
+                  v-else
+                  size="small"
+                  type="success"
+                  @click="handleEnable(row.id)"
+                >
+                  启用
+                </el-button>
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click="handleUninstall(row.id)"
+                >
+                  卸载
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
-        <el-tab-pane label="适配器" name="adapter">
-          <el-table :data="adapterPlugins" stripe>
-            <el-table-column prop="id" label="ID" width="150" />
-            <el-table-column prop="name" label="名称" width="150" />
-            <el-table-column prop="version" label="版本" width="80" />
-            <el-table-column prop="status" label="状态" width="100">
+        <el-tab-pane
+          label="适配器"
+          name="adapter"
+        >
+          <el-table
+            :data="adapterPlugins"
+            stripe
+          >
+            <el-table-column
+              prop="id"
+              label="ID"
+              width="150"
+            />
+            <el-table-column
+              prop="name"
+              label="名称"
+              width="150"
+            />
+            <el-table-column
+              prop="version"
+              label="版本"
+              width="80"
+            />
+            <el-table-column
+              prop="status"
+              label="状态"
+              width="100"
+            >
               <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)" size="small">{{ row.status }}</el-tag>
+                <el-tag
+                  :type="getStatusType(row.status)"
+                  size="small"
+                >
+                  {{ row.status }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-            <el-table-column label="操作" width="200" fixed="right">
+            <el-table-column
+              prop="description"
+              label="描述"
+              min-width="200"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              label="操作"
+              width="200"
+              fixed="right"
+            >
               <template #default="{ row }">
-                <el-button size="small" @click="handleDetail(row.id)">详情</el-button>
-                <el-button v-if="row.status === 'enabled'" size="small" type="warning" @click="handleDisable(row.id)">停用</el-button>
-                <el-button v-else size="small" type="success" @click="handleEnable(row.id)">启用</el-button>
-                <el-button size="small" type="danger" @click="handleUninstall(row.id)">卸载</el-button>
+                <el-button
+                  size="small"
+                  @click="handleDetail(row.id)"
+                >
+                  详情
+                </el-button>
+                <el-button
+                  v-if="row.status === 'enabled'"
+                  size="small"
+                  type="warning"
+                  @click="handleDisable(row.id)"
+                >
+                  停用
+                </el-button>
+                <el-button
+                  v-else
+                  size="small"
+                  type="success"
+                  @click="handleEnable(row.id)"
+                >
+                  启用
+                </el-button>
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click="handleUninstall(row.id)"
+                >
+                  卸载
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
-        <el-tab-pane label="数据源" name="data_source">
-          <el-table :data="dataSourcePlugins" stripe>
-            <el-table-column prop="id" label="ID" width="150" />
-            <el-table-column prop="name" label="名称" width="150" />
-            <el-table-column prop="version" label="版本" width="80" />
-            <el-table-column prop="status" label="状态" width="100">
+        <el-tab-pane
+          label="数据源"
+          name="data_source"
+        >
+          <el-table
+            :data="dataSourcePlugins"
+            stripe
+          >
+            <el-table-column
+              prop="id"
+              label="ID"
+              width="150"
+            />
+            <el-table-column
+              prop="name"
+              label="名称"
+              width="150"
+            />
+            <el-table-column
+              prop="version"
+              label="版本"
+              width="80"
+            />
+            <el-table-column
+              prop="status"
+              label="状态"
+              width="100"
+            >
               <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)" size="small">{{ row.status }}</el-tag>
+                <el-tag
+                  :type="getStatusType(row.status)"
+                  size="small"
+                >
+                  {{ row.status }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-            <el-table-column label="操作" width="200" fixed="right">
+            <el-table-column
+              prop="description"
+              label="描述"
+              min-width="200"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              label="操作"
+              width="200"
+              fixed="right"
+            >
               <template #default="{ row }">
-                <el-button size="small" @click="handleDetail(row.id)">详情</el-button>
-                <el-button v-if="row.status === 'enabled'" size="small" type="warning" @click="handleDisable(row.id)">停用</el-button>
-                <el-button v-else size="small" type="success" @click="handleEnable(row.id)">启用</el-button>
-                <el-button size="small" type="danger" @click="handleUninstall(row.id)">卸载</el-button>
+                <el-button
+                  size="small"
+                  @click="handleDetail(row.id)"
+                >
+                  详情
+                </el-button>
+                <el-button
+                  v-if="row.status === 'enabled'"
+                  size="small"
+                  type="warning"
+                  @click="handleDisable(row.id)"
+                >
+                  停用
+                </el-button>
+                <el-button
+                  v-else
+                  size="small"
+                  type="success"
+                  @click="handleEnable(row.id)"
+                >
+                  启用
+                </el-button>
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click="handleUninstall(row.id)"
+                >
+                  卸载
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -121,17 +332,39 @@
       </el-tabs>
     </el-card>
 
-    <el-dialog v-model="detailDialogVisible" :title="currentPlugin?.metadata?.name || '插件详情'" width="800px">
-      <div v-if="currentPlugin" class="plugin-detail">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="ID">{{ currentPlugin.metadata.id }}</el-descriptions-item>
-          <el-descriptions-item label="版本">{{ currentPlugin.metadata.version }}</el-descriptions-item>
-          <el-descriptions-item label="作者">{{ currentPlugin.metadata.author }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="statusType">{{ currentPlugin.metadata.status }}</el-tag>
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="currentPlugin?.metadata?.name || '插件详情'"
+      width="800px"
+    >
+      <div
+        v-if="currentPlugin"
+        class="plugin-detail"
+      >
+        <el-descriptions
+          :column="2"
+          border
+        >
+          <el-descriptions-item label="ID">
+            {{ currentPlugin.metadata.id }}
           </el-descriptions-item>
-          <el-descriptions-item label="类型">{{ currentPlugin.metadata.plugin_type }}</el-descriptions-item>
-          <el-descriptions-item label="兼容性">{{ currentPlugin.metadata.min_core_version }} - {{ currentPlugin.metadata.max_core_version }}</el-descriptions-item>
+          <el-descriptions-item label="版本">
+            {{ currentPlugin.metadata.version }}
+          </el-descriptions-item>
+          <el-descriptions-item label="作者">
+            {{ currentPlugin.metadata.author }}
+          </el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="statusType">
+              {{ currentPlugin.metadata.status }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="类型">
+            {{ currentPlugin.metadata.plugin_type }}
+          </el-descriptions-item>
+          <el-descriptions-item label="兼容性">
+            {{ currentPlugin.metadata.min_core_version }} - {{ currentPlugin.metadata.max_core_version }}
+          </el-descriptions-item>
         </el-descriptions>
 
         <div class="section">
@@ -141,27 +374,55 @@
 
         <div class="section">
           <h4>能力声明</h4>
-          <el-tag v-for="cap in currentPlugin.capabilities" :key="cap" style="margin-right: 5px; margin-bottom: 5px">{{ cap }}</el-tag>
+          <el-tag
+            v-for="cap in currentPlugin.capabilities"
+            :key="cap"
+            style="margin-right: 5px; margin-bottom: 5px"
+          >
+            {{ cap }}
+          </el-tag>
         </div>
 
         <div class="section">
           <h4>依赖关系</h4>
-          <DependencyTree v-if="currentPlugin.dependency_tree" :tree="currentPlugin.dependency_tree" />
+          <DependencyTree
+            v-if="currentPlugin.dependency_tree"
+            :tree="currentPlugin.dependency_tree"
+          />
         </div>
 
-        <div v-if="currentPlugin.worker" class="section">
+        <div
+          v-if="currentPlugin.worker"
+          class="section"
+        >
           <h4>Worker信息</h4>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="状态">{{ currentPlugin.worker.status }}</el-descriptions-item>
-            <el-descriptions-item label="PID">{{ currentPlugin.worker.pid }}</el-descriptions-item>
-            <el-descriptions-item label="端口">{{ currentPlugin.worker.port }}</el-descriptions-item>
-            <el-descriptions-item label="运行时长">{{ formatUptime(currentPlugin.worker.uptime) }}</el-descriptions-item>
+          <el-descriptions
+            :column="2"
+            border
+          >
+            <el-descriptions-item label="状态">
+              {{ currentPlugin.worker.status }}
+            </el-descriptions-item>
+            <el-descriptions-item label="PID">
+              {{ currentPlugin.worker.pid }}
+            </el-descriptions-item>
+            <el-descriptions-item label="端口">
+              {{ currentPlugin.worker.port }}
+            </el-descriptions-item>
+            <el-descriptions-item label="运行时长">
+              {{ formatUptime(currentPlugin.worker.uptime) }}
+            </el-descriptions-item>
           </el-descriptions>
         </div>
 
         <div class="section">
           <h4>配置</h4>
-          <el-input v-model="configJson" type="textarea" :rows="5" @blur="handleConfigChange" />
+          <el-input
+            v-model="configJson"
+            type="textarea"
+            :rows="5"
+            @blur="handleConfigChange"
+          />
         </div>
       </div>
     </el-dialog>
@@ -239,7 +500,8 @@ const handleUninstall = async (pluginId: string) => {
     })
     await pluginStore.uninstallPlugin(pluginId)
     ElMessage.success('插件已卸载')
-  } catch {
+  } catch (_e) {
+    // Silently ignore uninstall errors
   }
 }
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import logging.handlers
-import os
 import sys
 import threading
 import time as _time

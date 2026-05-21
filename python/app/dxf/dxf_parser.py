@@ -23,16 +23,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 import ezdxf
-from ezdxf.document import Drawing
-from ezdxf.entities import (
-    DXFGraphic,
-    Line as EzdxfLine,
-    Circle as EzdxfCircle,
-    Arc as EzdxfArc,
-    Text as EzdxfText,
-    MText as EzdxfMText,
-    Dimension as EzdxfDimension,
-)
 
 from app.dxf.exceptions import DxfParseError, DxfFormatError
 
@@ -343,12 +333,12 @@ class DxfParser:
                         start=(
                             float(entity.dxf.start.x),
                             float(entity.dxf.start.y),
-                            float(entity.dxf.start.z) if entity.dxf.hasattr("start") and hasattr(entity.dxf.start, 'z') else 0.0,
+                            float(entity.dxf.start.z) if entity.dxf.hasattr("start") and hasattr(entity.dxf.start, 'z') else 0.0,  # noqa: E501
                         ),
                         end=(
                             float(entity.dxf.end.x),
                             float(entity.dxf.end.y),
-                            float(entity.dxf.end.z) if entity.dxf.hasattr("end") and hasattr(entity.dxf.end, 'z') else 0.0,
+                            float(entity.dxf.end.z) if entity.dxf.hasattr("end") and hasattr(entity.dxf.end, 'z') else 0.0,  # noqa: E501
                         ),
                         layer=str(entity.dxf.layer),
                         color=self._safe_color(entity),
@@ -372,7 +362,7 @@ class DxfParser:
                         center=(
                             float(entity.dxf.center.x),
                             float(entity.dxf.center.y),
-                            float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, 'z') else 0.0,
+                            float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, 'z') else 0.0,  # noqa: E501
                         ),
                         radius=float(entity.dxf.radius),
                         layer=str(entity.dxf.layer),
@@ -398,7 +388,7 @@ class DxfParser:
                         center=(
                             float(entity.dxf.center.x),
                             float(entity.dxf.center.y),
-                            float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, 'z') else 0.0,
+                            float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, 'z') else 0.0,  # noqa: E501
                         ),
                         radius=float(entity.dxf.radius),
                         start_angle=float(entity.dxf.start_angle),

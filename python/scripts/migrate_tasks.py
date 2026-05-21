@@ -12,9 +12,8 @@ import logging
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.database.connection import DatabaseConfig, get_sessionmaker
-from app.database.models import Base, TrainingTask
-from sqlalchemy import text
+from app.database.connection import DatabaseConfig  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -78,7 +77,7 @@ async def run_migration():
         logger.info("  DB_URL=postgresql://lnn:lnn_password@localhost:5432/lnn_db python -m scripts.migrate_tasks")
         return 1
 
-    config = DatabaseConfig()
+    _config = DatabaseConfig()  # noqa: F841
     logger.info("Connecting to: %s", url)
 
     from app.database.connection import get_engine

@@ -13,17 +13,30 @@ export const useToolpathEditorStore = defineStore('toolpathEditor', () => {
   const selectedSegmentId = ref<string | null>(null)
   const hoveredSegmentId = ref<string | null>(null)
 
-  const history = new CommandHistory(50)
+  const history = new CommandHistory(1000)
   const undoCount = ref(0)
   const redoCount = ref(0)
   const canUndo = ref(false)
   const canRedo = ref(false)
+  const memoryWarning = ref<{ current: number; max: number; percentage: number } | null>(null)
+
+  history.on('memory-warning', (detail) => {
+    memoryWarning.value = detail
+  })
 
   function _syncHistoryState(): void {
     undoCount.value = history.getUndoCount()
     redoCount.value = history.getRedoCount()
     canUndo.value = history.canUndo()
     canRedo.value = history.canRedo()
+  }
+
+  function getMaxDepth(): number {
+    return history.maxDepth
+  }
+
+  function setMaxDepth(value: number): void {
+    history.maxDepth = value
   }
 
   const activeSegments = computed(() => segments.value.filter((s) => !s.isDeleted))
@@ -125,6 +138,7 @@ export const useToolpathEditorStore = defineStore('toolpathEditor', () => {
     canRedo,
     undoCount,
     redoCount,
+    memoryWarning,
     loadSegments,
     loadGCode,
     deleteSegment,
@@ -133,5 +147,7 @@ export const useToolpathEditorStore = defineStore('toolpathEditor', () => {
     redo,
     exportGCode,
     reset,
+    getMaxDepth,
+    setMaxDepth,
   }
 })

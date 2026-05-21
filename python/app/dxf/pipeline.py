@@ -38,7 +38,6 @@ from app.dxf.dxf_to_model import (
     DxfToModelConverter,
     ModelConversionResult,
 )
-from app.dxf.exceptions import DxfPipelineError
 from app.process_planning.pipeline import (
     ProcessPlanningPipeline,
     PipelineResult as ProcessPipelineResult,

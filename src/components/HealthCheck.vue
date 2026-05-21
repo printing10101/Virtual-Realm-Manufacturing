@@ -1,5 +1,9 @@
 <template>
-  <div class="health-check-panel" role="region" aria-label="系统健康检查">
+  <div
+    class="health-check-panel"
+    role="region"
+    aria-label="系统健康检查"
+  >
     <div class="health-status-bar">
       <div class="status-summary">
         <el-tag
@@ -8,7 +12,9 @@
           size="large"
           effect="dark"
         >
-          <el-icon class="is-loading"><Loading /></el-icon>
+          <el-icon class="is-loading">
+            <Loading />
+          </el-icon>
           检查中...
         </el-tag>
         <el-tag
@@ -38,18 +44,18 @@
       </div>
       <div class="status-actions">
         <el-button
-          @click="runAllChecks"
           :loading="checking"
           :icon="RefreshRight"
           type="primary"
           size="small"
+          @click="runAllChecks"
         >
           重新检查
         </el-button>
         <el-button
-          @click="copyDiagnostics"
           :disabled="checking || items.length === 0"
           size="small"
+          @click="copyDiagnostics"
         >
           <el-icon><CopyDocument /></el-icon>
           复制诊断信息
@@ -69,18 +75,33 @@
       >
         <div
           class="check-card-header"
-          @click="toggleExpand(item.id)"
-          @keydown.enter="toggleExpand(item.id)"
-          @keydown.space.prevent="toggleExpand(item.id)"
           tabindex="0"
           role="button"
           :aria-expanded="expandedId === item.id"
           :aria-label="'检查项: ' + item.name + ' - ' + statusLabel(item.status)"
+          @click="toggleExpand(item.id)"
+          @keydown.enter="toggleExpand(item.id)"
+          @keydown.space.prevent="toggleExpand(item.id)"
         >
           <div class="check-icon">
-            <el-icon v-if="item.status === 'ok'" class="status-ok-icon"><CircleCheckFilled /></el-icon>
-            <el-icon v-else-if="item.status === 'warning'" class="status-warn-icon"><WarningFilled /></el-icon>
-            <el-icon v-else class="status-err-icon"><CircleCloseFilled /></el-icon>
+            <el-icon
+              v-if="item.status === 'ok'"
+              class="status-ok-icon"
+            >
+              <CircleCheckFilled />
+            </el-icon>
+            <el-icon
+              v-else-if="item.status === 'warning'"
+              class="status-warn-icon"
+            >
+              <WarningFilled />
+            </el-icon>
+            <el-icon
+              v-else
+              class="status-err-icon"
+            >
+              <CircleCloseFilled />
+            </el-icon>
           </div>
           <div class="check-info">
             <span class="check-name">{{ item.name }}</span>
@@ -107,11 +128,17 @@
         </div>
 
         <el-collapse-transition>
-          <div v-show="expandedId === item.id" class="check-card-body">
+          <div
+            v-show="expandedId === item.id"
+            class="check-card-body"
+          >
             <div class="check-details">
               <pre class="detail-text">{{ item.details }}</pre>
             </div>
-            <div v-if="item.status !== 'ok' && item.fix_description" class="check-fix">
+            <div
+              v-if="item.status !== 'ok' && item.fix_description"
+              class="check-fix"
+            >
               <el-alert
                 :title="item.fix_auto ? '可尝试自动修复' : '需要手动操作'"
                 :type="item.status === 'error' ? 'error' : 'warning'"
@@ -131,8 +158,8 @@
                   </el-button>
                   <el-button
                     size="small"
-                    @click.stop="retrySingleCheck(item.id)"
                     :loading="singleCheckingId === item.id"
+                    @click.stop="retrySingleCheck(item.id)"
                   >
                     重新检查此项
                   </el-button>

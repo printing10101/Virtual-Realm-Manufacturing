@@ -1,6 +1,7 @@
-"""定位基准选择器。
+"""Datum selection module.
 
-基于6点定位原理（3-2-1原则）实现定位基准面选择与验证。
+Implements datum feature selection and validation based on the 6-point
+locating principle (3-2-1 rule).
 """
 
 from __future__ import annotations
@@ -13,6 +14,15 @@ from app.process_planning.feature_dependency import MachiningFeature
 
 @dataclass
 class DatumCandidate:
+    """A candidate feature for use as a locating datum.
+
+    Attributes:
+        feature: The underlying machining feature.
+        area: Feature area in mm².
+        accuracy_score: Score based on tolerance grade (0-100).
+        stability_score: Score based on geometric stability (0-100).
+        accessibility_score: Score based on tool accessibility (0-100).
+    """
     feature: MachiningFeature
     area: float
     accuracy_score: float
@@ -20,6 +30,14 @@ class DatumCandidate:
     accessibility_score: float
 
     def total_score(self) -> float:
+        """Calculate the weighted total score for datum suitability.
+
+        Weights: accuracy (35%), stability (30%), accessibility (20%),
+        and area (15%).
+
+        Returns:
+            Weighted total score (0-100).
+        """
         return (
             self.accuracy_score * 0.35
             + self.stability_score * 0.30
@@ -30,6 +48,17 @@ class DatumCandidate:
 
 @dataclass
 class DatumSelection:
+    """Complete datum selection result following the 3-2-1 principle.
+
+    Attributes:
+        primary_datum: Primary datum candidate (constrains 3 DOF).
+        secondary_datum: Secondary datum candidate (constrains 2 DOF).
+        tertiary_datum: Tertiary datum candidate (constrains 1 DOF).
+        locating_method: Locating method description.
+        total_score: Overall selection score.
+        degrees_constrained: Total degrees of freedom constrained.
+        reasoning: List of reasoning strings explaining the selection.
+    """
     primary_datum: DatumCandidate | None = None
     secondary_datum: DatumCandidate | None = None
     tertiary_datum: DatumCandidate | None = None
@@ -39,6 +68,12 @@ class DatumSelection:
     reasoning: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the datum selection to a dictionary representation.
+
+        Returns:
+            A dictionary containing selected datums, locating method,
+            total score, degrees constrained, and reasoning.
+        """
         return {
             "primary_datum": self.primary_datum.feature.name
             if self.primary_datum
@@ -57,6 +92,12 @@ class DatumSelection:
 
 
 class DatumSelector:
+    """Datum selector that chooses optimal locating features.
+
+    Scores candidate features based on accuracy, stability, accessibility,
+    and area, then selects primary/secondary/tertiary datums following
+    the 3-2-1 locating principle. Supports both shaft and prismatic parts.
+    """
     def select_datums(
         self,
         features: list[MachiningFeature],

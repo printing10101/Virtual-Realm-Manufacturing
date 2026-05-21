@@ -1,6 +1,26 @@
-"""
-切削参数数据模型
-定义切削加工参数、验证结果和LNN预测结果的数据类
+"""Cutting Parameter Data Models.
+
+Defines Pydantic models for cutting process parameters, validation results,
+and LNN prediction outputs. Used by the LNN engine to generate and validate
+machining parameter recommendations.
+
+Key components:
+    - ParameterSource: Enum for the source of parameters (LNN, LLM, Hybrid, Rule).
+    - CuttingParameters: Validated cutting parameters with range checks.
+    - ValidationResult: Validation outcome with issues and warnings.
+    - LNNPredictionResult: LNN prediction with confidence and metadata.
+
+Example:
+    >>> params = CuttingParameters(
+    ...     cutting_speed=150.0,
+    ...     feed_rate=0.2,
+    ...     depth_of_cut=2.0,
+    ...     spindle_speed=1200.0,
+    ...     material="45钢",
+    ...     source=ParameterSource.LNN,
+    ... )
+    >>> params.cutting_speed
+    150.0
 """
 
 from enum import Enum
@@ -41,7 +61,7 @@ class CuttingParameters(BaseModel):
     def validate_feed_rate(cls, v):
         if not (0.05 <= v <= 1.0):
             raise ValueError(
-                f"切削参数验证失败：进给量（feed_rate）必须在 [0.05, 1.0] mm/r 有效区间内，当前输入值: {v} mm/r。超出此范围可能导致模型预测不准确。请调整进给量参数至有效范围，或参考切削工艺手册确认合理参数。"
+                f"切削参数验证失败：进给量（feed_rate）必须在 [0.05, 1.0] mm/r 有效区间内，当前输入值: {v} mm/r。超出此范围可能导致模型预测不准确。请调整进给量参数至有效范围，或参考切削工艺手册确认合理参数。"  # noqa: E501
             )
         return v
 

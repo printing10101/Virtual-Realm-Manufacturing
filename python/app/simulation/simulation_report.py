@@ -1,6 +1,17 @@
-"""仿真结果报告生成器。
+"""Simulation result report generator.
 
-汇总碰撞检测结果和可视化输出，生成结构化的仿真报告。
+Aggregates collision detection results and visualization outputs into
+structured simulation reports. Supports both JSON serialization and
+human-readable text summary generation.
+
+Example:
+    >>> report = SimulationReport.from_validation(
+    ...     segments=parsed_segments,
+    ...     collision_report=collision_report,
+    ...     visualization_path="output/viz.png",
+    ... )
+    >>> report.save_json("output/report.json")
+    >>> print(generate_summary_text(report))
 """
 
 from __future__ import annotations
@@ -17,6 +28,24 @@ from app.simulation.toolpath_parser import ToolpathSegment
 
 @dataclass
 class SimulationReport:
+    """Complete simulation report containing all validation results.
+
+    Consolidates toolpath statistics, collision analysis, and visualization
+    output paths into a single reportable structure.
+
+    Attributes:
+        timestamp: ISO 8601 timestamp of report generation.
+        total_segments: Total number of toolpath segments processed.
+        rapid_segments: Number of G00 rapid move segments.
+        linear_segments: Number of G01 linear interpolation segments.
+        arc_segments: Number of G02/G03 circular interpolation segments.
+        dwell_segments: Number of G04 dwell segments.
+        collision_report: Detailed collision detection results.
+        visualization_path: File path to the toolpath visualization image.
+        duration_seconds: Total simulation execution time.
+        part_name: Name of the machined part.
+    """
+
     timestamp: str
     total_segments: int
     rapid_segments: int
@@ -29,6 +58,11 @@ class SimulationReport:
     part_name: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the report to a dictionary for serialization.
+
+        Returns:
+            Dictionary with all report fields and a PASS/FAIL status.
+        """
         return {
             "timestamp": self.timestamp,
             "total_segments": self.total_segments,
@@ -44,6 +78,16 @@ class SimulationReport:
         }
 
     def save_json(self, output_path: str) -> str:
+        """Save the report as a JSON file.
+
+        Creates parent directories if they do not exist.
+
+        Args:
+            output_path: Destination file path for the JSON report.
+
+        Returns:
+            The absolute path of the saved JSON file.
+        """
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
         with open(out, "w", encoding="utf-8") as f:
@@ -58,7 +102,21 @@ class SimulationReport:
         visualization_path: str = "",
         duration_seconds: float = 0.0,
         part_name: str = "",
-    ) -> SimulationReport:
+    ) -> "SimulationReport":
+        """Create a report from toolpath segments and collision results.
+
+        Automatically counts segment types and generates a UTC timestamp.
+
+        Args:
+            segments: List of parsed toolpath segments.
+            collision_report: Collision detection results.
+            visualization_path: Path to the visualization output file.
+            duration_seconds: Simulation execution time in seconds.
+            part_name: Name of the machined part.
+
+        Returns:
+            A populated SimulationReport instance.
+        """
         return cls(
             timestamp=datetime.now(timezone.utc).isoformat(),
             total_segments=len(segments),
@@ -74,24 +132,35 @@ class SimulationReport:
 
 
 def generate_summary_text(report: SimulationReport) -> str:
+    """Generate a human-readable text summary of the simulation report.
+
+    Produces a formatted text report including part name, timing,
+    segment statistics, safety status, and detailed collision information.
+
+    Args:
+        report: The simulation report to summarize.
+
+    Returns:
+        Formatted text summary string suitable for console output or logs.
+    """
     cr = report.collision_report
-    status = "✓ 安全" if cr.safe else "✗ 检测到碰撞"
+    status = "Safe" if cr.safe else "Collision detected"
     lines = [
         "=" * 60,
-        f"  NC刀具路径仿真报告 - {report.part_name or '未命名'}",
+        f"  NC Toolpath Simulation Report - {report.part_name or 'Unnamed'}",
         "=" * 60,
-        f"  生成时间: {report.timestamp}",
-        f"  仿真耗时: {report.duration_seconds:.2f}s",
+        f"  Generated: {report.timestamp}",
+        f"  Simulation time: {report.duration_seconds:.2f}s",
         "",
-        "  运动段统计:",
-        f"    总计: {report.total_segments}",
-        f"    G00快速: {report.rapid_segments}",
-        f"    G01直线: {report.linear_segments}",
-        f"    G02/G03圆弧: {report.arc_segments}",
-        f"    G04暂停: {report.dwell_segments}",
+        "  Segment statistics:",
+        f"    Total: {report.total_segments}",
+        f"    G00 Rapid: {report.rapid_segments}",
+        f"    G01 Linear: {report.linear_segments}",
+        f"    G02/G03 Arc: {report.arc_segments}",
+        f"    G04 Dwell: {report.dwell_segments}",
         "",
-        f"  安全状态: {status}",
-        f"  碰撞事件: {len(cr.collisions)}",
+        f"  Safety status: {status}",
+        f"  Collision events: {len(cr.collisions)}",
     ]
 
     for c in cr.collisions:
@@ -102,7 +171,7 @@ def generate_summary_text(report: SimulationReport) -> str:
 
     if cr.warnings:
         lines.append("")
-        lines.append("  边界警告:")
+        lines.append("  Boundary warnings:")
         for w in cr.warnings:
             lines.append(f"    - {w}")
 

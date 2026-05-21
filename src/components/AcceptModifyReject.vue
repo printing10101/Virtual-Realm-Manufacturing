@@ -2,14 +2,24 @@
   <div class="accept-modify-reject">
     <div class="decision-header">
       <span class="title">AI建议操作</span>
-      <span v-if="showTimestamp" class="timestamp">{{ formatTimestamp(timestamp) }}</span>
+      <span
+        v-if="showTimestamp"
+        class="timestamp"
+      >{{ formatTimestamp(timestamp) }}</span>
     </div>
 
-    <div v-if="aiRecommendation" class="recommendation-card">
+    <div
+      v-if="aiRecommendation"
+      class="recommendation-card"
+    >
       <div class="card-header">
         <el-icon><Promotion /></el-icon>
         <span class="card-title">AI推荐</span>
-        <el-tag v-if="confidence !== null" :type="getConfidenceType(confidence)" size="small">
+        <el-tag
+          v-if="confidence !== null"
+          :type="getConfidenceTagType(confidence)"
+          size="small"
+        >
           置信度: {{ (confidence * 100).toFixed(0) }}%
         </el-tag>
       </div>
@@ -20,7 +30,10 @@
       </div>
     </div>
 
-    <div v-if="reasoning" class="reasoning-card">
+    <div
+      v-if="reasoning"
+      class="reasoning-card"
+    >
       <div class="card-header">
         <el-icon><ChatDotRound /></el-icon>
         <span class="card-title">推理过程</span>
@@ -30,12 +43,18 @@
       </div>
     </div>
 
-    <div v-if="showAlternatives && alternatives && alternatives.length > 0" class="alternatives-section">
+    <div
+      v-if="showAlternatives && alternatives && alternatives.length > 0"
+      class="alternatives-section"
+    >
       <div class="section-header">
         <el-icon><Grid /></el-icon>
         <span class="section-title">备选方案</span>
       </div>
-      <el-radio-group v-model="selectedAlternative" class="alternatives-list">
+      <el-radio-group
+        v-model="selectedAlternative"
+        class="alternatives-list"
+      >
         <el-card
           v-for="alt in alternatives"
           :key="alt.plan_id"
@@ -44,12 +63,18 @@
           @click="selectedAlternative = alt.plan_id"
         >
           <div class="alternative-header">
-            <el-tag :type="getConfidenceType(alt.confidence)" size="small">
+            <el-tag
+              :type="getConfidenceTagType(alt.confidence)"
+              size="small"
+            >
               {{ (alt.confidence * 100).toFixed(0) }}%
             </el-tag>
             <span class="alternative-title">{{ alt.expected_outcome }}</span>
           </div>
-          <div class="alternative-reasoning" v-if="showReasoning">
+          <div
+            v-if="showReasoning"
+            class="alternative-reasoning"
+          >
             {{ alt.reasoning }}
           </div>
         </el-card>
@@ -60,8 +85,8 @@
       <el-button
         type="success"
         size="large"
-        @click="handleAccept"
         :icon="Check"
+        @click="handleAccept"
       >
         接受
       </el-button>
@@ -69,16 +94,16 @@
         v-if="allowModify"
         type="warning"
         size="large"
-        @click="handleModify"
         :icon="Edit"
+        @click="handleModify"
       >
         修改
       </el-button>
       <el-button
         type="danger"
         size="large"
-        @click="handleReject"
         :icon="Close"
+        @click="handleReject"
       >
         拒绝
       </el-button>
@@ -90,14 +115,21 @@
       size="50%"
     >
       <div class="modify-content">
-        <slot name="modify-form" :recommendation="aiRecommendation">
+        <slot
+          name="modify-form"
+          :recommendation="aiRecommendation"
+        >
           <el-alert
             title="您可以在此修改AI推荐的参数"
             type="info"
             :closable="false"
             show-icon
           />
-          <el-form :model="modifiedParams" label-width="120px" style="margin-top: 16px;">
+          <el-form
+            :model="modifiedParams"
+            label-width="120px"
+            style="margin-top: 16px;"
+          >
             <el-form-item
               v-for="(value, key) in aiRecommendation"
               :key="key"
@@ -123,8 +155,15 @@
       </div>
       <template #footer>
         <div class="drawer-footer">
-          <el-button @click="modifyDrawerVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmModify">确认修改</el-button>
+          <el-button @click="modifyDrawerVisible = false">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            @click="confirmModify"
+          >
+            确认修改
+          </el-button>
         </div>
       </template>
     </el-drawer>
@@ -134,6 +173,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Promotion, ChatDotRound, Grid, Check, Edit, Close } from '@element-plus/icons-vue'
+import { getConfidenceTagType } from '@/utils/statusHelpers'
+import { formatTimestamp } from '@/utils/formatters'
 
 interface AlternativePlan {
   plan_id: string
@@ -176,18 +217,8 @@ const selectedAlternative = ref<string | null>(null)
 const modifyDrawerVisible = ref(false)
 const modifiedParams = ref<Record<string, any>>({})
 
-function formatTimestamp(ts: number): string {
-  return new Date(ts).toLocaleString('zh-CN')
-}
-
 function formatRecommendation(rec: Record<string, any>): string {
   return JSON.stringify(rec, null, 2)
-}
-
-function getConfidenceType(conf: number): 'success' | 'warning' | 'danger' {
-  if (conf >= 0.8) return 'success'
-  if (conf >= 0.5) return 'warning'
-  return 'danger'
 }
 
 function handleAccept() {

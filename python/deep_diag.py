@@ -33,7 +33,7 @@ except Exception as e:
 
 # Test 4: Simple train with very short timeout and raw response
 print("\n4. Train endpoint test (raw socket approach)...")
-import socket
+import socket  # noqa: E402
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.settimeout(5)

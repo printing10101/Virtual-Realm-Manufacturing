@@ -4,20 +4,21 @@
 测试所有 RESTful 端点的正确性
 """
 
-import pytest
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
-import tempfile
-import os
-from pathlib import Path
-import sys
 import json
+import os
+import sys
+import tempfile
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.database.rule_db import RuleDatabase
-import app.rules.api as rules_api
-import app.database.rule_db as rule_db_module
+import pytest  # noqa: E402
+from fastapi import FastAPI  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+import app.database.rule_db as rule_db_module  # noqa: E402
+import app.rules.api as rules_api  # noqa: E402
+from app.database.rule_db import RuleDatabase  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

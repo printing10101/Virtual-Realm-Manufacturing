@@ -1,41 +1,70 @@
 <template>
   <Teleport to="body">
     <Transition name="dialog-fade">
-      <div v-if="visible" class="conflict-overlay" @click.self="handleClose">
+      <div
+        v-if="visible"
+        class="conflict-overlay"
+        @click.self="handleClose"
+      >
         <div class="conflict-dialog">
-          <div class="dialog-header" :class="severityClass">
+          <div
+            class="dialog-header"
+            :class="severityClass"
+          >
             <div class="header-icon">
-              <el-icon :size="24"><WarningFilled /></el-icon>
+              <el-icon :size="24">
+                <WarningFilled />
+              </el-icon>
             </div>
             <h3>{{ dialogData.title }}</h3>
           </div>
 
           <div class="dialog-body">
             <div class="error-code">
-              <el-tag :type="severityTag" size="small">{{ dialogData.severity }}</el-tag>
+              <el-tag
+                :type="severityTag"
+                size="small"
+              >
+                {{ dialogData.severity }}
+              </el-tag>
               <span class="code-text">{{ dialogData.code }}</span>
             </div>
 
             <div class="message-section">
-              <p class="error-message">{{ dialogData.message }}</p>
+              <p class="error-message">
+                {{ dialogData.message }}
+              </p>
             </div>
 
-            <div v-if="dialogData.detail" class="detail-section">
+            <div
+              v-if="dialogData.detail"
+              class="detail-section"
+            >
               <h4>详细说明</h4>
               <p>{{ dialogData.detail }}</p>
             </div>
 
-            <div v-if="dialogData.suggestion" class="suggestion-section">
+            <div
+              v-if="dialogData.suggestion"
+              class="suggestion-section"
+            >
               <h4>
                 <el-icon><Opportunity /></el-icon>
                 解决方案建议
               </h4>
-              <p class="suggestion-text">{{ dialogData.suggestion }}</p>
+              <p class="suggestion-text">
+                {{ dialogData.suggestion }}
+              </p>
             </div>
           </div>
 
           <div class="dialog-footer">
-            <el-button type="primary" @click="handleClose">我知道了</el-button>
+            <el-button
+              type="primary"
+              @click="handleClose"
+            >
+              我知道了
+            </el-button>
           </div>
         </div>
       </div>

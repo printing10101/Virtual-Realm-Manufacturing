@@ -1,7 +1,19 @@
-"""仿真API接口。
+"""Simulation API endpoints for voxel-based machining simulation.
 
-提供体素化切削仿真的异步执行端点。
-支持大模型文件仿真计算的异步处理。
+Provides asynchronous execution endpoints for voxel cutting simulation,
+supporting large-file simulation computation with background task processing.
+Clients can submit simulation requests with tool parameters, G-code, and
+stock geometry, then poll for results via task ID.
+
+Configuration sourced from app.config.SimulationConfig:
+    _MAX_STORE_SIZE: Maximum number of in-memory cached results.
+    _MAX_STORE_AGE_SECONDS: Maximum validity period for cached results.
+
+Example:
+    POST /api/simulation/run - Synchronous simulation execution.
+    POST /api/simulation/run/async - Asynchronous simulation submission.
+    GET /api/simulation/status/{task_id} - Query task status and results.
+    GET /api/simulation/output/{filename} - Download STL output file.
 """
 
 from __future__ import annotations
@@ -17,6 +29,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from app.config import config
 from app.core.response import success, error, ErrorCode
 from app.core.error_taxonomy import (
     ManufacturingError,
@@ -33,15 +46,20 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/simulation", tags=["Simulation"])
 
-OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output" / "simulation"
+OUTPUT_DIR = Path(config.storage.output_dir) / "simulation"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 _in_memory_store: dict[str, VoxelSimulationResult] = {}
-_MAX_STORE_SIZE = 500
-_MAX_STORE_AGE_SECONDS = 86400
+_MAX_STORE_SIZE = config.simulation.max_store_size
+_MAX_STORE_AGE_SECONDS = config.simulation.max_store_age_seconds
 
 
 def _cleanup_store() -> None:
+    """Remove expired and excess entries from the in-memory result store.
+
+    Evicts the oldest results when the store exceeds _MAX_STORE_SIZE,
+    and removes entries older than _MAX_STORE_AGE_SECONDS.
+    """
     now = time.time()
     if len(_in_memory_store) > _MAX_STORE_SIZE:
         sorted_entries = sorted(
@@ -61,56 +79,95 @@ def _cleanup_store() -> None:
 
 
 class SimulationRequest(BaseModel):
+    """Request model for voxel cutting simulation.
+
+    Contains all parameters needed to run a machining simulation including
+    project identification, tool geometry, G-code toolpath, and stock model.
+
+    Attributes:
+        project_id: Project identifier for associating simulation jobs.
+        voxel_size: Voxel resolution in mm (0.1-10.0). Smaller = higher accuracy.
+        tool_diameter: Tool diameter in mm (0.5-300.0).
+        tool_length: Tool cutting length in mm (1.0-500.0).
+        tool_type: Tool type - "flat" (flat end mill), "ball" (ball nose), "drill".
+        tool_corner_radius: Tool corner radius in mm (0.0-150.0).
+        gcode: G-code text content for toolpath parsing.
+        safe_z_height: Safe plane height in mm (0.0-200.0).
+        stock_stl_path: Path to stock STL file (relative or absolute).
+        source_file_path: Source file path (STEP/DXF) for auto-regeneration if STL is missing.
+    """
+
     project_id: str = Field(
         default="default",
-        description="工程ID，用于关联当前工程项目",
+        description="Project ID for associating simulation jobs.",
     )
     voxel_size: float = Field(
         default=1.0,
         ge=0.1,
         le=10.0,
-        description="体素分辨率(mm)，值越小精度越高",
+        description="Voxel resolution in mm. Smaller values yield higher accuracy.",
     )
     tool_diameter: float = Field(
         default=10.0,
         ge=0.5,
         le=300.0,
-        description="刀具直径(mm)",
+        description="Tool diameter in mm.",
     )
     tool_length: float = Field(
         default=50.0,
         ge=1.0,
         le=500.0,
-        description="刀具刃长(mm)",
+        description="Tool cutting length in mm.",
     )
     tool_type: str = Field(
         default="flat",
         pattern="^(flat|ball|drill)$",
-        description="刀具类型: flat(平底刀), ball(球头刀), drill(钻头)",
+        description="Tool type: flat (flat end mill), ball (ball nose), drill.",
     )
     tool_corner_radius: float = Field(
         default=0.0,
         ge=0.0,
         le=150.0,
-        description="刀尖圆角半径(mm)",
+        description="Tool corner radius in mm.",
     )
     gcode: str = Field(
         default="",
-        description="G代码文本内容，用于刀轨解析",
+        description="G-code text content for toolpath parsing.",
     )
     safe_z_height: float = Field(
         default=10.0,
         ge=0.0,
         le=200.0,
-        description="安全平面高度(mm)",
+        description="Safe plane height in mm.",
     )
     stock_stl_path: str = Field(
         default="",
-        description="毛坯STL文件路径(服务端相对或绝对路径)",
+        description="Path to stock STL file (server-relative or absolute).",
+    )
+    source_file_path: str = Field(
+        default="",
+        description="Source file path (STEP/DXF) for auto-regeneration when STL is missing.",
     )
 
 
 class SimulationResponse(BaseModel):
+    """Response model containing voxel simulation results.
+
+    Attributes:
+        task_id: Unique simulation task identifier.
+        stock_stl_url: URL path to the machined workpiece STL file.
+        collision_collided: Whether any collision was detected.
+        collision_positions: List of [x, y, z] collision coordinates.
+        collision_segment_indices: Indices of toolpath segments with collisions.
+        collision_severity: Collision severity level ("none"/"warning"/"critical").
+        duration_seconds: Total simulation time in seconds.
+        voxel_count: Total number of voxels in the stock model.
+        removed_voxel_count: Number of voxels removed during simulation.
+        voxel_size: Voxel resolution used (mm).
+        original_bbox: Original stock bounding box dimensions.
+        toolpath_segment_count: Number of toolpath segments processed.
+    """
+
     task_id: str = ""
     stock_stl_url: str = ""
     collision_collided: bool = False
@@ -125,7 +182,15 @@ class SimulationResponse(BaseModel):
     toolpath_segment_count: int = 0
 
     @classmethod
-    def from_result(cls, r: VoxelSimulationResult) -> SimulationResponse:
+    def from_result(cls, r: VoxelSimulationResult) -> "SimulationResponse":
+        """Create a SimulationResponse from a VoxelSimulationResult.
+
+        Args:
+            r: The voxel simulation result to convert.
+
+        Returns:
+            A SimulationResponse populated with result data.
+        """
         return cls(
             task_id=r.task_id,
             stock_stl_url=r.stock_stl_url,
@@ -143,6 +208,15 @@ class SimulationResponse(BaseModel):
 
 
 class SimulationStatusResponse(BaseModel):
+    """Response model for simulation task status queries.
+
+    Attributes:
+        task_id: The simulation task identifier.
+        status: Current task status ("pending"/"running"/"completed").
+        progress: Task completion progress (0.0-1.0).
+        result: Simulation result data, available only when completed.
+    """
+
     task_id: str = ""
     status: str = "pending"
     progress: float = 0.0
@@ -153,18 +227,21 @@ def _run_simulation(
     task_id: str,
     request: SimulationRequest,
 ) -> VoxelSimulationResult:
-    """执行体素化切削仿真(同步，供后台任务调用)。
+    """Execute voxel cutting simulation synchronously for background task use.
+
+    Parses G-code into toolpath segments, constructs the tool model,
+    loads or generates the stock STL, and runs the voxel-based simulation.
 
     Args:
-        task_id: 任务ID
-        request: 仿真请求参数
+        task_id: Unique identifier for the simulation task.
+        request: Simulation request parameters.
 
     Returns:
-        VoxelSimulationResult
+        VoxelSimulationResult containing the machined model and collision data.
     """
     tool = ToolModel(
         diameter=request.tool_diameter,
-        length=request.tool_length,
+        cutting_length=request.tool_length,
         tool_type=request.tool_type,
         corner_radius=request.tool_corner_radius,
     )
@@ -178,6 +255,17 @@ def _run_simulation(
         Path(request.stock_stl_path) if request.stock_stl_path else _default_stock_stl()
     )
 
+    source_file_paths: list[Path] | None = None
+    if request.source_file_path:
+        source_path = Path(request.source_file_path)
+        if source_path.exists():
+            source_file_paths = [source_path]
+        else:
+            logger.warning(
+                "[Auto-generate STL] Specified source file does not exist: %s",
+                source_path,
+            )
+
     cutter = VoxelCutter(voxel_size=request.voxel_size)
     result = cutter.run_simulation(
         stock_stl_path=stock_stl_path,
@@ -186,6 +274,7 @@ def _run_simulation(
         output_dir=OUTPUT_DIR,
         safe_z_height=request.safe_z_height,
         task_id=task_id,
+        source_file_paths=source_file_paths,
     )
 
     _in_memory_store[task_id] = result
@@ -194,7 +283,19 @@ def _run_simulation(
 
 
 def _build_response_data(result: VoxelSimulationResult) -> dict:
-    """构建符合规范的API响应数据结构。"""
+    """Build a structured API response dict from simulation results.
+
+    Restructures the raw simulation result into the format expected by
+    the API response schema, including collision details and simulation
+    metrics.
+
+    Args:
+        result: The completed voxel simulation result.
+
+    Returns:
+        Dictionary formatted for API response with simulation_result,
+        collision_details, and metadata sections.
+    """
     base = SimulationResponse.from_result(result).model_dump()
     collision_positions = base.pop("collision_positions")
     collision_segment_indices = base.pop("collision_segment_indices")
@@ -220,10 +321,13 @@ def _build_response_data(result: VoxelSimulationResult) -> dict:
 
 
 def _default_stock_stl() -> Path:
-    """生成默认长方体毛坯STL文件。
+    """Generate a default rectangular stock STL file.
+
+    Creates a 150x100x40mm box if trimesh is available; otherwise
+    returns an empty placeholder file.
 
     Returns:
-        默认STL文件路径
+        Path to the generated default STL file.
     """
     try:
         import trimesh
@@ -248,21 +352,52 @@ async def run_simulation(
     background_tasks: BackgroundTasks,
     request: SimulationRequest,
 ) -> dict:
-    """运行体素化切削仿真。
+    """Run voxel cutting simulation synchronously.
 
-    接受工程ID、刀具参数、G代码等输入，异步执行仿真计算。
-    返回仿真任务ID、切削后STL URL、碰撞检测结果。
+    Accepts project ID, tool parameters, G-code input, and stock geometry.
+    Executes the simulation in a background thread and returns the complete
+    result including machined STL URL and collision detection data.
 
     Args:
-        background_tasks: FastAPI后台任务管理器
-        request: 仿真请求参数
+        background_tasks: FastAPI background task manager.
+        request: Simulation request parameters.
 
     Returns:
-        标准API响应，data中包含仿真结果
+        Standard API response with simulation result data.
+
+    Raises:
+        MemoryError: If simulation exceeds available memory.
     """
     import uuid
 
     task_id = f"sim_{uuid.uuid4().hex[:12]}"
+
+    if request.stock_stl_path:
+        stl_path = Path(request.stock_stl_path)
+        if not stl_path.exists():
+            source_path = (
+                Path(request.source_file_path)
+                if request.source_file_path
+                else None
+            )
+            if source_path is not None and not source_path.exists():
+                logger.error(
+                    "[Auto-generate STL] Both STL and source file not found: STL=%s, source=%s",
+                    stl_path,
+                    source_path,
+                )
+                return error(
+                    code=ErrorCode.FILE_NOT_FOUND,
+                    message="STL file and source file both not found.",
+                    detail={
+                        "stl_path": str(stl_path),
+                        "source_file_path": str(source_path),
+                        "error_type": "STL_FILE_MISSING",
+                    },
+                    suggestion="Please generate the stock STL via STEP/DXF import first.",
+                    severity="error",
+                    recoverable=True,
+                )
 
     try:
         start = time.perf_counter()
@@ -280,13 +415,13 @@ async def run_simulation(
         response_data = _build_response_data(result)
         return success(
             data=response_data,
-            message="仿真计算完成",
+            message="Simulation completed.",
         )
     except MemoryError:
         logger.exception("Simulation %s failed: memory error", task_id)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message="仿真计算内存不足，请增大体素尺寸或简化模型",
+            message="Insufficient memory. Increase voxel size or simplify the model.",
             detail={"task_id": task_id},
             recoverable=True,
         )
@@ -294,7 +429,7 @@ async def run_simulation(
         logger.exception("Simulation %s failed: %s", task_id, exc)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"仿真计算异常: {str(exc)}",
+            message=f"Simulation error: {str(exc)}",
             detail={"task_id": task_id, "error_type": type(exc).__name__},
             recoverable=True,
         )
@@ -305,17 +440,18 @@ async def run_simulation_async(
     background_tasks: BackgroundTasks,
     request: SimulationRequest,
 ) -> dict:
-    """异步启动体素化切削仿真任务。
+    """Start voxel cutting simulation asynchronously.
 
-    立即返回任务ID，仿真在后台执行。
-    通过 /api/simulation/status/{task_id} 查询进度和结果。
+    Returns immediately with a task ID. The simulation runs in the
+    background. Poll /api/simulation/status/{task_id} for progress
+    and results.
 
     Args:
-        background_tasks: FastAPI后台任务管理器
-        request: 仿真请求参数
+        background_tasks: FastAPI background task manager.
+        request: Simulation request parameters.
 
     Returns:
-        标准API响应，data中包含task_id
+        Standard API response with task_id and initial status.
     """
     import uuid
 
@@ -333,19 +469,19 @@ async def run_simulation_async(
 
     return success(
         data={"task_id": task_id, "status": "pending"},
-        message="仿真任务已提交，使用 /api/simulation/status/{task_id} 查询进度",
+        message="Simulation task submitted. Query /api/simulation/status/{task_id} for progress.",
     )
 
 
 @router.get("/status/{task_id}")
 async def get_simulation_status(task_id: str) -> dict:
-    """查询仿真任务状态和结果。
+    """Query simulation task status and results.
 
     Args:
-        task_id: 仿真任务ID
+        task_id: The simulation task identifier.
 
     Returns:
-        任务状态、进度和结果数据
+        Standard API response with task status, progress, and result data.
     """
     result = _in_memory_store.get(task_id)
 
@@ -357,7 +493,7 @@ async def get_simulation_status(task_id: str) -> dict:
                 "progress": 0.0,
                 "result": None,
             },
-            message="任务不存在或已过期",
+            message="Task not found or expired.",
         )
 
     is_complete = result.duration_seconds > 0 or result.voxel_count > 0
@@ -378,17 +514,20 @@ async def get_simulation_status(task_id: str) -> dict:
 
 @router.get("/output/{filename}")
 async def get_simulation_output(filename: str) -> Response:
-    """获取仿真输出的STL文件。
+    """Serve simulation output STL file.
 
     Args:
-        filename: STL文件名
+        filename: The STL filename to serve.
 
     Returns:
-        STL二进制数据流
+        Binary STL file stream for download.
+
+    Raises:
+        HTTPException: 404 if the STL file does not exist.
     """
     file_path = OUTPUT_DIR / filename
     if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="STL文件不存在")
+        raise HTTPException(status_code=404, detail="STL file not found.")
 
     return Response(
         content=file_path.read_bytes(),
@@ -402,17 +541,17 @@ async def get_simulation_output(filename: str) -> Response:
 
 @router.get("/history")
 async def get_simulation_history(
-    project_id: Optional[str] = Query(default=None, description="工程ID过滤"),
-    limit: int = Query(default=50, ge=1, le=200, description="返回记录数上限"),
+    project_id: Optional[str] = Query(default=None, description="Filter by project ID."),
+    limit: int = Query(default=50, ge=1, le=200, description="Maximum number of records."),
 ) -> dict:
-    """查询仿真历史记录。
+    """Query simulation history records.
 
     Args:
-        project_id: 按工程ID过滤(可选)
-        limit: 最大返回记录数
+        project_id: Optional project ID filter.
+        limit: Maximum number of records to return.
 
     Returns:
-        仿真历史记录列表
+        List of simulation history records with metadata.
     """
     history = []
     for task_id, result in list(_in_memory_store.items())[:limit]:
@@ -437,13 +576,16 @@ async def get_simulation_history(
 
 @router.delete("/result/{task_id}")
 async def delete_simulation_result(task_id: str) -> dict:
-    """删除仿真结果。
+    """Delete a simulation result from cache and disk.
+
+    Removes the in-memory result entry and deletes the associated
+    STL output file if present.
 
     Args:
-        task_id: 仿真任务ID
+        task_id: The simulation task identifier to delete.
 
     Returns:
-        操作结果
+        Standard API response confirming deletion.
     """
     if task_id in _in_memory_store:
         del _in_memory_store[task_id]
@@ -452,34 +594,57 @@ async def delete_simulation_result(task_id: str) -> dict:
     if stl_file.exists():
         stl_file.unlink()
 
-    return success(message=f"仿真结果 {task_id} 已删除")
+    return success(message=f"Simulation result {task_id} deleted.")
 
 
 class ConflictCheckRequest(BaseModel):
+    """Request model for tool-slot compatibility check.
+
+    Attributes:
+        tool_diameter: Tool diameter in mm (0.5-300.0).
+        slot_width: Slot width in mm (0.1-500.0).
+        material: Workpiece material (e.g., "45 steel").
+        operation: Machining operation type (e.g., "slot milling").
+    """
+
     tool_diameter: float = Field(
         default=20.0,
         ge=0.5,
         le=300.0,
-        description="刀具直径(mm)",
+        description="Tool diameter in mm.",
     )
     slot_width: float = Field(
         default=10.0,
         ge=0.1,
         le=500.0,
-        description="槽宽(mm)",
+        description="Slot width in mm.",
     )
     material: str = Field(
-        default="45钢",
-        description="工件材料",
+        default="45 steel",
+        description="Workpiece material.",
     )
     operation: str = Field(
-        default="槽铣",
-        description="加工工序",
+        default="slot milling",
+        description="Machining operation type.",
     )
 
 
 @router.post("/check-conflict")
 async def check_tool_slot_conflict(request: ConflictCheckRequest) -> dict:
+    """Check tool-slot diameter compatibility.
+
+    Validates whether the specified tool can physically fit within
+    the given slot width for machining.
+
+    Args:
+        request: Tool-slot conflict check parameters.
+
+    Returns:
+        Standard API response with compatibility result.
+
+    Raises:
+        ManufacturingError: If tool diameter exceeds slot width.
+    """
     tool_d = request.tool_diameter
     slot_w = request.slot_width
 
@@ -487,14 +652,16 @@ async def check_tool_slot_conflict(request: ConflictCheckRequest) -> dict:
         raise ManufacturingError(
             category=ErrorCategory.NO_SUITABLE_TOOL,
             detail=(
-                f"刀具直径({tool_d}mm)大于槽宽({slot_w}mm)，"
-                f"无法进入槽内进行加工。当前材料：{request.material}，工序：{request.operation}"
+                f"Tool diameter ({tool_d}mm) exceeds slot width ({slot_w}mm). "
+                f"Cannot enter the slot for machining. Material: {request.material}, "
+                f"Operation: {request.operation}"
             ),
             suggestion=(
-                f"刀具直径({tool_d}mm)超出槽宽({slot_w}mm)限制。"
-                f"建议方案：1) 更换刀具，选用直径≤{slot_w}mm的立铣刀；"
-                f"2) 调整加工工艺，改用分层加工或多刀铣削策略；"
-                f"3) 修改零件设计，增大槽宽至≥{tool_d}mm。"
+                f"Tool diameter ({tool_d}mm) exceeds slot width ({slot_w}mm) limit. "
+                f"Suggested solutions: "
+                f"1) Use a smaller tool (diameter <= {slot_w}mm); "
+                f"2) Change to multi-pass or layered machining strategy; "
+                f"3) Redesign the part to widen the slot to >= {tool_d}mm."
             ),
             recoverable=False,
         )
@@ -505,11 +672,5 @@ async def check_tool_slot_conflict(request: ConflictCheckRequest) -> dict:
             "tool_diameter": tool_d,
             "slot_width": slot_w,
         },
-        message="刀具与槽型匹配，无冲突",
+        message="Tool and slot are compatible, no conflicts.",
     )
-
-
-@router.post("/trigger-system-error")
-async def trigger_system_error() -> dict:
-    result = 1 / 0
-    return success(data={"result": result})

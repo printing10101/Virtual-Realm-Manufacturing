@@ -1,7 +1,19 @@
-"""
-BaseLNN Abstract Base Class
+"""PyTorch-based BaseLNN Abstract Class with Hidden State Management.
 
-Defines the unified interface for all PyTorch-based LNN models with hidden state management.
+Defines the unified interface for all PyTorch-based LNN models. This module
+provides an abstract base class that inherits from both torch.nn.Module and
+ABC, enabling PyTorch functionality (autograd, JIT tracing) alongside
+abstract method enforcement for consistent model contracts.
+
+Key components:
+    - LNNConfig: Configuration class for model hyperparameters.
+    - BaseLNN: Abstract base class with hidden state management and TorchScript export.
+
+Example:
+    >>> config = LNNConfig(input_size=10, hidden_size=64, output_size=2)
+    >>> class MyModel(BaseLNN):
+    ...     def forward(self, x, dt, hidden_state): return x, hidden_state
+    ...     def init_hidden(self, batch_size): return torch.zeros(batch_size, 64)
 """
 
 import torch
@@ -11,7 +23,24 @@ from typing import Any, Dict, Tuple
 
 
 class LNNConfig:
-    """Configuration class for LNN models"""
+    """Configuration class for LNN model hyperparameters.
+
+    Encapsulates all architectural parameters needed to instantiate an LNN model,
+    including layer dimensions, regularization, and temporal dynamics.
+
+    Attributes:
+        input_size: Input feature dimension.
+        hidden_size: Hidden layer dimension.
+        output_size: Output prediction dimension.
+        num_layers: Number of recurrent/LNN layers.
+        dropout: Dropout ratio for regularization (0.0-1.0).
+        time_constant: Time constant for liquid state updates (dt in ODE).
+
+    Example:
+        >>> config = LNNConfig(input_size=128, hidden_size=256, output_size=10)
+        >>> config.to_dict()["hidden_size"]
+        256
+    """
 
     def __init__(
         self,

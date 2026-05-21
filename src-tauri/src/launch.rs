@@ -213,7 +213,7 @@ fn step_python_backend(
 
 fn do_start_python_backend(handle: &tauri::AppHandle) -> Result<SidecarStartResult, String> {
     let manager = get_sidecar_manager(handle);
-    let version = "1.9.0";
+    let version = "1.11.0";
 
     let python_script_path = std::env::var("SIDECAR_SCRIPT_PATH")
         .unwrap_or_else(|_| "app.main:app".to_string());

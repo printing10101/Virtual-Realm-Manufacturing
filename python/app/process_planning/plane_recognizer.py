@@ -1,14 +1,15 @@
-"""平面特征识别模块。
+"""Plane feature recognition module.
 
-从DXF解析数据中识别平面区域特征，用于后续的基准面选择和加工策略规划。
-支持同时识别多个平面特征，区分顶面/底面/侧面。
+Recognizes planar surface features from DXF parsing data for subsequent
+datum selection and machining strategy planning. Supports simultaneous
+recognition of multiple plane features, distinguishing top/bottom/side surfaces.
 
-识别流程：
-1. 遍历输入轮廓/图元，筛选平面类型轮廓
-2. 提取每个平面的面积、法向量、边界轮廓
-3. 通过法向量方向区分顶面/底面/侧面
-4. 计算每个平面的名义尺寸（长、宽）
-5. 输出统一格式的PlaneFeature列表
+Recognition workflow:
+1. Iterate through input contours/entities, filter planar type contours
+2. Extract area, normal vector, and boundary outline for each plane
+3. Classify planes as top/bottom/side by normal vector direction
+4. Calculate nominal dimensions (length, width) for each plane
+5. Output a unified list of PlaneFeature objects
 """
 
 from __future__ import annotations
@@ -21,6 +22,27 @@ from app.core.error_taxonomy import ErrorCategory, ManufacturingError
 
 @dataclass
 class PlaneFeature:
+    """A single plane feature with complete geometric information.
+
+    Attributes:
+        plane_id: Unique identifier for the plane, e.g. 'P001'.
+        type: Plane type - top_plane/bottom_plane/side_plane.
+        area: Plane area (mm²).
+        normal_x: X component of the normal vector.
+        normal_y: Y component of the normal vector.
+        normal_z: Z component of the normal vector.
+        length: Plane length (mm).
+        width: Plane width (mm).
+        center_x: Center X coordinate (mm).
+        center_y: Center Y coordinate (mm).
+        center_z: Center Z coordinate (mm).
+        boundary: List of boundary points [[x, y], ...].
+        surface: Machining surface identifier.
+        tolerance_grade: Tolerance grade, e.g. 'IT8'.
+        surface_roughness_ra: Surface roughness Ra value (um).
+        is_datum_candidate: Whether this plane can serve as a datum feature.
+        metadata: Additional metadata dictionary.
+    """
     plane_id: str
     type: str
     area: float = 0.0
@@ -40,18 +62,44 @@ class PlaneFeature:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_top(self) -> bool:
+        """Check whether the plane is a top surface.
+
+        Returns:
+            True if the plane type is 'top_plane'.
+        """
         return self.type == "top_plane"
 
     def is_bottom(self) -> bool:
+        """Check whether the plane is a bottom surface.
+
+        Returns:
+            True if the plane type is 'bottom_plane'.
+        """
         return self.type == "bottom_plane"
 
     def is_side(self) -> bool:
+        """Check whether the plane is a side surface.
+
+        Returns:
+            True if the plane type is 'side_plane'.
+        """
         return self.type == "side_plane"
 
     def normal_vector(self) -> list[float]:
+        """Get the normal vector as a 3-component list.
+
+        Returns:
+            Normal vector [nx, ny, nz].
+        """
         return [self.normal_x, self.normal_y, self.normal_z]
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the plane feature to a dictionary representation.
+
+        Returns:
+            A dictionary containing all relevant plane properties suitable
+            for serialization, including dimensions, normal vector, and tolerances.
+        """
         return {
             "plane_id": self.plane_id,
             "type": self.type,
@@ -95,6 +143,16 @@ class PlaneFeature:
 
 @dataclass
 class PlaneRecognitionResult:
+    """Complete result of plane feature recognition.
+
+    Attributes:
+        planes: List of recognized plane features.
+        total_count: Total number of planes.
+        type_summary: Count summary by plane type {type: count}.
+        warnings: Warning messages from the recognition process.
+        errors: Error messages from the recognition process.
+        accuracy_metrics: Recognition accuracy metrics.
+    """
     planes: list[PlaneFeature] = field(default_factory=list)
     total_count: int = 0
     type_summary: dict[str, int] = field(default_factory=dict)
@@ -103,6 +161,12 @@ class PlaneRecognitionResult:
     accuracy_metrics: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the recognition result to a dictionary representation.
+
+        Returns:
+            A dictionary containing total count, type summary, all plane details,
+            warnings, errors, and accuracy metrics.
+        """
         return {
             "total_count": self.total_count,
             "type_summary": self.type_summary,
@@ -114,11 +178,25 @@ class PlaneRecognitionResult:
 
     @property
     def is_reliable(self) -> bool:
+        """Check whether the recognition result meets the reliability threshold.
+
+        Returns:
+            True if there are no errors and the overall accuracy rate is >= 99%.
+        """
         rate = self.accuracy_metrics.get("overall", 0.0)
         return len(self.errors) == 0 and rate >= 0.99
 
 
 class PlaneRecognizer:
+    """Plane feature recognizer.
+
+    Recognizes planar surface features from part description data,
+    classifying them as top, bottom, or side surfaces based on normal vectors.
+
+    Attributes:
+        MIN_PLANE_AREA: Minimum recognizable plane area (mm²).
+        MAX_PLANE_AREA: Maximum recognizable plane area (mm²).
+    """
     MIN_PLANE_AREA = 1.0
     MAX_PLANE_AREA = 1_000_000.0
 
@@ -126,6 +204,18 @@ class PlaneRecognizer:
         self,
         part_description: dict[str, Any],
     ) -> PlaneRecognitionResult:
+        """Recognize plane features from a part description dictionary.
+
+        Args:
+            part_description: Part description dictionary containing 'planes',
+                'features', or 'contours' fields.
+
+        Returns:
+            PlaneRecognitionResult with all recognized plane features.
+
+        Raises:
+            ManufacturingError: If the part description is empty or None.
+        """
         if not part_description:
             raise ManufacturingError(
                 category=ErrorCategory.PLANE_RECOGNITION_FAILED,
@@ -297,10 +387,26 @@ class PlaneRecognizer:
         self,
         contours: list[dict[str, Any]],
     ) -> PlaneRecognitionResult:
+        """Recognize plane features from a list of contour dictionaries.
+
+        Args:
+            contours: List of contour dictionaries with plane geometry data.
+
+        Returns:
+            PlaneRecognitionResult with recognized plane features.
+        """
         part_description = {"contours": contours}
         return self.recognize_from_part_description(part_description)
 
     def _is_plane_contour(self, contour: dict[str, Any]) -> bool:
+        """Check whether a contour represents a plane feature.
+
+        Args:
+            contour: Contour dictionary with 'shape', 'type', or 'normal' fields.
+
+        Returns:
+            True if the contour matches a known plane type or has a normal vector.
+        """
         shape = contour.get("shape", contour.get("type", ""))
         if shape in ("plane", "planar_surface", "face", "rectangle"):
             return True
@@ -310,6 +416,14 @@ class PlaneRecognizer:
         return False
 
     def _classify_plane_type(self, normal: list[float]) -> str:
+        """Classify a plane as top, bottom, or side based on its normal vector.
+
+        Args:
+            normal: 3-component normal vector [nx, ny, nz].
+
+        Returns:
+            Plane type string: 'top_plane', 'bottom_plane', or 'side_plane'.
+        """
         if len(normal) < 3:
             return "top_plane"
         nz = abs(normal[2])
@@ -324,6 +438,15 @@ class PlaneRecognizer:
         self,
         boundary: list[list[float]] | list[dict[str, float]],
     ) -> tuple[float, float]:
+        """Estimate the length and width of a plane from its boundary points.
+
+        Args:
+            boundary: List of boundary points as either [[x, y], ...] or
+                [{'x': ..., 'y': ...}, ...].
+
+        Returns:
+            Tuple of (length, width) in mm. Returns (0.0, 0.0) if boundary is empty.
+        """
         if not boundary:
             return 0.0, 0.0
 
@@ -349,6 +472,23 @@ class PlaneRecognizer:
         result: PlaneRecognitionResult,
         expected_count: int | None = None,
     ) -> dict[str, Any]:
+        """Validate the plane recognition result.
+
+        Checks include:
+        1. Plane count matches expected (if provided)
+        2. All plane areas are positive
+        3. All normal vectors are non-zero
+        4. Position coordinates are valid (no NaN/Infinity)
+        5. No unhandled errors from recognition
+
+        Args:
+            result: Recognition result to validate.
+            expected_count: Expected total number of planes (optional).
+
+        Returns:
+            Validation report dictionary with 'is_valid', 'issues', and
+            'passed_checks' keys.
+        """
         issues: list[str] = []
         passed: list[str] = []
 

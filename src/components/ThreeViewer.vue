@@ -141,7 +141,6 @@
 
 <script setup lang="ts">
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 import {
@@ -156,6 +155,7 @@ import {
   type LODPerformanceMetrics,
 } from '@/utils/lodHelper'
 import { Loading } from '@element-plus/icons-vue'
+import { useThreeScene } from '@/composables/useThreeScene'
 
 const props = defineProps<{
   modelUrl?: string
@@ -190,11 +190,7 @@ const performanceMetrics = reactive<LODPerformanceMetrics>({
   fpsWithoutLOD: 0,
 })
 
-let scene: THREE.Scene | null = null
-let camera: THREE.PerspectiveCamera | null = null
-let renderer: THREE.WebGLRenderer | null = null
-let controls: OrbitControls | null = null
-let animationId: number | null = null
+let threeScene: ReturnType<typeof useThreeScene> | null = null
 
 onMounted(() => {
   initScene()
@@ -204,83 +200,40 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  cleanup()
+  threeScene?.cleanup()
 })
 
 function initScene() {
   if (!viewerContainer.value) return
 
-  const width = viewerContainer.value.clientWidth
-  const height = viewerContainer.value.clientHeight
-
-  scene = new THREE.Scene()
-  scene.background = new THREE.Color(props.backgroundColor || '#1a1a2e')
-
-  camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 10000)
-  camera.position.set(0, 50, 100)
-
-  renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: false,
+  threeScene = useThreeScene({
+    container: viewerContainer.value,
+    backgroundColor: props.backgroundColor,
+    autoRotate: props.autoRotate,
+    showGrid: props.enableGrid,
   })
-  renderer.setSize(width, height)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.2
 
-  viewerContainer.value.appendChild(renderer.domElement)
+  const { scene, addLight, startAnimation } = threeScene
 
-  controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true
-  controls.dampingFactor = 0.05
-  controls.autoRotate = props.autoRotate || false
-  controls.autoRotateSpeed = 1.0
+  addLight(new THREE.AmbientLight(0xffffff, 0.6))
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
-  scene.add(ambientLight)
+  const dir1 = new THREE.DirectionalLight(0xffffff, 0.8)
+  dir1.position.set(10, 10, 10)
+  addLight(dir1)
 
-  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8)
-  directionalLight1.position.set(10, 10, 10)
-  scene.add(directionalLight1)
+  const dir2 = new THREE.DirectionalLight(0xffffff, 0.4)
+  dir2.position.set(-10, 5, -10)
+  addLight(dir2)
 
-  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4)
-  directionalLight2.position.set(-10, 5, -10)
-  scene.add(directionalLight2)
-
-  if (props.enableGrid) {
-    const gridHelper = new THREE.GridHelper(200, 20, 0x444444, 0x222222)
-    scene.add(gridHelper)
-  }
-
-  const resizeObserver = new ResizeObserver(() => {
-    if (!viewerContainer.value || !camera || !renderer) return
-    const w = viewerContainer.value.clientWidth
-    const h = viewerContainer.value.clientHeight
-    camera.aspect = w / h
-    camera.updateProjectionMatrix()
-    renderer.setSize(w, h)
-  })
-  resizeObserver.observe(viewerContainer.value)
-
-  startAnimation()
-}
-
-function startAnimation() {
-  function animate() {
-    animationId = requestAnimationFrame(animate)
-
-    if (controls) {
-      controls.update()
-    }
-
-    if (currentLOD.value && camera && lodEnabled.value) {
-      updateLOD(currentLOD.value, camera)
+  startAnimation(() => {
+    if (currentLOD.value && lodEnabled.value) {
+      updateLOD(currentLOD.value, threeScene!.camera)
 
       const level = currentLOD.value.getCurrentLevel()
       currentLODLevel.value = level === 0 ? 'High' : level === 1 ? 'Medium' : 'Low'
 
       if (originalModel.value) {
-        currentDistance.value = calculateDistanceToModel(camera, originalModel.value)
+        currentDistance.value = calculateDistanceToModel(threeScene!.camera, originalModel.value)
       }
 
       const lodObject = currentLOD.value.levels[level]?.object
@@ -288,17 +241,11 @@ function startAnimation() {
         currentVertices.value = countVertices(lodObject)
       }
     }
-
-    if (renderer && scene && camera) {
-      renderer.render(scene, camera)
-    }
-  }
-
-  animate()
+  })
 }
 
 async function loadModel(url: string) {
-  if (!scene || !renderer) return
+  if (!threeScene) return
 
   loading.value = true
 
@@ -329,7 +276,7 @@ async function loadModel(url: string) {
       const lod = createLODForModel(model, lodConfig)
       if (lod) {
         currentLOD.value = lod
-        scene.add(lod)
+        threeScene.scene.add(lod)
 
         const memoryAfter = estimateMemoryUsage(lod)
         performanceMetrics.memoryAfterKB = memoryAfter
@@ -341,7 +288,7 @@ async function loadModel(url: string) {
         await measureAndComparePerformance()
       }
     } else {
-      scene.add(model)
+      threeScene.scene.add(model)
     }
 
     centerCameraOnModel(model)
@@ -379,8 +326,9 @@ function loadOBJ(url: string): Promise<THREE.Object3D> {
 }
 
 async function measureAndComparePerformance() {
-  if (!renderer || !scene || !camera) return
+  if (!threeScene) return
 
+  const { renderer, scene, camera } = threeScene
   const fpsWithLOD = await measurePerformance(renderer, scene, camera, 2000)
   performanceMetrics.fpsWithLOD = fpsWithLOD
   currentFPS.value = fpsWithLOD
@@ -400,7 +348,9 @@ async function measureAndComparePerformance() {
 }
 
 function centerCameraOnModel(model: THREE.Object3D) {
-  if (!camera || !controls) return
+  if (!threeScene) return
+
+  const { camera, controls } = threeScene
 
   const box = new THREE.Box3().setFromObject(model)
   const center = box.getCenter(new THREE.Vector3())
@@ -417,8 +367,9 @@ function centerCameraOnModel(model: THREE.Object3D) {
 }
 
 function clearScene() {
-  if (!scene) return
+  if (!threeScene) return
 
+  const { scene } = threeScene
   const toRemove: THREE.Object3D[] = []
   scene.traverse((child) => {
     if (child instanceof THREE.Mesh || child instanceof THREE.LOD) {
@@ -426,14 +377,14 @@ function clearScene() {
     }
   })
 
-  toRemove.forEach((obj) => scene!.remove(obj))
+  toRemove.forEach((obj) => scene.remove(obj))
 
   currentLOD.value = null
   originalModel.value = null
 }
 
-function onLODEnabledChange(enabled: boolean) {
-  if (enabled) {
+function onLODEnabledChange(enabled: boolean | string | number) {
+  if (enabled === true) {
     applyLODToCurrentModel()
   } else {
     removeLODFromCurrentModel()
@@ -441,12 +392,12 @@ function onLODEnabledChange(enabled: boolean) {
 }
 
 function applyLODToCurrentModel() {
-  if (!scene || !originalModel.value) return
+  if (!threeScene || !originalModel.value) return
 
   const lod = createLODForModel(originalModel.value, lodConfig)
   if (lod) {
-    scene.remove(originalModel.value)
-    scene.add(lod)
+    threeScene.scene.remove(originalModel.value)
+    threeScene.scene.add(lod)
     currentLOD.value = lod
 
     performanceMetrics.lodVertexCounts = lod.levels.map((l) =>
@@ -456,10 +407,10 @@ function applyLODToCurrentModel() {
 }
 
 function removeLODFromCurrentModel() {
-  if (!scene || !originalModel.value || !currentLOD.value) return
+  if (!threeScene || !originalModel.value || !currentLOD.value) return
 
-  scene.remove(currentLOD.value)
-  scene.add(originalModel.value)
+  threeScene.scene.remove(currentLOD.value)
+  threeScene.scene.add(originalModel.value)
   currentLOD.value = null
 }
 
@@ -467,30 +418,6 @@ function onLODConfigChange() {
   if (currentLOD.value && originalModel.value) {
     applyLODToCurrentModel()
   }
-}
-
-function cleanup() {
-  if (animationId) {
-    cancelAnimationFrame(animationId)
-    animationId = null
-  }
-
-  if (controls) {
-    controls.dispose()
-    controls = null
-  }
-
-  if (renderer) {
-    renderer.dispose()
-    if (renderer.domElement.parentNode) {
-      renderer.domElement.parentNode.removeChild(renderer.domElement)
-    }
-    renderer = null
-  }
-
-  clearScene()
-  scene = null
-  camera = null
 }
 </script>
 

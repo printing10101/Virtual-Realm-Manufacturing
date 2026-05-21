@@ -6,9 +6,14 @@
     :close-on-click-modal="false"
     @close="handleClose"
   >
-    <el-form label-width="100px" size="default">
+    <el-form
+      label-width="100px"
+      size="default"
+    >
       <el-form-item label="当前刀路段">
-        <el-tag type="info">{{ segmentInfo }}</el-tag>
+        <el-tag type="info">
+          {{ segmentInfo }}
+        </el-tag>
       </el-form-item>
       <el-form-item label="当前进给率">
         <span class="current-value">{{ currentFeedRate }} mm/min</span>
@@ -34,7 +39,9 @@
     </el-form>
 
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
+      <el-button @click="visible = false">
+        取消
+      </el-button>
       <el-button
         type="primary"
         :disabled="newFeedRate === currentFeedRate || newFeedRate < 10 || newFeedRate > 50000"

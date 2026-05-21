@@ -11,11 +11,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.rag.document_importer import DocumentExtractor, SmartChunker
-from app.rag.evaluation import EvaluationDataset, RetrievalEvaluator
-from app.rag.extended_knowledge import get_extended_knowledge
-from app.rag.knowledge_base import KnowledgeBase
-from app.rag.reranker import RerankerService
+from app.rag.document_importer import DocumentExtractor, SmartChunker  # noqa: E402
+from app.rag.evaluation import EvaluationDataset, RetrievalEvaluator  # noqa: E402
+from app.rag.extended_knowledge import get_extended_knowledge  # noqa: E402
+from app.rag.knowledge_base import KnowledgeBase  # noqa: E402
+from app.rag.reranker import RerankerService  # noqa: E402
 
 
 def test_extended_knowledge():

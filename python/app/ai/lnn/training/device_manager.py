@@ -1,8 +1,22 @@
-"""
-Device Management Module for LNN Training
+"""Device Management for LNN Training.
 
 Provides automatic GPU detection, device priority management,
-and seamless CPU fallback for training operations.
+and seamless CPU fallback for training operations. Includes
+utilities for optimal batch size calculation, DataLoader worker
+configuration, and GPU memory monitoring.
+
+Key components:
+    - DeviceInfo: Container for device hardware information.
+    - detect_device(): Auto-select the best training device.
+    - get_available_devices(): List all compute devices.
+    - get_device_status(): Query current device metrics.
+    - get_optimal_batch_size(): Recommend batch size based on GPU memory.
+    - get_optimal_num_workers(): Recommend DataLoader workers based on CPU cores.
+
+Example:
+    >>> device, info = detect_device("auto")
+    >>> print(f"Using {info.device_type}: {info.device_name}")
+    >>> batch_size = get_optimal_batch_size(device)
 """
 
 import os
@@ -14,7 +28,21 @@ logger = logging.getLogger(__name__)
 
 
 class DeviceInfo:
-    """Device information container"""
+    """Container for compute device hardware information.
+
+    Stores details about a GPU or CPU device including memory, CUDA version,
+    and compute capability. Used for device selection and monitoring.
+
+    Attributes:
+        device_type: Type of device ("cuda" or "cpu").
+        device_index: Index of the device (0 for CPU, GPU ordinal for CUDA).
+        device_name: Human-readable device name (e.g., "NVIDIA RTX 4090").
+        total_memory_mb: Total device memory in megabytes.
+        available_memory_mb: Currently available memory in megabytes.
+        cuda_version: CUDA toolkit version string.
+        compute_capability: GPU compute capability (e.g., "8.6").
+        gpu_count: Total number of available GPUs.
+    """
 
     def __init__(
         self,

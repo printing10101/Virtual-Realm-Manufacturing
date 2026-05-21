@@ -1,12 +1,20 @@
-"""
-LNN内存优化模块
+"""LNN Memory Optimization Module.
 
-功能：
-- 内存池管理：预分配和复用内存块
-- 梯度检查点：以计算换内存
-- 模型卸载：动态卸载未使用模型到CPU/磁盘
-- 垃圾回收优化：智能触发gc
-- 内存监控：实时监控内存使用情况
+Provides comprehensive memory management for LNN training and inference,
+including memory pool management, gradient checkpointing, model offloading,
+garbage collection optimization, and real-time memory monitoring.
+
+Key components:
+    - MemoryPool: Pre-allocated memory block pool for reuse.
+    - GradientCheckpoint: Trade computation for memory savings.
+    - ModelOffloader: Dynamic model offloading to CPU/disk.
+    - MemoryMonitor: Real-time memory usage monitoring.
+    - MemoryOptimizer: Unified memory optimization coordinator.
+
+Example:
+    >>> optimizer = MemoryOptimizer(device="cuda")
+    >>> optimizer.enable_gradient_checkpointing(model)
+    >>> optimizer.monitor_memory()
 """
 
 import gc

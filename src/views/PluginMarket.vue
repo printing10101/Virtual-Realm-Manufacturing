@@ -3,33 +3,75 @@
     <el-card class="header-card">
       <div class="header-content">
         <h2>插件市场</h2>
-        <el-input v-model="searchQuery" placeholder="搜索插件..." style="width: 300px" clearable>
-          <template #prefix><el-icon><Search /></el-icon></template>
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索插件..."
+          style="width: 300px"
+          clearable
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
         </el-input>
       </div>
     </el-card>
 
-    <el-row :gutter="16" style="margin-top: 20px">
-      <el-col v-for="plugin in filteredPlugins" :key="plugin.id" :xs="24" :sm="12" :md="8" :lg="6">
-        <el-card class="plugin-card" shadow="hover">
+    <el-row
+      :gutter="16"
+      style="margin-top: 20px"
+    >
+      <el-col
+        v-for="plugin in filteredPlugins"
+        :key="plugin.id"
+        :xs="24"
+        :sm="12"
+        :md="8"
+        :lg="6"
+      >
+        <el-card
+          class="plugin-card"
+          shadow="hover"
+        >
           <div class="plugin-icon">
-            <el-icon :size="48"><Setting /></el-icon>
+            <el-icon :size="48">
+              <Setting />
+            </el-icon>
           </div>
-          <h3 class="plugin-name">{{ plugin.name }}</h3>
-          <p class="plugin-desc">{{ plugin.description }}</p>
+          <h3 class="plugin-name">
+            {{ plugin.name }}
+          </h3>
+          <p class="plugin-desc">
+            {{ plugin.description }}
+          </p>
           <div class="plugin-meta">
-            <el-tag size="small">{{ plugin.plugin_type }}</el-tag>
+            <el-tag size="small">
+              {{ plugin.plugin_type }}
+            </el-tag>
             <span class="version">v{{ plugin.version }}</span>
           </div>
           <div class="plugin-actions">
-            <el-button type="primary" size="small" @click="handleInstall(plugin)">安装</el-button>
-            <el-button size="small" @click="handleViewDetail(plugin)">详情</el-button>
+            <el-button
+              type="primary"
+              size="small"
+              @click="handleInstall(plugin)"
+            >
+              安装
+            </el-button>
+            <el-button
+              size="small"
+              @click="handleViewDetail(plugin)"
+            >
+              详情
+            </el-button>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-empty v-if="filteredPlugins.length === 0" description="暂无可用插件" />
+    <el-empty
+      v-if="filteredPlugins.length === 0"
+      description="暂无可用插件"
+    />
   </div>
 </template>
 

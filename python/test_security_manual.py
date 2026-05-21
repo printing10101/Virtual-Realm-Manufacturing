@@ -11,21 +11,21 @@ print("=" * 60)
 
 print("\nR-level token access tests:")
 print(
-    f"  R -> GET /api/v1/lnn/models (R endpoint): {permission_checker.has_permission(PermissionLevel.R, '/api/v1/lnn/models', 'GET')} (expected: True)"
+    f"  R -> GET /api/v1/lnn/models (R endpoint): {permission_checker.has_permission(PermissionLevel.R, '/api/v1/lnn/models', 'GET')} (expected: True)"  # noqa: E501
 )
 print(
-    f"  R -> POST /api/v1/lnn/train (B endpoint): {permission_checker.has_permission(PermissionLevel.R, '/api/v1/lnn/train', 'POST')} (expected: False)"
+    f"  R -> POST /api/v1/lnn/train (B endpoint): {permission_checker.has_permission(PermissionLevel.R, '/api/v1/lnn/train', 'POST')} (expected: False)"  # noqa: E501
 )
 print(
-    f"  R -> POST /api/v1/machine/execute (T endpoint): {permission_checker.has_permission(PermissionLevel.R, '/api/v1/machine/execute', 'POST')} (expected: False)"
+    f"  R -> POST /api/v1/machine/execute (T endpoint): {permission_checker.has_permission(PermissionLevel.R, '/api/v1/machine/execute', 'POST')} (expected: False)"  # noqa: E501
 )
 
 print("\nT-level token access tests:")
 print(
-    f"  T -> POST /api/v1/lnn/train (B endpoint): {permission_checker.has_permission(PermissionLevel.T, '/api/v1/lnn/train', 'POST')} (expected: True)"
+    f"  T -> POST /api/v1/lnn/train (B endpoint): {permission_checker.has_permission(PermissionLevel.T, '/api/v1/lnn/train', 'POST')} (expected: True)"  # noqa: E501
 )
 print(
-    f"  T -> POST /api/v1/machine/execute (T endpoint): {permission_checker.has_permission(PermissionLevel.T, '/api/v1/machine/execute', 'POST')} (expected: True)"
+    f"  T -> POST /api/v1/machine/execute (T endpoint): {permission_checker.has_permission(PermissionLevel.T, '/api/v1/machine/execute', 'POST')} (expected: True)"  # noqa: E501
 )
 
 # Test 6: Paper-Only mode

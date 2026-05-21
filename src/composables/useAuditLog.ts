@@ -1,23 +1,118 @@
 import { ref, reactive, onMounted } from 'vue'
 import axios from 'axios'
+import { formatTimestamp } from '@/utils/formatters'
+import {
+  getAuditModuleName as getModuleName,
+  getAuditDecisionLabel as getDecisionName,
+  getAuditDecisionTagType as getDecisionType,
+  getGenericStatusLabel as getStatusName,
+  getGenericStatusTagType as getStatusType,
+} from '@/utils/statusHelpers'
 
-export function useAuditLog() {
-  const auditLogs = ref<any[]>([])
-  const auditLogStatistics = ref<any>(null)
+/** 审计日志记录 */
+export interface AuditLogEntry {
+  id?: string | number
+  ai_module?: string
+  user_decision?: string
+  status?: string
+  created_at?: number
+  [key: string]: unknown
+}
+
+/** 审计日志查询响应 */
+export interface AuditLogResponse {
+  logs: AuditLogEntry[]
+  total: number
+}
+
+/** 审计统计信息 */
+export interface AuditLogStatistics {
+  total_entries?: number
+  avg_confidence?: number
+  recent_24h?: number
+  by_module?: Record<string, number>
+  by_decision?: Record<string, number>
+  total?: number
+  [key: string]: unknown
+}
+
+/** 审计日志查询参数 */
+export interface AuditLogQueryParams {
+  limit: number
+  offset: number
+  ai_module?: string
+  user_decision?: string
+  start_time?: number
+  end_time?: number
+}
+
+/** 审计日志导出参数 */
+export interface AuditLogExportParams {
+  format: string
+  ai_module?: string
+  start_time?: number
+  end_time?: number
+}
+
+/** 清空日志响应 */
+export interface ClearLogsResponse {
+  cleared_entries: number
+}
+
+export interface AuditLogFilters {
+  ai_module: string
+  user_decision: string
+  dateRange: [Date, Date] | null
+}
+
+export interface AuditLogPagination {
+  page: number
+  pageSize: number
+  total: number
+}
+
+export interface UseAuditLogReturn {
+  auditLogs: ReturnType<typeof ref<AuditLogEntry[]>>
+  auditLogStatistics: ReturnType<typeof ref<AuditLogStatistics | null>>
+  loadingLogs: ReturnType<typeof ref<boolean>>
+  exporting: ReturnType<typeof ref<boolean>>
+  clearing: ReturnType<typeof ref<boolean>>
+  logSearchKeyword: ReturnType<typeof ref<string>>
+  logDetailVisible: ReturnType<typeof ref<boolean>>
+  selectedLog: ReturnType<typeof ref<AuditLogEntry | null>>
+  logFilters: AuditLogFilters
+  logPagination: AuditLogPagination
+  loadAuditLogs: () => Promise<void>
+  searchLogs: () => Promise<void>
+  loadStatistics: () => Promise<void>
+  exportLogs: () => Promise<void>
+  clearLogs: () => Promise<void>
+  viewLogDetail: (row: AuditLogEntry) => void
+  formatTimestamp: (ts: number) => string
+  getModuleName: (module: string) => string
+  getDecisionName: (decision: string) => string
+  getDecisionType: (decision: string) => string
+  getStatusName: (status: string) => string
+  getStatusType: (status: string) => string
+}
+
+export function useAuditLog(): UseAuditLogReturn {
+  const auditLogs = ref<AuditLogEntry[]>([])
+  const auditLogStatistics = ref<AuditLogStatistics | null>(null)
   const loadingLogs = ref(false)
   const exporting = ref(false)
   const clearing = ref(false)
   const logSearchKeyword = ref('')
   const logDetailVisible = ref(false)
-  const selectedLog = ref<any>(null)
+  const selectedLog = ref<AuditLogEntry | null>(null)
 
-  const logFilters = reactive({
+  const logFilters = reactive<AuditLogFilters>({
     ai_module: '',
     user_decision: '',
     dateRange: null as [Date, Date] | null,
   })
 
-  const logPagination = reactive({
+  const logPagination = reactive<AuditLogPagination>({
     page: 1,
     pageSize: 20,
     total: 0,
@@ -26,7 +121,7 @@ export function useAuditLog() {
   async function loadAuditLogs() {
     loadingLogs.value = true
     try {
-      const params: any = {
+      const params: AuditLogQueryParams = {
         limit: logPagination.pageSize,
         offset: (logPagination.page - 1) * logPagination.pageSize,
       }
@@ -38,10 +133,10 @@ export function useAuditLog() {
         params.end_time = logFilters.dateRange[1].getTime()
       }
 
-      const res = await axios.post('/api/v1/user-sovereignty/audit-log/query', params)
+      const res = await axios.post<{ data: AuditLogResponse }>('/api/v1/user-sovereignty/audit-log/query', params)
       auditLogs.value = res.data.data.logs
       logPagination.total = res.data.data.total
-    } catch (e) {
+    } catch (e: unknown) {
       console.warn('Failed to load audit logs:', e)
     } finally {
       loadingLogs.value = false
@@ -56,13 +151,13 @@ export function useAuditLog() {
 
     loadingLogs.value = true
     try {
-      const res = await axios.post('/api/v1/user-sovereignty/audit-log/search', {
+      const res = await axios.post<{ data: AuditLogResponse }>('/api/v1/user-sovereignty/audit-log/search', {
         keyword: logSearchKeyword.value,
         limit: 50,
       })
       auditLogs.value = res.data.data.logs
       logPagination.total = res.data.data.total
-    } catch (e) {
+    } catch (e: unknown) {
       console.warn('Failed to search audit logs:', e)
     } finally {
       loadingLogs.value = false
@@ -71,9 +166,9 @@ export function useAuditLog() {
 
   async function loadStatistics() {
     try {
-      const res = await axios.get('/api/v1/user-sovereignty/audit-log/statistics')
+      const res = await axios.get<{ data: AuditLogStatistics }>('/api/v1/user-sovereignty/audit-log/statistics')
       auditLogStatistics.value = res.data.data
-    } catch (e) {
+    } catch (e: unknown) {
       console.warn('Failed to load audit log statistics:', e)
     }
   }
@@ -81,14 +176,14 @@ export function useAuditLog() {
   async function exportLogs() {
     exporting.value = true
     try {
-      const params: any = { format: 'json' }
+      const params: AuditLogExportParams = { format: 'json' }
       if (logFilters.ai_module) params.ai_module = logFilters.ai_module
       if (logFilters.dateRange) {
         params.start_time = logFilters.dateRange[0].getTime()
         params.end_time = logFilters.dateRange[1].getTime()
       }
 
-      const res = await axios.post('/api/v1/user-sovereignty/audit-log/export', params)
+      const res = await axios.post<{ data: { content: string } }>('/api/v1/user-sovereignty/audit-log/export', params)
       const blob = new Blob([res.data.data.content], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -97,7 +192,7 @@ export function useAuditLog() {
       a.click()
       URL.revokeObjectURL(url)
       ElMessage.success('日志导出成功')
-    } catch (e) {
+    } catch (e: unknown) {
       ElMessage.error('日志导出失败')
     } finally {
       exporting.value = false
@@ -112,67 +207,18 @@ export function useAuditLog() {
         type: 'warning',
       })
 
-      const res = await axios.delete('/api/v1/user-sovereignty/audit-log/clear')
+      const res = await axios.delete<{ data: ClearLogsResponse }>('/api/v1/user-sovereignty/audit-log/clear')
       ElMessage.success(`已清空 ${res.data.data.cleared_entries} 条日志`)
       loadAuditLogs()
       loadStatistics()
-    } catch (e) {
+    } catch (e: unknown) {
       // User cancelled or error
     }
   }
 
-  function viewLogDetail(row: any) {
+  function viewLogDetail(row: AuditLogEntry) {
     selectedLog.value = row
     logDetailVisible.value = true
-  }
-
-  function formatTimestamp(ts: number): string {
-    return new Date(ts).toLocaleString('zh-CN')
-  }
-
-  function getModuleName(module: string): string {
-    const names: Record<string, string> = {
-      lnn_predict: 'LNN预测',
-      lnn_train: 'LNN训练',
-      process_optimize: '工艺优化',
-      tool_wear_analyze: '刀具磨损分析',
-      cad_generate: 'CAD生成',
-    }
-    return names[module] || module
-  }
-
-  function getDecisionName(decision: string): string {
-    const names: Record<string, string> = {
-      accept: '接受',
-      modify: '修改',
-      reject: '拒绝',
-      auto_executed: '自动执行',
-    }
-    return names[decision] || decision
-  }
-
-  function getDecisionType(decision: string): 'success' | 'warning' | 'danger' | 'info' {
-    if (decision === 'accept') return 'success'
-    if (decision === 'modify') return 'warning'
-    if (decision === 'reject') return 'danger'
-    return 'info'
-  }
-
-  function getStatusName(status: string): string {
-    const names: Record<string, string> = {
-      success: '成功',
-      failed: '失败',
-      cancelled: '已取消',
-      pending: '待处理',
-    }
-    return names[status] || status
-  }
-
-  function getStatusType(status: string): 'success' | 'danger' | 'info' | 'warning' {
-    if (status === 'success') return 'success'
-    if (status === 'failed') return 'danger'
-    if (status === 'cancelled') return 'warning'
-    return 'info'
   }
 
   onMounted(() => {

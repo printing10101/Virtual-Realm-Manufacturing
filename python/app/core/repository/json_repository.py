@@ -164,13 +164,13 @@ class JsonRepository(Repository):
                 record_id = data.get("id")
                 if record_id is None:
                     raise ValidationError(
-                        "数据验证失败：记录数据中缺少必需的 'id' 字段。JSON 存储库要求每条记录都必须包含唯一的 'id' 标识符。请在数据中添加 'id' 字段（如 {'id': 'unique_id', ...}）后重试。",
+                        "数据验证失败：记录数据中缺少必需的 'id' 字段。JSON 存储库要求每条记录都必须包含唯一的 'id' 标识符。请在数据中添加 'id' 字段（如 {'id': 'unique_id', ...}）后重试。",  # noqa: E501
                         repository_type="json",
                     )
 
                 if record_id in self._get_record_data():
                     raise ValueError(
-                        f"记录创建失败：记录 ID '{record_id}' 已存在。JSON 存储库不允许创建重复 ID 的记录。可能原因：1) 重复提交了相同的创建请求；2) 记录已被其他操作创建。请调用 GET /api/v1/{{collection}}/{{id}} 检查现有记录，或使用更新操作替代创建。"
+                        f"记录创建失败：记录 ID '{record_id}' 已存在。JSON 存储库不允许创建重复 ID 的记录。可能原因：1) 重复提交了相同的创建请求；2) 记录已被其他操作创建。请调用 GET /api/v1/{{collection}}/{{id}} 检查现有记录，或使用更新操作替代创建。"  # noqa: E501
                     )
 
                 record = dict(data)

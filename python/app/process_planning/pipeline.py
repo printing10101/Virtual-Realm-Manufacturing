@@ -28,17 +28,14 @@ from typing import Any, Optional
 from app.process_planning.hole_recognizer import (
     HoleFeatureRecognizer,
     HoleRecognitionResult,
-    HoleFeature,
 )
 from app.process_planning.tool_param_matcher import (
     ToolParamMatcher,
     HoleProcessPlan,
-    MatchedTool,
 )
 from app.process_planning.operation_sequencer import (
     OperationSequencer,
     OperationPlan,
-    Operation,
 )
 from app.process_planning.feature_dependency import MachiningFeature
 from app.process_planning.gcode_generator import GCodeGenerator, GCodeResult
@@ -166,7 +163,7 @@ class ProcessPlanningPipeline:
         try:
             self._data_manager = ProcessPlanningDataManager()
             self._data_valid = True
-        except (DataLoadError, Exception) as e:
+        except (DataLoadError, Exception):
             self._data_manager = None
             self._data_valid = False
 
@@ -401,7 +398,7 @@ class ProcessPlanningPipeline:
             status="success" if not validation_errors else "failed",
             duration_ms=(time.time() - stage6_start) * 1000,
             output_summary=(
-                f"验证通过" if not validation_errors
+                "验证通过" if not validation_errors
                 else f"发现{len(validation_errors)}个错误"
             ),
             errors=validation_errors,

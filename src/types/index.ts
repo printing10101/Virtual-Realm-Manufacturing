@@ -304,7 +304,7 @@ export interface RuleResult {
 
 /** 工艺规则 */
 export interface ProcessRule {
-  id?: number
+  id: number
   name: string
   description: string
   group_id?: number
@@ -320,7 +320,7 @@ export interface ProcessRule {
 
 /** 规则分组 */
 export interface RuleGroup {
-  id?: number
+  id: number
   name: string
   description: string
   created_at?: string

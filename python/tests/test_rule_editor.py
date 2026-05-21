@@ -8,27 +8,32 @@
 - LNN集成: 引擎规则加载和推理
 """
 
+import json
 import os
-import pytest
+import sys
 import tempfile
 from pathlib import Path
 
-import sys
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.database.rule_db import (
-    RuleDatabase,
-    ProcessRule,
-    RuleCondition,
-    RuleResult,
-    RuleGroup,
-)
-from app.ai.lnn.rule_converter import (
-    RuleToLnnConverter,
+import pytest  # noqa: E402
+
+from app.ai.lnn.rule_converter import (  # noqa: E402
     LnnConstraint,
     LnnRuleEngine,
+    RuleToLnnConverter,
     load_rules_to_lnn_engine,
+)
+from app.database.rule_db import (  # noqa: E402
+    CURRENT_FORMAT_VERSION,
+    ProcessRule,
+    RuleCondition,
+    RuleDatabase,
+    RuleGroup,
+    RuleResult,
+    check_version_compatibility,
+    get_project_version,
+    parse_version,
 )
 
 
@@ -556,6 +561,152 @@ class TestRuleIntegration:
                 results = engine.evaluate(context)
                 assert len(results) == 1
                 assert results[0]["result"]["value"] == "2"
+            finally:
+                db2.close()
+                if os.path.exists(db2_path):
+                    os.unlink(db2_path)
+        finally:
+            if os.path.exists(export_path):
+                os.unlink(export_path)
+
+
+class TestVersionManagement:
+    """版本管理相关测试"""
+
+    def test_get_project_version(self):
+        version = get_project_version()
+        assert isinstance(version, str)
+        assert len(version) > 0
+        # 验证版本号格式
+        parts = version.split(".")
+        assert len(parts) >= 2
+        for part in parts:
+            assert part.isdigit()
+
+    def test_parse_version(self):
+        assert parse_version("1.10.0") == (1, 10, 0)
+        assert parse_version("2.0.0") == (2, 0, 0)
+        assert parse_version("1.0") == (1, 0, 0)
+        assert parse_version("1") == (1, 0, 0)
+        assert parse_version("invalid") == (0, 0, 0)
+        assert parse_version("") == (0, 0, 0)
+
+    def test_check_version_compatible_same_version(self):
+        ok, msg = check_version_compatibility("1.10.0", "1.10.0")
+        assert ok is True
+        assert "完全匹配" in msg
+
+    def test_check_version_compatible_same_major(self):
+        ok, msg = check_version_compatibility("1.9.0", "1.10.0")
+        assert ok is True
+        assert "兼容" in msg
+
+    def test_check_version_incompatible_different_major(self):
+        ok, msg = check_version_compatibility("2.0.0", "1.10.0")
+        assert ok is False
+        assert "不兼容" in msg
+
+    def test_export_contains_version_and_format_version(self, temp_db, sample_rule):
+        temp_db.create_rule(sample_rule)
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            export_path = f.name
+
+        try:
+            temp_db.export_rules(export_path)
+            with open(export_path, "r", encoding="utf-8") as f:
+                data = json.loads(f.read())
+
+            project_version = get_project_version()
+            assert data["version"] == project_version
+            assert data["format_version"] == CURRENT_FORMAT_VERSION
+        finally:
+            if os.path.exists(export_path):
+                os.unlink(export_path)
+
+    def test_import_old_version_shows_warning(self, temp_db):
+        """导入版本号为1.0的旧规则文件应显示兼容性警告但仍可导入"""
+        old_export_data = {
+            "version": "1.0",
+            "groups": [{"name": "旧分组", "description": ""}],
+            "rules": [
+                {
+                    "name": "旧规则",
+                    "description": "",
+                    "conditions": [
+                        {"parameter": "材料", "operator": "=", "value": "45钢"}
+                    ],
+                    "logic_operator": "AND",
+                    "result": {"parameter": "切深", "operator": "<=", "value": "2"},
+                    "status": "active",
+                    "priority": 0,
+                }
+            ],
+        }
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            json.dump(old_export_data, f)
+            import_path = f.name
+
+        try:
+            result = temp_db.import_rules(import_path)
+            # 主版本号相同（1 vs 1），应兼容
+            assert result["version_check"] in ("compatible", "warning")
+            assert result["imported_rules"] == 1
+        finally:
+            if os.path.exists(import_path):
+                os.unlink(import_path)
+
+    def test_import_incompatible_version_blocked(self, temp_db):
+        """主版本号不同的不兼容版本应被阻止导入"""
+        incompatible_data = {
+            "version": "99.0.0",
+            "groups": [{"name": "不兼容分组", "description": ""}],
+            "rules": [
+                {
+                    "name": "不兼容规则",
+                    "description": "",
+                    "conditions": [
+                        {"parameter": "材料", "operator": "=", "value": "45钢"}
+                    ],
+                    "logic_operator": "AND",
+                    "result": {"parameter": "切深", "operator": "<=", "value": "2"},
+                    "status": "active",
+                    "priority": 0,
+                }
+            ],
+        }
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            json.dump(incompatible_data, f)
+            import_path = f.name
+
+        try:
+            result = temp_db.import_rules(import_path)
+            assert result["version_check"] == "incompatible"
+            assert "error" in result
+            assert result["imported_rules"] == 0
+            assert result["imported_groups"] == 0
+        finally:
+            if os.path.exists(import_path):
+                os.unlink(import_path)
+
+    def test_import_same_version_compatible(self, temp_db, sample_rule):
+        """相同版本的导出文件导入应为完全兼容"""
+        group = temp_db.create_group(RuleGroup(name="测试分组"))
+        sample_rule.group_id = group.id
+        temp_db.create_rule(sample_rule)
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            export_path = f.name
+
+        try:
+            temp_db.export_rules(export_path)
+
+            db2_path = tempfile.mktemp(suffix=".db")
+            db2 = RuleDatabase(db2_path)
+            try:
+                result = db2.import_rules(export_path)
+                assert result["version_check"] == "compatible"
+                assert result["imported_rules"] == 1
+                assert result["imported_groups"] == 1
             finally:
                 db2.close()
                 if os.path.exists(db2_path):

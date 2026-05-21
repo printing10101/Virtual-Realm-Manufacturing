@@ -1,8 +1,18 @@
-"""
-LTC (Liquid Time-Constant) Model
+"""LTC (Liquid Time-Constant) Model for Adaptive Temporal Pattern Modeling.
 
-Features learnable time constants tau for adaptive temporal pattern modeling.
+Implements learnable time constants tau for adaptive temporal dynamics.
 Core update formula: h_new = h + dt * (dh - h) / tau
+
+Key components:
+    - LTCCell: Individual LTC cell with learnable time constants and weight matrices.
+    - LTCModel: Full multi-layer LTC model inheriting from BaseLNN.
+
+Example:
+    >>> from app.ai.lnn.models.torch_base_lnn import LNNConfig
+    >>> config = LNNConfig(input_size=64, hidden_size=128, output_size=10)
+    >>> model = LTCModel(config)
+    >>> x = torch.randn(32, 64)
+    >>> output, hidden = model(x, dt=0.1)
 """
 
 import torch
@@ -13,8 +23,27 @@ from .torch_base_lnn import BaseLNN, LNNConfig
 
 
 class LTCCell(nn.Module):
-    """
-    LTC cell with learnable time constants and weight matrices.
+    """LTC cell with learnable time constants and weight matrices.
+
+    Implements the liquid time-constant update mechanism:
+    h_new = h + dt * (tanh(W @ x + U @ h + b) - h) / tau
+
+    The time constant tau allows the network to adaptively respond to
+    different temporal scales in the data.
+
+    Attributes:
+        input_size: Input feature dimension.
+        hidden_size: Hidden layer dimension.
+        W: Input-to-hidden weight matrix.
+        U: Hidden-to-hidden weight matrix.
+        bias: Bias vector.
+        tau: Learnable time constant (clamped >= 0.1).
+
+    Example:
+        >>> cell = LTCCell(input_size=64, hidden_size=128)
+        >>> x = torch.randn(32, 64)
+        >>> h = torch.zeros(32, 128)
+        >>> h_new = cell(x, h, dt=0.1)
     """
 
     def __init__(self, input_size: int, hidden_size: int):

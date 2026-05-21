@@ -77,7 +77,8 @@ class GoalChainStore:
         if existing == 0:
             for goal in DEFAULT_GOALS:
                 self._conn.execute(
-                    "INSERT INTO goals (id, name, description, level, parent_id, status, created_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO goals (id, name, description, level, parent_id, "
+                    "status, created_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         goal.id,
                         goal.name,
@@ -96,7 +97,8 @@ class GoalChainStore:
         if goal.created_at is None:
             goal.created_at = time.time()
         self._conn.execute(
-            "INSERT INTO goals (id, name, description, level, parent_id, status, created_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO goals (id, name, description, level, parent_id, "
+            "status, created_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 goal.id,
                 goal.name,
@@ -308,7 +310,9 @@ class GoalChainStore:
         changed_by: str = "system",
     ):
         self._conn.execute(
-            "INSERT INTO goal_versions (goal_id, version, changed_at, changed_by, change_type, field_name, old_value, new_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO goal_versions (goal_id, version, changed_at, "
+            "changed_by, change_type, field_name, old_value, new_value) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 goal_id,
                 version,
@@ -322,15 +326,12 @@ class GoalChainStore:
         )
 
     def _task_belongs_to_goal(self, task_id: str, goal_id: str) -> bool:
+        if hasattr(self, "_task_belongs_checker"):
+            return self._task_belongs_checker(task_id, goal_id)
         return False
 
     def set_task_belongs_checker(self, checker):
         self._task_belongs_checker = checker
-
-    def _task_belongs_to_goal(self, task_id: str, goal_id: str) -> bool:
-        if hasattr(self, "_task_belongs_checker"):
-            return self._task_belongs_checker(task_id, goal_id)
-        return False
 
     def _row_to_goal(self, row) -> Goal:
         return Goal(

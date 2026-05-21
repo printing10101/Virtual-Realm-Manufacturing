@@ -121,7 +121,8 @@ describe('Extreme Operation Tests', () => {
       expect(store.redoCount).toBe(0)
     })
 
-    it('should cap history at 50 entries and discard oldest', () => {
+    it('should cap history at configured maxDepth and discard oldest', () => {
+      store.setMaxDepth(50)
       store.loadSegments(buildSampleData(60))
 
       for (let i = 0; i < 55; i++) {

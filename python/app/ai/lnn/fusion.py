@@ -74,13 +74,13 @@ class DempsterShaferFusion:
         """
         if not results or any(r is None for r in results):
             raise ValueError(
-                "模型融合失败：结果列表无效，包含 None 值。可能原因：1) 部分子模型推理失败并返回了 None；2) 结果收集逻辑出现异常。请检查各子模型的推理状态，确保所有模型均正常返回 InferenceResult 结果后再进行融合操作。"
+                "模型融合失败：结果列表无效，包含 None 值。可能原因：1) 部分子模型推理失败并返回了 None；2) 结果收集逻辑出现异常。请检查各子模型的推理状态，确保所有模型均正常返回 InferenceResult 结果后再进行融合操作。"  # noqa: E501
             )
 
         for i, result in enumerate(results):
             if not isinstance(result, InferenceResult):
                 raise TypeError(
-                    f"模型融合失败：结果列表中第 {i} 项类型错误。期望类型为 InferenceResult，实际类型为 {type(result).__name__}。请确保所有推理结果均为 InferenceResult 实例。"
+                    f"模型融合失败：结果列表中第 {i} 项类型错误。期望类型为 InferenceResult，实际类型为 {type(result).__name__}。请确保所有推理结果均为 InferenceResult 实例。"  # noqa: E501
                 )
 
         if len(results) == 1:

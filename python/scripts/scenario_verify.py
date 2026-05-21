@@ -7,7 +7,6 @@
 特征：上平面(基准面) + 中心型腔 + 4个φ8mm通孔 + 2个φ5mm定位销孔
 """
 
-import json
 import sys
 import os
 
@@ -16,15 +15,14 @@ if sys.platform == "win32":
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.data.process_data_manager import (
+from app.data.process_data_manager import (  # noqa: E402
     ProcessPlanningDataManager,
     QueryError,
-    DataLoadError,
     MaterialEntry,
     ToolEntry,
     CuttingParameterEntry,
@@ -59,7 +57,7 @@ def step_load_data(data_dir: Path) -> ProcessPlanningDataManager:
 def step_identify_material(manager: ProcessPlanningDataManager) -> MaterialEntry:
     """Step 1: 识别工件材料"""
     print("\n[Step 1] 按名称查询工件材料属性 ...")
-    print(f"  输入: '45#钢'")
+    print("  输入: '45#钢'")
 
     material = manager.get_material_by_name("45#钢")
     if not material:
@@ -104,7 +102,7 @@ def step_select_tools_for_operation(
     tools = manager.get_tools_by_material_and_process(material.category, process_name)
 
     if not tools:
-        print(f"     -> [警告] 未找到适用的刀具")
+        print("     -> [警告] 未找到适用的刀具")
         return []
 
     print(f"     -> 找到 {len(tools)} 把适用刀具:")
@@ -160,8 +158,8 @@ def step_build_process_plan(
         step_display_tool_detail(manager, mid_tool.id, params)
 
     # ---- 工序2: 先面后孔 + 基准先行 - 打中心孔 ----
-    print(f"\n[Step 4] 工艺规则: '先面后孔' → 平面加工完成后，加工孔系")
-    print(f"  子工序 4a - 打中心孔定位")
+    print("\n[Step 4] 工艺规则: '先面后孔' → 平面加工完成后，加工孔系")
+    print("  子工序 4a - 打中心孔定位")
     center_tools = step_select_tools_for_operation(manager, material, "打中心孔定位")
     if center_tools:
         ct = center_tools[0]
@@ -170,11 +168,11 @@ def step_build_process_plan(
         step_display_tool_detail(manager, ct.id, params)
 
     # ---- 工序3: 钻孔(所有孔同向集中) ----
-    print(f"\n[Step 5] 工艺规则: '同向集中' → Z轴方向孔集中加工")
+    print("\n[Step 5] 工艺规则: '同向集中' → Z轴方向孔集中加工")
     drill_tools = step_select_tools_for_operation(manager, material, "钻孔")
 
     # φ8mm钻孔 → 4个通孔
-    print(f"\n  子工序 5a - 钻4个φ8mm通孔")
+    print("\n  子工序 5a - 钻4个φ8mm通孔")
     drill_8 = [t for t in drill_tools if abs(t.diameter_mm - 8) < 0.01]
     if drill_8:
         d8 = drill_8[0]
@@ -183,7 +181,7 @@ def step_build_process_plan(
         step_display_tool_detail(manager, d8.id, params)
 
     # φ5mm钻孔 → 2个定位销孔
-    print(f"\n  子工序 5b - 钻2个φ5mm定位销孔")
+    print("\n  子工序 5b - 钻2个φ5mm定位销孔")
     drill_5 = [t for t in drill_tools if abs(t.diameter_mm - 5) < 0.01]
     if drill_5:
         d5 = drill_5[0]
@@ -192,7 +190,7 @@ def step_build_process_plan(
         step_display_tool_detail(manager, d5.id, params)
 
     # ---- 工序4: 先粗后精 - 型腔加工 ----
-    print(f"\n[Step 6] 工艺规则: '先粗后精' → 型腔粗加工+精加工")
+    print("\n[Step 6] 工艺规则: '先粗后精' → 型腔粗加工+精加工")
     rule_rf = manager.get_process_rule_by_id("rule_rough_finish")
     if rule_rf:
         print(f"  引用规则: {rule_rf.description}")
@@ -232,8 +230,8 @@ def step_final_summary(manager: ProcessPlanningDataManager) -> None:
         print(f"{op:<6} {desc:<24} {tool:<24} {speed:<14} {feed:<14}")
 
     print(SUB_SEP)
-    print(f"  材料: 45#钢 | 硬度: HB200 | 切削性能: 良好")
-    print(f"  工艺规则: 基准先行 → 先面后孔 → 同向集中 → 先粗后精")
+    print("  材料: 45#钢 | 硬度: HB200 | 切削性能: 良好")
+    print("  工艺规则: 基准先行 → 先面后孔 → 同向集中 → 先粗后精")
     print(SEP)
 
 
@@ -317,7 +315,7 @@ def main() -> int:
     material = step_identify_material(manager)
 
     # Step 2: 加载排序规则
-    rules = step_load_rules(manager)
+    _rules = step_load_rules(manager)  # noqa: F841
 
     # Step 3-6: 构建工艺方案
     step_build_process_plan(manager, material)

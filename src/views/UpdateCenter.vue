@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { formatSecondsTimestamp } from '@/utils/formatters'
 
 const notifications = ref<any[]>([])
 const loading = ref(false)
@@ -71,11 +72,6 @@ async function showPreview(id: string) {
   } catch { /* empty */ }
 }
 
-function formatDate(ts: number): string {
-  if (!ts) return '-'
-  return new Date(ts * 1000).toLocaleString()
-}
-
 onMounted(fetchNotifications)
 </script>
 
@@ -84,30 +80,62 @@ onMounted(fetchNotifications)
     <el-card class="header-card">
       <div class="page-header">
         <h2>更新中心</h2>
-        <el-button type="primary" @click="fetchNotifications">刷新</el-button>
+        <el-button
+          type="primary"
+          @click="fetchNotifications"
+        >
+          刷新
+        </el-button>
       </div>
     </el-card>
 
     <el-card class="filter-card">
-      <el-radio-group v-model="statusFilter" @change="fetchNotifications">
-        <el-radio-button label="pending">待处理</el-radio-button>
-        <el-radio-button label="applied">已应用</el-radio-button>
-        <el-radio-button label="dismissed">已忽略</el-radio-button>
-        <el-radio-button label="all">全部</el-radio-button>
+      <el-radio-group
+        v-model="statusFilter"
+        @change="fetchNotifications"
+      >
+        <el-radio-button label="pending">
+          待处理
+        </el-radio-button>
+        <el-radio-button label="applied">
+          已应用
+        </el-radio-button>
+        <el-radio-button label="dismissed">
+          已忽略
+        </el-radio-button>
+        <el-radio-button label="all">
+          全部
+        </el-radio-button>
       </el-radio-group>
     </el-card>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div
+      v-if="loading"
+      class="loading"
+    >
+      加载中...
+    </div>
 
-    <el-card v-for="notif in filteredNotifications" :key="notif.notification_id" class="notif-card" shadow="hover">
+    <el-card
+      v-for="notif in filteredNotifications"
+      :key="notif.notification_id"
+      class="notif-card"
+      shadow="hover"
+    >
       <template #header>
         <div class="notif-header">
           <span class="notif-title">{{ notif.title }}</span>
           <div class="notif-tags">
-            <el-tag :type="priorityTag(notif.priority).type" size="small">
+            <el-tag
+              :type="priorityTag(notif.priority).type"
+              size="small"
+            >
               {{ priorityTag(notif.priority).text }}
             </el-tag>
-            <el-tag :type="statusTag(notif.status).type" size="small">
+            <el-tag
+              :type="statusTag(notif.status).type"
+              size="small"
+            >
               {{ statusTag(notif.status).text }}
             </el-tag>
           </div>
@@ -115,27 +143,62 @@ onMounted(fetchNotifications)
       </template>
       <div class="notif-body">
         <p>{{ notif.description }}</p>
-        <div v-if="notif.expected_impact && Object.keys(notif.expected_impact).length > 0" class="impact-section">
+        <div
+          v-if="notif.expected_impact && Object.keys(notif.expected_impact).length > 0"
+          class="impact-section"
+        >
           <h4>预期影响</h4>
-          <div v-for="(val, key) in notif.expected_impact" :key="key" class="impact-item">
+          <div
+            v-for="(val, key) in notif.expected_impact"
+            :key="key"
+            class="impact-item"
+          >
             <span class="impact-label">{{ key }}:</span>
             <span class="impact-value">{{ typeof val === 'number' ? (val * 100).toFixed(1) + '%' : val }}</span>
           </div>
         </div>
-        <div class="notif-time">{{ formatDate(notif.created_at) }}</div>
+        <div class="notif-time">
+          {{ formatSecondsTimestamp(notif.created_at) }}
+        </div>
       </div>
       <template #footer>
         <div class="notif-actions">
-          <el-button size="small" @click="showPreview(notif.notification_id)">预览变更</el-button>
-          <el-button v-if="notif.status === 'pending'" type="success" size="small" @click="applyUpdate(notif.notification_id)">一键应用</el-button>
-          <el-button v-if="notif.status === 'pending'" type="info" size="small" @click="dismissUpdate(notif.notification_id)">忽略</el-button>
+          <el-button
+            size="small"
+            @click="showPreview(notif.notification_id)"
+          >
+            预览变更
+          </el-button>
+          <el-button
+            v-if="notif.status === 'pending'"
+            type="success"
+            size="small"
+            @click="applyUpdate(notif.notification_id)"
+          >
+            一键应用
+          </el-button>
+          <el-button
+            v-if="notif.status === 'pending'"
+            type="info"
+            size="small"
+            @click="dismissUpdate(notif.notification_id)"
+          >
+            忽略
+          </el-button>
         </div>
       </template>
     </el-card>
 
-    <el-empty v-if="!loading && filteredNotifications.length === 0" description="暂无更新通知" />
+    <el-empty
+      v-if="!loading && filteredNotifications.length === 0"
+      description="暂无更新通知"
+    />
 
-    <el-dialog v-model="previewDialog" title="变更预览" width="600px">
+    <el-dialog
+      v-model="previewDialog"
+      title="变更预览"
+      width="600px"
+    >
       <div v-if="previewData">
         <h3>{{ previewData.title }}</h3>
         <p>{{ previewData.description }}</p>

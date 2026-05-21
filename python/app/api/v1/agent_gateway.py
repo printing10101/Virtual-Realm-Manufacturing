@@ -24,18 +24,19 @@ from app.models.schemas import (
     AgentTrainRequest,
     AgentExecuteRequest,
 )
-from app.ai.lnn.inference.registry import LNNModelRegistry
 from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
-from app.ai.lnn.inference.model_cache import get_model_cache
+from app.services.model_registry_service import get_model_registry_service
 from app.api.v1.sse import sse_manager, create_progress_callback
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agent/v1", tags=["Agent Gateway"])
 
-model_registry = LNNModelRegistry()
-agent_model_cache = get_model_cache()
-training_tasks: dict[str, dict] = {}
+# Use the unified service layer — do NOT instantiate LNNModelRegistry directly
+registry_service = get_model_registry_service()
+model_registry = registry_service.model_registry
+agent_model_cache = registry_service.model_cache
+training_tasks = registry_service.get_training_tasks()
 
 MAX_CONCURRENT_TRAINING = 3
 _active_training: set[str] = set()

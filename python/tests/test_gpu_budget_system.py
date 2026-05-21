@@ -12,35 +12,35 @@ Tests all 8 budget management scenarios:
 8. Cost optimization suggestions
 """
 
-import pytest
-import time
 import os
-import tempfile
-from pathlib import Path
-
 import sys
+import tempfile
+import time
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.core.cost_tracker import (
-    MultiDimensionCostTracker,
-    CostDimension,
-    CostType,
-    ProviderType,
-    ModelType,
-    BudgetEvent,
-)
-from app.core.budget_enforcer import (
+import pytest  # noqa: E402
+
+from app.core.budget_enforcer import (  # noqa: E402
     BudgetEnforcer,
     CostOptimizer,
     EnforcementAction,
 )
-from app.models.budget import (
+from app.core.cost_tracker import (  # noqa: E402
+    BudgetEvent,
+    CostDimension,
+    CostType,
+    ModelType,
+    MultiDimensionCostTracker,
+    ProviderType,
+)
+from app.models.budget import (  # noqa: E402
     BudgetLevel,
     BudgetPeriod,
+    BudgetPolicy,
     BudgetStatus,
     ResourceType,
-    BudgetPolicy,
 )
 
 

@@ -1,3 +1,4 @@
+/* eslint-disable vue/no-unused-vars */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ErrorConflictDialog from '@/components/ErrorConflictDialog.vue'
@@ -18,9 +19,10 @@ describe('ErrorConflictDialog.vue', () => {
     vi.clearAllMocks()
   })
 
+  // eslint-disable-next-line vue/no-unused-vars
   it('should mount and register event handler', () => {
     const addSpy = vi.spyOn(window, 'addEventListener')
-    const wrapper = mount(ErrorConflictDialog)
+    const wrapper = mount(ErrorConflictDialog, { global: { stubs: { ErrorNotification: true } } })
     expect(wrapper.vm).toBeDefined()
 
     expect(addSpy).toHaveBeenCalledWith(

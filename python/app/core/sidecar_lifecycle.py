@@ -47,6 +47,10 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
             await asyncio.sleep(self._check_interval)
 
     async def dispatch(self, request: Request, call_next):
+        # Auto-start idle checker on first request if not already started
+        if self._checker_task is None:
+            await self.start_idle_checker()
+
         if request.url.path != "/health":
             self.last_activity_time = time.time()
         else:

@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -22,36 +23,294 @@ from app.simulation.toolpath_parser import ToolpathSegment
 if TYPE_CHECKING:
     import trimesh
 
+logger = logging.getLogger(__name__)
+
+MAX_STL_RETRIES = 3
+STL_RETRY_INTERVAL = 1.0
+
+
+def _infer_source_paths(stl_path: Path) -> list[Path]:
+    """根据STL路径推断可能的源文件路径。
+
+    在同一目录下查找与STL文件同名的STEP(.step/.stp)或DXF(.dxf)文件。
+
+    Args:
+        stl_path: 目标STL文件路径
+
+    Returns:
+        可能存在的源文件路径列表
+    """
+    base = stl_path.parent / stl_path.stem
+    candidates: list[Path] = []
+    for ext in (".step", ".stp", ".dxf"):
+        candidate = Path(str(base) + ext)
+        if candidate.exists():
+            candidates.append(candidate)
+    return candidates
+
+
+def _generate_stl_from_step(
+    step_path: Path,
+    stl_target_path: Path,
+    output_dir: Path,
+) -> dict[str, Any]:
+    """从STEP源文件生成STL。
+
+    Args:
+        step_path: STEP源文件路径
+        stl_target_path: 目标STL输出路径
+        output_dir: 中间输出目录
+
+    Returns:
+        {"success": bool, "error": str|None, "suggestion": str|None}
+    """
+    try:
+        from app.step_import.step_parser import StepParser
+        from app.step_import.step_converter import StepConverter
+    except ImportError as e:
+        return {
+            "success": False,
+            "error": f"STEP模块导入失败: {e}",
+            "suggestion": "请确认step_import模块已正确安装",
+        }
+
+    try:
+        parser = StepParser()
+        shape = parser.get_cadquery_shape(step_path)
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"STEP文件解析失败: {e}",
+            "suggestion": "请检查STEP文件是否有效且未被损坏",
+        }
+
+    try:
+        converter = StepConverter(output_dir=output_dir)
+        convert_result = converter.convert_to_stl(
+            shape,
+            stl_target_path.stem,
+            entity_name="Stock",
+        )
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"STEP→STL转换失败: {e}",
+            "suggestion": "请尝试调整STL导出精度参数或检查STEP文件几何完整性",
+        }
+
+    try:
+        import shutil
+
+        generated_path = Path(convert_result.stl_path)
+        if generated_path != stl_target_path:
+            stl_target_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(generated_path), str(stl_target_path))
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"STL文件复制到目标路径失败: {e}",
+            "suggestion": "请检查目标目录的写入权限",
+        }
+
+    return {"success": True, "error": None, "suggestion": None}
+
+
+def _generate_stl_from_dxf(
+    dxf_path: Path,
+    stl_target_path: Path,
+    output_dir: Path,
+) -> dict[str, Any]:
+    """从DXF源文件生成STL。
+
+    Args:
+        dxf_path: DXF源文件路径
+        stl_target_path: 目标STL输出路径
+        output_dir: 中间输出目录
+
+    Returns:
+        {"success": bool, "error": str|None, "suggestion": str|None}
+    """
+    try:
+        from app.dxf.dxf_parser import DxfParser
+        from app.dxf.feature_extractor import FeatureExtractor
+        from app.dxf.dxf_to_model import DxfToModelConverter
+    except ImportError as e:
+        return {
+            "success": False,
+            "error": f"DXF模块导入失败: {e}",
+            "suggestion": "请确认dxf模块已正确安装",
+        }
+
+    try:
+        parser = DxfParser()
+        parse_result = parser.parse(str(dxf_path))
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"DXF文件解析失败: {e}",
+            "suggestion": "请检查DXF文件是否有效且格式正确",
+        }
+
+    try:
+        extractor = FeatureExtractor()
+        feature_result = extractor.extract(parse_result)
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"DXF特征提取失败: {e}",
+            "suggestion": "请确认DXF文件包含有效的外形和孔特征",
+        }
+
+    try:
+        converter = DxfToModelConverter()
+        model_result = converter.convert(feature_result)
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"DXF→3D模型转换失败: {e}",
+            "suggestion": "请检查DXF中的特征尺寸是否有效",
+        }
+
+    try:
+        converter.export_stl(model_result, stl_target_path)
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"模型→STL导出失败: {e}",
+            "suggestion": "请检查目标目录的写入权限和磁盘空间",
+        }
+
+    return {"success": True, "error": None, "suggestion": None}
+
 
 @dataclass
 class ToolModel:
-    """刀具几何模型。
+    """刀具几何与物理模型（符合ISO 13399标准）。
 
-    定义刀具的三维几何表示，用于体素化切削计算。
-    支持平底刀(Ball/Flat)、球头刀和钻头三种类型。
+    定义刀具的三维几何表示和物理约束属性，用于体素化切削计算。
+    支持平底刀(flat)、球头刀(ball)和钻头(drill)三种类型。
+
+    物理约束范围基于常见工业刀具规格：
+    - 直径 0.1-300mm，刃长 1-500mm
+    - 最大切深为直径的函数(通常≤3×直径)
+    - 刀尖圆角半径≤半径
 
     Attributes:
-        diameter: 刀具直径(mm)
-        length: 刀具刃长(mm)
+        diameter: 刀具直径(mm)，范围[0.5, 300.0]
+        cutting_length: 刀具刃长(mm)，范围[1.0, 500.0]
+        overall_length: 刀具总长(mm)
         tool_type: 刀具类型 - "flat"(平底刀), "ball"(球头刀), "drill"(钻头)
         corner_radius: 刀尖圆角半径(mm)，平底刀=0, 球头刀=diameter/2
+        material: 刀具材料 (e.g., "carbide", "HSS", "ceramic")
+        coating: 涂层类型 (e.g., "TiAlN", "TiN", "AlCrN", "none")
+        flute_count: 刃数，范围[1, 20]
+        helix_angle_deg: 螺旋角(°)，范围[0, 60]
+        rake_angle_deg: 前角(°)
+        clearance_angle_deg: 后角(°)，范围[0, 30]
+        max_depth_of_cut: 最大切深(mm)，默认≤直径
+        max_cutting_force_n: 最大切削力(N)，基于刀具材料和直径估算
+        tool_life_minutes: 预期刀具寿命(min)，默认60
+        shank_diameter: 柄径(mm)，用于夹持分析
+        max_spindle_speed_rpm: 最大允许转速(RPM)
     """
 
     diameter: float = 10.0
-    length: float = 50.0
+    cutting_length: float = 50.0
+    overall_length: float = 80.0
     tool_type: str = "flat"
     corner_radius: float = 0.0
+    material: str = "carbide"
+    coating: str = "TiAlN"
+    flute_count: int = 2
+    helix_angle_deg: float = 30.0
+    rake_angle_deg: float = 10.0
+    clearance_angle_deg: float = 8.0
+    max_depth_of_cut: float = 0.0
+    max_cutting_force_n: float = 0.0
+    tool_life_minutes: float = 60.0
+    shank_diameter: float = 10.0
+    max_spindle_speed_rpm: float = 20000.0
+
+    _PHYSICAL_CONSTRAINTS = {
+        "diameter": (0.5, 300.0),
+        "cutting_length": (1.0, 500.0),
+        "overall_length": (1.0, 600.0),
+        "corner_radius": (0.0, 150.0),
+        "flute_count": (1, 20),
+        "helix_angle_deg": (0.0, 60.0),
+        "clearance_angle_deg": (0.0, 30.0),
+        "max_depth_of_cut": (0.0, 500.0),
+        "max_spindle_speed_rpm": (0.0, 200000.0),
+        "shank_diameter": (0.1, 300.0),
+    }
+
+    _VALID_TOOL_TYPES = frozenset({"flat", "ball", "drill", "chamfer", "thread_mill", "reamer"})
+    _VALID_MATERIALS = frozenset({"carbide", "HSS", "ceramic", "CBN", "PCD"})
 
     def __post_init__(self) -> None:
+        if self.tool_type not in self._VALID_TOOL_TYPES:
+            raise ValueError(
+                f"ToolModel.tool_type='{self.tool_type}'无效，可选: {sorted(self._VALID_TOOL_TYPES)}"
+            )
+        if self.material not in self._VALID_MATERIALS:
+            raise ValueError(
+                f"ToolModel.material='{self.material}'无效，可选: {sorted(self._VALID_MATERIALS)}"
+            )
+        if self.corner_radius > self.diameter / 2.0:
+            raise ValueError(
+                f"corner_radius({self.corner_radius})不能超过半径({self.diameter / 2.0})"
+            )
+        if self.cutting_length > self.overall_length:
+            raise ValueError(
+                f"cutting_length({self.cutting_length})不能超过overall_length({self.overall_length})"
+            )
+        if self.shank_diameter > self.diameter * 2.0:
+            raise ValueError(
+                f"shank_diameter({self.shank_diameter})与diameter({self.diameter})比例不合理"
+            )
+        for field_name, (low, high) in self._PHYSICAL_CONSTRAINTS.items():
+            value = getattr(self, field_name)
+            if value < low or value > high:
+                raise ValueError(
+                    f"ToolModel.{field_name}={value}超出物理约束范围[{low}, {high}]"
+                )
+
         if self.tool_type == "ball" and self.corner_radius < 0.001:
             self.corner_radius = self.diameter / 2.0
+
+        if self.max_depth_of_cut <= 0:
+            self.max_depth_of_cut = self.diameter * 1.5
+
+        if self.max_cutting_force_n <= 0:
+            if self.material == "carbide":
+                self.max_cutting_force_n = self.diameter * 200.0
+            elif self.material == "HSS":
+                self.max_cutting_force_n = self.diameter * 80.0
+            else:
+                self.max_cutting_force_n = self.diameter * 100.0
+
+    @property
+    def length(self) -> float:
+        return self.cutting_length
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "diameter": self.diameter,
-            "length": self.length,
+            "cutting_length": self.cutting_length,
+            "overall_length": self.overall_length,
             "tool_type": self.tool_type,
             "corner_radius": self.corner_radius,
+            "material": self.material,
+            "coating": self.coating,
+            "flute_count": self.flute_count,
+            "helix_angle_deg": self.helix_angle_deg,
+            "rake_angle_deg": self.rake_angle_deg,
+            "clearance_angle_deg": self.clearance_angle_deg,
+            "max_depth_of_cut": self.max_depth_of_cut,
+            "max_cutting_force_n": self.max_cutting_force_n,
+            "tool_life_minutes": self.tool_life_minutes,
+            "shank_diameter": self.shank_diameter,
+            "max_spindle_speed_rpm": self.max_spindle_speed_rpm,
         }
 
     def voxel_mask(self, voxel_size: float, z_offset: float = 0.0) -> np.ndarray:
@@ -221,6 +480,148 @@ class VoxelCutter:
         """
         self._voxel_size = max(voxel_size, 0.1)
 
+    def _ensure_stl_file(
+        self,
+        stl_path: Path,
+        source_file_paths: list[Path] | None,
+        output_dir: Path,
+        max_retries: int = MAX_STL_RETRIES,
+        retry_interval: float = STL_RETRY_INTERVAL,
+    ) -> dict[str, Any]:
+        """确保STL文件存在，不存在则尝试从源文件自动生成。
+
+        实现STL文件存在性检查和自动生成机制，包含重试逻辑和详细日志。
+
+        Args:
+            stl_path: 目标STL文件路径
+            source_file_paths: 源文件路径列表(STEP/DXF)
+            output_dir: 输出目录
+            max_retries: 最大重试次数，默认3次
+            retry_interval: 基础重试间隔(秒)，默认1秒
+
+        Returns:
+            {"exists": bool, "generated": bool, "error": str|None,
+             "suggestion": str|None, "source_file": str|None}
+        """
+
+        if stl_path.exists():
+            logger.info(
+                "[自动生成STL] STL文件已存在，跳过生成: %s",
+                stl_path,
+            )
+            return {
+                "exists": True,
+                "generated": False,
+                "error": None,
+                "suggestion": None,
+                "source_file": None,
+            }
+
+        logger.info(
+            "[自动生成STL] STL文件不存在，尝试自动生成: %s",
+            stl_path,
+        )
+
+        if not source_file_paths:
+            source_file_paths = _infer_source_paths(stl_path)
+
+        if not source_file_paths:
+            logger.warning(
+                "[自动生成STL] 未找到可用的源文件(STEP/DXF)，无法自动生成: %s",
+                stl_path,
+            )
+            return {
+                "exists": False,
+                "generated": False,
+                "error": "STL文件不存在，且在相同目录未找到源STEP/DXF文件",
+                "suggestion": "请先通过STEP导入或DXF导入功能生成毛坯STL文件",
+                "source_file": None,
+            }
+
+        for source_path in source_file_paths:
+            if not source_path.exists():
+                logger.warning(
+                    "[自动生成STL] 推断的源文件不存在: %s",
+                    source_path,
+                )
+                continue
+
+            suffix = source_path.suffix.lower()
+            logger.info(
+                "[自动生成STL] 发现源文件: %s (类型: %s)",
+                source_path,
+                suffix,
+            )
+
+            for attempt in range(1, max_retries + 1):
+                logger.info(
+                    "[自动生成STL] 第%d/%d次尝试从源文件生成STL: %s -> %s",
+                    attempt,
+                    max_retries,
+                    source_path,
+                    stl_path,
+                )
+
+                if suffix in (".step", ".stp"):
+                    gen_result = _generate_stl_from_step(
+                        source_path, stl_path, output_dir
+                    )
+                elif suffix == ".dxf":
+                    gen_result = _generate_stl_from_dxf(
+                        source_path, stl_path, output_dir
+                    )
+                else:
+                    gen_result = {
+                        "success": False,
+                        "error": f"不支持的源文件格式: {suffix}",
+                        "suggestion": "支持的格式: .step, .stp, .dxf",
+                    }
+
+                if gen_result["success"]:
+                    logger.info(
+                        "[自动生成STL] 生成成功: %s (源文件: %s, 尝试次数: %d)",
+                        stl_path,
+                        source_path,
+                        attempt,
+                    )
+                    return {
+                        "exists": True,
+                        "generated": True,
+                        "error": None,
+                        "suggestion": None,
+                        "source_file": str(source_path),
+                    }
+
+                logger.warning(
+                    "[自动生成STL] 第%d次尝试失败: 源文件=%s, 错误=%s",
+                    attempt,
+                    source_path,
+                    gen_result.get("error", "未知错误"),
+                )
+
+                if attempt < max_retries:
+                    wait_time = retry_interval
+                    logger.info(
+                        "[自动生成STL] 等待%.1fs后进行第%d次重试...",
+                        wait_time,
+                        attempt + 1,
+                    )
+                    time.sleep(wait_time)
+
+            logger.error(
+                "[自动生成STL] 从源文件 %s 生成STL失败，已重试%d次",
+                source_path,
+                max_retries,
+            )
+
+        return {
+            "exists": False,
+            "generated": False,
+            "error": "所有源文件均无法生成有效的STL文件",
+            "suggestion": "请检查源STEP/DXF文件是否有效，或手动通过导入功能生成STL",
+            "source_file": None,
+        }
+
     def run_simulation(
         self,
         stock_stl_path: Path,
@@ -229,10 +630,12 @@ class VoxelCutter:
         output_dir: Path,
         safe_z_height: float = 10.0,
         task_id: str | None = None,
+        source_file_paths: list[Path] | None = None,
     ) -> VoxelSimulationResult:
         """执行完整的体素化切削仿真流程。
 
-        流程：加载STL → 体素化 → 刀具体素掩码 → 轨迹切削 → 重建STL → 碰撞检测。
+        流程：检查STL存在性 → 自动生成(如需要) → 加载STL → 体素化
+        → 刀具体素掩码 → 轨迹切削 → 重建STL → 碰撞检测。
 
         Args:
             stock_stl_path: 毛坯STL文件路径
@@ -241,12 +644,33 @@ class VoxelCutter:
             output_dir: 输出目录
             safe_z_height: 安全平面高度(mm)
             task_id: 任务ID(自动生成如果未提供)
+            source_file_paths: 源文件路径列表(STEP/DXF)，
+                用于STL缺失时自动生成
 
         Returns:
             VoxelSimulationResult 包含切削后模型数据和碰撞检测结果
         """
         start_time = time.perf_counter()
         task_id = task_id or str(uuid.uuid4())[:12]
+
+        stl_check = self._ensure_stl_file(
+            stl_path=stock_stl_path,
+            source_file_paths=source_file_paths,
+            output_dir=output_dir,
+        )
+        if not stl_check["exists"]:
+            logger.error(
+                "[自动生成STL] STL文件不可用且自动生成失败: %s, 错误: %s",
+                stock_stl_path,
+                stl_check.get("error", "未知"),
+            )
+            return self._generate_fallback_result(
+                task_id,
+                output_dir,
+                segments,
+                start_time,
+                stl_check.get("error", "STL文件不可用"),
+            )
 
         try:
             import trimesh

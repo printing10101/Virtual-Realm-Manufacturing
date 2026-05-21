@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.skill_loader import (
+from app.core.skill_loader import (  # noqa: E402
     Skill,
     SkillLevel,
     SkillMetadata,

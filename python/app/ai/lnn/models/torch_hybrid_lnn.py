@@ -1,10 +1,22 @@
-"""
-Hybrid LNN Model (CNN + LTC)
+"""Hybrid LNN Model (CNN + LTC).
+
+Combines CNN feature extraction with LTC temporal modeling for tasks that
+require both spatial and temporal pattern recognition.
 
 Architecture:
-- CNN layers: Extract local spatial features from input data
-- LTC layers: Model temporal dependencies of extracted features
-- Fully connected layers: Final output predictions
+    1. CNN layers: Extract local spatial features from input data.
+    2. LTC layers: Model temporal dependencies of extracted features.
+    3. Fully connected layers: Final output predictions.
+
+Key components:
+    - HybridLNN: Full hybrid model inheriting from BaseLNN.
+
+Example:
+    >>> from app.ai.lnn.models.torch_base_lnn import LNNConfig
+    >>> config = LNNConfig(input_size=128, hidden_size=256, output_size=10)
+    >>> model = HybridLNN(config)
+    >>> x = torch.randn(32, 128)
+    >>> output, hidden = model(x, dt=0.1)
 """
 
 import torch
@@ -16,10 +28,28 @@ from .torch_ltc_model import LTCCell
 
 
 class HybridLNN(BaseLNN):
-    """
-    Hybrid LNN model combining CNN feature extraction with LTC temporal modeling.
+    """Hybrid LNN model combining CNN feature extraction with LTC temporal modeling.
 
     Inherits from BaseLNN and conforms to unified interface specifications.
+    Processes input through a multi-layer CNN (with BatchNorm and ReLU) to extract
+    spatial features, then through LTC cells for temporal modeling, and finally
+    through fully connected layers for output prediction.
+
+    Attributes:
+        config: LNNConfig for overall model (input_size, hidden_size for CNN, output_size).
+        ltc_config: LNNConfig for LTC layer settings.
+        cnn: CNN feature extractor sequential network.
+        ltc_cells: ModuleList of LTCCell layers.
+        output_layer: Output fully connected layers.
+        hidden_state: Current hidden state tensor.
+        device: Computation device.
+
+    Example:
+        >>> from app.ai.lnn.models.torch_base_lnn import LNNConfig
+        >>> config = LNNConfig(input_size=10, hidden_size=64, output_size=2)
+        >>> model = HybridLNN(config)
+        >>> x = torch.randn(32, 10)
+        >>> output, hidden = model(x, dt=0.1)
     """
 
     def __init__(self, config: LNNConfig, ltc_config: LNNConfig = None):

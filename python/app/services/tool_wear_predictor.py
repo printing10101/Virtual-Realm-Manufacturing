@@ -574,7 +574,10 @@ class ToolWearPredictor:
                     sklearn.__version__,
                 )
                 return {
-                    "error": f"scikit-learn 版本过低 ({sklearn.__version__} < 1.0.0)，请升级: pip install 'scikit-learn>=1.0.0'",
+                    "error": (
+                        f"scikit-learn 版本过低 ({sklearn.__version__} < 1.0.0)，"
+                        "请升级: pip install 'scikit-learn>=1.0.0'"
+                    ),
                     "accuracy": 0.0,
                     "precision": 0.0,
                     "recall": 0.0,
@@ -677,7 +680,11 @@ class ToolWearPredictor:
             model = SVC(kernel="rbf", probability=True, random_state=42)
         else:
             raise ValueError(
-                f"刀具磨损预测失败：不支持的模型类型 '{model_type}'。支持的模型类型包括：'LNN'（神经逻辑网络）、'CTC'（连续时间分类）、'CFC'（连续-离散混合模型）。请调用 GET /api/v1/lnn/models 查看支持的模型类型列表，或检查 model_type 参数配置。"
+                f"刀具磨损预测失败：不支持的模型类型 '{model_type}'。"
+                "支持的模型类型包括：'LNN'（神经逻辑网络）、"
+                "'CTC'（连续时间分类）、'CFC'（连续-离散混合模型）。"
+                "请调用 GET /api/v1/lnn/models 查看支持的模型类型列表，"
+                "或检查 model_type 参数配置。"
             )
 
         model.fit(X_train_scaled, y_train)
@@ -1012,7 +1019,11 @@ class ToolWearPredictor:
                     model = LinearRegression()
                 else:
                     raise ValueError(
-                        f"刀具磨损预测失败：不支持的模型类型 '{model_type}'。支持的模型类型包括：'LNN'（神经逻辑网络）、'CTC'（连续时间分类）、'CFC'（连续-离散混合模型）。请调用 GET /api/v1/lnn/models 查看支持的模型类型列表，或检查 model_type 参数配置。"
+                        f"刀具磨损预测失败：不支持的模型类型 '{model_type}'。"
+                        "支持的模型类型包括：'LNN'（神经逻辑网络）、"
+                        "'CTC'（连续时间分类）、'CFC'（连续-离散混合模型）。"
+                        "请调用 GET /api/v1/lnn/models 查看支持的模型类型列表，"
+                        "或检查 model_type 参数配置。"
                     )
 
                 model.fit(X_train_scaled, y_train)

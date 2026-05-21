@@ -4,7 +4,12 @@
       <template #header>
         <div class="card-header">
           <span>{{ $t('settings.aiSovereignty') }}</span>
-          <el-tag type="success" size="small">{{ $t('settings.sovereigntyMode') }}</el-tag>
+          <el-tag
+            type="success"
+            size="small"
+          >
+            {{ $t('settings.sovereigntyMode') }}
+          </el-tag>
         </div>
       </template>
 
@@ -13,9 +18,9 @@
         :title="$t('settings.autonomyModeTitle')"
         type="info"
         :closable="true"
-        @close="showSovereigntyIntro = false"
         show-icon
         style="margin-bottom: 16px;"
+        @close="showSovereigntyIntro = false"
       >
         <div>
           <p><strong>{{ $t('settings.aiAutonomyLevel') }}</strong>{{ $t('settings.autonomyModeDesc') }}</p>
@@ -29,7 +34,10 @@
         </div>
       </el-alert>
 
-      <el-form :model="sovereigntySettings" label-width="160px">
+      <el-form
+        :model="sovereigntySettings"
+        label-width="160px"
+      >
         <el-form-item :label="$t('settings.aiAutonomyLevel')">
           <div class="autonomy-slider">
             <el-slider
@@ -42,7 +50,11 @@
               @change="handleAutonomyChange"
             />
             <div class="autonomy-labels">
-              <span v-for="(label, idx) in autonomyLabels" :key="idx" class="autonomy-label">
+              <span
+                v-for="(label, idx) in autonomyLabels"
+                :key="idx"
+                class="autonomy-label"
+              >
                 {{ label }}
               </span>
             </div>
@@ -71,15 +83,24 @@
         </el-form-item>
 
         <el-form-item :label="$t('settings.predictConfirm')">
-          <el-switch v-model="sovereigntySettings.require_confirmation_for_predict" :disabled="sovereigntySettings.ai_autonomy_level >= 3" />
+          <el-switch
+            v-model="sovereigntySettings.require_confirmation_for_predict"
+            :disabled="sovereigntySettings.ai_autonomy_level >= 3"
+          />
         </el-form-item>
 
         <el-form-item :label="$t('settings.trainConfirm')">
-          <el-switch v-model="sovereigntySettings.require_confirmation_for_train" :disabled="sovereigntySettings.ai_autonomy_level >= 4" />
+          <el-switch
+            v-model="sovereigntySettings.require_confirmation_for_train"
+            :disabled="sovereigntySettings.ai_autonomy_level >= 4"
+          />
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" @click="saveSovereigntySettings">
+          <el-button
+            type="primary"
+            @click="saveSovereigntySettings"
+          >
             {{ $t('settings.saveSovereignty') }}
           </el-button>
           <el-button @click="resetSovereigntySettings">
@@ -89,15 +110,27 @@
       </el-form>
     </el-card>
 
-    <el-card class="health-card" shadow="hover">
+    <el-card
+      class="health-card"
+      shadow="hover"
+    >
       <template #header>
         <div class="card-header">
           <span>{{ $t('settings.systemHealth') }}</span>
           <div>
-            <el-tag :type="healthStatus.backendOnline ? 'success' : 'danger'" size="small">
+            <el-tag
+              :type="healthStatus.backendOnline ? 'success' : 'danger'"
+              size="small"
+            >
               {{ healthStatus.backendOnline ? $t('common.online') : $t('common.offline') }}
             </el-tag>
-            <el-button size="small" @click="refreshHealth" :loading="healthLoading" style="margin-left:8px" circle>
+            <el-button
+              size="small"
+              :loading="healthLoading"
+              style="margin-left:8px"
+              circle
+              @click="refreshHealth"
+            >
               <el-icon><Refresh /></el-icon>
             </el-button>
           </div>
@@ -160,7 +193,10 @@
           <div class="stat-item">
             <span class="stat-label">{{ $t('settings.trainingTasks') }}</span>
             <span class="stat-value">
-              <el-tag :type="healthStatus.activeTrainingTasks > 0 ? 'warning' : 'info'" size="small">
+              <el-tag
+                :type="healthStatus.activeTrainingTasks > 0 ? 'warning' : 'info'"
+                size="small"
+              >
                 {{ healthStatus.activeTrainingTasks }} {{ $t('settings.activeSuffix') }}
               </el-tag>
             </span>
@@ -185,19 +221,38 @@
                 backgroundColor: item.duration_ms > 500 ? '#f56c6c' : item.duration_ms > 200 ? '#e6a23c' : '#67c23a'
               }"
               :title="`${item.model}: ${item.duration_ms}ms`"
-            ></div>
+            />
             <span class="trend-bar-label">{{ item.model ? item.model.substring(0, 6) : '-' }}</span>
           </div>
         </div>
-        <div class="stat-sub">P50: {{ healthStatus.p50Ms }}ms | P95: {{ healthStatus.p95Ms }}ms | 最大: {{ healthStatus.maxRecentDuration }}ms</div>
+        <div class="stat-sub">
+          P50: {{ healthStatus.p50Ms }}ms | P95: {{ healthStatus.p95Ms }}ms | 最大: {{ healthStatus.maxRecentDuration }}ms
+        </div>
       </div>
 
       <el-divider style="margin: 12px 0" />
 
       <div class="services-row">
-        <el-tag :type="healthStatus.dbHealthy ? 'success' : 'danger'" size="small">{{ $t('settings.db') }}</el-tag>
-        <el-tag :type="healthStatus.redisHealthy ? 'success' : 'danger'" size="small" style="margin-left:6px">Redis</el-tag>
-        <el-tag :type="healthStatus.prometheusHealthy ? 'success' : 'danger'" size="small" style="margin-left:6px">Prometheus</el-tag>
+        <el-tag
+          :type="healthStatus.dbHealthy ? 'success' : 'danger'"
+          size="small"
+        >
+          {{ $t('settings.db') }}
+        </el-tag>
+        <el-tag
+          :type="healthStatus.redisHealthy ? 'success' : 'danger'"
+          size="small"
+          style="margin-left:6px"
+        >
+          Redis
+        </el-tag>
+        <el-tag
+          :type="healthStatus.prometheusHealthy ? 'success' : 'danger'"
+          size="small"
+          style="margin-left:6px"
+        >
+          Prometheus
+        </el-tag>
         <span style="margin-left:12px;font-size:12px;color:#909399">{{ $t('settings.autoRefresh') }}: {{ healthStatus.pollInterval }}s</span>
       </div>
     </el-card>

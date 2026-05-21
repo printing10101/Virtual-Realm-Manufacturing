@@ -2,33 +2,53 @@
   <div class="alignment-checker">
     <div class="checker-header">
       <h3>目标对齐检查器</h3>
-      <el-button type="primary" :loading="loading" @click="$emit('scan')">
+      <el-button
+        type="primary"
+        :loading="loading"
+        @click="$emit('scan')"
+      >
         <el-icon><Search /></el-icon>
         运行检查
       </el-button>
     </div>
 
-    <el-card v-if="summary" class="summary-card">
+    <el-card
+      v-if="summary"
+      class="summary-card"
+    >
       <el-row :gutter="16">
         <el-col :span="6">
-          <el-statistic title="总任务数" :value="summary.total_tasks" />
+          <el-statistic
+            title="总任务数"
+            :value="summary.total_tasks"
+          />
         </el-col>
         <el-col :span="6">
-          <el-statistic title="已对齐" :value="summary.aligned_tasks">
+          <el-statistic
+            title="已对齐"
+            :value="summary.aligned_tasks"
+          >
             <template #suffix>
               <span class="suffix-success"> 个</span>
             </template>
           </el-statistic>
         </el-col>
         <el-col :span="6">
-          <el-statistic title="未对齐" :value="summary.unaligned_tasks">
+          <el-statistic
+            title="未对齐"
+            :value="summary.unaligned_tasks"
+          >
             <template #suffix>
               <span class="suffix-danger"> 个</span>
             </template>
           </el-statistic>
         </el-col>
         <el-col :span="6">
-          <el-statistic title="对齐率" :value="summary.alignment_rate" :precision="1">
+          <el-statistic
+            title="对齐率"
+            :value="summary.alignment_rate"
+            :precision="1"
+          >
             <template #suffix>
               <span>%</span>
             </template>
@@ -57,17 +77,40 @@
       <div>所有任务均已关联到正确的目标链。</div>
     </el-alert>
 
-    <el-card v-if="summary && summary.issues && summary.issues.length > 0" class="issues-card">
+    <el-card
+      v-if="summary && summary.issues && summary.issues.length > 0"
+      class="issues-card"
+    >
       <template #header>
         <span>对齐问题详情</span>
       </template>
-      <el-table :data="summary.issues" style="width: 100%">
-        <el-table-column prop="task_id" label="任务ID" width="180" />
-        <el-table-column prop="task_title" label="任务标题" />
-        <el-table-column prop="issue" label="问题描述" />
-        <el-table-column prop="severity" label="严重度" width="100">
+      <el-table
+        :data="summary.issues"
+        style="width: 100%"
+      >
+        <el-table-column
+          prop="task_id"
+          label="任务ID"
+          width="180"
+        />
+        <el-table-column
+          prop="task_title"
+          label="任务标题"
+        />
+        <el-table-column
+          prop="issue"
+          label="问题描述"
+        />
+        <el-table-column
+          prop="severity"
+          label="严重度"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="row.severity === 'high' ? 'danger' : 'warning'" size="small">
+            <el-tag
+              :type="row.severity === 'high' ? 'danger' : 'warning'"
+              size="small"
+            >
               {{ row.severity }}
             </el-tag>
           </template>
@@ -75,20 +118,33 @@
       </el-table>
     </el-card>
 
-    <div class="chain-visualizer" v-if="chainData">
+    <div
+      v-if="chainData"
+      class="chain-visualizer"
+    >
       <h4>目标链可视化</h4>
       <el-card>
         <div class="chain-flow">
-        <template v-for="(node, idx) in chainData" :key="node.id">
-          <div
-            class="chain-node"
-            :class="node.level"
+          <template
+            v-for="(node, idx) in chainData"
+            :key="node.id"
           >
-            <div class="node-level">{{ levelLabel(node.type || node.level) }}</div>
-            <div class="node-name">{{ node.name }}</div>
-          </div>
-          <span v-if="idx < chainData.length - 1" class="chain-arrow">→</span>
-        </template>
+            <div
+              class="chain-node"
+              :class="node.level"
+            >
+              <div class="node-level">
+                {{ getGoalLevelLabel(node.type || node.level) }}
+              </div>
+              <div class="node-name">
+                {{ node.name }}
+              </div>
+            </div>
+            <span
+              v-if="idx < chainData.length - 1"
+              class="chain-arrow"
+            >→</span>
+          </template>
         </div>
       </el-card>
     </div>
@@ -97,6 +153,7 @@
 
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
+import { getGoalLevelLabel } from '@/utils/statusHelpers'
 
 defineProps<{
   summary: any | null
@@ -108,11 +165,6 @@ defineEmits<{
   (e: 'scan'): void
   (e: 'refresh'): void
 }>()
-
-const levelLabel = (level: string) => {
-  const map: Record<string, string> = { mission: '使命', strategic_goal: '战略目标', project: '项目', task: '任务' }
-  return map[level] || level
-}
 </script>
 
 <style scoped>

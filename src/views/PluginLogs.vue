@@ -4,36 +4,92 @@
       <div class="header-content">
         <h2>插件日志</h2>
         <div class="actions">
-          <el-select v-model="selectedPlugin" placeholder="选择插件" style="width: 200px">
-            <el-option label="全部插件" value="" />
-            <el-option v-for="p in plugins" :key="p.id" :label="p.name" :value="p.id" />
+          <el-select
+            v-model="selectedPlugin"
+            placeholder="选择插件"
+            style="width: 200px"
+          >
+            <el-option
+              label="全部插件"
+              value=""
+            />
+            <el-option
+              v-for="p in plugins"
+              :key="p.id"
+              :label="p.name"
+              :value="p.id"
+            />
           </el-select>
-          <el-select v-model="logLevel" placeholder="日志级别" style="width: 120px; margin-left: 10px">
-            <el-option label="全部" value="" />
-            <el-option label="DEBUG" value="debug" />
-            <el-option label="INFO" value="info" />
-            <el-option label="WARNING" value="warning" />
-            <el-option label="ERROR" value="error" />
+          <el-select
+            v-model="logLevel"
+            placeholder="日志级别"
+            style="width: 120px; margin-left: 10px"
+          >
+            <el-option
+              label="全部"
+              value=""
+            />
+            <el-option
+              label="DEBUG"
+              value="debug"
+            />
+            <el-option
+              label="INFO"
+              value="info"
+            />
+            <el-option
+              label="WARNING"
+              value="warning"
+            />
+            <el-option
+              label="ERROR"
+              value="error"
+            />
           </el-select>
-          <el-button type="primary" style="margin-left: 10px" @click="refreshLogs">
+          <el-button
+            type="primary"
+            style="margin-left: 10px"
+            @click="refreshLogs"
+          >
             <el-icon><Refresh /></el-icon> 刷新
           </el-button>
-          <el-button type="success" style="margin-left: 10px" @click="exportLogs">
+          <el-button
+            type="success"
+            style="margin-left: 10px"
+            @click="exportLogs"
+          >
             <el-icon><Download /></el-icon> 导出
           </el-button>
         </div>
       </div>
     </el-card>
 
-    <el-card class="logs-card" style="margin-top: 20px">
+    <el-card
+      class="logs-card"
+      style="margin-top: 20px"
+    >
       <div class="log-container">
-        <div v-for="log in filteredLogs" :key="log.timestamp" class="log-entry" :class="log.level">
+        <div
+          v-for="log in filteredLogs"
+          :key="log.timestamp"
+          class="log-entry"
+          :class="log.level"
+        >
           <span class="log-time">{{ formatTime(log.timestamp) }}</span>
-          <el-tag :type="getLevelType(log.level)" size="small" class="log-level">{{ log.level.toUpperCase() }}</el-tag>
+          <el-tag
+            :type="getLevelType(log.level)"
+            size="small"
+            class="log-level"
+          >
+            {{ log.level.toUpperCase() }}
+          </el-tag>
           <span class="log-plugin">[{{ log.plugin }}]</span>
           <span class="log-message">{{ log.message }}</span>
         </div>
-        <el-empty v-if="filteredLogs.length === 0" description="暂无日志" />
+        <el-empty
+          v-if="filteredLogs.length === 0"
+          description="暂无日志"
+        />
       </div>
     </el-card>
   </div>

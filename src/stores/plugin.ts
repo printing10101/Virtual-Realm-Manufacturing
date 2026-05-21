@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
+/**
+ * 插件元数据接口
+ * 描述插件的基本信息、配置和能力。
+ */
 export interface Plugin {
   id: string
   name: string
@@ -11,26 +15,31 @@ export interface Plugin {
   plugin_type: string
   capabilities: string[]
   dependencies: Array<{ name: string; version: string; required: boolean }>
-  config_schema: Record<string, any>
+  config_schema: Record<string, unknown>
   min_core_version: string
   max_core_version: string
   plugin_path: string
   status: string
-  config: Record<string, any>
+  config: Record<string, unknown>
   enabled_at?: number
   disabled_at?: number
   installed_at?: number
 }
 
+/**
+ * 插件详情接口
+ * 包含插件元数据、实例状态和依赖树等信息。
+ */
 export interface PluginDetail {
   metadata: Plugin
   has_instance: boolean
   context_keys: string[]
-  dependency_tree: any
+  dependency_tree: unknown
   capabilities: string[]
-  worker?: any
+  worker?: unknown
 }
 
+/** 插件状态接口 */
 export interface PluginState {
   plugins: Plugin[]
   currentPlugin: PluginDetail | null
@@ -38,6 +47,10 @@ export interface PluginState {
   error: string | null
 }
 
+/**
+ * 插件管理 Store
+ * 管理插件的加载、启用、禁用、卸载和配置更新。
+ */
 export const usePluginStore = defineStore('plugin', {
   state: (): PluginState => ({
     plugins: [],
@@ -47,96 +60,137 @@ export const usePluginStore = defineStore('plugin', {
   }),
 
   getters: {
-    enabledPlugins: (state) => state.plugins.filter((p) => p.status === 'enabled'),
-    disabledPlugins: (state) => state.plugins.filter((p) => p.status === 'disabled'),
-    adapterPlugins: (state) => state.plugins.filter((p) => p.plugin_type === 'adapter'),
-    dataSourcePlugins: (state) => state.plugins.filter((p) => p.plugin_type === 'data_source'),
-    analyzerPlugins: (state) => state.plugins.filter((p) => p.plugin_type === 'analyzer'),
-    visualizationPlugins: (state) => state.plugins.filter((p) => p.plugin_type === 'visualization'),
+    /** 已启用的插件列表 */
+    enabledPlugins: (state): Plugin[] => state.plugins.filter((p) => p.status === 'enabled'),
+    /** 已禁用的插件列表 */
+    disabledPlugins: (state): Plugin[] => state.plugins.filter((p) => p.status === 'disabled'),
+    /** 适配器类型插件 */
+    adapterPlugins: (state): Plugin[] => state.plugins.filter((p) => p.plugin_type === 'adapter'),
+    /** 数据源类型插件 */
+    dataSourcePlugins: (state): Plugin[] => state.plugins.filter((p) => p.plugin_type === 'data_source'),
+    /** 分析器类型插件 */
+    analyzerPlugins: (state): Plugin[] => state.plugins.filter((p) => p.plugin_type === 'analyzer'),
+    /** 可视化类型插件 */
+    visualizationPlugins: (state): Plugin[] => state.plugins.filter((p) => p.plugin_type === 'visualization'),
   },
 
   actions: {
-    async fetchPlugins() {
+    /**
+     * 获取插件列表
+     * @returns void
+     */
+    async fetchPlugins(): Promise<void> {
       this.loading = true
       this.error = null
       try {
         const response = await axios.get('/api/v1/plugins')
         this.plugins = response.data.data.plugins
-      } catch (err: any) {
-        this.error = err.message
+      } catch (err: unknown) {
+        this.error = (err as Error).message
       } finally {
         this.loading = false
       }
     },
 
-    async fetchPluginDetail(pluginId: string) {
+    /**
+     * 获取插件详情
+     * @param pluginId - 插件ID
+     * @returns void
+     */
+    async fetchPluginDetail(pluginId: string): Promise<void> {
       this.loading = true
       this.error = null
       try {
         const response = await axios.get(`/api/v1/plugins/${pluginId}`)
         this.currentPlugin = response.data.data
-      } catch (err: any) {
-        this.error = err.message
+      } catch (err: unknown) {
+        this.error = (err as Error).message
       } finally {
         this.loading = false
       }
     },
 
-    async enablePlugin(pluginId: string) {
+    /**
+     * 启用插件
+     * @param pluginId - 插件ID
+     * @returns void
+     */
+    async enablePlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
         await axios.post(`/api/v1/plugins/${pluginId}/enable`)
         await this.fetchPlugins()
-      } catch (err: any) {
-        this.error = err.message
+      } catch (err: unknown) {
+        this.error = (err as Error).message
       } finally {
         this.loading = false
       }
     },
 
-    async disablePlugin(pluginId: string) {
+    /**
+     * 禁用插件
+     * @param pluginId - 插件ID
+     * @returns void
+     */
+    async disablePlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
         await axios.post(`/api/v1/plugins/${pluginId}/disable`)
         await this.fetchPlugins()
-      } catch (err: any) {
-        this.error = err.message
+      } catch (err: unknown) {
+        this.error = (err as Error).message
       } finally {
         this.loading = false
       }
     },
 
-    async uninstallPlugin(pluginId: string) {
+    /**
+     * 卸载插件
+     * @param pluginId - 插件ID
+     * @returns void
+     */
+    async uninstallPlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
         await axios.delete(`/api/v1/plugins/${pluginId}`)
         await this.fetchPlugins()
-      } catch (err: any) {
-        this.error = err.message
+      } catch (err: unknown) {
+        this.error = (err as Error).message
       } finally {
         this.loading = false
       }
     },
 
-    async updatePluginConfig(pluginId: string, config: Record<string, any>) {
+    /**
+     * 更新插件配置
+     * @param pluginId - 插件ID
+     * @param config - 配置数据
+     * @returns void
+     */
+    async updatePluginConfig(pluginId: string, config: Record<string, unknown>): Promise<void> {
       this.loading = true
       try {
         await axios.put(`/api/v1/plugins/${pluginId}/config`, config)
         await this.fetchPlugins()
-      } catch (err: any) {
-        this.error = err.message
+      } catch (err: unknown) {
+        this.error = (err as Error).message
       } finally {
         this.loading = false
       }
     },
 
-    async reloadPlugin(pluginId: string) {
+    /**
+     * 重新加载插件
+     * @param pluginId - 插件ID
+     * @returns void
+     */
+    async reloadPlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
         await axios.post(`/api/v1/plugins/${pluginId}/reload`)
         await this.fetchPlugins()
-      } catch (err: any) {
-        this.error = err.message
+      } catch (err: unknown) {
+        this.error = (err as Error).message
       } finally {
         this.loading = false
       }

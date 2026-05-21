@@ -78,13 +78,13 @@ class BaseLLMClient:
     ) -> None:
         if not messages:
             raise ValueError(
-                "LLM API 调用失败：'messages' 参数不能为空。LLM API 需要至少一条消息（包含 role 和 content）才能发起请求。请传入格式如 [{'role': 'user', 'content': 'your prompt'}] 的消息列表。"
+                "LLM API 调用失败：'messages' 参数不能为空。LLM API 需要至少一条消息（包含 role 和 content）才能发起请求。请传入格式如 [{'role': 'user', 'content': 'your prompt'}] 的消息列表。"  # noqa: E501
             )
         if max_tokens < 1:
             raise ValueError(f"max_tokens must be >= 1, got {max_tokens}")
         if not (0.0 <= temperature <= 2.0):
             raise ValueError(
-                f"LLM API 调用失败：'temperature' 参数值必须在 [0.0, 2.0] 区间内，当前值: {temperature}。temperature 控制生成结果的随机性（0.0=最确定，2.0=最随机）。请调整至合理区间。"
+                f"LLM API 调用失败：'temperature' 参数值必须在 [0.0, 2.0] 区间内，当前值: {temperature}。temperature 控制生成结果的随机性（0.0=最确定，2.0=最随机）。请调整至合理区间。"  # noqa: E501
             )
 
     @staticmethod
@@ -264,7 +264,7 @@ class CloudLLMClient(BaseLLMClient):
         choices = data.get("choices", [])
         if not choices:
             raise InvalidResponseError(
-                "LLM API 响应解析失败：API 返回的响应中未包含任何候选结果（choices 列表为空）。可能原因：1) API 服务异常或返回了空响应；2) 请求参数配置有误。请检查 API 请求参数，或调用 API 健康检查端点确认服务状态。"
+                "LLM API 响应解析失败：API 返回的响应中未包含任何候选结果（choices 列表为空）。可能原因：1) API 服务异常或返回了空响应；2) 请求参数配置有误。请检查 API 请求参数，或调用 API 健康检查端点确认服务状态。"  # noqa: E501
             )
         choice = choices[0]
         message = choice.get("message", {})

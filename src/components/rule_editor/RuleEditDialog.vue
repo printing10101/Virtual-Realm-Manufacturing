@@ -6,16 +6,32 @@
     @update:model-value="$emit('update:visible', $event)"
     @close="handleClose"
   >
-    <el-form :model="form" :rules="formRules" ref="formRef" label-width="100px">
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="formRules"
+      label-width="100px"
+    >
       <el-row :gutter="16">
         <el-col :span="16">
-          <el-form-item label="规则名称" prop="name">
-            <el-input v-model="form.name" placeholder="请输入规则名称" />
+          <el-form-item
+            label="规则名称"
+            prop="name"
+          >
+            <el-input
+              v-model="form.name"
+              placeholder="请输入规则名称"
+            />
           </el-form-item>
         </el-col>
         <el-col :span="8">
           <el-form-item label="分组">
-            <el-select v-model="form.group_id" placeholder="选择分组" clearable style="width: 100%">
+            <el-select
+              v-model="form.group_id"
+              placeholder="选择分组"
+              clearable
+              style="width: 100%"
+            >
               <el-option
                 v-for="g in ruleStore.groups"
                 :key="g.id"
@@ -28,140 +44,347 @@
       </el-row>
 
       <el-form-item label="规则描述">
-        <el-input v-model="form.description" type="textarea" :rows="2" placeholder="请输入规则描述（可选）" />
+        <el-input
+          v-model="form.description"
+          type="textarea"
+          :rows="2"
+          placeholder="请输入规则描述（可选）"
+        />
       </el-form-item>
 
       <el-form-item label="逻辑关系">
-        <el-radio-group v-model="form.logic_operator" @change="updatePreview">
-          <el-radio-button label="AND">AND（全部满足）</el-radio-button>
-          <el-radio-button label="OR">OR（任一满足）</el-radio-button>
+        <el-radio-group
+          v-model="form.logic_operator"
+          @change="updatePreview"
+        >
+          <el-radio-button label="AND">
+            AND（全部满足）
+          </el-radio-button>
+          <el-radio-button label="OR">
+            OR（任一满足）
+          </el-radio-button>
         </el-radio-group>
       </el-form-item>
 
       <el-form-item label="条件项">
         <div class="conditions-container">
-          <el-table :data="form.conditions" border size="small">
-            <el-table-column label="参数" width="180">
+          <el-table
+            :data="form.conditions"
+            border
+            size="small"
+          >
+            <el-table-column
+              label="参数"
+              width="180"
+            >
               <template #default="{ row }">
-                <el-select v-model="row.parameter" placeholder="选择参数" @change="updatePreview">
+                <el-select
+                  v-model="row.parameter"
+                  placeholder="选择参数"
+                  @change="updatePreview"
+                >
                   <el-option-group label="材料相关">
-                    <el-option label="材料" value="材料" />
-                    <el-option label="材料硬度" value="材料硬度" />
+                    <el-option
+                      label="材料"
+                      value="材料"
+                    />
+                    <el-option
+                      label="材料硬度"
+                      value="材料硬度"
+                    />
                   </el-option-group>
                   <el-option-group label="工序相关">
-                    <el-option label="工序" value="工序" />
-                    <el-option label="加工精度" value="加工精度" />
-                    <el-option label="表面粗糙度" value="表面粗糙度" />
+                    <el-option
+                      label="工序"
+                      value="工序"
+                    />
+                    <el-option
+                      label="加工精度"
+                      value="加工精度"
+                    />
+                    <el-option
+                      label="表面粗糙度"
+                      value="表面粗糙度"
+                    />
                   </el-option-group>
                   <el-option-group label="刀具相关">
-                    <el-option label="刀具类型" value="刀具类型" />
-                    <el-option label="刀具直径" value="刀具直径" />
+                    <el-option
+                      label="刀具类型"
+                      value="刀具类型"
+                    />
+                    <el-option
+                      label="刀具直径"
+                      value="刀具直径"
+                    />
                   </el-option-group>
                   <el-option-group label="切削参数">
-                    <el-option label="切削速度" value="切削速度" />
-                    <el-option label="进给量" value="进给量" />
-                    <el-option label="切深" value="切深" />
-                    <el-option label="切宽" value="切宽" />
-                    <el-option label="主轴转速" value="主轴转速" />
+                    <el-option
+                      label="切削速度"
+                      value="切削速度"
+                    />
+                    <el-option
+                      label="进给量"
+                      value="进给量"
+                    />
+                    <el-option
+                      label="切深"
+                      value="切深"
+                    />
+                    <el-option
+                      label="切宽"
+                      value="切宽"
+                    />
+                    <el-option
+                      label="主轴转速"
+                      value="主轴转速"
+                    />
                   </el-option-group>
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="运算符" width="110">
+            <el-table-column
+              label="运算符"
+              width="110"
+            >
               <template #default="{ row }">
-                <el-select v-model="row.operator" @change="updatePreview">
-                  <el-option label="=" value="=" />
-                  <el-option label="<" value="<" />
-                  <el-option label=">" value=">" />
-                  <el-option label="<=" value="<=" />
-                  <el-option label=">=" value=">=" />
-                  <el-option label="!=" value="!=" />
+                <el-select
+                  v-model="row.operator"
+                  @change="updatePreview"
+                >
+                  <el-option
+                    label="="
+                    value="="
+                  />
+                  <el-option
+                    label="<"
+                    value="<"
+                  />
+                  <el-option
+                    label=">"
+                    value=">"
+                  />
+                  <el-option
+                    label="<="
+                    value="<="
+                  />
+                  <el-option
+                    label=">="
+                    value=">="
+                  />
+                  <el-option
+                    label="!="
+                    value="!="
+                  />
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="值" width="140">
+            <el-table-column
+              label="值"
+              width="140"
+            >
               <template #default="{ row }">
-                <el-input v-model="row.value" placeholder="输入值" @input="updatePreview" />
+                <el-input
+                  v-model="row.value"
+                  placeholder="输入值"
+                  @input="updatePreview"
+                />
               </template>
             </el-table-column>
-            <el-table-column label="单位" width="100">
+            <el-table-column
+              label="单位"
+              width="100"
+            >
               <template #default="{ row }">
-                <el-select v-model="row.unit" placeholder="无" clearable @change="updatePreview">
-                  <el-option label="mm" value="mm" />
-                  <el-option label="m/min" value="m/min" />
-                  <el-option label="mm/rev" value="mm/rev" />
-                  <el-option label="rpm" value="rpm" />
-                  <el-option label="HB" value="HB" />
-                  <el-option label="μm" value="μm" />
+                <el-select
+                  v-model="row.unit"
+                  placeholder="无"
+                  clearable
+                  @change="updatePreview"
+                >
+                  <el-option
+                    label="mm"
+                    value="mm"
+                  />
+                  <el-option
+                    label="m/min"
+                    value="m/min"
+                  />
+                  <el-option
+                    label="mm/rev"
+                    value="mm/rev"
+                  />
+                  <el-option
+                    label="rpm"
+                    value="rpm"
+                  />
+                  <el-option
+                    label="HB"
+                    value="HB"
+                  />
+                  <el-option
+                    label="μm"
+                    value="μm"
+                  />
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="80">
+            <el-table-column
+              label="操作"
+              width="80"
+            >
               <template #default="{ $index }">
                 <el-button
                   size="small"
                   type="danger"
                   link
-                  @click="removeCondition($index)"
                   :disabled="form.conditions.length <= 1"
+                  @click="removeCondition($index)"
                 >
                   删除
                 </el-button>
               </template>
             </el-table-column>
           </el-table>
-          <el-button size="small" type="primary" @click="addCondition" style="margin-top: 8px">
+          <el-button
+            size="small"
+            type="primary"
+            style="margin-top: 8px"
+            @click="addCondition"
+          >
             <el-icon><Plus /></el-icon>
             添加条件
           </el-button>
         </div>
       </el-form-item>
 
-      <el-form-item label="结果" prop="result">
-        <el-row :gutter="8" style="width: 100%">
+      <el-form-item
+        label="结果"
+        prop="result"
+      >
+        <el-row
+          :gutter="8"
+          style="width: 100%"
+        >
           <el-col :span="6">
-            <el-select v-model="form.result.parameter" placeholder="结果参数" @change="updatePreview">
-              <el-option label="切深" value="切深" />
-              <el-option label="切宽" value="切宽" />
-              <el-option label="切削速度" value="切削速度" />
-              <el-option label="进给量" value="进给量" />
-              <el-option label="主轴转速" value="主轴转速" />
+            <el-select
+              v-model="form.result.parameter"
+              placeholder="结果参数"
+              @change="updatePreview"
+            >
+              <el-option
+                label="切深"
+                value="切深"
+              />
+              <el-option
+                label="切宽"
+                value="切宽"
+              />
+              <el-option
+                label="切削速度"
+                value="切削速度"
+              />
+              <el-option
+                label="进给量"
+                value="进给量"
+              />
+              <el-option
+                label="主轴转速"
+                value="主轴转速"
+              />
             </el-select>
           </el-col>
           <el-col :span="4">
-            <el-select v-model="form.result.operator" @change="updatePreview">
-              <el-option label="=" value="=" />
-              <el-option label="<=" value="<=" />
-              <el-option label=">=" value=">=" />
-              <el-option label="<" value="<" />
-              <el-option label=">" value=">" />
-              <el-option label="!=" value="!=" />
+            <el-select
+              v-model="form.result.operator"
+              @change="updatePreview"
+            >
+              <el-option
+                label="="
+                value="="
+              />
+              <el-option
+                label="<="
+                value="<="
+              />
+              <el-option
+                label=">="
+                value=">="
+              />
+              <el-option
+                label="<"
+                value="<"
+              />
+              <el-option
+                label=">"
+                value=">"
+              />
+              <el-option
+                label="!="
+                value="!="
+              />
             </el-select>
           </el-col>
           <el-col :span="6">
-            <el-input v-model="form.result.value" placeholder="结果值" @input="updatePreview" />
+            <el-input
+              v-model="form.result.value"
+              placeholder="结果值"
+              @input="updatePreview"
+            />
           </el-col>
           <el-col :span="4">
-            <el-select v-model="form.result.unit" placeholder="无" clearable @change="updatePreview">
-              <el-option label="mm" value="mm" />
-              <el-option label="m/min" value="m/min" />
-              <el-option label="mm/rev" value="mm/rev" />
-              <el-option label="rpm" value="rpm" />
+            <el-select
+              v-model="form.result.unit"
+              placeholder="无"
+              clearable
+              @change="updatePreview"
+            >
+              <el-option
+                label="mm"
+                value="mm"
+              />
+              <el-option
+                label="m/min"
+                value="m/min"
+              />
+              <el-option
+                label="mm/rev"
+                value="mm/rev"
+              />
+              <el-option
+                label="rpm"
+                value="rpm"
+              />
             </el-select>
           </el-col>
         </el-row>
       </el-form-item>
 
       <el-form-item label="状态">
-        <el-select v-model="form.status" style="width: 120px">
-          <el-option label="启用" value="active" />
-          <el-option label="停用" value="inactive" />
-          <el-option label="草稿" value="draft" />
+        <el-select
+          v-model="form.status"
+          style="width: 120px"
+        >
+          <el-option
+            label="启用"
+            value="active"
+          />
+          <el-option
+            label="停用"
+            value="inactive"
+          />
+          <el-option
+            label="草稿"
+            value="draft"
+          />
         </el-select>
       </el-form-item>
 
       <el-form-item label="优先级">
-        <el-input-number v-model="form.priority" :min="0" :max="100" />
+        <el-input-number
+          v-model="form.priority"
+          :min="0"
+          :max="100"
+        />
       </el-form-item>
 
       <el-form-item label="规则预览">
@@ -175,8 +398,14 @@
     </el-form>
 
     <template #footer>
-      <el-button @click="$emit('update:visible', false)">取消</el-button>
-      <el-button type="primary" @click="handleSubmit" :loading="submitting">
+      <el-button @click="$emit('update:visible', false)">
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="handleSubmit"
+      >
         {{ isEditing ? '保存修改' : '创建规则' }}
       </el-button>
     </template>

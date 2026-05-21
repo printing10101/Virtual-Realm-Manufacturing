@@ -192,7 +192,10 @@ class CadQueryGenerator:
         except Exception as e:
             logger.error("CAD 模型生成失败: %s", e)
             raise CadQueryScriptError(
-                f"CAD 模型生成失败：执行 CadQuery 脚本时出现异常。错误详情: {e}。可能原因：1) 脚本语法错误；2) 几何参数无效；3) CadQuery 版本不兼容。请检查脚本内容和几何参数，或查看日志获取详细错误信息。"
+                f"CAD 模型生成失败：执行 CadQuery 脚本时出现异常。错误详情: {e}。"
+                "可能原因：1) 脚本语法错误；2) 几何参数无效；"
+                "3) CadQuery 版本不兼容。"
+                "请检查脚本内容和几何参数，或查看日志获取详细错误信息。"
             ) from e
 
     def generate_from_views(self, front: str, top: str, side: str) -> str:
@@ -341,7 +344,9 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
     if header[:8] == b"\x89PNG\r\n\x1a\n":
         if len(header) < 24:
             raise ValueError(
-                "PNG 图像解析失败：PNG 文件头不完整。可能原因：1) 文件传输过程中被截断；2) 文件已损坏。请确认 PNG 文件完整性（标准 PNG 文件头为 8 字节: \\x89PNG\\r\\n\\x1a\\n）。"
+                "PNG 图像解析失败：PNG 文件头不完整。"
+                "可能原因：1) 文件传输过程中被截断；2) 文件已损坏。"
+                "请确认 PNG 文件完整性（标准 PNG 文件头为 8 字节）。"
             )
         w = struct.unpack(">I", header[16:20])[0]
         h = struct.unpack(">I", header[20:24])[0]
@@ -356,7 +361,8 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
             _iter += 1
             if _iter > 1000:
                 raise ValueError(
-                    "JPEG 图像解析失败：解析循环超过最大迭代次数（1000），可能存在损坏或恶意构造的数据。"
+                    "JPEG 图像解析失败：解析循环超过最大迭代次数（1000），"
+                    "可能存在损坏或恶意构造的数据。"
                 )
             if data[i] != 0xFF:
                 i += 1
@@ -369,7 +375,11 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
             seg_len = struct.unpack(">H", data[i + 2 : i + 4])[0]
             i += 2 + seg_len
         raise ValueError(
-            "JPEG 图像解析失败：未找到 SOF（Start Of Frame）标记。可能原因：1) JPEG 文件已损坏或格式不正确；2) 文件为渐进式 JPEG 但不支持解析。请检查 JPEG 文件是否为标准基线格式，或使用图像编辑工具重新保存。"
+            "JPEG 图像解析失败：未找到 SOF（Start Of Frame）标记。"
+            "可能原因：1) JPEG 文件已损坏或格式不正确；"
+            "2) 文件为渐进式 JPEG 但不支持解析。"
+            "请检查 JPEG 文件是否为标准基线格式，"
+            "或使用图像编辑工具重新保存。"
         )
 
     if header[:6] in (b"GIF87a", b"GIF89a"):
@@ -387,5 +397,8 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
         return w, h
 
     raise ValueError(
-        f"图像格式解析失败：不支持的图像格式。文件头标识: {header[:4]!r}。支持的图像格式包括：PNG（文件头: \\x89PNG）、JPEG（文件头: \\xff\\xd8\\xff）、BMP（文件头: BM）。请将图像转换为支持的格式后重试。"
+        f"图像格式解析失败：不支持的图像格式。"
+        f"文件头标识: {header[:4]!r}。"
+        "支持的图像格式包括：PNG、JPEG、BMP。"
+        "请将图像转换为支持的格式后重试。"
     )

@@ -308,7 +308,7 @@ class TestEngineerRolePermissions:
     async def test_engineer_can_create_project(self):
         from app.core.permissions import check_user_has_permission, rbac_cache
 
-        rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"})
+        rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"})  # noqa: E501
 
         with patch("app.models.user.get_user_store") as mock_store:
             mock_user = MagicMock()
@@ -321,7 +321,7 @@ class TestEngineerRolePermissions:
     async def test_engineer_can_run_simulation(self):
         from app.core.permissions import check_user_has_permission, rbac_cache
 
-        rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"})
+        rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"})  # noqa: E501
 
         with patch("app.models.user.get_user_store") as mock_store:
             mock_user = MagicMock()
@@ -450,7 +450,7 @@ class TestPermissionBoundaryCrossRole:
     async def test_engineer_boundary_vs_admin_permissions(self):
         from app.core.permissions import check_user_has_permission, rbac_cache
 
-        engineer_perms = {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"}
+        engineer_perms = {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"}  # noqa: E501
         admin_only_perms = {"system:config", "user:manage", "project:delete", "simulation:configure", "model:train"}
 
         rbac_cache.set("engineer", engineer_perms)

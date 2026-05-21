@@ -1,8 +1,19 @@
-"""
-CFC (Circuit Foremost Network) Model
+"""PyTorch CFC (Circuit Foremost Continuous-time) Model.
 
-Avoids traditional ODE solvers, achieving 160x faster inference than LSTM.
-Core mechanism: continuous liquid state updates without discrete time step discretization.
+Implements the CFC architecture in PyTorch, avoiding traditional ODE solvers
+to achieve 160x faster inference than LSTM. The core mechanism uses continuous
+liquid state updates without discrete time step discretization.
+
+Key components:
+    - CFCLayer: Liquid state update layer with backbone network.
+    - CFCModel: Full CFC model inheriting from BaseLNN.
+
+Example:
+    >>> from app.ai.lnn.models.torch_base_lnn import LNNConfig
+    >>> config = LNNConfig(input_size=128, hidden_size=256, output_size=10)
+    >>> model = CFCModel(config)
+    >>> x = torch.randn(32, 128)
+    >>> output, hidden = model(x, dt=0.1)
 """
 
 import torch
@@ -13,8 +24,22 @@ from .torch_base_lnn import BaseLNN, LNNConfig
 
 
 class CFCLayer(nn.Module):
-    """
-    CFC layer with backbone network and liquid state update mechanism.
+    """CFC layer with backbone network and liquid state update mechanism.
+
+    Combines input and hidden state through a sequential backbone (Linear → Tanh → Linear)
+    and applies continuous liquid state updates: h_new = h + dt * dh.
+
+    Attributes:
+        input_size: Input feature dimension.
+        hidden_size: Hidden layer dimension.
+        backbone: Sequential backbone network for computing dh.
+        dt: Learnable or fixed time constant parameter.
+
+    Example:
+        >>> layer = CFCLayer(input_size=64, hidden_size=128)
+        >>> x = torch.randn(32, 64)
+        >>> h = torch.zeros(32, 128)
+        >>> h_new = layer(x, h, dt=0.1)
     """
 
     def __init__(self, input_size: int, hidden_size: int, dt: float = 0.1):

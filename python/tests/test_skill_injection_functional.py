@@ -1,13 +1,11 @@
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.skill_loader import (
-    SkillLoader,
-)
+import pytest  # noqa: E402
+
+from app.core.skill_loader import SkillLoader  # noqa: E402
 
 GLOBAL_SKILL_CONTENT = """---
 skill_id: global_safety_check

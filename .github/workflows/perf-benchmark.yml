@@ -4,10 +4,13 @@ on:
   push:
     branches:
       - main
+      - master
     paths-ignore:
       - 'docs/**'
       - '**.md'
       - '*.txt'
+  schedule:
+    - cron: '0 6 * * 1'
 
 env:
   PYTHONUNBUFFERED: '1'
@@ -15,7 +18,7 @@ env:
 
 jobs:
   perf-benchmark:
-    name: 性能基准测试
+    name: 全量性能基准测试
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -29,66 +32,109 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy pytest pytest-benchmark
-          pip install -r requirements.txt 2>/dev/null || true
+          if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
+          pip install pytest pytest-benchmark matplotlib
+          pip install numpy
 
-      - name: Run performance benchmarks
-        run: |
-          python -m pytest python/app/benchmarks/performance/ \
-            --benchmark-only \
-            --benchmark-json=perf_results.json \
-            --benchmark-min-rounds=3 \
-            --benchmark-max-time=2 \
-            -v 2>&1 || true
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
-      - name: Run comprehensive benchmark
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run 3D rendering FPS benchmark
+        continue-on-error: true
         run: |
-          python python/app/benchmarks/performance/run_perf_benchmark.py
+          mkdir -p tests/benchmarks/reports
+          npx vitest run tests/benchmarks/renderFPS.bench.ts \
+            --config vitest.config.ts --reporter=verbose 2>&1 || true
+          echo "--- 渲染测试结果 ---"
+          ls -la tests/benchmarks/reports/ 2>/dev/null || echo "(无渲染测试输出)"
+
+      - name: Run comprehensive benchmark suite
+        env:
+          CI: 'true'
+          FAIL_ON_REGRESSION: 'true'
+          BENCHMARK_DB_PATH: tests/benchmarks/benchmark_results.db
+          BENCHMARK_HISTORY_DIR: tests/benchmarks/history
+          BENCHMARK_OUTPUT_DIR: tests/benchmarks/reports
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}:${PWD}/python"
+          python tests/benchmarks/run_all.py
 
       - name: Check for performance regressions
         id: regression
+        env:
+          BENCHMARK_DB_PATH: tests/benchmarks/benchmark_results.db
         run: |
-          REPORT=$(find python/app/benchmarks/performance/history -name "regression_report_*.md" -newer perf_results.json | head -1)
-          if [ -n "$REPORT" ]; then
-            echo "regression_report=$REPORT" >> $GITHUB_OUTPUT
-            if grep -q "CRITICAL" "$REPORT"; then
-              echo "status=CRITICAL" >> $GITHUB_OUTPUT
-            elif grep -q "WARNING" "$REPORT"; then
-              echo "status=WARNING" >> $GITHUB_OUTPUT
-            else
-              echo "status=PASS" >> $GITHUB_OUTPUT
-            fi
-          fi
+          export PYTHONPATH="${PYTHONPATH}:${PWD}:${PWD}/python"
+          python tests/benchmarks/check_regression.py latest --json > regression_check.json 2>&1 || true
+          echo "Regression check result:"
+          cat regression_check.json
+          STATUS=$(python -c "
+          import json
+          with open('regression_check.json') as f:
+              data = json.load(f)
+          summary = data.get('summary', {})
+          if summary.get('critical_regression_detected', False):
+              print('CRITICAL')
+          elif summary.get('critical', 0) > 0 or summary.get('warning', 0) > 0:
+              print('WARNING')
+          else:
+              print('PASS')
+          ")
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Issue on regression
+      - name: Create GitHub Issue on critical regression
         if: steps.regression.outputs.status == 'CRITICAL'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const report = process.env.REGRESSION_REPORT || '';
             let body = '## 性能基准测试检测到严重回归\n\n';
-            if (report && fs.existsSync(report)) {
-              body += fs.readFileSync(report, 'utf8');
+            body += 'CI 运行 ID: ' + (process.env.GITHUB_RUN_ID || '') + '\n\n';
+            try {
+              const report = fs.readFileSync('regression_check.json', 'utf8');
+              const parsed = JSON.parse(report);
+              body += '| 指标 | 当前值 | 上次值 | 变化率 | 状态 |\n';
+              body += '|------|--------|--------|--------|------|\n';
+              if (parsed.entries) {
+                for (const e of parsed.entries) {
+                  if (e.status === 'CRITICAL') {
+                    body += `| ${e.metric} | ${e.current} | ${e.previous} | ${e.change_pct}% | CRITICAL |\n`;
+                  }
+                }
+              }
+            } catch(e) {
+              body += '详细信息请查看 CI 构建产物。\n';
             }
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: '[Performance] 检测到严重性能回退',
+              title: '[Performance] 严重性能回退检测',
               body: body,
               labels: ['performance', 'regression', 'bug']
             });
 
-      - name: Upload benchmark results
+      - name: Upload benchmark artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: perf-benchmark-results
+          name: perf-benchmark-full-results
           path: |
-            perf_results.json
-            python/app/benchmarks/performance/history/*.json
-            python/app/benchmarks/performance/history/*.md
-          retention-days: 30
+            tests/benchmarks/reports/
+            tests/benchmarks/history/
+            tests/benchmarks/benchmark_results.db
+            tests/benchmarks/reports/visualizations/
+            regression_check.json
+          retention-days: 60

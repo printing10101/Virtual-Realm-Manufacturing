@@ -1,17 +1,24 @@
 <template>
-  <div class="goal-detail" v-loading="loading">
+  <div
+    v-loading="loading"
+    class="goal-detail"
+  >
     <template v-if="goal">
       <el-card class="detail-header">
         <div class="header-row">
-          <el-tag :type="levelTagType(goal.level)">
-            {{ levelLabel(goal.level) }}
+          <el-tag :type="getGoalLevelTagType(goal.level)">
+            {{ getGoalLevelLabel(goal.level) }}
           </el-tag>
-          <h2 class="goal-title">{{ goal.name }}</h2>
-          <el-tag :type="statusTagType(goal.status)">
-            {{ statusLabel(goal.status) }}
+          <h2 class="goal-title">
+            {{ goal.name }}
+          </h2>
+          <el-tag :type="getGoalStatusTagType(goal.status)">
+            {{ getGoalStatusLabel(goal.status) }}
           </el-tag>
         </div>
-        <p class="goal-desc">{{ goal.description }}</p>
+        <p class="goal-desc">
+          {{ goal.description }}
+        </p>
         <div class="meta-row">
           <span>版本: v{{ goal.version }}</span>
           <span v-if="goal.parent_id">父目标: {{ goal.parent_id }}</span>
@@ -38,16 +45,34 @@
         <template #header>
           <span>关联任务</span>
         </template>
-        <el-empty v-if="!associatedTasks || associatedTasks.length === 0" description="暂无关联任务" />
-        <el-table v-else :data="groupedTasks" style="width: 100%">
-          <el-table-column prop="status" label="状态" width="120">
+        <el-empty
+          v-if="!associatedTasks || associatedTasks.length === 0"
+          description="暂无关联任务"
+        />
+        <el-table
+          v-else
+          :data="groupedTasks"
+          style="width: 100%"
+        >
+          <el-table-column
+            prop="status"
+            label="状态"
+            width="120"
+          >
             <template #default="{ row }">
-              <el-tag :type="taskStatusTagType(row.status)" size="small">
+              <el-tag
+                :type="getTaskStatusTagType(row.status)"
+                size="small"
+              >
                 {{ row.status }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="count" label="数量" width="80" />
+          <el-table-column
+            prop="count"
+            label="数量"
+            width="80"
+          />
         </el-table>
       </el-card>
 
@@ -55,14 +80,19 @@
         <template #header>
           <div class="history-header">
             <span>变更历史</span>
-            <el-button size="small" @click="loadHistory">刷新</el-button>
+            <el-button
+              size="small"
+              @click="loadHistory"
+            >
+              刷新
+            </el-button>
           </div>
         </template>
         <el-timeline v-if="history.length > 0">
           <el-timeline-item
             v-for="item in history"
             :key="item.id"
-            :timestamp="formatTimestamp(item.changed_at)"
+            :timestamp="formatSecondsTimestamp(item.changed_at)"
             placement="top"
           >
             <el-card>
@@ -73,16 +103,24 @@
             </el-card>
           </el-timeline-item>
         </el-timeline>
-        <el-empty v-else description="暂无变更记录" />
+        <el-empty
+          v-else
+          description="暂无变更记录"
+        />
       </el-card>
     </template>
-    <el-empty v-else description="未找到目标" />
+    <el-empty
+      v-else
+      description="未找到目标"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { getGoalLevelLabel, getGoalLevelTagType, getGoalStatusLabel, getGoalStatusTagType, getTaskStatusTagType } from '@/utils/statusHelpers'
+import { formatSecondsTimestamp } from '@/utils/formatters'
 
 const props = defineProps<{
   goalId: string
@@ -153,30 +191,6 @@ onMounted(() => {
   loadHistory()
 })
 
-const levelLabel = (level: string) => {
-  const map: Record<string, string> = { mission: '使命', strategic_goal: '战略目标', project: '项目', task: '任务' }
-  return map[level] || level
-}
-const levelTagType = (level: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
-  const map: Record<string, 'primary' | 'success' | 'warning' | 'info' | 'danger'> = { mission: 'danger', strategic_goal: 'warning', project: 'primary', task: 'success' }
-  return map[level] || 'info'
-}
-const statusLabel = (status: string) => {
-  const map: Record<string, string> = { not_started: '未开始', in_progress: '进行中', completed: '已完成', cancelled: '已取消', needs_review: '需重估' }
-  return map[status] || status
-}
-const statusTagType = (status: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
-  const map: Record<string, 'primary' | 'success' | 'warning' | 'info' | 'danger'> = { not_started: 'info', in_progress: 'primary', completed: 'success', cancelled: 'danger', needs_review: 'warning' }
-  return map[status] || 'info'
-}
-const taskStatusTagType = (status: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
-  const map: Record<string, 'primary' | 'success' | 'warning' | 'info' | 'danger'> = { pending: 'info', in_progress: 'primary', completed: 'success', failed: 'danger', cancelled: 'danger' }
-  return map[status] || 'info'
-}
-const formatTimestamp = (ts: number | null) => {
-  if (!ts) return '-'
-  return new Date(ts * 1000).toLocaleString('zh-CN')
-}
 </script>
 
 <style scoped>

@@ -1,22 +1,40 @@
 <template>
   <teleport to="body">
     <transition name="modal-fade">
-      <div v-if="visible" class="collision-modal-overlay" @click.self="close">
+      <div
+        v-if="visible"
+        class="collision-modal-overlay"
+        @click.self="close"
+      >
         <div class="collision-modal">
-          <div class="modal-header" :class="severityClass">
+          <div
+            class="modal-header"
+            :class="severityClass"
+          >
             <div class="header-left">
               <span class="icon">⚠</span>
               <div>
                 <h3>{{ headerTitle }}</h3>
-                <p class="subtitle">{{ headerSubtitle }}</p>
+                <p class="subtitle">
+                  {{ headerSubtitle }}
+                </p>
               </div>
             </div>
-            <button class="close-btn" @click="close">&times;</button>
+            <button
+              class="close-btn"
+              @click="close"
+            >
+              &times;
+            </button>
           </div>
 
           <div class="modal-body">
             <div class="summary-section">
-              <div class="summary-card" v-for="card in summaryCards" :key="card.label">
+              <div
+                v-for="card in summaryCards"
+                :key="card.label"
+                class="summary-card"
+              >
                 <span class="card-value">{{ card.value }}</span>
                 <span class="card-label">{{ card.label }}</span>
               </div>
@@ -40,7 +58,10 @@
                       X:{{ pos[0].toFixed(2) }} Y:{{ pos[1].toFixed(2) }} Z:{{ pos[2].toFixed(2) }}
                     </span>
                   </div>
-                  <div class="collision-block" v-if="collisionSegmentIndices[idx] != null">
+                  <div
+                    v-if="collisionSegmentIndices[idx] != null"
+                    class="collision-block"
+                  >
                     <span class="segment-label">刀位点</span>
                     <span class="segment-value">N{{ collisionSegmentIndices[idx] }}</span>
                   </div>
@@ -51,7 +72,10 @@
               </div>
             </div>
 
-            <div v-if="collisionPositions.length === 0" class="no-collision">
+            <div
+              v-if="collisionPositions.length === 0"
+              class="no-collision"
+            >
               <p>未检测到具体的碰撞坐标点</p>
             </div>
 
@@ -59,7 +83,9 @@
               <h4>碰撞前后对比</h4>
               <div class="comparison-grid">
                 <div class="comparison-item before">
-                  <div class="comparison-label">原始毛坯</div>
+                  <div class="comparison-label">
+                    原始毛坯
+                  </div>
                   <div class="comparison-desc">
                     毛坯STL包围盒:
                     <span v-if="originalBbox">
@@ -71,7 +97,9 @@
                   </div>
                 </div>
                 <div class="comparison-item after">
-                  <div class="comparison-label">仿真结果</div>
+                  <div class="comparison-label">
+                    仿真结果
+                  </div>
                   <div class="comparison-desc">
                     碰撞严重程度:
                     <span :class="'severity-' + collisionSeverity">
@@ -84,13 +112,24 @@
           </div>
 
           <div class="modal-footer">
-            <el-button type="danger" v-if="collisionSeverity === 'critical'" @click="close">
+            <el-button
+              v-if="collisionSeverity === 'critical'"
+              type="danger"
+              @click="close"
+            >
               我知道了 - 存在严重碰撞风险
             </el-button>
-            <el-button type="warning" v-else-if="collisionSeverity === 'warning'" @click="close">
+            <el-button
+              v-else-if="collisionSeverity === 'warning'"
+              type="warning"
+              @click="close"
+            >
               确认 - 存在潜在碰撞风险
             </el-button>
-            <el-button v-else @click="close">
+            <el-button
+              v-else
+              @click="close"
+            >
               关闭
             </el-button>
           </div>

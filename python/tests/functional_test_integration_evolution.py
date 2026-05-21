@@ -23,12 +23,12 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.core.template_branching import TemplateBranchManager
-from app.core.pattern_engine import PatternEngine
-from app.core.template_evolution import TemplateEvolutionEngine
-from app.core.template_ab_testing import ABTestingFramework
-from app.core.template_update_service import TemplateUpdateService
-from app.api.v1.template_market import _marketplace_data
+from app.core.template_branching import TemplateBranchManager  # noqa: E402
+from app.core.pattern_engine import PatternEngine  # noqa: E402
+from app.core.template_evolution import TemplateEvolutionEngine  # noqa: E402
+from app.core.template_ab_testing import ABTestingFramework  # noqa: E402
+from app.core.template_update_service import TemplateUpdateService  # noqa: E402
+from app.api.v1.template_market import _marketplace_data  # noqa: E402
 
 
 # ─── Fixtures ───

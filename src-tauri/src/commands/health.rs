@@ -677,7 +677,7 @@ pub fn auto_fix_health(app: tauri::AppHandle, component: String) -> Result<Strin
                 crate::sidecar_manager::SidecarManager::new(app_data_dir)
             };
 
-            let version = "1.9.0";
+            let version = "1.11.0";
             let python_script_path =
                 std::env::var("SIDECAR_SCRIPT_PATH").unwrap_or_else(|_| "app.main:app".to_string());
 

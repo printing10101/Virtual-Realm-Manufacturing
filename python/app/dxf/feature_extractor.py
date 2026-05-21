@@ -20,7 +20,6 @@ from typing import Any
 
 from app.dxf.dxf_parser import (
     DxfParseResult,
-    DxfCircle,
     DxfDimension,
     DxfLine,
 )

@@ -1,14 +1,15 @@
-"""型腔（矩形凹槽）特征识别模块。
+"""Cavity (rectangular pocket) feature recognition module.
 
-从DXF解析数据中识别矩形型腔/凹槽特征，包括通腔和盲腔。
-输入为轮廓/图元字典列表，输出结构化的CavityFeature数据类列表。
+Recognizes rectangular cavity/pocket features from DXF parsing data,
+including through pockets and blind pockets. Input is a list of contour/entity
+dictionaries, output is a structured list of CavityFeature dataclass objects.
 
-识别流程：
-1. 遍历输入轮廓，筛选闭合矩形轮廓
-2. 对于每个矩形轮廓，提取长、宽、中心坐标
-3. 通过深度信息区分通腔(through_pocket)和盲腔(blind_pocket)
-4. 提取公差等级、表面粗糙度等工艺属性
-5. 输出统一格式的CavityFeature列表
+Recognition workflow:
+1. Iterate through input contours, filter closed rectangular contours
+2. For each rectangular contour, extract length, width, and center coordinates
+3. Distinguish through_pocket vs blind_pocket by depth information
+4. Extract tolerance grade, surface roughness, and other manufacturing attributes
+5. Output a unified list of CavityFeature objects
 """
 
 from __future__ import annotations
@@ -21,6 +22,25 @@ from app.core.error_taxonomy import ErrorCategory, ManufacturingError
 
 @dataclass
 class CavityFeature:
+    """A single cavity/pocket feature with complete geometric information.
+
+    Attributes:
+        cavity_id: Unique identifier for the cavity, e.g. 'C001'.
+        type: Cavity type - through_pocket/blind_pocket.
+        length: Cavity length (mm).
+        width: Cavity width (mm).
+        depth: Cavity depth (mm), 0 for through pockets.
+        center_x: Center X coordinate (mm).
+        center_y: Center Y coordinate (mm).
+        center_z: Center Z coordinate (mm).
+        orientation: Cavity rotation angle (degrees).
+        tolerance_grade: Tolerance grade, e.g. 'H8'.
+        surface_roughness_ra: Surface roughness Ra value (um).
+        surface: Machining surface identifier.
+        wall_thickness: Wall thickness (mm).
+        bottom_type: Bottom surface type ('flat' or other).
+        metadata: Additional metadata dictionary.
+    """
     cavity_id: str
     type: str
     length: float
@@ -38,20 +58,46 @@ class CavityFeature:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_through(self) -> bool:
+        """Check whether the cavity is a through pocket.
+
+        Returns:
+            True if the cavity type is 'through_pocket'.
+        """
         return self.type == "through_pocket"
 
     def is_blind(self) -> bool:
+        """Check whether the cavity is a blind pocket.
+
+        Returns:
+            True if the cavity type is 'blind_pocket'.
+        """
         return self.type == "blind_pocket"
 
     def area(self) -> float:
+        """Calculate the cavity area (length * width).
+
+        Returns:
+            Area in mm².
+        """
         return self.length * self.width
 
     def aspect_ratio(self) -> float:
+        """Calculate the length-to-width aspect ratio.
+
+        Returns:
+            Length/width ratio. Returns 0.0 if width is zero or negative.
+        """
         if self.width <= 0:
             return 0.0
         return self.length / self.width
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the cavity feature to a dictionary representation.
+
+        Returns:
+            A dictionary containing all relevant cavity properties suitable
+            for serialization, including dimensions, area, and aspect ratio.
+        """
         return {
             "cavity_id": self.cavity_id,
             "type": self.type,
@@ -106,6 +152,16 @@ class CavityFeature:
 
 @dataclass
 class CavityRecognitionResult:
+    """Complete result of cavity feature recognition.
+
+    Attributes:
+        cavities: List of recognized cavity features.
+        total_count: Total number of cavities.
+        type_summary: Count summary by cavity type {type: count}.
+        warnings: Warning messages from the recognition process.
+        errors: Error messages from the recognition process.
+        accuracy_metrics: Recognition accuracy metrics.
+    """
     cavities: list[CavityFeature] = field(default_factory=list)
     total_count: int = 0
     type_summary: dict[str, int] = field(default_factory=dict)
@@ -114,6 +170,12 @@ class CavityRecognitionResult:
     accuracy_metrics: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the recognition result to a dictionary representation.
+
+        Returns:
+            A dictionary containing total count, type summary, all cavity details,
+            warnings, errors, and accuracy metrics.
+        """
         return {
             "total_count": self.total_count,
             "type_summary": self.type_summary,
@@ -125,11 +187,26 @@ class CavityRecognitionResult:
 
     @property
     def is_reliable(self) -> bool:
+        """Check whether the recognition result meets the reliability threshold.
+
+        Returns:
+            True if there are no errors and the overall accuracy rate is >= 99%.
+        """
         rate = self.accuracy_metrics.get("overall", 0.0)
         return len(self.errors) == 0 and rate >= 0.99
 
 
 class CavityRecognizer:
+    """Cavity (rectangular pocket) feature recognizer.
+
+    Recognizes rectangular cavity/pocket features from part description data,
+    distinguishing through pockets from blind pockets.
+
+    Attributes:
+        MIN_CAVITY_DIMENSION: Minimum recognizable cavity dimension (mm).
+        MAX_CAVITY_DIMENSION: Maximum recognizable cavity dimension (mm).
+        RECTANGULAR_ANGLE_TOLERANCE: Angle tolerance for rectangular corners (degrees).
+    """
     MIN_CAVITY_DIMENSION = 0.5
     MAX_CAVITY_DIMENSION = 5000.0
     RECTANGULAR_ANGLE_TOLERANCE = 2.0
@@ -138,6 +215,18 @@ class CavityRecognizer:
         self,
         part_description: dict[str, Any],
     ) -> CavityRecognitionResult:
+        """Recognize cavity features from a part description dictionary.
+
+        Args:
+            part_description: Part description dictionary containing 'cavities',
+                'pockets', 'features', or 'contours' fields.
+
+        Returns:
+            CavityRecognitionResult with all recognized cavity features.
+
+        Raises:
+            ManufacturingError: If the part description is empty or None.
+        """
         if not part_description:
             raise ManufacturingError(
                 category=ErrorCategory.CAVITY_RECOGNITION_FAILED,
@@ -271,10 +360,26 @@ class CavityRecognizer:
         self,
         contours: list[dict[str, Any]],
     ) -> CavityRecognitionResult:
+        """Recognize cavity features from a list of contour dictionaries.
+
+        Args:
+            contours: List of contour dictionaries with cavity geometry data.
+
+        Returns:
+            CavityRecognitionResult with recognized cavity features.
+        """
         part_description = {"contours": contours}
         return self.recognize_from_part_description(part_description)
 
     def _is_rectangular_contour(self, contour: dict[str, Any]) -> bool:
+        """Check whether a contour represents a rectangular cavity.
+
+        Args:
+            contour: Contour dictionary with 'shape', 'type', 'vertices', or 'points' fields.
+
+        Returns:
+            True if the contour matches a known rectangular type or has 4 vertices.
+        """
         shape = contour.get("shape", contour.get("type", ""))
         if shape in ("rectangle", "rectangular_pocket", "pocket", "cavity"):
             return True
@@ -288,6 +393,22 @@ class CavityRecognizer:
         result: CavityRecognitionResult,
         expected_count: int | None = None,
     ) -> dict[str, Any]:
+        """Validate the cavity recognition result.
+
+        Checks include:
+        1. Cavity count matches expected (if provided)
+        2. All cavity dimensions (length/width) are positive
+        3. Position coordinates are valid (no NaN/Infinity)
+        4. No unhandled errors from recognition
+
+        Args:
+            result: Recognition result to validate.
+            expected_count: Expected total number of cavities (optional).
+
+        Returns:
+            Validation report dictionary with 'is_valid', 'issues', and
+            'passed_checks' keys.
+        """
         issues: list[str] = []
         passed: list[str] = []
 

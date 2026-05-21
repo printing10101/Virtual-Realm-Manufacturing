@@ -93,7 +93,7 @@ class DatasetCache:
             )
         if memory_cache_size < 1:
             raise ValueError(
-                f"数据集缓存配置失败：'memory_cache_size' 参数值必须大于等于 1，当前值: {memory_cache_size}。该参数控制内存缓存的最大大小（单位: MB），请设置为合理的正整数（如 100）。"
+                f"数据集缓存配置失败：'memory_cache_size' 参数值必须大于等于 1，当前值: {memory_cache_size}。该参数控制内存缓存的最大大小（单位: MB），请设置为合理的正整数（如 100）。"  # noqa: E501
             )
         if cache_eviction_policy.lower() not in ("lru",):
             raise ValueError(

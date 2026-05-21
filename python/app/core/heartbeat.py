@@ -212,11 +212,11 @@ class WakeupQueue:
                 updated_at REAL,
                 metadata TEXT DEFAULT '{}'
             );
-            
+
             CREATE INDEX IF NOT EXISTS idx_next_run ON scheduled_tasks(next_run);
             CREATE INDEX IF NOT EXISTS idx_status ON scheduled_tasks(status);
             CREATE INDEX IF NOT EXISTS idx_agent_id ON scheduled_tasks(agent_id);
-            
+
             CREATE TABLE IF NOT EXISTS task_execution_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 task_id TEXT NOT NULL,
@@ -227,7 +227,7 @@ class WakeupQueue:
                 result_summary TEXT,
                 created_at REAL
             );
-            
+
             CREATE TABLE IF NOT EXISTS budget_tracking (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 agent_id TEXT NOT NULL,
@@ -236,7 +236,7 @@ class WakeupQueue:
                 metric_limit REAL,
                 recorded_at REAL
             );
-            
+
             CREATE TABLE IF NOT EXISTS execution_sessions (
                 session_id TEXT PRIMARY KEY,
                 task_id TEXT NOT NULL,
@@ -269,8 +269,8 @@ class WakeupQueue:
             task.next_run = CronParser.get_next_run(task.schedule)
 
         self._conn.execute(
-            """INSERT OR REPLACE INTO scheduled_tasks 
-               (task_id, agent_id, schedule, task_type, params, last_run, next_run, 
+            """INSERT OR REPLACE INTO scheduled_tasks
+               (task_id, agent_id, schedule, task_type, params, last_run, next_run,
                 status, retry_count, max_retries, created_at, updated_at, metadata)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
@@ -311,7 +311,7 @@ class WakeupQueue:
         now = current_time or time.time()
 
         rows = self._conn.execute(
-            """SELECT * FROM scheduled_tasks 
+            """SELECT * FROM scheduled_tasks
                WHERE next_run <= ? AND status IN ('pending', 'completed')
                ORDER BY next_run ASC""",
             (now,),
@@ -442,7 +442,7 @@ class WakeupQueue:
             result_summary: 结果摘要
         """
         self._conn.execute(
-            """INSERT INTO task_execution_log 
+            """INSERT INTO task_execution_log
                (task_id, execution_time, status, duration_ms, error_message, result_summary, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
@@ -460,7 +460,7 @@ class WakeupQueue:
     def get_task_history(self, task_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """获取任务执行历史"""
         rows = self._conn.execute(
-            """SELECT * FROM task_execution_log 
+            """SELECT * FROM task_execution_log
                WHERE task_id = ? ORDER BY execution_time DESC LIMIT ?""",
             (task_id, limit),
         ).fetchall()
