@@ -5,7 +5,7 @@
         <el-header class="app-header">
           <div class="header-left">
             <h1 class="app-title">
-              {{ title }}
+              {{ $t('app.title') }}
             </h1>
             <span class="app-version">v{{ frontendVersion }}</span>
           </div>
@@ -36,19 +36,19 @@
                 v-permission="'rule:edit'"
                 index="/rule-editor"
               >
-                <el-icon><Setting /></el-icon>工艺规则
+                <el-icon><Setting /></el-icon>{{ $t('navigation.processRules') }}
               </el-menu-item>
               <el-menu-item
                 v-permission="'toolpath:edit'"
                 index="/toolpath-editor"
               >
-                <el-icon><EditPen /></el-icon>刀路编辑
+                <el-icon><EditPen /></el-icon>{{ $t('navigation.toolpathEdit') }}
               </el-menu-item>
               <el-menu-item
                 v-permission="'user:manage'"
                 index="/admin/users"
               >
-                <el-icon><UserFilled /></el-icon>用户管理
+                <el-icon><UserFilled /></el-icon>{{ $t('navigation.userManagement') }}
               </el-menu-item>
             </el-menu>
           </div>
@@ -62,7 +62,7 @@
                 type="default"
                 size="small"
               >
-                文件
+                {{ $t('app.fileMenu') }}
                 <el-icon class="el-icon--right">
                   <arrow-down />
                 </el-icon>
@@ -70,38 +70,38 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="new">
-                    <el-icon><document-add /></el-icon>新建工程
+                    <el-icon><document-add /></el-icon>{{ $t('app.newProject') }}
                   </el-dropdown-item>
                   <el-dropdown-item command="open">
-                    <el-icon><folder-opened /></el-icon>打开工程
+                    <el-icon><folder-opened /></el-icon>{{ $t('app.openProject') }}
                   </el-dropdown-item>
                   <el-dropdown-item
                     divided
                     command="save"
                   >
-                    <el-icon><disk /></el-icon>保存
+                    <el-icon><disk /></el-icon>{{ $t('common.save') }}
                   </el-dropdown-item>
                   <el-dropdown-item command="save-as">
-                    <el-icon><copy-document /></el-icon>另存为...
+                    <el-icon><copy-document /></el-icon>{{ $t('app.saveAs') }}
                   </el-dropdown-item>
                   <el-dropdown-item
                     divided
                     command="download"
                   >
-                    <el-icon><download /></el-icon>下载工程文件
+                    <el-icon><download /></el-icon>{{ $t('app.downloadProject') }}
                   </el-dropdown-item>
                   <el-dropdown-item
                     divided
                     command="import-step"
                   >
-                    <el-icon><upload /></el-icon>导入STEP
+                    <el-icon><upload /></el-icon>{{ $t('app.importStep') }}
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
 
             <span
-              v-if="projectStore.projectName !== '未命名工程'"
+              v-if="projectStore.projectName !== $t('app.defaultProjectName')"
               class="project-indicator"
             >
               {{ projectStore.projectName }}
@@ -110,7 +110,7 @@
                 size="small"
                 type="warning"
                 effect="plain"
-              >已修改</el-tag>
+              >{{ $t('app.modified') }}</el-tag>
             </span>
           </div>
         </el-header>
@@ -123,7 +123,7 @@
       <!-- ==================== 新建工程对话框 ==================== -->
       <el-dialog
         v-model="showNewDialog"
-        title="新建工程"
+        :title="$t('app.newDialogTitle')"
         width="480px"
         :close-on-click-modal="false"
       >
@@ -132,42 +132,42 @@
           label-width="80px"
         >
           <el-form-item
-            label="工程名称"
+            :label="$t('app.projectName')"
             required
           >
             <el-input
               v-model="newForm.name"
               maxlength="128"
-              placeholder="输入工程名称"
+              :placeholder="$t('app.projectNamePlaceholder')"
             />
           </el-form-item>
-          <el-form-item label="作者">
+          <el-form-item :label="$t('common.author')">
             <el-input
               v-model="newForm.author"
               maxlength="64"
-              placeholder="输入您的姓名"
+              :placeholder="$t('app.authorPlaceholder')"
             />
           </el-form-item>
-          <el-form-item label="描述">
+          <el-form-item :label="$t('common.description')">
             <el-input
               v-model="newForm.description"
               type="textarea"
               :rows="3"
               maxlength="512"
-              placeholder="可选：输入工程描述"
+              :placeholder="$t('app.descriptionPlaceholder')"
             />
           </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="showNewDialog = false">
-            取消
+            {{ $t('common.cancel') }}
           </el-button>
           <el-button
             type="primary"
             :loading="creating"
             @click="handleCreate"
           >
-            创建工程
+            {{ $t('app.createProject') }}
           </el-button>
         </template>
       </el-dialog>
@@ -175,13 +175,13 @@
       <!-- ==================== 打开工程对话框 ==================== -->
       <el-dialog
         v-model="showOpenDialog"
-        title="打开工程"
+        :title="$t('app.openDialogTitle')"
         width="600px"
         :close-on-click-modal="false"
       >
         <el-tabs v-model="openTab">
           <el-tab-pane
-            label="本地工程"
+            :label="$t('app.localTab')"
             name="local"
           >
             <div
@@ -190,7 +190,7 @@
             >
               <el-icon class="is-loading">
                 <loading />
-              </el-icon> 加载中...
+              </el-icon> {{ $t('common.loading') }}
             </div>
             <el-table
               v-else
@@ -204,11 +204,11 @@
             >
               <el-table-column
                 prop="name"
-                label="工程名称"
+                :label="$t('app.projectNameCol')"
                 min-width="150"
               />
               <el-table-column
-                label="修改时间"
+                :label="$t('app.modifiedTimeCol')"
                 width="170"
               >
                 <template #default="{ row }">
@@ -216,7 +216,7 @@
                 </template>
               </el-table-column>
               <el-table-column
-                label="大小"
+                :label="$t('app.sizeCol')"
                 width="90"
               >
                 <template #default="{ row }">
@@ -224,7 +224,7 @@
                 </template>
               </el-table-column>
               <el-table-column
-                label="资源"
+                :label="$t('app.resourceCol')"
                 width="60"
               >
                 <template #default="{ row }">
@@ -232,7 +232,7 @@
                 </template>
               </el-table-column>
               <el-table-column
-                label="操作"
+                :label="$t('common.operation')"
                 width="120"
               >
                 <template #default="{ row }">
@@ -242,7 +242,7 @@
                     type="primary"
                     @click="handleOpenFromList(row)"
                   >
-                    打开
+                    {{ $t('app.open') }}
                   </el-button>
                   <el-button
                     size="small"
@@ -250,14 +250,14 @@
                     type="danger"
                     @click="handleDeleteProject(row)"
                   >
-                    删除
+                    {{ $t('common.delete') }}
                   </el-button>
                 </template>
               </el-table-column>
             </el-table>
           </el-tab-pane>
           <el-tab-pane
-            label="从文件导入"
+            :label="$t('app.importTab')"
             name="import"
           >
             <el-upload
@@ -272,14 +272,14 @@
                 <upload-filled />
               </el-icon>
               <div class="el-upload__text">
-                拖拽 .vrm 文件到此处或 <em>点击选择文件</em>
+                {{ $t('app.importVrmHint') }} <em>{{ $t('app.importVrmClick') }}</em>
               </div>
             </el-upload>
           </el-tab-pane>
         </el-tabs>
         <template #footer>
           <el-button @click="showOpenDialog = false">
-            取消
+            {{ $t('common.cancel') }}
           </el-button>
           <el-button
             type="primary"
@@ -287,7 +287,7 @@
             :disabled="!canOpen"
             @click="handleOpen"
           >
-            打开工程
+            {{ $t('app.openProject') }}
           </el-button>
         </template>
       </el-dialog>
@@ -295,7 +295,7 @@
       <!-- ==================== 另存为对话框 ==================== -->
       <el-dialog
         v-model="showSaveAsDialog"
-        title="另存为工程"
+        :title="$t('app.saveAsDialogTitle')"
         width="420px"
         :close-on-click-modal="false"
       >
@@ -304,13 +304,13 @@
           label-width="80px"
         >
           <el-form-item
-            label="文件名"
+            :label="$t('app.fileName')"
             required
           >
             <el-input
               v-model="saveAsForm.outputName"
               maxlength="128"
-              placeholder="输入文件名（不含扩展名）"
+              :placeholder="$t('app.fileNamePlaceholder')"
             >
               <template #append>
                 .vrm
@@ -320,14 +320,14 @@
         </el-form>
         <template #footer>
           <el-button @click="showSaveAsDialog = false">
-            取消
+            {{ $t('common.cancel') }}
           </el-button>
           <el-button
             type="primary"
             :loading="saving"
             @click="handleSaveAs"
           >
-            另存为
+            {{ $t('app.saveAsBtn') }}
           </el-button>
         </template>
       </el-dialog>
@@ -335,23 +335,23 @@
       <!-- ==================== 未保存提示对话框 ==================== -->
       <el-dialog
         v-model="showUnsavedDialog"
-        title="未保存的更改"
+        :title="$t('app.unsavedTitle')"
         width="400px"
       >
-        <p>当前工程有未保存的更改。是否保存后再继续？</p>
+        <p>{{ $t('app.unsavedMessage') }}</p>
         <template #footer>
           <el-button @click="discardAndProceed">
-            不保存
+            {{ $t('common.discard') }}
           </el-button>
           <el-button
             type="primary"
             :loading="saving"
             @click="saveAndProceed"
           >
-            保存并继续
+            {{ $t('common.saveAndContinue') }}
           </el-button>
           <el-button @click="cancelProceed">
-            取消
+            {{ $t('common.cancel') }}
           </el-button>
         </template>
       </el-dialog>
@@ -374,7 +374,6 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
 import type { ProjectSummary } from '@/types'
 
-const title = '灵境制造 V4'
 const route = useRoute()
 const activeRoute = computed(() => route.path)
 
@@ -415,7 +414,8 @@ onMounted(async () => {
 function formatDate(iso: string) {
   if (!iso) return '-'
   const d = new Date(iso)
-  return d.toLocaleString('zh-CN', { hour12: false })
+  const locale = localStorage.getItem('app_locale') || 'zh-CN'
+  return d.toLocaleString(locale === 'en' ? 'en-US' : 'zh-CN', { hour12: false })
 }
 
 function formatSize(bytes: number) {

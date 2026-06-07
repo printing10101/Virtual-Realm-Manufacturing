@@ -21,6 +21,9 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class BaseLNNModel(ABC):
@@ -197,7 +200,10 @@ class BaseLNNModel(ABC):
         **kwargs,
     ) -> Dict[str, List[float]]:
         """
-        训练模型
+        训练模型 - 使用PyTorch自动微分进行精确梯度计算
+
+        将NumPy数据转换为PyTorch张量，利用PyTorch自动微分机制
+        实现正确的反向传播，替代原有的数值梯度近似方法。
 
         Args:
             train_data: 训练数据
@@ -213,8 +219,127 @@ class BaseLNNModel(ABC):
         """
         self.build()
 
+        try:
+            import torch
+            from torch.utils.data import DataLoader, TensorDataset
+
+            # 转换为PyTorch张量
+            train_X = torch.FloatTensor(train_data)
+            train_y = torch.FloatTensor(train_labels)
+            if train_y.ndim == 1:
+                train_y = train_y.unsqueeze(1)
+
+            train_dataset = TensorDataset(train_X, train_y)
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+            val_loader = None
+            if val_data is not None and val_labels is not None:
+                val_X = torch.FloatTensor(val_data)
+                val_y = torch.FloatTensor(val_labels)
+                if val_y.ndim == 1:
+                    val_y = val_y.unsqueeze(1)
+                val_dataset = TensorDataset(val_X, val_y)
+                val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+            # 转换为PyTorch模型进行训练
+            torch_model = self.to_torch(device=self.device)
+            torch_model.train()
+
+            optimizer = torch.optim.AdamW(
+                torch_model.parameters(),
+                lr=learning_rate,
+                weight_decay=1e-5,
+            )
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=epochs, eta_min=1e-6
+            )
+            criterion = torch.nn.MSELoss()
+
+            best_val_loss = float("inf")
+            patience_counter = 0
+            early_stopping_patience = kwargs.get("early_stopping_patience", 10)
+
+            for epoch in range(epochs):
+                # 训练阶段
+                torch_model.train()
+                train_loss = 0.0
+                for batch_X, batch_y in train_loader:
+                    optimizer.zero_grad()
+                    outputs = torch_model(batch_X)
+                    if isinstance(outputs, tuple):
+                        outputs = outputs[0]
+                    loss = criterion(outputs, batch_y)
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(torch_model.parameters(), 1.0)
+                    optimizer.step()
+                    train_loss += loss.item() * batch_X.size(0)
+
+                train_loss /= len(train_dataset)
+                self.training_history["loss"].append(train_loss)
+
+                scheduler.step()
+
+                # 验证阶段
+                if val_loader is not None:
+                    torch_model.eval()
+                    val_loss = 0.0
+                    with torch.no_grad():
+                        for batch_X, batch_y in val_loader:
+                            outputs = torch_model(batch_X)
+                            if isinstance(outputs, tuple):
+                                outputs = outputs[0]
+                            loss = criterion(outputs, batch_y)
+                            val_loss += loss.item() * batch_X.size(0)
+                    val_loss /= len(val_loader.dataset)
+                    self.training_history["val_loss"].append(val_loss)
+
+                    # 早停检查
+                    if val_loss < best_val_loss:
+                        best_val_loss = val_loss
+                        patience_counter = 0
+                        # 保存最佳模型权重
+                        self._best_torch_state = {
+                            k: v.cpu().clone() for k, v in torch_model.state_dict().items()
+                        }
+                    else:
+                        patience_counter += 1
+                        if patience_counter >= early_stopping_patience:
+                            logger.info(
+                                "Early stopping at epoch %s/%s (val_loss=%.6f)",
+                                epoch + 1, epochs, val_loss,
+                            )
+                            break
+
+            # 恢复最佳模型状态并同步回NumPy权重
+            if hasattr(self, "_best_torch_state") and self._best_torch_state is not None:
+                torch_model.load_state_dict(self._best_torch_state)
+                self._sync_from_torch(torch_model)
+
+            self.is_trained = True
+            return self.training_history
+
+        except ImportError:
+            logger.warning(
+                "PyTorch not available, falling back to NumPy-based training. "
+                "Install PyTorch (pip install torch) for proper gradient computation."
+            )
+            return self._train_numpy_fallback(
+                train_data, train_labels, val_data, val_labels,
+                epochs, batch_size, learning_rate,
+            )
+
+    def _train_numpy_fallback(
+        self,
+        train_data: np.ndarray,
+        train_labels: np.ndarray,
+        val_data: Optional[np.ndarray] = None,
+        val_labels: Optional[np.ndarray] = None,
+        epochs: int = 100,
+        batch_size: int = 32,
+        learning_rate: float = 0.001,
+    ) -> Dict[str, List[float]]:
+        """NumPy训练回退方案（仅当PyTorch不可用时使用）"""
         for epoch in range(epochs):
-            # 简单模拟训练过程（子类应实现具体逻辑）
             epoch_loss = self._train_step(
                 train_data, train_labels, batch_size, learning_rate
             )
@@ -226,6 +351,10 @@ class BaseLNNModel(ABC):
 
         self.is_trained = True
         return self.training_history
+
+    def _sync_from_torch(self, torch_model) -> None:
+        """从PyTorch模型同步权重回NumPy模型（子类应重写此方法）"""
+        pass
 
     @abstractmethod
     def _train_step(

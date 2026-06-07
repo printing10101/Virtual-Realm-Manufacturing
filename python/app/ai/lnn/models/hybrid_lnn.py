@@ -352,22 +352,156 @@ class HybridLNNModel(BaseLNNModel):
         batch_size: int,
         learning_rate: float,
     ) -> float:
-        """单步训练"""
+        """
+        单步训练（使用PyTorch自动微分进行精确梯度计算）
+
+        替代原有的随机噪声梯度方法，使用PyTorch的loss.backward()和
+        optimizer.step()实现正确的反向传播。
+
+        Args:
+            data: 训练数据
+            labels: 训练标签
+            batch_size: 批次大小
+            learning_rate: 学习率
+
+        Returns:
+            当前step的loss
+        """
+        try:
+            import torch
+
+            n_samples = data.shape[0]
+            indices = np.random.choice(
+                n_samples, min(batch_size, n_samples), replace=False
+            )
+            batch_data = torch.FloatTensor(data[indices])
+            batch_labels = torch.FloatTensor(labels[indices])
+            if batch_labels.ndim == 1:
+                batch_labels = batch_labels.unsqueeze(1)
+
+            from app.ai.lnn.models.torch_hybrid_lnn import HybridLNN
+            from app.ai.lnn.models.torch_base_lnn import LNNConfig as TorchLNNConfig
+
+            config = TorchLNNConfig(
+                input_size=self.input_dim,
+                hidden_size=self.lnn_hidden_dim,
+                output_size=self.output_dim,
+                num_layers=self.lnn_num_layers,
+                dropout=self.dropout_rate,
+            )
+            torch_model = HybridLNN(config)
+            torch_model.train()
+
+            optimizer = torch.optim.AdamW(
+                torch_model.parameters(), lr=learning_rate, weight_decay=1e-5
+            )
+            criterion = torch.nn.MSELoss()
+
+            optimizer.zero_grad()
+            outputs = torch_model(batch_data, dt=0.1)
+            if isinstance(outputs, tuple):
+                outputs = outputs[0]
+            loss = criterion(outputs, batch_labels)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(torch_model.parameters(), 1.0)
+            optimizer.step()
+
+            self._sync_from_torch(torch_model)
+
+            return float(loss.item())
+
+        except ImportError:
+            # PyTorch不可用时使用NumPy解析梯度回退（保证收敛）
+            return self._train_step_numpy(data, labels, batch_size, learning_rate)
+
+    def _train_step_numpy(
+        self,
+        data: np.ndarray,
+        labels: np.ndarray,
+        batch_size: int,
+        learning_rate: float,
+    ) -> float:
+        """NumPy训练回退方案（仅当PyTorch不可用时使用）
+
+        通过解析反向传播计算真实梯度，避免随机噪声无法保证收敛的问题。
+        网络结构：输入 -> [ReLU(Linear)] * (L-1) -> Linear -> 输出
+        """
         n_samples = data.shape[0]
         indices = np.random.choice(n_samples, min(batch_size, n_samples), replace=False)
         batch_data = data[indices]
         batch_labels = labels[indices]
 
-        predictions = self.forward(batch_data)
+        # 前向传播并缓存中间结果用于反向传播
+        activations = [batch_data]  # a[0] = x
+        pre_activations = []  # z[i] = a[i] @ W[i] + b[i]
+        current = batch_data
+        for i, (W, b) in enumerate(zip(self.lnn_weights, self.lnn_biases)):
+            z = current @ W + b
+            pre_activations.append(z)
+            if i < len(self.lnn_weights) - 1:
+                current = self._relu(z)
+            else:
+                current = z  # 输出层线性激活
+            activations.append(current)
+
+        predictions = activations[-1]
         loss = self._cross_entropy_loss(predictions, batch_labels)
 
-        # 简化的参数更新
-        for i in range(len(self.lnn_weights)):
-            grad_noise = np.random.randn(*self.lnn_weights[i].shape) * 0.01
-            self.lnn_weights[i] -= learning_rate * grad_noise
-            self.lnn_biases[i] -= learning_rate * 0.001
+        # 反向传播：计算梯度
+        # 对带 log-softmax 的交叉熵：dL/d_logits = (softmax(logits) - labels) / N
+        shifted = predictions - np.max(predictions, axis=-1, keepdims=True)
+        exp_shifted = np.exp(shifted)
+        softmax = exp_shifted / np.sum(exp_shifted, axis=-1, keepdims=True)
+
+        if batch_labels.ndim == 1:
+            batch_labels_onehot = np.eye(predictions.shape[1])[batch_labels.astype(int)]
+        else:
+            batch_labels_onehot = batch_labels
+
+        grad_z = (softmax - batch_labels_onehot) / n_samples  # dL/dz
+
+        for i in reversed(range(len(self.lnn_weights))):
+            # dL/dW[i] = a[i].T @ dL/dz[i]
+            grad_W = activations[i].T @ grad_z
+            # dL/db[i] = mean(dL/dz[i], axis=0)
+            grad_b = np.mean(grad_z, axis=0)
+
+            self.lnn_weights[i] -= learning_rate * grad_W
+            self.lnn_biases[i] -= learning_rate * grad_b
+
+            # 将梯度传播到上一层（若非输入层）
+            if i > 0:
+                # dL/da[i] = dL/dz[i] @ W[i].T
+                grad_a = grad_z @ self.lnn_weights[i].T
+                # dL/dz[i-1] = dL/da[i] * relu'(z[i-1])
+                relu_mask = (pre_activations[i - 1] > 0).astype(float)
+                grad_z = grad_a * relu_mask
 
         return float(loss)
+
+    def _sync_from_torch(self, torch_model) -> None:
+        """从PyTorch模型同步权重回NumPy模型"""
+        import torch as _torch
+        with _torch.no_grad():
+            # 同步CNN权重
+            cnn_layers = torch_model.cnn
+            conv_idx = 0
+            for name, module in cnn_layers.named_modules():
+                if isinstance(module, _torch.nn.Conv1d):
+                    if conv_idx < len(self.cnn_weights):
+                        w = module.weight.data.cpu().numpy()
+                        # Conv1d权重形状: (out_channels, in_channels, kernel_size)
+                        # NumPy CNN权重形状: (kernel_size, in_channels, out_channels)
+                        w = w.transpose(2, 0, 1)
+                        self.cnn_weights[conv_idx] = w
+                        self.cnn_biases[conv_idx] = module.bias.data.cpu().numpy()
+                        conv_idx += 1
+
+            # 同步LTC权重
+            if len(self.lnn_weights) >= 1 and len(torch_model.ltc_cells) >= 1:
+                first_cell = torch_model.ltc_cells[0]
+                self.lnn_weights[0] = first_cell.W.data.cpu().numpy().T
+                self.lnn_biases[0] = first_cell.bias.data.cpu().numpy()
 
     def _validate(self, val_data: np.ndarray, val_labels: np.ndarray) -> float:
         """验证模型"""

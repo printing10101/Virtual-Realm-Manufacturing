@@ -103,6 +103,7 @@ class CFCModel(BaseLNN):
     - No ODE solver required
     - 160x faster inference than LSTM
     - Continuous liquid state updates
+    - Enhanced output layer with 2-layer MLP head
     """
 
     def __init__(self, config: LNNConfig):
@@ -120,7 +121,13 @@ class CFCModel(BaseLNN):
             dt=config.time_constant,
         )
 
-        self.output_layer = nn.Linear(config.hidden_size, config.output_size)
+        # 增强的输出层：两层MLP
+        self.output_layer = nn.Sequential(
+            nn.Linear(config.hidden_size, config.hidden_size // 2),
+            nn.ReLU(),
+            nn.Dropout(config.dropout) if config.dropout > 0 else nn.Identity(),
+            nn.Linear(config.hidden_size // 2, config.output_size),
+        )
 
         if config.dropout > 0:
             self.dropout = nn.Dropout(config.dropout)
@@ -128,7 +135,7 @@ class CFCModel(BaseLNN):
             self.dropout = nn.Identity()
 
         self.hidden_state = None
-        self._device_str = "cpu"  # Store device as string for TorchScript compatibility
+        self._device_str = "cpu"
 
     @property
     def device(self) -> torch.device:

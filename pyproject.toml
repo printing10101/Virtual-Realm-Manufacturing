@@ -1,0 +1,18 @@
+[tool.ruff]
+# 与项目 .flake8 配置保持一致（仅保留 ruff 支持的规则）
+line-length = 120
+
+[tool.ruff.lint]
+# ruff 不支持 flake8 的 E203/W503（已通过 line-length 覆盖）
+ignore = [
+    "E501",  # 行长度（由 line-length 控制）
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 与 .flake8 per-file-ignores 对齐
+"python/app/ai/lnn/engine.py" = ["E203"]
+"python/app/ai/lnn/quantization/quantizer.py" = ["E203"]
+"python/app/cad/cadquery_gen.py" = ["E203"]
+"python/app/core/audit_log.py" = ["E203"]
+"python/scripts/verify_cache_performance.py" = ["E402"]
+"python/alembic/versions/be7e8d82d196_initial_schema.py" = ["E501", "W291"]

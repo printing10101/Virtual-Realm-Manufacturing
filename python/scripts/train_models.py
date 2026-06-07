@@ -38,10 +38,10 @@ logger = logging.getLogger(__name__)
 
 def train_cutting_force_model(
     output_dir: str = "models/lnn",
-    epochs: int = 100,
+    epochs: int = 200,
     batch_size: int = 64,
     learning_rate: float = 0.001,
-    hidden_size: int = 64,
+    hidden_size: int = 128,
     num_layers: int = 2,
     model_type: str = "cfc",
 ):
@@ -110,13 +110,16 @@ def train_cutting_force_model(
     trainer = LNNTrainer(
         model=model,
         learning_rate=learning_rate,
-        optimizer_type="adam",
+        optimizer_type="adamw",
         loss_type="mse",
         batch_size=batch_size,
         epochs=epochs,
         device=device,
-        early_stopping_patience=15,
+        early_stopping_patience=10,
         gradient_clip_value=1.0,
+        lr_scheduler_type="cosine",
+        use_amp=(device == "cuda"),
+        weight_decay=1e-5,
     )
 
     start_time = time.perf_counter()
@@ -134,7 +137,7 @@ def train_cutting_force_model(
     trainer.export_torchscript(torchscript_path, example_input)
 
     evaluator = LNNEvaluator(model, device=device)
-    test_metrics = evaluator.evaluate(test_loader)
+    test_metrics = evaluator.evaluate(test_loader, task_type="regression")
     logger.info(f"Test metrics: {test_metrics}")
 
     evaluator.plot_results(output_dir, prefix="cutting_force")
@@ -155,10 +158,10 @@ def train_cutting_force_model(
 
 def train_wear_prediction_model(
     output_dir: str = "models/lnn",
-    epochs: int = 100,
+    epochs: int = 200,
     batch_size: int = 64,
     learning_rate: float = 0.001,
-    hidden_size: int = 64,
+    hidden_size: int = 128,
     num_layers: int = 2,
     model_type: str = "ltc",
 ):
@@ -228,13 +231,16 @@ def train_wear_prediction_model(
     trainer = LNNTrainer(
         model=model,
         learning_rate=learning_rate,
-        optimizer_type="adam",
+        optimizer_type="adamw",
         loss_type="mse",
         batch_size=batch_size,
         epochs=epochs,
         device=device,
-        early_stopping_patience=15,
+        early_stopping_patience=10,
         gradient_clip_value=1.0,
+        lr_scheduler_type="cosine",
+        use_amp=(device == "cuda"),
+        weight_decay=1e-5,
     )
 
     start_time = time.perf_counter()
@@ -252,7 +258,7 @@ def train_wear_prediction_model(
     trainer.export_torchscript(torchscript_path, example_input)
 
     evaluator = LNNEvaluator(model, device=device)
-    test_metrics = evaluator.evaluate(test_loader)
+    test_metrics = evaluator.evaluate(test_loader, task_type="regression")
     logger.info(f"Test metrics: {test_metrics}")
 
     evaluator.plot_results(output_dir, prefix="wear_prediction")

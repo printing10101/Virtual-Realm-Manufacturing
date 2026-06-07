@@ -322,7 +322,7 @@ class SecurityConfig:
         default_factory=lambda: _env("CORS_ORIGIN_REGEX", "") or None
     )
     rate_limit_enabled: bool = field(
-        default_factory=lambda: _bool_env("RATE_LIMIT_ENABLED", False)
+        default_factory=lambda: _bool_env("RATE_LIMIT_ENABLED", True)
     )
     rate_limit_requests: int = field(
         default_factory=lambda: _int_env("RATE_LIMIT_REQUESTS", 100)
@@ -334,7 +334,7 @@ class SecurityConfig:
         default_factory=lambda: _bool_env("LNN_AUTH_ENABLED", True)
     )
     permission_enforced: bool = field(
-        default_factory=lambda: _bool_env("LNN_PERMISSION_ENFORCED", False)
+        default_factory=lambda: _bool_env("LNN_PERMISSION_ENFORCED", True)
     )
     agent_auth_enabled: bool = field(
         default_factory=lambda: _bool_env("AGENT_AUTH_ENABLED", True)
@@ -474,7 +474,7 @@ class ProcessPlanningConfig:
 @dataclass
 class AppConfig:
     app_name: str = field(default_factory=lambda: _env("APP_NAME", "灵境制造"))
-    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "1.11.0"))
+    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "1.12.0"))
     offline_mode: bool = field(
         default_factory=lambda: _bool_env("OFFLINE_MODE", False)
     )

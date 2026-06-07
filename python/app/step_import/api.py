@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -312,19 +312,24 @@ async def get_output_file(file_name: str) -> FileResponse:
     Returns:
         FileResponse: 文件流
     """
-    file_path = OUTPUT_DIR / file_name
+    safe_name = PurePosixPath(file_name).name
+    file_path = (OUTPUT_DIR / safe_name).resolve()
+    if not file_path.is_relative_to(OUTPUT_DIR.resolve()):
+        return error(
+            code=ErrorCode.INVALID_REQUEST, message="无效的文件路径"
+        )
     if not file_path.exists():
         return error(
-            code=ErrorCode.FILE_NOT_FOUND, message=f"输出文件未找到: {file_name}"
+            code=ErrorCode.FILE_NOT_FOUND, message=f"输出文件未找到: {safe_name}"
         )
 
     media_type = (
-        "application/sla" if file_name.endswith(".stl") else "application/octet-stream"
+        "application/sla" if safe_name.endswith(".stl") else "application/octet-stream"
     )
     return FileResponse(
         path=str(file_path),
         media_type=media_type,
-        filename=file_name,
+        filename=safe_name,
     )
 
 

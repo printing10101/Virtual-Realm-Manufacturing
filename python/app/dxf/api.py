@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -281,20 +281,23 @@ async def convert_to_stl(
 @router.get("/model/download/{file_name}")
 async def download_model(file_name: str):
     """下载生成的3D模型文件。"""
-    file_path = OUTPUT_DIR / file_name
+    safe_name = PurePosixPath(file_name).name
+    file_path = (OUTPUT_DIR / safe_name).resolve()
+    if not file_path.is_relative_to(OUTPUT_DIR.resolve()):
+        raise HTTPException(status_code=400, detail="无效的文件路径")
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"文件不存在: {file_name}")
+        raise HTTPException(status_code=404, detail=f"文件不存在: {safe_name}")
 
     media_type = "application/octet-stream"
-    if file_name.endswith(".stl"):
+    if safe_name.endswith(".stl"):
         media_type = "model/stl"
-    elif file_name.endswith(".step"):
+    elif safe_name.endswith(".step"):
         media_type = "model/step"
 
     return FileResponse(
         path=str(file_path),
         media_type=media_type,
-        filename=file_name,
+        filename=safe_name,
     )
 
 

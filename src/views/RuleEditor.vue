@@ -1,10 +1,8 @@
 <template>
   <div class="rule-editor">
     <div class="page-header">
-      <h2>工艺规则编辑器</h2>
-      <p class="subtitle">
-        管理LNN切削参数推荐系统的工艺规则知识
-      </p>
+      <h2>{{ $t('ruleEditor.pageTitle') }}</h2>
+      <p class="subtitle">{{ $t('ruleEditor.subtitle') }}</p>
     </div>
 
     <el-row
@@ -24,7 +22,7 @@
             {{ ruleStore.stats?.total_rules || 0 }}
           </div>
           <div class="stat-label">
-            总规则数
+            {{ $t('ruleEditor.totalRules') }}
           </div>
         </el-card>
       </el-col>
@@ -41,7 +39,7 @@
             {{ ruleStore.stats?.active_rules || 0 }}
           </div>
           <div class="stat-label">
-            启用规则
+            {{ $t('ruleEditor.activeRules') }}
           </div>
         </el-card>
       </el-col>
@@ -58,7 +56,7 @@
             {{ ruleStore.stats?.draft_rules || 0 }}
           </div>
           <div class="stat-label">
-            草稿规则
+            {{ $t('ruleEditor.draftRules') }}
           </div>
         </el-card>
       </el-col>
@@ -75,7 +73,7 @@
             {{ ruleStore.stats?.total_groups || 0 }}
           </div>
           <div class="stat-label">
-            规则分组
+            {{ $t('ruleEditor.ruleGroups') }}
           </div>
         </el-card>
       </el-col>
@@ -86,7 +84,7 @@
         <div class="toolbar-left">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索规则名称或描述..."
+            :placeholder="$t('ruleEditor.searchPlaceholder')"
             prefix-icon="Search"
             clearable
             style="width: 280px"
@@ -95,7 +93,7 @@
           />
           <el-select
             v-model="filterGroup"
-            placeholder="按分组筛选"
+            :placeholder="$t('ruleEditor.filterByGroup')"
             clearable
             style="width: 180px; margin-left: 12px"
             @change="handleSearch"
@@ -109,21 +107,21 @@
           </el-select>
           <el-select
             v-model="filterStatus"
-            placeholder="按状态筛选"
+            :placeholder="$t('ruleEditor.filterByStatus')"
             clearable
             style="width: 140px; margin-left: 12px"
             @change="handleSearch"
           >
             <el-option
-              label="启用"
+              :label="$t('ruleEditor.statusActive')"
               value="active"
             />
             <el-option
-              label="停用"
+              :label="$t('ruleEditor.statusInactive')"
               value="inactive"
             />
             <el-option
-              label="草稿"
+              :label="$t('ruleEditor.statusDraft')"
               value="draft"
             />
           </el-select>
@@ -134,15 +132,15 @@
             @click="ruleStore.openCreateDialog()"
           >
             <el-icon><Plus /></el-icon>
-            新建规则
+            {{ $t('ruleEditor.newRule') }}
           </el-button>
           <el-button @click="ruleStore.openCreateGroupDialog()">
             <el-icon><FolderAdd /></el-icon>
-            新建分组
+            {{ $t('ruleEditor.newGroup') }}
           </el-button>
           <el-button @click="handleExport">
             <el-icon><Download /></el-icon>
-            导出
+            {{ $t('common.export') }}
           </el-button>
           <el-upload
             :show-file-list="false"
@@ -151,12 +149,12 @@
           >
             <el-button>
               <el-icon><Upload /></el-icon>
-              导入
+              {{ $t('common.import') }}
             </el-button>
           </el-upload>
           <el-button @click="handleBackup">
             <el-icon><CopyDocument /></el-icon>
-            备份
+            {{ $t('common.backup') }}
           </el-button>
         </div>
       </div>
@@ -173,13 +171,13 @@
       >
         <el-table-column
           prop="id"
-          label="ID"
+          :label="$t('ruleEditor.tableId')"
           width="70"
           sortable="custom"
         />
         <el-table-column
           prop="name"
-          label="规则名称"
+          :label="$t('ruleEditor.tableName')"
           min-width="180"
           sortable="custom"
         >
@@ -194,7 +192,7 @@
         </el-table-column>
         <el-table-column
           prop="preview_text"
-          label="规则预览"
+          :label="$t('ruleEditor.tablePreview')"
           min-width="300"
         >
           <template #default="{ row }">
@@ -203,7 +201,7 @@
         </el-table-column>
         <el-table-column
           prop="status"
-          label="状态"
+          :label="$t('ruleEditor.tableStatus')"
           width="100"
           sortable="custom"
         >
@@ -218,13 +216,13 @@
         </el-table-column>
         <el-table-column
           prop="priority"
-          label="优先级"
+          :label="$t('ruleEditor.tablePriority')"
           width="90"
           sortable="custom"
         />
         <el-table-column
           prop="group_id"
-          label="分组"
+          :label="$t('ruleEditor.tableGroup')"
           width="120"
         >
           <template #default="{ row }">
@@ -233,12 +231,12 @@
         </el-table-column>
         <el-table-column
           prop="updated_at"
-          label="更新时间"
+          :label="$t('ruleEditor.tableUpdated')"
           width="170"
           sortable="custom"
         />
         <el-table-column
-          label="操作"
+          :label="$t('ruleEditor.tableActions')"
           width="200"
           fixed="right"
         >
@@ -249,7 +247,7 @@
               link
               @click="ruleStore.openEditDialog(row)"
             >
-              编辑
+              {{ $t('ruleEditor.edit') }}
             </el-button>
             <el-button
               size="small"
@@ -257,12 +255,12 @@
               link
               @click="handleToggleStatus(row)"
             >
-              {{ row.status === 'active' ? '停用' : '启用' }}
+              {{ row.status === 'active' ? $t('ruleEditor.disable') : $t('ruleEditor.enable') }}
             </el-button>
             <el-popconfirm
-              title="确定删除此规则？"
-              confirm-button-text="删除"
-              cancel-button-text="取消"
+              :title="$t('ruleEditor.deleteConfirm')"
+              :confirm-button-text="$t('common.delete')"
+              :cancel-button-text="$t('common.cancel')"
               @confirm="handleDelete(row.id)"
             >
               <template #reference>
@@ -271,7 +269,7 @@
                   type="danger"
                   link
                 >
-                  删除
+                  {{ $t('common.delete') }}
                 </el-button>
               </template>
             </el-popconfirm>
@@ -306,7 +304,7 @@
 
     <el-dialog
       v-model="detailDialogVisible"
-      title="规则详情"
+      :title="$t('ruleEditor.detailTitle')"
       width="700px"
     >
       <div
@@ -317,30 +315,30 @@
           :column="2"
           border
         >
-          <el-descriptions-item label="规则ID">
+          <el-descriptions-item :label="$t('ruleEditor.ruleId')">
             {{ currentDetailRule.id }}
           </el-descriptions-item>
-          <el-descriptions-item label="规则名称">
+          <el-descriptions-item :label="$t('ruleEditor.ruleName')">
             {{ currentDetailRule.name }}
           </el-descriptions-item>
-          <el-descriptions-item label="状态">
+          <el-descriptions-item :label="$t('ruleEditor.status')">
             <el-tag :type="getRuleStatusTagType(currentDetailRule.status)">
               {{ getRuleStatusLabel(currentDetailRule.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="优先级">
+          <el-descriptions-item :label="$t('ruleEditor.priority')">
             {{ currentDetailRule.priority }}
           </el-descriptions-item>
-          <el-descriptions-item label="分组">
+          <el-descriptions-item :label="$t('ruleEditor.group')">
             {{ getGroupName(currentDetailRule.group_id) }}
           </el-descriptions-item>
-          <el-descriptions-item label="逻辑运算符">
+          <el-descriptions-item :label="$t('ruleEditor.logicOperator')">
             {{ currentDetailRule.logic_operator }}
           </el-descriptions-item>
         </el-descriptions>
 
         <h4 class="section-title">
-          条件项
+          {{ $t('ruleEditor.conditions') }}
         </h4>
         <el-table
           :data="currentDetailRule.conditions"
@@ -349,48 +347,48 @@
         >
           <el-table-column
             prop="parameter"
-            label="参数"
+            :label="$t('ruleEditor.parameter')"
           />
           <el-table-column
             prop="operator"
-            label="运算符"
+            :label="$t('ruleEditor.operator')"
             width="100"
           />
           <el-table-column
             prop="value"
-            label="值"
+            :label="$t('ruleEditor.value')"
           />
           <el-table-column
             prop="unit"
-            label="单位"
+            :label="$t('ruleEditor.unit')"
             width="80"
           />
         </el-table>
 
         <h4 class="section-title">
-          结果
+          {{ $t('ruleEditor.result') }}
         </h4>
         <el-descriptions
           :column="4"
           border
           size="small"
         >
-          <el-descriptions-item label="参数">
+          <el-descriptions-item :label="$t('ruleEditor.parameter')">
             {{ currentDetailRule.result?.parameter }}
           </el-descriptions-item>
-          <el-descriptions-item label="运算符">
+          <el-descriptions-item :label="$t('ruleEditor.operator')">
             {{ currentDetailRule.result?.operator }}
           </el-descriptions-item>
-          <el-descriptions-item label="值">
+          <el-descriptions-item :label="$t('ruleEditor.value')">
             {{ currentDetailRule.result?.value }}
           </el-descriptions-item>
-          <el-descriptions-item label="单位">
+          <el-descriptions-item :label="$t('ruleEditor.unit')">
             {{ currentDetailRule.result?.unit || '-' }}
           </el-descriptions-item>
         </el-descriptions>
 
         <h4 class="section-title">
-          规则预览
+          {{ $t('ruleEditor.rulePreview') }}
         </h4>
         <el-alert
           :title="currentDetailRule.preview_text"
@@ -402,10 +400,10 @@
           v-if="currentDetailRule.description"
           class="description"
         >
-          <strong>描述：</strong>{{ currentDetailRule.description }}
+          <strong>{{ $t('ruleEditor.description') }}：</strong>{{ currentDetailRule.description }}
         </p>
         <p class="time-info">
-          创建时间: {{ currentDetailRule.created_at }} | 更新时间: {{ currentDetailRule.updated_at }}
+          {{ $t('ruleEditor.timeInfo', { created: currentDetailRule.created_at, updated: currentDetailRule.updated_at }) }}
         </p>
       </div>
     </el-dialog>

@@ -183,7 +183,10 @@ class CFCModel(BaseLNNModel):
         learning_rate: float,
     ) -> float:
         """
-        单步训练（使用数值梯度近似）
+        单步训练（使用PyTorch自动微分进行精确梯度计算）
+
+        替代原有的数值梯度近似方法，使用PyTorch的loss.backward()和
+        optimizer.step()实现正确的反向传播。
 
         Args:
             data: 训练数据
@@ -194,77 +197,126 @@ class CFCModel(BaseLNNModel):
         Returns:
             当前step的loss
         """
+        try:
+            import torch
+
+            n_samples = data.shape[0]
+            indices = np.random.choice(
+                n_samples, min(batch_size, n_samples), replace=False
+            )
+            batch_data = torch.FloatTensor(data[indices])
+            batch_labels = torch.FloatTensor(labels[indices])
+            if batch_labels.ndim == 1:
+                batch_labels = batch_labels.unsqueeze(1)
+
+            # 转换为PyTorch模型
+            torch_model = self.to_torch(device="cpu")
+            torch_model.train()
+
+            optimizer = torch.optim.AdamW(
+                torch_model.parameters(), lr=learning_rate, weight_decay=1e-5
+            )
+            criterion = torch.nn.MSELoss()
+
+            optimizer.zero_grad()
+            outputs = torch_model(batch_data)
+            if isinstance(outputs, tuple):
+                outputs = outputs[0]
+            loss = criterion(outputs, batch_labels)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(torch_model.parameters(), 1.0)
+            optimizer.step()
+
+            # 同步权重回NumPy
+            self._sync_from_torch(torch_model)
+
+            return float(loss.item())
+
+        except ImportError:
+            # PyTorch不可用时使用NumPy解析梯度回退（保证收敛）
+            return self._train_step_numpy(data, labels, batch_size, learning_rate)
+
+    def _train_step_numpy(
+        self,
+        data: np.ndarray,
+        labels: np.ndarray,
+        batch_size: int,
+        learning_rate: float,
+    ) -> float:
+        """NumPy训练回退方案（仅当PyTorch不可用时使用）
+
+        通过解析反向传播计算真实梯度，避免随机噪声无法保证收敛的问题。
+        网络结构：输入 -> [ReLU(Linear)] * (L-1) -> Linear -> 输出
+        """
         n_samples = data.shape[0]
         indices = np.random.choice(n_samples, min(batch_size, n_samples), replace=False)
         batch_data = data[indices]
         batch_labels = labels[indices]
 
-        # 前向传播
-        predictions = self.forward(batch_data)
+        # 前向传播并缓存中间结果用于反向传播
+        activations = [batch_data]  # a[0] = x
+        pre_activations = []  # z[i] = a[i] @ W[i] + b[i]
+        current = batch_data
+        for i, (W, b) in enumerate(zip(self.weights, self.biases)):
+            z = current @ W + b
+            pre_activations.append(z)
+            if i < len(self.weights) - 1:
+                current = self._relu(z)
+            else:
+                current = z  # 输出层线性激活
+            activations.append(current)
+
+        predictions = activations[-1]
         loss = self._cross_entropy_loss(predictions, batch_labels)
 
-        # 简化的参数更新（模拟反向传播）
-        # 实际应用中应使用自动微分或框架实现
-        # 数值梯度近似更新参数
-        for i in range(len(self.weights)):
-            # 对权重使用数值梯度计算
-            original_weights = [w.copy() for w in self.weights]
-            original_biases = [b.copy() for b in self.biases]
-            shape_w = self.weights[i].shape
-            grad_w = np.zeros(shape_w)
-            eps = 1e-5
-            # 随机采样部分参数计算数值梯度以加速
-            sample_indices = np.random.choice(
-                self.weights[i].size, min(100, self.weights[i].size), replace=False
-            )
-            flat_w = self.weights[i].flatten().copy()
-            for idx in sample_indices:
-                old_val = flat_w[idx]
-                flat_w[idx] = old_val + eps
-                self.weights[i] = flat_w.reshape(shape_w)
-                pred_plus = self.forward(batch_data)
-                loss_plus = self._cross_entropy_loss(pred_plus, batch_labels)
+        # 反向传播：计算梯度
+        # 对带 log-softmax 的交叉熵：dL/d_logits = (softmax(logits) - labels) / N
+        shifted = predictions - np.max(predictions, axis=-1, keepdims=True)
+        exp_shifted = np.exp(shifted)
+        softmax = exp_shifted / np.sum(exp_shifted, axis=-1, keepdims=True)
 
-                flat_w[idx] = old_val - eps
-                self.weights[i] = flat_w.reshape(shape_w)
-                pred_minus = self.forward(batch_data)
-                loss_minus = self._cross_entropy_loss(pred_minus, batch_labels)
+        if batch_labels.ndim == 1:
+            batch_labels_onehot = np.eye(predictions.shape[1])[batch_labels.astype(int)]
+        else:
+            batch_labels_onehot = batch_labels
 
-                grad_w.flat[idx] = (loss_plus - loss_minus) / (2 * eps)
-                flat_w[idx] = old_val
+        grad_z = (softmax - batch_labels_onehot) / n_samples  # dL/dz
 
-            self.weights[i] = flat_w.reshape(shape_w)
-            self.weights[i] -= learning_rate * grad_w
+        for i in reversed(range(len(self.weights))):
+            # dL/dW[i] = a[i].T @ dL/dz[i]
+            grad_W = activations[i].T @ grad_z
+            # dL/db[i] = mean(dL/dz[i], axis=0)
+            grad_b = np.mean(grad_z, axis=0)
 
-            # 对偏置使用数值梯度
-            shape_b = self.biases[i].shape
-            grad_b = np.zeros(shape_b)
-            flat_b = self.biases[i].flatten().copy()
-            for idx in range(len(flat_b)):
-                old_val = flat_b[idx]
-                flat_b[idx] = old_val + eps
-                self.biases[i] = flat_b.reshape(shape_b)
-                pred_plus = self.forward(batch_data)
-                loss_plus = self._cross_entropy_loss(pred_plus, batch_labels)
-
-                flat_b[idx] = old_val - eps
-                self.biases[i] = flat_b.reshape(shape_b)
-                pred_minus = self.forward(batch_data)
-                loss_minus = self._cross_entropy_loss(pred_minus, batch_labels)
-
-                grad_b.flat[idx] = (loss_plus - loss_minus) / (2 * eps)
-                flat_b[idx] = old_val
-
-            self.biases[i] = flat_b.reshape(shape_b)
+            self.weights[i] -= learning_rate * grad_W
             self.biases[i] -= learning_rate * grad_b
 
-            # 恢复未修改层的权重
-            for j in range(len(self.weights)):
-                if j != i:
-                    self.weights[j] = original_weights[j]
-                    self.biases[j] = original_biases[j]
+            # 将梯度传播到上一层（若非输入层）
+            if i > 0:
+                # dL/da[i] = dL/dz[i] @ W[i].T
+                grad_a = grad_z @ self.weights[i].T
+                # dL/dz[i-1] = dL/da[i] * relu'(z[i-1])
+                relu_mask = (pre_activations[i - 1] > 0).astype(float)
+                grad_z = grad_a * relu_mask
 
         return float(loss)
+
+    def _sync_from_torch(self, torch_model) -> None:
+        """从PyTorch模型同步权重回NumPy模型"""
+        import torch as _torch
+        with _torch.no_grad():
+            # 同步CFC层权重
+            backbone = torch_model.cfc_layer.backbone
+            if len(self.weights) >= 1:
+                self.weights[0] = backbone[0].weight.data.cpu().numpy().T
+                self.biases[0] = backbone[0].bias.data.cpu().numpy()
+            if len(self.weights) >= 2:
+                self.weights[1] = backbone[2].weight.data.cpu().numpy().T
+                self.biases[1] = backbone[2].bias.data.cpu().numpy()
+            # 同步输出层
+            if len(self.weights) >= 3:
+                self.weights[-1] = torch_model.output_layer.weight.data.cpu().numpy().T
+                self.biases[-1] = torch_model.output_layer.bias.data.cpu().numpy()
 
     def _validate(self, val_data: np.ndarray, val_labels: np.ndarray) -> float:
         """

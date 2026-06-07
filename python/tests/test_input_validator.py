@@ -749,18 +749,26 @@ class TestValidateMaterialName:
 class TestValidateFilePath:
     """Test file path validation"""
 
-    def test_valid_existing_file(self, tmp_path):
+    def test_valid_existing_file(self, tmp_path, monkeypatch):
+        """合法路径下已存在文件应通过校验。"""
+        monkeypatch.setenv("LNN_DATA_DIR", str(tmp_path))
         test_file = tmp_path / "test.txt"
         test_file.write_text("content")
         errors = validate_file_path(str(test_file), must_exist=True)
         assert errors == []
 
-    def test_nonexistent_file_with_must_exist(self):
-        errors = validate_file_path("/nonexistent/path/file.txt", must_exist=True)
+    def test_nonexistent_file_with_must_exist(self, tmp_path, monkeypatch):
+        """当路径合法（落在白名单内）但文件不存在时，必须返回 '文件路径不存在' 错误。"""
+        monkeypatch.setenv("LNN_DATA_DIR", str(tmp_path))
+        missing = tmp_path / "missing.txt"
+        errors = validate_file_path(str(missing), must_exist=True)
         assert any("文件路径不存在" in e for e in errors)
 
-    def test_nonexistent_file_without_must_exist(self):
-        errors = validate_file_path("/nonexistent/path/file.txt", must_exist=False)
+    def test_nonexistent_file_without_must_exist(self, tmp_path, monkeypatch):
+        """must_exist=False 时白名单内不存在的路径应通过（用于生成新文件路径）。"""
+        monkeypatch.setenv("LNN_DATA_DIR", str(tmp_path))
+        missing = tmp_path / "missing.txt"
+        errors = validate_file_path(str(missing), must_exist=False)
         assert errors == []
 
     def test_empty_path(self):
@@ -771,7 +779,9 @@ class TestValidateFilePath:
         errors = validate_file_path(None, must_exist=True)
         assert "文件路径不能为空" in errors
 
-    def test_relative_path_existing(self, tmp_path):
+    def test_relative_path_existing(self, tmp_path, monkeypatch):
+        """把 LNN_DATA_DIR 指向 tmp_path，模拟白名单放行的相对路径。"""
+        monkeypatch.setenv("LNN_DATA_DIR", str(tmp_path))
         original_dir = os.getcwd()
         try:
             os.chdir(tmp_path)
@@ -782,11 +792,49 @@ class TestValidateFilePath:
         finally:
             os.chdir(original_dir)
 
-    def test_path_normalization(self, tmp_path):
+    def test_path_normalization(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("LNN_DATA_DIR", str(tmp_path))
         test_file = tmp_path / "test.txt"
         test_file.write_text("content")
         normalized_path = os.path.normpath(str(test_file))
         errors = validate_file_path(normalized_path, must_exist=True)
+        assert errors == []
+
+    def test_path_traversal_rejected(self, tmp_path, monkeypatch):
+        """路径遍历攻击应被白名单校验拒绝。"""
+        monkeypatch.setenv("LNN_DATA_DIR", str(tmp_path))
+        outside = tmp_path.parent / "outside_secret.txt"
+        outside.write_text("secret")
+        try:
+            errors = validate_file_path(str(outside), must_exist=True)
+            assert any("不在允许的访问范围内" in e for e in errors)
+        finally:
+            outside.unlink(missing_ok=True)
+
+    def test_path_traversal_dotdot_rejected(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("LNN_DATA_DIR", str(tmp_path))
+        traversal = (
+            str(tmp_path) + os.sep + ".." + os.sep + ".." +
+            os.sep + "etc" + os.sep + "passwd"
+        )
+        errors = validate_file_path(traversal, must_exist=False)
+        assert any("不在允许的访问范围内" in e for e in errors)
+
+    def test_non_string_path(self):
+        errors = validate_file_path(12345)  # type: ignore[arg-type]
+        assert "文件路径类型不合法" in errors
+
+    def test_custom_allowed_roots(self, tmp_path):
+        """调用方可通过 allowed_roots 扩展白名单。"""
+        custom_dir = tmp_path / "custom"
+        custom_dir.mkdir()
+        target = custom_dir / "data.bin"
+        target.write_text("x")
+        errors = validate_file_path(
+            str(target),
+            must_exist=True,
+            allowed_roots=[str(custom_dir)],
+        )
         assert errors == []
 
 

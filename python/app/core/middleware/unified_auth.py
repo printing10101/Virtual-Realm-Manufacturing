@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import stat
+import threading
 import time
 import uuid
 from collections import defaultdict
@@ -94,6 +95,7 @@ _JWT_PUBLIC_PREFIXES = [
 def _get_token_metadata(token: str) -> dict:
     meta_file = Path(os.environ.get("LNN_TOKEN_META_FILE", ".lnn_token_meta.json"))
     if not meta_file.exists():
+        logger.warning("使用默认权限T，请管理员配置token元数据文件")
         return {"level": "T"}
     try:
         data = json.loads(meta_file.read_text())
@@ -106,6 +108,7 @@ def _get_token_metadata(token: str) -> dict:
                 return data
     except Exception:
         pass
+    logger.warning("使用默认权限T，token元数据解析失败或未匹配")
     return {"level": "T"}
 
 
@@ -120,6 +123,14 @@ def _get_token_file_path() -> Path:
 def _save_token(token: str, file_path: Optional[Path] = None) -> Path:
     if file_path is None:
         file_path = _get_token_file_path()
+    # 修复：若目标路径已是 symlink，强制替换为普通文件以避免令牌被劫持
+    if file_path.exists() or file_path.is_symlink():
+        try:
+            if file_path.is_symlink():
+                file_path.unlink()
+        except OSError as exc:
+            logger.error("Failed to remove existing token file/symlink: %s", exc)
+            raise
     file_path.write_text(token)
     if os.name != "nt":
         os.chmod(str(file_path), stat.S_IRUSR | stat.S_IWUSR)
@@ -308,8 +319,9 @@ class AgentAuditLog:
         try:
             with open(str(self._log_path), "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry.__dict__) + "\n")
-        except (OSError, IOError):
-            pass
+        except (OSError, IOError) as exc:
+            # 修复：审计日志写入失败应记录日志，避免静默吞咽
+            logger.error("Failed to write agent audit log: %s", exc)
 
     def get_entries(
         self,
@@ -379,32 +391,66 @@ class AgentRateLimiter:
 
 
 class IdempotencyStore:
-    """Store idempotency keys for W/B/T requests."""
+    """Store idempotency keys for W/B/T requests.
 
-    def __init__(self):
+    修复点:
+    1) 内存泄漏：每次 `check_and_set` / `store` 都会按时间窗口清理过期条目；
+       即使在低流量情况下也保证条目不会无限累积。
+    2) 竞态条件：使用线程锁序列化 check-and-set，避免并发请求同时通过校验。
+    """
+
+    def __init__(self, max_age: int = 3600, max_entries: int = 10000):
         self._keys: dict[str, dict] = {}
+        self._max_age = max_age
+        self._max_entries = max_entries
+        self._lock = threading.Lock()
+        self._last_cleanup = time.time()
+        self._cleanup_interval = min(300, max_age // 4 or 60)
 
     def check_and_set(self, key: str, agent_id: str) -> Optional[dict]:
         """Returns cached result if key exists, None if new."""
-        self.cleanup()
-        if key in self._keys:
-            entry = self._keys[key]
-            if entry["agent_id"] == agent_id:
+        with self._lock:
+            self._maybe_cleanup_locked()
+            entry = self._keys.get(key)
+            if entry is not None and entry["agent_id"] == agent_id:
                 return entry.get("result")
-        return None
+            return None
 
     def store(self, key: str, agent_id: str, result: dict):
-        self._keys[key] = {
-            "agent_id": agent_id,
-            "result": result,
-            "created_at": time.time(),
-        }
+        with self._lock:
+            self._maybe_cleanup_locked()
+            # 强制上限保护，防止极端场景下内存膨胀
+            if len(self._keys) >= self._max_entries and key not in self._keys:
+                # 按 created_at 淘汰最旧条目
+                oldest_key = min(
+                    self._keys,
+                    key=lambda k: self._keys[k].get("created_at", 0.0),
+                )
+                self._keys.pop(oldest_key, None)
+            self._keys[key] = {
+                "agent_id": agent_id,
+                "result": result,
+                "created_at": time.time(),
+            }
 
-    def cleanup(self, max_age: int = 3600):
+    def _maybe_cleanup_locked(self):
         now = time.time()
-        expired = [k for k, v in self._keys.items() if now - v["created_at"] > max_age]
+        if now - self._last_cleanup < self._cleanup_interval:
+            return
+        self._last_cleanup = now
+        expired = [k for k, v in self._keys.items() if now - v["created_at"] > self._max_age]
         for k in expired:
             del self._keys[k]
+
+    def cleanup(self, max_age: Optional[int] = None):
+        """兼容旧接口：显式调用以立即清理过期条目。"""
+        threshold = max_age if max_age is not None else self._max_age
+        with self._lock:
+            now = time.time()
+            expired = [k for k, v in self._keys.items() if now - v["created_at"] > threshold]
+            for k in expired:
+                del self._keys[k]
+            self._last_cleanup = now
 
 
 # Singletons
@@ -688,6 +734,13 @@ class UnifiedAuthMiddleware:
                         "message": f"Insufficient permission: token has {token_level_str} level, endpoint requires {permission_checker.get_required_permission(method, path).value} level",  # noqa: E501
                     },
                 )
+        else:
+            # 权限检查已关闭，但仍记录访问日志
+            logger.info(
+                "Access allowed (permission check disabled): path=%s method=%s",
+                path,
+                method,
+            )
 
         return None
 

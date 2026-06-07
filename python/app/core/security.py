@@ -127,6 +127,19 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 BANNED_TOKENS_FILE = os.environ.get("LNN_BANNED_TOKENS_FILE", ".lnn_banned_tokens.json")
 
 
+def _reset_secret_for_testing(secret: Optional[str] = None) -> str:
+    """仅供单元测试使用：允许在运行时替换 SECRET_KEY 以避开模块级副作用。
+
+    正常业务代码不应调用此函数。
+    """
+    global SECRET_KEY
+    if secret is None:
+        os.environ.setdefault("LNN_JWT_SECRET", "a" * 64)
+        secret = _validate_and_get_secret()
+    SECRET_KEY = secret
+    return SECRET_KEY
+
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
 
@@ -170,6 +183,9 @@ class TokenBanList:
     def __init__(self, file_path: Optional[str] = None):
         self._file_path = Path(file_path or BANNED_TOKENS_FILE)
         self._banned: set[str] = set()
+        # 修复：_expiry 必须在 __init__ 中显式初始化，避免 _load/_cleanup_expired
+        # 出现 AttributeError；之前仅在 _cleanup_expired 内做变量注解是脆弱的。
+        self._expiry: dict[str, str] = {}
         self._load()
 
     def _load(self):
@@ -188,11 +204,12 @@ class TokenBanList:
         self._file_path.write_text(json.dumps(data))
 
     def _cleanup_expired(self, expiry: dict):
-        self._expiry: dict[str, str] = {}
+        # 不再在方法体内做类型注解，确保 self._expiry 已存在
         now = datetime.now(timezone.utc).isoformat()
         for token_jti, exp_str in expiry.items():
             if exp_str > now:
                 self._expiry[token_jti] = exp_str
+        # 只保留在 _expiry 中出现的 jti，删除已过期但残留在 banned 的条目
         self._banned = {t for t in self._banned if t in self._expiry}
 
     def ban(self, token: str):

@@ -3,23 +3,23 @@
     <el-row :gutter="24">
       <el-col :span="16">
         <el-card class="welcome-card">
-          <h2>欢迎使用灵境制造 V4</h2>
-          <p>AI驱动的智能制造平台，提供工具磨损预测、工艺参数优化与3D可视化功能</p>
+          <h2>{{ $t('home.welcome') }}</h2>
+          <p>{{ $t('home.welcomeDesc') }}</p>
         </el-card>
       </el-col>
       <el-col :span="8">
         <el-card>
           <template #header>
-            系统状态
+            {{ $t('home.systemStatus') }}
           </template>
           <div class="status-item">
-            <span>AI服务</span>
+            <span>{{ $t('home.aiService') }}</span>
             <el-tag type="success">
-              运行中
+              {{ $t('home.running') }}
             </el-tag>
           </div>
           <div class="status-item">
-            <span>模型注册数</span>
+            <span>{{ $t('home.registeredModels') }}</span>
             <span class="stat-value">4</span>
           </div>
         </el-card>

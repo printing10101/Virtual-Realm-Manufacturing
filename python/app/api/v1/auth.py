@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import os
 import uuid
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.models.user import UserCreate, UserLogin, UserResponse, get_user_store
@@ -15,6 +16,31 @@ from app.core.security import (
     decode_token_strict,
     get_token_ban_list,
 )
+from app.core.rate_limiter import limiter
+
+import time
+
+
+class _RegistrationRateLimiter:
+    """Simple in-memory rate limiter for registration."""
+
+    def __init__(self, max_requests: int = 3, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._requests: dict[str, list[float]] = {}
+
+    def is_rate_limited(self, key: str) -> bool:
+        now = time.time()
+        if key not in self._requests:
+            self._requests[key] = []
+        self._requests[key] = [t for t in self._requests[key] if now - t < self.window_seconds]
+        if len(self._requests[key]) >= self.max_requests:
+            return True
+        self._requests[key].append(now)
+        return False
+
+
+_registration_limiter = _RegistrationRateLimiter()
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -54,7 +80,30 @@ def require_role(*roles: str):
 
 
 @router.post("/register", response_model=dict)
-async def register(body: UserCreate):
+async def register(body: UserCreate, request: Request):
+    # 邀请码验证：检查环境变量是否配置
+    reg_code = os.environ.get("LNN_REGISTRATION_CODE", "")
+    if not reg_code:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="注册功能当前不可用",
+        )
+
+    # 验证邀请码是否匹配
+    if not body.invite_code or body.invite_code != reg_code:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="无效的邀请码",
+        )
+
+    # IP-based 注册速率限制
+    client_ip = request.client.host if request.client else "unknown"
+    if _registration_limiter.is_rate_limited(client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="注册请求过于频繁，请稍后再试",
+        )
+
     store = get_user_store()
     if store.get_user(body.username) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="用户名已存在")
@@ -78,7 +127,8 @@ async def register(body: UserCreate):
 
 
 @router.post("/login", response_model=dict)
-async def login(body: UserLogin):
+@limiter.limit("5/minute")
+async def login(request: Request, body: UserLogin):
     store = get_user_store()
     user = store.get_user(body.username)
 

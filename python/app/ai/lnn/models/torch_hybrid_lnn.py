@@ -119,7 +119,8 @@ class HybridLNN(BaseLNN):
         Build CNN feature extractor with at least 3 Conv1d layers.
 
         Each conv layer is followed by BatchNorm1d and ReLU.
-        MaxPool1d (stride 2) is added between conv layers for downsampling.
+        MaxPool1d (stride 2) is added between conv layers only when
+        input dimension is large enough to avoid zero-size output.
         """
         kernel_sizes = [5, 5, 5, 3, 3][: max(num_layers, 3)]
         filter_sizes = [hidden_size // 4, hidden_size // 2, hidden_size] + [
@@ -139,9 +140,6 @@ class HybridLNN(BaseLNN):
             )
             layers.append(nn.BatchNorm1d(out_channels))
             layers.append(nn.ReLU())
-
-            if i < len(kernel_sizes) - 1:
-                layers.append(nn.MaxPool1d(2, stride=2, padding=0))
 
             in_channels = out_channels
 

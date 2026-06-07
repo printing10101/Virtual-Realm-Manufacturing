@@ -15,6 +15,7 @@ USER_STORE_FILE = os.environ.get("LNN_USER_STORE_FILE", ".lnn_users.json")
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_]+$")
     password: str = Field(..., min_length=8, max_length=128)
+    invite_code: Optional[str] = None
 
 
 class UserLogin(BaseModel):
