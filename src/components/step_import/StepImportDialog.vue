@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="visible"
-    title="导入 STEP 模型"
+    :title="$t('stepImport.dialogTitle')"
     width="700px"
     :close-on-click-modal="false"
     @close="handleClose"
@@ -11,7 +11,7 @@
       @tab-change="onTabChange"
     >
       <el-tab-pane
-        label="导入模型"
+        :label="$t('stepImport.importTab')"
         name="import"
       >
         <div class="step-import-container">
@@ -35,11 +35,11 @@
                 <upload-filled />
               </el-icon>
               <div class="el-upload__text">
-                拖拽 STEP 文件到此处或 <em>点击选择文件</em>
+                {{ $t('stepImport.uploadHint') }} <em>{{ $t('stepImport.uploadClick') }}</em>
               </div>
               <template #tip>
                 <div class="el-upload__tip">
-                  支持 .step / .stp 格式，单个文件最大 50MB
+                  {{ $t('stepImport.uploadTip') }}
                 </div>
               </template>
             </el-upload>
@@ -52,36 +52,36 @@
                 label-width="80px"
                 size="small"
               >
-                <el-form-item label="输出格式">
+                <el-form-item :label="$t('stepImport.outputFormat')">
                   <el-radio-group v-model="outputFormat">
                     <el-radio value="stl">
-                      STL (三角网格)
+                      {{ $t('stepImport.stlFormat') }}
                     </el-radio>
                     <el-radio value="brep">
-                      BREP (边界表示)
+                      {{ $t('stepImport.brepFormat') }}
                     </el-radio>
                   </el-radio-group>
                 </el-form-item>
-                <el-form-item label="精度级别">
+                <el-form-item :label="$t('stepImport.precisionLevel')">
                   <el-select
                     v-model="precision"
                     style="width: 160px"
                   >
                     <el-option
-                      label="低精度 (快速)"
+                      :label="$t('stepImport.lowPrecision')"
                       value="low"
                     />
                     <el-option
-                      label="中精度 (平衡)"
+                      :label="$t('stepImport.mediumPrecision')"
                       value="medium"
                     />
                     <el-option
-                      label="高精度 (精细)"
+                      :label="$t('stepImport.highPrecision')"
                       value="high"
                     />
                   </el-select>
                   <span class="precision-hint">
-                    {{ precisionHint }}
+                    {{ $t(precisionHint) }}
                   </span>
                 </el-form-item>
               </el-form>
@@ -100,7 +100,7 @@
               >
                 <loading />
               </el-icon>
-              <span>{{ store.isUploading ? '正在上传文件...' : '正在解析和处理模型...' }}</span>
+              <span>{{ store.isUploading ? $t('stepImport.uploading') : $t('stepImport.processing') }}</span>
             </div>
             <el-progress
               :percentage="store.isUploading ? store.uploadProgress : undefined"
@@ -112,7 +112,7 @@
               v-if="store.isProcessing"
               class="progress-detail"
             >
-              正在解析STEP几何数据并生成三角网格，请耐心等待...
+              {{ $t('stepImport.processingDetail') }}
             </div>
           </div>
 
@@ -122,7 +122,7 @@
             class="result-section"
           >
             <el-alert
-              :title="store.warnings.length > 0 ? '导入成功 (含警告)' : '导入成功'"
+              :title="store.warnings.length > 0 ? $t('stepImport.importSuccessWithWarning') : $t('stepImport.importSuccess')"
               :type="store.warnings.length > 0 ? 'warning' : 'success'"
               :closable="false"
               show-icon
@@ -130,35 +130,35 @@
 
             <!-- 模型概览 -->
             <div class="model-overview">
-              <h4>模型概览</h4>
+              <h4>{{ $t('stepImport.modelOverview') }}</h4>
               <el-descriptions
                 :column="2"
                 border
                 size="small"
               >
-                <el-descriptions-item label="文件名">
+                <el-descriptions-item :label="$t('stepImport.fileName')">
                   {{ store.currentResult.file_name }}
                 </el-descriptions-item>
-                <el-descriptions-item label="文件大小">
+                <el-descriptions-item :label="$t('stepImport.fileSize')">
                   {{ formatFileSize(store.currentResult.file_size) }}
                 </el-descriptions-item>
-                <el-descriptions-item label="解析耗时">
+                <el-descriptions-item :label="$t('stepImport.parseTime')">
                   {{ store.currentResult.parse_time_ms.toFixed(0) }} ms
                 </el-descriptions-item>
-                <el-descriptions-item label="转换耗时">
+                <el-descriptions-item :label="$t('stepImport.conversionTime')">
                   {{ store.currentResult.conversion_time_ms.toFixed(0) }} ms
                 </el-descriptions-item>
-                <el-descriptions-item label="实体数">
+                <el-descriptions-item :label="$t('stepImport.entityCount')">
                   {{ store.modelInfo?.entity_count ?? 0 }}
                 </el-descriptions-item>
-                <el-descriptions-item label="面数">
+                <el-descriptions-item :label="$t('stepImport.faceCount')">
                   {{ store.modelInfo?.face_count?.toLocaleString() ?? 0 }}
                 </el-descriptions-item>
-                <el-descriptions-item label="顶点数">
+                <el-descriptions-item :label="$t('stepImport.vertexCount')">
                   {{ store.modelInfo?.vertex_count?.toLocaleString() ?? 0 }}
                 </el-descriptions-item>
-                <el-descriptions-item label="装配体">
-                  {{ store.currentResult.is_assembly ? '是' : '否' }}
+                <el-descriptions-item :label="$t('stepImport.assembly')">
+                  {{ store.currentResult.is_assembly ? $t('common.yes') : $t('common.no') }}
                 </el-descriptions-item>
               </el-descriptions>
             </div>
@@ -168,18 +168,18 @@
               v-if="store.modelInfo?.bounding_box"
               class="model-dimensions"
             >
-              <h4>包围盒尺寸</h4>
+              <h4>{{ $t('stepImport.boundingBox') }}</h4>
               <div class="dimension-cards">
                 <div class="dim-card">
-                  <span class="dim-label">长 (X)</span>
+                  <span class="dim-label">{{ $t('stepImport.lengthX') }}</span>
                   <span class="dim-value">{{ store.modelInfo.bounding_box.length.toFixed(2) }} mm</span>
                 </div>
                 <div class="dim-card">
-                  <span class="dim-label">宽 (Y)</span>
+                  <span class="dim-label">{{ $t('stepImport.widthY') }}</span>
                   <span class="dim-value">{{ store.modelInfo.bounding_box.width.toFixed(2) }} mm</span>
                 </div>
                 <div class="dim-card">
-                  <span class="dim-label">高 (Z)</span>
+                  <span class="dim-label">{{ $t('stepImport.heightZ') }}</span>
                   <span class="dim-value">{{ store.modelInfo.bounding_box.height.toFixed(2) }} mm</span>
                 </div>
               </div>
@@ -187,8 +187,8 @@
                 v-if="store.modelInfo.volume > 0"
                 class="dim-extra"
               >
-                体积: {{ (store.modelInfo.volume / 1000).toFixed(2) }} cm³ |
-                表面积: {{ (store.modelInfo.surface_area / 100).toFixed(2) }} cm²
+                {{ $t('stepImport.volume') }}: {{ (store.modelInfo.volume / 1000).toFixed(2) }} {{ $t('stepImport.cubicCm') }} |
+                {{ $t('stepImport.surfaceArea') }}: {{ (store.modelInfo.surface_area / 100).toFixed(2) }} {{ $t('stepImport.squareCm') }}
               </div>
             </div>
 
@@ -213,7 +213,7 @@
               v-if="store.hasStlFiles && store.activeStlFiles.length > 1"
               class="entity-selector"
             >
-              <h4>实体选择 ({{ store.activeStlFiles.length }} 个实体)</h4>
+              <h4>{{ $t('stepImport.entitySelection', { count: store.activeStlFiles.length }) }}</h4>
               <el-radio-group
                 v-model="entityIndex"
                 size="small"
@@ -253,7 +253,7 @@
           >
             <el-result
               icon="error"
-              title="导入失败"
+              :title="$t('stepImport.importFailed')"
               :sub-title="store.errorMessage"
             >
               <template #extra>
@@ -261,7 +261,7 @@
                   type="primary"
                   @click="handleRetry"
                 >
-                  重试
+                  {{ $t('common.retry') }}
                 </el-button>
               </template>
             </el-result>
@@ -270,7 +270,7 @@
       </el-tab-pane>
 
       <el-tab-pane
-        label="导入历史"
+        :label="$t('stepImport.historyTab')"
         name="history"
       >
         <div class="history-container">
@@ -280,7 +280,7 @@
           >
             <el-icon class="is-loading">
               <loading />
-            </el-icon> 加载中...
+            </el-icon> {{ $t('common.loading') }}
           </div>
           <el-table
             v-else-if="store.importHistory.length > 0"
@@ -291,12 +291,12 @@
           >
             <el-table-column
               prop="original_name"
-              label="原始文件"
+              :label="$t('stepImport.historyFile')"
               min-width="180"
               show-overflow-tooltip
             />
             <el-table-column
-              label="大小"
+              :label="$t('stepImport.historySize')"
               width="90"
             >
               <template #default="{ row }">
@@ -304,7 +304,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              label="导入时间"
+              :label="$t('stepImport.historyTime')"
               width="170"
             >
               <template #default="{ row }">
@@ -312,7 +312,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              label="操作"
+              :label="$t('stepImport.historyActions')"
               width="160"
             >
               <template #default="{ row }">
@@ -322,7 +322,7 @@
                   type="primary"
                   @click="handlePreviewHistory(row)"
                 >
-                  查看
+                  {{ $t('stepImport.historyView') }}
                 </el-button>
                 <el-button
                   size="small"
@@ -330,14 +330,14 @@
                   type="danger"
                   @click="handleDeleteHistory(row)"
                 >
-                  删除
+                  {{ $t('stepImport.historyDelete') }}
                 </el-button>
               </template>
             </el-table-column>
           </el-table>
           <el-empty
             v-else
-            description="暂无导入记录"
+            :description="$t('stepImport.noHistory')"
             :image-size="80"
           />
         </div>
@@ -353,17 +353,17 @@
           :disabled="!selectedFile"
           @click="handleImport"
         >
-          开始导入
+          {{ $t('stepImport.startImport') }}
         </el-button>
         <el-button
           v-if="store.isSuccess && activeTab === 'import'"
           type="primary"
           @click="handleLoadInViewer"
         >
-          加载到3D视图
+          {{ $t('stepImport.loadToViewer') }}
         </el-button>
         <el-button @click="handleClose">
-          {{ store.isSuccess ? '完成' : '取消' }}
+          {{ store.isSuccess ? $t('common.done') : $t('common.cancel') }}
         </el-button>
       </div>
     </template>
@@ -413,9 +413,9 @@ const viewerFileSize = ref(0)
 
 const precisionHint = computed(() => {
   switch (precision.value) {
-    case 'low': return '适用于大型装配体，面数较少，加载快'
-    case 'medium': return '默认选项，平衡精度与性能'
-    case 'high': return '适用于精密零件，面数较多，文件更大'
+    case 'low': return 'stepImport.lowPrecisionHint'
+    case 'medium': return 'stepImport.mediumPrecisionHint'
+    case 'high': return 'stepImport.highPrecisionHint'
     default: return ''
   }
 })

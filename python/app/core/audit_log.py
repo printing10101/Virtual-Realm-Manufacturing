@@ -199,12 +199,20 @@ class AuditLog:
         return logs[offset : offset + limit]
 
     def search_logs(self, keyword: str, limit: int = 50) -> list[AuditLogEntry]:
-        logs = self.get_logs(limit=10000)
+        # 修复：之前 search_logs 无条件拉取 10000 条日志；按调用方 limit 加合理
+        # 窗口，避免在大日志量场景下触发内存峰值。
+        if not keyword:
+            return []
+        if limit <= 0:
+            return []
+        scan_window = min(10000, max(limit * 5, 500))
+        logs = self.get_logs(limit=scan_window)
 
-        results = []
+        keyword_lower = keyword.lower()
+        results: list[AuditLogEntry] = []
         for entry in logs:
             entry_str = json.dumps(entry.to_dict(), ensure_ascii=False).lower()
-            if keyword.lower() in entry_str:
+            if keyword_lower in entry_str:
                 results.append(entry)
                 if len(results) >= limit:
                     break
@@ -242,18 +250,25 @@ class AuditLog:
             ]
             lines = [",".join(headers)]
 
+            def _csv_escape(value: str) -> str:
+                # 修复：CSV 注入防护 - 在以 =/+/-/@/0x09/0x0A/0x0D 开头的值前加单引号前缀，
+                # 防止下游电子表格把字段解析为公式。
+                if value and value[0] in ("=", "+", "-", "@", "\t", "\n", "\r"):
+                    value = "'" + value
+                return '"' + value.replace('"', '""') + '"'
+
             for entry in logs:
                 row = [
                     str(entry.timestamp_ms),
-                    entry.ai_module,
-                    entry.user_decision,
-                    entry.operation_status,
+                    entry.ai_module or "",
+                    entry.user_decision or "",
+                    entry.operation_status or "",
                     entry.user_id or "",
                     entry.username or "",
                     str(entry.confidence if entry.confidence is not None else ""),
-                    f'"{(entry.reasoning or "").replace(chr(34), chr(34) + chr(34))}"',
+                    entry.reasoning or "",
                 ]
-                lines.append(",".join(row))
+                lines.append(",".join(_csv_escape(v) for v in row))
 
             return "\n".join(lines)
         else:

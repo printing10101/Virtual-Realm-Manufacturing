@@ -138,7 +138,29 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+*.bak.*
 *.orig
+
+# ============================================================
+# 临时调试/诊断脚本（项目根目录）
+# ============================================================
+/check_*.py
+/launch_*.py
+/run_agent_*.py
+
+# ============================================================
+# 临时调试/诊断脚本（python/根目录）
+# 测试脚本应放在 python/tests/ 目录下
+# ============================================================
+/python/_test_*.py
+/python/debug_*.py
+/python/diagnose*.py
+/python/deep_diag*.py
+/python/quick_*.py
+/python/run_*step*.py
+/python/run_test*.bat
+/python/run_via_*.py
+/python/verify_and_test*.py
 
 # ============================================================
 # IDE

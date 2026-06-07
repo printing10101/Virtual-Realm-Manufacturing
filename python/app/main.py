@@ -14,7 +14,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response, JSONResponse
 
 from app.api.v1.sse import sse_manager
-from app.core.cors_config import cors_settings
+from app.core.cors_config import (
+    cors_settings,
+    validate_cors_config,
+    CorsConfigError,
+)
 from app.core.exception_handlers import register_exception_handlers
 from app.core.request_id import RequestIdMiddleware, get_request_id
 from app.core.logging_config import configure_logging
@@ -26,11 +30,34 @@ from app.core.sidecar_lifecycle import (
 from app.core.ring_buffer import get_ring_log_buffer, BUFFER_TYPES
 from app.core.middleware.security_headers_asgi import SecurityHeadersMiddleware
 from app.core.middleware.unified_auth import UnifiedAuthMiddleware
+from app.core.rate_limiter import limiter, rate_limit_handler
+from slowapi.errors import RateLimitExceeded
 from app.config import config
 from app.version import get_version_info, VERSION as PY_VERSION
-from app.api.v1 import lnn, wear_prediction, user_sovereignty, agent_gateway, jobs, health, auth, users
+from app.api.v1 import (
+    lnn,
+    wear_prediction,
+    user_sovereignty,
+    agent_gateway,
+    jobs,
+    health,
+    auth,
+    users,
+    skills,
+    cost_budget,
+    governance,
+    goal_alignment,
+    heartbeat,
+    task_checkout,
+    template_ab_testing_routes as template_ab,
+    template_branching_routes as template_branches,
+    template_evolution_routes as template_evolution,
+    template_update_routes as template_updates,
+    pattern_engine_routes as pattern_engine,
+)
 from app.rag import routes as rag_routes
 from app.ai import ollama_routes
+from app.ai.process_understanding import routes as process_understanding_routes
 from app.simulation import api as simulation_api
 from app.projects import project_api as project_routes
 from app.step_import import api as step_import_api
@@ -54,8 +81,6 @@ permission_enforced = config.security.permission_enforced
 
 STATE_FILE_PATH = str(Path(config.paths.gstack_dir) / "sidecar.json")
 
-APP_START_TIME = time.time()
-
 
 def get_state_file_path() -> str:
     return STATE_FILE_PATH
@@ -63,7 +88,7 @@ def get_state_file_path() -> str:
 
 app = FastAPI(
     title="灵境制造 API",
-    version="1.11.0",
+    version="1.12.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -81,8 +106,23 @@ IDLE_TIMEOUT_SECONDS = 1800
 
 @app.on_event("startup")
 async def startup_event():
+    # CORS 安全配置验证
+    try:
+        validate_cors_config(
+            cors_settings.get_origins(),
+            cors_settings.allow_credentials,
+        )
+        logger.info("CORS 配置安全验证通过: allow_origins=%s", cors_settings.get_origins())
+    except CorsConfigError as e:
+        logger.error("CORS 配置安全验证失败: %s", e)
+        raise
+
     shutdown_handler.setup()
     await ring_log.start()
+
+    # 权限检查机制状态检查
+    if not config.security.permission_enforced:
+        logger.warning("权限检查机制已被关闭，这可能导致安全风险")
 
     from app.database.models import init_db
     from app.core.task_system import AsyncTaskManager
@@ -212,30 +252,20 @@ app.add_middleware(
     agent_auth_enabled=config.security.agent_auth_enabled,
 )
 
+# =============================================================================
+# Rate limiting with slowapi
+# =============================================================================
+if config.security.rate_limit_enabled:
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
+    logger.info("Rate limiting enabled (default: 100 req/min per IP, per-endpoint overrides apply)")
+else:
+    logger.info("Rate limiting is disabled via config")
+
 
 @app.get("/api/metrics")
 async def get_metrics():
     return Response(content=metrics.export(), media_type="text/plain; charset=utf-8")
-
-
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "timestamp": time.time(),
-        "version": PY_VERSION,
-        "uptime": time.time() - APP_START_TIME,
-    }
-
-
-@app.get("/api/health")
-async def api_health_check():
-    return {"status": "ok", "version": "1.11.0"}
-
-
-@app.get("/api/health/ping")
-async def ping():
-    return {"ping": True}
 
 
 @app.get("/api/v1/version")
@@ -294,9 +324,22 @@ app.include_router(simulation_api.router)
 app.include_router(project_routes.router)
 app.include_router(step_import_api.router)
 app.include_router(rules_router)
+app.include_router(process_understanding_routes.router)
 app.include_router(health.router)
+app.include_router(health.simple_health_router)
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(skills.router)
+app.include_router(cost_budget.router)
+app.include_router(governance.router)
+app.include_router(goal_alignment.router)
+app.include_router(heartbeat.router)
+app.include_router(task_checkout.router)
+app.include_router(template_ab.router)
+app.include_router(template_branches.router)
+app.include_router(template_evolution.router)
+app.include_router(template_updates.router)
+app.include_router(pattern_engine.router)
 
 register_exception_handlers(app)
 

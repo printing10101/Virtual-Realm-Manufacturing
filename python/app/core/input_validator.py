@@ -4,7 +4,51 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional, Sequence
+
+# 允许的根目录白名单（防止路径遍历攻击）
+# 调用方可通过环境变量 LNN_ALLOWED_ROOTS（逗号分隔）扩展；
+# 默认包含 LNN_DATA_DIR / LNN_OUTPUT_DIR / LNN_UPLOAD_DIR 对应的 data/output/uploads
+# 目录。环境变量在每次调用时动态读取，方便测试时按需调整。
+_DEFAULT_ROOT_NAMES: tuple[str, str] = ("LNN_DATA_DIR", "LNN_OUTPUT_DIR", "LNN_UPLOAD_DIR")
+_DEFAULT_FALLBACK_DIRS: tuple[str, ...] = ("data", "output", "uploads")
+
+
+def _resolve_allowed_roots(
+    extra_roots: Optional[Sequence[str]] = None,
+) -> list[Path]:
+    """合并默认与调用方提供的允许根目录。
+
+    注意：环境变量在每次调用时读取，避免模块级 import-time 副作用
+    影响测试场景（pytest 通过 monkeypatch.setenv 注入临时目录）。
+    """
+    roots: list[Path] = []
+    for env_name in _DEFAULT_ROOT_NAMES:
+        env_value = os.environ.get(env_name)
+        if env_value:
+            roots.append(Path(env_value).resolve())
+    # 如果 env 中未设置任何白名单目录，则退回到 CWD 下的默认子目录
+    if not roots:
+        cwd = Path(os.getcwd()).resolve()
+        for sub in _DEFAULT_FALLBACK_DIRS:
+            roots.append(cwd / sub)
+    if extra_roots:
+        roots.extend(Path(r).resolve() for r in extra_roots)
+    return roots
+
+
+def _is_within_allowed_roots(resolved: Path, allowed_roots: Sequence[Path]) -> bool:
+    """检查解析后的路径是否落在白名单根目录内。"""
+    if not allowed_roots:
+        return False
+    for root in allowed_roots:
+        try:
+            resolved.relative_to(root)
+            return True
+        except ValueError:
+            continue
+    return False
 
 
 def validate_cutting_parameters(
@@ -91,13 +135,37 @@ def validate_material_name(material: str) -> list[str]:
     return errors
 
 
-def validate_file_path(path: str, must_exist: bool = True) -> list[str]:
-    errors = []
+def validate_file_path(
+    path: str,
+    must_exist: bool = True,
+    allowed_roots: Optional[Sequence[str]] = None,
+) -> list[str]:
+    """校验文件路径，阻止路径遍历攻击。
+
+    解析为绝对路径后，必须落在允许的根目录白名单内（含默认 data/output/uploads
+    及调用方提供的扩展目录）。空路径、不存在路径（当 must_exist=True）、
+    指向白名单外的路径均会被拒绝。
+    """
+    errors: list[str] = []
     if not path:
         errors.append("文件路径不能为空")
         return errors
-    normalized = os.path.normpath(path)
-    if must_exist and not os.path.exists(normalized):
+    if not isinstance(path, str):
+        errors.append("文件路径类型不合法")
+        return errors
+
+    try:
+        resolved = Path(path).expanduser().resolve(strict=False)
+    except (OSError, RuntimeError) as exc:
+        errors.append(f"文件路径无法解析: {exc}")
+        return errors
+
+    roots = _resolve_allowed_roots(allowed_roots)
+    if not _is_within_allowed_roots(resolved, roots):
+        errors.append("文件路径不在允许的访问范围内")
+        return errors
+
+    if must_exist and not resolved.exists():
         errors.append(f"文件路径不存在: {path}")
     return errors
 

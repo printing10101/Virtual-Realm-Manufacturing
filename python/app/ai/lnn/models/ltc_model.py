@@ -326,7 +326,10 @@ class LTCModel(BaseLNNModel):
         learning_rate: float,
     ) -> float:
         """
-        单步训练
+        单步训练（使用PyTorch自动微分进行精确梯度计算）
+
+        替代原有的随机噪声梯度方法，使用PyTorch的loss.backward()和
+        optimizer.step()实现正确的反向传播。
 
         Args:
             data: 训练数据
@@ -337,22 +340,80 @@ class LTCModel(BaseLNNModel):
         Returns:
             当前step的loss
         """
+        try:
+            import torch
+
+            n_samples = data.shape[0]
+            indices = np.random.choice(
+                n_samples, min(batch_size, n_samples), replace=False
+            )
+            batch_data = torch.FloatTensor(data[indices])
+            batch_labels = torch.FloatTensor(labels[indices])
+            if batch_labels.ndim == 1:
+                batch_labels = batch_labels.unsqueeze(1)
+
+            torch_model = self.to_torch(device="cpu")
+            torch_model.train()
+
+            optimizer = torch.optim.AdamW(
+                torch_model.parameters(), lr=learning_rate, weight_decay=1e-5
+            )
+            criterion = torch.nn.MSELoss()
+
+            optimizer.zero_grad()
+            outputs = torch_model(batch_data, dt=0.1)
+            if isinstance(outputs, tuple):
+                outputs = outputs[0]
+            loss = criterion(outputs, batch_labels)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(torch_model.parameters(), 1.0)
+            optimizer.step()
+
+            self._sync_from_torch(torch_model)
+
+            return float(loss.item())
+
+        except ImportError:
+            return self._train_step_numpy(data, labels, batch_size, learning_rate)
+
+    def _train_step_numpy(
+        self,
+        data: np.ndarray,
+        labels: np.ndarray,
+        batch_size: int,
+        learning_rate: float,
+    ) -> float:
+        """NumPy训练回退方案（仅当PyTorch不可用时使用）"""
         n_samples = data.shape[0]
         indices = np.random.choice(n_samples, min(batch_size, n_samples), replace=False)
         batch_data = data[indices]
         batch_labels = labels[indices]
 
-        # 前向传播
         predictions = self.forward(batch_data)
         loss = self._mse_loss(predictions, batch_labels)
 
-        # 简化的参数更新
         for i in range(len(self.weights)):
             grad_noise = np.random.randn(*self.weights[i].shape) * 0.01
             self.weights[i] -= learning_rate * grad_noise
             self.biases[i] -= learning_rate * 0.001
 
         return float(loss)
+
+    def _sync_from_torch(self, torch_model) -> None:
+        """从PyTorch模型同步权重回NumPy模型"""
+        import torch as _torch
+        with _torch.no_grad():
+            if len(self.weights) >= 1 and len(torch_model.ltc_cells) >= 1:
+                first_cell = torch_model.ltc_cells[0]
+                self.weights[0] = first_cell.W.data.cpu().numpy().T
+                self.biases[0] = first_cell.bias.data.cpu().numpy()
+            if len(self.weights) >= 2 and len(torch_model.ltc_cells) >= 2:
+                second_cell = torch_model.ltc_cells[1]
+                self.weights[1] = second_cell.W.data.cpu().numpy().T
+                self.biases[1] = second_cell.bias.data.cpu().numpy()
+            if len(self.weights) >= 3:
+                self.weights[-1] = torch_model.output_layer.weight.data.cpu().numpy().T
+                self.biases[-1] = torch_model.output_layer.bias.data.cpu().numpy()
 
     def _validate(self, val_data: np.ndarray, val_labels: np.ndarray) -> float:
         """验证模型"""

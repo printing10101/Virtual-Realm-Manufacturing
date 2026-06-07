@@ -22,7 +22,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
@@ -48,6 +48,52 @@ router = APIRouter(prefix="/api/simulation", tags=["Simulation"])
 
 OUTPUT_DIR = Path(config.storage.output_dir) / "simulation"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Allowed base directories for user-provided file path validation.
+# These prevent path traversal attacks by restricting file access to
+# known output and upload directories where files are legitimately stored.
+_OUTPUT_ROOT = Path(config.storage.output_dir).resolve()
+_ALLOWED_STOCK_DIRS: list[Path] = [
+    OUTPUT_DIR.resolve(),
+    (_OUTPUT_ROOT / "step_import").resolve(),
+    (_OUTPUT_ROOT / "step_import" / "_uploads").resolve(),
+    (_OUTPUT_ROOT / "dxf_import").resolve(),
+    (_OUTPUT_ROOT / "dxf_import" / "_uploads").resolve(),
+    (_OUTPUT_ROOT / "projects").resolve(),
+    (_OUTPUT_ROOT / "projects" / "_uploads").resolve(),
+]
+
+
+def _validate_user_path(user_path: str, field_name: str) -> Path:
+    """Validate that a user-provided file path is within allowed directories.
+
+    Resolves the path to an absolute path and checks that it falls within
+    one of the pre-defined allowed directories. Paths are resolved using
+    Path.resolve() to eliminate any directory traversal components.
+
+    Args:
+        user_path: The raw path string from the user request.
+        field_name: The field name for error reporting (e.g. "stock_stl_path").
+
+    Returns:
+        The resolved absolute Path if validation passes.
+
+    Raises:
+        HTTPException: 400 if the path is outside allowed directories.
+    """
+    p = Path(user_path)
+    resolved = p.resolve()
+    for allowed_dir in _ALLOWED_STOCK_DIRS:
+        if resolved.is_relative_to(allowed_dir):
+            return resolved
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            f"The path '{user_path}' for '{field_name}' is not allowed. "
+            f"File must reside within a permitted output or upload directory."
+        ),
+    )
+
 
 _in_memory_store: dict[str, VoxelSimulationResult] = {}
 _MAX_STORE_SIZE = config.simulation.max_store_size
@@ -251,13 +297,24 @@ def _run_simulation(
         parser = ToolpathParser(controller_type="fanuc")
         segments = parser.parse_gcode(request.gcode)
 
-    stock_stl_path = (
-        Path(request.stock_stl_path) if request.stock_stl_path else _default_stock_stl()
-    )
+    if request.stock_stl_path:
+        try:
+            stock_stl_path = _validate_user_path(
+                request.stock_stl_path, "stock_stl_path"
+            )
+        except HTTPException as exc:
+            raise ValueError(str(exc.detail)) from exc
+    else:
+        stock_stl_path = _default_stock_stl()
 
     source_file_paths: list[Path] | None = None
     if request.source_file_path:
-        source_path = Path(request.source_file_path)
+        try:
+            source_path = _validate_user_path(
+                request.source_file_path, "source_file_path"
+            )
+        except HTTPException as exc:
+            raise ValueError(str(exc.detail)) from exc
         if source_path.exists():
             source_file_paths = [source_path]
         else:
@@ -373,13 +430,13 @@ async def run_simulation(
     task_id = f"sim_{uuid.uuid4().hex[:12]}"
 
     if request.stock_stl_path:
+        _validate_user_path(request.stock_stl_path, "stock_stl_path")
         stl_path = Path(request.stock_stl_path)
         if not stl_path.exists():
-            source_path = (
-                Path(request.source_file_path)
-                if request.source_file_path
-                else None
-            )
+            source_path = None
+            if request.source_file_path:
+                _validate_user_path(request.source_file_path, "source_file_path")
+                source_path = Path(request.source_file_path)
             if source_path is not None and not source_path.exists():
                 logger.error(
                     "[Auto-generate STL] Both STL and source file not found: STL=%s, source=%s",
@@ -457,6 +514,12 @@ async def run_simulation_async(
 
     task_id = f"sim_{uuid.uuid4().hex[:12]}"
 
+    # Validate user-provided paths before scheduling the background task
+    if request.stock_stl_path:
+        _validate_user_path(request.stock_stl_path, "stock_stl_path")
+    if request.source_file_path:
+        _validate_user_path(request.source_file_path, "source_file_path")
+
     _in_memory_store[task_id] = VoxelSimulationResult(task_id=task_id)
 
     async def _async_wrapper() -> None:
@@ -524,8 +587,12 @@ async def get_simulation_output(filename: str) -> Response:
 
     Raises:
         HTTPException: 404 if the STL file does not exist.
+        HTTPException: 400 if the file path is invalid.
     """
-    file_path = OUTPUT_DIR / filename
+    safe_name = PurePosixPath(filename).name
+    file_path = (OUTPUT_DIR / safe_name).resolve()
+    if not file_path.is_relative_to(OUTPUT_DIR.resolve()):
+        raise HTTPException(status_code=400, detail="无效的文件路径")
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="STL file not found.")
 
@@ -533,7 +600,7 @@ async def get_simulation_output(filename: str) -> Response:
         content=file_path.read_bytes(),
         media_type="application/octet-stream",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": f'attachment; filename="{safe_name}"',
             "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )

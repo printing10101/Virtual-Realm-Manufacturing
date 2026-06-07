@@ -15,9 +15,9 @@ import numpy as np
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.ai.lnn.inference.registry import LNNModelRegistry
-from app.ai.lnn.inference.predictor import LNNPredictor
-from app.ai.lnn.inference.model_cache import ModelCache
+from app.ai.lnn.inference.registry import LNNModelRegistry  # noqa: E402
+from app.ai.lnn.inference.predictor import LNNPredictor  # noqa: E402
+from app.ai.lnn.inference.model_cache import ModelCache  # noqa: E402
 
 
 def verify_cache_performance():

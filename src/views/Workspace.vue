@@ -3,28 +3,28 @@
     <el-card>
       <template #header>
         <div class="header-with-actions">
-          <span>工作区 - LNN模型推理</span>
+          <span>{{ $t('workspace.header') }}</span>
           <el-tag
             type="info"
             size="small"
           >
-            用户主权模式
+            {{ $t('workspace.userSovereignty') }}
           </el-tag>
         </div>
       </template>
       <el-tabs v-model="activeTab">
         <el-tab-pane
-          label="预测推理"
+          :label="$t('workspace.predictTab')"
           name="predict"
         >
           <el-form
             :model="predictForm"
             label-width="120px"
           >
-            <el-form-item label="模型名称">
+            <el-form-item :label="$t('workspace.modelName')">
               <el-select
                 v-model="predictForm.modelName"
-                placeholder="选择模型"
+                :placeholder="$t('workspace.selectModel')"
               >
                 <el-option
                   label="CFC-Fast"
@@ -40,15 +40,15 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="输入数据">
+            <el-form-item :label="$t('workspace.inputData')">
               <el-input
                 v-model="predictForm.inputData"
                 type="textarea"
                 :rows="4"
-                placeholder="输入数值数据，逗号分隔"
+                :placeholder="$t('workspace.inputDataPlaceholder')"
               />
             </el-form-item>
-            <el-form-item label="返回置信度">
+            <el-form-item :label="$t('workspace.returnConfidence')">
               <el-switch v-model="predictForm.returnConfidence" />
             </el-form-item>
             <el-form-item>
@@ -57,7 +57,7 @@
                 :loading="predicting"
                 @click="handlePredict"
               >
-                开始推理
+                {{ $t('workspace.startInference') }}
               </el-button>
             </el-form-item>
           </el-form>
@@ -69,7 +69,7 @@
             class="result-section"
           >
             <div class="result-header">
-              <h4>推理结果</h4>
+              <h4>{{ $t('workspace.inferenceResult') }}</h4>
               <ConfidenceIndicator
                 v-if="predictResponse.confidence !== undefined && predictResponse.confidence !== null"
                 :confidence="predictResponse.confidence"
@@ -77,7 +77,7 @@
             </div>
 
             <div class="prediction-value">
-              <span class="label">预测值:</span>
+              <span class="label">{{ $t('workspace.predictedValue') }}</span>
               <span class="value">{{ formatPredictionValue(predictResponse.value) }}</span>
             </div>
 
@@ -85,7 +85,7 @@
               v-if="predictResponse.reasoning"
               class="reasoning-section"
             >
-              <h5>AI推理过程</h5>
+              <h5>{{ $t('workspace.aiReasoning') }}</h5>
               <p>{{ predictResponse.reasoning }}</p>
             </div>
 
@@ -102,7 +102,7 @@
               <!-- eslint-disable-next-line vue/no-unused-vars -->
               <template #modify-form="{ recommendation }">
                 <el-alert
-                  title="您可以在此调整预测参数"
+                  :title="$t('workspace.adjustPrediction')"
                   type="info"
                   :closable="false"
                   show-icon
@@ -112,7 +112,7 @@
                   label-width="120px"
                   style="margin-top: 16px;"
                 >
-                  <el-form-item label="预测值">
+                  <el-form-item :label="$t('workspace.predictedValueField')">
                     <el-input-number
                       v-if="typeof modifiedPrediction.value === 'number'"
                       v-model="modifiedPrediction.value"
@@ -124,7 +124,7 @@
                       v-model="modifiedPrediction.value"
                     />
                   </el-form-item>
-                  <el-form-item label="置信度">
+                  <el-form-item :label="$t('workspace.confidenceField')">
                     <el-slider
                       v-model="modifiedPrediction.confidence"
                       :min="0"
@@ -139,7 +139,7 @@
                   v-if="showAdjustedResult"
                   class="adjusted-result"
                 >
-                  <h5>调整后结果</h5>
+                  <h5>{{ $t('workspace.adjustedResult') }}</h5>
                   <pre>{{ JSON.stringify(modifiedPrediction, null, 2) }}</pre>
                 </div>
               </template>
@@ -148,29 +148,29 @@
         </el-tab-pane>
 
         <el-tab-pane
-          label="模型训练"
+          :label="$t('workspace.trainTab')"
           name="train"
         >
           <el-form
             :model="trainForm"
             label-width="140px"
           >
-            <el-form-item label="模型名称">
+            <el-form-item :label="$t('workspace.modelName')">
               <el-input
                 v-model="trainForm.modelName"
-                placeholder="输入模型名称"
+                :placeholder="$t('workspace.modelNamePlaceholder')"
               />
             </el-form-item>
-            <el-form-item label="数据路径">
+            <el-form-item :label="$t('workspace.dataPath')">
               <el-input
                 v-model="trainForm.dataPath"
-                placeholder="输入训练数据路径"
+                :placeholder="$t('workspace.dataPathPlaceholder')"
               />
             </el-form-item>
             <el-divider content-position="left">
-              超参数配置
+              {{ $t('workspace.hyperparams') }}
             </el-divider>
-            <el-form-item label="学习率">
+            <el-form-item :label="$t('workspace.learningRate')">
               <el-input-number
                 v-model="trainForm.hyperparameters.learning_rate"
                 :min="0.0001"
@@ -179,7 +179,7 @@
                 :precision="4"
               />
             </el-form-item>
-            <el-form-item label="训练轮数">
+            <el-form-item :label="$t('workspace.epochs')">
               <el-input-number
                 v-model="trainForm.hyperparameters.epochs"
                 :min="1"
@@ -187,7 +187,7 @@
                 :step="10"
               />
             </el-form-item>
-            <el-form-item label="批次大小">
+            <el-form-item :label="$t('workspace.batchSize')">
               <el-input-number
                 v-model="trainForm.hyperparameters.batch_size"
                 :min="1"
@@ -195,7 +195,7 @@
                 :step="8"
               />
             </el-form-item>
-            <el-form-item label="优化器">
+            <el-form-item :label="$t('workspace.optimizer')">
               <el-select v-model="trainForm.hyperparameters.optimizer">
                 <el-option
                   label="Adam"
@@ -211,10 +211,10 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="设备">
+            <el-form-item :label="$t('workspace.device')">
               <el-select v-model="trainForm.device">
                 <el-option
-                  label="自动"
+                  :label="$t('workspace.auto')"
                   value="auto"
                 />
                 <el-option
@@ -222,7 +222,7 @@
                   value="cuda"
                 />
                 <el-option
-                  label="CPU"
+                  :label="$t('workspace.cpu')"
                   value="cpu"
                 />
               </el-select>
@@ -233,7 +233,7 @@
                 :loading="dryRunning"
                 @click="handleDryRun"
               >
-                预览训练计划
+                {{ $t('workspace.previewPlan') }}
               </el-button>
               <el-button
                 type="primary"
@@ -241,7 +241,7 @@
                 :disabled="!trainPlanConfirmed"
                 @click="handleTrain"
               >
-                开始训练
+                {{ $t('workspace.startTraining') }}
               </el-button>
             </el-form-item>
           </el-form>
@@ -252,10 +252,10 @@
             v-if="dryRunResult"
             class="train-plan-section"
           >
-            <h4>训练计划概要</h4>
+            <h4>{{ $t('workspace.trainingPlanSummary') }}</h4>
 
             <el-alert
-              :title="`训练成功置信度: ${(dryRunResult.confidence * 100).toFixed(0)}%`"
+              :title="$t('workspace.trainingConfidence', { confidence: (dryRunResult.confidence * 100).toFixed(0) })"
               :type="getConfidenceAlertType(dryRunResult.confidence)"
               :closable="false"
               show-icon
@@ -266,23 +266,23 @@
               :column="2"
               border
             >
-              <el-descriptions-item label="预估训练时长">
-                {{ dryRunResult.training_plan.estimated_duration_minutes.toFixed(1) }} 分钟
+              <el-descriptions-item :label="$t('workspace.estDuration')">
+                {{ dryRunResult.training_plan.estimated_duration_minutes.toFixed(1) }} {{ $t('common.minutes') }}
               </el-descriptions-item>
-              <el-descriptions-item label="预估内存占用">
+              <el-descriptions-item :label="$t('workspace.estMemory')">
                 {{ dryRunResult.training_plan.estimated_memory_mb.toFixed(1) }} MB
               </el-descriptions-item>
-              <el-descriptions-item label="数据集样本数">
+              <el-descriptions-item :label="$t('workspace.datasetSamples')">
                 {{ dryRunResult.training_plan.dataset_samples }}
               </el-descriptions-item>
-              <el-descriptions-item label="训练/验证集划分">
+              <el-descriptions-item :label="$t('workspace.trainValSplit')">
                 {{ dryRunResult.training_plan.train_val_split.ratio }}
               </el-descriptions-item>
               <el-descriptions-item
-                label="预估GPU显存"
+                :label="$t('workspace.estGpuMemory')"
                 :span="2"
               >
-                {{ dryRunResult.training_plan.estimated_gpu_memory_mb ? `${dryRunResult.training_plan.estimated_gpu_memory_mb.toFixed(1)} MB` : 'N/A (CPU模式)' }}
+                {{ dryRunResult.training_plan.estimated_gpu_memory_mb ? `${dryRunResult.training_plan.estimated_gpu_memory_mb.toFixed(1)} MB` : 'N/A (CPU)' }}
               </el-descriptions-item>
             </el-descriptions>
 
@@ -290,7 +290,7 @@
               v-if="dryRunResult.training_plan.potential_risks.length > 0"
               class="risks-section"
             >
-              <h5>潜在风险</h5>
+              <h5>{{ $t('workspace.potentialRisks') }}</h5>
               <el-alert
                 v-for="(risk, idx) in dryRunResult.training_plan.potential_risks"
                 :key="idx"
@@ -306,7 +306,7 @@
               v-if="dryRunResult.training_plan.recommendations.length > 0"
               class="recommendations-section"
             >
-              <h5>训练建议</h5>
+              <h5>{{ $t('workspace.trainingRecommendations') }}</h5>
               <ul>
                 <li
                   v-for="(rec, idx) in dryRunResult.training_plan.recommendations"
@@ -318,7 +318,7 @@
             </div>
 
             <div class="reasoning-section">
-              <h5>AI推理说明</h5>
+              <h5>{{ $t('workspace.aiReasoningDesc') }}</h5>
               <p>{{ dryRunResult.reasoning }}</p>
             </div>
 
@@ -326,7 +326,7 @@
 
             <div class="confirm-section">
               <el-checkbox v-model="trainPlanConfirmed">
-                我已审阅训练计划，确认开始训练
+                {{ $t('workspace.confirmTraining') }}
               </el-checkbox>
             </div>
           </div>
@@ -335,7 +335,7 @@
             v-if="trainResult"
             class="train-result-section"
           >
-            <h4>训练监控</h4>
+            <h4>{{ $t('workspace.trainingMonitor') }}</h4>
 
             <div
               v-if="currentJobId"
@@ -346,7 +346,7 @@
                 border
                 size="small"
               >
-                <el-descriptions-item label="任务ID">
+                <el-descriptions-item :label="$t('workspace.jobId')">
                   <el-tag
                     type="info"
                     size="small"
@@ -355,7 +355,7 @@
                     {{ currentJobId }}
                   </el-tag>
                 </el-descriptions-item>
-                <el-descriptions-item label="状态">
+                <el-descriptions-item :label="$t('common.status')">
                   <el-tag :type="getTaskStatusTagType(sse.currentStatus)">
                     {{ getTaskStatusLabel(sse.currentStatus) }}
                   </el-tag>
@@ -393,7 +393,7 @@
               v-if="lossHistory.length > 0"
               class="loss-curves"
             >
-              <h5>Loss曲线</h5>
+              <h5>Loss {{ $t('ruleEditor.result') }}</h5>
               <div class="chart-container">
                 <canvas
                   ref="lossChartCanvas"
@@ -412,13 +412,13 @@
                 :loading="cancelling"
                 @click="handleCancelTraining"
               >
-                取消训练
+                {{ $t('workspace.cancelTraining') }}
               </el-button>
             </div>
 
             <el-alert
               v-if="sse.currentStatus === 'completed'"
-              title="训练已完成"
+              :title="$t('workspace.trainingCompleted')"
               type="success"
               :closable="false"
               show-icon
@@ -427,7 +427,7 @@
 
             <el-alert
               v-if="sse.currentStatus === 'failed'"
-              :title="`训练失败: ${sse.error || '未知错误'}`"
+              :title="$t('workspace.trainingFailed') + ': ' + (sse.error || $t('common.unknownError'))"
               type="error"
               :closable="false"
               show-icon
@@ -436,7 +436,7 @@
 
             <el-alert
               v-if="sse.currentStatus === 'cancelled'"
-              title="训练已取消"
+              :title="$t('workspace.trainingCancelled')"
               type="warning"
               :closable="false"
               show-icon
@@ -448,7 +448,7 @@
         </el-tab-pane>
 
         <el-tab-pane
-          label="模型列表"
+          :label="$t('workspace.modelsTab')"
           name="models"
         >
           <el-table
@@ -457,19 +457,19 @@
           >
             <el-table-column
               prop="name"
-              label="名称"
+              :label="$t('workspace.modelListName')"
             />
             <el-table-column
               prop="model_type"
-              label="类型"
+              :label="$t('workspace.modelListType')"
             />
             <el-table-column
               prop="version"
-              label="版本"
+              :label="$t('workspace.modelListVersion')"
             />
             <el-table-column
               prop="input_features"
-              label="输入特征"
+              :label="$t('workspace.modelListFeatures')"
             >
               <template #default="{ row }">
                 {{ row.input_features?.join(', ') }}
@@ -484,7 +484,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
-import axios from 'axios'
+import { useI18n } from 'vue-i18n'
+import http from '@/utils/http'
 import { setLocale, type SupportedLocale } from '@/i18n'
 import ConfidenceIndicator from '@/components/ConfidenceIndicator.vue'
 import AcceptModifyReject from '@/components/AcceptModifyReject.vue'
@@ -493,6 +494,7 @@ import { useEventSource } from '@/composables/useEventSource'
 import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 
 const settingsStore = useSettingsStore()
+const { t } = useI18n()
 const activeTab = ref('predict')
 const predicting = ref(false)
 const training = ref(false)
@@ -675,23 +677,23 @@ async function handlePredict() {
       .filter(num => !isNaN(num))
 
     if (inputArray.length === 0) {
-      ElMessage.error('请输入有效的数值数据')
+      ElMessage.error(t('common.inputPlaceholder'))
       predicting.value = false
       return
     }
 
-    const res = await axios.post('/api/v1/lnn/predict', {
+    const res = await http.post('/api/v1/lnn/predict', {
       model_name: predictForm.modelName,
       input_data: inputArray,
       return_confidence: predictForm.returnConfidence,
     })
 
     predictResponse.value = res.data.data as PredictResponse
-    ElMessage.success('推理完成')
+    ElMessage.success(t('workspace.inferenceResult'))
 
     await recordAuditLog('lnn_predict', predictResponse.value, 'auto_executed', 'success')
   } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || '推理请求失败'
+    const errorMsg = e?.response?.data?.message || e?.message || t('common.unknownError')
     ElMessage.error(errorMsg)
   } finally {
     predicting.value = false
@@ -716,14 +718,14 @@ function formatPredictionValue(value: number | number[]): string {
 
 async function handleAcceptPrediction(recommendation: Record<string, any>) {
   await recordAuditLog('lnn_predict', predictResponse.value, 'accept', 'success', recommendation)
-  ElMessage.success('已接受AI预测结果')
+  ElMessage.success(t('settings.accept'))
 }
 
 async function handleModifyPrediction(modifiedParams: Record<string, any>) {
   modifiedPrediction.value = { ...modifiedParams }
   showAdjustedResult.value = true
   await recordAuditLog('lnn_predict', predictResponse.value, 'modify', 'success', modifiedParams)
-  ElMessage.info('已应用您的修改')
+  ElMessage.info(t('settings.modify'))
 }
 
 async function handleRejectPrediction(recommendation: Record<string, any>) {
@@ -733,7 +735,7 @@ async function handleRejectPrediction(recommendation: Record<string, any>) {
 
 async function handleDryRun() {
   if (!trainForm.modelName || !trainForm.dataPath) {
-    ElMessage.warning('请填写模型名称和数据路径')
+    ElMessage.warning(t('common.inputPlaceholder'))
     return
   }
 
@@ -742,7 +744,7 @@ async function handleDryRun() {
   trainPlanConfirmed.value = false
 
   try {
-    const res = await axios.post('/api/v1/lnn/train/dry_run', {
+    const res = await http.post('/api/v1/lnn/train/dry_run', {
       model_name: trainForm.modelName,
       data_path: trainForm.dataPath,
       hyperparameters: trainForm.hyperparameters,
@@ -750,9 +752,9 @@ async function handleDryRun() {
     })
 
     dryRunResult.value = res.data.data as DryRunResult
-    ElMessage.success('训练计划已生成，请审阅')
+    ElMessage.success(t('workspace.trainingPlanSummary'))
   } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || '训练计划生成失败'
+    const errorMsg = e?.response?.data?.message || e?.message || t('common.unknownError')
     ElMessage.error(errorMsg)
   } finally {
     dryRunning.value = false
@@ -761,7 +763,7 @@ async function handleDryRun() {
 
 async function handleTrain() {
   if (!trainPlanConfirmed.value) {
-    ElMessage.warning('请先审阅并确认训练计划')
+    ElMessage.warning(t('workspace.confirmTraining'))
     return
   }
 
@@ -769,7 +771,7 @@ async function handleTrain() {
   trainResult.value = null
 
   try {
-    const res = await axios.post('/api/v1/lnn/train', {
+    const res = await http.post('/api/v1/lnn/train', {
       model_name: trainForm.modelName,
       data_path: trainForm.dataPath,
       hyperparameters: trainForm.hyperparameters,
@@ -778,7 +780,7 @@ async function handleTrain() {
 
     const jobId = res.data.data?.job_id
     if (!jobId) {
-      ElMessage.error('未获取到任务ID')
+      ElMessage.error(t('workspace.jobId'))
       return
     }
 
@@ -786,11 +788,11 @@ async function handleTrain() {
     connectToJob(jobId)
 
     trainResult.value = res.data.data
-    ElMessage.success('训练任务已启动，正在监控进度...')
+    ElMessage.success(t('workspace.trainingMonitor'))
 
     await recordAuditLog('lnn_train', dryRunResult.value, 'accept', 'success', trainForm)
   } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || '训练启动失败'
+    const errorMsg = e?.response?.data?.message || e?.message || t('common.unknownError')
     ElMessage.error(errorMsg)
     await recordAuditLog('lnn_train', dryRunResult.value, 'reject', 'failed', trainForm)
   } finally {
@@ -802,18 +804,18 @@ async function handleCancelTraining() {
   if (!currentJobId.value) return
 
   try {
-    await ElMessageBox.confirm('确定要取消当前训练任务吗？', '确认取消', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('workspace.confirmCancelTraining'), t('workspace.confirmCancelTitle'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning',
     })
 
     cancelling.value = true
-    await axios.post(`/api/v1/jobs/${currentJobId.value}/cancel`)
-    ElMessage.info('训练任务已取消')
+    await http.post(`/api/v1/jobs/${currentJobId.value}/cancel`)
+    ElMessage.info(t('workspace.trainingCancelled'))
   } catch (e: any) {
     if (e !== 'cancel') {
-      ElMessage.error('取消失败')
+      ElMessage.error(t('common.failed'))
     }
   } finally {
     cancelling.value = false
@@ -828,7 +830,7 @@ async function recordAuditLog(
   finalExecution?: any,
 ) {
   try {
-    await axios.post('/api/v1/user-sovereignty/audit-log/record', null, {
+    await http.post('/api/v1/user-sovereignty/audit-log/record', null, {
       params: {
         ai_module: aiModule,
         ai_recommendation: JSON.stringify(aiRecommendation || {}),
@@ -852,7 +854,7 @@ function getConfidenceAlertType(confidence: number): 'success' | 'warning' | 'er
 
 onMounted(async () => {
   try {
-    const res = await axios.get('/api/v1/lnn/models')
+    const res = await http.get('/api/v1/lnn/models')
     modelList.value = res.data?.data?.models || []
   } catch (e) {
     console.error('Failed to load model list:', e)

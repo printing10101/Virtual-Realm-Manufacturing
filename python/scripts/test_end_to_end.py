@@ -145,9 +145,11 @@ def test_stage1_hole_recognition() -> tuple[bool, HoleRecognitionResult]:
     # 验证各孔
     for hole in result.holes:
         expected = part["holes"][int(hole.hole_id[-1]) - 1]
-        if (abs(hole.diameter - expected["diameter"]) < 0.01 and
-                abs(hole.position_x - expected["position"]["x"]) < 0.01 and
-                abs(hole.position_y - expected["position"]["y"]) < 0.01):
+        if (
+            abs(hole.diameter - expected["diameter"]) < 0.01
+            and abs(hole.position_x - expected["position"]["x"]) < 0.01
+            and abs(hole.position_y - expected["position"]["y"]) < 0.01
+        ):
             print(f"  {PASS} {hole.hole_id}: φ{hole.diameter}mm, "
                   f"({hole.position_x}, {hole.position_y})")
         else:

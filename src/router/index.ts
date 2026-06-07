@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -55,6 +56,11 @@ const router = createRouter({
       component: () => import('../views/admin/UserManagement.vue'),
       meta: { requiresAuth: true, permission: 'user:manage' },
     },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'NotFound',
+      component: () => import('@/views/NotFound.vue'),
+    },
   ],
 })
 
@@ -94,10 +100,12 @@ router.beforeEach(async (to, _from, next) => {
       }
 
       if (!permStore.hasPermission(requiredPermission)) {
+        ElMessage.warning('权限不足，无法访问该页面')
         next('/')
         return
       }
     } catch {
+      ElMessage.warning('权限不足，无法访问该页面')
       next('/')
       return
     }

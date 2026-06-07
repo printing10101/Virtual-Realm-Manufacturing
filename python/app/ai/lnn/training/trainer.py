@@ -27,6 +27,7 @@ import time
 import os
 import asyncio
 import logging
+import numpy as np
 from datetime import datetime
 
 from app.ai.lnn.training.device_manager import (
@@ -57,16 +58,17 @@ class LNNTrainer:
         self,
         model: nn.Module,
         learning_rate: float = 0.001,
-        optimizer_type: str = "adam",
-        loss_type: str = "cross_entropy",
-        batch_size: int = 32,
-        epochs: int = 100,
-        early_stopping_patience: int = 5,
+        optimizer_type: str = "adamw",
+        loss_type: str = "mse",
+        batch_size: int = 64,
+        epochs: int = 200,
+        early_stopping_patience: int = 10,
         gradient_clip_value: Optional[float] = 1.0,
-        lr_scheduler_type: str = "step",
+        lr_scheduler_type: str = "cosine",
         lr_scheduler_params: Optional[Dict[str, Any]] = None,
         device: Union[str, torch.device] = "cpu",
-        use_amp: bool = False,
+        use_amp: bool = True,
+        weight_decay: float = 1e-5,
         progress_callback: Optional[Any] = None,
         cancel_event: Optional[Any] = None,
     ):
@@ -99,6 +101,7 @@ class LNNTrainer:
         self.gradient_clip_value = gradient_clip_value
         self.lr_scheduler_type = lr_scheduler_type
         self.lr_scheduler_params = lr_scheduler_params or {}
+        self.weight_decay = weight_decay
         if isinstance(device, str):
             self.device = torch.device(device)
         else:
@@ -125,6 +128,8 @@ class LNNTrainer:
             "val_loss": [],
             "train_accuracy": [],
             "val_accuracy": [],
+            "train_r2": [],
+            "val_r2": [],
             "learning_rate": [],
         }
 
@@ -153,7 +158,11 @@ class LNNTrainer:
         if self.optimizer_type == "adam":
             return torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
         elif self.optimizer_type == "adamw":
-            return torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
+            return torch.optim.AdamW(
+                self.model.parameters(),
+                lr=self.learning_rate,
+                weight_decay=self.weight_decay,
+            )
         elif self.optimizer_type == "sgd":
             return torch.optim.SGD(
                 self.model.parameters(), lr=self.learning_rate, momentum=0.9
@@ -161,7 +170,11 @@ class LNNTrainer:
         elif self.optimizer_type == "rmsprop":
             return torch.optim.RMSprop(self.model.parameters(), lr=self.learning_rate)
         else:
-            return torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+            return torch.optim.AdamW(
+                self.model.parameters(),
+                lr=self.learning_rate,
+                weight_decay=self.weight_decay,
+            )
 
     def _create_lr_scheduler(self) -> Optional[torch.optim.lr_scheduler._LRScheduler]:
         """创建学习率调度器"""
@@ -205,7 +218,7 @@ class LNNTrainer:
         else:
             return nn.CrossEntropyLoss()
 
-    def train_epoch(self, dataloader: DataLoader) -> Tuple[float, float]:
+    def train_epoch(self, dataloader: DataLoader) -> Tuple[float, float, float]:
         """
         实现单个epoch的训练逻辑，支持混合精度训练
 
@@ -213,12 +226,14 @@ class LNNTrainer:
             dataloader: 训练数据加载器
 
         Returns:
-            (训练损失, 训练准确率)
+            (训练损失, 训练准确率, 训练R²)
         """
         self.model.train()
         total_loss = 0.0
         total_correct = 0
         total_samples = 0
+        all_preds = []
+        all_labels = []
 
         for batch_X, batch_y in dataloader:
             batch_X = batch_X.to(self.device)
@@ -271,6 +286,9 @@ class LNNTrainer:
                 self.optimizer.step()
 
             total_loss += loss.item() * batch_X.size(0)
+            all_preds.append(outputs.detach().cpu())
+            all_labels.append(batch_y.detach().cpu())
+
             if self.loss_type in ["cross_entropy", "bce_with_logits"]:
                 preds = torch.argmax(outputs, dim=1)
                 true_labels = (
@@ -289,9 +307,14 @@ class LNNTrainer:
         avg_loss = total_loss / total_samples
         accuracy = total_correct / total_samples
 
-        return avg_loss, accuracy
+        # 计算R²
+        all_preds = torch.cat(all_preds, dim=0).numpy()
+        all_labels = torch.cat(all_labels, dim=0).numpy()
+        r2 = self._compute_r2(all_labels, all_preds)
 
-    def validate(self, dataloader: DataLoader) -> Tuple[float, float]:
+        return avg_loss, accuracy, r2
+
+    def validate(self, dataloader: DataLoader) -> Tuple[float, float, float]:
         """
         实现模型验证逻辑
 
@@ -299,12 +322,14 @@ class LNNTrainer:
             dataloader: 验证数据加载器
 
         Returns:
-            (验证损失, 验证准确率)
+            (验证损失, 验证准确率, 验证R²)
         """
         self.model.eval()
         total_loss = 0.0
         total_correct = 0
         total_samples = 0
+        all_preds = []
+        all_labels = []
 
         with torch.no_grad():
             for batch_X, batch_y in dataloader:
@@ -336,6 +361,8 @@ class LNNTrainer:
                     loss = self.criterion(outputs, batch_y)
 
                 total_loss += loss.item() * batch_X.size(0)
+                all_preds.append(outputs.detach().cpu())
+                all_labels.append(batch_y.detach().cpu())
 
                 if self.loss_type in ["cross_entropy", "bce_with_logits"]:
                     preds = torch.argmax(outputs, dim=1)
@@ -355,7 +382,11 @@ class LNNTrainer:
         avg_loss = total_loss / total_samples
         accuracy = total_correct / total_samples
 
-        return avg_loss, accuracy
+        all_preds = torch.cat(all_preds, dim=0).numpy()
+        all_labels = torch.cat(all_labels, dim=0).numpy()
+        r2 = self._compute_r2(all_labels, all_preds)
+
+        return avg_loss, accuracy, r2
 
     def fit(
         self,
@@ -415,15 +446,17 @@ class LNNTrainer:
                 raise asyncio.CancelledError("Training cancelled by user")
 
             epoch_start = time.perf_counter()
-            train_loss, train_acc = self.train_epoch(train_loader)
+            train_loss, train_acc, train_r2 = self.train_epoch(train_loader)
             epoch_time = time.perf_counter() - epoch_start
 
-            val_loss, val_acc = self.validate(val_loader)
+            val_loss, val_acc, val_r2 = self.validate(val_loader)
 
             self.training_history["train_loss"].append(train_loss)
             self.training_history["train_accuracy"].append(train_acc)
             self.training_history["val_loss"].append(val_loss)
             self.training_history["val_accuracy"].append(val_acc)
+            self.training_history["train_r2"].append(train_r2)
+            self.training_history["val_r2"].append(val_r2)
             self.training_history["learning_rate"].append(
                 self.optimizer.param_groups[0]["lr"]
             )
@@ -435,6 +468,8 @@ class LNNTrainer:
                         "val_accuracy": round(val_acc, 4),
                         "train_loss": round(train_loss, 4),
                         "val_loss": round(val_loss, 4),
+                        "train_r2": round(train_r2, 4),
+                        "val_r2": round(val_r2, 4),
                     }
                     self.progress_callback(
                         epoch=self.current_epoch,
@@ -454,8 +489,9 @@ class LNNTrainer:
             log_msg = (
                 f"Epoch {epoch + 1}/{epochs} | "
                 f"Device: {device_display} | "
-                f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
-                f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f} | "
+                f"Train Loss: {train_loss:.4f}, Train R²: {train_r2:.4f} | "
+                f"Val Loss: {val_loss:.4f}, Val R²: {val_r2:.4f} | "
+                f"LR: {self.optimizer.param_groups[0]['lr']:.6f} | "
                 f"Time: {epoch_time:.2f}s"
             )
             logger.info(log_msg)
@@ -491,6 +527,17 @@ class LNNTrainer:
 
         self.model.is_trained = True
         return self.training_history
+
+    @staticmethod
+    def _compute_r2(y_true: "np.ndarray", y_pred: "np.ndarray") -> float:
+        """计算决定系数 R²"""
+        y_true = y_true.flatten()
+        y_pred = y_pred.flatten()
+        ss_res = np.sum((y_true - y_pred) ** 2)
+        ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+        if ss_tot == 0:
+            return 0.0
+        return float(1 - ss_res / ss_tot)
 
     def _step_lr_scheduler(self, val_loss: Optional[float] = None):
         """执行学习率调度"""

@@ -23,6 +23,23 @@ from app.simulation.toolpath_parser import ToolpathSegment
 if TYPE_CHECKING:
     import trimesh
 
+# =============================================================================
+# 性能加速模块配置
+# =============================================================================
+try:
+    import numba
+
+    HAS_NUMBA = True
+except ImportError:
+    HAS_NUMBA = False
+
+try:
+    from skimage import measure as skmeasure
+
+    HAS_SKIMAGE = True
+except ImportError:
+    HAS_SKIMAGE = False
+
 logger = logging.getLogger(__name__)
 
 MAX_STL_RETRIES = 3
@@ -314,10 +331,14 @@ class ToolModel:
         }
 
     def voxel_mask(self, voxel_size: float, z_offset: float = 0.0) -> np.ndarray:
-        """生成刀具的体素掩码。
+        """生成刀具的体素掩码（NumPy向量化实现）。
 
         在刀具局部坐标系中(刀尖在原点+Z向上)创建体素网格，
         根据刀具类型确定哪些体素被刀具占据。
+
+        性能说明：
+        使用NumPy meshgrid + 广播机制替代原始三重嵌套循环，
+        实现完全向量化计算，避免Python层循环开销。
 
         Args:
             voxel_size: 体素边长(mm)
@@ -329,56 +350,64 @@ class ToolModel:
         r = self.diameter / 2.0
         grid_half = int(np.ceil(r / voxel_size)) + 1
         grid_range = np.arange(-grid_half, grid_half + 1) * voxel_size
-        n = len(grid_range)
-
-        mask = np.zeros((n, n, n), dtype=bool)
 
         active_length = self.length
         if self.tool_type == "drill":
             active_length = min(self.length, r * 0.3)
 
-        for ix, dx in enumerate(grid_range):
-            for iy, dy in enumerate(grid_range):
-                radial_sq = dx * dx + dy * dy
-                if radial_sq > r * r + 1e-9:
-                    continue
-                radial_dist = np.sqrt(radial_sq)
+        # 使用3D meshgrid进行完全向量化计算
+        X, Y, Z = np.meshgrid(
+            grid_range, grid_range, grid_range,
+            indexing="ij", sparse=False,
+        )
 
-                for iz, dz in enumerate(grid_range):
-                    z_effective = dz + z_offset
-                    if z_effective > 0 or z_effective < -active_length:
-                        continue
+        radial_sq = X * X + Y * Y
+        radial_dist = np.sqrt(radial_sq)
+        z_effective = Z + z_offset
 
-                    if self.tool_type == "flat":
-                        if z_effective >= -self.corner_radius and (
-                            radial_dist <= r - self.corner_radius
-                            or (
-                                radial_dist <= r
-                                and z_effective
-                                >= -self.corner_radius
-                                + self.corner_radius
-                                * (r - radial_dist)
-                                / self.corner_radius
-                                if self.corner_radius > 0
-                                else False
-                            )
-                        ):
-                            mask[ix, iy, iz] = True
-                        elif z_effective < -self.corner_radius and radial_dist <= r:
-                            mask[ix, iy, iz] = True
+        # 有效区域：在刀具半径范围内且在Z轴工作区间内
+        within_radius = radial_sq <= r * r + 1e-9
+        within_z = (z_effective <= 0) & (z_effective >= -active_length)
+        valid_region = within_radius & within_z
 
-                    elif self.tool_type == "ball":
-                        r_eff = self.corner_radius
-                        z_center = -r_eff + z_offset
-                        dist_to_center = np.sqrt(
-                            radial_sq + (z_effective - z_center) ** 2
-                        )
-                        if dist_to_center <= r_eff + 1e-9:
-                            mask[ix, iy, iz] = True
+        if self.tool_type == "flat":
+            if self.corner_radius > 0:
+                # 拐角圆角区域：z_effective >= -corner_radius
+                # 平直部分：radial_dist <= r - corner_radius
+                is_corner_flat = (
+                    (z_effective >= -self.corner_radius)
+                    & (radial_dist <= r - self.corner_radius)
+                )
+                # 圆角过渡部分：radial_dist > r-cr 且 radial_dist <= r 且 z_effective >= -radial_dist
+                is_corner_fillet = (
+                    (z_effective >= -self.corner_radius)
+                    & (radial_dist <= r)
+                    & (z_effective >= -radial_dist)
+                )
+                is_corner_region = is_corner_flat | is_corner_fillet
+                # 直筒部分：z_effective < -corner_radius
+                is_cylinder = (z_effective < -self.corner_radius) & (
+                    radial_dist <= r
+                )
+                mask = valid_region & (is_corner_region | is_cylinder)
+            else:
+                # 无圆角：简单圆柱
+                mask = valid_region & (radial_dist <= r)
 
-                    elif self.tool_type == "drill":
-                        if radial_dist <= r and z_effective >= -active_length:
-                            mask[ix, iy, iz] = True
+        elif self.tool_type == "ball":
+            r_eff = self.corner_radius
+            z_center = -r_eff + z_offset
+            dist_to_center = np.sqrt(
+                radial_sq + (z_effective - z_center) ** 2
+            )
+            mask = valid_region & (dist_to_center <= r_eff + 1e-9)
+
+        elif self.tool_type == "drill":
+            mask = valid_region & (radial_dist <= r)
+
+        else:
+            # 未知刀具类型，回退到简单圆柱
+            mask = valid_region & (radial_dist <= r)
 
         return mask
 
@@ -448,6 +477,161 @@ class VoxelSimulationResult:
             "original_bbox": self.original_bbox,
             "toolpath_segment_count": self.toolpath_segment_count,
         }
+
+
+# =============================================================================
+# Numba JIT加速的批量刀具掩码应用函数
+# =============================================================================
+if HAS_NUMBA:
+
+    @numba.jit(nopython=True, cache=True, parallel=False)
+    def _apply_tool_mask_batch(
+        voxel_grid: np.ndarray,
+        tool_mask: np.ndarray,
+        points: np.ndarray,
+        bbox_min: np.ndarray,
+        voxel_size: float,
+        padding: float,
+    ) -> int:
+        """Numba JIT编译的批量刀具掩码应用。
+
+        将多个刀位点的刀具掩码应用合并为一次编译执行，
+        消除Python层循环调用开销。
+
+        Args:
+            voxel_grid: 工件体素网格（就地修改）
+            tool_mask: 刀具体素掩码
+            points: (N, 3) 刀位点数组
+            bbox_min: 工件包围盒最小点
+            voxel_size: 体素边长
+            padding: 体素网格填充量
+
+        Returns:
+            切除的体素总数
+        """
+        grid_shape0 = voxel_grid.shape[0]
+        grid_shape1 = voxel_grid.shape[1]
+        grid_shape2 = voxel_grid.shape[2]
+        tool_shape0 = tool_mask.shape[0]
+        tool_shape1 = tool_mask.shape[1]
+        tool_shape2 = tool_mask.shape[2]
+        half_mask0 = tool_shape0 // 2
+        half_mask1 = tool_shape1 // 2
+        half_mask2 = tool_shape2 // 2
+        total_removed = 0
+
+        for i in range(points.shape[0]):
+            x = points[i, 0]
+            y = points[i, 1]
+            z = points[i, 2]
+
+            tip_idx = np.round(
+                np.array([x, y, z]) - bbox_min + padding
+            ) / voxel_size
+            tip_idx = tip_idx.astype(np.int32)
+
+            tx, ty, tz = tip_idx[0], tip_idx[1], tip_idx[2]
+
+            gx_min = max(0, tx - half_mask0)
+            gx_max = min(grid_shape0, tx + half_mask0 + 1)
+            gy_min = max(0, ty - half_mask1)
+            gy_max = min(grid_shape1, ty + half_mask1 + 1)
+            gz_min = max(0, tz - half_mask2)
+            gz_max = min(grid_shape2, tz + half_mask2 + 1)
+
+            if gx_min >= gx_max or gy_min >= gy_max or gz_min >= gz_max:
+                continue
+
+            # 计算刀具掩码在voxel_grid中的对应区域
+            mx_start = gx_min - (tx - half_mask0)
+            my_start = gy_min - (ty - half_mask1)
+            mz_start = gz_min - (tz - half_mask2)
+
+            mx_end = mx_start + (gx_max - gx_min)
+            my_end = my_start + (gy_max - gy_min)
+            mz_end = mz_start + (gz_max - gz_min)
+
+            # 遍历工具掩码区域，切除对应体素
+            for mx in range(mx_start, mx_end):
+                gx = gx_min + (mx - mx_start)
+                for my in range(my_start, my_end):
+                    gy = gy_min + (my - my_start)
+                    for mz in range(mz_start, mz_end):
+                        gz = gz_min + (mz - mz_start)
+                        if tool_mask[mx, my, mz] and voxel_grid[gx, gy, gz]:
+                            voxel_grid[gx, gy, gz] = False
+                            total_removed += 1
+
+        return total_removed
+
+else:
+
+    def _apply_tool_mask_batch(
+        voxel_grid: np.ndarray,
+        tool_mask: np.ndarray,
+        points: np.ndarray,
+        bbox_min: np.ndarray,
+        voxel_size: float,
+        padding: float,
+    ) -> int:
+        """纯Python回退版的批量刀具掩码应用（numba不可用时）。"""
+        total_removed = 0
+        mask_center = (np.array(tool_mask.shape) - 1) // 2
+        for i in range(points.shape[0]):
+            x, y, z = points[i, 0], points[i, 1], points[i, 2]
+            total_removed += _apply_tool_mask_single(
+                voxel_grid, tool_mask, mask_center,
+                x, y, z, bbox_min, voxel_size, padding,
+            )
+        return total_removed
+
+
+def _apply_tool_mask_single(
+    voxel_grid: np.ndarray,
+    tool_mask: np.ndarray,
+    mask_center: np.ndarray,
+    x: float,
+    y: float,
+    z: float,
+    bbox_min: np.ndarray,
+    voxel_size: float,
+    padding: float,
+) -> int:
+    """应用刀具掩码（纯Python版本，用于回退模式）。"""
+    grid_shape = np.array(voxel_grid.shape)
+    tool_shape = np.array(tool_mask.shape)
+
+    tip_idx = np.round(
+        (np.array([x, y, z]) - bbox_min + padding) / voxel_size
+    ).astype(int)
+
+    half_mask = tool_shape // 2
+    gx_min = max(0, tip_idx[0] - half_mask[0])
+    gx_max = min(grid_shape[0], tip_idx[0] + half_mask[0] + 1)
+    gy_min = max(0, tip_idx[1] - half_mask[1])
+    gy_max = min(grid_shape[1], tip_idx[1] + half_mask[1] + 1)
+    gz_min_val = tip_idx[2] - half_mask[2]
+    gz_min = max(0, gz_min_val)
+    gz_max = min(grid_shape[2], tip_idx[2] + half_mask[2] + 1)
+
+    if gx_min >= gx_max or gy_min >= gy_max or gz_min >= gz_max:
+        return 0
+
+    mx_start = gx_min - (tip_idx[0] - half_mask[0])
+    my_start = gy_min - (tip_idx[1] - half_mask[1])
+    mz_start = gz_min - (tip_idx[2] - half_mask[2])
+
+    mx_end = mx_start + (gx_max - gx_min)
+    my_end = my_start + (gy_max - gy_min)
+    mz_end = mz_start + (gz_max - gz_min)
+
+    tool_sub = tool_mask[mx_start:mx_end, my_start:my_end, mz_start:mz_end]
+    grid_sub = voxel_grid[gx_min:gx_max, gy_min:gy_max, gz_min:gz_max]
+
+    before = int(grid_sub.sum())
+    grid_sub[tool_sub] = False
+    after = int(grid_sub.sum())
+    return before - after
 
 
 class VoxelCutter:
@@ -710,34 +894,42 @@ class VoxelCutter:
 
         cutting_segments = [s for s in segments if s.type in ("linear", "arc")]
         tool_mask = tool.voxel_mask(self._voxel_size)
-        mask_center = (np.array(tool_mask.shape) - 1) // 2
 
         collision_info = CollisionInfo()
 
-        removed_count = 0
-        for seg in cutting_segments:
-            points = self._discretize_segment(seg, self._voxel_size * 0.5)
-            for pt in points:
-                x, y, z = pt[0], pt[1], pt[2]
+        padding = self._voxel_size * 2
 
+        # =====================================================================
+        # 批量切削优化：先收集所有有效切削点，再一次性应用刀具掩码
+        # （使用Numba JIT加速批量处理，消除Python层循环开销）
+        # =====================================================================
+        all_cut_points: list[np.ndarray] = []
+        for seg in cutting_segments:
+            seg_points = self._discretize_segment(seg, self._voxel_size * 0.5)
+            for pt in seg_points:
+                x, y, z = float(pt[0]), float(pt[1]), float(pt[2])
+
+                # 碰撞检测（保留在原循环中，需访问 seg.block_number）
                 if z < bbox_min[2] - 0.01:
                     collision_info.collided = True
-                    collision_info.collision_positions.append(
-                        [float(x), float(y), float(z)]
-                    )
+                    collision_info.collision_positions.append([x, y, z])
                     collision_info.collision_segment_indices.append(seg.block_number)
                     continue
 
-                removed_count += self._apply_tool_mask(
-                    voxel_grid,
-                    tool_mask,
-                    mask_center,
-                    x,
-                    y,
-                    z,
-                    bbox_min,
-                    self._voxel_size,
-                )
+                all_cut_points.append(np.array([x, y, z]))
+
+        # 批量应用刀具掩码
+        removed_count = 0
+        if all_cut_points:
+            points_array = np.array(all_cut_points, dtype=np.float64)
+            removed_count = _apply_tool_mask_batch(
+                voxel_grid,
+                tool_mask,
+                points_array,
+                bbox_min,
+                self._voxel_size,
+                padding,
+            )
 
         if collision_info.collided:
             severity = (
@@ -909,7 +1101,9 @@ class VoxelCutter:
         bbox_min: np.ndarray,
         voxel_size: float,
     ) -> int:
-        """在指定位置应用刀具掩码，切除覆盖的体素。
+        """在指定位置应用刀具掩码，切除覆盖的体素（兼容性包装）。
+
+        委托给模块级函数 _apply_tool_mask_single。
 
         Args:
             voxel_grid: 工件体素网格
@@ -922,41 +1116,11 @@ class VoxelCutter:
         Returns:
             本此操作切除的体素数量
         """
-        grid_shape = np.array(voxel_grid.shape)
-        tool_shape = np.array(tool_mask.shape)
         padding = voxel_size * 2
-
-        tip_idx = np.round(
-            (np.array([x, y, z]) - bbox_min + padding) / voxel_size
-        ).astype(int)
-
-        half_mask = tool_shape // 2
-        gx_min = max(0, tip_idx[0] - half_mask[0])
-        gx_max = min(grid_shape[0], tip_idx[0] + half_mask[0] + 1)
-        gy_min = max(0, tip_idx[1] - half_mask[1])
-        gy_max = min(grid_shape[1], tip_idx[1] + half_mask[1] + 1)
-        gz_min_val = tip_idx[2] - half_mask[2]
-        gz_min = max(0, gz_min_val)
-        gz_max = min(grid_shape[2], tip_idx[2] + half_mask[2] + 1)
-
-        if gx_min >= gx_max or gy_min >= gy_max or gz_min >= gz_max:
-            return 0
-
-        mx_start = gx_min - (tip_idx[0] - half_mask[0])
-        my_start = gy_min - (tip_idx[1] - half_mask[1])
-        mz_start = gz_min - (tip_idx[2] - half_mask[2])
-
-        mx_end = mx_start + (gx_max - gx_min)
-        my_end = my_start + (gy_max - gy_min)
-        mz_end = mz_start + (gz_max - gz_min)
-
-        tool_sub = tool_mask[mx_start:mx_end, my_start:my_end, mz_start:mz_end]
-        grid_sub = voxel_grid[gx_min:gx_max, gy_min:gy_max, gz_min:gz_max]
-
-        before = int(grid_sub.sum())
-        grid_sub[tool_sub] = False
-        after = int(grid_sub.sum())
-        return before - after
+        return _apply_tool_mask_single(
+            voxel_grid, tool_mask, mask_center,
+            x, y, z, bbox_min, voxel_size, padding,
+        )
 
     def _discretize_segment(self, seg: ToolpathSegment, step: float) -> np.ndarray:
         """将刀路段离散为等间距采样点。
@@ -1092,9 +1256,11 @@ class VoxelCutter:
         bbox_min: np.ndarray,
         voxel_size: float,
     ) -> "trimesh.Trimesh | None":
-        """从体素网格重建三角网格。
+        """从体素网格重建三角网格（Marching Cubes算法）。
 
-        对"有材料"的体素生成立方体网格并合并。
+        使用scikit-image的Marching Cubes算法提取等值面，
+        替代逐一创建box mesh再合并的低效方式。
+        可大幅减少网格顶点/三角面数量，提高渲染和导出效率。
 
         Args:
             voxel_grid: 3D布尔体素网格
@@ -1115,15 +1281,93 @@ class VoxelCutter:
 
         padding = voxel_size * 2
 
+        # =====================================================================
+        # Marching Cubes 表面重建
+        # =====================================================================
+        if HAS_SKIMAGE:
+            try:
+                # 添加一层padding体素以避免Marching Cubes边界伪影
+                padded = np.pad(voxel_grid, pad_width=1, mode="constant", constant_values=0)
+                spacing = (voxel_size, voxel_size, voxel_size)
+
+                # 对二值体素使用level=0.5提取等值面
+                verts, faces, _, _ = skmeasure.marching_cubes(
+                    padded.astype(np.float64),
+                    level=0.5,
+                    spacing=spacing,
+                )
+
+                # Marching Cubes输出的是体素网格坐标(voxel coordinates)，
+                # 需要转换到世界坐标：
+                # 体素坐标(i,j,k) -> 世界坐标:
+                #   x = bbox_min[0] - padding + (i + 0.5) * voxel_size
+                # padded增加了1层，所以原体素(i,j,k)在padded中的位置是(i+1,j+1,k+1)
+                # Marching Cubes输出的verts是体素坐标，需要偏移-0.5因为体素中心对齐
+                verts_world = np.empty_like(verts)
+                verts_world[:, 0] = bbox_min[0] - padding + verts[:, 0]
+                verts_world[:, 1] = bbox_min[1] - padding + verts[:, 1]
+                verts_world[:, 2] = bbox_min[2] - padding + verts[:, 2]
+
+                if len(verts) == 0 or len(faces) == 0:
+                    logger.warning("Marching Cubes未生成有效网格")
+                    return self._reconstruct_mesh_fallback(
+                        voxel_grid, bbox_min, voxel_size, trimesh
+                    )
+
+                mesh = trimesh.Trimesh(
+                    vertices=verts_world,
+                    faces=faces,
+                    process=False,
+                )
+
+                # 清理退化三角形
+                non_degenerate = mesh.nondegenerate_faces()
+                mesh.update_faces(non_degenerate)
+                if len(mesh.faces) == 0:
+                    return self._reconstruct_mesh_fallback(
+                        voxel_grid, bbox_min, voxel_size, trimesh
+                    )
+
+                # 修复法线方向
+                mesh.fix_normals()
+                return mesh
+
+            except Exception as exc:
+                logger.warning(
+                    "Marching Cubes重建失败(%s)，回退到box mesh方法",
+                    exc,
+                )
+                return self._reconstruct_mesh_fallback(
+                    voxel_grid, bbox_min, voxel_size, trimesh
+                )
+        else:
+            return self._reconstruct_mesh_fallback(
+                voxel_grid, bbox_min, voxel_size, trimesh
+            )
+
+    def _reconstruct_mesh_fallback(
+        self,
+        voxel_grid: np.ndarray,
+        bbox_min: np.ndarray,
+        voxel_size: float,
+        trimesh_module,
+    ) -> "trimesh.Trimesh | None":
+        """回退方案：逐体素创建box mesh后合并（原始方法）。"""
+        active_indices = np.argwhere(voxel_grid)
+        if len(active_indices) == 0:
+            return None
+
+        padding = voxel_size * 2
+
         all_meshes: list["trimesh.Trimesh"] = []
         for idx in active_indices:
             cx = bbox_min[0] - padding + (idx[0] + 0.5) * voxel_size
             cy = bbox_min[1] - padding + (idx[1] + 0.5) * voxel_size
             cz = bbox_min[2] - padding + (idx[2] + 0.5) * voxel_size
 
-            box = trimesh.creation.box(
+            box = trimesh_module.creation.box(
                 extents=[voxel_size * 0.98] * 3,
-                transform=trimesh.transformations.translation_matrix([cx, cy, cz]),
+                transform=trimesh_module.transformations.translation_matrix([cx, cy, cz]),
             )
             all_meshes.append(box)
 
@@ -1131,7 +1375,7 @@ class VoxelCutter:
             return all_meshes[0]
 
         try:
-            combined = trimesh.util.concatenate(all_meshes)
+            combined = trimesh_module.util.concatenate(all_meshes)
             if hasattr(combined, "merge_vertices"):
                 combined.merge_vertices()
             if hasattr(combined, "simplify"):

@@ -2,9 +2,10 @@
 Test CORS Configuration Module
 
 Tests for:
-- Development environment: wildcard "*" origin with no regex
-- Production environment: "http://localhost:*" origins with regex matching
+- Development environment: explicit localhost origins (no wildcards)
+- Production environment: regex-based localhost matching
 - Environment variable override via ALLOWED_ORIGINS
+- Config validation (wildcard + credentials detection)
 - Default values and error handling for invalid LINGJING_ENV values
 """
 
@@ -14,6 +15,7 @@ from unittest.mock import patch
 
 from app.core.cors_config import (
     CorsSettings,
+    CorsConfigError,
     get_environment,
     get_cors_origins,
     get_cors_origin_regex,
@@ -21,18 +23,68 @@ from app.core.cors_config import (
     is_allowed_origin,
     is_development,
     is_production,
+    validate_cors_config,
     PRODUCTION_ORIGIN_REGEX,
     PRODUCTION_ORIGINS,
+    DEVELOPMENT_ORIGINS,
 )
 
+
+# =============================================================================
+# Validation
+# =============================================================================
+
+class TestValidateCorsConfig:
+    """Tests for the ``validate_cors_config`` security guard."""
+
+    def test_accepts_safe_config(self):
+        """Explicit origins with credentials should pass validation."""
+        # Should not raise
+        validate_cors_config(
+            ["http://localhost:3000", "http://example.com"],
+            True,
+        )
+
+    def test_accepts_empty_origins(self):
+        """Empty origin list with credentials should pass."""
+        validate_cors_config([], True)
+
+    def test_accepts_none_origins(self):
+        """None origins with credentials should pass."""
+        validate_cors_config(None, True)
+
+    def test_rejects_wildcard_with_credentials(self):
+        """Wildcard '*' with credentials=True must raise CorsConfigError."""
+        with pytest.raises(CorsConfigError) as exc:
+            validate_cors_config(["*"], True)
+        assert "wildcard" in str(exc.value).lower()
+
+    def test_accepts_wildcard_without_credentials(self):
+        """Wildcard '*' is acceptable when credentials=False."""
+        # Should not raise
+        validate_cors_config(["*"], False)
+
+    def test_rejects_wildcard_in_multi_origin_list(self):
+        """Wildcard '*' among explicit origins with credentials must raise."""
+        with pytest.raises(CorsConfigError):
+            validate_cors_config(
+                ["http://localhost:3000", "*", "http://example.com"],
+                True,
+            )
+
+
+# =============================================================================
+# Development environment
+# =============================================================================
 
 class TestDevEnvironment:
     """Tests for CORS behavior in development environment."""
 
     @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
-    def test_dev_origins_are_wildcard(self):
+    def test_dev_origins_are_explicit(self):
         settings = CorsSettings()
-        assert settings.get_origins() == ["*"]
+        assert settings.get_origins() == DEVELOPMENT_ORIGINS
+        assert "*" not in settings.get_origins()
 
     @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
     def test_dev_origin_regex_is_none(self):
@@ -40,12 +92,23 @@ class TestDevEnvironment:
         assert settings.get_origin_regex() is None
 
     @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
-    def test_dev_allows_any_origin(self):
+    def test_dev_allows_known_localhost_ports(self):
         settings = CorsSettings()
-        assert settings.is_allowed_origin("http://localhost:5173") is True
-        assert settings.is_allowed_origin("https://example.com") is True
-        assert settings.is_allowed_origin("http://localhost:3000") is True
-        assert settings.is_allowed_origin("https://evil.com") is True
+        for origin in DEVELOPMENT_ORIGINS:
+            assert settings.is_allowed_origin(origin) is True
+
+    @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
+    def test_dev_blocks_external_origins(self):
+        settings = CorsSettings()
+        assert settings.is_allowed_origin("https://example.com") is False
+        assert settings.is_allowed_origin("https://evil.com") is False
+        assert settings.is_allowed_origin("http://localhost:9999") is False
+        assert settings.is_allowed_origin("http://127.0.0.1:3000") is False
+
+    @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
+    def test_dev_blocks_empty_origin(self):
+        settings = CorsSettings()
+        assert settings.is_allowed_origin("") is False
 
     @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
     def test_dev_environment_detection(self):
@@ -55,7 +118,7 @@ class TestDevEnvironment:
 
     @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
     def test_dev_get_cors_origins_func(self):
-        assert get_cors_origins() == ["*"]
+        assert get_cors_origins() == DEVELOPMENT_ORIGINS
 
     @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
     def test_dev_get_cors_origin_regex_func(self):
@@ -64,19 +127,24 @@ class TestDevEnvironment:
     @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
     def test_dev_get_cors_config(self):
         config = get_cors_config()
-        assert config["allow_origins"] == ["*"]
+        assert config["allow_origins"] == DEVELOPMENT_ORIGINS
         assert config["allow_origin_regex"] is None
         assert config["allow_credentials"] is True
         assert config["max_age"] == 3600
 
 
+# =============================================================================
+# Production environment
+# =============================================================================
+
 class TestProdEnvironment:
     """Tests for CORS behavior in production environment."""
 
     @patch.dict(os.environ, {"LINGJING_ENV": "production"}, clear=True)
-    def test_prod_origins_are_localhost_wildcard_str(self):
+    def test_prod_origins_are_empty(self):
         settings = CorsSettings()
-        assert settings.get_origins() == ["http://localhost:*"]
+        assert settings.get_origins() == PRODUCTION_ORIGINS
+        assert settings.get_origins() == []
 
     @patch.dict(os.environ, {"LINGJING_ENV": "production"}, clear=True)
     def test_prod_origin_regex_matches_localhost_ports(self):
@@ -90,6 +158,7 @@ class TestProdEnvironment:
         assert settings.is_allowed_origin("http://localhost:5173") is True
         assert settings.is_allowed_origin("http://localhost:8080") is True
         assert settings.is_allowed_origin("http://localhost:3000") is True
+        assert settings.is_allowed_origin("http://localhost:9999") is True
 
     @patch.dict(os.environ, {"LINGJING_ENV": "production"}, clear=True)
     def test_prod_allows_localhost_without_port(self):
@@ -107,6 +176,7 @@ class TestProdEnvironment:
         assert settings.is_allowed_origin("https://example.com") is False
         assert settings.is_allowed_origin("https://evil.com") is False
         assert settings.is_allowed_origin("http://127.0.0.1:8080") is False
+        assert settings.is_allowed_origin("http://0.0.0.0:3000") is False
 
     @patch.dict(os.environ, {"LINGJING_ENV": "production"}, clear=True)
     def test_prod_blocks_tauri_direct(self):
@@ -121,7 +191,8 @@ class TestProdEnvironment:
 
     @patch.dict(os.environ, {"LINGJING_ENV": "production"}, clear=True)
     def test_prod_get_cors_origins_func(self):
-        assert get_cors_origins() == ["http://localhost:*"]
+        assert get_cors_origins() == PRODUCTION_ORIGINS
+        assert get_cors_origins() == []
 
     @patch.dict(os.environ, {"LINGJING_ENV": "production"}, clear=True)
     def test_prod_get_cors_origin_regex_func(self):
@@ -130,11 +201,16 @@ class TestProdEnvironment:
     @patch.dict(os.environ, {"LINGJING_ENV": "production"}, clear=True)
     def test_prod_get_cors_config(self):
         config = get_cors_config()
-        assert config["allow_origins"] == ["http://localhost:*"]
+        assert config["allow_origins"] == PRODUCTION_ORIGINS
+        assert config["allow_origins"] == []
         assert config["allow_origin_regex"] == PRODUCTION_ORIGIN_REGEX
         assert config["allow_credentials"] is True
         assert config["max_age"] == 600
 
+
+# =============================================================================
+# Environment variable override
+# =============================================================================
 
 class TestEnvOverride:
     """Tests for ALLOWED_ORIGINS environment variable override."""
@@ -182,6 +258,20 @@ class TestEnvOverride:
         settings = CorsSettings()
         assert settings.get_origins() == ["http://custom.local", "https://custom.local"]
 
+    @patch.dict(
+        os.environ,
+        {"ALLOWED_ORIGINS": "*"},
+        clear=True,
+    )
+    def test_override_wildcard_raises_on_init(self):
+        """ALLOWED_ORIGINS=* with default credentials=True must raise."""
+        with pytest.raises(CorsConfigError):
+            CorsSettings()
+
+
+# =============================================================================
+# Default fallback
+# =============================================================================
 
 class TestDefaultFallback:
     """Tests for default behavior when LINGJING_ENV is not set."""
@@ -209,12 +299,17 @@ class TestDefaultFallback:
         assert settings.get_origins() == PRODUCTION_ORIGINS
 
 
+# =============================================================================
+# Override environment parameter (standalone helpers)
+# =============================================================================
+
 class TestOverrideEnvParam:
     """Tests for override_env parameter in helper functions."""
 
     def test_get_cors_origins_with_override(self):
-        assert get_cors_origins(override_env="development") == ["*"]
-        assert get_cors_origins(override_env="production") == ["http://localhost:*"]
+        assert get_cors_origins(override_env="development") == DEVELOPMENT_ORIGINS
+        assert get_cors_origins(override_env="production") == PRODUCTION_ORIGINS
+        assert get_cors_origins(override_env="production") == []
 
     def test_get_cors_origin_regex_with_override(self):
         assert get_cors_origin_regex(override_env="development") is None
@@ -223,13 +318,18 @@ class TestOverrideEnvParam:
         )
 
     def test_is_allowed_origin_with_override(self):
-        assert is_allowed_origin("https://evil.com", override_env="development") is True
+        assert is_allowed_origin("http://localhost:3000", override_env="development") is True
+        assert is_allowed_origin("https://evil.com", override_env="development") is False
         assert (
             is_allowed_origin("http://localhost:5173", override_env="production")
             is True
         )
         assert is_allowed_origin("https://evil.com", override_env="production") is False
 
+
+# =============================================================================
+# Security headers
+# =============================================================================
 
 class TestSecurityHeaders:
     """Tests for security headers helper."""

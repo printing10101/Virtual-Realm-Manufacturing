@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
 import platform
 import sys
@@ -17,6 +18,7 @@ from app.version import VERSION as PY_VERSION
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/health", tags=["Health Check"])
+simple_health_router = APIRouter(tags=["Health Check"])
 
 APP_START = time.time()
 
@@ -231,3 +233,34 @@ async def system_health():
 async def quick_health():
     """Quick health check — returns a simple OK/ERROR status."""
     return {"status": "ok", "version": PY_VERSION, "uptime": round(time.time() - APP_START, 1)}
+
+
+# =============================================================================
+# Unified health check endpoints (mounted at /api/health and /api/health/ping)
+# =============================================================================
+
+
+@simple_health_router.get("/api/health")
+async def main_health():
+    """主健康检查端点 — 返回统一格式的健康状态。
+
+    返回格式: {"status": "ok", "version": "x.x.x", "timestamp": "..."}
+    - status: 固定为 "ok"
+    - version: 动态获取应用版本号
+    - timestamp: ISO 8601 格式当前时间戳
+    """
+    return {
+        "status": "ok",
+        "version": PY_VERSION,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+
+
+@simple_health_router.get("/api/health/ping")
+async def ping():
+    """轻量级 ping 检查端点 — 返回简单的存活状态。
+
+    用于 Docker HEALTHCHECK 等轻量级健康探测场景。
+    返回格式: {"ping": true}
+    """
+    return {"ping": True}

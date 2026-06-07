@@ -6,12 +6,13 @@ import logging
 import threading
 from datetime import datetime
 from typing import Optional, Callable
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Request
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
 from app.core.audit_log import AuditLog, AIModule, UserDecision, OperationStatus
 from app.core.ring_buffer import get_ring_log_buffer
+from app.core.rate_limiter import limiter
 from app.config import config
 from app.models.schemas import (
     LNNPredictRequest,
@@ -84,24 +85,25 @@ async def _broadcast_error(task_id: str, code: str, message: str):
 
 
 @router.post("/predict")
-async def predict_lnn(request: LNNPredictRequest):
+@limiter.limit("60/minute")
+async def predict_lnn(request: Request, body: LNNPredictRequest):
     try:
-        entry = model_registry.registry.get(request.model_name)
+        entry = model_registry.registry.get(body.model_name)
         if not entry:
             return error(
                 code=ErrorCode.NOT_FOUND,
-                message=f"Model '{request.model_name}' not found",
+                message=f"Model '{body.model_name}' not found",
             )
 
         model_info = entry.info
 
-        if not request.input_data:
+        if not body.input_data:
             return error(
                 code=ErrorCode.INVALID_REQUEST,
                 message="输入数据必须为非空列表",
             )
 
-        if any(not isinstance(x, (int, float)) for x in request.input_data):
+        if any(not isinstance(x, (int, float)) for x in body.input_data):
             return error(
                 code=ErrorCode.INVALID_REQUEST,
                 message="输入数据必须为数值类型",
@@ -111,35 +113,35 @@ async def predict_lnn(request: LNNPredictRequest):
             len(model_info.input_features) if model_info.input_features else None
         )
         if expected_dim:
-            input_len = len(request.input_data)
+            input_len = len(body.input_data)
             if input_len != expected_dim and input_len % expected_dim != 0:
                 return error(
                     code=ErrorCode.INVALID_REQUEST,
                     message=f"输入维度不匹配: 期望{expected_dim}维或其倍数，实际{input_len}维",
                 )
 
-        predictor = model_cache.get(request.model_name)
+        predictor = model_cache.get(body.model_name)
         if predictor is None:
             predictor = LNNPredictor.from_registry(
                 registry=model_registry,
-                model_name=request.model_name,
+                model_name=body.model_name,
                 use_amp=True,
                 auto_device=True,
             )
-            model_cache.put(request.model_name, predictor)
+            model_cache.put(body.model_name, predictor)
 
         try:
             result = predictor.predict(
-                input_data=request.input_data,
-                return_confidence=request.return_confidence,
+                input_data=body.input_data,
+                return_confidence=body.return_confidence,
             )
         except Exception as model_err:
             logger.error(f"Model inference error: {model_err}")
             get_ring_log_buffer().append(
                 "ai_inference",
                 level="ERROR",
-                message=f"Model '{request.model_name}' inference failed",
-                data={"error": str(model_err), "model": request.model_name},
+                message=f"Model '{body.model_name}' inference failed",
+                data={"error": str(model_err), "model": body.model_name},
             )
             return error(
                 code=ErrorCode.INTERNAL_ERROR,
@@ -158,20 +160,20 @@ async def predict_lnn(request: LNNPredictRequest):
             value = value.tolist()
         if isinstance(value, list) and len(value) == 1:
             value = value[0]
-        confidence = result.confidence if request.return_confidence else None
+        confidence = result.confidence if body.return_confidence else None
         inference_time = result.inference_time
 
         reasoning = _generate_prediction_reasoning(
-            model_name=request.model_name,
-            input_data=request.input_data,
+            model_name=body.model_name,
+            input_data=body.input_data,
             prediction=value,
             confidence=confidence,
             inference_time=inference_time,
         )
 
         alternatives = _generate_alternatives(
-            model_name=request.model_name,
-            input_data=request.input_data,
+            model_name=body.model_name,
+            input_data=body.input_data,
             primary_value=value,
             primary_confidence=confidence if confidence else 0.0,
         )
@@ -195,7 +197,7 @@ async def predict_lnn(request: LNNPredictRequest):
         audit_log.log_decision(
             ai_module=AIModule.LNN_PREDICT,
             ai_recommendation={
-                "model_name": request.model_name,
+                "model_name": body.model_name,
                 "prediction": value,
                 "confidence": confidence,
                 "alternatives": [alt.model_dump() for alt in alternatives],
@@ -204,9 +206,9 @@ async def predict_lnn(request: LNNPredictRequest):
             final_execution={"prediction": value},
             operation_status=OperationStatus.SUCCESS,
             input_parameters={
-                "model_name": request.model_name,
-                "input_data": request.input_data,
-                "return_confidence": request.return_confidence,
+                "model_name": body.model_name,
+                "input_data": body.input_data,
+                "return_confidence": body.return_confidence,
             },
             confidence=confidence,
             reasoning=reasoning,
@@ -215,12 +217,12 @@ async def predict_lnn(request: LNNPredictRequest):
         get_ring_log_buffer().append(
             "ai_inference",
             level="INFO",
-            message=f"Model '{request.model_name}' prediction completed",
+            message=f"Model '{body.model_name}' prediction completed",
             data={
-                "model": request.model_name,
+                "model": body.model_name,
                 "inference_time_ms": inference_time,
-                "input_size": len(request.input_data)
-                if isinstance(request.input_data, list)
+                "input_size": len(body.input_data)
+                if isinstance(body.input_data, list)
                 else 1,
             },
         )
@@ -231,19 +233,19 @@ async def predict_lnn(request: LNNPredictRequest):
         get_ring_log_buffer().append(
             "ai_inference",
             level="WARN",
-            message=f"Model '{request.model_name}' not found",
-            data={"model": request.model_name},
+            message=f"Model '{body.model_name}' not found",
+            data={"model": body.model_name},
         )
         return error(
             code=ErrorCode.NOT_FOUND,
-            message=f"Model '{request.model_name}' not found in registry",
+            message=f"Model '{body.model_name}' not found in registry",
         )
     except Exception as e:
         get_ring_log_buffer().append(
             "ai_inference",
             level="ERROR",
-            message=f"Model '{request.model_name}' unexpected error",
-            data={"model": request.model_name, "error": str(e)},
+            message=f"Model '{body.model_name}' unexpected error",
+            data={"model": body.model_name, "error": str(e)},
         )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -867,8 +869,10 @@ async def _broadcast_training_events(task_id):
 
 
 @router.post("/train")
+@limiter.limit("5/hour")
 async def train_lnn(
-    request: LNNTrainRequest,
+    request: Request,
+    body: LNNTrainRequest,
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
     """Start LNN training asynchronously. Returns job_id immediately."""
@@ -876,10 +880,10 @@ async def train_lnn(
         existing = await task_manager.create_task(
             TaskType.LNN_TRAINING,
             {
-                "model_name": request.model_name,
-                "data_path": request.data_path,
-                "hyperparameters": request.hyperparameters.model_dump(),
-                "device": request.device,
+                "model_name": body.model_name,
+                "data_path": body.data_path,
+                "hyperparameters": body.hyperparameters.model_dump(),
+                "device": body.device,
             },
             idempotency_key=idempotency_key,
         )
@@ -914,10 +918,10 @@ async def train_lnn(
             target=_run_training_in_thread,
             args=(
                 task_id,
-                request.model_name,
-                request.data_path,
-                request.hyperparameters.model_dump(),
-                request.device,
+                body.model_name,
+                body.data_path,
+                body.hyperparameters.model_dump(),
+                body.device,
             ),
             daemon=True,
         )

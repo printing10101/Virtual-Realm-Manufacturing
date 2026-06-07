@@ -9,6 +9,7 @@ import sys
 
 logger = logging.getLogger("lingjing-mcp")
 
+
 def run_stdio():
     """Run MCP server in stdio mode (for Cursor, Claude Code local calls)."""
     try:
@@ -24,6 +25,7 @@ def run_stdio():
 
     logger.info("Starting lingjing-mcp server in stdio mode")
     server.run()
+
 
 async def run_http(host: str = "0.0.0.0", port: int = 8080):
     """Run MCP server in HTTP SSE mode (for remote AI agents)."""
@@ -42,6 +44,7 @@ async def run_http(host: str = "0.0.0.0", port: int = 8080):
     # Note: FastMCP may have different HTTP setup depending on version
     # Fallback: use FastMCP's built-in HTTP transport
     server.run(transport="sse", host=host, port=port)
+
 
 def main():
     parser = argparse.ArgumentParser(description="lingjing-mcp server")
@@ -70,6 +73,7 @@ def main():
         run_stdio()
     else:
         asyncio.run(run_http(args.host, args.port))
+
 
 if __name__ == "__main__":
     main()

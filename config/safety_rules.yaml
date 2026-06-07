@@ -1,0 +1,182 @@
+# ============================================================================
+# 制造安全约束规则库
+# ============================================================================
+# 规则分类: 机床(M) / 刀具(T) / 工艺(P)
+# 优先级: P0(人员安全) > P1(设备安全) > P2(产品质量) > P3(效率优化)
+# ============================================================================
+
+version: "1.0"
+description: "灵境制造 - 制造安全约束规则库"
+
+rules:
+  # ============================================================================
+  # 1. 机床安全约束 (M-001 ~ M-004)
+  # ============================================================================
+
+  - rule_id: M-001
+    name: 主轴速度超限保护
+    priority: P0
+    category: M
+    condition:
+      type: threshold
+      field: spindle_speed
+      operator: ">"
+      value: max_spindle_speed
+    action:
+      type: override
+      target: spindle_speed
+      value: max_spindle_speed * 0.9
+      duration: until_condition_cleared
+    audit: true
+
+  - rule_id: M-002
+    name: 主轴温度超限保护
+    priority: P1
+    category: M
+    condition:
+      type: threshold
+      field: spindle_temperature
+      operator: ">"
+      value: 80
+    action:
+      type: alert_and_override
+      target: spindle_speed
+      value: 0.5
+      duration: until_condition_cleared
+    audit: true
+
+  - rule_id: M-003
+    name: 振动异常保护
+    priority: P1
+    category: M
+    condition:
+      type: threshold
+      field: vibration_rms
+      operator: ">"
+      value: vibration_threshold
+    action:
+      type: stop
+      target: spindle_speed
+      value: 0
+      duration: until_manual_reset
+    audit: true
+
+  - rule_id: M-004
+    name: 进给速率限制
+    priority: P1
+    category: M
+    condition:
+      type: threshold
+      field: feed_rate
+      operator: ">"
+      value: max_feed_rate
+    action:
+      type: override
+      target: feed_rate
+      value: max_feed_rate
+      duration: until_condition_cleared
+    audit: true
+
+  # ============================================================================
+  # 2. 刀具安全约束 (T-001 ~ T-003)
+  # ============================================================================
+
+  - rule_id: T-001
+    name: 刀具磨损超限保护
+    priority: P1
+    category: T
+    condition:
+      type: threshold
+      field: tool_wear
+      operator: ">"
+      value: tool_wear_limit
+    action:
+      type: force_change
+      target: tool_life_used
+      value: 0
+      duration: until_tool_changed
+    audit: true
+
+  - rule_id: T-002
+    name: 断刀检测保护
+    priority: P0
+    category: T
+    condition:
+      type: composite
+      field: acoustic_emission
+      operator: ">"
+      value: acoustic_emission_threshold
+    action:
+      type: stop
+      target: spindle_speed
+      value: 0
+      duration: until_manual_reset
+    audit: true
+
+  - rule_id: T-003
+    name: 刀具寿命到期保护
+    priority: P1
+    category: T
+    condition:
+      type: threshold
+      field: tool_life_used
+      operator: ">"
+      value: tool_rated_life
+    action:
+      type: force_change
+      target: tool_life_used
+      value: 0
+      duration: until_tool_changed
+    audit: true
+
+  # ============================================================================
+  # 3. 工艺约束 (P-001 ~ P-003)
+  # ============================================================================
+
+  - rule_id: P-001
+    name: 切削力超限保护
+    priority: P2
+    category: P
+    condition:
+      type: threshold
+      field: cutting_force
+      operator: ">"
+      value: material_force_limit
+    action:
+      type: alert_and_override
+      target: spindle_speed
+      value: 0.7
+      duration: until_condition_cleared
+    audit: true
+
+  - rule_id: P-002
+    name: 尺寸公差超限检测
+    priority: P2
+    category: P
+    condition:
+      type: threshold
+      field: dimension_deviation
+      operator: ">"
+      value: tolerance_band
+    action:
+      type: pause_and_alert
+      target: dimension_deviation
+      value: 0
+      duration: until_manual_inspection
+    audit: true
+
+  - rule_id: P-003
+    name: 过切检测保护
+    priority: P0
+    category: P
+    condition:
+      type: threshold
+      field: overcut_detected
+      operator: "=="
+      value: 1
+    action:
+      type: stop
+      target: spindle_speed
+      value: 0
+      duration: until_manual_reset
+    audit: true

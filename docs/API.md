@@ -15,7 +15,8 @@
 2. [Authentication](#authentication)
 3. [Response Format](#response-format)
 4. [Error Codes](#error-codes)
-5. [API Endpoints](#api-endpoints)
+5. [Rate Limiting](#rate-limiting)
+6. [API Endpoints](#api-endpoints)
    - [Base Routes](#base-routes)
    - [Authentication](#authentication-1)
    - [User Management](#user-management)
@@ -50,7 +51,7 @@
 | **Protocol** | HTTP/1.1 + HTTPS (production) |
 | **Data Format** | JSON (request/response bodies) |
 | **CORS** | Configured via settings (`ALLOW_ORIGINS`) |
-| **Rate Limiting** | Optional via settings (`RATE_LIMIT_ENABLED`) |
+| **Rate Limiting** | Enabled by default via slowapi (`RATE_LIMIT_ENABLED`, `True` by default) |
 | **Tracing** | Request ID injected into all responses via `X-Request-ID` header |
 
 ---
@@ -151,6 +152,7 @@ Error response fields:
 | `1003` | `UNAUTHORIZED` | Authentication required or invalid |
 | `1004` | `FORBIDDEN` | Insufficient permissions |
 | `1005` | `INTERNAL_ERROR` | Internal server error |
+| `1007` | `RATE_LIMIT_EXCEEDED` | 请求过于频繁（速率限制触发） |
 | `4001` | `MODEL_NOT_FOUND` | LNN model not found |
 | `4002` | `PREDICTION_NOT_FOUND` | Wear prediction not found |
 | `4004` | `USER_NOT_FOUND` | User not found |
@@ -163,6 +165,52 @@ Error response fields:
 | `8003` | `STATE_CONFLICT` | Agent state version conflict |
 | `9001` | `SKILL_NOT_FOUND` | Skill not found |
 | `10001` | `BUDGET_EXCEEDED` | Budget limit exceeded |
+
+---
+
+## Rate Limiting
+
+系统使用 **slowapi**（基于IP的内存存储速率限制）对所有API端点提供保护。速率限制默认启用，可通过 `RATE_LIMIT_ENABLED` 环境变量关闭。
+
+### 默认限制规则
+
+| 端点 | 限制规则 | 说明 |
+|------|---------|------|
+| `POST /api/v1/auth/login` | **5次/分钟** | 登录接口，防止暴力破解 |
+| `POST /api/v1/auth/register` | **3次/小时** | 注册接口，防止恶意注册 |
+| `POST /api/v1/lnn/predict` | **60次/分钟** | 模型预测接口，保障推理服务稳定性 |
+| `POST /api/v1/lnn/train` | **5次/小时** | 模型训练接口，防止训练请求滥用 |
+
+其他未特殊标注的端点继承全局默认限制（100次/分钟）。
+
+### Agent API 速率限制（独立）
+
+Agent API（`/api/agent/v1/*`）拥有独立的速率限制逻辑，不受上述全局速率限制影响：
+- 每个Agent Token **60次请求/分钟**
+- 每个Agent最多 **3个并发任务**
+- 由 `UnifiedAuthMiddleware` 统一管理
+
+### 错误响应
+
+当请求超出速率限制时，返回 **429 Too Many Requests** 状态码，响应体格式如下：
+
+```json
+{
+  "code": 1007,
+  "message": "请求过于频繁，请在1分钟后重试",
+  "request_id": "abc123..."
+}
+```
+
+响应头中包含 `Retry-After` 字段，指示客户端应在多少秒后重试。
+
+### 配置方式
+
+| 环境变量 | 默认值 | 说明 |
+|---------|--------|------|
+| `RATE_LIMIT_ENABLED` | `True` | 启用/禁用速率限制 |
+| `RATE_LIMIT_REQUESTS` | `100` | 全局窗口内最大请求数 |
+| `RATE_LIMIT_WINDOW` | `60` | 速率限制窗口（秒） |
 
 ---
 

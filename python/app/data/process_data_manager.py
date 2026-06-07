@@ -261,8 +261,10 @@ class ProcessPlanningDataManager:
 
         results = []
         for param in self._cutting_parameters.values():
-            if (param.material_id == material_id.strip() and
-                    param.tool_series == tool_series.strip()):
+            if (
+                param.material_id == material_id.strip()
+                and param.tool_series == tool_series.strip()
+            ):
                 results.append(param)
         return results
 
