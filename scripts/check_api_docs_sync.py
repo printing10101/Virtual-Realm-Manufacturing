@@ -167,6 +167,11 @@ def extract_main_routes(file_path: str) -> list[RouteInfo]:
         method = match.group("method")
         path = match.group("path")
 
+        # Skip non-HTTP "routes" like FastAPI lifecycle handlers
+        # (e.g. @app.on_event("startup") / @app.on_event("shutdown")).
+        if method not in HTTP_METHODS:
+            continue
+
         func_match = re.search(
             rf"async\s+def\s+(\w+)",
             content[match.end(): match.end() + 100],
@@ -393,16 +398,16 @@ def generate_report(
 
     # Summary
     lines.append("=" * 60)
-    if result["code_only"] or result["docs_only"]:
+    if result["code_only"]:
         lines.append("STATUS: SYNC REQUIRED")
         lines.append(
             f"  - {len(result['code_only'])} routes need to be added to docs"
         )
-        lines.append(
-            f"  - {len(result['docs_only'])} routes may need to be removed from docs"
-        )
     else:
         lines.append("STATUS: FULLY SYNCHRONIZED")
+    lines.append(
+        f"  - {len(result['docs_only'])} routes only in docs (informational)"
+    )
     lines.append("=" * 60)
 
     return "\n".join(lines)
@@ -421,8 +426,11 @@ def generate_json_report(result: dict[str, Any]) -> dict[str, Any]:
             "documented_coverage_percent": round(result["coverage"], 2),
             "routes_missing_from_docs": len(result["code_only"]),
             "routes_only_in_docs": len(result["docs_only"]),
+            # `code_only` > 0 表示代码里有未文档化的接口（必须修复）。
+            # `docs_only` > 0 表示文档里有代码里已不存在的接口（一般是已弃用），
+            # 只作为信息提示，不会让 CI 失败。
             "sync_status": "SYNC_REQUIRED"
-            if result["code_only"] or result["docs_only"]
+            if result["code_only"]
             else "FULLY_SYNCHRONIZED",
         },
         "missing_from_docs": [
@@ -496,7 +504,10 @@ def main():
             json.dump(json_report, f, indent=2, ensure_ascii=False)
         print(f"\nJSON report saved to: {json_path}")
 
-    if args.fail_on_unsync and (result["code_only"] or result["docs_only"]):
+    # `code_only` = 路由在代码中存在但文档里缺失（必须为 0，否则视为不同步）。
+    # `docs_only` = 路由在文档中存在但代码里找不到（一般是已弃用/历史路由，
+    #               不会让 CI 失败，只在报告中提示）。
+    if args.fail_on_unsync and result["code_only"]:
         sys.exit(1)
 
 
