@@ -10,6 +10,7 @@ on:
       - 'python/app/cad/**'
       - 'tests/benchmark/geometric/**'
       - 'tests/validation/**'
+      - 'python/tests/validation/**'
       - '.github/workflows/geometry-validation.yml'
   push:
     branches:
@@ -20,6 +21,7 @@ on:
       - 'python/app/cad/**'
       - 'tests/benchmark/geometric/**'
       - 'tests/validation/**'
+      - 'python/tests/validation/**'
       - '.github/workflows/geometry-validation.yml'
 
 env:
