@@ -20,6 +20,7 @@ on:
       - 'python/app/cad/**'
       - 'tests/benchmark/geometric/**'
       - 'tests/validation/**'
+      - '.github/workflows/geometry-validation.yml'
 
 env:
   PYTHONUNBUFFERED: '1'
