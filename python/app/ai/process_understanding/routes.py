@@ -17,6 +17,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.core.response import ErrorCode, error, success
+from app.core.safe_errors import safe_error_message
 from app.ai.process_understanding.engine import (
     get_process_understanding_engine,
 )
@@ -92,11 +93,14 @@ async def process_query(request: QueryRequest) -> dict[str, Any]:
             message="工艺理解处理完成",
         )
     except Exception as e:
+        # 修复：避免将 e!s 直接进入响应，泄露内部异常细节
         logger.exception("工艺理解处理异常")
+        safe = safe_error_message(e, context="process_understanding.query", fallback="工艺理解处理失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"工艺理解处理失败: {e!s}",
+            message=safe["message"],
             suggestion="请检查输入内容或稍后重试",
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )
 
 
@@ -130,10 +134,13 @@ async def explain_prediction(request: ExplainRequest) -> dict[str, Any]:
             message="预测结果解释完成",
         )
     except Exception as e:
+        # 修复：避免将 e!s 直接进入响应
         logger.exception("预测结果解释异常")
+        safe = safe_error_message(e, context="process_understanding.explain", fallback="预测结果解释失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"预测结果解释失败: {e!s}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )
 
 
@@ -155,9 +162,12 @@ async def get_stats() -> dict[str, Any]:
         stats = engine.get_stats()
         return success(data=stats, message="统计信息获取成功")
     except Exception as e:
+        # 修复：避免将 e!s 直接进入响应
+        safe = safe_error_message(e, context="process_understanding.stats", fallback="统计信息获取失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"统计信息获取失败: {e!s}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )
 
 
@@ -180,7 +190,10 @@ async def health_check() -> dict[str, Any]:
             message="模块运行正常",
         )
     except Exception as e:
+        # 修复：避免将 e!s 直接进入响应
+        safe = safe_error_message(e, context="process_understanding.health", fallback="模块异常")
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
-            message=f"模块异常: {e!s}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )

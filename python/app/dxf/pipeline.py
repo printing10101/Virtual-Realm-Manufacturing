@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+from app.core.safe_errors import safe_error_message
 from app.dxf.dxf_parser import DxfParser, DxfParseResult
 from app.dxf.feature_extractor import (
     FeatureExtractor,
@@ -44,6 +45,24 @@ from app.process_planning.pipeline import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _record_stage_error(
+    exc: BaseException, *, context: str, generic_message: str
+) -> tuple[str, str]:
+    """统一记录阶段错误的安全包装器。
+
+    修复：原实现将 ``str(e)`` 直接存储到 ``DxfPipelineStage.errors`` 中，
+    而 ``DxfPipelineResult.to_dict()`` 又会被 ``/api/dxf/pipeline`` 端点
+    原样返回给前端，从而将 ezdxf / cadquery 内部的异常消息、文件路径、
+    状态码等细节暴露给未授权用户。
+
+    新实现：
+    1. 服务端日志保留完整堆栈（通过 ``safe_error_message`` 内的 logger.exception）。
+    2. 返回给前端的 ``errors`` 列表仅含通用描述 + ``error_id``，供报障关联。
+    """
+    safe = safe_error_message(exc, context=context)
+    return generic_message, safe.get("error_id", "")
 
 
 @dataclass
@@ -80,6 +99,9 @@ class DxfPipelineResult:
     process_result: Optional[ProcessPipelineResult] = None
     total_duration_ms: float = 0.0
     summary: str = ""
+    # 修复：新增 error_id 字段以便客户端报错时与服务端日志关联，
+    # 避免原 summary 字段中直接拼接 str(e) 泄露内部异常详情。
+    error_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -88,6 +110,8 @@ class DxfPipelineResult:
             "summary": self.summary,
             "stages": [s.to_dict() for s in self.stages],
         }
+        if self.error_id:
+            result["error_id"] = self.error_id
         if self.parse_result:
             result["parse"] = self.parse_result.to_dict()
         if self.feature_result:
@@ -178,15 +202,22 @@ class DxfProcessPipeline:
                 warnings=parse_result.warnings,
             )
         except Exception as e:
+            # 修复：避免 str(e) 直接进入 result.stages 并被 API 端点暴露给前端。
+            err_msg, error_id = _record_stage_error(
+                e,
+                context="dxf.pipeline.parse",
+                generic_message="DXF解析阶段失败",
+            )
             stage1 = DxfPipelineStage(
                 name="DXF解析",
                 status="failed",
                 duration_ms=(time.time() - stage1_start) * 1000,
-                errors=[str(e)],
+                errors=[err_msg],
             )
             stages.append(stage1)
             result.stages = stages
-            result.summary = f"流水线在DXF解析阶段失败: {e}"
+            result.summary = "流水线在DXF解析阶段失败"
+            result.error_id = error_id
             return result
 
         stages.append(stage1)
@@ -218,15 +249,22 @@ class DxfProcessPipeline:
                 warnings=feature_result.warnings,
             )
         except Exception as e:
+            # 修复：避免 str(e) 直接进入 result.stages 并被 API 端点暴露给前端。
+            err_msg, error_id = _record_stage_error(
+                e,
+                context="dxf.pipeline.features",
+                generic_message="特征提取阶段失败",
+            )
             stage2 = DxfPipelineStage(
                 name="特征提取",
                 status="failed",
                 duration_ms=(time.time() - stage2_start) * 1000,
-                errors=[str(e)],
+                errors=[err_msg],
             )
             stages.append(stage2)
             result.stages = stages
-            result.summary = f"流水线在特征提取阶段失败: {e}"
+            result.summary = "流水线在特征提取阶段失败"
+            result.error_id = error_id
             return result
 
         stages.append(stage2)
@@ -257,17 +295,24 @@ class DxfProcessPipeline:
                 warnings=model_result.warnings,
             )
         except Exception as e:
+            # 修复：与文档约定保持一致——3D模型转换失败仅降级继续，
+            # 而非直接终止流水线。工艺规划不依赖3D模型存在。
+            # 错误信息存储在 result.error_id 关联，不直接 str(e) 暴露。
+            err_msg, error_id = _record_stage_error(
+                e,
+                context="dxf.pipeline.model_convert",
+                generic_message="3D模型转换失败",
+            )
+            logger.warning("3D模型转换失败，流水线将降级继续: error_id=%s", error_id)
+            model_result = None
             stage3 = DxfPipelineStage(
                 name="3D模型转换",
                 status="failed",
                 duration_ms=(time.time() - stage3_start) * 1000,
-                errors=[str(e)],
+                errors=[err_msg],
                 warnings=["模型转换失败，将跳过3D模型环节继续工艺规划"],
             )
-            stages.append(stage3)
-            result.stages = stages
-            result.summary = f"流水线在3D模型转换阶段失败: {e}"
-            return result
+            # 注意：降级失败不覆盖 result.error_id，仅记录日志供排查
 
         stages.append(stage3)
         result.model_result = model_result
@@ -286,15 +331,22 @@ class DxfProcessPipeline:
                 ),
             )
         except Exception as e:
+            # 修复：避免 str(e) 直接进入 result.stages 并被 API 端点暴露给前端。
+            err_msg, error_id = _record_stage_error(
+                e,
+                context="dxf.pipeline.build_part_description",
+                generic_message="数据组装阶段失败",
+            )
             stage4 = DxfPipelineStage(
                 name="数据组装",
                 status="failed",
                 duration_ms=(time.time() - stage4_start) * 1000,
-                errors=[str(e)],
+                errors=[err_msg],
             )
             stages.append(stage4)
             result.stages = stages
-            result.summary = f"流水线在数据组装阶段失败: {e}"
+            result.summary = "流水线在数据组装阶段失败"
+            result.error_id = error_id
             return result
 
         stages.append(stage4)
@@ -341,15 +393,22 @@ class DxfProcessPipeline:
                 ],
             )
         except Exception as e:
+            # 修复：避免 str(e) 直接进入 result.stages 并被 API 端点暴露给前端。
+            err_msg, error_id = _record_stage_error(
+                e,
+                context="dxf.pipeline.process_planning",
+                generic_message="工艺规划阶段失败",
+            )
             stage5 = DxfPipelineStage(
                 name="工艺规划与G代码生成",
                 status="failed",
                 duration_ms=(time.time() - stage5_start) * 1000,
-                errors=[str(e)],
+                errors=[err_msg],
             )
             stages.append(stage5)
             result.stages = stages
-            result.summary = f"流水线在工艺规划阶段失败: {e}"
+            result.summary = "流水线在工艺规划阶段失败"
+            result.error_id = error_id
             return result
 
         stages.append(stage5)

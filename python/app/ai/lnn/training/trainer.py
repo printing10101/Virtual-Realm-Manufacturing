@@ -476,8 +476,11 @@ class LNNTrainer:
                         loss=val_loss,
                         metrics=metrics,
                     )
-                except Exception as cb_err:
-                    logger.warning(f"Progress callback failed: {cb_err}")
+                except (RuntimeError, ValueError, TypeError, AttributeError) as cb_err:
+                    # 进度回调失败不应中断训练主流程，记录警告
+                    logger.warning(
+                        f"Progress callback failed: {cb_err}", exc_info=True
+                    )
 
             device_display = device_info
             if self.device.type == "cuda" and epoch % 10 == 0:

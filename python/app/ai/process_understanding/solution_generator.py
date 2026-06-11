@@ -290,7 +290,7 @@ class SolutionGenerator:
         machine_type: str,
     ) -> ProcessSolution:
         """解析LLM生成的工艺方案JSON。"""
-        from app.core.utils import extract_json_from_markdown
+        from app.utils.utils import extract_json_from_markdown
 
         try:
             data = extract_json_from_markdown(raw_content)

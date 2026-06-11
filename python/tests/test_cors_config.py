@@ -7,15 +7,18 @@ Tests for:
 - Environment variable override via ALLOWED_ORIGINS
 - Config validation (wildcard + credentials detection)
 - Default values and error handling for invalid LINGJING_ENV values
+- Hardened startup enforcement (non-zero exit, Chinese ERROR log)
 """
 
+import logging
 import os
 import pytest
 from unittest.mock import patch
 
-from app.core.cors_config import (
+from app.middleware.cors_config import (
     CorsSettings,
     CorsConfigError,
+    enforce_startup_security,
     get_environment,
     get_cors_origins,
     get_cors_origin_regex,
@@ -71,6 +74,45 @@ class TestValidateCorsConfig:
                 ["http://localhost:3000", "*", "http://example.com"],
                 True,
             )
+
+    # --- Partial wildcard detection (new in this hardening pass) -----------
+
+    def test_rejects_partial_wildcard_subdomain(self):
+        """Partial wildcard ``*.example.com`` with credentials must raise."""
+        with pytest.raises(CorsConfigError) as exc:
+            validate_cors_config(["https://*.example.com"], True)
+        assert "wildcard" in str(exc.value).lower()
+
+    def test_rejects_partial_wildcard_scheme(self):
+        """Partial wildcard ``https://*`` with credentials must raise."""
+        with pytest.raises(CorsConfigError):
+            validate_cors_config(["https://*"], True)
+
+    def test_rejects_partial_wildcard_port(self):
+        """Partial wildcard in port (``http://localhost:*``) must raise."""
+        with pytest.raises(CorsConfigError):
+            validate_cors_config(["http://localhost:*"], True)
+
+    def test_rejects_broad_origin_regex(self):
+        """A broad origin_regex like ``.*`` with credentials must raise."""
+        with pytest.raises(CorsConfigError):
+            validate_cors_config(
+                [],
+                True,
+                origin_regex=".*",
+            )
+
+    def test_partial_wildcard_emits_error_log_with_chinese(self, caplog):
+        """ERROR log must contain the required Chinese security warning."""
+        caplog.set_level(logging.ERROR, logger="app.middleware.cors_config")
+        with pytest.raises(CorsConfigError):
+            validate_cors_config(["*.example.com"], True)
+
+        # Locate the relevant error record
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        assert error_records, "expected at least one ERROR log record"
+        combined = "\n".join(r.getMessage() for r in error_records)
+        assert "通配符*与allow_credentials=True同时使用存在严重安全风险" in combined
 
 
 # =============================================================================
@@ -335,12 +377,205 @@ class TestSecurityHeaders:
     """Tests for security headers helper."""
 
     def test_get_security_headers(self):
-        from app.core.cors_config import get_security_headers
+        from app.middleware.cors_config import get_security_headers
 
         headers = get_security_headers()
         assert headers["X-Content-Type-Options"] == "nosniff"
         assert headers["X-Frame-Options"] == "DENY"
         assert headers["X-XSS-Protection"] == "1; mode=block"
+
+
+# =============================================================================
+# Startup-time enforcement (non-zero exit on wildcard + credentials)
+# =============================================================================
+
+class TestEnforceStartupSecurity:
+    """Tests for ``enforce_startup_security`` — the runtime gate."""
+
+    @patch.dict(
+        os.environ,
+        {"LINGJING_ENV": "development", "ALLOWED_ORIGINS": "*"},
+        clear=True,
+    )
+    def test_wildcard_override_aborts_startup(self, caplog):
+        """ALLOWED_ORIGINS='*' must abort the startup gate with CorsConfigError."""
+        caplog.set_level(logging.ERROR, logger="app.middleware.cors_config")
+        with pytest.raises(CorsConfigError):
+            enforce_startup_security()
+        # And the ERROR log must contain the required Chinese text.
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        assert error_records
+        combined = "\n".join(r.getMessage() for r in error_records)
+        assert "通配符*与allow_credentials=True同时使用存在严重安全风险" in combined
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_safe_default_production_passes(self):
+        """Default (production, no ALLOWED_ORIGINS) must not raise."""
+        # Should not raise.
+        enforce_startup_security()
+
+    @patch.dict(
+        os.environ,
+        {"LINGJING_ENV": "development"},
+        clear=True,
+    )
+    def test_dev_default_origins_pass(self):
+        """Default development origins (no wildcards) must not raise."""
+        enforce_startup_security()
+
+    @patch.dict(
+        os.environ,
+        {
+            "LINGJING_ENV": "production",
+            "ALLOWED_ORIGINS": "https://app.example.com,https://admin.example.com",
+        },
+        clear=True,
+    )
+    def test_explicit_prod_origins_pass(self):
+        """Explicit production origins (no wildcards) must not raise."""
+        enforce_startup_security()
+
+    @patch.dict(
+        os.environ,
+        {
+            "LINGJING_ENV": "production",
+            "ALLOWED_ORIGINS": "https://*.example.com",
+        },
+        clear=True,
+    )
+    def test_partial_wildcard_in_prod_aborts(self, caplog):
+        """Partial wildcard in production must abort with the Chinese log."""
+        caplog.set_level(logging.ERROR, logger="app.middleware.cors_config")
+        with pytest.raises(CorsConfigError):
+            enforce_startup_security()
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        combined = "\n".join(r.getMessage() for r in error_records)
+        assert "通配符*与allow_credentials=True同时使用存在严重安全风险" in combined
+
+
+class TestStartupExitCode:
+    """Test the documented startup termination pattern (sys.exit(1))."""
+
+    @patch.dict(
+        os.environ,
+        {"LINGJING_ENV": "development", "ALLOWED_ORIGINS": "*"},
+        clear=True,
+    )
+    def test_sys_exit_on_wildcard(self, caplog):
+        """The documented wrap-as-script pattern must exit non-zero."""
+        caplog.set_level(logging.ERROR, logger="app.middleware.cors_config")
+        import sys
+
+        with pytest.raises(SystemExit) as exc_info:
+            try:
+                enforce_startup_security()
+            except CorsConfigError:
+                # Mirror the production pattern from main.py
+                sys.exit(1)
+        assert exc_info.value.code != 0
+
+
+# =============================================================================
+# Environment isolation (dev must not leak into prod and vice versa)
+# =============================================================================
+
+class TestEnvironmentIsolation:
+    """Verify that the development origins never appear in production and that
+    the production config is a closed allowlist with no wildcards."""
+
+    @patch.dict(os.environ, {"LINGJING_ENV": "production"}, clear=True)
+    def test_prod_does_not_include_dev_origins(self):
+        settings = CorsSettings()
+        prod_origins = settings.get_origins()
+        # The prod origin list is the (empty) PRODUCTION_ORIGINS — it must
+        # not contain any of the dev defaults.
+        assert all(o not in DEVELOPMENT_ORIGINS for o in prod_origins)
+        # Specifically: prod must not include the dev Vite/CRA ports.
+        assert "http://localhost:5173" not in prod_origins
+        assert "http://localhost:3000" not in prod_origins
+
+    @patch.dict(os.environ, {"LINGJING_ENV": "development"}, clear=True)
+    def test_dev_origins_are_explicit_no_wildcards(self):
+        settings = CorsSettings()
+        origins = settings.get_origins()
+        # All dev origins must be explicit, full http://localhost URLs
+        for o in origins:
+            assert o.startswith("http://localhost")
+            assert "*" not in o
+
+    def test_production_origin_list_has_no_wildcards(self):
+        """Static check on the module constant: PRODUCTION_ORIGINS must be
+        free of any wildcard character."""
+        for o in PRODUCTION_ORIGINS:
+            assert "*" not in o, f"PRODUCTION_ORIGINS contains wildcard: {o!r}"
+
+    def test_development_origin_list_has_no_wildcards(self):
+        """Static check on the module constant: DEVELOPMENT_ORIGINS must be
+        free of any wildcard character."""
+        for o in DEVELOPMENT_ORIGINS:
+            assert "*" not in o, f"DEVELOPMENT_ORIGINS contains wildcard: {o!r}"
+
+    def test_production_regex_is_not_wildcard(self):
+        """The production regex is bounded — not a wildcard pattern."""
+        # The regex must not contain a bare ``*`` character (it uses
+        # character classes like ``\\d+`` but no wildcard).
+        assert "*" not in PRODUCTION_ORIGIN_REGEX
+
+    def test_dev_includes_required_localhost_ports(self):
+        """Acceptance criterion: dev must include :5173 and :3000."""
+        assert "http://localhost:5173" in DEVELOPMENT_ORIGINS
+        assert "http://localhost:3000" in DEVELOPMENT_ORIGINS
+
+    @patch.dict(
+        os.environ,
+        {"LINGJING_ENV": "development"},
+        clear=True,
+    )
+    def test_dev_helper_matches_settings(self):
+        """Standalone helper agrees with CorsSettings in dev."""
+        settings = CorsSettings()
+        assert get_cors_origins() == settings.get_origins()
+
+    @patch.dict(
+        os.environ,
+        {"LINGJING_ENV": "production"},
+        clear=True,
+    )
+    def test_prod_helper_matches_settings(self):
+        """Standalone helper agrees with CorsSettings in prod."""
+        settings = CorsSettings()
+        assert get_cors_origins() == settings.get_origins()
+
+
+# =============================================================================
+# Source-level guard rails
+# =============================================================================
+
+class TestSourceHasNoWildcardOrigin:
+    """Source-level assertions mirroring the grep acceptance check.
+
+    ``grep -n '"\\*"' python/app/core/cors_config.py`` must return no
+    matches: the file should not contain the bare string ``"*"`` outside
+    of documentation, comments, and the Chinese log message.
+    """
+
+    def test_no_bare_star_origin_in_module(self):
+        from app.middleware import cors_config
+
+        source = open(cors_config.__file__, encoding="utf-8").read()
+        # Strip comments to avoid false positives.
+        non_comment_lines = []
+        for line in source.splitlines():
+            stripped = line.split("#", 1)[0]
+            non_comment_lines.append(stripped)
+        non_comment = "\n".join(non_comment_lines)
+
+        # The only allowed occurrence is in the _WILDCARD_PATTERN
+        # detector or in error messages, never as a default origin.
+        assert '"*"' not in non_comment, (
+            "Bare '\"*\"' string found in cors_config.py — possible "
+            "default wildcard origin regression."
+        )
 
 
 if __name__ == "__main__":

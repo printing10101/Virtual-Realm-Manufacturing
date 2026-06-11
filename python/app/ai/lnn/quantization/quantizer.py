@@ -69,7 +69,8 @@ try:
         )
 except ImportError as e:
     TORCH_QUANTIZATION_ERROR = f"PyTorch quantization import failed: {e}"
-except Exception as e:
+except (AttributeError, RuntimeError, ValueError, OSError) as e:
+    # 模块顶层初始化可能因 PyTorch API 不兼容、平台不支持等失败
     TORCH_QUANTIZATION_ERROR = f"PyTorch quantization initialization failed: {e}"
 
 logger = logging.getLogger(__name__)

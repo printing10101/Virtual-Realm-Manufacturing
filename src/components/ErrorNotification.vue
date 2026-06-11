@@ -124,13 +124,13 @@
             v-if="notification.suggestion"
             class="error-suggestion"
           >
-            <strong>建议：</strong>{{ notification.suggestion }}
+            <strong>{{ $t('errorNotification.suggestion') }}</strong>{{ notification.suggestion }}
           </p>
           <div
             v-if="notification.adjusted_values && Object.keys(notification.adjusted_values).length"
             class="error-adjusted"
           >
-            <strong>已调整参数：</strong>
+            <strong>{{ $t('errorNotification.adjustedParams') }}</strong>
             <span
               v-for="(val, key) in notification.adjusted_values"
               :key="key"
@@ -150,13 +150,13 @@
             class="btn-accept"
             @click.stop="accept(notification)"
           >
-            接受调整
+            {{ $t('errorNotification.acceptAdjust') }}
           </button>
           <button
             class="btn-manual"
             @click.stop="manualEdit(notification)"
           >
-            手动修改
+            {{ $t('errorNotification.manualModify') }}
           </button>
         </div>
       </div>
@@ -166,6 +166,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useErrorBus } from '@/composables/useErrorBus'
 
 interface ErrorNotification {
   id: string
@@ -182,6 +183,7 @@ interface ErrorNotification {
 }
 
 const notifications = ref<ErrorNotification[]>([])
+const errorBus = useErrorBus()
 let nextId = 0
 
 const visibleNotifications = computed(() =>
@@ -237,21 +239,35 @@ function toggleDetail(id: string): void {
 
 function accept(notification: ErrorNotification): void {
   if (notification.adjusted_values) {
-    window.dispatchEvent(
-      new CustomEvent('manufacturing-error-accepted', {
-        detail: { id: notification.id, adjusted_values: notification.adjusted_values },
-      })
-    )
+    // 使用类型安全的事件总线替代 window.dispatchEvent
+    const delivered = errorBus.emitAccepted({
+      id: notification.id,
+      adjusted_values: notification.adjusted_values,
+    })
+    if (!delivered) {
+      // 兼容性回退：保留 CustomEvent 行为，避免破坏旧的订阅者
+      window.dispatchEvent(
+        new CustomEvent('manufacturing-error-accepted', {
+          detail: { id: notification.id, adjusted_values: notification.adjusted_values },
+        }),
+      )
+    }
   }
   dismiss(notification.id)
 }
 
 function manualEdit(notification: ErrorNotification): void {
-  window.dispatchEvent(
-    new CustomEvent('manufacturing-error-manual', {
-      detail: { id: notification.id, error_code: notification.errorCode || notification.code },
-    })
-  )
+  const payload = {
+    id: notification.id,
+    error_code: notification.errorCode || notification.code,
+  }
+  const delivered = errorBus.emitManualEdit(payload)
+  if (!delivered) {
+    // 兼容性回退：保留 CustomEvent 行为
+    window.dispatchEvent(
+      new CustomEvent('manufacturing-error-manual', { detail: payload }),
+    )
+  }
   dismiss(notification.id)
 }
 

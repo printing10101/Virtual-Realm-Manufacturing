@@ -108,7 +108,12 @@ class UniwearKnowledgeBuilder:
                 },
                 doc_id=doc_id,
             )
-        except Exception:
+        except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
+            # 主 doc_id 冲突时，UUID 后缀兜底；其他异常（序列化/类型错误等）也一并捕获
+            logger.debug(
+                "Primary doc_id collision, retrying with uuid suffix: %s", kb_err,
+                exc_info=True,
+            )
             doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
             self.kb.add_knowledge(
                 document=document,
@@ -209,8 +214,16 @@ class UniwearKnowledgeBuilder:
                     )
                     doc_ids.append(doc_id if attempt == 0 else f"{doc_id}_{attempt}")
                     break
-                except Exception:
-                    pass
+                except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
+                    # 知识库单次写入失败，最多重试 2 次后跳过该实验
+                    if attempt == 2:
+                        logger.warning(
+                            "Failed to add NUAA knowledge entry for %s after retries: %s",
+                            exp,
+                            kb_err,
+                            exc_info=True,
+                        )
+                    continue
 
         logger.info("Built NUAA experiment knowledge: %d entries", len(doc_ids))
         return doc_ids
@@ -290,8 +303,16 @@ class UniwearKnowledgeBuilder:
                     )
                     doc_ids.append(doc_id if attempt == 0 else f"{doc_id}_{attempt}")
                     break
-                except Exception:
-                    pass
+                except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
+                    # 知识库单次写入失败，最多重试 2 次后跳过该实验
+                    if attempt == 2:
+                        logger.warning(
+                            "Failed to add PHM2010 knowledge entry for %s after retries: %s",
+                            exp,
+                            kb_err,
+                            exc_info=True,
+                        )
+                    continue
 
         logger.info("Built PHM2010 experiment knowledge: %d entries", len(doc_ids))
         return doc_ids
@@ -349,7 +370,12 @@ class UniwearKnowledgeBuilder:
                     doc_id=doc_id,
                 )
                 break
-            except Exception:
+            except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
+                # 知识库单条写入失败时，使用 UUID 后缀重试以避免 doc_id 冲突
+                logger.debug(
+                    "Failed to add material comparison (attempt=%d), retrying with uuid suffix: %s",
+                    attempt, kb_err, exc_info=True,
+                )
                 doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
 
         logger.info("Built material comparison: %s", doc_id)
@@ -411,7 +437,12 @@ class UniwearKnowledgeBuilder:
                     doc_id=doc_id,
                 )
                 break
-            except Exception:
+            except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
+                # 知识库单条写入失败时，使用 UUID 后缀重试以避免 doc_id 冲突
+                logger.debug(
+                    "Failed to add vibration-wear correlation (attempt=%d), retrying: %s",
+                    attempt, kb_err, exc_info=True,
+                )
                 doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
 
         logger.info("Built vibration-wear correlation: %s", doc_id)
@@ -458,7 +489,12 @@ class UniwearKnowledgeBuilder:
                     doc_id=doc_id,
                 )
                 break
-            except Exception:
+            except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
+                # 知识库单条写入失败时，使用 UUID 后缀重试以避免 doc_id 冲突
+                logger.debug(
+                    "Failed to add cross-source comparison (attempt=%d), retrying: %s",
+                    attempt, kb_err, exc_info=True,
+                )
                 doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
 
         logger.info("Built cross-source comparison: %s", doc_id)

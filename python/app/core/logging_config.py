@@ -92,8 +92,9 @@ class _DailySizeRotatingHandler(logging.Handler):
         if self._stream:
             try:
                 self._stream.close()
-            except Exception:
-                pass
+            except (OSError, ValueError) as e:
+                # 流关闭失败时仅记录，置空引用避免重复关闭
+                logger.debug(f"Log stream close failed: {e}", exc_info=True)
             self._stream = None
             self._current_file = None
 
@@ -115,16 +116,24 @@ class _DailySizeRotatingHandler(logging.Handler):
             if src.exists():
                 try:
                     src.replace(dst)
-                except OSError:
-                    pass
+                except OSError as e:
+                    # 日志轮转中单文件迁移失败不应阻塞后续轮转
+                    logger.debug(
+                        f"Failed to rotate log file {src} -> {dst}: {e}",
+                        exc_info=True,
+                    )
 
         base_path = self._get_log_path(0)
         backup_path = self._get_log_path(1)
         if base_path.exists():
             try:
                 base_path.replace(backup_path)
-            except OSError:
-                pass
+            except OSError as e:
+                # 当前日志归档失败时记录，继续打开新流
+                logger.debug(
+                    f"Failed to archive current log {base_path} -> {backup_path}: {e}",
+                    exc_info=True,
+                )
 
         self._open_stream()
 
@@ -138,8 +147,9 @@ class _DailySizeRotatingHandler(logging.Handler):
                     import shutil
 
                     shutil.rmtree(item, ignore_errors=True)
-        except FileNotFoundError:
-            pass
+        except FileNotFoundError as e:
+            # 日志目录在清理过程中被并发删除是常见情况，记录后继续
+            logger.debug(f"Log root already removed during cleanup: {e}")
 
     def emit(self, record: logging.LogRecord):
         try:

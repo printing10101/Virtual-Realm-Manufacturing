@@ -214,12 +214,43 @@ class StepCache:
         return len(self._cache)
 
 
-_global_step_cache: StepCache | None = None
+class _StepCacheHolder:
+    """Thread-safe lazy holder for the :class:`StepCache` singleton."""
+
+    def __init__(self) -> None:
+        import threading
+
+        self._lock = threading.Lock()
+        self._instance: StepCache | None = None
+
+    def get(self) -> StepCache:
+        # 快速路径：已存在则直接返回，避免持锁开销
+        if self._instance is not None:
+            return self._instance
+        with self._lock:
+            # 双重检查：可能在获取锁的过程中其他线程已创建实例
+            if self._instance is not None:
+                return self._instance
+            self._instance = StepCache()
+            return self._instance
+
+    def reset(self) -> None:
+        """Reset the cached instance (mainly for tests)."""
+        with self._lock:
+            self._instance = None
+
+
+_holder = _StepCacheHolder()
 
 
 def get_step_cache() -> StepCache:
-    """获取全局单例STEP缓存实例。"""
-    global _global_step_cache
-    if _global_step_cache is None:
-        _global_step_cache = StepCache()
-    return _global_step_cache
+    """获取共享的 :class:`StepCache` 单例；首次访问时懒初始化。
+
+    Returns:
+        :class:`StepCache` 实例（应用生命周期内同一实例）。
+
+    Note:
+        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_step_cache)``。
+        实现是线程安全的，行为与重构前完全一致。
+    """
+    return _holder.get()

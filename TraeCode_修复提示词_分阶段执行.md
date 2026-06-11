@@ -449,7 +449,7 @@ pip-audit 发现 39 个已知 CVE，包括 cryptography、python-jose、python-m
 
 当前问题：
 - /health 返回 {"status": "healthy", ...}
-- /api/health 返回 {"status": "ok", "version": "1.12.0"}
+- /api/health 返回 {"status": "ok", "version": "2.0.0"}
 - /api/health/ping 返回 {"ping": True}
 - Dockerfile HEALTHCHECK 使用 /api/v1/health（不存在）
 

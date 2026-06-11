@@ -248,13 +248,17 @@ class LNNPredictor:
             self._update_stats(inference_time, mem_after)
 
             try:
-                from app.core.utils import get_metrics_collector
+                from app.utils.utils import get_metrics_collector
 
                 m = get_metrics_collector()
                 m.record_lnn_inference(self.model_name, inference_time / 1000.0)
                 m.record_lnn_prediction(self.model_name, "success")
-            except Exception:
-                pass
+            except (ImportError, AttributeError, RuntimeError, ValueError) as e:
+                # 指标采集失败不应影响推理结果返回，记录后继续
+                logger.debug(
+                    f"Failed to record inference metrics for {self.model_name}: {e}",
+                    exc_info=True,
+                )
 
             confidence = self._compute_confidence(output) if return_confidence else 0.0
 
@@ -276,8 +280,9 @@ class LNNPredictor:
                             "物理约束校验警告: %s",
                             "; ".join(constraint_result.warnings),
                         )
-                except Exception as exc:
-                    logger.warning("物理约束校验失败: %s", exc)
+                except (ValueError, TypeError, AttributeError, KeyError, RuntimeError) as exc:
+                    # 物理约束校验失败不应阻塞预测结果返回，记录警告以便排查
+                    logger.warning("物理约束校验失败: %s", exc, exc_info=True)
 
             result = PredictionResult(
                 value=processed_output,
@@ -297,17 +302,23 @@ class LNNPredictor:
             return result.value
 
         except Exception as e:
+            # 兜底捕获：模型预测涉及张量运算、设备同步、约束校验等多环节，
+            # 任何未预期异常都需包装为 RuntimeError 并附带可操作的诊断信息
             inference_time = (time.perf_counter() - start_time) * 1000
             self._update_stats(inference_time, self._get_memory_usage_mb())
             try:
-                from app.core.utils import get_metrics_collector
+                from app.utils.utils import get_metrics_collector
 
                 m = get_metrics_collector()
                 m.record_lnn_prediction(self.model_name, "error")
-            except Exception:
-                pass
+            except (ImportError, AttributeError, RuntimeError, ValueError) as e:
+                # 错误指标记录失败不应掩盖原始异常，记录后继续抛出
+                logger.debug(
+                    f"Failed to record error metrics for {self.model_name}: {e}",
+                    exc_info=True,
+                )
             raise RuntimeError(
-                f"模型预测失败：推理过程出现异常。错误详情: {str(e)}。"
+                "模型预测失败：推理过程出现异常。"
                 "可能原因：1) 模型输入数据格式不匹配；2) 模型权重加载异常；"
                 "3) GPU 内存不足。请检查输入数据格式，确认模型已正确加载，"
                 "如使用 GPU 请检查显存使用情况。"
@@ -561,11 +572,15 @@ class LNNPredictor:
         load_duration = time.perf_counter() - load_start
 
         try:
-            from app.core.utils import get_metrics_collector
+            from app.utils.utils import get_metrics_collector
 
             get_metrics_collector().record_lnn_model_load(model_name, load_duration)
-        except Exception:
-            pass
+        except (ImportError, AttributeError, RuntimeError, ValueError) as e:
+            # 模型加载指标记录失败仅影响可观测性，不影响加载流程
+            logger.debug(
+                f"Failed to record model load metrics for {model_name}: {e}",
+                exc_info=True,
+            )
 
         try:
             memory_bytes = cls._calculate_model_memory(model)
@@ -574,7 +589,9 @@ class LNNPredictor:
                 f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} "
                 f"operation=cache status=CACHED memory={memory_bytes} bytes"
             )
-        except Exception as e:
+        except (OSError, ValueError, TypeError, AttributeError) as e:
+            # 模型缓存写入或内存计算可能因缓存后端或属性访问失败，
+            # 失败时记录警告但允许模型继续使用（不缓存即可）
             logger.warning(
                 f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} "
                 f"operation=cache status=FAILED error={e}"
@@ -623,7 +640,8 @@ class LNNPredictor:
             return model
         except KeyError:
             raise
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError, ImportError) as e:
+            # 模型加载涉及文件 IO、模块导入、张量加载等具体异常
             raise RuntimeError(
                 f"模型加载失败：无法加载模型 '{model_name}'。错误详情: {e}。"
                 "可能原因：1) 模型权重文件不存在或已损坏；"
@@ -672,8 +690,13 @@ class LNNPredictor:
             )
             try:
                 model.load(model_path)
-            except Exception:
-                pass
+            except (OSError, IOError, RuntimeError, ValueError, TypeError) as e:
+                # 模型权重加载失败时使用初始化权重继续构建，记录以便排查
+                logger.warning(
+                    f"Failed to load weights from {model_path}, "
+                    f"falling back to initialized weights: {e}",
+                    exc_info=True,
+                )
 
         model.build()
 
@@ -704,7 +727,8 @@ class LNNPredictor:
             param_size = sum(p.numel() * p.element_size() for p in model.parameters())
             buffer_size = sum(b.numel() * b.element_size() for b in model.buffers())
             return param_size + buffer_size
-        except Exception:
+        except (AttributeError, RuntimeError, TypeError):
+            # 计算模型内存可能因张量属性访问失败，回退返回 0（不影响主流程）
             return 0
 
 

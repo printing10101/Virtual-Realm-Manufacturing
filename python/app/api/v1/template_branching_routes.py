@@ -1,20 +1,21 @@
-"""API routes for template branching system."""
+"""API routes for template branching system.
+
+Refactored to use FastAPI dependency injection (Depends) instead of a
+module-level ``_test_manager`` global variable.  Tests can override the
+branch manager by using ``app.dependency_overrides[get_branch_manager]``.
+"""
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.template_branching import get_branch_manager
+from app.templates.template_branching import (
+    TemplateBranchManager,
+    get_branch_manager,
+)
 
 router = APIRouter(prefix="/api/v1/templates/branches", tags=["template-branching"])
-
-# Allow test override
-_test_manager = None
-
-
-def _get_manager():
-    return _test_manager if _test_manager is not None else get_branch_manager()
 
 
 class CreateBranchRequest(BaseModel):
@@ -35,8 +36,10 @@ class UpdateBranchRequest(BaseModel):
 
 
 @router.post("/", status_code=201)
-async def create_branch(req: CreateBranchRequest):
-    manager = _get_manager()
+async def create_branch(
+    req: CreateBranchRequest,
+    manager: TemplateBranchManager = Depends(get_branch_manager),
+):
     branch = manager.create_branch(
         name=req.name,
         base_branch=req.base_branch,
@@ -47,15 +50,19 @@ async def create_branch(req: CreateBranchRequest):
 
 
 @router.get("/")
-async def list_branches(type_filter: Optional[str] = None):
-    manager = _get_manager()
+async def list_branches(
+    type_filter: Optional[str] = None,
+    manager: TemplateBranchManager = Depends(get_branch_manager),
+):
     branches = manager.list_branches(type_filter=type_filter)
     return {"branches": [b.to_dict() for b in branches]}
 
 
 @router.get("/{branch_id}")
-async def get_branch(branch_id: str):
-    manager = _get_manager()
+async def get_branch(
+    branch_id: str,
+    manager: TemplateBranchManager = Depends(get_branch_manager),
+):
     branch = manager.get_branch(branch_id)
     if branch is None:
         raise HTTPException(status_code=404, detail=f"Branch not found: {branch_id}")
@@ -63,8 +70,10 @@ async def get_branch(branch_id: str):
 
 
 @router.get("/{branch_id}/log")
-async def get_commit_log(branch_id: str):
-    manager = _get_manager()
+async def get_commit_log(
+    branch_id: str,
+    manager: TemplateBranchManager = Depends(get_branch_manager),
+):
     branch = manager.get_branch(branch_id)
     if branch is None:
         raise HTTPException(status_code=404, detail=f"Branch not found: {branch_id}")
@@ -72,8 +81,10 @@ async def get_commit_log(branch_id: str):
 
 
 @router.post("/merge")
-async def merge_branch(req: MergeBranchRequest):
-    manager = _get_manager()
+async def merge_branch(
+    req: MergeBranchRequest,
+    manager: TemplateBranchManager = Depends(get_branch_manager),
+):
     result = manager.merge_branch(req.source_id, req.target_id, strategy=req.strategy)
     if result is None:
         raise HTTPException(status_code=404, detail="Source or target branch not found")
@@ -81,8 +92,11 @@ async def merge_branch(req: MergeBranchRequest):
 
 
 @router.put("/{branch_id}")
-async def update_branch(branch_id: str, req: UpdateBranchRequest):
-    manager = _get_manager()
+async def update_branch(
+    branch_id: str,
+    req: UpdateBranchRequest,
+    manager: TemplateBranchManager = Depends(get_branch_manager),
+):
     result = manager.update_branch_data(branch_id, req.data)
     if result is None:
         raise HTTPException(status_code=404, detail=f"Branch not found: {branch_id}")
@@ -90,8 +104,10 @@ async def update_branch(branch_id: str, req: UpdateBranchRequest):
 
 
 @router.delete("/{branch_id}")
-async def delete_branch(branch_id: str):
-    manager = _get_manager()
+async def delete_branch(
+    branch_id: str,
+    manager: TemplateBranchManager = Depends(get_branch_manager),
+):
     try:
         success = manager.delete_branch(branch_id)
         if not success:
@@ -99,5 +115,6 @@ async def delete_branch(branch_id: str):
                 status_code=404, detail=f"Branch not found: {branch_id}"
             )
         return {"message": "Branch deleted"}
-    except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError:
+        # 修复：避免将内部异常细节（可能含路径/对象结构）泄露给客户端
+        raise HTTPException(status_code=403, detail="Operation not permitted")

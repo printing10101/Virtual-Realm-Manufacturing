@@ -8,10 +8,10 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 import time
 
-from app.core.approval_workflow import (
+from app.budget.approval_workflow import (
     get_approval_engine,
 )
-from app.core.risk_identifier import (
+from app.risk.risk_identifier import (
     get_risk_identifier,
 )
 from app.models.governance import (
@@ -100,8 +100,9 @@ async def create_approval_request(data: dict):
             "data": request.to_dict(),
             "risk_assessment": assessment.to_dict(),
         }
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid request data: {e}")
+    except (ValueError, KeyError):
+        # 修复：不回显异常详情
+        raise HTTPException(400, "Invalid request data")
 
 
 @router.post("/approval-requests/{request_id}/assign")
@@ -136,8 +137,11 @@ async def make_decision(request_id: str, data: dict):
             raise HTTPException(404, f"Approval request not found: {request_id}")
 
         return {"ok": True, "data": request.to_dict()}
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid decision data: {e}")
+    except HTTPException:
+        raise
+    except (ValueError, KeyError):
+        # 修复：不回显异常详情
+        raise HTTPException(400, "Invalid decision data")
 
 
 @router.post("/approval-requests/{request_id}/escalate")
@@ -216,8 +220,11 @@ async def assess_operation_risk(data: dict):
         )
 
         return {"ok": True, "data": assessment.to_dict()}
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid assessment data: {e}")
+    except HTTPException:
+        raise
+    except (ValueError, KeyError):
+        # 修复：不回显异常详情
+        raise HTTPException(400, "Invalid assessment data")
 
 
 @router.get("/risk-categories")
@@ -255,8 +262,11 @@ async def emergency_override(data: dict):
         )
 
         return {"ok": True, "data": result}
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid emergency override data: {e}")
+    except HTTPException:
+        raise
+    except (ValueError, KeyError):
+        # 修复：不回显异常详情
+        raise HTTPException(400, "Invalid emergency override data")
 
 
 @router.post("/emergency-retroactive-approval")
@@ -309,8 +319,11 @@ async def create_delegation(data: dict):
         )
 
         return {"ok": True, "data": delegation.to_dict()}
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid delegation data: {e}")
+    except HTTPException:
+        raise
+    except (ValueError, KeyError):
+        # 修复：不回显异常详情
+        raise HTTPException(400, "Invalid delegation data")
 
 
 @router.get("/reports/governance")
@@ -338,5 +351,8 @@ async def export_audit_log(
     try:
         log_data = engine.export_audit_log(start_time, end_time, format)
         return {"ok": True, "data": log_data, "format": format}
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except ValueError:
+        # 修复：不回显异常详情（可能含文件路径/库版本信息）
+        raise HTTPException(400, "Invalid export request")

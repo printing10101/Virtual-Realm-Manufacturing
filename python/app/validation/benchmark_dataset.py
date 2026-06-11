@@ -7,11 +7,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -247,7 +250,15 @@ class BenchmarkDataset:
         for part_id in self.list_parts():
             try:
                 result[part_id] = self.load_metadata(part_id)
-            except Exception:
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                # 修复：原代码用裸 except Exception 静默吞掉所有错误，
+                # 元数据 JSON 解析失败、权限不足等真问题都被掩盖。
+                logger.warning(
+                    "load_all: 跳过 part_id=%s | exc=%s: %s",
+                    part_id,
+                    type(exc).__name__,
+                    exc,
+                )
                 continue
         return result
 

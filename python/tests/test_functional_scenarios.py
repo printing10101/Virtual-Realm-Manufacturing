@@ -1,4 +1,4 @@
-"""
+﻿"""
 Functional test scenarios for the Atomic Task Checkout Lock Mechanism.
 
 Covers 10 user-defined scenarios:
@@ -23,11 +23,11 @@ import threading
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.core.execution_lock import (  # noqa: E402
+from app.tasks.execution_lock import (  # noqa: E402
     ExecutionLockStore,
     LockStatus,
 )
-from app.core.task_checkout import (  # noqa: E402
+from app.tasks.task_checkout import (  # noqa: E402
     TaskCheckoutManager,
     CheckoutStatus,
     CheckoutFailureReason,

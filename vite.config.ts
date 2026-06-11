@@ -36,7 +36,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8001',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },
@@ -59,6 +59,8 @@ export default defineConfig({
         assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
       },
     },
+    // Tauri 在 Windows 上要求明确空值
+    emptyOutDir: true,
     sourcemap: false,
     minify: 'terser',
     terserOptions: {
@@ -67,6 +69,7 @@ export default defineConfig({
         drop_debugger: true,
       },
     },
+    target: 'es2021',
   },
   optimizeDeps: {
     include: [

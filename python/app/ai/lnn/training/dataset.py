@@ -24,6 +24,7 @@ import os
 import h5py
 
 from app.ai.lnn.training.dataset_cache import DatasetCache
+from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -538,8 +539,12 @@ class BoschCNCDataset(Dataset):
                 cache.put(self.hdf5_path, self._data, self._labels, metadata)
                 logger.info(f"Data cached: {self.hdf5_path}")
 
-        except Exception as e:
-            raise RuntimeError(f"加载HDF5文件失败: {str(e)}")
+        except (OSError, KeyError, ValueError, TypeError, AttributeError) as e:
+            # HDF5 文件读取可能因文件 IO、键访问、类型转换等失败
+            # 异常链通过 from e 保留；面向调用者的 detail 使用 safe_error_message 脱敏
+            raise RuntimeError(
+                f"加载HDF5文件失败: {safe_error_message(e)}"
+            ) from e
 
     def _load_and_cache_data(self):
         """兼容旧接口：加载并缓存HDF5数据到内存（不使用持久化缓存）"""

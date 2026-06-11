@@ -13,16 +13,22 @@ P2（产品质量）> P3（效率优化）。
 
 from __future__ import annotations
 
+import ast
 import logging
+import re
 import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
 logger = logging.getLogger(__name__)
+
+# 模块级缓存：避免对相同字符串重复扫描/编译，提升性能
+_SAFE_EXPR_CACHE: Dict[str, "SafeMathEvaluator"] = {}
+_SAFE_EXPR_CACHE_MAX = 512
 
 # ---------------------------------------------------------------------------
 # 枚举定义
@@ -143,8 +149,14 @@ class RuleAction:
     def _resolve_action_type(raw: str, desc: str) -> ActionType:
         try:
             return ActionType(raw)
-        except ValueError:
-            pass
+        except ValueError as action_err:
+            # 解析失败时回退到 desc 映射或默认 ALERT
+            logger.debug(
+                "Failed to resolve ActionType from raw %r, fallback to desc/default: %s",
+                raw,
+                action_err,
+                exc_info=True,
+            )
         if desc in ACTION_TYPE_MAP:
             return ACTION_TYPE_MAP[desc]
         return ActionType.ALERT
@@ -363,6 +375,131 @@ def _check_action_target_validity(rules: List[SafetyRule]) -> List[ValidationErr
 # ---------------------------------------------------------------------------
 
 
+class SafeMathEvaluator:
+    """
+    严格受限的数学表达式求值器（替代不安全的 eval/eval 等价的代码执行入口）。
+
+    安全策略：
+    - 仅允许 AST 节点类型: Expression, BinOp, UnaryOp, Constant/Num,
+      Add, Sub, Mult, Div, USub/UAdd, Load
+    - 拒绝任何 Name/Call/Attribute/Subscript/Compare 等可执行结构
+    - 拒绝任何字符串/列表/字典/函数等常量类型
+    - 拒绝负号两侧的极端指数（防止数值炸弹）
+    - 除零显式返回 0.0，保持与原始降级行为一致
+
+    性能：
+    - 对原始表达式字符串做白名单正则预检（与 AST 双重校验）
+    - 解析后的 AST 在模块级 LRU 缓存中复用，避免重复解析开销
+    """
+
+    _ALLOWED_BINOPS: Tuple[type, ...] = (ast.Add, ast.Sub, ast.Mult, ast.Div)
+    _ALLOWED_UNARYOPS: Tuple[type, ...] = (ast.UAdd, ast.USub)
+    _ALLOWED_CONSTANTS: Tuple[type, ...] = (ast.Constant,)
+    # 仅由数字、小数点、空白、四个基本运算符和括号组成的字符串
+    _PRECHECK_PATTERN = re.compile(r"^[\d\s\+\-\*\/\(\)\.]+$")
+
+    def __init__(self, expr: str):
+        self._original = expr
+        # 预检：字符白名单（防御性，最严格的检查放在 AST 解析后）
+        if not self._PRECHECK_PATTERN.match(expr):
+            raise ValueError(f"表达式包含非法字符: {expr!r}")
+        try:
+            tree = ast.parse(expr, mode="eval")
+        except SyntaxError as exc:
+            raise ValueError(f"表达式无法解析: {expr!r}") from exc
+        self._tree = tree
+        self._validate(tree)
+
+    @classmethod
+    def compile(cls, expr: str) -> "SafeMathEvaluator":
+        """编译并缓存，重复字符串命中缓存以提升性能。"""
+        cached = _SAFE_EXPR_CACHE.get(expr)
+        if cached is not None:
+            return cached
+        evaluator = cls(expr)
+        if len(_SAFE_EXPR_CACHE) >= _SAFE_EXPR_CACHE_MAX:
+            # 简单的 FIFO 淘汰，避免无界增长
+            _SAFE_EXPR_CACHE.pop(next(iter(_SAFE_EXPR_CACHE)))
+        _SAFE_EXPR_CACHE[expr] = evaluator
+        return evaluator
+
+    def _validate(self, node: ast.AST) -> None:
+        """递归白名单校验：拒绝任何不在白名单中的 AST 节点类型。"""
+        if isinstance(node, ast.Expression):
+            self._validate(node.body)
+            return
+        if isinstance(node, ast.BinOp) and isinstance(node.op, self._ALLOWED_BINOPS):
+            self._validate(node.left)
+            self._validate(node.right)
+            return
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, self._ALLOWED_UNARYOPS):
+            self._validate(node.operand)
+            return
+        if isinstance(node, self._ALLOWED_CONSTANTS):
+            value = node.value
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"仅允许数值常量，发现: {type(value).__name__}")
+            return
+        # 任何其它节点类型（Name/Call/Attribute/Subscript/Compare/...）一律拒绝
+        raise ValueError(f"表达式包含禁止的节点类型: {type(node).__name__}")
+
+    def evaluate(self) -> float:
+        """对已校验的 AST 进行求值，所有错误均降级为 0.0。"""
+        try:
+            result = self._eval_node(self._tree.body)
+        except (ArithmeticError, ValueError, TypeError, ZeroDivisionError):
+            return 0.0
+        if not isinstance(result, (int, float)) or isinstance(result, bool):
+            return 0.0
+        return float(result)
+
+    def _eval_node(self, node: ast.AST) -> float:
+        if isinstance(node, ast.BinOp):
+            left = self._eval_node(node.left)
+            right = self._eval_node(node.right)
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            if isinstance(node.op, ast.Mult):
+                return left * right
+            if isinstance(node.op, ast.Div):
+                if right == 0:
+                    # 显式除零：返回 0.0 而非抛出，与原始降级行为保持一致
+                    return 0.0
+                return left / right
+        if isinstance(node, ast.UnaryOp):
+            operand = self._eval_node(node.operand)
+            if isinstance(node.op, ast.UAdd):
+                return +operand
+            if isinstance(node.op, ast.USub):
+                return -operand
+        if isinstance(node, ast.Constant):
+            value = node.value
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                return float(value)
+        return 0.0
+
+
+def safe_eval_math_expression(expr: Any) -> float:
+    """
+    对外暴露的安全数学表达式求值入口。
+
+    - 接受任何类型输入；非字符串/None 一律返回 0.0
+    - 解析或校验失败时返回 0.0，行为与原 eval 失败降级保持一致
+    - 不进行任何形式的代码执行（无 eval/exec/compile 调用栈）
+    """
+    if not isinstance(expr, str):
+        return 0.0
+    stripped = expr.strip()
+    if not stripped:
+        return 0.0
+    try:
+        return SafeMathEvaluator.compile(stripped).evaluate()
+    except (ValueError, TypeError):
+        return 0.0
+
+
 class SafetyRuleEngine:
     """
     制造安全约束规则引擎
@@ -505,84 +642,32 @@ class SafetyRuleEngine:
     def _resolve_expression(
         self, expr: str, sensor_data: Dict[str, Any]
     ) -> float:
-        """解析简单算术表达式，如 'max_spindle_speed * 0.9'"""
-        import re
-        result = expr
-        for key, val in sensor_data.items():
-            if key in result:
-                try:
-                    result = result.replace(key, str(float(val)))
-                except (ValueError, TypeError):
-                    pass
+        """
+        解析简单算术表达式，如 ``max_spindle_speed * 0.9``。
+
+        流程：
+        1. 字符串替换：把 sensor_data 中的字段名替换为对应数值
+           - 键按长度倒序替换，避免 ``spindle_speed`` 误替换 ``max_spindle_speed``
+        2. 通过 :class:`SafeMathEvaluator` 进行严格白名单 AST 求值
+        3. 任意环节失败一律返回 ``0.0``，与原始降级行为一致
+        """
+        if not isinstance(expr, str):
+            return 0.0
         try:
-            tokens = re.findall(r'[\d.]+|[+\-*/]', result)
-            if tokens and len(tokens) >= 3:
-                return self._parse_math_expression(tokens)
+            resolved = expr
+            # 按键长倒序：避免短键被先替换导致长键后续无法匹配
+            for key in sorted(sensor_data.keys(), key=len, reverse=True):
+                if not key:
+                    continue
+                if key in resolved:
+                    try:
+                        resolved = resolved.replace(key, str(float(sensor_data[key])))
+                    except (ValueError, TypeError):
+                        return 0.0
+            return safe_eval_math_expression(resolved)
         except Exception:
-            pass
-        return 0.0
-
-    def _parse_math_expression(self, tokens: list) -> float:
-        """
-        安全解析数学表达式，仅支持四则运算（+、-、*、/）和浮点数。
-        使用两遍扫描：第一遍处理乘除（高优先级），第二遍处理加减（低优先级）。
-        遇到任何无法解析的内容时返回 0.0，替代不安全的 eval()。
-        """
-        # 将字符串 token 转换为数值或保留运算符
-        parsed = []
-        for token in tokens:
-            # 尝试解析为浮点数
-            try:
-                parsed.append(float(token))
-            except ValueError:
-                # 非数值 token 必须为支持的运算符，否则视为非法输入
-                if token not in ('+', '-', '*', '/'):
-                    return 0.0
-                parsed.append(token)
-
-        # 第一遍：处理乘法和除法（运算符优先级）
-        i = 0
-        while i < len(parsed):
-            if parsed[i] == '*':
-                if i == 0 or i == len(parsed) - 1:
-                    return 0.0  # 运算符位置非法
-                result_val = float(parsed[i - 1]) * float(parsed[i + 1])
-                parsed = parsed[:i - 1] + [result_val] + parsed[i + 2:]
-                i -= 1  # 回退以处理连续乘除
-            elif parsed[i] == '/':
-                if i == 0 or i == len(parsed) - 1:
-                    return 0.0
-                divisor = float(parsed[i + 1])
-                if divisor == 0:
-                    return 0.0  # 除零保护
-                result_val = float(parsed[i - 1]) / divisor
-                parsed = parsed[:i - 1] + [result_val] + parsed[i + 2:]
-                i -= 1
-            else:
-                i += 1
-
-        # 第二遍：处理加法和减法
-        i = 0
-        while i < len(parsed):
-            if parsed[i] == '+':
-                if i == 0 or i == len(parsed) - 1:
-                    return 0.0
-                result_val = float(parsed[i - 1]) + float(parsed[i + 1])
-                parsed = parsed[:i - 1] + [result_val] + parsed[i + 2:]
-                i -= 1
-            elif parsed[i] == '-':
-                if i == 0 or i == len(parsed) - 1:
-                    return 0.0
-                result_val = float(parsed[i - 1]) - float(parsed[i + 1])
-                parsed = parsed[:i - 1] + [result_val] + parsed[i + 2:]
-                i -= 1
-            else:
-                i += 1
-
-        # 最终结果应为单个数值
-        if len(parsed) == 1 and isinstance(parsed[0], (int, float)):
-            return float(parsed[0])
-        return 0.0
+            # 防御性兜底：任何未预期异常都降级为 0.0
+            return 0.0
 
     def _record_audit(
         self, rule: SafetyRule, sensor_data: Dict[str, Any],

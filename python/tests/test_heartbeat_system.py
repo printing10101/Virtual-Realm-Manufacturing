@@ -1,4 +1,4 @@
-"""
+﻿"""
 Heartbeat System Test Suite
 
 Comprehensive test suite for Paperclip Heartbeat Execution architecture,
@@ -15,21 +15,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.budget import (  # noqa: E402
+from app.budget.budget import (  # noqa: E402
     BudgetLevel,
     BudgetLimit,
     BudgetManager,
     BudgetStatus,
     ResourceType,
 )
-from app.core.cost_tracker import MultiDimensionCostTracker  # noqa: E402
-from app.core.execution import (  # noqa: E402
+from app.budget.cost_tracker import MultiDimensionCostTracker  # noqa: E402
+from app.tasks.execution import (  # noqa: E402
     ExecutionEngine,
     ExecutionSession,
     ExecutionStatus,
     SessionManager,
 )
-from app.core.heartbeat import (  # noqa: E402
+from app.heartbeat.heartbeat import (  # noqa: E402
     CronParser,
     HeartbeatScheduler,
     ScheduleStatus,
@@ -537,14 +537,14 @@ async def test_4_orphaned_task_recovery():
     engine = ExecutionEngine()
     engine.session_manager = session_mgr
 
-    from app.core.heartbeat import _scheduler as global_scheduler
+    from app.heartbeat.heartbeat import _scheduler as global_scheduler
 
     orig_scheduler = global_scheduler
 
     test_scheduler_instance = HeartbeatScheduler(
         wakeup_queue=queue, heartbeat_interval=60
     )
-    import app.core.heartbeat as heartbeat_module
+    import app.heartbeat.heartbeat as heartbeat_module
 
     heartbeat_module._scheduler = test_scheduler_instance
 

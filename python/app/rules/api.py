@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.core.response import success, error, ErrorCode
+from app.core.safe_errors import safe_error_message
 from app.database.rule_db import (
     get_rule_db,
     ProcessRule,
@@ -452,7 +453,13 @@ async def import_rules(file: UploadFile = File(...)):
         )
     except Exception as e:
         logger.error(f"规则导入失败: {e}")
-        return error(ErrorCode.INTERNAL_ERROR, message=f"规则导入失败: {str(e)}")
+        # 修复：避免 str(e) 直接进入响应
+        safe = safe_error_message(e, context="rules.import", fallback="规则导入失败")
+        return error(
+            ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
+        )
 
 
 @router.get("/export")
@@ -470,7 +477,13 @@ async def export_rules():
         )
     except Exception as e:
         logger.error(f"规则导出失败: {e}")
-        return error(ErrorCode.INTERNAL_ERROR, message=f"规则导出失败: {str(e)}")
+        # 修复：避免 str(e) 直接进入响应
+        safe = safe_error_message(e, context="rules.export", fallback="规则导出失败")
+        return error(
+            ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
+        )
 
 
 @router.post("/backup")
@@ -481,7 +494,13 @@ async def backup_database():
         return success(data={"backup_path": backup_path}, message="数据库备份成功")
     except Exception as e:
         logger.error(f"数据库备份失败: {e}")
-        return error(ErrorCode.INTERNAL_ERROR, message=f"数据库备份失败: {str(e)}")
+        # 修复：避免 str(e) 直接进入响应
+        safe = safe_error_message(e, context="rules.backup", fallback="数据库备份失败")
+        return error(
+            ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
+        )
 
 
 @router.get("/stats")

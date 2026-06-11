@@ -1,4 +1,4 @@
-"""
+﻿"""
 Test Core Utilities
 
 Tests for:
@@ -10,7 +10,7 @@ Tests for:
 
 import pytest
 import threading
-from app.core.utils import (
+from app.utils.utils import (
     extract_json_from_markdown,
     flatten_documents,
     format_bytes,

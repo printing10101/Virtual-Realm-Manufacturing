@@ -244,8 +244,11 @@ class RagRetrievalEngine:
                     for r in source_results:
                         r["_retrieval_source_filter"] = source
                     results.extend(source_results)
-                except Exception as e:
-                    logger.warning("Source query failed for %s: %s", source, e)
+                except (OSError, RuntimeError, ValueError, KeyError) as e:
+                    # 单个 source 查询失败不应阻塞整体检索，记录后继续
+                    logger.warning(
+                        "Source query failed for %s: %s", source, e, exc_info=True,
+                    )
 
         if not results or len(results) < 3:
             fallback = self._query_general(query, n_results=actual_n)
@@ -311,8 +314,11 @@ class RagRetrievalEngine:
                 for r in source_results:
                     r["_retrieval_source_filter"] = source
                 all_results.extend(source_results)
-            except Exception as e:
-                logger.warning("Cross-source query failed for %s: %s", source, e)
+            except (OSError, RuntimeError, ValueError, KeyError) as e:
+                # 跨源查询中单个 source 失败时记录并继续
+                logger.warning(
+                    "Cross-source query failed for %s: %s", source, e, exc_info=True,
+                )
 
         deduplicated = self._deduplicate(all_results)[:n_results]
 
@@ -329,7 +335,12 @@ class RagRetrievalEngine:
             raw = self.kb.query_by_source(
                 source=source, query=query, n_results=n_results
             )
-        except Exception:
+        except (OSError, RuntimeError, ValueError, KeyError) as kb_err:
+            # 单源查询失败时回退到通用检索，记录失败原因
+            logger.debug(
+                "Source query failed for %s, falling back to general: %s",
+                source, kb_err, exc_info=True,
+            )
             return self._query_general(query, n_results)
 
         results: list[dict] = []
@@ -352,7 +363,11 @@ class RagRetrievalEngine:
     def _query_general(self, query: str, n_results: int = 5) -> list[dict]:
         try:
             raw = self.kb.query(query_text=query, n_results=n_results)
-        except Exception:
+        except (OSError, RuntimeError, ValueError, KeyError) as kb_err:
+            # 通用查询失败时返回空列表，记录以便后续排查
+            logger.debug(
+                "General query failed: %s", kb_err, exc_info=True,
+            )
             return []
 
         results: list[dict] = []

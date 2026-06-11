@@ -153,7 +153,8 @@ class StepConverter:
                 tolerance=options.linear_deflection,
                 angularTolerance=options.angular_deflection,
             )
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError, TypeError) as e:
+            # cadquery 导出器涉及 OCCT C++ 绑定，捕获核心错误类型
             logger.warning("默认精度导出失败，尝试降级重试: %s", e)
             try:
                 cq.exporters.export(
@@ -164,7 +165,7 @@ class StepConverter:
                     angularTolerance=1.0,
                 )
                 options = PRECISION_PRESETS["low"]
-            except Exception as e2:
+            except (OSError, ValueError, RuntimeError, TypeError) as e2:
                 raise RuntimeError(f"STL导出失败: {e2}") from e2
 
         elapsed = (time.perf_counter() - start) * 1000
@@ -185,7 +186,9 @@ class StepConverter:
                         tri_count = int.from_bytes(raw[80:84], "little")
                         face_count = tri_count
                         vertex_count = tri_count * 3
-        except Exception:
+        except (OSError, ValueError, TypeError, AttributeError) as face_err:
+            # STL header 解析失败不应阻塞主流程，仅记录并返回 0
+            logger.debug("STL头解析失败，返回0: %s", face_err)
             face_count = 0
             vertex_count = 0
 
@@ -225,7 +228,7 @@ class StepConverter:
 
         try:
             cq.exporters.export(shape, str(brep_path), exportType="BREP")
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError, TypeError) as e:
             raise RuntimeError(f"BREP导出失败: {e}") from e
 
         elapsed = (time.perf_counter() - start) * 1000
@@ -236,8 +239,12 @@ class StepConverter:
         try:
             face_count = len(list(shape.Faces()))
             vertex_count = len(list(shape.Vertices()))
-        except Exception:
-            pass
+        except (AttributeError, RuntimeError, ValueError, TypeError) as e:
+            # OpenCascade 形状枚举失败时，face/vertex 计数回退为 0（不影响转换主流程）
+            logger.debug(
+                f"Failed to enumerate faces/vertices for {brep_name}: {e}",
+                exc_info=True,
+            )
 
         return ConvertResult(
             file_name=brep_name,
@@ -328,7 +335,8 @@ class StepConverter:
                 results.append(result)
                 total_faces += result.face_count
                 total_verts += result.vertex_count
-            except Exception as e:
+            except (OSError, ValueError, RuntimeError, TypeError, AttributeError) as e:
+                # 单个实体转换失败不应中断整个批次，记录错误后继续处理
                 errors.append(f"实体 {entity.name} 转换失败: {e}")
                 logger.exception("实体转换异常: %s", entity.name)
 

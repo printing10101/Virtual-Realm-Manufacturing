@@ -120,7 +120,12 @@ class SiemensPostProcessor(BasePostProcessor):
         depth: float,
         dwell: float = 0.0,
     ) -> str:
-        cfg = self.get_cycle_config("drilling", "G83" if dwell > 0 else "G81")
+        # On Siemens 840D, CYCLE81 is the simple drilling cycle that
+        # is normally paired with a dwell at the bottom of the hole.
+        # CYCLE83 is the deep-hole peck-drilling cycle used when no
+        # dwell is requested.
+        cycle_code = "CYCLE81" if dwell > 0 else "CYCLE83"
+        cfg = self.get_cycle_config("drilling", cycle_code)
         r_plane = self.safe_z_height
         peck_depth = cfg.get("peck_depth", 5.0)
         retract_dist = cfg.get("retract_distance", 1.0)
@@ -128,22 +133,22 @@ class SiemensPostProcessor(BasePostProcessor):
 
         if dwell > 0:
             lines = [
+                f"N{self._next_block():05d} CYCLE81("
+                f"{self._fmt(r_plane)}, {self._fmt(0.0)}, "
+                f"{self._fmt(retract_dist)}, {self._fmt(-abs(depth))}, "
+                f"{drill_feed}, {self._fmt(dwell)})",
+                f"N{self._next_block():05d} G00 X{self._fmt(x)} Y{self._fmt(y)}",
+                f"N{self._next_block():05d} CYCLE81",
+            ]
+        else:
+            lines = [
                 f"N{self._next_block():05d} CYCLE83("
                 f"{self._fmt(r_plane)}, {self._fmt(0.0)}, "
                 f"{self._fmt(retract_dist)}, {self._fmt(-abs(depth))}, "
                 f"{self._fmt(-abs(depth))}, ,{self._fmt(peck_depth)}, "
-                f", ,{self._fmt(dwell)}, ,1, ,1,1)",
+                f", ,{self._fmt(0.0)}, ,1, ,1,1)",
                 f"N{self._next_block():05d} G00 X{self._fmt(x)} Y{self._fmt(y)}",
                 f"N{self._next_block():05d} CYCLE83",
-            ]
-        else:
-            lines = [
-                f"N{self._next_block():05d} CYCLE81("
-                f"{self._fmt(r_plane)}, {self._fmt(0.0)}, "
-                f"{self._fmt(retract_dist)}, {self._fmt(-abs(depth))}, "
-                f"{drill_feed})",
-                f"N{self._next_block():05d} G00 X{self._fmt(x)} Y{self._fmt(y)}",
-                f"N{self._next_block():05d} CYCLE81",
             ]
         return "\n".join(lines)
 

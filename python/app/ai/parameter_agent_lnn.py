@@ -18,7 +18,7 @@ from app.ai.lnn.models.parameter_models import (
     ParameterSource,
     ValidationResult,
 )
-from app.core.utils import extract_json_from_markdown
+from app.utils.utils import extract_json_from_markdown
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,9 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import {
+  emitManufacturingError,
+  type ErrorDialogPayload,
+} from '@/composables/useErrorBus'
 
 function isNetworkError(err: any): boolean {
   return (
@@ -12,23 +16,12 @@ function isNetworkError(err: any): boolean {
 }
 
 function shouldShowConflictDialog(data: any): boolean {
-  return (
-    data?.severity &&
-    data?.error_code &&
-    data?.suggestion
+  return Boolean(
+    data?.severity && data?.error_code && data?.suggestion,
   )
 }
 
-interface ErrorDialogPayload {
-  title: string
-  code: string
-  message: string
-  severity: string
-  detail: string
-  suggestion: string
-  recoverable: boolean
-  adjusted_values?: Record<string, any>
-}
+export type { ErrorDialogPayload }
 
 const http = axios.create({
   timeout: 30000,
@@ -94,9 +87,7 @@ http.interceptors.response.use(
           recoverable: data.recoverable || false,
           adjusted_values: data.adjusted_values,
         }
-        window.dispatchEvent(
-          new CustomEvent('manufacturing-error', { detail: payload }),
-        )
+        emitManufacturingError(payload)
       } else {
         ElMessage.error(data.message || '操作失败')
       }
@@ -178,8 +169,13 @@ http.interceptors.response.use(
 
       if (status === 401) {
         ElMessage.error('登录已过期，请重新登录')
-        const store = getAuthStore()
-        if (store) store.logout()
+        // 修复：必须 await 以保证 logout 真正完成再跳转
+        try {
+          const store = await getAuthStore()
+          if (store) store.logout()
+        } catch (_e) {
+          // Silently ignore logout errors
+        }
         window.location.href = '/login'
         return Promise.reject(error)
       }
@@ -208,9 +204,7 @@ http.interceptors.response.use(
           recoverable: data.recoverable || false,
           adjusted_values: data.adjusted_values,
         }
-        window.dispatchEvent(
-          new CustomEvent('manufacturing-error', { detail: payload }),
-        )
+        emitManufacturingError(payload)
         return Promise.reject(error)
       }
 

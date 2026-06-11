@@ -4,7 +4,8 @@ from fastapi import APIRouter
 from datetime import datetime
 
 from app.core.response import ErrorCode, error, success
-from app.core.audit_log import AuditLog, AIModule, UserDecision, OperationStatus
+from app.core.safe_errors import safe_error_message
+from app.audit.audit_log import AuditLog, AIModule, UserDecision, OperationStatus
 from app.models.schemas import (
     LNNPredictRequest,
     AlternativePlan,
@@ -73,10 +74,22 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
                 return_confidence=True,
             )
         except Exception as model_err:
-            logger.error(f"Model inference error: {model_err}")
+            # 修复：避免直接 str(model_err) 暴露内部异常详情；
+            # 完整堆栈写入日志，前端仅看到错误类型 + error_id。
+            safe = safe_error_message(
+                model_err, context=f"user_sovereignty.predict_inference[{request.model_name}]"
+            )
+            logger.error(
+                "User sovereignty inference error | model=%s | error_id=%s | exc=%s",
+                request.model_name,
+                safe.get("error_id"),
+                model_err,
+                exc_info=True,
+            )
             return error(
                 code=ErrorCode.INTERNAL_ERROR,
-                message=f"Model inference failed: {model_err!s}",
+                message=safe["message"],
+                detail=safe.get("detail"),
             )
 
         if not isinstance(result, PredictionResult):
@@ -135,9 +148,22 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
             message=f"Model '{request.model_name}' not found in registry",
         )
     except Exception as e:
+        # 修复：不直接 str(e) 暴露内部异常，使用 safe_error_message 包装
+        safe = safe_error_message(
+            e,
+            context=f"user_sovereignty.predict[{request.model_name}]",
+        )
+        logger.error(
+            "User sovereignty predict failed | model=%s | error_id=%s | exc=%s",
+            request.model_name,
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Prediction failed: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -321,9 +347,18 @@ async def record_user_decision(
         )
 
     except Exception as e:
+        # 修复：使用 safe_error_message 包装异常，避免泄露内部错误详情
+        safe = safe_error_message(e, context="user_sovereignty.record_decision")
+        logger.error(
+            "Failed to record audit log | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to record audit log: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -350,9 +385,18 @@ async def query_audit_logs(request: AuditLogQueryRequest):
         )
 
     except Exception as e:
+        # 修复：使用 safe_error_message 包装异常
+        safe = safe_error_message(e, context="user_sovereignty.query_audit_logs")
+        logger.error(
+            "Failed to query audit logs | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to query audit logs: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -374,9 +418,18 @@ async def search_audit_logs(request: AuditLogSearchRequest):
         )
 
     except Exception as e:
+        # 修复：使用 safe_error_message 包装异常
+        safe = safe_error_message(e, context="user_sovereignty.search_audit_logs")
+        logger.error(
+            "Failed to search audit logs | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to search audit logs: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -400,9 +453,18 @@ async def export_audit_logs(request: AuditLogExportRequest):
         )
 
     except Exception as e:
+        # 修复：使用 safe_error_message 包装异常
+        safe = safe_error_message(e, context="user_sovereignty.export_audit_logs")
+        logger.error(
+            "Failed to export audit logs | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to export audit logs: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -417,9 +479,18 @@ async def get_audit_log_statistics():
         )
 
     except Exception as e:
+        # 修复：使用 safe_error_message 包装异常
+        safe = safe_error_message(e, context="user_sovereignty.get_audit_statistics")
+        logger.error(
+            "Failed to retrieve audit log statistics | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to retrieve audit log statistics: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -434,9 +505,18 @@ async def clear_audit_logs():
         )
 
     except Exception as e:
+        # 修复：使用 safe_error_message 包装异常
+        safe = safe_error_message(e, context="user_sovereignty.clear_audit_logs")
+        logger.error(
+            "Failed to clear audit logs | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to clear audit logs: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -451,7 +531,16 @@ async def get_user_sovereignty_settings():
         )
 
     except Exception as e:
+        # 修复：使用 safe_error_message 包装异常
+        safe = safe_error_message(e, context="user_sovereignty.get_settings")
+        logger.error(
+            "Failed to retrieve settings | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to retrieve settings: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )

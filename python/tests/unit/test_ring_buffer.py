@@ -1,8 +1,8 @@
-"""Unit tests for Ring Log Buffer module."""
+﻿"""Unit tests for Ring Log Buffer module."""
 
 from __future__ import annotations
 
-from app.core.ring_buffer import (
+from app.utils.ring_buffer import (
     LogEntry,
     RingBuffer,
     BUFFER_TYPES,
@@ -132,14 +132,14 @@ class TestBufferTypes:
 
 class TestRingLogBuffer:
     def test_get_ring_log_buffer_creates_singleton(self):
-        from app.core.ring_buffer import get_ring_log_buffer
+        from app.utils.ring_buffer import get_ring_log_buffer
 
         buf1 = get_ring_log_buffer()
         buf2 = get_ring_log_buffer()
         assert buf1 is buf2
 
     def test_ring_log_buffer_append(self):
-        from app.core.ring_buffer import get_ring_log_buffer
+        from app.utils.ring_buffer import get_ring_log_buffer
 
         buf = get_ring_log_buffer()
         buf.append(
@@ -151,7 +151,7 @@ class TestRingLogBuffer:
         assert buf is not None
 
     def test_ring_log_buffer_stats(self):
-        from app.core.ring_buffer import get_ring_log_buffer
+        from app.utils.ring_buffer import get_ring_log_buffer
 
         buf = get_ring_log_buffer()
         stats = buf.stats()

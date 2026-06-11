@@ -40,7 +40,7 @@
               v-if="dialogData.detail"
               class="detail-section"
             >
-              <h4>详细说明</h4>
+              <h4>{{ $t('errorConflict.detailTitle') }}</h4>
               <p>{{ dialogData.detail }}</p>
             </div>
 
@@ -50,7 +50,7 @@
             >
               <h4>
                 <el-icon><Opportunity /></el-icon>
-                解决方案建议
+                {{ $t('errorConflict.solutionTitle') }}
               </h4>
               <p class="suggestion-text">
                 {{ dialogData.suggestion }}
@@ -63,7 +63,7 @@
               type="primary"
               @click="handleClose"
             >
-              我知道了
+              {{ $t('errorConflict.acknowledged') }}
             </el-button>
           </div>
         </div>
@@ -73,9 +73,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed } from 'vue'
 import { WarningFilled, Opportunity } from '@element-plus/icons-vue'
-import type { ErrorDialogPayload } from '@/utils/http'
+import { useErrorBus, type ErrorDialogPayload } from '@/composables/useErrorBus'
 
 const visible = ref(false)
 const dialogData = ref<ErrorDialogPayload>({
@@ -106,8 +106,8 @@ const severityTag = computed(() => {
   }
 })
 
-function handleError(event: CustomEvent<ErrorDialogPayload>) {
-  dialogData.value = event.detail
+function handleError(payload: ErrorDialogPayload) {
+  dialogData.value = payload
   visible.value = true
 }
 
@@ -115,13 +115,9 @@ function handleClose() {
   visible.value = false
 }
 
-onMounted(() => {
-  window.addEventListener('manufacturing-error', handleError as EventListener)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('manufacturing-error', handleError as EventListener)
-})
+// 修复：使用类型安全的 useErrorBus 替代 window.addEventListener('manufacturing-error')，
+// 避免事件名拼写错误、payload 类型无法校验等问题；订阅生命周期由 composable 内部管理。
+useErrorBus().on(handleError)
 </script>
 
 <style lang="scss" scoped>

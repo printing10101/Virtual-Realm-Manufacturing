@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.core.template_ab_testing import get_ab_testing
+from app.templates.template_ab_testing import get_ab_testing
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)

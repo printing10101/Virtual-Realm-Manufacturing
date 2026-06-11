@@ -96,13 +96,29 @@ logs/
 test_logs/
 
 # ============================================================
-# 环境和配置
+# 环境和配置（敏感信息，禁止提交）
 # ============================================================
+# 忽略所有 .env 文件（含实际密码/密钥），仅保留 .env.example 模板
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
+.env.development
+.env.staging
 .env.production
-!.env.example
+.env.test
+
+# Docker / Compose 相关的本地环境文件
+docker.env
+compose.env
+
+# 凭据与密钥文件
+*.pem
+*.key
+*.crt
+secrets/
+
 
 # 认证令牌文件（每个部署环境独立生成）
 .lnn_token
@@ -143,24 +159,34 @@ Thumbs.db
 
 # ============================================================
 # 临时调试/诊断脚本（项目根目录）
+# 测试脚本应放在 tests/ 或 python/tests/ 目录下
 # ============================================================
 /check_*.py
 /launch_*.py
 /run_agent_*.py
+/test_*.py
+/test_*.bat
+/test_*.sh
 
 # ============================================================
 # 临时调试/诊断脚本（python/根目录）
 # 测试脚本应放在 python/tests/ 目录下
 # ============================================================
 /python/_test_*.py
+/python/test_*.py
 /python/debug_*.py
 /python/diagnose*.py
+/python/diagnose_*.py
+/python/diagnose2*.py
+/python/diagnose3*.py
 /python/deep_diag*.py
 /python/quick_*.py
+/python/quick_diag*.py
 /python/run_*step*.py
 /python/run_test*.bat
 /python/run_via_*.py
 /python/verify_and_test*.py
+/python/debug_train*.py
 
 # ============================================================
 # IDE

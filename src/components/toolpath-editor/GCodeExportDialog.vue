@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="visible"
-    title="导出G代码"
+    :title="$t('gcodeExport.title')"
     width="700px"
     :close-on-click-modal="false"
   >
@@ -9,26 +9,26 @@
       label-width="100px"
       size="default"
     >
-      <el-form-item label="控制器格式">
+      <el-form-item :label="$t('gcodeExport.labelController')">
         <el-select
           v-model="controller"
           style="width: 200px"
         >
           <el-option
-            label="Fanuc 0i-MF"
+            :label="$t('gcodeExport.controllerFanuc')"
             value="fanuc"
           />
           <el-option
-            label="Siemens 840D"
+            :label="$t('gcodeExport.controllerSiemens')"
             value="siemens"
           />
           <el-option
-            label="Heidenhain TNC"
+            :label="$t('gcodeExport.controllerHeidenhain')"
             value="heidenhain"
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="程序号">
+      <el-form-item :label="$t('gcodeExport.labelProgramNumber')">
         <el-input-number
           v-model="programNumber"
           :min="1"
@@ -79,21 +79,21 @@
 
     <template #footer>
       <el-button @click="visible = false">
-        关闭
+        {{ $t('gcodeExport.close') }}
       </el-button>
       <el-button
         type="primary"
         @click="handleCopy"
       >
         <el-icon><DocumentCopy /></el-icon>
-        复制到剪贴板
+        {{ $t('gcodeExport.copy') }}
       </el-button>
       <el-button
         type="success"
         @click="handleDownload"
       >
         <el-icon><Download /></el-icon>
-        下载文件
+        {{ $t('gcodeExport.download') }}
       </el-button>
     </template>
   </el-dialog>
@@ -102,9 +102,11 @@
 <script setup lang="ts">
 import { DocumentCopy, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import type { GCodeController } from './types/editor'
 import { useToolpathEditorStore } from './stores/toolpathEditor'
 
+const { t } = useI18n()
 const visible = defineModel<boolean>('visible', { required: true })
 
 const store = useToolpathEditorStore()
@@ -132,9 +134,9 @@ function refreshExport() {
 async function handleCopy() {
   try {
     await navigator.clipboard.writeText(gcode.value)
-    ElMessage.success('已复制到剪贴板')
+    ElMessage.success(t('gcodeExport.copiedSuccess'))
   } catch {
-    ElMessage.error('复制失败，请手动复制')
+    ElMessage.error(t('gcodeExport.copyFailed'))
   }
 }
 
@@ -148,7 +150,7 @@ function handleDownload() {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
-  ElMessage.success(`已下载: ${filename}`)
+  ElMessage.success(t('gcodeExport.downloaded', { filename }))
 }
 </script>
 

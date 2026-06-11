@@ -1,4 +1,4 @@
-"""Functional tests for Template Evolution."""
+﻿"""Functional tests for Template Evolution."""
 
 import os
 import sys
@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.core.template_evolution import TemplateEvolutionEngine  # noqa: E402
+from app.templates.template_evolution import TemplateEvolutionEngine  # noqa: E402
 
 
 @pytest.fixture

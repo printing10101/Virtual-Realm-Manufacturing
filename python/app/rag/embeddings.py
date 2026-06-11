@@ -111,12 +111,51 @@ class EmbeddingService:
         return self._vector_dim
 
 
-_embedding_service: EmbeddingService | None = None
+class _EmbeddingServiceHolder:
+    """Thread-safe lazy holder for the :class:`EmbeddingService` singleton."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._instance: EmbeddingService | None = None
+
+    def get(self) -> EmbeddingService:
+        # 快速路径：已存在则直接返回，避免持锁开销
+        if self._instance is not None:
+            return self._instance
+        with self._lock:
+            # 双重检查：可能在获取锁的过程中其他线程已创建实例
+            if self._instance is not None:
+                return self._instance
+            self._instance = EmbeddingService()
+            logger.info("Initialized embedding service")
+            return self._instance
+
+    def reset(self) -> None:
+        """Reset the cached instance (mainly for tests)."""
+        with self._lock:
+            self._instance = None
+
+
+_holder = _EmbeddingServiceHolder()
 
 
 def get_embedding_service() -> EmbeddingService:
-    global _embedding_service
-    if _embedding_service is None:
-        _embedding_service = EmbeddingService()
-        logger.info("Initialized embedding service")
-    return _embedding_service
+    """获取共享的 :class:`EmbeddingService` 单例；首次访问时懒初始化。
+
+    Returns:
+        :class:`EmbeddingService` 实例（应用生命周期内同一实例）。
+
+    Note:
+        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_embedding_service)``。
+        实现是线程安全的，行为与重构前完全一致。
+    """
+    return _holder.get()
+
+
+__all__ = [
+    "EmbeddingService",
+    "get_embedding_service",
+    "DEFAULT_MODEL",
+    "DEFAULT_DIM",
+    "CACHE_MAX_SIZE",
+]

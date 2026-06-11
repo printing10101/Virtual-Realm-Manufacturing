@@ -1,4 +1,4 @@
-"""Verify BudgetManager thread safety fix."""
+﻿"""Verify BudgetManager thread safety fix."""
 
 import os
 import sys
@@ -7,7 +7,7 @@ import threading
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.core.budget import BudgetManager, BudgetLimit, BudgetLevel, ResourceType  # noqa: E402
+from app.budget.budget import BudgetManager, BudgetLimit, BudgetLevel, ResourceType  # noqa: E402
 
 with tempfile.TemporaryDirectory() as tmpdir:
     db = os.path.join(tmpdir, "budget.db")

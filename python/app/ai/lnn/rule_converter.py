@@ -227,8 +227,12 @@ class RuleToLnnConverter:
             try:
                 constraint = cls.convert_rule(rule)
                 engine.add_constraint(constraint)
-            except Exception as e:
-                logger.error(f"规则转换失败 (id={rule.id}, name={rule.name}): {e}")
+            except (ValueError, TypeError, AttributeError, KeyError) as e:
+                # 规则转换涉及字段映射、约束构建、参数解析等环节，捕获已知异常
+                logger.error(
+                    f"规则转换失败 (id={rule.id}, name={rule.name}): {e}",
+                    exc_info=True,
+                )
 
         logger.info(
             f"规则转换完成: {engine.rule_count} 条规则, {engine.active_count} 条激活"

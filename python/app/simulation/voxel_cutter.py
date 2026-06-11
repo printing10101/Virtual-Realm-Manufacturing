@@ -82,7 +82,7 @@ def _generate_stl_from_step(
         {"success": bool, "error": str|None, "suggestion": str|None}
     """
     try:
-        from app.step_import.step_parser import StepParser
+        from app.step_import.step_parser import StepParser, StepParseError
         from app.step_import.step_converter import StepConverter
     except ImportError as e:
         return {
@@ -94,7 +94,16 @@ def _generate_stl_from_step(
     try:
         parser = StepParser()
         shape = parser.get_cadquery_shape(step_path)
-    except Exception as e:
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        TypeError,
+        AttributeError,
+        StepParseError,
+    ) as e:
+        # STEP解析涉及文件IO、几何计算、cadquery调用等，捕获核心错误类型
+        logger.error("STEP文件解析失败: %s", e, exc_info=True)
         return {
             "success": False,
             "error": f"STEP文件解析失败: {e}",
@@ -108,7 +117,9 @@ def _generate_stl_from_step(
             stl_target_path.stem,
             entity_name="Stock",
         )
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
+        # STEP→STL转换涉及几何计算、网格生成、文件写出，捕获核心错误
+        logger.error("STEP→STL转换失败: %s", e, exc_info=True)
         return {
             "success": False,
             "error": f"STEP→STL转换失败: {e}",
@@ -122,7 +133,9 @@ def _generate_stl_from_step(
         if generated_path != stl_target_path:
             stl_target_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(str(generated_path), str(stl_target_path))
-    except Exception as e:
+    except (OSError, AttributeError, TypeError, ValueError) as e:
+        # 文件复制涉及文件系统IO和Path对象操作
+        logger.error("STL文件复制到目标路径失败: %s", e, exc_info=True)
         return {
             "success": False,
             "error": f"STL文件复制到目标路径失败: {e}",
@@ -149,6 +162,7 @@ def _generate_stl_from_dxf(
     """
     try:
         from app.dxf.dxf_parser import DxfParser
+        from app.dxf.exceptions import DxfParseError
         from app.dxf.feature_extractor import FeatureExtractor
         from app.dxf.dxf_to_model import DxfToModelConverter
     except ImportError as e:
@@ -161,7 +175,9 @@ def _generate_stl_from_dxf(
     try:
         parser = DxfParser()
         parse_result = parser.parse(str(dxf_path))
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, TypeError, KeyError, AttributeError, DxfParseError) as e:
+        # DXF解析涉及文件IO、格式校验、实体提取等
+        logger.error("DXF文件解析失败: %s", e, exc_info=True)
         return {
             "success": False,
             "error": f"DXF文件解析失败: {e}",
@@ -171,7 +187,9 @@ def _generate_stl_from_dxf(
     try:
         extractor = FeatureExtractor()
         feature_result = extractor.extract(parse_result)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, AttributeError, RuntimeError) as e:
+        # 特征提取涉及字典/对象访问与几何计算
+        logger.error("DXF特征提取失败: %s", e, exc_info=True)
         return {
             "success": False,
             "error": f"DXF特征提取失败: {e}",
@@ -181,7 +199,9 @@ def _generate_stl_from_dxf(
     try:
         converter = DxfToModelConverter()
         model_result = converter.convert(feature_result)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, AttributeError, RuntimeError) as e:
+        # 模型转换涉及特征参数校验与几何构建
+        logger.error("DXF→3D模型转换失败: %s", e, exc_info=True)
         return {
             "success": False,
             "error": f"DXF→3D模型转换失败: {e}",
@@ -190,7 +210,9 @@ def _generate_stl_from_dxf(
 
     try:
         converter.export_stl(model_result, stl_target_path)
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, TypeError, AttributeError) as e:
+        # 模型→STL导出涉及几何网格化和文件写出
+        logger.error("模型→STL导出失败: %s", e, exc_info=True)
         return {
             "success": False,
             "error": f"模型→STL导出失败: {e}",
@@ -261,7 +283,25 @@ class ToolModel:
         "shank_diameter": (0.1, 300.0),
     }
 
-    _VALID_TOOL_TYPES = frozenset({"flat", "ball", "drill", "chamfer", "thread_mill", "reamer"})
+    _VALID_TOOL_TYPES = frozenset(
+        {
+            "flat",
+            "ball",
+            "drill",
+            "chamfer",
+            "thread_mill",
+            "reamer",
+            # 扩展类型：用于 Rust 引擎专用刀具
+            "ballnose",  # 球头刀别名
+            "bullnose",  # 圆角平底刀
+            "bull",  # bullnose 别名
+            "tapered",  # 锥度刀
+            "balltapered",  # 球头锥度刀
+            "tapered_ball",  # balltapered 别名
+            "form",  # 特殊成形刀
+            "profile",  # form 别名
+        }
+    )
     _VALID_MATERIALS = frozenset({"carbide", "HSS", "ceramic", "CBN", "PCD"})
 
     def __post_init__(self) -> None:
@@ -871,7 +911,9 @@ class VoxelCutter:
                     return self._generate_fallback_result(
                         task_id, output_dir, segments, start_time, "STL解析失败"
                     )
-        except Exception:
+        except (OSError, ValueError, TypeError, RuntimeError) as load_err:
+            # STL加载涉及文件IO、格式校验与trimesh解析，捕获核心错误
+            logger.warning("STL文件加载失败: %s", load_err, exc_info=True)
             return self._generate_fallback_result(
                 task_id, output_dir, segments, start_time, "STL文件加载失败"
             )
@@ -1018,13 +1060,21 @@ class VoxelCutter:
             voxel_obj = voxel_creation.voxelize(mesh, pitch=pitch, method="subdivide")
             voxel_grid = voxel_obj.matrix.astype(bool)
             return voxel_grid
-        except (ImportError, ModuleNotFoundError, Exception):
-            pass
+        except (ImportError, ModuleNotFoundError, ValueError, TypeError) as e:
+            # trimesh 体素化不可用或参数不匹配时，降级到自实现的 contains 检测
+            logger.debug(
+                f"trimesh voxelize unavailable or failed, falling back to contains: {e}",
+                exc_info=True,
+            )
 
         try:
             return self._voxelize_contains(mesh, bbox_min, padding, nx, ny, nz)
-        except Exception:
-            pass
+        except (ValueError, TypeError, np.AxisError) as e:
+            # 自实现体素化也失败时回退到空网格（保证调用方逻辑不中断）
+            logger.debug(
+                f"Voxelize-contains fallback failed, returning empty grid: {e}",
+                exc_info=True,
+            )
 
         voxel_grid = np.zeros((nx, ny, nz), dtype=bool)
         return voxel_grid
@@ -1070,7 +1120,9 @@ class VoxelCutter:
                         pts = np.array(all_points_list)
                         try:
                             inside = mesh.contains(pts)
-                        except Exception:
+                        except (ValueError, RuntimeError, TypeError) as contains_err:
+                            # mesh.contains 涉及 trimesh 内部 ray-cast 与 GPU/CPU 路径切换
+                            logger.debug("mesh.contains批处理失败, 跳过本批: %s", contains_err)
                             return voxel_grid
                         for k, (ix_a, iy_a, iz_a) in enumerate(all_indices_list):
                             if inside[k]:
@@ -1082,7 +1134,9 @@ class VoxelCutter:
             pts = np.array(all_points_list)
             try:
                 inside = mesh.contains(pts)
-            except Exception:
+            except (ValueError, RuntimeError, TypeError) as contains_err:
+                # mesh.contains 尾批处理失败时回退到当前已计算的体素网格
+                logger.debug("mesh.contains尾批处理失败: %s", contains_err)
                 return voxel_grid
             for k, (ix_a, iy_a, iz_a) in enumerate(all_indices_list):
                 if inside[k]:
@@ -1332,10 +1386,12 @@ class VoxelCutter:
                 mesh.fix_normals()
                 return mesh
 
-            except Exception as exc:
+            except (ValueError, RuntimeError, TypeError, AttributeError) as exc:
+                # Marching Cubes 涉及 skimage 内部数值计算与 trimesh 网格构建
                 logger.warning(
                     "Marching Cubes重建失败(%s)，回退到box mesh方法",
                     exc,
+                    exc_info=True,
                 )
                 return self._reconstruct_mesh_fallback(
                     voxel_grid, bbox_min, voxel_size, trimesh
@@ -1381,7 +1437,9 @@ class VoxelCutter:
             if hasattr(combined, "simplify"):
                 combined = combined.simplify(threshold=voxel_size * 0.3)
             return combined
-        except Exception:
+        except (ValueError, RuntimeError, TypeError, AttributeError) as combine_err:
+            # 合并/简化涉及 trimesh 内部算法，回退到单 box mesh 即可保证可用性
+            logger.debug("trimesh mesh 合并/简化失败，返回单 box: %s", combine_err)
             return all_meshes[0]
 
     def _generate_fallback_result(

@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+﻿from pydantic import BaseModel, Field
 
-from app.core.task_manager import TaskType
+from app.tasks.task_manager import TaskType
 
 
 class KnowledgeAddRequest(BaseModel):
@@ -359,3 +359,29 @@ class LNNBatchInferenceRequest(BaseModel):
     model_name: str = Field(..., description="模型名称", min_length=1)
     input_data: list[list[float]] = Field(..., description="批量输入数据")
     batch_size: int = Field(default=32, description="批次大小", ge=1)
+
+
+class PermissionCheckResult(BaseModel):
+    has_permission: bool = Field(..., description="是否拥有权限")
+    user_permissions: list[str] = Field(default_factory=list, description="用户拥有的权限列表")
+
+
+class UserListItem(BaseModel):
+    username: str = Field(..., description="用户名")
+    role: str = Field(..., description="用户角色")
+    is_active: bool = Field(..., description="是否启用")
+    created_at: str = Field(..., description="创建时间")
+    last_login: str | None = Field(default=None, description="最后登录时间")
+
+
+class UserListResponse(BaseModel):
+    total: int = Field(..., description="用户总数")
+    users: list[UserListItem] = Field(default_factory=list, description="用户列表")
+
+
+class RoleAssignRequest(BaseModel):
+    role_code: str = Field(..., description="角色代码", min_length=1)
+
+
+class UserStatusRequest(BaseModel):
+    is_active: bool = Field(..., description="是否启用用户")

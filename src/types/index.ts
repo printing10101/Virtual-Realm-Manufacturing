@@ -286,6 +286,85 @@ export interface ImportHistoryEntry {
 /** 导入状态枚举 */
 export type ImportState = 'idle' | 'uploading' | 'processing' | 'success' | 'error'
 
+/** DXF 文件单条线段实体 */
+export interface DxfLine {
+  start: [number, number, number]
+  end: [number, number, number]
+  layer?: string
+  color?: number
+  handle?: string
+}
+
+/** DXF 文件圆实体 */
+export interface DxfCircle {
+  center: [number, number, number]
+  radius: number
+  layer?: string
+  color?: number
+  handle?: string
+}
+
+/** DXF 文件尺寸标注 */
+export interface DxfDimension {
+  dim_type?: string
+  measurement: number
+  text?: string
+  position?: [number, number, number]
+  layer?: string
+}
+
+/** DXF 几何包围盒 */
+export interface DxfExtents {
+  min_x?: number
+  min_y?: number
+  max_x?: number
+  max_y?: number
+  min_z?: number
+  max_z?: number
+}
+
+/** DXF 解析响应 */
+export interface DxfParseResponse {
+  file_id: string
+  file_name: string
+  file_size: number
+  dxf_version: string
+  parse_time_ms: number
+  entity_counts: Record<string, number>
+  total_entities: number
+  lines_count: number
+  circles_count: number
+  arcs_count: number
+  texts_count: number
+  dimensions_count: number
+  extents: DxfExtents
+  lines: DxfLine[]
+  circles: DxfCircle[]
+  dimensions: DxfDimension[]
+  warnings: string[]
+}
+
+/** DXF 特征提取响应 */
+export interface DxfFeatureResponse {
+  hole_count: number
+  plane_count: number
+  overall_length: number
+  overall_width: number
+  overall_height: number
+  height_inferred: boolean
+  holes: Array<Record<string, unknown>>
+  planes: Array<Record<string, unknown>>
+  warnings: string[]
+}
+
+/** DXF 上传响应 */
+export interface DxfUploadResponse {
+  file_id: string
+  file_name: string
+  file_size: number
+  upload_time_ms: number
+}
+
 /** 规则条件项 */
 export interface RuleCondition {
   parameter: string

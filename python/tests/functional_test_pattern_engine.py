@@ -1,4 +1,4 @@
-"""Functional tests for Pattern Engine."""
+﻿"""Functional tests for Pattern Engine."""
 
 import os
 import sys
@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.core.pattern_engine import PatternEngine  # noqa: E402
+from app.patterns.pattern_engine import PatternEngine  # noqa: E402
 
 
 @pytest.fixture

@@ -240,7 +240,17 @@ class UniwearDataLoader:
                 summary["total_samples"] += ds_summary["rows"]
             except Exception as e:
                 logger.warning("Failed to load %s: %s", ds.value, e)
-                summary["datasets"][ds.value] = {"error": str(e)}
+                from app.core.safe_errors import safe_error_message
+
+                safe = safe_error_message(
+                    e,
+                    context="uniwear_loader.summary",
+                    fallback="数据集加载失败",
+                )
+                summary["datasets"][ds.value] = {
+                    "error": safe["message"],
+                    "error_id": safe["error_id"],
+                }
 
         return summary
 
@@ -350,7 +360,17 @@ class UniwearDataLoader:
                     "sample_count": len(wear_df),
                 }
             except Exception as e:
-                comparison["experiments"][exp] = {"error": str(e)}
+                from app.core.safe_errors import safe_error_message
+
+                safe = safe_error_message(
+                    e,
+                    context="uniwear_loader.comparison",
+                    fallback="对比实验加载失败",
+                )
+                comparison["experiments"][exp] = {
+                    "error": safe["message"],
+                    "error_id": safe["error_id"],
+                }
 
         sorted_exps = sorted(
             comparison["experiments"].items(),

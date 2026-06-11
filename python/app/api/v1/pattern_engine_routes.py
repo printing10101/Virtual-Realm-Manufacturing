@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.core.pattern_engine import get_pattern_engine
+from app.patterns.pattern_engine import get_pattern_engine
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)

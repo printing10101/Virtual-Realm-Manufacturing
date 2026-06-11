@@ -3,36 +3,36 @@
     <el-card>
       <template #header>
         <div class="header-with-actions">
-          <span>任务历史</span>
+          <span>{{ $t('taskHistory.title') }}</span>
           <div class="header-actions">
             <el-select
               v-model="filterStatus"
-              placeholder="筛选状态"
+              :placeholder="$t('taskHistory.filterStatus')"
               clearable
               style="width: 150px; margin-right: 10px;"
             >
               <el-option
-                label="全部"
+                :label="$t('taskHistory.statusAll')"
                 value=""
               />
               <el-option
-                label="已完成"
+                :label="$t('taskHistory.statusCompleted')"
                 value="completed"
               />
               <el-option
-                label="训练中"
+                :label="$t('taskHistory.statusTraining')"
                 value="running"
               />
               <el-option
-                label="已取消"
+                :label="$t('taskHistory.statusCancelled')"
                 value="cancelled"
               />
               <el-option
-                label="失败"
+                :label="$t('taskHistory.statusFailed')"
                 value="failed"
               />
               <el-option
-                label="排队中"
+                :label="$t('taskHistory.statusQueued')"
                 value="queued"
               />
             </el-select>
@@ -40,7 +40,7 @@
               :loading="loading"
               @click="loadTasks"
             >
-              刷新
+              {{ $t('taskHistory.refresh') }}
             </el-button>
           </div>
         </div>
@@ -54,7 +54,7 @@
       >
         <el-table-column
           prop="job_id"
-          label="任务ID"
+          :label="$t('taskHistory.colJobId')"
           width="200"
         >
           <template #default="{ row }">
@@ -69,7 +69,7 @@
         </el-table-column>
         <el-table-column
           prop="task_type"
-          label="任务类型"
+          :label="$t('taskHistory.colType')"
           width="150"
         >
           <template #default="{ row }">
@@ -78,7 +78,7 @@
         </el-table-column>
         <el-table-column
           prop="status"
-          label="状态"
+          :label="$t('taskHistory.colStatus')"
           width="100"
         >
           <template #default="{ row }">
@@ -89,7 +89,7 @@
         </el-table-column>
         <el-table-column
           prop="progress"
-          label="进度"
+          :label="$t('taskHistory.colProgress')"
           width="150"
         >
           <template #default="{ row }">
@@ -101,7 +101,7 @@
         </el-table-column>
         <el-table-column
           prop="created_at"
-          label="创建时间"
+          :label="$t('taskHistory.colCreated')"
           width="180"
         >
           <template #default="{ row }">
@@ -110,15 +110,15 @@
         </el-table-column>
         <el-table-column
           prop="duration_seconds"
-          label="耗时"
+          :label="$t('taskHistory.colDuration')"
           width="100"
         >
           <template #default="{ row }">
-            {{ row.duration_seconds ? `${row.duration_seconds.toFixed(1)}s` : '-' }}
+            {{ row.duration_seconds ? `${row.duration_seconds.toFixed(1)}${$t('taskHistory.durationSuffix')}` : '-' }}
           </template>
         </el-table-column>
         <el-table-column
-          label="操作"
+          :label="$t('taskHistory.colActions')"
           fixed="right"
           width="180"
         >
@@ -128,7 +128,7 @@
               type="primary"
               @click="viewTaskDetail(row)"
             >
-              详情
+              {{ $t('taskHistory.detail') }}
             </el-button>
             <el-button
               size="small"
@@ -136,7 +136,7 @@
               :disabled="row.status !== 'completed' && row.status !== 'failed'"
               @click="rerunTask(row)"
             >
-              重新执行
+              {{ $t('taskHistory.rerun') }}
             </el-button>
           </template>
         </el-table-column>
@@ -155,7 +155,7 @@
 
     <el-dialog
       v-model="detailDialogVisible"
-      title="任务详情"
+      :title="$t('taskHistory.detailDialogTitle')"
       width="600px"
     >
       <el-descriptions
@@ -163,44 +163,44 @@
         :column="1"
         border
       >
-        <el-descriptions-item label="任务ID">
+        <el-descriptions-item :label="$t('taskHistory.colJobId')">
           {{ selectedTask.job_id }}
         </el-descriptions-item>
-        <el-descriptions-item label="任务类型">
+        <el-descriptions-item :label="$t('taskHistory.colType')">
           {{ getTaskTypeText(selectedTask.task_type) }}
         </el-descriptions-item>
-        <el-descriptions-item label="状态">
+        <el-descriptions-item :label="$t('taskHistory.colStatus')">
           <el-tag :type="getTaskStatusTagType(selectedTask.status)">
             {{ getTaskStatusLabel(selectedTask.status) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="进度">
+        <el-descriptions-item :label="$t('taskHistory.colProgress')">
           {{ Math.round(selectedTask.progress) }}%
         </el-descriptions-item>
-        <el-descriptions-item label="创建时间">
+        <el-descriptions-item :label="$t('taskHistory.colCreated')">
           {{ formatDate(selectedTask.created_at) }}
         </el-descriptions-item>
         <el-descriptions-item
           v-if="selectedTask.started_at"
-          label="开始时间"
+          :label="$t('taskHistory.startTime')"
         >
           {{ formatDate(selectedTask.started_at) }}
         </el-descriptions-item>
         <el-descriptions-item
           v-if="selectedTask.completed_at"
-          label="完成时间"
+          :label="$t('taskHistory.completeTime')"
         >
           {{ formatDate(selectedTask.completed_at) }}
         </el-descriptions-item>
         <el-descriptions-item
           v-if="selectedTask.duration_seconds"
-          label="耗时"
+          :label="$t('taskHistory.colDuration')"
         >
-          {{ selectedTask.duration_seconds.toFixed(1) }}秒
+          {{ selectedTask.duration_seconds.toFixed(1) }}{{ $t('taskHistory.durationSuffix') }}
         </el-descriptions-item>
         <el-descriptions-item
           v-if="selectedTask.error"
-          label="错误信息"
+          :label="$t('taskHistory.errorInfo')"
         >
           <el-alert
             :title="selectedTask.error"
@@ -211,19 +211,19 @@
         </el-descriptions-item>
         <el-descriptions-item
           v-if="selectedTask.params"
-          label="训练参数"
+          :label="$t('taskHistory.trainParams')"
         >
           <pre>{{ JSON.stringify(selectedTask.params, null, 2) }}</pre>
         </el-descriptions-item>
         <el-descriptions-item
           v-if="selectedTask.metrics"
-          label="训练指标"
+          :label="$t('taskHistory.trainMetrics')"
         >
           <pre>{{ JSON.stringify(selectedTask.metrics, null, 2) }}</pre>
         </el-descriptions-item>
         <el-descriptions-item
           v-if="selectedTask.result"
-          label="结果"
+          :label="$t('taskHistory.result')"
         >
           <pre>{{ JSON.stringify(selectedTask.result, null, 2) }}</pre>
         </el-descriptions-item>
@@ -234,11 +234,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 import { formatDate } from '@/utils/formatters'
 import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 
+const { t } = useI18n()
 const router = useRouter()
 
 const loading = ref(false)
@@ -266,7 +269,7 @@ async function loadTasks() {
     tasks.value = res.data.data.jobs || []
     total.value = res.data.data.total || 0
   } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || '获取任务列表失败'
+    const errorMsg = e?.response?.data?.message || e?.message || t('taskHistory.loadFailed')
     ElMessage.error(errorMsg)
   } finally {
     loading.value = false
@@ -285,7 +288,7 @@ function viewTaskDetail(task: any) {
 
 async function rerunTask(task: any) {
   if (!task.params) {
-    ElMessage.warning('无法重新执行此任务，缺少参数信息')
+    ElMessage.warning(t('taskHistory.cannotRerun'))
     return
   }
 
@@ -308,29 +311,22 @@ async function rerunTask(task: any) {
 
     const newJobId = res?.data.data?.job_id
     if (!newJobId) {
-      ElMessage.error('未获取到新任务ID')
+      ElMessage.error(t('taskHistory.noNewJobId'))
       return
     }
 
-    ElMessage.success(`新任务已启动，任务ID: ${newJobId}`)
+    ElMessage.success(t('taskHistory.newJobStarted', { jobId: newJobId }))
 
     router.push({ name: 'workspace', query: { tab: 'train', jobId: newJobId } })
   } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || '重新执行失败'
+    const errorMsg = e?.response?.data?.message || e?.message || t('taskHistory.rerunFailed')
     ElMessage.error(errorMsg)
   }
 }
 
 function getTaskTypeText(type: string): string {
-  const map: Record<string, string> = {
-    lnn_training: 'LNN训练',
-    lnn_batch_inference: '批量推理',
-    lnn_inference: '推理',
-    data_processing: '数据处理',
-    model_export: '模型导出',
-    model_quantization: '模型量化',
-  }
-  return map[type] || type
+  // Translate via i18n key from the pre-defined map
+  return t(`taskHistory.typeMap.${type}`) || type
 }
 
 watch(filterStatus, () => {

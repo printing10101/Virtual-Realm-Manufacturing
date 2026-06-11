@@ -8,9 +8,9 @@
       v-if="!initialized"
       class="canvas-placeholder"
     >
-      <p>3D 刀路编辑场景</p>
+      <p>{{ $t('toolpathCanvas.sceneTitle') }}</p>
       <p class="hint">
-        请加载刀路数据以开始编辑
+        {{ $t('toolpathCanvas.loadHint') }}
       </p>
     </div>
 
@@ -18,7 +18,7 @@
       v-if="fps > 0"
       class="fps-counter"
     >
-      FPS: {{ fps }}
+      {{ $t('toolpathCanvas.fpsLabel') }}: {{ fps }}
     </div>
 
     <div class="coordinate-axes">

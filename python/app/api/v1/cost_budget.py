@@ -7,11 +7,11 @@ Endpoints for cost tracking, budget enforcement, alerts, and optimization sugges
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 
-from app.core.budget_enforcer import (
+from app.budget.budget_enforcer import (
     get_budget_enforcer,
     get_cost_optimizer,
 )
-from app.core.cost_tracker import (
+from app.budget.cost_tracker import (
     get_cost_tracker,
     CostDimension,
 )
@@ -132,8 +132,10 @@ async def set_budget_policy(data: dict):
             auto_notify=bool(data.get("auto_notify", True)),
             enabled=bool(data.get("enabled", True)),
         )
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid policy data: {e}")
+    except (ValueError, KeyError):
+        # 修复：参数验证失败时不应回显 e 给客户端（可能含键名/结构信息），
+        # 仅返回通用提示，详细错误可由服务端日志分析。
+        raise HTTPException(400, "Invalid policy data")
 
     enforcer.set_policy(policy)
     return {"ok": True, "data": policy.to_dict()}
@@ -150,8 +152,9 @@ async def adjust_budget(data: dict):
         new_limit = float(data["new_limit"])
         reason = data.get("reason", "")
         adjusted_by = data.get("adjusted_by", "admin")
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid adjustment data: {e}")
+    except (ValueError, KeyError):
+        # 修复：不回显异常详情
+        raise HTTPException(400, "Invalid adjustment data")
 
     updated = enforcer.adjust_budget(
         level, scope_id, resource_type, new_limit, reason, adjusted_by
@@ -175,8 +178,9 @@ async def check_budget(data: dict):
         scope_id = data.get("scope_id", "default")
         resource_type = ResourceType(data.get("resource_type", "total_cost"))
         planned_usage = float(data.get("planned_usage", 0.0))
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid check data: {e}")
+    except (ValueError, KeyError):
+        # 修复：不回显异常详情
+        raise HTTPException(400, "Invalid check data")
 
     result = enforcer.check_budget(level, scope_id, resource_type, planned_usage)
     return {"ok": True, "data": result.to_dict()}
@@ -211,8 +215,9 @@ async def enforce_budget(data: dict):
         scope_id = data.get("scope_id", "default")
         resource_type = ResourceType(data.get("resource_type", "total_cost"))
         planned_usage = float(data.get("planned_usage", 0.0))
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid enforce data: {e}")
+    except (ValueError, KeyError):
+        # 修复：不回显异常详情
+        raise HTTPException(400, "Invalid enforce data")
 
     result = enforcer.enforce(level, scope_id, resource_type, planned_usage)
     return {
@@ -236,8 +241,9 @@ async def reset_budget_period(data: dict):
         level = BudgetLevel(data["level"])
         scope_id = data.get("scope_id", "default")
         resource_type = ResourceType(data["resource_type"])
-    except (ValueError, KeyError) as e:
-        raise HTTPException(400, f"Invalid reset data: {e}")
+    except (ValueError, KeyError):
+        # 修复：不回显异常详情
+        raise HTTPException(400, "Invalid reset data")
 
     enforcer.reset_period(level, scope_id, resource_type)
     return {

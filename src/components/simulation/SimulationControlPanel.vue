@@ -1,7 +1,7 @@
 <template>
   <div class="simulation-control-panel">
     <div class="panel-header">
-      <h3>仿真控制</h3>
+      <h3>{{ $t('simulation.title') }}</h3>
       <span
         class="status-badge"
         :class="simulationStatusClass"
@@ -13,7 +13,7 @@
     <div class="panel-body">
       <div class="config-section">
         <div class="config-row">
-          <label>体素尺寸 (mm)</label>
+          <label>{{ $t('simulation.labelVoxelSize') }}</label>
           <el-slider
             v-model="voxelSize"
             :min="0.2"
@@ -26,29 +26,29 @@
         </div>
 
         <div class="config-row">
-          <label>刀具类型</label>
+          <label>{{ $t('simulation.labelToolType') }}</label>
           <el-select
             v-model="toolType"
             :disabled="isRunning"
             style="width: 100%"
           >
             <el-option
-              label="平底刀 (Flat)"
+              :label="$t('simulation.toolFlat')"
               value="flat"
             />
             <el-option
-              label="球头刀 (Ball)"
+              :label="$t('simulation.toolBall')"
               value="ball"
             />
             <el-option
-              label="钻头 (Drill)"
+              :label="$t('simulation.toolDrill')"
               value="drill"
             />
           </el-select>
         </div>
 
         <div class="config-row">
-          <label>刀具直径 (mm)</label>
+          <label>{{ $t('simulation.labelToolDiameter') }}</label>
           <el-input-number
             v-model="toolDiameter"
             :min="0.5"
@@ -61,7 +61,7 @@
         </div>
 
         <div class="config-row">
-          <label>安全高度 (mm)</label>
+          <label>{{ $t('simulation.labelSafeZ') }}</label>
           <el-input-number
             v-model="safeZHeight"
             :min="0"
@@ -74,13 +74,13 @@
         </div>
 
         <div class="config-row">
-          <label>G代码</label>
+          <label>{{ $t('simulation.labelGcode') }}</label>
           <el-input
             v-model="gcodeInput"
             type="textarea"
             :rows="4"
             :disabled="isRunning"
-            placeholder="输入G代码或留空使用默认刀路..."
+            :placeholder="$t('simulation.gcodePlaceholder')"
           />
         </div>
 
@@ -91,7 +91,7 @@
           class="run-btn"
           @click="runSimulation"
         >
-          {{ isRunning ? '仿真中...' : '运行仿真' }}
+          {{ isRunning ? $t('simulation.runningBtn') : $t('simulation.runBtn') }}
         </el-button>
       </div>
 
@@ -101,7 +101,7 @@
         v-if="resultLoaded"
         class="playback-section"
       >
-        <h4>刀路回放</h4>
+        <h4>{{ $t('simulation.playbackTitle') }}</h4>
 
         <div class="playback-controls">
           <el-button-group>
@@ -110,26 +110,26 @@
               :disabled="playState === 'playing'"
               @click="togglePlay"
             >
-              {{ playState === 'playing' ? '暂停' : '播放' }}
+              {{ playState === 'playing' ? $t('simulation.pause') : $t('simulation.play') }}
             </el-button>
             <el-button
               :disabled="playState === 'playing'"
               @click="stepForward"
             >
-              步进
+              {{ $t('simulation.step') }}
             </el-button>
             <el-button
               :disabled="playState === 'playing'"
               @click="resetPlayback"
             >
-              重置
+              {{ $t('simulation.reset') }}
             </el-button>
           </el-button-group>
         </div>
 
         <div class="progress-section">
           <span class="progress-label">
-            刀位点 {{ currentSegment + 1 }} / {{ totalSegments }}
+            {{ $t('simulation.progressLabel', { current: currentSegment + 1, total: totalSegments }) }}
           </span>
           <el-slider
             v-model="currentSegment"
@@ -142,7 +142,7 @@
         </div>
 
         <div class="speed-section">
-          <label>回放速度</label>
+          <label>{{ $t('simulation.speedLabel') }}</label>
           <el-slider
             v-model="playSpeed"
             :min="1"
@@ -162,25 +162,25 @@
         v-if="resultLoaded && simulationResult"
         class="stats-section"
       >
-        <h4>仿真统计</h4>
+        <h4>{{ $t('simulation.statsTitle') }}</h4>
         <div class="stat-row">
-          <span>耗时</span>
+          <span>{{ $t('simulation.statDuration') }}</span>
           <span>{{ simulationResult.duration_seconds.toFixed(2) }}s</span>
         </div>
         <div class="stat-row">
-          <span>体素总数</span>
+          <span>{{ $t('simulation.statVoxels') }}</span>
           <span>{{ simulationResult.voxel_count.toLocaleString() }}</span>
         </div>
         <div class="stat-row">
-          <span>切除体素</span>
+          <span>{{ $t('simulation.statRemoved') }}</span>
           <span>{{ simulationResult.removed_voxel_count.toLocaleString() }}</span>
         </div>
         <div class="stat-row">
-          <span>材料去除率</span>
+          <span>{{ $t('simulation.statRemovalRate') }}</span>
           <span>{{ removalRate }}%</span>
         </div>
         <div class="stat-row">
-          <span>刀位点数</span>
+          <span>{{ $t('simulation.statSegments') }}</span>
           <span>{{ simulationResult.toolpath_segment_count }}</span>
         </div>
       </div>
@@ -202,6 +202,8 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { VideoPlay } from '@element-plus/icons-vue'
 import type {
   SimulationResult,
@@ -222,6 +224,8 @@ const emit = defineEmits<{
   'toolpath-update': [segments: ToolpathSegmentData[]]
   'state-change': [state: PlaybackState]
 }>()
+
+const { t } = useI18n()
 
 const voxelSize = ref(1.0)
 const toolType = ref<'flat' | 'ball' | 'drill'>('flat')
@@ -244,9 +248,9 @@ const targetFps = ref(30)
 let playTimer: ReturnType<typeof setInterval> | null = null
 
 const simulationStatusLabel = computed(() => {
-  if (isRunning.value) return '运行中'
-  if (resultLoaded.value) return '已完成'
-  return '就绪'
+  if (isRunning.value) return t('simulation.statusRunning')
+  if (resultLoaded.value) return t('simulation.statusDone')
+  return t('simulation.statusReady')
 })
 
 const simulationStatusClass = computed(() => ({
@@ -335,7 +339,7 @@ async function runSimulation(): Promise<void> {
     const data = response.data
 
     if (data.code !== 0) {
-      errorMessage.value = data.message || '仿真执行失败'
+      errorMessage.value = data.message || t('simulation.executionFailed')
       return
     }
 
@@ -347,7 +351,7 @@ async function runSimulation(): Promise<void> {
 
     emit('simulation-result', result)
   } catch (err: any) {
-    errorMessage.value = err.response?.data?.message || err.message || '网络请求失败'
+    errorMessage.value = err.response?.data?.message || err.message || t('simulation.networkFailed')
   } finally {
     isRunning.value = false
   }

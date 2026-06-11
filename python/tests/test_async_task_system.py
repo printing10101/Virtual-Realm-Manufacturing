@@ -1,4 +1,4 @@
-"""
+﻿"""
 Test Async Task System
 
 Tests for:
@@ -12,8 +12,8 @@ Tests for:
 import asyncio
 import pytest
 
-from app.core.task_system import AsyncTaskManager, TaskRecord
-from app.core.task_manager import TaskStatus, TaskType
+from app.tasks.task_system import AsyncTaskManager, TaskRecord
+from app.tasks.task_manager import TaskStatus, TaskType
 
 
 class TestTaskRecord:

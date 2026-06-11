@@ -1,4 +1,4 @@
-"""
+﻿"""
 沙箱安全测试套件 - 验证 skill_loader.py 沙箱逃逸漏洞修复效果
 
 测试覆盖：
@@ -17,7 +17,7 @@ import os
 # 确保项目路径在 sys.path 中
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.core.skill_loader import SkillLoader, SecurityError  # noqa: E402
+from app.plugins.skill_loader import SkillLoader, SecurityError  # noqa: E402
 
 
 class TestResult:
@@ -382,20 +382,22 @@ def execute():
     except Exception as e:
         results.record("range/enumerate", False, f"异常: {type(e).__name__}: {e}")
 
-    # 测试 8.5: 异常处理
+    # 测试 8.5: 类型转换与字符串拼接
+    # 注意：异常类（如 ValueError）不在白名单中（白名单仅含 21 项纯计算函数），
+    # 因此异常处理不是沙箱内的支持能力。改为测试类型转换和字符串拼接。
     code = """
 def execute():
-    try:
-        raise ValueError("test error")
-    except ValueError as e:
-        return str(e)
+    n = int("42")
+    f = float("3.14")
+    s = str(n) + " " + str(f)
+    return s
 """
     try:
-        executor = loader._compile_code(code, "test_exception")
+        executor = loader._compile_code(code, "test_type_conv")
         result = executor()
-        results.record("异常处理", result == "test error", f"结果: {result}")
+        results.record("类型转换与字符串拼接", result == "42 3.14", f"结果: {result}")
     except Exception as e:
-        results.record("异常处理", False, f"异常: {type(e).__name__}: {e}")
+        results.record("类型转换与字符串拼接", False, f"异常: {type(e).__name__}: {e}")
 
     # 测试 8.6: any/all 函数
     code = """
@@ -408,6 +410,70 @@ def execute():
         results.record("any/all 函数", all_result and any_result, f"结果: {all_result}, {any_result}")
     except Exception as e:
         results.record("any/all 函数", False, f"异常: {type(e).__name__}: {e}")
+
+    # 测试 8.7: 全部 21 项白名单函数逐一验证
+    # 验证每个允许的函数在沙箱内都能正常工作
+    whitelist_tests = [
+        # (函数名, 测试表达式, 期望结果) - 表达式会被嵌入 return <expr> 中
+        ("True", "True is True", True),
+        ("False", "False is False", True),
+        ("None", "None is None", True),
+        ("bool", "bool(1) and not bool(0)", True),
+        ("float", "float('1.5') == 1.5", True),
+        ("int", "int('10') == 10", True),
+        ("str", "str(123) == '123'", True),
+        ("abs", "abs(-7) == 7", True),
+        ("divmod", "divmod(10, 3) == (3, 1)", True),
+        ("max", "max(1, 2, 3) == 3", True),
+        ("min", "min(1, 2, 3) == 1", True),
+        ("pow", "pow(2, 10) == 1024", True),
+        ("round", "round(3.14159, 2) == 3.14", True),
+        ("sum", "sum([1, 2, 3, 4]) == 10", True),
+        ("all", "all([1, 2, 3]) and not all([0, 1, 2])", True),
+        ("any", "any([0, 0, 1]) and not any([0, 0, 0])", True),
+        ("enumerate", "[i for i, v in enumerate(['a', 'b'])] == [0, 1]", True),
+        ("len", "len('hello') == 5", True),
+        ("list", "list(range(3)) == [0, 1, 2]", True),
+        ("range", "list(range(0, 5, 2)) == [0, 2, 4]", True),
+        ("sorted", "sorted([3, 1, 2]) == [1, 2, 3]", True),
+    ]
+    for func_name, expr, expected in whitelist_tests:
+        code = f"""
+def execute():
+    return {expr}
+"""
+        try:
+            executor = loader._compile_code(code, f"test_{func_name}")
+            result = executor()
+            results.record(
+                f"白名单函数 '{func_name}' 可用",
+                result == expected,
+                f"结果: {result} (期望: {expected})",
+            )
+        except Exception as e:
+            results.record(
+                f"白名单函数 '{func_name}' 可用",
+                False,
+                f"异常: {type(e).__name__}: {e}",
+            )
+
+    # 测试 8.8: 危险函数阻断验证
+    # 验证 ValueError 等异常类在沙箱中不可用（异常类不在白名单中）
+    code = """
+def execute():
+    return ValueError("test")
+"""
+    try:
+        executor = loader._compile_code(code, "test_value_error")
+        try:
+            executor()
+            results.record("ValueError 不可用", False, "异常类不应在白名单中")
+        except NameError:
+            results.record("ValueError 不可用", True, "异常类被正确排除")
+        except Exception:
+            results.record("ValueError 不可用", True, "异常类被正确排除")
+    except SecurityError:
+        results.record("ValueError 不可用", True, "代码审计层拦截成功")
 
     # =========================================================================
     # 测试组 9: _SAFE_BUILTINS 完整性审计

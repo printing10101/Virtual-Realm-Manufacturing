@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import logging
 import uuid
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.core.response import success, error, ErrorCode
+from app.core.safe_errors import safe_error_message
 from app.dxf.dxf_parser import DxfParser
 from app.dxf.feature_extractor import FeatureExtractor
 from app.dxf.dxf_to_model import DxfToModelConverter
@@ -170,13 +171,24 @@ async def parse_dxf(file: UploadFile = File(...)):
             "warnings": result.warnings,
         })
     except Exception as e:
-        logger.error("DXF解析失败: %s", e)
-        return error(code=ErrorCode.INTERNAL, message=str(e))
+        # 修复：避免 str(e) 直接泄露内部异常详情给前端。
+        safe = safe_error_message(e, context="dxf.parse")
+        return error(
+            code=ErrorCode.INTERNAL,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("detail") else None,
+        )
     finally:
         try:
             temp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as cleanup_err:
+            # 临时文件清理失败不应阻塞请求返回，记录以备后续排查
+            logger.debug(
+                "Failed to cleanup temp DXF upload %s: %s",
+                temp_path,
+                cleanup_err,
+                exc_info=True,
+            )
 
 
 @router.post("/features", response_model=dict)
@@ -194,13 +206,25 @@ async def extract_features(file: UploadFile = File(...)):
         feature_result = _feature_extractor.extract(parse_result)
         return success(data=feature_result.to_dict())
     except Exception as e:
-        logger.error("特征提取失败: %s", e)
-        return error(code=ErrorCode.INTERNAL, message=str(e))
+        # 兜底捕获：特征提取涉及几何计算 + ezdxf 实体遍历，异常类型无法穷举
+        # 修复：使用 safe_error_message 包装异常，避免 str(e) 直接暴露内部详情。
+        safe = safe_error_message(e, context="dxf.features")
+        return error(
+            code=ErrorCode.INTERNAL,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("detail") else None,
+        )
     finally:
         try:
             temp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as cleanup_err:
+            # 临时文件清理失败不应阻塞请求返回，记录以备后续排查
+            logger.debug(
+                "Failed to cleanup temp DXF upload %s: %s",
+                temp_path,
+                cleanup_err,
+                exc_info=True,
+            )
 
 
 @router.post("/pipeline", response_model=dict)
@@ -229,13 +253,24 @@ async def run_dxf_pipeline(
         )
         return success(data=result.to_dict())
     except Exception as e:
-        logger.error("DXF流水线执行失败: %s", e)
-        return error(code=ErrorCode.INTERNAL, message=str(e))
+        # 修复：避免 str(e) 直接泄露内部异常详情给前端。
+        safe = safe_error_message(e, context="dxf.pipeline")
+        return error(
+            code=ErrorCode.INTERNAL,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("detail") else None,
+        )
     finally:
         try:
             temp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as cleanup_err:
+            # 临时文件清理失败不应阻塞请求返回，记录以备后续排查
+            logger.debug(
+                "Failed to cleanup temp DXF upload %s: %s",
+                temp_path,
+                cleanup_err,
+                exc_info=True,
+            )
 
 
 @router.post("/model/stl", response_model=dict)
@@ -269,31 +304,89 @@ async def convert_to_stl(
             "download_url": f"/api/dxf/model/download/{output_path.name}",
         })
     except Exception as e:
-        logger.error("STL转换失败: %s", e)
-        return error(code=ErrorCode.INTERNAL, message=str(e))
+        # 兜底捕获：STL 转换依赖 cadquery + OCCT 绑定，OCCT 错误以多种异常抛出
+        # 修复：使用 safe_error_message 包装异常，避免 str(e) 直接暴露内部详情。
+        safe = safe_error_message(e, context="dxf.model.stl")
+        return error(
+            code=ErrorCode.INTERNAL,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("detail") else None,
+        )
     finally:
         try:
             temp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as cleanup_err:
+            # 临时文件清理失败不应阻塞请求返回，记录以备后续排查
+            logger.debug(
+                "Failed to cleanup temp DXF upload %s: %s",
+                temp_path,
+                cleanup_err,
+                exc_info=True,
+            )
+
+
+def _sanitize_filename(file_name: str) -> str:
+    """严格净化文件名，防止路径遍历攻击。
+
+    净化规则（任何一条不满足即视为无效输入，返回空字符串）：
+    1. 输入必须为非空字符串；
+    2. 禁止包含路径分隔符（/ 或 \\）；
+    3. 禁止包含 ".." 序列（任意父目录引用均被拒绝）；
+    4. 通过 pathlib.Path.name 提取纯文件名后不得为空。
+
+    Args:
+        file_name: 用户传入的原始文件名。
+
+    Returns:
+        净化后的纯文件名；无效输入返回空字符串。
+    """
+    # [路径遍历修复] 输入类型与空值检查
+    if not file_name or not isinstance(file_name, str):
+        return ""
+    # [路径遍历修复] 明确拒绝包含路径分隔符的输入
+    if "/" in file_name or "\\" in file_name:
+        return ""
+    # [路径遍历修复] 明确拒绝包含 ".." 序列的输入
+    if ".." in file_name:
+        return ""
+    # [路径遍历修复] 防御性编程：使用 Path.name 提取纯文件名
+    safe_name = Path(file_name).name
+    if not safe_name:
+        return ""
+    return safe_name
 
 
 @router.get("/model/download/{file_name}")
 async def download_model(file_name: str):
-    """下载生成的3D模型文件。"""
-    safe_name = PurePosixPath(file_name).name
+    """下载生成的3D模型文件。
+
+    [路径遍历修复] 增加了双重路径验证：
+    1. 通过 _sanitize_filename 拒绝包含路径分隔符或 ".." 的输入；
+    2. 通过 resolve() + is_relative_to() 确保最终路径严格位于 OUTPUT_DIR 内。
+    """
+    # [路径遍历修复] 第一层：用户输入净化
+    safe_name = _sanitize_filename(file_name)
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="无效的文件名")
+
+    # [路径遍历修复] 第二层：解析为绝对路径并验证在允许目录内
+    allowed_dir = OUTPUT_DIR.resolve()
     file_path = (OUTPUT_DIR / safe_name).resolve()
-    if not file_path.is_relative_to(OUTPUT_DIR.resolve()):
+    if not file_path.is_relative_to(allowed_dir):
         raise HTTPException(status_code=400, detail="无效的文件路径")
+
+    # 保留原有的文件存在性检查
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"文件不存在: {safe_name}")
 
+    # 保留原有的媒体类型判断逻辑
     media_type = "application/octet-stream"
     if safe_name.endswith(".stl"):
         media_type = "model/stl"
     elif safe_name.endswith(".step"):
         media_type = "model/step"
 
+    # 保留原有的 FileResponse 返回机制
     return FileResponse(
         path=str(file_path),
         media_type=media_type,
@@ -331,12 +424,24 @@ async def validate_dxf(file: UploadFile = File(...)):
             "issues": issues,
         })
     except Exception as e:
+        # 兜底捕获：校验端点对任何解析/几何异常均返回统一的"无效"响应
+        # 修复：避免 str(e) 直接暴露给调用方，统一以 valid=False 形式表达，
+        # 错误信息使用通用描述，仅 error_id 可关联服务端日志排查。
+        safe = safe_error_message(e, context="dxf.validate")
+        logger.warning("DXF校验发现异常: error_id=%s", safe.get("error_id"))
         return success(data={
             "valid": False,
-            "issues": [str(e)],
+            "issues": ["文件解析失败，请检查DXF格式是否正确"],
+            "error_id": safe.get("error_id"),
         })
     finally:
         try:
             temp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as cleanup_err:
+            # 临时文件清理失败不应阻塞请求返回，记录以备后续排查
+            logger.debug(
+                "Failed to cleanup temp DXF upload %s: %s",
+                temp_path,
+                cleanup_err,
+                exc_info=True,
+            )

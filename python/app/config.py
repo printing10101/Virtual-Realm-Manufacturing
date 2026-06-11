@@ -333,12 +333,25 @@ class SecurityConfig:
     auth_enabled: bool = field(
         default_factory=lambda: _bool_env("LNN_AUTH_ENABLED", True)
     )
+    # 修复：默认开启权限检查，避免在配置缺失时出现安全盲区
     permission_enforced: bool = field(
         default_factory=lambda: _bool_env("LNN_PERMISSION_ENFORCED", True)
     )
     agent_auth_enabled: bool = field(
         default_factory=lambda: _bool_env("AGENT_AUTH_ENABLED", True)
     )
+
+    def __post_init__(self) -> None:
+        """启动时安全审计：检测到权限检查被显式关闭时输出 WARNING。"""
+        # 测试环境（conftest 中设置 ENVIRONMENT=testing）下静默，避免日志噪音
+        if _env("ENVIRONMENT", "development").lower() == "testing":
+            return
+        if not self.permission_enforced:
+            logger.warning(
+                "权限检查功能已被禁用，这可能导致安全风险 "
+                "(LNN_PERMISSION_ENFORCED=%s)",
+                os.environ.get("LNN_PERMISSION_ENFORCED", "false"),
+            )
 
 
 # =============================================================================
@@ -474,7 +487,7 @@ class ProcessPlanningConfig:
 @dataclass
 class AppConfig:
     app_name: str = field(default_factory=lambda: _env("APP_NAME", "灵境制造"))
-    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "1.12.0"))
+    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "2.0.0"))
     offline_mode: bool = field(
         default_factory=lambda: _bool_env("OFFLINE_MODE", False)
     )

@@ -16,10 +16,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from app.core.auth import get_current_user
-from app.core.permissions import require_permission
+from app.api.v1.auth import get_current_user
+from app.auth.permissions import require_permission
 from app.core.response import api_response
-from app.core.state_persistence import StatePersistenceManager, StateRecoveryManager
+from app.state.state_persistence import StatePersistenceManager, StateRecoveryManager
 from app.models.agent_state import (
     AgentState,
     Checkpoint,
@@ -29,26 +29,77 @@ from app.models.agent_state import (
 
 router = APIRouter(prefix="/agents", tags=["Agent State Management"])
 
-_persistence: Optional[StatePersistenceManager] = None
-_recovery: Optional[StateRecoveryManager] = None
+
+class _AgentStateHolder:
+    """Thread-safe holder for agent state managers (initialized externally)."""
+
+    def __init__(self) -> None:
+        import threading
+
+        self._lock = threading.Lock()
+        self._persistence: Optional[StatePersistenceManager] = None
+        self._recovery: Optional[StateRecoveryManager] = None
+
+    def set_persistence(self, manager: StatePersistenceManager) -> None:
+        """Set the persistence manager and (re)build the recovery manager."""
+        with self._lock:
+            self._persistence = manager
+            self._recovery = StateRecoveryManager(manager)
+
+    def get_persistence(self) -> Optional[StatePersistenceManager]:
+        with self._lock:
+            return self._persistence
+
+    def get_recovery(self) -> Optional[StateRecoveryManager]:
+        with self._lock:
+            return self._recovery
+
+    def reset(self) -> None:
+        with self._lock:
+            self._persistence = None
+            self._recovery = None
+
+
+_holder = _AgentStateHolder()
 
 
 def get_persistence() -> StatePersistenceManager:
-    if _persistence is None:
-        raise HTTPException(status_code=503, detail="State persistence not initialized")
-    return _persistence
+    """FastAPI 依赖：获取 :class:`StatePersistenceManager` 实例。
+
+    Returns:
+        :class:`StatePersistenceManager` 实例。
+
+    Raises:
+        HTTPException: 如果尚未通过 :func:`set_persistence_manager` 初始化则返回 503。
+    """
+    persistence = _holder.get_persistence()
+    if persistence is None:
+        raise HTTPException(
+            status_code=503, detail="State persistence not initialized"
+        )
+    return persistence
 
 
 def get_recovery() -> StateRecoveryManager:
-    if _recovery is None:
-        raise HTTPException(status_code=503, detail="State recovery not initialized")
-    return _recovery
+    """FastAPI 依赖：获取 :class:`StateRecoveryManager` 实例。
+
+    Returns:
+        :class:`StateRecoveryManager` 实例。
+
+    Raises:
+        HTTPException: 如果尚未通过 :func:`set_persistence_manager` 初始化则返回 503。
+    """
+    recovery = _holder.get_recovery()
+    if recovery is None:
+        raise HTTPException(
+            status_code=503, detail="State recovery not initialized"
+        )
+    return recovery
 
 
 def set_persistence_manager(manager: StatePersistenceManager):
-    global _persistence, _recovery
-    _persistence = manager
-    _recovery = StateRecoveryManager(manager)
+    """Initialize the agent state managers (typically called at app startup)."""
+    _holder.set_persistence(manager)
 
 
 @router.get("/")

@@ -11,10 +11,13 @@ Space structure:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence, Tuple
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 TOTAL_DIMS: int = 512
 
@@ -259,8 +262,14 @@ class PrecisionAxis(SemanticAxis):
             try:
                 num = int(grade[2:])
                 return cls.IT_NUMERIC_MAP.get(num, 0.0)
-            except (ValueError, IndexError):
-                pass
+            except (ValueError, IndexError) as grade_err:
+                # 解析 IT 等级数值失败时返回 0.0，调用方按 0 处理
+                logger.debug(
+                    "Failed to parse IT grade numeric value from %r: %s",
+                    grade,
+                    grade_err,
+                    exc_info=True,
+                )
         return 0.0
 
     def encode_precision(
@@ -541,11 +550,43 @@ class EmbeddingSpace:
         }
 
 
-_embedding_space: Optional[EmbeddingSpace] = None
+class _EmbeddingSpaceHolder:
+    """Thread-safe lazy holder for the :class:`EmbeddingSpace` singleton."""
+
+    def __init__(self) -> None:
+        import threading
+
+        self._lock = threading.Lock()
+        self._instance: Optional[EmbeddingSpace] = None
+
+    def get(self) -> EmbeddingSpace:
+        # 快速路径：已存在则直接返回，避免持锁开销
+        if self._instance is not None:
+            return self._instance
+        with self._lock:
+            # 双重检查：可能在获取锁的过程中其他线程已创建实例
+            if self._instance is not None:
+                return self._instance
+            self._instance = EmbeddingSpace()
+            return self._instance
+
+    def reset(self) -> None:
+        """Reset the cached instance (mainly for tests)."""
+        with self._lock:
+            self._instance = None
+
+
+_holder = _EmbeddingSpaceHolder()
 
 
 def get_embedding_space() -> EmbeddingSpace:
-    global _embedding_space
-    if _embedding_space is None:
-        _embedding_space = EmbeddingSpace()
-    return _embedding_space
+    """获取共享的 :class:`EmbeddingSpace` 单例；首次访问时懒初始化。
+
+    Returns:
+        :class:`EmbeddingSpace` 实例（应用生命周期内同一实例）。
+
+    Note:
+        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_embedding_space)``。
+        实现是线程安全的，行为与重构前完全一致。
+    """
+    return _holder.get()

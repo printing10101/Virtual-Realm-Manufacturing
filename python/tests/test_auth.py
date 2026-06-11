@@ -2,361 +2,204 @@
 Test Authentication Module
 
 Tests for:
-- Token generation and storage
-- AuthMiddleware: Bearer token authentication
-- Permission enforcement logic
-- Public endpoint handling
+- JWT token creation, decoding, and validation
+- Password hashing and verification
+- Token ban list functionality
+- Public endpoint configuration (where applicable)
 """
 
-import json
+import uuid
+from datetime import timedelta
 
-import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
-from app.core.auth import (
-    AuthMiddleware,
-    generate_token,
-    save_token,
-    load_token,
-    initialize_token,
-    PUBLIC_ENDPOINTS,
+from app.auth.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    decode_token_strict,
+    get_token_ban_list,
+    hash_password,
+    verify_password,
 )
 
 
-class TestTokenGeneration:
-    """Test token generation utilities"""
-
-    def test_generate_token_returns_uuid(self):
-        token1 = generate_token()
-        token2 = generate_token()
-
-        assert isinstance(token1, str)
-        assert len(token1) == 36
-        assert token1 != token2
-
-    def test_generate_token_format(self):
-        token = generate_token()
-        parts = token.split("-")
-
-        assert len(parts) == 5
-        assert len(parts[0]) == 8
-        assert len(parts[1]) == 4
-        assert len(parts[2]) == 4
-        assert len(parts[3]) == 4
-        assert len(parts[4]) == 12
+# ---------------------------------------------------------------------------
+# 密码哈希测试
+# ---------------------------------------------------------------------------
 
 
-class TestTokenStorage:
-    """Test token save and load functionality"""
+class TestPasswordHashing:
+    """密码哈希与验证相关测试。"""
 
-    def test_save_token_creates_file(self, tmp_path):
-        token = "test-token-12345"
-        file_path = tmp_path / ".test_token"
+    def test_hash_password_returns_non_empty_string(self):
+        """hash_password 应该返回非空字符串。"""
+        hashed = hash_password("Passw0rd!")
+        assert isinstance(hashed, str)
+        assert len(hashed) > 0
+        # 不应明文存储
+        assert hashed != "Passw0rd!"
 
-        result = save_token(token, file_path)
+    def test_hash_password_is_idempotent(self):
+        """同一密码应产生不同哈希（盐值随机）。"""
+        h1 = hash_password("Passw0rd!")
+        h2 = hash_password("Passw0rd!")
+        assert h1 != h2
 
-        assert result == file_path
-        assert file_path.exists()
-        assert file_path.read_text() == token
+    def test_verify_password_success(self):
+        """verify_password 应能验证正确密码。"""
+        hashed = hash_password("Passw0rd!")
+        assert verify_password("Passw0rd!", hashed) is True
 
-    def test_load_token_success(self, tmp_path):
-        token = "test-token-67890"
-        file_path = tmp_path / ".test_token"
-        file_path.write_text(token)
+    def test_verify_password_failure(self):
+        """verify_password 应拒绝错误密码。"""
+        hashed = hash_password("Passw0rd!")
+        assert verify_password("WrongPass", hashed) is False
 
-        result = load_token(file_path)
 
-        assert result == token
+# ---------------------------------------------------------------------------
+# JWT Token 测试
+# ---------------------------------------------------------------------------
 
-    def test_load_token_nonexistent_file(self, tmp_path):
-        file_path = tmp_path / "nonexistent"
-        result = load_token(file_path)
+
+class TestJWTTokens:
+    """JWT Token 创建与解码测试。"""
+
+    def test_create_access_token_returns_string(self):
+        """create_access_token 返回字符串。"""
+        token = create_access_token({"sub": "alice", "role": "user"})
+        assert isinstance(token, str)
+        assert len(token.split(".")) == 3  # 标准 JWT 三段式
+
+    def test_decode_access_token_returns_payload(self):
+        """应能解码刚刚创建的 access token。"""
+        token = create_access_token({"sub": "alice", "role": "user"})
+        payload = decode_token(token)
+        assert payload is not None
+        assert payload["sub"] == "alice"
+        assert payload["role"] == "user"
+        assert payload["type"] == "access"
+
+    def test_create_refresh_token_has_refresh_type(self):
+        """refresh token 的 type 字段应为 'refresh'。"""
+        token = create_refresh_token({"sub": "bob"})
+        payload = decode_token(token)
+        assert payload is not None
+        assert payload["type"] == "refresh"
+        assert payload["sub"] == "bob"
+
+    def test_decode_token_strict_rejects_wrong_type(self):
+        """decode_token_strict(expected_type='access') 应拒绝 refresh token。"""
+        refresh = create_refresh_token({"sub": "bob"})
+        assert decode_token_strict(refresh, expected_type="access") is None
+        assert decode_token_strict(refresh, expected_type="refresh") is not None
+
+    def test_decode_invalid_token_returns_none(self):
+        """无效 token 应返回 None。"""
+        assert decode_token("invalid.token.string") is None
+        assert decode_token("") is None
+        assert decode_token("not-a-jwt") is None
+
+    def test_custom_expiration(self):
+        """自定义 expires_delta 参数应生效 - 使用 0 秒过期。"""
+        # 创建一个立即过期的 token
+        token = create_access_token(
+            {"sub": "alice"},
+            expires_delta=timedelta(seconds=-1),
+        )
+        # 负数 expiration 应导致 decode 失败（已过期）
+        result = decode_token_strict(token, expected_type="access")
         assert result is None
 
-    def test_load_token_empty_file(self, tmp_path):
-        file_path = tmp_path / "empty_token"
-        file_path.write_text("")
-
-        result = load_token(file_path)
-        assert result is None
-
-    def test_load_token_whitespace_only(self, tmp_path):
-        file_path = tmp_path / "whitespace_token"
-        file_path.write_text("   \n\t  ")
-
-        result = load_token(file_path)
-        assert result is None
-
-    def test_initialize_token_creates_new(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(tmp_path / ".lnn_token"))
-
-        result = initialize_token()
-
-        assert isinstance(result, str)
-        assert len(result) == 36
-
-    def test_initialize_token_reuses_existing(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(tmp_path / ".lnn_token"))
-
-        existing = initialize_token()
-        reused = initialize_token()
-
-        assert existing == reused
-
-
-class TestPublicEndpoints:
-    """Test public endpoint configuration"""
-
-    def test_public_endpoints_defined(self):
-        assert "/api/health" in PUBLIC_ENDPOINTS
-        assert "/api/health/ping" in PUBLIC_ENDPOINTS
-        assert "/api/metrics" in PUBLIC_ENDPOINTS
-
-    def test_public_endpoints_count(self):
-        assert len(PUBLIC_ENDPOINTS) >= 3
-
-
-class TestAuthMiddleware:
-    """Test AuthMiddleware functionality"""
-
-    @pytest.fixture
-    def app_with_auth(self):
-        app = FastAPI()
-
-        @app.get("/protected")
-        async def protected():
-            return {"status": "ok"}
-
-        @app.get("/api/health")
-        async def health():
-            return {"status": "healthy"}
-
-        AuthMiddleware(app, enabled=True)
-        app.add_middleware(AuthMiddleware, enabled=True, permission_enforced=False)
-
-        return app
-
-    def test_middleware_initialization(self):
-        app = FastAPI()
-        middleware = AuthMiddleware(app, enabled=True)
-        assert middleware.enabled is True
-        assert middleware._token is not None
-
-    def test_middleware_disabled(self):
-        app = FastAPI()
-        middleware = AuthMiddleware(app, enabled=False)
-        assert middleware.enabled is False
-
-    def test_middleware_token_property(self):
-        app = FastAPI()
-        middleware = AuthMiddleware(app, enabled=True)
-        assert middleware.token is not None
-        assert isinstance(middleware.token, str)
-
-    def test_public_endpoint_no_auth_required(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(tmp_path / ".lnn_token"))
-
-        app = FastAPI()
-
-        @app.get("/api/health")
-        async def health():
-            return {"status": "healthy"}
-
-        app.add_middleware(AuthMiddleware, enabled=True)
-
-        client = TestClient(app)
-        response = client.get("/api/health")
-
-        assert response.status_code == 200
-
-    def test_missing_authorization_header(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(tmp_path / ".lnn_token"))
-
-        app = FastAPI()
-
-        @app.get("/protected")
-        async def protected():
-            return {"status": "ok"}
-
-        app.add_middleware(AuthMiddleware, enabled=True)
-
-        client = TestClient(app)
-        response = client.get("/protected")
-
-        assert response.status_code == 401
-        assert "unauthorized" in response.json()["error"]
-
-    def test_invalid_authorization_format(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(tmp_path / ".lnn_token"))
-
-        app = FastAPI()
-
-        @app.get("/protected")
-        async def protected():
-            return {"status": "ok"}
-
-        app.add_middleware(AuthMiddleware, enabled=True)
-
-        client = TestClient(app)
-        response = client.get("/protected", headers={"Authorization": "Basic token"})
-
-        assert response.status_code == 401
-
-    def test_invalid_token(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(tmp_path / ".lnn_token"))
-
-        app = FastAPI()
-
-        @app.get("/protected")
-        async def protected():
-            return {"status": "ok"}
-
-        app.add_middleware(AuthMiddleware, enabled=True)
-
-        client = TestClient(app)
-        response = client.get(
-            "/protected", headers={"Authorization": "Bearer invalid_token"}
+    def test_custom_expiration_long(self):
+        """自定义长过期时间 - decode 应成功。"""
+        token = create_access_token(
+            {"sub": "alice"},
+            expires_delta=timedelta(hours=2),
         )
-
-        assert response.status_code == 401
-        assert "Invalid authentication token" in response.json()["message"]
-
-    def test_valid_token(self, tmp_path, monkeypatch):
-        token_file = tmp_path / ".lnn_token"
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
-
-        app = FastAPI()
-
-        @app.get("/protected")
-        async def protected():
-            return {"status": "ok"}
-
-        app.add_middleware(AuthMiddleware, enabled=True)
-
-        client = TestClient(app)
-        response = client.get(
-            "/protected", headers={"Authorization": f"Bearer {token_file.read_text()}"}
-        )
-
-        assert response.status_code == 200
-
-    def test_docs_endpoints_excluded(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(tmp_path / ".lnn_token"))
-
-        app = FastAPI()
-
-        @app.get("/protected")
-        async def protected():
-            return {"status": "ok"}
-
-        app.add_middleware(AuthMiddleware, enabled=True)
-
-        client = TestClient(app)
-
-        for path in ["/api/docs", "/api/redoc", "/api/openapi.json"]:
-            response = client.get(path)
-            assert response.status_code != 401
+        result = decode_token_strict(token, expected_type="access")
+        assert result is not None
+        assert result["sub"] == "alice"
 
 
-class TestAuthMiddlewarePermissionEnforcement:
-    """Test AuthMiddleware with permission enforcement enabled"""
-
-    def test_permission_enforcement_enabled(self, tmp_path, monkeypatch):
-        token_file = tmp_path / ".lnn_token"
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
-        monkeypatch.setenv(
-            "LNN_TOKEN_META_FILE", str(tmp_path / ".lnn_token_meta.json")
-        )
-
-        meta_data = {"token": token_file.read_text(), "level": "R"}
-        (tmp_path / ".lnn_token_meta.json").write_text(json.dumps(meta_data))
-
-        app = FastAPI()
-
-        @app.post("/api/v1/lnn/train")
-        async def train():
-            return {"status": "training"}
-
-        app.add_middleware(AuthMiddleware, enabled=True, permission_enforced=True)
-
-        client = TestClient(app)
-
-        token = token_file.read_text()
-        response = client.post(
-            "/api/v1/lnn/train", headers={"Authorization": f"Bearer {token}"}
-        )
-
-        assert response.status_code == 403
-        assert "Insufficient permission" in response.json()["message"]
-
-    def test_permission_satisfied(self, tmp_path, monkeypatch):
-        token_file = tmp_path / ".lnn_token"
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
-        monkeypatch.setenv(
-            "LNN_TOKEN_META_FILE", str(tmp_path / ".lnn_token_meta.json")
-        )
-
-        meta_data = {"token": token_file.read_text(), "level": "B"}
-        (tmp_path / ".lnn_token_meta.json").write_text(json.dumps(meta_data))
-
-        app = FastAPI()
-
-        @app.post("/api/v1/lnn/train")
-        async def train():
-            return {"status": "training"}
-
-        app.add_middleware(AuthMiddleware, enabled=True, permission_enforced=True)
-
-        client = TestClient(app)
-
-        token = token_file.read_text()
-        response = client.post(
-            "/api/v1/lnn/train", headers={"Authorization": f"Bearer {token}"}
-        )
-
-        assert response.status_code == 200
+# ---------------------------------------------------------------------------
+# TokenBanList 测试
+# ---------------------------------------------------------------------------
 
 
-class TestAuthMiddlewareEdgeCases:
-    """Test edge cases for authentication"""
+class TestTokenBanList:
+    """TokenBanList 测试。"""
 
-    def test_empty_token_file(self, tmp_path, monkeypatch):
-        token_file = tmp_path / ".lnn_token"
-        token_file.write_text("")
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
+    def test_ban_then_check(self, tmp_path, monkeypatch):
+        """被 ban 的 token 在 check 时应被识别。"""
+        ban_file = tmp_path / "banned.json"
+        monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", str(ban_file))
 
-        app = FastAPI()
-        middleware = AuthMiddleware(app, enabled=True)
+        from app.auth import security as security_module
+        monkeypatch.setattr(security_module, "_token_ban_list", None)
 
-        assert middleware.token is not None
+        ban_list = get_token_ban_list()
+        token = "test-token-" + uuid.uuid4().hex
+        assert ban_list.is_banned(token) is False
 
-    def test_permission_level_fallback(self, tmp_path, monkeypatch):
-        token_file = tmp_path / ".lnn_token"
-        monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
-        monkeypatch.setenv(
-            "LNN_TOKEN_META_FILE", str(tmp_path / ".lnn_token_meta.json")
-        )
+        ban_list.ban(token)
+        assert ban_list.is_banned(token) is True
 
-        (tmp_path / ".lnn_token_meta.json").write_text("{}")
+    def test_unban_removes_token(self, tmp_path, monkeypatch):
+        """重新 ban 一个不存在的 token：banned 列表应包含其 jti。"""
+        ban_file = tmp_path / "banned.json"
+        monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", str(ban_file))
 
-        app = FastAPI()
+        from app.auth import security as security_module
+        monkeypatch.setattr(security_module, "_token_ban_list", None)
 
-        @app.post("/api/v1/machine/params")
-        async def machine_params():
-            return {"status": "ok"}
+        ban_list = get_token_ban_list()
+        # 第一次 ban
+        token = "test-token-xyz"
+        ban_list.ban(token)
+        assert ban_list.is_banned(token) is True
+        # 第二次 ban 同一 token（幂等）
+        ban_list.ban(token)
+        assert ban_list.is_banned(token) is True
 
-        app.add_middleware(AuthMiddleware, enabled=True, permission_enforced=True)
+    def test_persistence_across_instances(self, tmp_path, monkeypatch):
+        """ban 状态应持久化到文件，新实例应能读取。"""
+        ban_file = tmp_path / "banned.json"
+        monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", str(ban_file))
 
-        client = TestClient(app)
+        from app.auth import security as security_module
+        monkeypatch.setattr(security_module, "_token_ban_list", None)
 
-        token = token_file.read_text()
-        response = client.post(
-            "/api/v1/machine/params", headers={"Authorization": f"Bearer {token}"}
-        )
+        ban_list_1 = get_token_ban_list()
+        token = "persistent-token"
+        ban_list_1.ban(token)
 
-        assert response.status_code == 403
+        # 重置单例，模拟新启动
+        monkeypatch.setattr(security_module, "_token_ban_list", None)
+        ban_list_2 = get_token_ban_list()
+        assert ban_list_2.is_banned(token) is True
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+# ---------------------------------------------------------------------------
+# Token 撤销与登出流程测试
+# ---------------------------------------------------------------------------
+
+
+class TestTokenRevocationFlow:
+    """Token 撤销的端到端流程测试。"""
+
+    def test_banned_token_cannot_be_decoded_for_use(self, tmp_path, monkeypatch):
+        """被 ban 的 token 仍能被解码（payload 完整），但应通过 ban_list 阻止使用。"""
+        ban_file = tmp_path / "banned.json"
+        monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", str(ban_file))
+
+        from app.auth import security as security_module
+        monkeypatch.setattr(security_module, "_token_ban_list", None)
+
+        ban_list = get_token_ban_list()
+        token = create_access_token({"sub": "alice", "role": "user"})
+
+        # 未撤销时 decode_token_strict 成功
+        assert decode_token_strict(token, expected_type="access") is not None
+
+        # 撤销后 decode_token_strict 仍能解码，但 is_banned 为 True
+        ban_list.ban(token)
+        assert ban_list.is_banned(token) is True

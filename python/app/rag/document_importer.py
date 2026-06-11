@@ -134,7 +134,8 @@ class DocumentImportService:
                 chunks = _chunk_text(content, chunk_size, chunk_overlap)
                 chunk_metas = [{} for _ in chunks]
             parse_ms = (time.time() - parse_start) * 1000
-        except Exception as e:
+        except (OSError, ValueError, TypeError, UnicodeDecodeError) as e:
+            # 文件 IO、解析器返回格式错误、编码错误等已知异常
             logger.exception("Failed to parse document: %s", file_path)
             return self._error_result(file_path_obj.name, str(e))
 
@@ -155,9 +156,20 @@ class DocumentImportService:
             embed_start = time.time()
             embeddings = self._emb.embed_batch(chunks)
             embed_ms = (time.time() - embed_start) * 1000
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
+            # embedding 推理（onnx/numpy/磁盘模型 IO）可能失败
             logger.exception("Failed to generate embeddings: %s", file_path)
-            return self._error_result(file_path_obj.name, f"Embedding failed: {e}")
+            from app.core.safe_errors import safe_error_message
+
+            safe = safe_error_message(
+                e,
+                context="rag.document_importer.embed",
+                fallback="Embedding生成失败",
+            )
+            return self._error_result(
+                file_path_obj.name,
+                f"Embedding failed: {safe['message']} (error_id={safe['error_id']})",
+            )
 
         import_start = time.time()
         chunk_count = 0
@@ -173,8 +185,12 @@ class DocumentImportService:
                     metadatas=[meta],
                 )
                 chunk_count += 1
-            except Exception as e:
-                logger.warning("Failed to store chunk %d of %s: %s", i, file_path_obj.name, e)
+            except (OSError, RuntimeError, ValueError, KeyError) as e:
+                # 单个 chunk 写入失败时记录但继续处理剩余 chunks
+                logger.warning(
+                    "Failed to store chunk %d of %s: %s",
+                    i, file_path_obj.name, e, exc_info=True,
+                )
                 failed_chunks += 1
         import_ms = (time.time() - import_start) * 1000
 

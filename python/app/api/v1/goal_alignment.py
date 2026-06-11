@@ -10,13 +10,15 @@ from __future__ import annotations
 import time
 import uuid
 import logging
+import threading
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.core.response import ErrorCode, error, success
-from app.core.goal_chain_store import get_goal_chain_store
-from app.core.goal_alignment import GoalAlignmentChecker, GoalAlignmentError
+from app.core.safe_errors import safe_error_message
+from app.goals.goal_chain_store import get_goal_chain_store
+from app.goals.goal_alignment import GoalAlignmentChecker, GoalAlignmentError
 from app.models.goals import (
     Goal,
     GoalLevel,
@@ -32,14 +34,64 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/goal-alignment", tags=["Goal Alignment"])
 
-_alignment_checker: Optional[GoalAlignmentChecker] = None
+
+class _AlignmentCheckerHolder:
+    """线程安全的 :class:`GoalAlignmentChecker` 单例容器。
+
+    替代重构前的 ``global _alignment_checker`` 模式。线程安全由
+    :class:`threading.Lock` 保证；同时通过惰性创建的方式仅在首次访问
+    时构造实例，避免不必要的启动开销。
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._instance: Optional[GoalAlignmentChecker] = None
+
+    def get(self) -> GoalAlignmentChecker:
+        """获取（或懒创建）单例实例。"""
+        if self._instance is None:
+            with self._lock:
+                if self._instance is None:
+                    self._instance = GoalAlignmentChecker()
+        return self._instance
+
+    def reset(self) -> None:
+        """重置容器，主要用于测试场景。"""
+        with self._lock:
+            self._instance = None
+
+
+_holder = _AlignmentCheckerHolder()
 
 
 def get_alignment_checker() -> GoalAlignmentChecker:
-    global _alignment_checker
-    if _alignment_checker is None:
-        _alignment_checker = GoalAlignmentChecker()
-    return _alignment_checker
+    """FastAPI 依赖：获取共享的 :class:`GoalAlignmentChecker` 实例。
+
+    Returns:
+        :class:`GoalAlignmentChecker` 单例，线程安全地懒初始化。
+
+    Note:
+        与重构前的 ``get_alignment_checker()`` 行为完全一致；可被
+        ``Depends(get_alignment_checker)`` 注入到任意路由或服务函数中。
+    """
+    return _holder.get()
+
+
+def set_alignment_checker(checker: Optional[GoalAlignmentChecker]) -> None:
+    """显式注入 :class:`GoalAlignmentChecker` 实例（用于测试或启动期初始化）。
+
+    传入 ``None`` 等价于 :func:`reset_alignment_checker`。
+    """
+    if checker is None:
+        _holder.reset()
+        return
+    with _holder._lock:  # noqa: SLF001 - 测试/启动期显式注入需要写锁
+        _holder._instance = checker  # noqa: SLF001
+
+
+def reset_alignment_checker() -> None:
+    """清除已缓存的 :class:`GoalAlignmentChecker` 单例（主要用于测试）。"""
+    _holder.reset()
 
 
 @router.get("/goals/tree")
@@ -88,8 +140,10 @@ async def get_goal_children(goal_id: str):
 
 
 @router.get("/goals/{goal_id}/progress")
-async def get_goal_progress(goal_id: str):
-    checker = get_alignment_checker()
+async def get_goal_progress(
+    goal_id: str,
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     progress = checker.compute_goal_progress(goal_id)
     return success(data=progress.to_dict(), message="Progress computed")
 
@@ -114,7 +168,19 @@ async def create_goal(data: dict):
         level = GoalLevel(data.get("level", "task"))
         status = GoalStatus(data.get("status", "not_started"))
     except ValueError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid enum value: {e}")
+        # 修复：不再直接 str(e) 暴露原始异常文本，使用 safe_error_message
+        # 统一包装并通过日志保留完整堆栈。
+        safe = safe_error_message(e, context="goal_alignment.create_goal")
+        logger.warning(
+            "Invalid enum value in create_goal | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=safe["message"],
+        )
 
     goal_id = data.get("id", f"{level.value}-{uuid.uuid4().hex[:8]}")
     goal = Goal(
@@ -144,9 +210,12 @@ async def create_goal(data: dict):
 
 
 @router.put("/goals/{goal_id}")
-async def update_goal(goal_id: str, data: dict):
+async def update_goal(
+    goal_id: str,
+    data: dict,
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     store = get_goal_chain_store()
-    checker = get_alignment_checker()
 
     updatable = {}
     if "name" in data:
@@ -193,9 +262,11 @@ async def delete_goal(goal_id: str):
 
 
 @router.post("/tasks")
-async def create_task(data: dict):
+async def create_task(
+    data: dict,
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     store = get_goal_chain_store()
-    checker = get_alignment_checker()
 
     try:
         task_type = EnhancedTaskType(data["task_type"])
@@ -241,7 +312,15 @@ async def create_task(data: dict):
     try:
         checker.validate_task_goal_chain(task)
     except GoalAlignmentError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
+        # GoalAlignmentError 是业务级校验异常（用户可理解），直接透出文本是合理的；
+        # 但仍用 safe_error_message 包裹，避免泄露内部堆栈。
+        safe = safe_error_message(e, context="goal_alignment.validate_task")
+        logger.info(
+            "Task goal chain validation failed | task_id=%s | error_id=%s",
+            task_id,
+            safe.get("error_id"),
+        )
+        return error(code=ErrorCode.INVALID_REQUEST, message=safe["message"])
 
     checker.register_task(task)
 
@@ -257,9 +336,11 @@ async def create_task(data: dict):
 
 
 @router.post("/tasks/{task_id}/status")
-async def update_task_status(task_id: str, data: dict):
-    checker = get_alignment_checker()
-
+async def update_task_status(
+    task_id: str,
+    data: dict,
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     try:
         new_status = EnhancedTaskStatus(data["status"])
     except (KeyError, ValueError):
@@ -300,9 +381,10 @@ async def update_task_status(task_id: str, data: dict):
 
 
 @router.get("/tasks/{task_id}/context")
-async def get_task_context(task_id: str):
-    checker = get_alignment_checker()
-
+async def get_task_context(
+    task_id: str,
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     if task_id not in checker._task_map:
         return error(code=ErrorCode.NOT_FOUND, message=f"Task '{task_id}' not found")
 
@@ -312,9 +394,10 @@ async def get_task_context(task_id: str):
 
 
 @router.get("/tasks/{task_id}/alignment")
-async def check_task_alignment(task_id: str):
-    checker = get_alignment_checker()
-
+async def check_task_alignment(
+    task_id: str,
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     if task_id not in checker._task_map:
         return error(code=ErrorCode.NOT_FOUND, message=f"Task '{task_id}' not found")
 
@@ -330,29 +413,35 @@ async def check_task_alignment(task_id: str):
             message="Task is properly aligned",
         )
     except GoalAlignmentError as e:
+        # GoalAlignmentError 文本对前端用户是业务可读信息；
+        # 通过 safe_error_message 统一包装便于后续统一脱敏/审计。
+        safe = safe_error_message(e, context="goal_alignment.check_task_alignment")
         return success(
-            data={"task_id": task_id, "aligned": False, "issue": str(e)},
+            data={"task_id": task_id, "aligned": False, "issue": safe["message"]},
             message="Task alignment issue found",
         )
 
 
 @router.post("/scan")
-async def run_alignment_scan():
-    checker = get_alignment_checker()
+async def run_alignment_scan(
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     result = checker.run_alignment_scan()
     return success(data=result, message="Alignment scan completed")
 
 
 @router.get("/summary")
-async def get_alignment_summary():
-    checker = get_alignment_checker()
+async def get_alignment_summary(
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     summary = checker.get_alignment_summary()
     return success(data=summary, message="Alignment summary retrieved")
 
 
 @router.get("/progress/all")
-async def get_all_progress():
-    checker = get_alignment_checker()
+async def get_all_progress(
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     progresses = checker.compute_all_progress()
     return success(
         data=[p.to_dict() for p in progresses], message="All progress computed"
@@ -360,12 +449,14 @@ async def get_all_progress():
 
 
 @router.post("/goals/{goal_id}/propagate")
-async def propagate_goal_change(goal_id: str):
+async def propagate_goal_change(
+    goal_id: str,
+    checker: GoalAlignmentChecker = Depends(get_alignment_checker),
+):
     store = get_goal_chain_store()
     goal = store.get_goal(goal_id)
     if goal is None:
         return error(code=ErrorCode.NOT_FOUND, message=f"Goal '{goal_id}' not found")
 
-    checker = get_alignment_checker()
     result = checker.propagate_goal_change(goal_id)
     return success(data=result, message="Goal change propagated")

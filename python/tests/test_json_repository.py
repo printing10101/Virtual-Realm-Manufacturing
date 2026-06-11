@@ -14,9 +14,9 @@ import tempfile
 import shutil
 import threading
 
-from app.core.repository.json_repository import JsonRepository
-from app.core.repository.config import JsonConfig
-from app.core.repository.exceptions import (
+from app.repository.json_repository import JsonRepository
+from app.repository.config import JsonConfig
+from app.repository.exceptions import (
     RecordNotFoundError,
     StorageError,
     ValidationError,

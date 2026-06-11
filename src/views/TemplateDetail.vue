@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getBranchTypeTagType } from '@/utils/statusHelpers'
 
+const { t } = useI18n()
 const route = useRoute()
 const branchId = route.params.id as string
 const branch = ref<any>(null)
@@ -65,7 +67,7 @@ onMounted(() => {
 <template>
   <div class="template-detail-page">
     <el-page-header
-      :title="'返回'"
+      :title="t('templateDetail.back')"
       class="page-header"
       @back="$router.back()"
     />
@@ -87,20 +89,20 @@ onMounted(() => {
         :column="2"
         border
       >
-        <el-descriptions-item label="分支ID">
+        <el-descriptions-item :label="t('templateDetail.branchId')">
           {{ branch.branch_id }}
         </el-descriptions-item>
-        <el-descriptions-item label="基础分支">
-          {{ branch.base_branch || '无' }}
+        <el-descriptions-item :label="t('templateDetail.baseBranch')">
+          {{ branch.base_branch || t('templateDetail.none') }}
         </el-descriptions-item>
-        <el-descriptions-item label="创建时间">
+        <el-descriptions-item :label="t('templateDetail.createdAt')">
           {{ formatSecondsTimestamp(branch.created_at) }}
         </el-descriptions-item>
-        <el-descriptions-item label="更新时间">
+        <el-descriptions-item :label="t('templateDetail.updatedAt')">
           {{ formatSecondsTimestamp(branch.updated_at) }}
         </el-descriptions-item>
-        <el-descriptions-item label="提交记录">
-          {{ branch.commit_log?.length || 0 }} 条
+        <el-descriptions-item :label="t('templateDetail.commits')">
+          {{ t('templateDetail.commitCount', { count: branch.commit_log?.length || 0 }) }}
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
@@ -110,7 +112,7 @@ onMounted(() => {
       class="detail-tabs"
     >
       <el-tab-pane
-        label="模板数据"
+        :label="t('templateDetail.tabTemplate')"
         name="info"
       >
         <el-card v-if="branch">
@@ -119,7 +121,7 @@ onMounted(() => {
       </el-tab-pane>
 
       <el-tab-pane
-        label="进化历史"
+        :label="t('templateDetail.tabEvolution')"
         name="evolution"
       >
         <el-timeline v-if="evolutionHistory.length > 0">
@@ -135,19 +137,19 @@ onMounted(() => {
               {{ entry.action }}
             </el-tag>
             <div class="evolution-detail">
-              建议ID: {{ entry.suggestion_id }}
+              {{ t('templateDetail.suggestionId', { id: entry.suggestion_id }) }}
               <pre v-if="entry.details">{{ JSON.stringify(entry.details, null, 2) }}</pre>
             </div>
           </el-timeline-item>
         </el-timeline>
         <el-empty
           v-else
-          description="暂无进化记录"
+          :description="t('templateDetail.noEvolution')"
         />
       </el-tab-pane>
 
       <el-tab-pane
-        label="A/B测试"
+        :label="t('templateDetail.tabAb')"
         name="ab"
       >
         <el-table
@@ -156,45 +158,45 @@ onMounted(() => {
         >
           <el-table-column
             prop="name"
-            label="实验名称"
+            :label="t('templateDetail.experimentName')"
           />
           <el-table-column
-            label="控制组"
+            :label="t('templateDetail.controlGroup')"
             width="120"
           >
             <template #default="{ row }">
-              <el-tag>{{ row.control_branch === branchId ? '本分支' : row.control_branch }}</el-tag>
+              <el-tag>{{ row.control_branch === branchId ? t('templateDetail.thisBranch') : row.control_branch }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column
-            label="候选组"
+            :label="t('templateDetail.candidateGroup')"
             width="120"
           >
             <template #default="{ row }">
               <el-tag :type="row.candidate_branch === branchId ? 'primary' : 'info'">
-                {{ row.candidate_branch === branchId ? '本分支' : row.candidate_branch }}
+                {{ row.candidate_branch === branchId ? t('templateDetail.thisBranch') : row.candidate_branch }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column
             prop="status"
-            label="状态"
+            :label="t('userManagement.colStatus')"
             width="100"
           />
           <el-table-column
             prop="result"
-            label="结果"
+            :label="t('templateDetail.result')"
             width="120"
           />
         </el-table>
         <el-empty
           v-if="abExperiments.length === 0"
-          description="暂无A/B测试"
+          :description="t('templateDetail.noAbTests')"
         />
       </el-tab-pane>
 
       <el-tab-pane
-        label="效果指标"
+        :label="t('templateDetail.tabMetrics')"
         name="metrics"
       >
         <el-descriptions
@@ -202,22 +204,22 @@ onMounted(() => {
           :column="2"
           border
         >
-          <el-descriptions-item label="成功率">
+          <el-descriptions-item :label="t('templateDetail.successRate')">
             {{ (metrics.success_rate * 100).toFixed(1) }}%
           </el-descriptions-item>
-          <el-descriptions-item label="实验次数">
+          <el-descriptions-item :label="t('templateDetail.totalExperiments')">
             {{ metrics.total_experiments }}
           </el-descriptions-item>
-          <el-descriptions-item label="采用次数">
+          <el-descriptions-item :label="t('templateDetail.adoptionCount')">
             {{ metrics.adoption_count }}
           </el-descriptions-item>
-          <el-descriptions-item label="最后更新">
+          <el-descriptions-item :label="t('templateDetail.lastUpdated')">
             {{ formatSecondsTimestamp(metrics.last_updated) }}
           </el-descriptions-item>
         </el-descriptions>
         <el-empty
           v-else
-          description="暂无效果数据"
+          :description="t('templateDetail.noMetrics')"
         />
       </el-tab-pane>
     </el-tabs>

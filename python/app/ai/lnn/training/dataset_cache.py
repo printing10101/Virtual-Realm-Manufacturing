@@ -143,13 +143,20 @@ class DatasetCache:
                         filepath = os.path.join(self._cache_directory, filename)
                         try:
                             self._current_disk_usage += os.path.getsize(filepath)
-                        except OSError:
-                            pass
+                        except OSError as e:
+                            # 静默处理：单个缓存文件元数据读取失败不影响整体加载流程
+                            logger.debug(
+                                f"Failed to read size for cache file {filepath}: {e}",
+                                exc_info=True,
+                            )
                 logger.debug(
                     f"Loaded disk cache metadata: {self._current_disk_usage} bytes"
                 )
-        except Exception as e:
-            logger.warning(f"Failed to load disk cache metadata: {e}")
+        except (OSError, IOError, json.JSONDecodeError, ValueError, KeyError) as e:
+            # 磁盘缓存元数据加载涉及文件 IO、JSON 解析、字段访问
+            logger.warning(
+                f"Failed to load disk cache metadata: {e}", exc_info=True
+            )
 
     @staticmethod
     def generate_cache_key(file_path: str) -> Tuple[str, float, int]:
@@ -369,11 +376,18 @@ class DatasetCache:
             )
             try:
                 os.remove(cache_file)
-            except OSError:
-                pass
+            except OSError as remove_err:
+                # 损坏文件清理失败不应阻塞主流程，但需记录以便后续排查
+                logger.warning(
+                    f"Failed to remove corrupted cache file {cache_file}: {remove_err}",
+                    exc_info=True,
+                )
             return None
-        except Exception as e:
-            logger.warning(f"Unexpected error loading cache from disk: {e}")
+        except (OSError, IOError, ValueError, TypeError, KeyError) as e:
+            # 兜底捕获：磁盘缓存加载可能涉及文件 IO、反序列化、字段缺失等未知错误
+            logger.warning(
+                f"Unexpected error loading cache from disk: {e}", exc_info=True
+            )
             return None
 
     def put(
@@ -521,8 +535,11 @@ class DatasetCache:
                 self._clear_disk_cache()
             else:
                 logger.error(f"Failed to save cache to disk: {e}")
-        except Exception as e:
-            logger.error(f"Unexpected error saving cache to disk: {e}")
+        except (pickle.PickleError, ValueError, TypeError, AttributeError) as e:
+            # 兜底捕获：磁盘缓存序列化可能因对象类型、属性访问等失败
+            logger.error(
+                f"Unexpected error saving cache to disk: {e}", exc_info=True
+            )
 
     def _has_disk_cache(self) -> bool:
         """检查是否有磁盘缓存文件"""
@@ -566,8 +583,11 @@ class DatasetCache:
                     f"freed={file_size / 1024:.2f}KB"
                 )
 
-        except Exception as e:
-            logger.warning(f"Failed to evict from disk cache: {e}")
+        except (OSError, ValueError, TypeError, AttributeError) as e:
+            # 磁盘缓存清理涉及文件 IO、属性访问等
+            logger.warning(
+                f"Failed to evict from disk cache: {e}", exc_info=True
+            )
 
     def _clear_disk_cache(self) -> None:
         """清空所有磁盘缓存"""
@@ -577,12 +597,20 @@ class DatasetCache:
                     filepath = os.path.join(self._cache_directory, filename)
                     try:
                         os.remove(filepath)
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        # 单个缓存文件清理失败不影响整体清空流程
+                        logger.warning(
+                            f"Failed to remove cache file {filepath}: {e}",
+                            exc_info=True,
+                        )
             self._current_disk_usage = 0
             logger.info("Disk cache cleared")
-        except Exception as e:
-            logger.error(f"Failed to clear disk cache: {e}")
+
+        except (OSError, ValueError, TypeError, AttributeError) as e:
+            # 兜底捕获：清空缓存涉及目录遍历、文件 IO 等
+            logger.error(
+                f"Failed to clear disk cache: {e}", exc_info=True
+            )
 
     @staticmethod
     def _estimate_memory_size(data: Any, labels: Any) -> int:
@@ -603,16 +631,24 @@ class DatasetCache:
                 size += data.nbytes
             elif hasattr(data, "__len__"):
                 size += len(data) * 8
-        except Exception:
-            pass
+        except (TypeError, AttributeError, ValueError) as e:
+            # 内存估算失败时使用默认值，仅影响缓存淘汰判断精度
+            logger.debug(
+                f"Failed to estimate memory size for data: {e}",
+                exc_info=True,
+            )
 
         try:
             if hasattr(labels, "nbytes"):
                 size += labels.nbytes
             elif hasattr(labels, "__len__"):
                 size += len(labels) * 8
-        except Exception:
-            pass
+        except (TypeError, AttributeError, ValueError) as e:
+            # 标签内存估算失败时使用默认值，仅影响缓存淘汰判断精度
+            logger.debug(
+                f"Failed to estimate memory size for labels: {e}",
+                exc_info=True,
+            )
 
         return max(size, 1024)
 
@@ -650,10 +686,17 @@ class DatasetCache:
                             try:
                                 os.remove(filepath)
                                 disk_count += 1
-                            except OSError:
-                                pass
-                except Exception as e:
-                    logger.warning(f"Failed to clear disk cache: {e}")
+                            except OSError as e:
+                                # 单个磁盘缓存清理失败不影响整体计数
+                                logger.warning(
+                                    f"Failed to remove cache file {filepath}: {e}",
+                                    exc_info=True,
+                                )
+                except (OSError, ValueError, TypeError, AttributeError) as e:
+                    # 兜底捕获：批量清理磁盘缓存涉及目录遍历、文件 IO
+                    logger.warning(
+                        f"Failed to clear disk cache: {e}", exc_info=True
+                    )
 
                 self._current_disk_usage = 0
                 count += disk_count
@@ -739,8 +782,12 @@ class DatasetCache:
                     os.remove(cache_file)
                     self._current_disk_usage -= file_size
                     removed = True
-                except OSError:
-                    pass
+                except OSError as e:
+                    # 单个缓存条目移除失败不影响其他缓存清理
+                    logger.warning(
+                        f"Failed to remove cache entry {cache_file}: {e}",
+                        exc_info=True,
+                    )
 
             if removed:
                 logger.info(f"Cache removed: {file_path}")

@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.core.template_update_service import get_update_service
+from app.templates.template_update_service import get_update_service
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)

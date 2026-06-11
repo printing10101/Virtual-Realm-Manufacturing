@@ -1,10 +1,10 @@
-"""Tests for UnifiedAuthMiddleware (pure ASGI)."""
+﻿"""Tests for UnifiedAuthMiddleware (pure ASGI)."""
 
 import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
 
-from app.core.middleware.unified_auth import (
+from app.auth.unified_auth import (
     UnifiedAuthMiddleware,
     _is_public_path,
     IdempotencyStore,

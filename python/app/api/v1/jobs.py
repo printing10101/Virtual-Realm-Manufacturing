@@ -1,4 +1,4 @@
-"""
+﻿"""
 Jobs API - Async task management and SSE streaming.
 
 Supports PostgreSQL-persisted task queries, Redis progress retrieval,
@@ -13,8 +13,8 @@ from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
-from app.core.task_manager import TaskType, TaskStatus
-from app.core.task_system import AsyncTaskManager
+from app.tasks.task_manager import TaskType, TaskStatus
+from app.tasks.task_system import AsyncTaskManager
 
 logger = logging.getLogger(__name__)
 

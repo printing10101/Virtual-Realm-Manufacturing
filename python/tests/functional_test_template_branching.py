@@ -1,4 +1,4 @@
-"""Functional tests for Template Branching System."""
+﻿"""Functional tests for Template Branching System."""
 
 import os
 import shutil
@@ -9,8 +9,8 @@ import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from app.core.template_branching import TemplateBranchManager
-from app.core.template_branching import init_template_branching, get_branch_manager
+from app.templates.template_branching import TemplateBranchManager
+from app.templates.template_branching import init_template_branching, get_branch_manager
 
 
 @pytest.fixture

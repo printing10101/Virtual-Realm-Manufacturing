@@ -1,4 +1,4 @@
-"""
+﻿"""
 Test RBAC Permission Check Core Logic
 
 Tests for:
@@ -20,21 +20,21 @@ class TestRBACPermissionCache:
     """Test RBACPermissionCache singleton and caching behavior"""
 
     def test_singleton_behavior(self):
-        from app.core.permissions import RBACPermissionCache
+        from app.auth.permissions import RBACPermissionCache
 
         cache1 = RBACPermissionCache()
         cache2 = RBACPermissionCache()
         assert cache1 is cache2
 
     def test_get_miss_returns_none(self):
-        from app.core.permissions import rbac_cache
+        from app.auth.permissions import rbac_cache
 
         rbac_cache._cache.clear()
         result = rbac_cache.get("nonexistent_role")
         assert result is None
 
     def test_set_and_get(self):
-        from app.core.permissions import rbac_cache
+        from app.auth.permissions import rbac_cache
 
         rbac_cache._cache.clear()
         perms = {"project:create", "result:view"}
@@ -44,7 +44,7 @@ class TestRBACPermissionCache:
         assert result == perms
 
     def test_ttl_expiry(self):
-        from app.core.permissions import rbac_cache
+        from app.auth.permissions import rbac_cache
 
         rbac_cache._cache.clear()
         rbac_cache._ttl = 0.001
@@ -55,7 +55,7 @@ class TestRBACPermissionCache:
         assert result is None
 
     def test_invalidate_specific_role(self):
-        from app.core.permissions import rbac_cache
+        from app.auth.permissions import rbac_cache
 
         rbac_cache._cache.clear()
         rbac_cache._ttl = 3600
@@ -67,7 +67,7 @@ class TestRBACPermissionCache:
         assert rbac_cache.get("engineer") == {"project:create"}
 
     def test_invalidate_all_roles(self):
-        from app.core.permissions import rbac_cache
+        from app.auth.permissions import rbac_cache
 
         rbac_cache._cache.clear()
         rbac_cache._ttl = 3600
@@ -79,7 +79,7 @@ class TestRBACPermissionCache:
         assert rbac_cache.get("engineer") is None
 
     def test_ttl_restored_after_test(self):
-        from app.core.permissions import rbac_cache
+        from app.auth.permissions import rbac_cache
 
         rbac_cache._ttl = 60.0
         rbac_cache._cache.clear()
@@ -90,7 +90,7 @@ class TestCheckUserPermissions:
 
     @pytest.fixture(autouse=True)
     def setup_cache(self):
-        from app.core.permissions import rbac_cache
+        from app.auth.permissions import rbac_cache
 
         rbac_cache._cache.clear()
         rbac_cache._ttl = 3600
@@ -100,7 +100,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_permission_granted(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_permission,
             rbac_cache,
         )
@@ -117,7 +117,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_permission_denied(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_permission,
             rbac_cache,
         )
@@ -134,7 +134,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_permission_user_not_found(self):
-        from app.core.permissions import check_user_has_permission
+        from app.auth.permissions import check_user_has_permission
 
         with patch("app.models.user.get_user_store") as mock_store:
             mock_store.return_value.get_user.return_value = None
@@ -144,7 +144,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_any_permission_single_match(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_any_permission,
             rbac_cache,
         )
@@ -163,7 +163,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_any_permission_no_match(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_any_permission,
             rbac_cache,
         )
@@ -182,7 +182,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_any_permission_empty_list(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_any_permission,
             rbac_cache,
         )
@@ -199,7 +199,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_all_permissions_all_match(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_all_permissions,
             rbac_cache,
         )
@@ -218,7 +218,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_all_permissions_partial_match(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_all_permissions,
             rbac_cache,
         )
@@ -237,7 +237,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_all_permissions_single(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_all_permissions,
             rbac_cache,
         )
@@ -256,7 +256,7 @@ class TestCheckUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_all_permissions_empty_list(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_all_permissions,
             rbac_cache,
         )
@@ -277,7 +277,7 @@ class TestAdminRolePermissions:
 
     @pytest.mark.asyncio
     async def test_admin_can_access_all_permissions(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             check_user_has_permission,
             check_user_has_all_permissions,
             rbac_cache,
@@ -306,7 +306,7 @@ class TestEngineerRolePermissions:
 
     @pytest.mark.asyncio
     async def test_engineer_can_create_project(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"})  # noqa: E501
 
@@ -319,7 +319,7 @@ class TestEngineerRolePermissions:
 
     @pytest.mark.asyncio
     async def test_engineer_can_run_simulation(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"})  # noqa: E501
 
@@ -332,7 +332,7 @@ class TestEngineerRolePermissions:
 
     @pytest.mark.asyncio
     async def test_engineer_cannot_manage_users(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view"})
 
@@ -345,7 +345,7 @@ class TestEngineerRolePermissions:
 
     @pytest.mark.asyncio
     async def test_engineer_cannot_configure_system(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         rbac_cache.set("engineer", {"project:create", "simulation:run"})
 
@@ -362,7 +362,7 @@ class TestOperatorRolePermissions:
 
     @pytest.mark.asyncio
     async def test_operator_can_view_results(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         rbac_cache.set("operator", {"result:view", "report:export", "model:predict"})
 
@@ -375,7 +375,7 @@ class TestOperatorRolePermissions:
 
     @pytest.mark.asyncio
     async def test_operator_can_export_reports(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         rbac_cache.set("operator", {"result:view", "report:export", "model:predict"})
 
@@ -388,7 +388,7 @@ class TestOperatorRolePermissions:
 
     @pytest.mark.asyncio
     async def test_operator_cannot_create_project(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         rbac_cache.set("operator", {"result:view", "report:export"})
 
@@ -401,7 +401,7 @@ class TestOperatorRolePermissions:
 
     @pytest.mark.asyncio
     async def test_operator_cannot_run_simulation(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         rbac_cache.set("operator", {"result:view", "report:export"})
 
@@ -414,7 +414,7 @@ class TestOperatorRolePermissions:
 
     @pytest.mark.asyncio
     async def test_operator_cannot_manage_users(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         rbac_cache.set("operator", {"result:view", "report:export"})
 
@@ -431,7 +431,7 @@ class TestPermissionBoundaryCrossRole:
 
     @pytest.mark.asyncio
     async def test_operator_boundary_vs_engineer_permissions(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         operator_perms = {"result:view", "report:export", "model:predict"}
         engineer_only_perms = {"project:create", "simulation:run", "rule:edit", "toolpath:edit"}
@@ -448,7 +448,7 @@ class TestPermissionBoundaryCrossRole:
 
     @pytest.mark.asyncio
     async def test_engineer_boundary_vs_admin_permissions(self):
-        from app.core.permissions import check_user_has_permission, rbac_cache
+        from app.auth.permissions import check_user_has_permission, rbac_cache
 
         engineer_perms = {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"}  # noqa: E501
         admin_only_perms = {"system:config", "user:manage", "project:delete", "simulation:configure", "model:train"}
@@ -469,7 +469,7 @@ class TestGetUserPermissions:
 
     @pytest.mark.asyncio
     async def test_get_user_permissions_with_db(self):
-        from app.core.permissions import get_user_permissions, rbac_cache
+        from app.auth.permissions import get_user_permissions, rbac_cache
 
         rbac_cache.set("admin", {"system:config"})
 
@@ -483,7 +483,7 @@ class TestGetUserPermissions:
 
     @pytest.mark.asyncio
     async def test_get_user_permissions_user_not_found(self):
-        from app.core.permissions import get_user_permissions
+        from app.auth.permissions import get_user_permissions
 
         with patch("app.models.user.get_user_store") as mock_store:
             mock_store.return_value.get_user.return_value = None
@@ -586,7 +586,7 @@ class TestPermissionCacheRealTimeInvalidation:
 
     @pytest.mark.asyncio
     async def test_role_change_invalidates_cache(self):
-        from app.core.permissions import (
+        from app.auth.permissions import (
             get_user_permissions,
             check_user_has_permission,
             rbac_cache,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging.config
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -14,23 +15,24 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response, JSONResponse
 
 from app.api.v1.sse import sse_manager
-from app.core.cors_config import (
+from app.middleware.cors_config import (
     cors_settings,
+    enforce_startup_security,
     validate_cors_config,
     CorsConfigError,
 )
 from app.core.exception_handlers import register_exception_handlers
 from app.core.request_id import RequestIdMiddleware, get_request_id
 from app.core.logging_config import configure_logging
-from app.core.utils import get_metrics_collector
-from app.core.sidecar_lifecycle import (
+from app.utils.utils import get_metrics_collector
+from app.sidecar.sidecar_lifecycle import (
     IdleAutoShutdownMiddleware,
     GracefulShutdownHandler,
 )
-from app.core.ring_buffer import get_ring_log_buffer, BUFFER_TYPES
-from app.core.middleware.security_headers_asgi import SecurityHeadersMiddleware
-from app.core.middleware.unified_auth import UnifiedAuthMiddleware
-from app.core.rate_limiter import limiter, rate_limit_handler
+from app.utils.ring_buffer import get_ring_log_buffer, BUFFER_TYPES
+from app.auth.security_headers_asgi import SecurityHeadersMiddleware
+from app.auth.unified_auth import UnifiedAuthMiddleware
+from app.middleware.rate_limiter import limiter, rate_limit_handler
 from slowapi.errors import RateLimitExceeded
 from app.config import config
 from app.version import get_version_info, VERSION as PY_VERSION
@@ -88,7 +90,7 @@ def get_state_file_path() -> str:
 
 app = FastAPI(
     title="灵境制造 API",
-    version="1.12.0",
+    version="2.0.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -106,16 +108,24 @@ IDLE_TIMEOUT_SECONDS = 1800
 
 @app.on_event("startup")
 async def startup_event():
-    # CORS 安全配置验证
+    # CORS 安全配置验证：通配符 * 与 allow_credentials=True 同时使用属于
+    # 严重安全风险，必须在进程绑定端口之前完成强制校验。校验失败时
+    # 输出 ERROR 日志并以非零退出码终止启动流程，绝不允许带病上线。
     try:
-        validate_cors_config(
+        enforce_startup_security()
+        logger.info(
+            "CORS 配置安全验证通过: allow_origins=%s, env=%s",
             cors_settings.get_origins(),
-            cors_settings.allow_credentials,
+            cors_settings._env,
         )
-        logger.info("CORS 配置安全验证通过: allow_origins=%s", cors_settings.get_origins())
     except CorsConfigError as e:
-        logger.error("CORS 配置安全验证失败: %s", e)
-        raise
+        # CorsConfigError 自身已经写过 ERROR 日志（包含中文告警），这里
+        # 再补一条更具体的启动上下文，然后强制以非零退出码终止进程。
+        logger.error("CORS 启动安全校验失败，进程即将退出: %s", e)
+        # 在 FastAPI 启动事件中 raise 会让 uvicorn 报告并以非零退出码
+        # 终止；这里额外 sys.exit 用来保证独立运行（python -m app.main）
+        # 时也立即退出。
+        sys.exit(1)
 
     shutdown_handler.setup()
     await ring_log.start()
@@ -125,7 +135,7 @@ async def startup_event():
         logger.warning("权限检查机制已被关闭，这可能导致安全风险")
 
     from app.database.models import init_db
-    from app.core.task_system import AsyncTaskManager
+    from app.tasks.task_system import AsyncTaskManager
     from app.services.redis_client import get_redis
     from alembic.config import Config
     from alembic import command
@@ -173,7 +183,7 @@ async def shutdown_event():
     await ring_log.stop()
     await sse_manager.shutdown()
 
-    from app.core.task_system import AsyncTaskManager
+    from app.tasks.task_system import AsyncTaskManager
     from app.database.connection import close_db
     from app.services.redis_client import close_redis
 
@@ -326,6 +336,11 @@ app.include_router(step_import_api.router)
 app.include_router(rules_router)
 app.include_router(process_understanding_routes.router)
 app.include_router(health.router)
+# 标准化健康检查端点（公开访问，无认证）:
+#   - GET /api/health       — 主健康检查
+#   - GET /api/health/ping  — 轻量级存活探测（Docker HEALTHCHECK 使用）
+# 两个端点均已在 unified_auth.PUBLIC_PATHS 中登记为公开路径，
+# 不应用任何认证装饰器或中间件。旧路径 /health 已彻底移除。
 app.include_router(health.simple_health_router)
 app.include_router(auth.router)
 app.include_router(users.router)

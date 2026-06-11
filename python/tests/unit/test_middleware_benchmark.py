@@ -1,4 +1,4 @@
-"""Performance benchmark for middleware optimization.
+﻿"""Performance benchmark for middleware optimization.
 
 Compares the latency of public path requests before and after middleware optimization.
 Public paths should skip all auth logic and return fast.
@@ -9,8 +9,8 @@ import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
 
-from app.core.middleware.security_headers_asgi import SecurityHeadersMiddleware
-from app.core.middleware.unified_auth import UnifiedAuthMiddleware
+from app.auth.security_headers_asgi import SecurityHeadersMiddleware
+from app.auth.unified_auth import UnifiedAuthMiddleware
 
 
 @pytest.fixture

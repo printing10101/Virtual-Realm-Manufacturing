@@ -108,7 +108,8 @@ class BatchInferenceEngine:
             self._adjust_batch_size(len(data_list), processing_time)
 
             return results
-        except Exception:
+        except (RuntimeError, ValueError, TypeError, AttributeError, MemoryError):
+            # 批量推理可能因张量形状、内存、批大小等原因失败，统计后重新抛出
             processing_time = (time.perf_counter() - start_time) * 1000
             self._update_stats(len(data_list), processing_time, success=False)
             raise

@@ -127,11 +127,41 @@ class UserStore:
             return list(self._users.values())
 
 
-_user_store: Optional[UserStore] = None
+class _UserStoreHolder:
+    """Thread-safe lazy holder for the :class:`UserStore` singleton."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._instance: Optional[UserStore] = None
+
+    def get(self) -> UserStore:
+        # 快速路径：已存在则直接返回，避免持锁开销
+        if self._instance is not None:
+            return self._instance
+        with self._lock:
+            # 双重检查：可能在获取锁的过程中其他线程已创建实例
+            if self._instance is not None:
+                return self._instance
+            self._instance = UserStore()
+            return self._instance
+
+    def reset(self) -> None:
+        """Reset the cached instance (mainly for tests)."""
+        with self._lock:
+            self._instance = None
+
+
+_holder = _UserStoreHolder()
 
 
 def get_user_store() -> UserStore:
-    global _user_store
-    if _user_store is None:
-        _user_store = UserStore()
-    return _user_store
+    """获取共享的 :class:`UserStore` 单例；首次访问时懒初始化。
+
+    Returns:
+        :class:`UserStore` 实例（应用生命周期内同一实例）。
+
+    Note:
+        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_user_store)``。
+        实现是线程安全的，行为与重构前完全一致。
+    """
+    return _holder.get()

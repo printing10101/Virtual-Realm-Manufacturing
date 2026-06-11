@@ -20,6 +20,7 @@ Example:
 """
 
 import json
+import logging
 import time
 import yaml
 from pathlib import Path
@@ -32,6 +33,8 @@ from app.ai.lnn.core import (
     TaskInput,
     RoutingDecision,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -436,13 +439,23 @@ class TaskRouter:
             self.decision_history.append(decision)
             return decision
 
-        except Exception as e:
-            # 异常处理：降级到规则引擎
+        except (RuntimeError, ValueError, TypeError, AttributeError, KeyError) as e:
+            # 异常处理：降级到规则引擎（任务路由涉及特征提取、模型调用等）
+            # 修复：reasoning 字段会进入 decision_history / API 响应，
+            # 避免直接 str(e) 暴露内部异常详情；仅保留错误类型供排查。
             if self.enable_fallback:
+                logger.warning(
+                    "task_router 降级到 Rule engine | exc=%s",
+                    type(e).__name__,
+                    exc_info=True,
+                )
                 return RoutingDecision(
                     selected_engine=EngineType.RULE,
                     confidence=0.5,
-                    reasoning=f"Error during routing: {str(e)}. Fallback to Rule engine.",
+                    reasoning=(
+                        f"Error during routing ({type(e).__name__}). "
+                        f"Fallback to Rule engine."
+                    ),
                     timestamp=time.perf_counter(),
                 )
             raise

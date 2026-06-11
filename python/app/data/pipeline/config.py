@@ -178,8 +178,16 @@ def _env_override(config_dict: Dict[str, Any]) -> Dict[str, Any]:
                     config_dict[section] = cast_type(env_value)
                 elif section in config_dict:
                     config_dict[section][key] = cast_type(env_value)
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as cast_err:
+                # 单个环境变量类型转换失败时不影响其他配置加载，记录以便排查
+                logger.debug(
+                    "Failed to cast env %s value %r to %s: %s",
+                    env_var,
+                    env_value,
+                    getattr(cast_type, "__name__", cast_type),
+                    cast_err,
+                    exc_info=True,
+                )
 
     return config_dict
 

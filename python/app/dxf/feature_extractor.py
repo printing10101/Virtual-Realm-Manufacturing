@@ -211,6 +211,9 @@ class FeatureExtractor:
             self._extract_plane_features(parse_result, result)
             self._extract_hole_features(parse_result, result)
         except Exception as e:
+            # 兜底捕获：特征提取涉及几何运算/属性访问，异常类型多源
+            # (AttributeError/ValueError/TypeError/cadquery 异常等)
+            # 任何阶段失败都通过 errors 字段暴露给上层，特征提取整体标记为失败
             result.errors.append(f"特征提取过程中发生异常: {e}")
             logger.error("特征提取异常: %s", e, exc_info=True)
 
@@ -271,8 +274,14 @@ class FeatureExtractor:
                             result.overall_height = float(nums[0])
                             result.height_inferred = False
                             break
-                    except (ValueError, IndexError):
-                        pass
+                    except (ValueError, IndexError) as parse_err:
+                        # 解析厚/深尺寸文本失败时，保留默认值并继续
+                        logger.debug(
+                            "Failed to parse height dimension text %r: %s",
+                            dim.text,
+                            parse_err,
+                            exc_info=True,
+                        )
 
         if result.overall_length < 1.0 or result.overall_width < 1.0:
             result.warnings.append(
@@ -324,8 +333,14 @@ class FeatureExtractor:
                         if 3.0 < potential_depth < 500.0 and potential_depth != diameter:
                             depth = potential_depth
                             depth_inferred = False
-                    except ValueError:
-                        pass
+                    except ValueError as depth_err:
+                        # 深度候选解析失败时回退到推断深度，记录以便排查
+                        logger.debug(
+                            "Failed to parse hole depth candidate %r: %s",
+                            dim_text,
+                            depth_err,
+                            exc_info=True,
+                        )
 
                 if "通孔" in dim_text or "THRU" in dim_text.upper():
                     hole_type = "through_hole"
@@ -625,7 +640,13 @@ def extract_tolerance_from_text(text: str) -> str:
                     return "IT9"
                 elif tol_val <= 0.5:
                     return "IT10"
-            except ValueError:
-                pass
+            except ValueError as tol_err:
+                # 公差数值解析失败时返回空字符串，调用方按空等级处理
+                logger.debug(
+                    "Failed to parse tolerance value from text %r: %s",
+                    text,
+                    tol_err,
+                    exc_info=True,
+                )
 
     return ""

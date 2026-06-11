@@ -22,15 +22,16 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from app.config import config
 from app.core.response import success, error, ErrorCode
+from app.core.safe_errors import safe_error_message
 from app.core.error_taxonomy import (
     ManufacturingError,
     ErrorCategory,
@@ -96,32 +97,72 @@ def _validate_user_path(user_path: str, field_name: str) -> Path:
 
 
 _in_memory_store: dict[str, VoxelSimulationResult] = {}
+# 修复：原实现 get_simulation_history 接受 project_id 但完全未应用，导致过滤参数形同虚设。
+# 这里使用一个独立的 task_id -> project_id 映射避免修改 VoxelSimulationResult 的字段
+# （该类被多个模块使用，添加字段会引发级联修改）。
+_project_id_map: dict[str, str] = {}
+# 修复 [潜在崩溃]：VoxelSimulationResult 没有 completed_at 字段，但 _cleanup_store 和
+# get_simulation_history 直接访问 r.completed_at.timestamp() 会在 store 超过容量或包含
+# 完成结果时触发 AttributeError。使用独立 map 记录完成时间戳，避免侵入式修改 dataclass。
+_completed_at_map: dict[str, float] = {}
+# 修复 [任务生命周期]：记录每个活动的 asyncio.Task 引用，避免后台任务因 GC 被提前
+# 取消；并支持在客户端主动取消时优雅回收资源。
+_active_tasks: dict[str, "asyncio.Task[None]"] = {}
+# 修复 [并发安全]：FastAPI 可并发处理多个仿真请求，使用 asyncio.Lock 保护共享 store
+# 状态（添加/更新/清理），避免极端并发下 _in_memory_store 与三个关联 map 之间出现
+# 短暂不一致（例如 cleanup 在 store 删除时 _completed_at_map 已被覆盖）。
+_store_lock: "asyncio.Lock | None" = None
 _MAX_STORE_SIZE = config.simulation.max_store_size
 _MAX_STORE_AGE_SECONDS = config.simulation.max_store_age_seconds
 
 
-def _cleanup_store() -> None:
+def _get_store_lock() -> asyncio.Lock:
+    """懒初始化 asyncio.Lock。
+
+    在 FastAPI 启动后才有可绑定的事件循环，因此采用懒加载避免在 import 期
+    实例化时绑定到错误的循环（uvicorn 重新载入场景下尤其重要）。
+    """
+    global _store_lock
+    if _store_lock is None:
+        _store_lock = asyncio.Lock()
+    return _store_lock
+
+
+async def _cleanup_store() -> None:
     """Remove expired and excess entries from the in-memory result store.
 
     Evicts the oldest results when the store exceeds _MAX_STORE_SIZE,
-    and removes entries older than _MAX_STORE_AGE_SECONDS.
+    and removes entries older than _MAX_STORE_AGE_SECONDS. 修复合并发：
+    在持有 asyncio.Lock 的情况下统一清理 _in_memory_store 与三个关联 map，
+    避免清理过程中其他协程插入/删除同一 key 导致字典大小判断错乱。
     """
-    now = time.time()
-    if len(_in_memory_store) > _MAX_STORE_SIZE:
-        sorted_entries = sorted(
-            _in_memory_store.items(),
-            key=lambda kv: kv[1].completed_at.timestamp() if kv[1].completed_at else 0,
-        )
-        for task_id, _ in sorted_entries[: len(_in_memory_store) - _MAX_STORE_SIZE]:
-            _in_memory_store.pop(task_id, None)
-    expired = [
-        tid
-        for tid, r in _in_memory_store.items()
-        if r.completed_at
-        and (now - r.completed_at.timestamp()) > _MAX_STORE_AGE_SECONDS
-    ]
-    for tid in expired:
-        _in_memory_store.pop(tid, None)
+    async with _get_store_lock():
+        now = time.time()
+        if len(_in_memory_store) > _MAX_STORE_SIZE:
+            # 修复 [潜在崩溃]：原代码 kv[1].completed_at.timestamp() 会因 VoxelSimulationResult
+            # 没有该字段而抛 AttributeError，导致清理彻底失败、内存无限增长。
+            sorted_entries = sorted(
+                _in_memory_store.items(),
+                key=lambda kv: _completed_at_map.get(kv[0], 0.0),
+            )
+            for task_id, _ in sorted_entries[: len(_in_memory_store) - _MAX_STORE_SIZE]:
+                _in_memory_store.pop(task_id, None)
+                # 修复 [资源清理]：同步清理关联映射，避免孤儿键。
+                _project_id_map.pop(task_id, None)
+                _completed_at_map.pop(task_id, None)
+                _active_tasks.pop(task_id, None)
+        expired = [
+            tid
+            for tid in _in_memory_store
+            if (_completed_at_map.get(tid) is not None)
+            and (now - _completed_at_map[tid]) > _MAX_STORE_AGE_SECONDS
+        ]
+        for tid in expired:
+            _in_memory_store.pop(tid, None)
+            # 修复 [资源清理]：同步清理关联映射。
+            _project_id_map.pop(tid, None)
+            _completed_at_map.pop(tid, None)
+            _active_tasks.pop(tid, None)
 
 
 class SimulationRequest(BaseModel):
@@ -335,8 +376,18 @@ def _run_simulation(
     )
 
     _in_memory_store[task_id] = result
-    _cleanup_store()
+    # 修复：记录 task_id -> project_id 映射，使 history 接口的过滤参数真正生效。
+    _project_id_map[task_id] = request.project_id
+    # 修复 [清理支持]：记录完成时间戳，使 _cleanup_store 能正确按时间淘汰。
+    _completed_at_map[task_id] = time.time()
+    # 修复 [并发安全]：cleanup 是异步且需要持锁，必须在事件循环中由外层
+    # async 端点调用；同步函数内部仅做数据写入，将清理动作交给 _post_insert_cleanup。
     return result
+
+
+async def _post_insert_cleanup() -> None:
+    """在 store 写入后异步触发的清理动作（在事件循环内持锁执行）。"""
+    await _cleanup_store()
 
 
 def _build_response_data(result: VoxelSimulationResult) -> dict:
@@ -406,17 +457,16 @@ def _default_stock_stl() -> Path:
 
 @router.post("/run")
 async def run_simulation(
-    background_tasks: BackgroundTasks,
     request: SimulationRequest,
 ) -> dict:
     """Run voxel cutting simulation synchronously.
 
     Accepts project ID, tool parameters, G-code input, and stock geometry.
-    Executes the simulation in a background thread and returns the complete
-    result including machined STL URL and collision detection data.
+    Executes the simulation in a worker thread (asyncio.to_thread) and
+    returns the complete result including machined STL URL and collision
+    detection data.
 
     Args:
-        background_tasks: FastAPI background task manager.
         request: Simulation request parameters.
 
     Returns:
@@ -469,6 +519,9 @@ async def run_simulation(
             result.removed_voxel_count,
         )
 
+        # 修复 [并发安全]：在事件循环内触发异步 cleanup，统一淘汰过期/超额结果。
+        await _post_insert_cleanup()
+
         response_data = _build_response_data(result)
         return success(
             data=response_data,
@@ -483,18 +536,26 @@ async def run_simulation(
             recoverable=True,
         )
     except Exception as exc:
+        # 兜底捕获：仿真任务涉及网格运算、IO、序列化等多环节，
+        # 任何未预期异常都需包装为统一错误响应以便上层处理；
+        # 此处位于 API handler 入口，必须捕获所有异常以避免 5xx 直接抛给客户端。
+        # 修复：避免 str(exc) 直接暴露内部异常详情，使用 safe_error_message 包装。
+        safe = safe_error_message(exc, context=f"simulation.run[{task_id}]")
         logger.exception("Simulation %s failed: %s", task_id, exc)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Simulation error: {str(exc)}",
-            detail={"task_id": task_id, "error_type": type(exc).__name__},
+            message=safe["message"],
+            detail={
+                "task_id": task_id,
+                "error_id": safe.get("error_id"),
+                **({"error_type": type(exc).__name__} if safe.get("detail") else {}),
+            },
             recoverable=True,
         )
 
 
 @router.post("/run/async")
 async def run_simulation_async(
-    background_tasks: BackgroundTasks,
     request: SimulationRequest,
 ) -> dict:
     """Start voxel cutting simulation asynchronously.
@@ -504,7 +565,6 @@ async def run_simulation_async(
     and results.
 
     Args:
-        background_tasks: FastAPI background task manager.
         request: Simulation request parameters.
 
     Returns:
@@ -521,14 +581,48 @@ async def run_simulation_async(
         _validate_user_path(request.source_file_path, "source_file_path")
 
     _in_memory_store[task_id] = VoxelSimulationResult(task_id=task_id)
+    # 修复：异步任务在提交时立即预占 _in_memory_store 槽位，同时记录 project_id 映射。
+    _project_id_map[task_id] = request.project_id
 
     async def _async_wrapper() -> None:
         try:
             await asyncio.to_thread(_run_simulation, task_id, request)
+        except (KeyboardInterrupt, SystemExit):
+            # 后台任务不响应中断信号，向上抛出
+            raise
+        except asyncio.CancelledError:
+            # 修复 [资源清理]：客户端主动取消时显式释放 store 槽位，
+            # 避免轮询接口看到 "running" 但实际任务已死。
+            async with _get_store_lock():
+                _in_memory_store.pop(task_id, None)
+                _project_id_map.pop(task_id, None)
+                _completed_at_map.pop(task_id, None)
+            logger.info("Async simulation %s cancelled", task_id)
+            raise
         except Exception as exc:
+            # 修复 [状态同步]：异常时仍记录完成时间戳但保持 duration_seconds == 0
+            # 以便轮询端点将 status 识别为 failed；同时记录 error_id 供排障。
+            async with _get_store_lock():
+                _completed_at_map[task_id] = time.time()
+            # 兜底捕获：后台任务线程内异常不应向上冒泡以免污染 FastAPI 事件循环，
+            # 此处仅记录日志，由前端通过状态查询接口轮询获取结果。
             logger.exception("Async simulation %s failed: %s", task_id, exc)
+        finally:
+            # 修复 [任务生命周期]：无论任务成功/失败/取消，都清理活跃任务引用。
+            _active_tasks.pop(task_id, None)
+            # 触发异步清理（在事件循环内执行）。
+            try:
+                await _post_insert_cleanup()
+            except Exception:  # noqa: BLE001
+                logger.exception("Background cleanup failed for %s", task_id)
 
-    background_tasks.add_task(asyncio.create_task, _async_wrapper())
+    # 修复：原实现 background_tasks.add_task(asyncio.create_task, _async_wrapper())
+    # 存在严重问题——asyncio.create_task 需要运行中的事件循环，而 FastAPI 的
+    # BackgroundTasks 在响应发送后才会执行，此时可能没有可用的循环上下文。
+    # 正确做法是在当前请求协程中直接创建任务，由事件循环调度执行。
+    # 同时将 task 引用保存到 _active_tasks，避免被 GC 提前回收导致中途取消。
+    task = asyncio.create_task(_async_wrapper(), name=f"sim-{task_id}")
+    _active_tasks[task_id] = task
 
     return success(
         data={"task_id": task_id, "status": "pending"},
@@ -575,6 +669,37 @@ async def get_simulation_status(task_id: str) -> dict:
     )
 
 
+def _sanitize_filename(file_name: str) -> str:
+    """严格净化文件名，防止路径遍历攻击。
+
+    净化规则（任何一条不满足即视为无效输入，返回空字符串）：
+    1. 输入必须为非空字符串；
+    2. 禁止包含路径分隔符（/ 或 \\）；
+    3. 禁止包含 ".." 序列（任意父目录引用均被拒绝）；
+    4. 通过 pathlib.Path.name 提取纯文件名后不得为空。
+
+    Args:
+        file_name: 用户传入的原始文件名。
+
+    Returns:
+        净化后的纯文件名；无效输入返回空字符串。
+    """
+    # [路径遍历修复] 输入类型与空值检查
+    if not file_name or not isinstance(file_name, str):
+        return ""
+    # [路径遍历修复] 明确拒绝包含路径分隔符的输入
+    if "/" in file_name or "\\" in file_name:
+        return ""
+    # [路径遍历修复] 明确拒绝包含 ".." 序列的输入
+    if ".." in file_name:
+        return ""
+    # [路径遍历修复] 防御性编程：使用 Path.name 提取纯文件名
+    safe_name = Path(file_name).name
+    if not safe_name:
+        return ""
+    return safe_name
+
+
 @router.get("/output/{filename}")
 async def get_simulation_output(filename: str) -> Response:
     """Serve simulation output STL file.
@@ -586,13 +711,25 @@ async def get_simulation_output(filename: str) -> Response:
         Binary STL file stream for download.
 
     Raises:
-        HTTPException: 404 if the STL file does not exist.
-        HTTPException: 400 if the file path is invalid.
+        HTTPException: 400 if the file path is invalid (净化或验证失败);
+                       404 if the STL file does not exist.
+
+    [路径遍历修复] 增加了双重路径验证：
+    1. 通过 _sanitize_filename 拒绝包含路径分隔符或 ".." 的输入；
+    2. 通过 resolve() + is_relative_to() 确保最终路径严格位于 OUTPUT_DIR 内。
     """
-    safe_name = PurePosixPath(filename).name
+    # [路径遍历修复] 第一层：用户输入净化
+    safe_name = _sanitize_filename(filename)
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="无效的文件名")
+
+    # [路径遍历修复] 第二层：解析为绝对路径并验证在允许目录内
+    allowed_dir = OUTPUT_DIR.resolve()
     file_path = (OUTPUT_DIR / safe_name).resolve()
-    if not file_path.is_relative_to(OUTPUT_DIR.resolve()):
+    if not file_path.is_relative_to(allowed_dir):
         raise HTTPException(status_code=400, detail="无效的文件路径")
+
+    # 保留原有的文件存在性检查
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="STL file not found.")
 
@@ -621,10 +758,27 @@ async def get_simulation_history(
         List of simulation history records with metadata.
     """
     history = []
-    for task_id, result in list(_in_memory_store.items())[:limit]:
+    # 修复：先按 project_id 过滤，再按完成时间倒序排序，最后截取 limit 条。
+    # 旧实现 list(...items())[:limit] 顺序随机，limit 在过滤前应用会导致过滤失效。
+    items = list(_in_memory_store.items())
+    if project_id is not None:
+        items = [
+            (tid, r)
+            for tid, r in items
+            if _project_id_map.get(tid) == project_id
+        ]
+    # 按完成时间倒序（最新优先）
+    # 修复 [潜在崩溃]：原代码访问 r.completed_at.timestamp() 会触发 AttributeError，
+    # 改用 _completed_at_map 单独维护时间戳。
+    items.sort(
+        key=lambda kv: _completed_at_map.get(kv[0], 0.0),
+        reverse=True,
+    )
+    for task_id, result in items[:limit]:
         history.append(
             {
                 "task_id": result.task_id,
+                "project_id": _project_id_map.get(task_id, ""),
                 "duration_seconds": result.duration_seconds,
                 "collision_collided": result.collision.collided,
                 "voxel_size": result.voxel_size,
@@ -656,6 +810,9 @@ async def delete_simulation_result(task_id: str) -> dict:
     """
     if task_id in _in_memory_store:
         del _in_memory_store[task_id]
+    # 修复 [资源清理]：删除结果时同步清理所有关联映射。
+    _project_id_map.pop(task_id, None)
+    _completed_at_map.pop(task_id, None)
 
     stl_file = OUTPUT_DIR / f"sim_result_{task_id}.stl"
     if stl_file.exists():

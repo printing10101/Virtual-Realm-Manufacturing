@@ -192,7 +192,7 @@ class PredictionExplainer:
     @staticmethod
     def _parse_explanation(raw_content: str) -> PredictionExplanation:
         """解析LLM生成的解释结果JSON。"""
-        from app.core.utils import extract_json_from_markdown
+        from app.utils.utils import extract_json_from_markdown
 
         try:
             data = extract_json_from_markdown(raw_content)

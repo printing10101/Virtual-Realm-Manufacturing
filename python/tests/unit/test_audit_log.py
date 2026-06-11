@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.audit_log import AuditLog, AIModule, UserDecision, OperationStatus, AuditLogEntry
+from app.audit.audit_log import AuditLog, AIModule, UserDecision, OperationStatus, AuditLogEntry
 
 
 class TestAIModuleEnum:

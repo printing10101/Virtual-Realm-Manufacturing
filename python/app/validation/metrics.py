@@ -94,10 +94,14 @@ def compute_feature_iou(
     mode: str = "pixel",
 ) -> dict[str, float]:
     ious: dict[str, float] = {}
-    gt_map = {f["name"]: f for f in ground_truth_features}
+    gt_map = {f.get("name", ""): f for f in ground_truth_features}
 
     for det in detected_features:
-        name = det.get("name", "")
+        name = str(det.get("name", ""))
+        if not name:
+            # 修复 [类型安全]：无 name 的检测项不能静默通过，按 0.0 处理并跳过，
+            # 避免与 gt_map[""] 冲突导致错误匹配。
+            continue
         if name not in gt_map:
             ious[name] = 0.0
             continue
@@ -133,18 +137,23 @@ def compute_feature_recall(
     iou_threshold: float = 0.5,
     confidence_threshold: float = 0.5,
 ) -> float:
-    gt_names = {f["name"] for f in ground_truth_features}
+    gt_names = {str(f.get("name", "")) for f in ground_truth_features}
+    gt_names.discard("")
     if not gt_names:
         return 1.0
 
     det_by_name: dict[str, dict[str, Any]] = {}
     for det in detected_features:
-        det_by_name[det.get("name", "")] = det
+        name = str(det.get("name", ""))
+        if name:
+            det_by_name[name] = det
 
     ious = compute_feature_iou(detected_features, ground_truth_features)
     correct = 0
     for gt in ground_truth_features:
-        name = gt["name"]
+        name = str(gt.get("name", ""))
+        if not name:
+            continue
         det = det_by_name.get(name)
         if det is None:
             continue
@@ -165,13 +174,14 @@ def compute_feature_precision(
     if not detected_features:
         return 1.0
 
-    gt_names = {f["name"] for f in ground_truth_features}
+    gt_names = {str(f.get("name", "")) for f in ground_truth_features}
+    gt_names.discard("")
     ious = compute_feature_iou(detected_features, ground_truth_features)
 
     correct = 0
     for det in detected_features:
-        name = det.get("name", "")
-        if name not in gt_names:
+        name = str(det.get("name", ""))
+        if not name or name not in gt_names:
             continue
         conf = float(det.get("confidence", 0))
         iou_val = ious.get(name, 0.0)

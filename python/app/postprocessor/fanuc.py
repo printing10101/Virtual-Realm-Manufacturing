@@ -119,7 +119,11 @@ class FanucPostProcessor(BasePostProcessor):
         depth: float,
         dwell: float = 0.0,
     ) -> str:
-        cfg = self.get_cycle_config("drilling", "G83" if dwell > 0 else "G81")
+        # When a dwell is requested, use the high-speed peck drill
+        # cycle G73 (small retract for chip breaking).  Without a
+        # dwell the deep-hole peck cycle G83 (full retract) is used.
+        cycle_code = "G73" if dwell > 0 else "G83"
+        cfg = self.get_cycle_config("drilling", cycle_code)
         retract_mode = cfg.get("retract_mode", "G98")
         peck_depth = cfg.get("peck_depth", 5.0)
         _retract_dist = cfg.get("retract_distance", 1.0)  # noqa: F841
@@ -129,7 +133,7 @@ class FanucPostProcessor(BasePostProcessor):
         if dwell > 0:
             dwell_ms = int(dwell * 1000)
             lines = [
-                f"{retract_mode} G83 X{self._fmt(x)} Y{self._fmt(y)} "
+                f"{retract_mode} {cycle_code} X{self._fmt(x)} Y{self._fmt(y)} "
                 f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
                 f"Q{self._fmt(peck_depth)} P{dwell_ms} "
                 f"F{drill_feed}",
@@ -137,8 +141,9 @@ class FanucPostProcessor(BasePostProcessor):
             ]
         else:
             lines = [
-                f"{retract_mode} G81 X{self._fmt(x)} Y{self._fmt(y)} "
+                f"{retract_mode} {cycle_code} X{self._fmt(x)} Y{self._fmt(y)} "
                 f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"Q{self._fmt(peck_depth)} "
                 f"F{drill_feed}",
                 "G80",
             ]
