@@ -4726,3 +4726,4536 @@ POST /api/ai/chat
 | Supported formats | AP203, AP214, AP242 |
 | Output formats | STL, BREP |
 | Precision levels | `low`, `medium`, `high` |
+---
+
+## API 路由补全（自动同步）
+
+> 本节由 `scripts/sync_api_docs.py` 根据 `api-sync-report.json` 自动生成。
+>
+> 用于将 `docs/API.md` 与 `python/app/**` 中的实际 FastAPI 路由保持同步。
+>
+> **补全状态**: 208 个缺失路由 / 67 个需复核
+
+### 模块索引
+
+1. [Agent Gateway](#agent-gateway) — 13 个路由
+2. [Agent State](#agent-state) — 16 个路由
+3. [Async Jobs](#async-jobs) — 4 个路由
+4. [Authentication](#authentication) — 3 个路由
+5. [Base Routes](#base-routes) — 6 个路由
+6. [Cost & Budget](#cost-and-budget) — 20 个路由
+7. [Goal Alignment](#goal-alignment) — 13 个路由
+8. [Governance](#governance) — 17 个路由
+9. [Heartbeat](#heartbeat) — 12 个路由
+10. [LNN Models](#lnn-models) — 20 个路由
+11. [Ollama](#ollama) — 2 个路由
+12. [Plugins](#plugins) — 13 个路由
+13. [RAG](#rag) — 13 个路由
+14. [Simulation](#simulation) — 7 个路由
+15. [Skills](#skills) — 13 个路由
+16. [Task Checkout](#task-checkout) — 15 个路由
+17. [User Management](#user-management) — 4 个路由
+18. [User Sovereignty](#user-sovereignty) — 8 个路由
+19. [Wear Prediction](#wear-prediction) — 9 个路由
+
+### Agent Gateway (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 13 条。
+
+#### GET /api/agent/v1/audit-log
+
+```
+GET /api/agent/v1/audit-log
+```
+
+**Description:** get audit log.
+
+**Handler:** `get_audit_log` (`agent_gateway.py:458`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/agent/v1/execute
+
+```
+POST /api/agent/v1/execute
+```
+
+**Description:** agent execute.
+
+**Handler:** `agent_execute` (`agent_gateway.py:420`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/agent/v1/models
+
+```
+GET /api/agent/v1/models
+```
+
+**Description:** list models.
+
+**Handler:** `list_models` (`agent_gateway.py:57`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/agent/v1/models/{name}/info
+
+```
+GET /api/agent/v1/models/{name}/info
+```
+
+**Description:** model info.
+
+**Handler:** `model_info` (`agent_gateway.py:78`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/agent/v1/predict
+
+```
+POST /api/agent/v1/predict
+```
+
+**Description:** agent predict.
+
+**Handler:** `agent_predict` (`agent_gateway.py:100`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/agent/v1/tokens
+
+```
+GET /api/agent/v1/tokens
+```
+
+**Description:** list agent tokens.
+
+**Handler:** `list_agent_tokens` (`agent_gateway.py:523`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/agent/v1/tokens
+
+```
+POST /api/agent/v1/tokens
+```
+
+**Description:** create agent token.
+
+**Handler:** `create_agent_token` (`agent_gateway.py:484`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/agent/v1/tokens/revoke-t-all
+
+```
+POST /api/agent/v1/tokens/revoke-t-all
+```
+
+**Description:** revoke all t tokens.
+
+**Handler:** `revoke_all_t_tokens` (`agent_gateway.py:538`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### DELETE /api/agent/v1/tokens/{agent_id}
+
+```
+DELETE /api/agent/v1/tokens/{agent_id}
+```
+
+**Description:** revoke agent token.
+
+**Handler:** `revoke_agent_token` (`agent_gateway.py:530`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/agent/v1/train
+
+```
+POST /api/agent/v1/train
+```
+
+**Description:** agent train.
+
+**Handler:** `agent_train` (`agent_gateway.py:314`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/agent/v1/train/{job_id}
+
+```
+GET /api/agent/v1/train/{job_id}
+```
+
+**Description:** get train status.
+
+**Handler:** `get_train_status` (`agent_gateway.py:364`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/agent/v1/train/{job_id}/stream
+
+```
+GET /api/agent/v1/train/{job_id}/stream
+```
+
+**Description:** stream training.
+
+**Handler:** `stream_training` (`agent_gateway.py:400`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/agents/info
+
+```
+GET /api/agents/info
+```
+
+**Description:** get agents info.
+
+**Handler:** `get_agents_info` (`agents.py:866`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Agent State (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 16 条。
+
+#### GET /agents/
+
+```
+GET /agents/
+```
+
+**Description:** list agents.
+
+**Handler:** `list_agents` (`agent_state.py:105`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /agents/{agent_id}/checkpoints
+
+```
+GET /agents/{agent_id}/checkpoints
+```
+
+**Description:** list checkpoints.
+
+**Handler:** `list_checkpoints` (`agent_state.py:207`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/checkpoints/cleanup
+
+```
+POST /agents/{agent_id}/checkpoints/cleanup
+```
+
+**Description:** cleanup checkpoints.
+
+**Handler:** `cleanup_checkpoints` (`agent_state.py:246`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/checkpoints/rollback
+
+```
+POST /agents/{agent_id}/checkpoints/rollback
+```
+
+**Description:** rollback checkpoint.
+
+**Handler:** `rollback_checkpoint` (`agent_state.py:221`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/checkpoints/save
+
+```
+POST /agents/{agent_id}/checkpoints/save
+```
+
+**Description:** save checkpoint.
+
+**Handler:** `save_checkpoint` (`agent_state.py:183`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/clone
+
+```
+POST /agents/{agent_id}/clone
+```
+
+**Description:** clone agent.
+
+**Handler:** `clone_agent` (`agent_state.py:317`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/context/update
+
+```
+POST /agents/{agent_id}/context/update
+```
+
+**Description:** update context.
+
+**Handler:** `update_context` (`agent_state.py:257`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/heartbeat/start
+
+```
+POST /agents/{agent_id}/heartbeat/start
+```
+
+**Description:** start heartbeat.
+
+**Handler:** `start_heartbeat` (`agent_state.py:161`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/heartbeat/stop
+
+```
+POST /agents/{agent_id}/heartbeat/stop
+```
+
+**Description:** stop heartbeat.
+
+**Handler:** `stop_heartbeat` (`agent_state.py:172`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /agents/{agent_id}/history
+
+```
+GET /agents/{agent_id}/history
+```
+
+**Description:** get state history.
+
+**Handler:** `get_state_history` (`agent_state.py:365`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/memory/add
+
+```
+POST /agents/{agent_id}/memory/add
+```
+
+**Description:** add memory.
+
+**Handler:** `add_memory` (`agent_state.py:270`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/memory/prune
+
+```
+POST /agents/{agent_id}/memory/prune
+```
+
+**Description:** prune memory.
+
+**Handler:** `prune_memory` (`agent_state.py:293`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/resume
+
+```
+POST /agents/{agent_id}/resume
+```
+
+**Description:** resume agent.
+
+**Handler:** `resume_agent` (`agent_state.py:304`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/rollback
+
+```
+POST /agents/{agent_id}/rollback
+```
+
+**Description:** rollback state.
+
+**Handler:** `rollback_state` (`agent_state.py:352`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/save
+
+```
+POST /agents/{agent_id}/save
+```
+
+**Description:** save agent state.
+
+**Handler:** `save_agent_state` (`agent_state.py:131`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /agents/{agent_id}/snapshot
+
+```
+POST /agents/{agent_id}/snapshot
+```
+
+**Description:** create snapshot.
+
+**Handler:** `create_snapshot` (`agent_state.py:339`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Async Jobs (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 4 条。
+
+#### GET /api/v1/jobs/stats
+
+```
+GET /api/v1/jobs/stats
+```
+
+**Description:** get task stats.
+
+**Handler:** `get_task_stats` (`jobs.py:181`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/jobs/{job_id}/cancel
+
+```
+POST /api/v1/jobs/{job_id}/cancel
+```
+
+**Description:** cancel job.
+
+**Handler:** `cancel_job` (`jobs.py:99`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/jobs/{job_id}/progress
+
+```
+GET /api/v1/jobs/{job_id}/progress
+```
+
+**Description:** get job progress.
+
+**Handler:** `get_job_progress` (`jobs.py:39`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/jobs/{job_id}/stream
+
+```
+GET /api/v1/jobs/{job_id}/stream
+```
+
+**Description:** stream job events.
+
+**Handler:** `stream_job_events` (`jobs.py:59`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Authentication (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 3 条。
+
+#### POST /api/v1/auth/logout
+
+```
+POST /api/v1/auth/logout
+```
+
+**Description:** logout.
+
+**Handler:** `logout` (`auth.py:199`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/auth/me
+
+```
+GET /api/v1/auth/me
+```
+
+**Description:** get me.
+
+**Handler:** `get_me` (`auth.py:214`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/auth/refresh
+
+```
+POST /api/v1/auth/refresh
+```
+
+**Description:** refresh token.
+
+**Handler:** `refresh_token` (`auth.py:159`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Base Routes (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 6 条。
+
+#### GET /api/metrics
+
+```
+GET /api/metrics
+```
+
+**Description:** get metrics.
+
+**Handler:** `get_metrics` (`main.py:276`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/health/quick
+
+```
+GET /api/v1/health/quick
+```
+
+**Description:** quick health.
+
+**Handler:** `quick_health` (`health.py:240`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/health/system
+
+```
+GET /api/v1/health/system
+```
+
+**Description:** system health.
+
+**Handler:** `system_health` (`health.py:116`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/logs/stats
+
+```
+GET /api/v1/logs/stats
+```
+
+**Description:** get log stats.
+
+**Handler:** `get_log_stats` (`main.py:286`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/logs/{buffer_type}
+
+```
+GET /api/v1/logs/{buffer_type}
+```
+
+**Description:** query logs.
+
+**Handler:** `query_logs` (`main.py:296`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/version
+
+```
+GET /api/v1/version
+```
+
+**Description:** get version.
+
+**Handler:** `get_version` (`main.py:281`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Cost & Budget (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 20 条。
+
+#### POST /api/v1/cost-budget/adjust-budget
+
+```
+POST /api/v1/cost-budget/adjust-budget
+```
+
+**Description:** adjust budget.
+
+**Handler:** `adjust_budget` (`cost_budget.py:144`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/adjustment-history
+
+```
+GET /api/v1/cost-budget/adjustment-history
+```
+
+**Description:** get adjustment history.
+
+**Handler:** `get_adjustment_history` (`cost_budget.py:165`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/alerts
+
+```
+GET /api/v1/cost-budget/alerts
+```
+
+**Description:** get budget alerts.
+
+**Handler:** `get_budget_alerts` (`cost_budget.py:255`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/cost-budget/alerts/read-all
+
+```
+POST /api/v1/cost-budget/alerts/read-all
+```
+
+**Description:** mark all alerts read.
+
+**Handler:** `mark_all_alerts_read` (`cost_budget.py:274`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### DELETE /api/v1/cost-budget/alerts/{alert_id}
+
+```
+DELETE /api/v1/cost-budget/alerts/{alert_id}
+```
+
+**Description:** delete alert.
+
+**Handler:** `delete_alert` (`cost_budget.py:281`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/cost-budget/alerts/{alert_id}/read
+
+```
+POST /api/v1/cost-budget/alerts/{alert_id}/read
+```
+
+**Description:** mark alert read.
+
+**Handler:** `mark_alert_read` (`cost_budget.py:267`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/cost-budget/check
+
+```
+POST /api/v1/cost-budget/check
+```
+
+**Description:** check budget.
+
+**Handler:** `check_budget` (`cost_budget.py:172`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/cost-budget/check-cascade
+
+```
+POST /api/v1/cost-budget/check-cascade
+```
+
+**Description:** check budget cascade.
+
+**Handler:** `check_budget_cascade` (`cost_budget.py:189`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/cost-budget/enforce
+
+```
+POST /api/v1/cost-budget/enforce
+```
+
+**Description:** enforce budget.
+
+**Handler:** `enforce_budget` (`cost_budget.py:209`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/enforcement-log
+
+```
+GET /api/v1/cost-budget/enforcement-log
+```
+
+**Description:** get enforcement log.
+
+**Handler:** `get_enforcement_log` (`cost_budget.py:298`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/policies
+
+```
+GET /api/v1/cost-budget/policies
+```
+
+**Description:** get budget policies.
+
+**Handler:** `get_budget_policies` (`cost_budget.py:106`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/cost-budget/policies
+
+```
+POST /api/v1/cost-budget/policies
+```
+
+**Description:** set budget policy.
+
+**Handler:** `set_budget_policy` (`cost_budget.py:119`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/cost-budget/reset
+
+```
+POST /api/v1/cost-budget/reset
+```
+
+**Description:** reset budget period.
+
+**Handler:** `reset_budget_period` (`cost_budget.py:236`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/reset-log
+
+```
+GET /api/v1/cost-budget/reset-log
+```
+
+**Description:** get reset log.
+
+**Handler:** `get_reset_log` (`cost_budget.py:305`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/suggestions
+
+```
+GET /api/v1/cost-budget/suggestions
+```
+
+**Description:** get optimization suggestions.
+
+**Handler:** `get_optimization_suggestions` (`cost_budget.py:288`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/summary
+
+```
+GET /api/v1/cost-budget/summary
+```
+
+**Description:** get cost summary.
+
+**Handler:** `get_cost_summary` (`cost_budget.py:28`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/task/{task_id}
+
+```
+GET /api/v1/cost-budget/task/{task_id}
+```
+
+**Description:** get task costs.
+
+**Handler:** `get_task_costs` (`cost_budget.py:52`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/trend
+
+```
+GET /api/v1/cost-budget/trend
+```
+
+**Description:** get cost trend.
+
+**Handler:** `get_cost_trend` (`cost_budget.py:67`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/cost-budget/unit-prices
+
+```
+GET /api/v1/cost-budget/unit-prices
+```
+
+**Description:** get unit prices.
+
+**Handler:** `get_unit_prices` (`cost_budget.py:77`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/cost-budget/unit-prices
+
+```
+POST /api/v1/cost-budget/unit-prices
+```
+
+**Description:** set unit price.
+
+**Handler:** `set_unit_price` (`cost_budget.py:83`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Goal Alignment (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 13 条。
+
+#### GET /api/v1/goal-alignment/goals/tree
+
+```
+GET /api/v1/goal-alignment/goals/tree
+```
+
+**Description:** get goal tree.
+
+**Handler:** `get_goal_tree` (`goal_alignment.py:97`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/goal-alignment/goals/{goal_id}/chain
+
+```
+GET /api/v1/goal-alignment/goals/{goal_id}/chain
+```
+
+**Description:** get goal chain.
+
+**Handler:** `get_goal_chain` (`goal_alignment.py:125`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/goal-alignment/goals/{goal_id}/children
+
+```
+GET /api/v1/goal-alignment/goals/{goal_id}/children
+```
+
+**Description:** get goal children.
+
+**Handler:** `get_goal_children` (`goal_alignment.py:132`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/goal-alignment/goals/{goal_id}/history
+
+```
+GET /api/v1/goal-alignment/goals/{goal_id}/history
+```
+
+**Description:** get goal history.
+
+**Handler:** `get_goal_history` (`goal_alignment.py:151`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/goal-alignment/goals/{goal_id}/progress
+
+```
+GET /api/v1/goal-alignment/goals/{goal_id}/progress
+```
+
+**Description:** get goal progress.
+
+**Handler:** `get_goal_progress` (`goal_alignment.py:142`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/goal-alignment/goals/{goal_id}/propagate
+
+```
+POST /api/v1/goal-alignment/goals/{goal_id}/propagate
+```
+
+**Description:** propagate goal change.
+
+**Handler:** `propagate_goal_change` (`goal_alignment.py:451`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/goal-alignment/progress/all
+
+```
+GET /api/v1/goal-alignment/progress/all
+```
+
+**Description:** get all progress.
+
+**Handler:** `get_all_progress` (`goal_alignment.py:441`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/goal-alignment/scan
+
+```
+POST /api/v1/goal-alignment/scan
+```
+
+**Description:** run alignment scan.
+
+**Handler:** `run_alignment_scan` (`goal_alignment.py:425`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/goal-alignment/summary
+
+```
+GET /api/v1/goal-alignment/summary
+```
+
+**Description:** get alignment summary.
+
+**Handler:** `get_alignment_summary` (`goal_alignment.py:433`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/goal-alignment/tasks
+
+```
+POST /api/v1/goal-alignment/tasks
+```
+
+**Description:** create task.
+
+**Handler:** `create_task` (`goal_alignment.py:264`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/goal-alignment/tasks/{task_id}/alignment
+
+```
+GET /api/v1/goal-alignment/tasks/{task_id}/alignment
+```
+
+**Description:** check task alignment.
+
+**Handler:** `check_task_alignment` (`goal_alignment.py:396`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/goal-alignment/tasks/{task_id}/context
+
+```
+GET /api/v1/goal-alignment/tasks/{task_id}/context
+```
+
+**Description:** get task context.
+
+**Handler:** `get_task_context` (`goal_alignment.py:383`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/goal-alignment/tasks/{task_id}/status
+
+```
+POST /api/v1/goal-alignment/tasks/{task_id}/status
+```
+
+**Description:** update task status.
+
+**Handler:** `update_task_status` (`goal_alignment.py:338`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Governance (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 17 条。
+
+#### GET /api/v1/governance/approval-dashboard
+
+```
+GET /api/v1/governance/approval-dashboard
+```
+
+**Description:** get approval dashboard.
+
+**Handler:** `get_approval_dashboard` (`governance.py:177`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/governance/approval-requests
+
+```
+GET /api/v1/governance/approval-requests
+```
+
+**Description:** list approval requests.
+
+**Handler:** `list_approval_requests` (`governance.py:25`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/governance/approval-requests
+
+```
+POST /api/v1/governance/approval-requests
+```
+
+**Description:** create approval request.
+
+**Handler:** `create_approval_request` (`governance.py:59`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/governance/approval-requests/my
+
+```
+GET /api/v1/governance/approval-requests/my
+```
+
+**Description:** get my approval requests.
+
+**Handler:** `get_my_approval_requests` (`governance.py:166`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/governance/approval-requests/{request_id}
+
+```
+GET /api/v1/governance/approval-requests/{request_id}
+```
+
+**Description:** get approval request.
+
+**Handler:** `get_approval_request` (`governance.py:50`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/governance/approval-requests/{request_id}/assign
+
+```
+POST /api/v1/governance/approval-requests/{request_id}/assign
+```
+
+**Description:** assign approver.
+
+**Handler:** `assign_approver` (`governance.py:108`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/governance/approval-requests/{request_id}/decide
+
+```
+POST /api/v1/governance/approval-requests/{request_id}/decide
+```
+
+**Description:** make decision.
+
+**Handler:** `make_decision` (`governance.py:121`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/governance/approval-requests/{request_id}/escalate
+
+```
+POST /api/v1/governance/approval-requests/{request_id}/escalate
+```
+
+**Description:** escalate request.
+
+**Handler:** `escalate_request` (`governance.py:147`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/governance/approval-timeout-handler
+
+```
+POST /api/v1/governance/approval-timeout-handler
+```
+
+**Description:** handle approval timeout.
+
+**Handler:** `handle_approval_timeout` (`governance.py:159`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/governance/audit-log/export
+
+```
+GET /api/v1/governance/audit-log/export
+```
+
+**Description:** export audit log.
+
+**Handler:** `export_audit_log` (`governance.py:343`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/governance/delegations
+
+```
+GET /api/v1/governance/delegations
+```
+
+**Description:** get delegations.
+
+**Handler:** `get_delegations` (`governance.py:285`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/governance/delegations
+
+```
+POST /api/v1/governance/delegations
+```
+
+**Description:** create delegation.
+
+**Handler:** `create_delegation` (`governance.py:302`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/governance/emergency-override
+
+```
+POST /api/v1/governance/emergency-override
+```
+
+**Description:** emergency override.
+
+**Handler:** `emergency_override` (`governance.py:245`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/governance/emergency-retroactive-approval
+
+```
+POST /api/v1/governance/emergency-retroactive-approval
+```
+
+**Description:** complete retroactive approval.
+
+**Handler:** `complete_retroactive_approval` (`governance.py:272`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/governance/reports/governance
+
+```
+GET /api/v1/governance/reports/governance
+```
+
+**Description:** get governance report.
+
+**Handler:** `get_governance_report` (`governance.py:329`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/governance/risk-assess
+
+```
+POST /api/v1/governance/risk-assess
+```
+
+**Description:** assess operation risk.
+
+**Handler:** `assess_operation_risk` (`governance.py:203`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/governance/risk-categories
+
+```
+GET /api/v1/governance/risk-categories
+```
+
+**Description:** get risk categories.
+
+**Handler:** `get_risk_categories` (`governance.py:230`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Heartbeat (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 12 条。
+
+#### GET /api/v1/heartbeat/budget/notifications
+
+```
+GET /api/v1/heartbeat/budget/notifications
+```
+
+**Description:** get budget notifications.
+
+**Handler:** `get_budget_notifications` (`heartbeat.py:260`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/heartbeat/budget/{agent_id}
+
+```
+GET /api/v1/heartbeat/budget/{agent_id}
+```
+
+**Description:** check budget.
+
+**Handler:** `check_budget` (`heartbeat.py:243`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/heartbeat/recovery/orphaned
+
+```
+POST /api/v1/heartbeat/recovery/orphaned
+```
+
+**Description:** recover orphaned tasks.
+
+**Handler:** `recover_orphaned_tasks` (`heartbeat.py:288`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/heartbeat/stats
+
+```
+GET /api/v1/heartbeat/stats
+```
+
+**Description:** get scheduler stats.
+
+**Handler:** `get_scheduler_stats` (`heartbeat.py:271`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/heartbeat/tasks
+
+```
+GET /api/v1/heartbeat/tasks
+```
+
+**Description:** list scheduled tasks.
+
+**Handler:** `list_scheduled_tasks` (`heartbeat.py:141`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/heartbeat/tasks
+
+```
+POST /api/v1/heartbeat/tasks
+```
+
+**Description:** create scheduled task.
+
+**Handler:** `create_scheduled_task` (`heartbeat.py:74`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### DELETE /api/v1/heartbeat/tasks/{task_id}
+
+```
+DELETE /api/v1/heartbeat/tasks/{task_id}
+```
+
+**Description:** delete task.
+
+**Handler:** `delete_task` (`heartbeat.py:214`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/heartbeat/tasks/{task_id}
+
+```
+GET /api/v1/heartbeat/tasks/{task_id}
+```
+
+**Description:** get scheduled task.
+
+**Handler:** `get_scheduled_task` (`heartbeat.py:115`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/heartbeat/tasks/{task_id}/history
+
+```
+GET /api/v1/heartbeat/tasks/{task_id}/history
+```
+
+**Description:** get task history.
+
+**Handler:** `get_task_history` (`heartbeat.py:228`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/heartbeat/tasks/{task_id}/pause
+
+```
+POST /api/v1/heartbeat/tasks/{task_id}/pause
+```
+
+**Description:** pause task.
+
+**Handler:** `pause_task` (`heartbeat.py:185`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/heartbeat/tasks/{task_id}/resume
+
+```
+POST /api/v1/heartbeat/tasks/{task_id}/resume
+```
+
+**Description:** resume task.
+
+**Handler:** `resume_task` (`heartbeat.py:200`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/heartbeat/tasks/{task_id}/trigger
+
+```
+POST /api/v1/heartbeat/tasks/{task_id}/trigger
+```
+
+**Description:** trigger task now.
+
+**Handler:** `trigger_task_now` (`heartbeat.py:171`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### LNN Models (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 20 条。
+
+#### POST /api/v1/lnn/batch-inference
+
+```
+POST /api/v1/lnn/batch-inference
+```
+
+**Description:** batch inference.
+
+**Handler:** `batch_inference` (`lnn.py:1788`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### DELETE /api/v1/lnn/cache/clear
+
+```
+DELETE /api/v1/lnn/cache/clear
+```
+
+**Description:** clear cache.
+
+**Handler:** `clear_cache` (`lnn.py:909`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/cache/stats
+
+```
+GET /api/v1/lnn/cache/stats
+```
+
+**Description:** get cache stats.
+
+**Handler:** `get_cache_stats` (`lnn.py:887`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/lnn/device/clear-cache
+
+```
+POST /api/v1/lnn/device/clear-cache
+```
+
+**Description:** clear device cache.
+
+**Handler:** `clear_device_cache` (`lnn.py:1036`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/device/info
+
+```
+GET /api/v1/lnn/device/info
+```
+
+**Description:** get device info.
+
+**Handler:** `get_device_info` (`lnn.py:967`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/device/status
+
+```
+GET /api/v1/lnn/device/status
+```
+
+**Description:** get device status endpoint.
+
+**Handler:** `get_device_status_endpoint` (`lnn.py:998`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/health
+
+```
+GET /api/v1/lnn/health
+```
+
+**Description:** health check.
+
+**Handler:** `health_check` (`lnn.py:829`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/models/{model_name}/info
+
+```
+GET /api/v1/lnn/models/{model_name}/info
+```
+
+**Description:** get model info.
+
+**Handler:** `get_model_info` (`lnn.py:753`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/lnn/models/{model_name}/quantize
+
+```
+POST /api/v1/lnn/models/{model_name}/quantize
+```
+
+**Description:** quantize model.
+
+**Handler:** `quantize_model` (`lnn.py:1317`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/models/{model_name}/size
+
+```
+GET /api/v1/lnn/models/{model_name}/size
+```
+
+**Description:** get model size.
+
+**Handler:** `get_model_size` (`lnn.py:1446`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/lnn/models/{model_name}/validate
+
+```
+POST /api/v1/lnn/models/{model_name}/validate
+```
+
+**Description:** validate model.
+
+**Handler:** `validate_model` (`lnn.py:782`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/performance
+
+```
+GET /api/v1/lnn/performance
+```
+
+**Description:** get performance.
+
+**Handler:** `get_performance` (`lnn.py:925`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/lnn/predict
+
+```
+POST /api/v1/lnn/predict
+```
+
+**Description:** predict lnn.
+
+**Handler:** `predict_lnn` (`lnn.py:90`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/lnn/quantize/{task_id}/cancel
+
+```
+POST /api/v1/lnn/quantize/{task_id}/cancel
+```
+
+**Description:** cancel quantization task.
+
+**Handler:** `cancel_quantization_task` (`lnn.py:1415`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/quantize/{task_id}/status
+
+```
+GET /api/v1/lnn/quantize/{task_id}/status
+```
+
+**Description:** get quantization status.
+
+**Handler:** `get_quantization_status` (`lnn.py:1392`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/tasks
+
+```
+GET /api/v1/lnn/tasks
+```
+
+**Description:** list training tasks.
+
+**Handler:** `list_training_tasks` (`lnn.py:858`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/lnn/train
+
+```
+POST /api/v1/lnn/train
+```
+
+**Description:** train lnn.
+
+**Handler:** `train_lnn` (`lnn.py:657`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/lnn/train/dry_run
+
+```
+POST /api/v1/lnn/train/dry_run
+```
+
+**Description:** dry run training.
+
+**Handler:** `dry_run_training` (`lnn.py:315`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/lnn/train/{task_id}/cancel
+
+```
+POST /api/v1/lnn/train/{task_id}/cancel
+```
+
+**Description:** cancel training task.
+
+**Handler:** `cancel_training_task` (`lnn.py:1100`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/lnn/train/{task_id}/stream
+
+```
+GET /api/v1/lnn/train/{task_id}/stream
+```
+
+**Description:** stream training status.
+
+**Handler:** `stream_training_status` (`lnn.py:1074`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Ollama (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 2 条。
+
+#### GET /api/ollama/models
+
+```
+GET /api/ollama/models
+```
+
+**Description:** list ollama models.
+
+**Handler:** `list_ollama_models` (`ollama_routes.py:59`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/ollama/status
+
+```
+GET /api/ollama/status
+```
+
+**Description:** get ollama status.
+
+**Handler:** `get_ollama_status` (`ollama_routes.py:20`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Plugins (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 13 条。
+
+#### GET /api/v1/plugins/marketplace
+
+```
+GET /api/v1/plugins/marketplace
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/plugins/marketplace/{plugin_id}/install
+
+```
+POST /api/v1/plugins/marketplace/{plugin_id}/install
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/plugins/workers
+
+```
+GET /api/v1/plugins/workers
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/plugins/workers/{plugin_id}/start
+
+```
+POST /api/v1/plugins/workers/{plugin_id}/start
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/plugins/workers/{plugin_id}/stop
+
+```
+POST /api/v1/plugins/workers/{plugin_id}/stop
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/plugins/{plugin_id}/capabilities
+
+```
+GET /api/v1/plugins/{plugin_id}/capabilities
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### PUT /api/v1/plugins/{plugin_id}/capabilities/{capability}
+
+```
+PUT /api/v1/plugins/{plugin_id}/capabilities/{capability}
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### PUT /api/v1/plugins/{plugin_id}/config
+
+```
+PUT /api/v1/plugins/{plugin_id}/config
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/plugins/{plugin_id}/dependencies
+
+```
+GET /api/v1/plugins/{plugin_id}/dependencies
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/plugins/{plugin_id}/disable
+
+```
+POST /api/v1/plugins/{plugin_id}/disable
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/plugins/{plugin_id}/enable
+
+```
+POST /api/v1/plugins/{plugin_id}/enable
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/plugins/{plugin_id}/logs
+
+```
+GET /api/v1/plugins/{plugin_id}/logs
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/plugins/{plugin_id}/reload
+
+```
+POST /api/v1/plugins/{plugin_id}/reload
+```
+
+**Description:** API operation.
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### RAG (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 13 条。
+
+#### POST /api/rag/add
+
+```
+POST /api/rag/add
+```
+
+**Description:** add knowledge.
+
+**Handler:** `add_knowledge` (`routes.py:60`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/rag/backup/export
+
+```
+POST /api/rag/backup/export
+```
+
+**Description:** export backup.
+
+**Handler:** `export_backup` (`routes.py:178`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/rag/backup/import
+
+```
+POST /api/rag/backup/import
+```
+
+**Description:** import backup.
+
+**Handler:** `import_backup` (`routes.py:189`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/rag/import/file
+
+```
+POST /api/rag/import/file
+```
+
+**Description:** import document.
+
+**Handler:** `import_document` (`routes.py:144`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/rag/list
+
+```
+GET /api/rag/list
+```
+
+**Description:** list documents.
+
+**Handler:** `list_documents` (`routes.py:91`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/rag/load/default
+
+```
+POST /api/rag/load/default
+```
+
+**Description:** load default knowledge.
+
+**Handler:** `load_default_knowledge` (`routes.py:100`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/rag/load/json
+
+```
+POST /api/rag/load/json
+```
+
+**Description:** load rag json.
+
+**Handler:** `load_rag_json` (`routes.py:110`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/rag/maintenance/cleanup
+
+```
+POST /api/rag/maintenance/cleanup
+```
+
+**Description:** cleanup orphaned.
+
+**Handler:** `cleanup_orphaned` (`routes.py:215`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/rag/maintenance/optimize
+
+```
+POST /api/rag/maintenance/optimize
+```
+
+**Description:** optimize index.
+
+**Handler:** `optimize_index` (`routes.py:204`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/rag/search
+
+```
+GET /api/rag/search
+```
+
+**Description:** search by source.
+
+**Handler:** `search_by_source` (`routes.py:120`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### DELETE /api/rag/source/{source}
+
+```
+DELETE /api/rag/source/{source}
+```
+
+**Description:** delete by source.
+
+**Handler:** `delete_by_source` (`routes.py:134`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/rag/stats
+
+```
+GET /api/rag/stats
+```
+
+**Description:** get stats.
+
+**Handler:** `get_stats` (`routes.py:50`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### DELETE /api/rag/{doc_id}
+
+```
+DELETE /api/rag/{doc_id}
+```
+
+**Description:** delete knowledge.
+
+**Handler:** `delete_knowledge` (`routes.py:77`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Simulation (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 7 条。
+
+#### POST /api/simulation/check-conflict
+
+```
+POST /api/simulation/check-conflict
+```
+
+**Description:** check tool slot conflict.
+
+**Handler:** `check_tool_slot_conflict` (`api.py:856`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/simulation/history
+
+```
+GET /api/simulation/history
+```
+
+**Description:** get simulation history.
+
+**Handler:** `get_simulation_history` (`api.py:746`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/simulation/output/{filename}
+
+```
+GET /api/simulation/output/{filename}
+```
+
+**Description:** get simulation output.
+
+**Handler:** `get_simulation_output` (`api.py:703`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### DELETE /api/simulation/result/{task_id}
+
+```
+DELETE /api/simulation/result/{task_id}
+```
+
+**Description:** delete simulation result.
+
+**Handler:** `delete_simulation_result` (`api.py:798`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/simulation/run
+
+```
+POST /api/simulation/run
+```
+
+**Description:** run simulation.
+
+**Handler:** `run_simulation` (`api.py:458`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/simulation/run/async
+
+```
+POST /api/simulation/run/async
+```
+
+**Description:** run simulation async.
+
+**Handler:** `run_simulation_async` (`api.py:557`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/simulation/status/{task_id}
+
+```
+GET /api/simulation/status/{task_id}
+```
+
+**Description:** get simulation status.
+
+**Handler:** `get_simulation_status` (`api.py:633`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Skills (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 13 条。
+
+#### POST /api/v1/skills/create
+
+```
+POST /api/v1/skills/create
+```
+
+**Description:** create skill.
+
+**Handler:** `create_skill` (`skills.py:146`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/skills/export
+
+```
+POST /api/v1/skills/export
+```
+
+**Description:** export skill.
+
+**Handler:** `export_skill` (`skills.py:285`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/skills/import
+
+```
+POST /api/v1/skills/import
+```
+
+**Description:** import skill.
+
+**Handler:** `import_skill` (`skills.py:299`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/skills/inject
+
+```
+POST /api/v1/skills/inject
+```
+
+**Description:** inject skills endpoint.
+
+**Handler:** `inject_skills_endpoint` (`skills.py:341`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/skills/marketplace/download
+
+```
+POST /api/v1/skills/marketplace/download
+```
+
+**Description:** marketplace download.
+
+**Handler:** `marketplace_download` (`skills.py:407`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/skills/marketplace/list
+
+```
+GET /api/v1/skills/marketplace/list
+```
+
+**Description:** marketplace list.
+
+**Handler:** `marketplace_list` (`skills.py:368`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/skills/marketplace/publish
+
+```
+POST /api/v1/skills/marketplace/publish
+```
+
+**Description:** marketplace publish.
+
+**Handler:** `marketplace_publish` (`skills.py:392`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/skills/marketplace/rate
+
+```
+POST /api/v1/skills/marketplace/rate
+```
+
+**Description:** marketplace rate.
+
+**Handler:** `marketplace_rate` (`skills.py:425`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/skills/marketplace/search
+
+```
+GET /api/v1/skills/marketplace/search
+```
+
+**Description:** marketplace search.
+
+**Handler:** `marketplace_search` (`skills.py:380`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### DELETE /api/v1/skills/marketplace/{skill_id}
+
+```
+DELETE /api/v1/skills/marketplace/{skill_id}
+```
+
+**Description:** marketplace unpublish.
+
+**Handler:** `marketplace_unpublish` (`skills.py:442`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/skills/rate
+
+```
+POST /api/v1/skills/rate
+```
+
+**Description:** rate skill.
+
+**Handler:** `rate_skill` (`skills.py:326`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/skills/reload
+
+```
+POST /api/v1/skills/reload
+```
+
+**Description:** reload skills.
+
+**Handler:** `reload_skills` (`skills.py:249`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/skills/{skill_id}/versions
+
+```
+GET /api/v1/skills/{skill_id}/versions
+```
+
+**Description:** get skill versions.
+
+**Handler:** `get_skill_versions` (`skills.py:263`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Task Checkout (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 15 条。
+
+#### GET /api/v1/task-checkout/agents/{agent_id}/status
+
+```
+GET /api/v1/task-checkout/agents/{agent_id}/status
+```
+
+**Description:** get agent status.
+
+**Handler:** `get_agent_status` (`task_checkout.py:267`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/task-checkout/board
+
+```
+GET /api/v1/task-checkout/board
+```
+
+**Description:** get task board.
+
+**Handler:** `get_task_board` (`task_checkout.py:221`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/task-checkout/checkout
+
+```
+POST /api/v1/task-checkout/checkout
+```
+
+**Description:** checkout task.
+
+**Handler:** `checkout_task` (`task_checkout.py:73`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/task-checkout/cleanup
+
+```
+POST /api/v1/task-checkout/cleanup
+```
+
+**Description:** cleanup expired.
+
+**Handler:** `cleanup_expired` (`task_checkout.py:348`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/task-checkout/locks
+
+```
+GET /api/v1/task-checkout/locks
+```
+
+**Description:** list locks.
+
+**Handler:** `list_locks` (`task_checkout.py:228`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### DELETE /api/v1/task-checkout/locks/{task_id}
+
+```
+DELETE /api/v1/task-checkout/locks/{task_id}
+```
+
+**Description:** force release lock.
+
+**Handler:** `force_release_lock` (`task_checkout.py:235`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/task-checkout/queue
+
+```
+GET /api/v1/task-checkout/queue
+```
+
+**Description:** get queue status.
+
+**Handler:** `get_queue_status` (`task_checkout.py:341`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/task-checkout/queue/enqueue
+
+```
+POST /api/v1/task-checkout/queue/enqueue
+```
+
+**Description:** enqueue checkout.
+
+**Handler:** `enqueue_checkout` (`task_checkout.py:274`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/task-checkout/queue/process
+
+```
+POST /api/v1/task-checkout/queue/process
+```
+
+**Description:** process queue.
+
+**Handler:** `process_queue` (`task_checkout.py:322`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/task-checkout/tasks
+
+```
+POST /api/v1/task-checkout/tasks
+```
+
+**Description:** register task.
+
+**Handler:** `register_task` (`task_checkout.py:38`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/task-checkout/tasks/{task_id}/abandon
+
+```
+POST /api/v1/task-checkout/tasks/{task_id}/abandon
+```
+
+**Description:** abandon task.
+
+**Handler:** `abandon_task` (`task_checkout.py:197`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/task-checkout/tasks/{task_id}/complete
+
+```
+POST /api/v1/task-checkout/tasks/{task_id}/complete
+```
+
+**Description:** complete task.
+
+**Handler:** `complete_task` (`task_checkout.py:148`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/task-checkout/tasks/{task_id}/fail
+
+```
+POST /api/v1/task-checkout/tasks/{task_id}/fail
+```
+
+**Description:** fail task.
+
+**Handler:** `fail_task` (`task_checkout.py:172`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/task-checkout/tasks/{task_id}/heartbeat
+
+```
+POST /api/v1/task-checkout/tasks/{task_id}/heartbeat
+```
+
+**Description:** heartbeat.
+
+**Handler:** `heartbeat` (`task_checkout.py:130`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/task-checkout/tasks/{task_id}/history
+
+```
+GET /api/v1/task-checkout/tasks/{task_id}/history
+```
+
+**Description:** get checkout history.
+
+**Handler:** `get_checkout_history` (`task_checkout.py:256`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### User Management (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 4 条。
+
+#### GET /api/v1/users
+
+```
+GET /api/v1/users
+```
+
+**Description:** list users.
+
+**Handler:** `list_users` (`users.py:31`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/users/me/permissions
+
+```
+GET /api/v1/users/me/permissions
+```
+
+**Description:** my permissions.
+
+**Handler:** `my_permissions` (`users.py:52`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### PUT /api/v1/users/{username}/role
+
+```
+PUT /api/v1/users/{username}/role
+```
+
+**Description:** assign role.
+
+**Handler:** `assign_role` (`users.py:66`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### PUT /api/v1/users/{username}/status
+
+```
+PUT /api/v1/users/{username}/status
+```
+
+**Description:** set user status.
+
+**Handler:** `set_user_status` (`users.py:91`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### User Sovereignty (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 8 条。
+
+#### DELETE /api/v1/user-sovereignty/audit-log/clear
+
+```
+DELETE /api/v1/user-sovereignty/audit-log/clear
+```
+
+**Description:** clear audit logs.
+
+**Handler:** `clear_audit_logs` (`user_sovereignty.py:497`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/user-sovereignty/audit-log/export
+
+```
+POST /api/v1/user-sovereignty/audit-log/export
+```
+
+**Description:** export audit logs.
+
+**Handler:** `export_audit_logs` (`user_sovereignty.py:436`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/user-sovereignty/audit-log/query
+
+```
+POST /api/v1/user-sovereignty/audit-log/query
+```
+
+**Description:** query audit logs.
+
+**Handler:** `query_audit_logs` (`user_sovereignty.py:365`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/user-sovereignty/audit-log/record
+
+```
+POST /api/v1/user-sovereignty/audit-log/record
+```
+
+**Description:** record user decision.
+
+**Handler:** `record_user_decision` (`user_sovereignty.py:270`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/user-sovereignty/audit-log/search
+
+```
+POST /api/v1/user-sovereignty/audit-log/search
+```
+
+**Description:** search audit logs.
+
+**Handler:** `search_audit_logs` (`user_sovereignty.py:403`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/user-sovereignty/audit-log/statistics
+
+```
+GET /api/v1/user-sovereignty/audit-log/statistics
+```
+
+**Description:** get audit log statistics.
+
+**Handler:** `get_audit_log_statistics` (`user_sovereignty.py:471`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/user-sovereignty/predict
+
+```
+POST /api/v1/user-sovereignty/predict
+```
+
+**Description:** predict with sovereignty.
+
+**Handler:** `predict_with_sovereignty` (`user_sovereignty.py:29`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/user-sovereignty/settings
+
+```
+GET /api/v1/user-sovereignty/settings
+```
+
+**Description:** get user sovereignty settings.
+
+**Handler:** `get_user_sovereignty_settings` (`user_sovereignty.py:523`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+### Wear Prediction (Routes补全)
+
+> 以下路由已存在于 `python/app/**` 中但未在本文档前面章节记录。共 9 条。
+
+#### POST /api/v1/wear/calibrate
+
+```
+POST /api/v1/wear/calibrate
+```
+
+**Description:** calibrate prediction.
+
+**Handler:** `calibrate_prediction` (`wear_prediction.py:220`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/wear/cross-dataset-analysis
+
+```
+GET /api/v1/wear/cross-dataset-analysis
+```
+
+**Description:** get cross dataset analysis.
+
+**Handler:** `get_cross_dataset_analysis` (`wear_prediction.py:301`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/wear/models
+
+```
+GET /api/v1/wear/models
+```
+
+**Description:** get supported models.
+
+**Handler:** `get_supported_models` (`wear_prediction.py:160`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/wear/predict-from-signals
+
+```
+POST /api/v1/wear/predict-from-signals
+```
+
+**Description:** predict wear from signal features.
+
+**Handler:** `predict_wear_from_signal_features` (`wear_prediction.py:275`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/wear/remaining-life
+
+```
+POST /api/v1/wear/remaining-life
+```
+
+**Description:** predict remaining life.
+
+**Handler:** `predict_remaining_life` (`wear_prediction.py:92`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/wear/suggest
+
+```
+POST /api/v1/wear/suggest
+```
+
+**Description:** suggest adjustment.
+
+**Handler:** `suggest_adjustment` (`wear_prediction.py:127`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/wear/threshold
+
+```
+POST /api/v1/wear/threshold
+```
+
+**Description:** get threshold.
+
+**Handler:** `get_threshold` (`wear_prediction.py:197`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### POST /api/v1/wear/train-uniwear
+
+```
+POST /api/v1/wear/train-uniwear
+```
+
+**Description:** train uniwear model.
+
+**Handler:** `train_uniwear_model` (`wear_prediction.py:250`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+#### GET /api/v1/wear/uniwear-materials
+
+```
+GET /api/v1/wear/uniwear-materials
+```
+
+**Description:** get uniwear materials.
+
+**Handler:** `get_uniwear_materials` (`wear_prediction.py:321`)
+
+**Response (200):**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": { }
+}
+```
+
+**Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`
+
+---
+
+### 仅在文档中存在（需复核）
+
+> 以下路径在 `docs/API.md` 中被记录但未在代码中匹配到，可能为：
+>
+> - 旧版 API（已废弃 / 重构）
+> - 通过中间件或别名注册
+> - 文档笔误
+>
+> 共 **67** 条，需要人工复核。
+
+- `/agents`
+- `/api/agent/v1/chat`
+- `/api/agent/v1/chat/sse`
+- `/api/agent/v1/skills`
+- `/api/agent/v1/skills/register`
+- `/api/agents`
+- `/api/agents/{agent_id}`
+- `/api/ai/chat`
+- `/api/dxf/info/{file_id}`
+- `/api/dxf/upload`
+- `/api/ollama/chat`
+- `/api/ollama/chat/stream`
+- `/api/ollama/health`
+- `/api/process/generate`
+- `/api/rag/collections`
+- `/api/rag/collections/{collection_name}/query`
+- `/api/simulation/result`
+- `/api/simulation/start`
+- `/api/simulation/status`
+- `/api/v1/cost-budget/budget`
+- `/api/v1/cost-budget/costs`
+- `/api/v1/cost-budget/stats`
+- `/api/v1/goal-alignment/align`
+- `/api/v1/goal-alignment/alignments/{alignment_id}`
+- `/api/v1/goal-alignment/goals/batch`
+- `/api/v1/governance/approvals`
+- `/api/v1/governance/approvals/submit`
+- `/api/v1/governance/approvals/{approval_id}`
+- `/api/v1/governance/approvals/{approval_id}/review`
+- `/api/v1/heartbeat`
+- `/api/v1/lnn/models/active`
+- `/api/v1/lnn/models/compare`
+- `/api/v1/lnn/models/{model_id}`
+- `/api/v1/lnn/models/{model_id}/activate`
+- `/api/v1/lnn/models/{model_id}/batch-predict`
+- `/api/v1/lnn/models/{model_id}/deactivate`
+- `/api/v1/lnn/models/{model_id}/predict`
+- `/api/v1/lnn/models/{model_id}/versions`
+- `/api/v1/skills/search`
+- `/api/v1/sse/connect/{task_id}`
+- `/api/v1/sse/send/{task_id}`
+- `/api/v1/sse/tasks`
+- `/api/v1/sse/tasks/{task_id}`
+- `/api/v1/sse/verify`
+- `/api/v1/task-checkout`
+- `/api/v1/task-checkout/{checkout_id}/checkin`
+- `/api/v1/task-checkout/{checkout_id}/release`
+- `/api/v1/user-sovereignty/data`
+- `/api/v1/user-sovereignty/export`
+- `/api/v1/users/batch-delete`
+- `/api/v1/users/batch-update`
+- `/api/v1/users/change-password`
+- `/api/v1/users/create`
+- `/api/v1/users/list`
+- `/api/v1/users/me`
+- `/api/v1/users/me/tasks`
+- `/api/v1/users/stats`
+- `/api/v1/users/{user_id}`
+- `/api/v1/wear/batch-predict`
+- `/api/v1/wear/predictions`
+- `/api/v1/wear/predictions/{prediction_id}`
+- `/health`
+- `/health/live`
+- `/health/ready`
+- `/logs/recent`
+- `/metrics/prometheus`
+- `/version`
+
+---
+
+*本节由 scripts/sync_api_docs.py 自动生成于 2026-06-11。源数据：api-sync-report.json*

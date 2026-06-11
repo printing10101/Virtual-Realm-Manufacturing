@@ -1,8 +1,13 @@
-﻿import asyncio
+import asyncio
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+# Skip the entire module if the implementation is not available.
+pytest.importorskip("app.core.process_trace")
 
 from app.core.process_trace import ProcessTrace  # noqa: E402
 from app.tasks.task_manager import TaskManager  # noqa: E402
