@@ -25,6 +25,10 @@ env:
   PYTHONUNBUFFERED: '1'
   LNN_AUTH_ENABLED: 'false'
   AGENT_AUTH_ENABLED: 'false'
+  # 修复：app 包位于 python/app/，需将 python/ 加入 PYTHONPATH，
+  # 否则步骤 7（运行3D重建）执行 `from app.validation import ...` 时
+  # 会因 ModuleNotFoundError 失败。
+  PYTHONPATH: ${{ github.workspace }}/python
 
 jobs:
   geometry-validation:
