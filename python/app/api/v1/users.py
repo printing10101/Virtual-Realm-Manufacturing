@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import logging
 
@@ -12,7 +12,7 @@ from app.models.schemas import (
     UserListResponse,
     UserStatusRequest,
 )
-from app.core.permissions import (
+from app.auth.permissions import (
     require_permission,
     get_user_permissions,
     rbac_cache,

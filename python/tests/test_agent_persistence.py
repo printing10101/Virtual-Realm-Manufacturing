@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for Agent State Persistence & Session Recovery System
 
 Covers:
@@ -33,7 +33,7 @@ from app.models.agent_state import (
     StateVersion,
     migrate_state,
 )
-from app.core.state_persistence import (
+from app.state.state_persistence import (
     StatePersistenceManager,
     StateRecoveryManager,
     CheckpointLifecycleManager,

@@ -1,7 +1,7 @@
 <template>
   <div class="accept-modify-reject">
     <div class="decision-header">
-      <span class="title">AI建议操作</span>
+      <span class="title">{{ $t('acceptModifyReject.title') }}</span>
       <span
         v-if="showTimestamp"
         class="timestamp"
@@ -14,13 +14,13 @@
     >
       <div class="card-header">
         <el-icon><Promotion /></el-icon>
-        <span class="card-title">AI推荐</span>
+        <span class="card-title">{{ $t('acceptModifyReject.cardRecommendation') }}</span>
         <el-tag
           v-if="confidence !== null"
           :type="getConfidenceTagType(confidence)"
           size="small"
         >
-          置信度: {{ (confidence * 100).toFixed(0) }}%
+          {{ $t('acceptModifyReject.confidence', { percent: (confidence * 100).toFixed(0) }) }}
         </el-tag>
       </div>
       <div class="card-content">
@@ -36,7 +36,7 @@
     >
       <div class="card-header">
         <el-icon><ChatDotRound /></el-icon>
-        <span class="card-title">推理过程</span>
+        <span class="card-title">{{ $t('acceptModifyReject.cardReasoning') }}</span>
       </div>
       <div class="card-content">
         <p>{{ reasoning }}</p>
@@ -49,7 +49,7 @@
     >
       <div class="section-header">
         <el-icon><Grid /></el-icon>
-        <span class="section-title">备选方案</span>
+        <span class="section-title">{{ $t('acceptModifyReject.sectionAlternatives') }}</span>
       </div>
       <el-radio-group
         v-model="selectedAlternative"
@@ -88,7 +88,7 @@
         :icon="Check"
         @click="handleAccept"
       >
-        接受
+        {{ $t('acceptModifyReject.accept') }}
       </el-button>
       <el-button
         v-if="allowModify"
@@ -97,7 +97,7 @@
         :icon="Edit"
         @click="handleModify"
       >
-        修改
+        {{ $t('acceptModifyReject.modify') }}
       </el-button>
       <el-button
         type="danger"
@@ -105,13 +105,13 @@
         :icon="Close"
         @click="handleReject"
       >
-        拒绝
+        {{ $t('acceptModifyReject.reject') }}
       </el-button>
     </div>
 
     <el-drawer
       v-model="modifyDrawerVisible"
-      title="修改AI推荐"
+      :title="$t('acceptModifyReject.modifyDrawerTitle')"
       size="50%"
     >
       <div class="modify-content">
@@ -120,7 +120,7 @@
           :recommendation="aiRecommendation"
         >
           <el-alert
-            title="您可以在此修改AI推荐的参数"
+            :title="$t('acceptModifyReject.modifyDrawerHint')"
             type="info"
             :closable="false"
             show-icon
@@ -156,13 +156,13 @@
       <template #footer>
         <div class="drawer-footer">
           <el-button @click="modifyDrawerVisible = false">
-            取消
+            {{ $t('common.cancel') }}
           </el-button>
           <el-button
             type="primary"
             @click="confirmModify"
           >
-            确认修改
+            {{ $t('common.confirm') }}
           </el-button>
         </div>
       </template>
@@ -171,7 +171,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { ElMessage } from 'element-plus'
 import { Promotion, ChatDotRound, Grid, Check, Edit, Close } from '@element-plus/icons-vue'
 import { getConfidenceTagType } from '@/utils/statusHelpers'
 import { formatTimestamp } from '@/utils/formatters'
@@ -213,6 +215,8 @@ const emit = defineEmits<{
   reject: [recommendation: Record<string, any>]
 }>()
 
+const { t } = useI18n()
+
 const selectedAlternative = ref<string | null>(null)
 const modifyDrawerVisible = ref(false)
 const modifiedParams = ref<Record<string, any>>({})
@@ -231,7 +235,7 @@ function handleAccept() {
     : { ...props.aiRecommendation }
 
   emit('accept', recommendation)
-  ElMessage.success('已接受AI推荐')
+  ElMessage.success(t('acceptModifyReject.acceptSuccess'))
 }
 
 function handleModify() {
@@ -242,12 +246,12 @@ function handleModify() {
 function confirmModify() {
   emit('modify', modifiedParams.value)
   modifyDrawerVisible.value = false
-  ElMessage.info('已应用您的修改')
+  ElMessage.info(t('acceptModifyReject.modifyApplied'))
 }
 
 function handleReject() {
   emit('reject', { ...props.aiRecommendation })
-  ElMessage.warning('已拒绝AI推荐')
+  ElMessage.warning(t('acceptModifyReject.rejectApplied'))
 }
 </script>
 

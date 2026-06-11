@@ -1,0 +1,86 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "灵境制造",
+  "version": "2.0.0",
+  "identifier": "com.lingjing.manufacturing",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "灵境制造 V4",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "transparent": false,
+        "visible": true,
+        "label": "main"
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": false
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
+    "resources": {
+      "../python/resources": "resources"
+    },
+    "externalBin": [
+      "binaries/lingjing-backend"
+    ],
+    "category": "DeveloperTool",
+    "copyright": "Copyright © 2026 Lingjing Manufacturing",
+    "shortDescription": "AI驱动的3D建模与工艺规划系统",
+    "longDescription": "灵境制造 V4 - 一体化部署的AI驱动3D建模与工艺规划系统，内置Python后端服务，开箱即用。",
+    "windows": {
+      "wix": {
+        "language": ["zh-CN", "en-US"],
+        "languageStrings": {
+          "zh-CN": {
+            "FileDescription": "灵境制造",
+            "ProductName": "灵境制造",
+            "Manufacturer": "Lingjing Manufacturing"
+          }
+        }
+      },
+      "nsis": {
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true,
+        "installerIcon": "icons/icon.ico",
+        "installMode": "perMachine",
+        "compression": "lzma"
+      },
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      }
+    }
+  }
+}

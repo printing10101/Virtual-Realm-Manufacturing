@@ -165,11 +165,12 @@ class WorkflowResult:
     steps_result: List[Dict[str, Any]] = field(default_factory=list)
     fallback_triggered: bool = False
     fallback_reason: str = ""
+    error_id: str = ""
     metadata: Optional[Dict[str, Any]] = None
     timestamp: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "workflow_id": self.workflow_id,
             "success": self.success,
             "output": self.output,
@@ -180,6 +181,9 @@ class WorkflowResult:
             "metadata": self.metadata or {},
             "timestamp": self.timestamp,
         }
+        if self.error_id:
+            result["error_id"] = self.error_id
+        return result
 
 
 class WorkflowLNNOrchestrator:
@@ -278,13 +282,21 @@ class WorkflowLNNOrchestrator:
             return workflow_result
 
         except Exception as e:
+            # 兜底捕获：工作流编排可能涉及多步执行、序列化、IO 等复杂逻辑，
+            # 任何未预期异常都需记录到错误结果中以保持主流程可用
+            from app.core.safe_errors import safe_error_message
+
             processing_time = (time.perf_counter() - start_time) * 1000
+            safe = safe_error_message(
+                e, context="lnn.workflow.execute", fallback="工作流执行失败"
+            )
             error_result = WorkflowResult(
                 workflow_id=workflow_id,
                 success=False,
                 total_time_ms=processing_time,
                 fallback_triggered=self._enable_fallback,
-                fallback_reason=f"Workflow execution error: {str(e)}",
+                fallback_reason=safe["message"],
+                error_id=safe["error_id"],
                 timestamp=time.time(),
             )
             self._workflow_history.append(error_result)
@@ -327,8 +339,14 @@ class WorkflowLNNOrchestrator:
             return result
 
         except Exception as e:
+            # 兜底捕获：LNN 不可用或推理失败时降级到规则引擎，记录原始错误以便排查
+            from app.core.safe_errors import safe_error_message
+
+            safe = safe_error_message(
+                e, context="lnn.workflow.fallback", fallback="LNN推理失败"
+            )
             return self._execute_fallback_path(
-                workflow_id, task_input, f"LNN execution failed: {str(e)}"
+                workflow_id, task_input, f"LNN execution failed: {safe['message']}"
             )
 
     def _preprocess_input(self, user_input: Any) -> TaskInput:
@@ -478,9 +496,15 @@ class WorkflowLNNOrchestrator:
                 step.status = WorkflowStepStatus.COMPLETED
                 context[step.output_key] = step.result
 
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, AttributeError, MemoryError) as e:
+                # 工作流步骤执行可能涉及推理、IO、属性访问等，此处捕获已知异常类型
+                from app.core.safe_errors import safe_error_message
+
+                safe = safe_error_message(
+                    e, context="lnn.workflow.step", fallback="工作流步骤执行失败"
+                )
                 step.status = WorkflowStepStatus.FAILED
-                step.error = str(e)
+                step.error = safe["message"]
                 all_success = False
 
                 if step.on_failure == "fallback" and self._enable_fallback:
@@ -547,7 +571,8 @@ class WorkflowLNNOrchestrator:
                 )
                 return result
 
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, AttributeError, MemoryError) as e:
+                # 工作流推理中可能抛出运行时、内存、类型相关错误，全部捕获以支持重试
                 last_error = e
                 if attempt < max_retries - 1:
                     logger.warning(
@@ -643,13 +668,20 @@ class WorkflowLNNOrchestrator:
             )
 
         except Exception as e:
+            # 兜底捕获：降级路径仍可能因配置或上下文错误失败
+            from app.core.safe_errors import safe_error_message
+
             processing_time = (time.perf_counter() - start_time) * 1000
+            safe = safe_error_message(
+                e, context="lnn.workflow.fallback_path", fallback="降级路径执行失败"
+            )
             return WorkflowResult(
                 workflow_id=workflow_id,
                 success=False,
                 total_time_ms=processing_time,
                 fallback_triggered=True,
-                fallback_reason=f"Fallback also failed: {str(e)}",
+                fallback_reason=f"Fallback also failed: {safe['message']}",
+                error_id=safe["error_id"],
                 timestamp=time.time(),
             )
 
@@ -661,7 +693,8 @@ class WorkflowLNNOrchestrator:
         if not self.engine.lnn_models:
             try:
                 self.engine.initialize_models()
-            except Exception:
+            except (ImportError, RuntimeError, AttributeError, ValueError, TypeError, OSError):
+                # 模型初始化失败即视为 LNN 不可用，调用方会触发降级流程
                 return False
 
         return len(self.engine.lnn_models) > 0
@@ -722,8 +755,9 @@ class WorkflowLNNOrchestrator:
             with open(log_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
-        except Exception as e:
-            logger.error(f"Failed to log workflow: {e}")
+        except (OSError, IOError, TypeError, ValueError) as e:
+            # 日志写入可能因磁盘 IO、序列化或路径问题失败，不影响主流程
+            logger.error(f"Failed to log workflow: {e}", exc_info=True)
 
     def get_workflow_history(self, limit: int = 100) -> List[WorkflowResult]:
         """获取工作流执行历史"""

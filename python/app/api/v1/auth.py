@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import hmac
 import os
 import uuid
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.models.user import UserCreate, UserLogin, UserResponse, get_user_store
-from app.core.security import (
+from app.auth.security import (
     hash_password,
     verify_password,
     create_access_token,
@@ -16,31 +18,9 @@ from app.core.security import (
     decode_token_strict,
     get_token_ban_list,
 )
-from app.core.rate_limiter import limiter
+from app.middleware.rate_limiter import limiter
+from app.core.request_id import get_request_id as _get_request_id
 
-import time
-
-
-class _RegistrationRateLimiter:
-    """Simple in-memory rate limiter for registration."""
-
-    def __init__(self, max_requests: int = 3, window_seconds: int = 60):
-        self.max_requests = max_requests
-        self.window_seconds = window_seconds
-        self._requests: dict[str, list[float]] = {}
-
-    def is_rate_limited(self, key: str) -> bool:
-        now = time.time()
-        if key not in self._requests:
-            self._requests[key] = []
-        self._requests[key] = [t for t in self._requests[key] if now - t < self.window_seconds]
-        if len(self._requests[key]) >= self.max_requests:
-            return True
-        self._requests[key].append(now)
-        return False
-
-
-_registration_limiter = _RegistrationRateLimiter()
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -80,40 +60,51 @@ def require_role(*roles: str):
 
 
 @router.post("/register", response_model=dict)
-async def register(body: UserCreate, request: Request):
-    # 邀请码验证：检查环境变量是否配置
+@limiter.limit("3/hour")
+async def register(request: Request, body: UserCreate):
+    """注册新用户。
+
+    安全控制（按执行顺序）：
+    1. 邀请码环境变量检查：当 ``LNN_REGISTRATION_CODE`` 未设置或为空时，
+       视为注册功能已关闭，直接返回 403。
+    2. 邀请码验证：请求体中的 ``invite_code`` 必须与环境变量值完全匹配
+       （使用 ``hmac.compare_digest`` 防止时序攻击）。
+    3. 速率限制（slowapi）：同一 IP 在 1 小时内最多允许 3 次注册尝试；超限返回 429，
+       响应头携带 ``Retry-After`` 字段，由 slowapi 中间件统一处理。
+    4. 用户名唯一性检查：用户名已存在时返回 409。
+    """
+    # 1) 邀请码环境变量检查：未配置时注册功能视为已关闭
     reg_code = os.environ.get("LNN_REGISTRATION_CODE", "")
     if not reg_code:
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="注册功能当前不可用",
+            content={"code": 1003, "message": "注册功能已关闭", "request_id": _get_request_id()},
         )
 
-    # 验证邀请码是否匹配
-    if not body.invite_code or body.invite_code != reg_code:
-        raise HTTPException(
+    # 2) 邀请码验证（防时序攻击）
+    invite_code = body.invite_code or ""
+    if not invite_code or not hmac.compare_digest(invite_code, reg_code):
+        return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="无效的邀请码",
+            content={"code": 1003, "message": "无效的邀请码", "request_id": _get_request_id()},
         )
 
-    # IP-based 注册速率限制
-    client_ip = request.client.host if request.client else "unknown"
-    if _registration_limiter.is_rate_limited(client_ip):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="注册请求过于频繁，请稍后再试",
-        )
+    # 3) 速率限制由 slowapi @limiter.limit("3/hour") 装饰器统一处理
 
+    # 4) 用户名唯一性检查
     store = get_user_store()
     if store.get_user(body.username) is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="用户名已存在")
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"code": 1009, "message": "用户名已存在", "request_id": _get_request_id()},
+        )
 
     try:
         hashed = hash_password(body.password)
         record = store.create_user(body.username, hashed)
         logger.info("User registered: %s", body.username)
         return {
-            "code": 0,
+            "status": status.HTTP_200_OK,
             "message": "注册成功",
             "data": UserResponse(
                 username=record.username,
@@ -123,7 +114,10 @@ async def register(body: UserCreate, request: Request):
             ).model_dump(),
         }
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"code": 1009, "message": str(e), "request_id": _get_request_id()},
+        )
 
 
 @router.post("/login", response_model=dict)

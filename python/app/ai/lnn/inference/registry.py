@@ -321,7 +321,9 @@ class LNNModelRegistry(BaseModelRegistry):
                     model.load(path)
                     model.build()
                     load_test_passed = True
-            except Exception:
+            except (ImportError, AttributeError, RuntimeError, ValueError, TypeError, OSError):
+                # 模型加载测试可能因模块导入、属性访问、文件 IO 等环节失败，
+                # 此处无需详细错误信息（仅作有效性标记）
                 structure_valid = False
                 load_test_passed = False
 
@@ -665,5 +667,9 @@ def _init_torch_model_map() -> None:
                 "HybridLNN": TorchHybridLNNModel,
             }
         )
-    except ImportError:
-        pass
+    except ImportError as e:
+        # PyTorch 可选依赖未安装时静默跳过（仅影响 PyTorch 后端注册）
+        logger.debug(
+            f"PyTorch backend not available, skipping model class registration: {e}",
+            exc_info=True,
+        )

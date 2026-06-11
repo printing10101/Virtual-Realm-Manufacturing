@@ -127,8 +127,13 @@ class PipelineMonitor:
                             "data_type": data_type,
                         },
                     )
-            except ImportError:
-                pass
+            except ImportError as imp_err:
+                # psutil 不可用时跳过内存监控，其他维度监控继续
+                logger.debug(
+                    "psutil unavailable, skipping memory monitoring: %s",
+                    imp_err,
+                    exc_info=True,
+                )
 
     def _trigger_alert(self, alert_type: str, details: Dict[str, Any]):
         logger.warning("[管道监控] 报警: %s - %s", alert_type, details)

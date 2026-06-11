@@ -5,13 +5,13 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Query
 
-from app.core.capability_gating import CapabilityGatekeeper
-from app.core.plugin_system import (
+from app.capability.capability_gating import CapabilityGatekeeper
+from app.plugins.plugin_system import (
     PluginStatus,
     get_dependency_resolver,
     get_plugin_manager,
 )
-from app.core.plugin_worker import PluginWorkerManager, WorkerConfig
+from app.plugins.plugin_worker import PluginWorkerManager, WorkerConfig
 from app.core.response import error, success
 
 logger = logging.getLogger(__name__)
@@ -65,6 +65,9 @@ def list_installed_plugins(
             }
         )
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -84,8 +87,12 @@ def get_plugin_detail(plugin_id: str):
         try:
             worker_mgr = PluginWorkerManager.get_instance()
             worker_info = worker_mgr.get_worker_info(plugin_id)
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError, KeyError) as e:
+            # 工作进程管理器未初始化或插件无 worker 时，仅缺失 worker 信息
+            logger.debug(
+                f"Plugin worker info unavailable for {plugin_id}: {e}",
+                exc_info=True,
+            )
 
         info["worker"] = worker_info
 
@@ -93,6 +100,9 @@ def get_plugin_detail(plugin_id: str):
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -105,6 +115,9 @@ def enable_plugin(plugin_id: str):
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -117,6 +130,9 @@ def disable_plugin(plugin_id: str):
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -129,6 +145,9 @@ def reload_plugin(plugin_id: str):
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -141,6 +160,9 @@ def uninstall_plugin(plugin_id: str):
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -153,6 +175,9 @@ def update_plugin_config(plugin_id: str, config: Dict[str, Any]):
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -172,6 +197,9 @@ def get_plugin_dependencies(plugin_id: str):
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -202,6 +230,9 @@ def get_plugin_capabilities(plugin_id: str):
             }
         )
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -224,6 +255,9 @@ def update_capability_grant(
         )
         return success(data={"message": f"Capability '{capability}' rules updated"})
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -234,6 +268,9 @@ def list_workers():
         workers = worker_mgr.list_workers()
         return success(data={"workers": workers})
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -254,6 +291,9 @@ def start_worker(plugin_id: str):
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -264,6 +304,9 @@ def stop_worker(plugin_id: str):
         worker_mgr.stop_worker(plugin_id)
         return success(data={"message": f"Worker for '{plugin_id}' stopped"})
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)
 
 
@@ -274,4 +317,7 @@ def health_check(plugin_id: Optional[str] = None):
         results = worker_mgr.health_check(plugin_id)
         return success(data={"health": results})
     except Exception as e:
+        # 兜底捕获：API 端点统一收口所有未预期的异常
+        # 插件操作涉及注册表/沙箱/工作进程，异常族多源
+        logger.error("plugins API unexpected error: %s", e, exc_info=True)
         return error(str(e), code=500)

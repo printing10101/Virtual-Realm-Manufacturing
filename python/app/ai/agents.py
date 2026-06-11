@@ -11,14 +11,14 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, TypeAlias
 
-from app.core.utils import extract_json_from_markdown
+from app.utils.utils import extract_json_from_markdown
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
 from app.config import config
-from app.core.input_validator import (
+from app.middleware.input_validator import (
     MaterialValidator,
     SizeValidator,
     ToleranceValidator,
@@ -26,6 +26,7 @@ from app.core.input_validator import (
     validate_and_clean,
 )
 from app.core.response import ErrorCode, error, success
+from app.core.safe_errors import safe_error_message
 from app.rag.knowledge_base import get_knowledge_base
 from enum import StrEnum
 
@@ -45,8 +46,10 @@ class StageStatus(StrEnum):
     COMPLETED = "completed"
 
 
-def failed_status(e: Exception) -> str:
-    return f"failed: {e!s}"
+def failed_status(e: BaseException) -> str:
+    # 修复：阶段状态字段会进入响应，原始 e!s 可能包含敏感信息（路径、库版本），
+    # 仅保留异常类型名以辅助排错，详细信息由服务端日志（logger.exception）记录。
+    return f"failed: {type(e).__name__}"
 
 
 logger = logging.getLogger(__name__)
@@ -953,4 +956,10 @@ async def ai_chat(request: ChatRequest) -> dict[str, Any]:
             message="对话成功",
         )
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"AI对话失败: {e!s}")
+        # 修复：避免 e!s 直接进入响应
+        safe = safe_error_message(e, context="agents.chat", fallback="AI对话失败")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
+        )

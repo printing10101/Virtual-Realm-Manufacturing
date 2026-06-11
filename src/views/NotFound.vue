@@ -13,10 +13,10 @@
             <path d="M80 170 Q110 185 140 170" stroke="#dcdfe6" stroke-width="2.5" fill="none" stroke-linecap="round" />
           </svg>
         </div>
-        <h2 class="not-found-title">页面不存在</h2>
-        <p class="not-found-desc">您访问的页面可能已被删除、更名或暂时不可用</p>
-        <el-button type="primary" size="large" @click="$router.push('/')">
-          返回首页
+        <h2 class="not-found-title">{{ $t('notFound.title') }}</h2>
+        <p class="not-found-desc">{{ $t('notFound.desc') }}</p>
+        <el-button type="primary" size="large" @click="goHome">
+          {{ $t('notFound.backHome') }}
         </el-button>
       </div>
     </el-card>
@@ -24,6 +24,23 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
+
+const goHome = (): void => {
+  router.push('/')
+}
+
+onMounted(() => {
+  // 404 错误日志：输出访问的不存在 URL
+  // eslint-disable-next-line no-console
+  console.error(
+    `[404] 页面不存在 - 访问路径: ${route.fullPath} | 时间: ${new Date().toISOString()}`
+  )
+})
 </script>
 
 <style scoped>

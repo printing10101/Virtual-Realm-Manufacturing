@@ -324,8 +324,14 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
     finally:
         try:
             Path(script_path).unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as cleanup_err:
+            # 临时脚本清理失败不应阻塞调用方，记录以便后续排查
+            logger.debug(
+                "Failed to cleanup cadquery script %s: %s",
+                script_path,
+                cleanup_err,
+                exc_info=True,
+            )
 
 
 def _get_image_dimensions(filepath: Path) -> tuple[int, int]:

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Test Input Validation Utilities
 
 Tests for:
@@ -15,7 +15,7 @@ Tests for:
 import os
 import pytest
 
-from app.core.input_validator import (
+from app.middleware.input_validator import (
     validate_cutting_parameters,
     validate_prediction_horizon,
     validate_training_params,

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Test Permissions Module
 
 Tests for:
@@ -13,7 +13,7 @@ import time
 import pytest
 from unittest.mock import patch
 
-from app.core.permissions import (
+from app.auth.permissions import (
     PermissionLevel,
     PermissionChecker,
     RateLimitConfig,

@@ -403,7 +403,9 @@ class HoleFeatureRecognizer:
                 holes.append(hole)
 
             except (ValueError, TypeError, KeyError) as e:
-                errors.append(f"解析孔条目 {raw.get('id', i)} 时出错: {str(e)}")
+                errors.append(
+                    f" 解析孔条目 {raw.get('id', i)} 时出错: {type(e).__name__}"
+                )
                 continue
 
         # 合并共轴孔为沉头孔

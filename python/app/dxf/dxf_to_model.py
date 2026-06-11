@@ -114,6 +114,9 @@ class DxfToModelConverter:
         try:
             base = self._create_base_solid(length, width, height)
         except Exception as e:
+            # 兜底捕获：cadquery/OCCT 在构造基础实体时可能抛出多种异常
+            # (ValueError 类型参数错误、RuntimeError OCCT 内部错误等)
+            # 统一收口为 DxfModelError 向上抛出，保持业务异常类型一致
             raise DxfModelError(
                 f"基础立方体创建失败(尺寸={length}x{width}x{height}mm): {e}"
             ) from e
@@ -124,11 +127,13 @@ class DxfToModelConverter:
                 base = self._add_hole(base, hole, height)
                 hole_count += 1
             except Exception as e:
+                # 单个孔特征失败不应阻塞整个模型转换，记录后跳过
+                # 异常族：ValueError/TypeError/cadquery.CQException
                 result.warnings.append(
                     f"孔{hole.hole_id}创建失败(中心=({hole.center_x:.1f},{hole.center_y:.1f}), "
                     f"直径={hole.diameter:.2f}mm): {e}"
                 )
-                logger.warning("孔特征转换失败: %s", e)
+                logger.warning("孔特征转换失败: %s", e, exc_info=True)
 
         result.workplane = base
         result.hole_count = hole_count
@@ -239,6 +244,8 @@ class DxfToModelConverter:
             logger.info("STL导出: %s (%.1f KB)", path.name, path.stat().st_size / 1024)
             return path
         except Exception as e:
+            # 兜底捕获：cadquery + OCCT 在 STL 导出阶段可能抛出多种异常
+            # (IOError 写盘失败、RuntimeError OCCT 网格化错误等)
             raise DxfModelError(f"STL导出失败({path}): {e}") from e
 
     def export_step(
@@ -295,6 +302,7 @@ class DxfToModelConverter:
         try:
             model = self._create_base_solid(length, width, height)
         except Exception as e:
+            # 兜底捕获：与 convert_feature_to_model 入口一致，统一收口
             raise DxfModelError(
                 f"直接创建模型失败(尺寸={length}x{width}x{height}mm): {e}"
             ) from e
@@ -317,6 +325,7 @@ class DxfToModelConverter:
                 try:
                     model = self._add_hole(model, hole_info, height)
                 except Exception as e:
-                    logger.warning("孔创建失败: %s", e)
+                    # 单个孔失败不阻塞后续孔和整体模型
+                    logger.warning("孔创建失败: %s", e, exc_info=True)
 
         return model

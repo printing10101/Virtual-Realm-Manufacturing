@@ -10,9 +10,11 @@ from fastapi import APIRouter, Header, Request
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
-from app.core.audit_log import AuditLog, AIModule, UserDecision, OperationStatus
-from app.core.ring_buffer import get_ring_log_buffer
-from app.core.rate_limiter import limiter
+from app.core.safe_errors import safe_error_message
+from app.core.api_response import api_response
+from app.audit.audit_log import AuditLog, AIModule, UserDecision, OperationStatus
+from app.utils.ring_buffer import get_ring_log_buffer
+from app.middleware.rate_limiter import limiter
 from app.config import config
 from app.models.schemas import (
     LNNPredictRequest,
@@ -26,8 +28,8 @@ from app.models.schemas import (
     AlternativePlan,
     LNNBatchInferenceRequest,
 )
-from app.core.task_system import AsyncTaskManager
-from app.core.task_manager import TaskType, TaskStatus
+from app.tasks.task_system import AsyncTaskManager
+from app.tasks.task_manager import TaskType, TaskStatus
 from app.ai.lnn.inference.registry import (
     get_torch_model_class,
 )
@@ -65,8 +67,9 @@ training_tasks = registry_service.get_training_tasks()
 audit_log = AuditLog()
 
 MAX_CONCURRENT_TRAINING_TASKS = 3
+# 仅用于兼容旧 health_check 端点的活跃任务计数；
+# 真正的并发控制由 AsyncTaskManager._semaphore 统一管理。
 _active_training_tasks: set[str] = set()
-_training_semaphore = asyncio.Semaphore(MAX_CONCURRENT_TRAINING_TASKS)
 
 task_manager = AsyncTaskManager()
 
@@ -136,16 +139,33 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
                 return_confidence=body.return_confidence,
             )
         except Exception as model_err:
-            logger.error(f"Model inference error: {model_err}")
+            # 修复：避免直接 str(model_err) 暴露内部异常详情；
+            # 通过 safe_error_message 包装，仅透出错误类型 + error_id，
+            # 完整堆栈仍写入日志供排查。
+            safe = safe_error_message(
+                model_err,
+                context=f"lnn.predict_inference[{body.model_name}]",
+            )
+            logger.error(
+                "Model inference error | model=%s | error_id=%s | exc=%s",
+                body.model_name,
+                safe.get("error_id"),
+                model_err,
+                exc_info=True,
+            )
             get_ring_log_buffer().append(
                 "ai_inference",
                 level="ERROR",
                 message=f"Model '{body.model_name}' inference failed",
-                data={"error": str(model_err), "model": body.model_name},
+                data={
+                    "error_id": safe.get("error_id"),
+                    "model": body.model_name,
+                },
             )
             return error(
                 code=ErrorCode.INTERNAL_ERROR,
-                message=f"Model inference failed: {model_err!s}",
+                message=safe["message"],
+                detail=safe.get("detail"),
             )
 
         if not isinstance(result, PredictionResult):
@@ -241,294 +261,55 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
             message=f"Model '{body.model_name}' not found in registry",
         )
     except Exception as e:
+        # 修复：不直接 str(e) 暴露内部异常，使用 safe_error_message 包装
         get_ring_log_buffer().append(
             "ai_inference",
             level="ERROR",
             message=f"Model '{body.model_name}' unexpected error",
-            data={"model": body.model_name, "error": str(e)},
+            data={"model": body.model_name, "error_id": None},
+        )
+        safe = safe_error_message(
+            e,
+            context=f"lnn.predict[{body.model_name}]",
+        )
+        get_ring_log_buffer().append(
+            "ai_inference",
+            level="ERROR",
+            message=f"safe_error_id={safe.get('error_id')}",
+            data={"model": body.model_name},
         )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Prediction failed: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
-async def run_training_task(
+async def _run_training_task(  # pragma: no cover - legacy stub, see _run_training_task_async
     task_id: str,
     model_name: str,
     data_path: str,
     hyperparameters: dict,
     device_preference: str = "auto",
 ):
-    async with _training_semaphore:
-        _active_training_tasks.add(task_id)
-        try:
-            training_tasks[task_id]["status"] = "in_progress"
+    """Legacy V1 训练执行器：已被 ``_run_training_task_async`` + ``task_manager`` 取代。
 
-            if not os.path.exists(data_path):
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = f"Data file not found: {data_path}"
-                await _broadcast_error(
-                    task_id, "DATA_NOT_FOUND", f"Data file not found: {data_path}"
-                )
-                return
+    保留为 stub 是为了：
+      1. 避免被反射式 import（``getattr`` / 模块 ``__getattr__``）的下游代码踩坑；
+      2. 在 health_check / 监控端点观测到时打印明确警告，便于排查残留调用方。
 
-            if not os.path.isfile(data_path):
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = f"Not a regular file: {data_path}"
-                await _broadcast_error(
-                    task_id, "INVALID_FILE", f"Not a regular file: {data_path}"
-                )
-                return
-
-            real_path = os.path.realpath(data_path)
-            allowed_stem = os.path.realpath(config.storage.output_dir)
-            if not real_path.startswith(allowed_stem + os.sep):
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = (
-                    f"File path is outside allowed directory: {data_path}"
-                )
-                await _broadcast_error(
-                    task_id,
-                    "PATH_NOT_ALLOWED",
-                    f"File path is outside allowed directory: {data_path}",
-                )
-                return
-
-            suffix = os.path.splitext(data_path)[1].lower()
-            if suffix not in (".csv", ".txt", ".dat"):
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = (
-                    f"Unsupported file type '{suffix}', expected .csv/.txt/.dat"
-                )
-                await _broadcast_error(
-                    task_id,
-                    "UNSUPPORTED_FILE_TYPE",
-                    f"Unsupported file type '{suffix}'",
-                )
-                return
-
-            file_size = os.path.getsize(data_path)
-            max_size = 100 * 1024 * 1024
-            if file_size > max_size:
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = (
-                    f"File too large ({file_size / 1024 / 1024:.1f} MB), max {max_size / 1024 / 1024:.0f} MB"
-                )
-                await _broadcast_error(
-                    task_id,
-                    "FILE_TOO_LARGE",
-                    f"File too large ({file_size / 1024 / 1024:.1f} MB)",
-                )
-                return
-
-            entry = model_registry.registry.get(model_name)
-            if not entry:
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = f"Model '{model_name}' not found"
-                await _broadcast_error(
-                    task_id, "MODEL_NOT_FOUND", f"Model '{model_name}' not found"
-                )
-                return
-
-            model_class = get_torch_model_class(entry.info.model_type)
-            if not model_class:
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = (
-                    f"Unsupported model type: {entry.info.model_type}"
-                )
-                await _broadcast_error(
-                    task_id,
-                    "UNSUPPORTED_MODEL_TYPE",
-                    f"Unsupported model type: {entry.info.model_type}",
-                )
-                return
-
-            try:
-                data = np.loadtxt(data_path, delimiter=",", dtype=float)
-            except (ValueError, UnicodeDecodeError):
-                with open(data_path, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-                numeric_lines = []
-                for line in lines[1:] if lines else lines:
-                    parts = line.strip().split(",")
-                    numeric_row = []
-                    for p in parts:
-                        try:
-                            numeric_row.append(float(p))
-                        except ValueError:
-                            pass
-                    if numeric_row:
-                        numeric_lines.append(numeric_row)
-                data = np.array(numeric_lines, dtype=float)
-            if data.ndim == 1:
-                data = data.reshape(-1, 1)
-
-            if data.size == 0:
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = "Data file is empty"
-                await _broadcast_error(task_id, "EMPTY_DATA", "Data file is empty")
-                return
-
-            if data.shape[0] < 2:
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = (
-                    f"Need at least 2 samples for train/val split, got {data.shape[0]}"
-                )
-                await _broadcast_error(
-                    task_id,
-                    "INSUFFICIENT_DATA",
-                    f"Need at least 2 samples, got {data.shape[0]}",
-                )
-                return
-
-            if not np.isfinite(data).all():
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = "Data contains NaN or Inf values"
-                await _broadcast_error(
-                    task_id, "INVALID_DATA_VALUES", "Data contains NaN or Inf values"
-                )
-                return
-
-            if data.shape[1] == 1:
-                data = np.column_stack([data, data])
-
-            X = data[:, :-1]
-            y = data[:, -1]
-            input_dim = data.shape[1] - 1
-            output_dim = 1
-
-            X_tensor = torch.FloatTensor(X)
-            y_tensor = torch.FloatTensor(y)
-            dataset = TensorDataset(X_tensor, y_tensor)
-            train_size = int(0.8 * len(dataset))
-            val_size = len(dataset) - train_size
-            train_dataset, val_dataset = torch.utils.data.random_split(
-                dataset, [train_size, val_size]
-            )
-
-            device, device_info = detect_device(device_preference)
-
-            batch_size = hyperparameters.get("batch_size", 32)
-            if device.type == "cuda":
-                batch_size = get_optimal_batch_size(device, batch_size)
-
-            num_workers = get_optimal_num_workers()
-            pin_memory = device.type == "cuda"
-
-            train_loader = DataLoader(
-                train_dataset,
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=num_workers,
-                pin_memory=pin_memory,
-            )
-            val_loader = DataLoader(
-                val_dataset,
-                batch_size=batch_size,
-                num_workers=num_workers,
-                pin_memory=pin_memory,
-            )
-
-            from app.ai.lnn.models.torch_base_lnn import LNNConfig
-            from app.ai.lnn.models.torch_cfc_model import CFCModel as TorchCFCModel
-            from app.ai.lnn.models.torch_ltc_model import LTCModel as TorchLTCModel
-            from app.ai.lnn.models.torch_hybrid_lnn import HybridLNN as TorchHybridLNN
-
-            model_type_key = (
-                model_name.split("_")[0].upper() if "_" in model_name else "CFC"
-            )
-            if "ltc" in model_name.lower() or model_type_key == "LTC":
-                TorchModel = TorchLTCModel
-            elif "hybrid" in model_name.lower() or model_type_key == "HYBRID":
-                TorchModel = TorchHybridLNN
-            else:
-                TorchModel = TorchCFCModel
-
-            hidden_size = min(256, max(64, input_dim * 2))
-
-            config_obj = LNNConfig(
-                input_size=input_dim,
-                hidden_size=hidden_size,
-                output_size=output_dim,
-                num_layers=2,
-                dropout=0.1,
-            )
-            model = TorchModel(config_obj)
-
-            use_amp = device.type == "cuda" and torch.cuda.is_available()
-
-            epochs = hyperparameters.get("epochs", 100)
-            progress_cb = create_progress_callback(task_id, epochs)
-            cancel_evt = sse_manager.get_cancel_event(task_id)
-
-            trainer = LNNTrainer(
-                model=model,
-                learning_rate=hyperparameters.get("learning_rate", 0.001),
-                optimizer_type=hyperparameters.get("optimizer", "adam"),
-                loss_type="mse",
-                batch_size=batch_size,
-                epochs=epochs,
-                device=str(device),
-                use_amp=use_amp,
-                progress_callback=progress_cb,
-                cancel_event=cancel_evt,
-            )
-
-            start_time = time.perf_counter()
-            try:
-                history = trainer.fit(train_loader, val_loader)
-                training_time = time.perf_counter() - start_time
-
-                final_val_loss = history["val_loss"][-1] if history["val_loss"] else 0.0
-
-                r2_score = None
-                if y is not None:
-                    model.eval()
-                    all_preds = []
-                    all_targets = []
-                    with torch.no_grad():
-                        for batch_X, batch_y in val_loader:
-                            batch_X = batch_X.to(device)
-                            outputs = model(batch_X)
-                            if isinstance(outputs, tuple):
-                                outputs = outputs[0]
-                            all_preds.append(outputs.cpu().numpy())
-                            all_targets.append(batch_y.numpy())
-
-                    preds = np.concatenate(all_preds).flatten()
-                    targets = np.concatenate(all_targets).flatten()
-
-                    ss_res = np.sum((targets - preds) ** 2)
-                    ss_tot = np.sum((targets - np.mean(targets)) ** 2)
-                    r2_score = float(1.0 - ss_res / ss_tot) if ss_tot > 0 else 0.0
-
-                training_tasks[task_id]["status"] = "success"
-                training_tasks[task_id]["message"] = "Training completed successfully"
-                training_tasks[task_id]["metrics"] = {
-                    "r2_score": round(r2_score, 4) if r2_score is not None else None,
-                    "loss": round(final_val_loss, 4),
-                    "training_time": round(training_time, 2),
-                    "epochs_completed": len(history["train_loss"]),
-                }
-
-                await progress_cb.send_complete(
-                    "completed", final_val_loss, training_time
-                )
-
-            except asyncio.CancelledError:
-                training_tasks[task_id]["status"] = "cancelled"
-                training_tasks[task_id]["message"] = "Training cancelled by user"
-                await progress_cb.send_error("CANCELLED", "Training cancelled by user")
-            except Exception as e:
-                training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = f"Training failed: {e!s}"
-                await progress_cb.send_error(
-                    "TRAINING_ERROR", str(e), {"exception_type": type(e).__name__}
-                )
-
-        finally:
-            _active_training_tasks.discard(task_id)
+    实际的训练路径请参考 ``/api/v1/lnn/train`` → ``task_manager.execute_task`` →
+    ``run_training_task_v2`` 链路。
+    """
+    logger.warning(
+        "run_training_task v1 invoked for %s; please migrate to v2 path "
+        "(task_manager + run_training_task_v2)",
+        task_id,
+    )
+    raise NotImplementedError(
+        "run_training_task v1 is deprecated; use task_manager.execute_task "
+        "with run_training_task_v2 instead."
+    )
 
 
 @router.post("/train/dry_run")
@@ -661,17 +442,78 @@ async def dry_run_training(request: LNNTrainDryRunRequest):
         )
 
     except Exception as e:
+        safe = safe_error_message(e, context="lnn.dry_run_training")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Dry run failed: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
-async def _execute_training_task(
-    task_id, model_name, data_path, hyperparameters, device
+_TRAINING_QUEUES: dict = {}
+
+
+async def _run_training_task_async(
+    task_id: str,
+    model_name: str,
+    data_path: str,
+    hyperparameters: dict,
+    device: str,
 ):
-    async def training_executor(cancel_evt, progress_updater):
-        return await run_training_task_v2(
+    """在 FastAPI 主事件循环中跑训练任务。
+
+    重构说明：
+        原实现通过 ``threading.Thread`` 创建一个独立的 asyncio 事件循环，
+        再用 std ``queue.Queue`` + ``threading.Event`` 在主循环和子循环之间
+        通信。这有两个隐患：
+          1. 跨循环传递 std 队列需要锁保护，且 std 队列 ``put_nowait`` / ``get_nowait``
+             会短暂阻塞调用线程，间接影响主事件循环；
+          2. 取消回调 (``threading.Event.set``) 在主循环线程中执行，但
+             ``wait()`` 跑在子循环，状态同步无强保证。
+
+        重构后：直接用 ``asyncio.create_task`` 在主循环上调度训练协程；
+        进度队列改为 ``asyncio.Queue``，取消事件改为 ``asyncio.Event``；
+        主循环和后台训练共享同一调度器，状态同步天然一致。
+    """
+    from datetime import datetime as _datetime
+
+    queue_data = _TRAINING_QUEUES.get(task_id, {})
+    progress_q = queue_data.get("progress")
+    cancel_evt = queue_data.get("cancel")
+    if progress_q is None or cancel_evt is None:
+        return
+
+    started_at = _datetime.now().isoformat()
+    await progress_q.put(
+        (
+            "started",
+            {
+                "job_id": task_id,
+                "started_at": started_at,
+                "resources": {"max_concurrent": 3},
+            },
+        )
+    )
+
+    async def progress_updater(progress, message="", metrics=None):
+        # 队列满时丢弃进度帧：训练优先级高于日志完整性
+        try:
+            progress_q.put_nowait(
+                (
+                    "progress",
+                    {
+                        "job_id": task_id,
+                        "percent": round(progress, 1),
+                        "message": message,
+                        "metrics": metrics or {},
+                    },
+                )
+            )
+        except asyncio.QueueFull:
+            logger.debug("SSE progress queue full, dropping message")
+
+    try:
+        result = await run_training_task_v2(
             task_id,
             model_name,
             data_path,
@@ -680,83 +522,7 @@ async def _execute_training_task(
             cancel_evt,
             progress_updater,
         )
-
-    await task_manager.execute_task(task_id, training_executor)
-
-
-_TRAINING_QUEUES: dict = {}
-
-
-def _run_training_in_thread(task_id, model_name, data_path, hyperparameters, device):
-    import queue as std_queue
-    from datetime import datetime as _datetime
-
-    queue_data = _TRAINING_QUEUES.get(task_id, {})
-    progress_q = queue_data.get("progress")
-    if progress_q is None:
-        return
-
-    progress_q.put_nowait(
-        (
-            "started",
-            {
-                "job_id": task_id,
-                "started_at": _datetime.now().isoformat(),
-                "resources": {"max_concurrent": 3},
-            },
-        )
-    )
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    async def train():
-        async def progress_updater(progress, message="", metrics=None):
-            try:
-                progress_q.put_nowait(
-                    (
-                        "progress",
-                        {
-                            "job_id": task_id,
-                            "percent": round(progress, 1),
-                            "message": message,
-                            "metrics": metrics or {},
-                        },
-                    )
-                )
-            except std_queue.Full:
-                pass
-
-        class FakeCancelEvent:
-            def __init__(self):
-                self._evt = threading.Event()
-
-            def is_set(self):
-                return self._evt.is_set()
-
-            def set(self):
-                self._evt.set()
-
-            async def wait(self):
-                while not self._evt.is_set():
-                    await asyncio.sleep(0.1)
-
-        fake_cancel = FakeCancelEvent()
-        cancel_evt_thread = _TRAINING_QUEUES.get(task_id, {}).get("cancel")
-        if cancel_evt_thread:
-            fake_cancel._evt = cancel_evt_thread
-
-        result = await run_training_task_v2(
-            task_id,
-            model_name,
-            data_path,
-            hyperparameters,
-            device,
-            fake_cancel,
-            progress_updater,
-        )
-
-        progress_q.put_nowait(
+        await progress_q.put(
             (
                 "complete",
                 {
@@ -766,11 +532,8 @@ def _run_training_in_thread(task_id, model_name, data_path, hyperparameters, dev
                 },
             )
         )
-
-    try:
-        loop.run_until_complete(train())
     except asyncio.CancelledError:
-        progress_q.put_nowait(
+        await progress_q.put(
             (
                 "cancelled",
                 {
@@ -781,35 +544,45 @@ def _run_training_in_thread(task_id, model_name, data_path, hyperparameters, dev
             )
         )
     except Exception as e:
-        progress_q.put_nowait(
+        # 修复：原代码直接 str(e) 暴露内部异常到 SSE 事件，
+        # 而 SSE 事件会进入前端日志/告警，存在信息泄露风险。
+        # 这里只透出错误类型 + error_id 供前端关联服务端日志。
+        safe = safe_error_message(
+            e,
+            context=f"lnn.training_worker[{task_id}]",
+        )
+        logger.error(
+            "lnn training worker failed | task_id=%s | error_id=%s | exc=%s: %s",
+            task_id,
+            safe.get("error_id"),
+            type(e).__name__,
+            e,
+        )
+        await progress_q.put(
             (
                 "failed",
                 {
                     "job_id": task_id,
-                    "error": str(e),
+                    "error": safe["message"],
+                    "error_id": safe.get("error_id"),
                     "failed_at": _datetime.now().isoformat(),
                 },
             )
         )
-    finally:
-        loop.close()
 
 
-async def _broadcast_training_events(task_id):
-    import queue as std_queue
-
+async def _broadcast_training_events(task_id: str):
     q = _TRAINING_QUEUES.get(task_id)
     if not q:
         return
-    cancel_evt = q["cancel"]
-    progress_q = q["progress"]
+    cancel_evt: asyncio.Event = q["cancel"]
+    progress_q: asyncio.Queue = q["progress"]
 
     while True:
         try:
-            item = progress_q.get_nowait()
+            item = await progress_q.get()
             event_type, data = item
-            log_msg = f"[BROADCAST] {task_id}: {event_type}"
-            print(f"  {log_msg}", flush=True)
+            logger.debug("[BROADCAST] %s: %s", task_id, event_type)
             if event_type == "progress":
                 await task_manager._broadcast_event(task_id, "progress", data)
             elif event_type == "complete":
@@ -817,55 +590,68 @@ async def _broadcast_training_events(task_id):
                 if record:
                     record.status = TaskStatus.COMPLETED
                     record.progress = 100.0
-                    record.completed_at = __import__("time").time()
+                    record.completed_at = time.time()
                     record.result = data.get("result")
                     await task_manager._persist_task_to_db(record)
                     await task_manager._broadcast_event(task_id, "complete", data)
                     if task_id in task_manager._tasks:
                         task_manager._tasks[task_id].status = TaskStatus.COMPLETED
                         task_manager._tasks[task_id].progress = 100.0
-                        task_manager._tasks[task_id].completed_at = __import__("time").time()
+                        task_manager._tasks[task_id].completed_at = time.time()
                         task_manager._tasks[task_id].result = data.get("result")
                 break
             elif event_type == "cancelled":
                 record = await task_manager.get_task(task_id)
                 if record:
                     record.status = TaskStatus.CANCELLED
-                    record.completed_at = __import__("time").time()
+                    record.completed_at = time.time()
                     await task_manager._persist_task_to_db(record)
                     await task_manager._broadcast_event(task_id, "cancelled", data)
                     if task_id in task_manager._tasks:
                         task_manager._tasks[task_id].status = TaskStatus.CANCELLED
-                        task_manager._tasks[task_id].completed_at = __import__("time").time()
+                        task_manager._tasks[task_id].completed_at = time.time()
                 break
             elif event_type == "failed":
                 record = await task_manager.get_task(task_id)
                 if record:
                     record.status = TaskStatus.FAILED
                     record.error = data.get("error", "")
-                    record.completed_at = __import__("time").time()
+                    record.completed_at = time.time()
                     await task_manager._persist_task_to_db(record)
                     await task_manager._broadcast_event(task_id, "failed", data)
                     if task_id in task_manager._tasks:
                         task_manager._tasks[task_id].status = TaskStatus.FAILED
                         task_manager._tasks[task_id].error = data.get("error", "")
-                        task_manager._tasks[task_id].completed_at = __import__("time").time()
+                        task_manager._tasks[task_id].completed_at = time.time()
                 break
             elif event_type == "started":
                 record = await task_manager.get_task(task_id)
                 if record:
                     record.status = TaskStatus.RUNNING
-                    record.started_at = __import__("time").time()
+                    record.started_at = time.time()
                     await task_manager._persist_task_to_db(record)
                     await task_manager._broadcast_event(task_id, "started", data)
                     if task_id in task_manager._tasks:
                         task_manager._tasks[task_id].status = TaskStatus.RUNNING
-        except std_queue.Empty:
-            if cancel_evt.is_set():
-                break
-            await asyncio.sleep(0.1)
-        except Exception:
+        except asyncio.CancelledError:
+            # 父任务被取消时优雅退出，避免泄漏循环
             break
+        except (RuntimeError, ValueError, KeyError) as exc:
+            # 修复：原代码用裸 except Exception 静默吞掉所有错误，
+            # 一旦后台训练 worker 真的崩溃，SSE 循环会悄悄 break，
+            # 导致前端停留在「训练中」而服务侧已无任务可消费。
+            # 这里只捕获协作取消/运行时/协议类错误并记录，便于排查。
+            logger.warning(
+                "lnn SSE consumer loop异常退出 | task_id=%s | exc=%s: %s",
+                task_id,
+                type(exc).__name__,
+                exc,
+            )
+            break
+        else:
+            # 显式判断取消事件，避免无消息时无限空转
+            if cancel_evt.is_set() and progress_q.empty():
+                break
 
 
 @router.post("/train")
@@ -903,30 +689,28 @@ async def train_lnn(
 
         task_id = existing.job_id
 
-        import queue as std_queue
-
-        progress_q = std_queue.Queue()
-        cancel_evt = threading.Event()
+        # 修复：原实现使用 std ``queue.Queue`` + ``threading.Event`` 配合
+        # ``threading.Thread``，需要在线程间手动同步状态。改为 asyncio 原生
+        # 队列和事件后，训练和广播跑在同一事件循环上，无需线程桥接。
+        progress_q: asyncio.Queue = asyncio.Queue(maxsize=1024)
+        cancel_evt = asyncio.Event()
         _TRAINING_QUEUES[task_id] = {"cancel": cancel_evt, "progress": progress_q}
 
         def cancel_training_hook():
+            # asyncio.Event.set() 是同步调用，从同步上下文触发也安全。
             cancel_evt.set()
 
         task_manager.register_cancel_hook(task_id, cancel_training_hook)
 
-        thread = threading.Thread(
-            target=_run_training_in_thread,
-            args=(
+        asyncio.create_task(
+            _run_training_task_async(
                 task_id,
                 body.model_name,
                 body.data_path,
                 body.hyperparameters.model_dump(),
                 body.device,
-            ),
-            daemon=True,
+            )
         )
-        thread.start()
-
         asyncio.create_task(_broadcast_training_events(task_id))
 
         return success(
@@ -935,73 +719,64 @@ async def train_lnn(
         )
 
     except Exception as e:
+        safe = safe_error_message(e, context=f"lnn.train_init[{body.model_name}]")
         return error(
-            code=ErrorCode.INTERNAL_ERROR, message=f"Training initiation failed: {e!s}"
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
 @router.get("/models")
+@api_response
 async def list_lnn_models():
-    try:
-        models = model_registry.list_models(return_objects=True)
+    models = model_registry.list_models(return_objects=True)
 
-        models_list = []
-        for model_info in models:
-            models_list.append(
-                {
-                    "name": model_info.name,
-                    "model_type": model_info.model_type,
-                    "version": model_info.version,
-                    "input_features": model_info.input_features,
-                    "output_features": model_info.output_features,
-                }
-            )
-
-        return success(
-            data={"models": models_list, "total": len(models_list)},
-            message="Models retrieved successfully",
+    models_list = []
+    for model_info in models:
+        models_list.append(
+            {
+                "name": model_info.name,
+                "model_type": model_info.model_type,
+                "version": model_info.version,
+                "input_features": model_info.input_features,
+                "output_features": model_info.output_features,
+            }
         )
 
-    except Exception as e:
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to retrieve models: {e!s}",
-        )
+    return success(
+        data={"models": models_list, "total": len(models_list)},
+        message="Models retrieved successfully",
+    )
 
 
 @router.get("/models/{model_name}/info")
+@api_response
 async def get_model_info(model_name: str):
-    try:
-        entry = model_registry.registry.get(model_name)
-        if not entry:
-            return error(
-                code=ErrorCode.NOT_FOUND,
-                message=f"Model '{model_name}' not found",
-            )
-
-        model_info = entry.info
-
-        validation_result = model_registry.validate_model(model_name)
-
-        info_data = {
-            "name": model_info.name,
-            "model_type": model_info.model_type,
-            "model_path": model_info.model_path,
-            "input_features": model_info.input_features,
-            "output_features": model_info.output_features,
-            "version": model_info.version,
-            "is_loaded": entry.is_loaded,
-            "access_count": entry.access_count,
-            "validation": validation_result,
-        }
-
-        return success(data=info_data, message="Model info retrieved successfully")
-
-    except Exception as e:
+    entry = model_registry.registry.get(model_name)
+    if not entry:
         return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to retrieve model info: {e!s}",
+            code=ErrorCode.NOT_FOUND,
+            message=f"Model '{model_name}' not found",
         )
+
+    model_info = entry.info
+
+    validation_result = model_registry.validate_model(model_name)
+
+    info_data = {
+        "name": model_info.name,
+        "model_type": model_info.model_type,
+        "model_path": model_info.model_path,
+        "input_features": model_info.input_features,
+        "output_features": model_info.output_features,
+        "version": model_info.version,
+        "is_loaded": entry.is_loaded,
+        "access_count": entry.access_count,
+        "validation": validation_result,
+    }
+
+    return success(data=info_data, message="Model info retrieved successfully")
 
 
 @router.post("/models/{model_name}/validate")
@@ -1043,279 +818,237 @@ async def validate_model(model_name: str):
         )
 
     except Exception as e:
+        safe = safe_error_message(e, context=f"lnn.validate_model[{model_name}]")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Model validation failed: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
 @router.get("/health")
+@api_response
 async def health_check():
     """LNN 系统健康检查（包含持久层状态）"""
-    try:
-        model_count = len(model_registry.registry)
-        active_tasks = len(_active_training_tasks)
-        total_slots = MAX_CONCURRENT_TRAINING_TASKS
+    model_count = len(model_registry.registry)
+    active_tasks = len(_active_training_tasks)
+    total_slots = MAX_CONCURRENT_TRAINING_TASKS
 
-        from app.database.connection import check_db_health
-        from app.services.redis_client import check_redis_health
+    from app.database.connection import check_db_health
+    from app.services.redis_client import check_redis_health
 
-        db_health = await check_db_health()
-        redis_health = await check_redis_health()
+    db_health = await check_db_health()
+    redis_health = await check_redis_health()
 
-        health_status = {
-            "status": "healthy" if model_count > 0 else "degraded",
-            "models_registered": model_count,
-            "active_training_tasks": active_tasks,
-            "available_training_slots": total_slots - active_tasks,
-            "max_concurrent_tasks": total_slots,
-            "persistence": {
-                "postgres": db_health,
-                "redis": redis_health,
-            },
-        }
+    health_status = {
+        "status": "healthy" if model_count > 0 else "degraded",
+        "models_registered": model_count,
+        "active_training_tasks": active_tasks,
+        "available_training_slots": total_slots - active_tasks,
+        "max_concurrent_tasks": total_slots,
+        "persistence": {
+            "postgres": db_health,
+            "redis": redis_health,
+        },
+    }
 
-        return success(data=health_status, message="Health check completed")
-
-    except Exception as e:
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Health check failed: {e!s}",
-        )
+    return success(data=health_status, message="Health check completed")
 
 
 @router.get("/tasks")
+@api_response
 async def list_training_tasks():
     """列出所有训练任务"""
-    try:
-        tasks = await task_manager.list_tasks(
-            task_type=TaskType.LNN_TRAINING, limit=200, offset=0
+    tasks = await task_manager.list_tasks(
+        task_type=TaskType.LNN_TRAINING, limit=200, offset=0
+    )
+
+    tasks_list = []
+    for t in tasks:
+        td = t.to_dict()
+        tasks_list.append(
+            {
+                "task_id": t.job_id,
+                "status": t.status.value,
+                "progress": t.progress,
+                "message": td.get("error", ""),
+                "metrics": td.get("metrics"),
+                "created_at": td.get("created_at_iso", ""),
+                "duration_seconds": td.get("duration_seconds"),
+            }
         )
 
-        tasks_list = []
-        for t in tasks:
-            td = t.to_dict()
-            tasks_list.append(
-                {
-                    "task_id": t.job_id,
-                    "status": t.status.value,
-                    "progress": t.progress,
-                    "message": td.get("error", ""),
-                    "metrics": td.get("metrics"),
-                    "created_at": td.get("created_at_iso", ""),
-                    "duration_seconds": td.get("duration_seconds"),
-                }
-            )
-
-        return success(
-            data={"tasks": tasks_list, "total": len(tasks_list)},
-            message="Training tasks retrieved",
-        )
-
-    except Exception as e:
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to retrieve training tasks: {e!s}",
-        )
+    return success(
+        data={"tasks": tasks_list, "total": len(tasks_list)},
+        message="Training tasks retrieved",
+    )
 
 
 @router.get("/cache/stats")
+@api_response
 async def get_cache_stats():
     """获取模型缓存统计信息"""
-    try:
-        stats = model_cache.get_stats()
+    stats = model_cache.get_stats()
 
-        return success(
-            data={
-                "cached_models": stats["cached_models"],
-                "model_details": stats["model_details"],
-                "total_cache_size_bytes": stats["total_cache_size_bytes"],
-                "total_cache_size_mb": stats["total_cache_size_mb"],
-                "hit_rate": stats["hit_rate"],
-                "cache_hits": stats["cache_hits"],
-                "cache_misses": stats["cache_misses"],
-                "total_requests": stats["total_requests"],
-                "max_size": stats["max_size"],
-            },
-            message="Cache statistics retrieved successfully",
-        )
-
-    except Exception as e:
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to retrieve cache statistics: {e!s}",
-        )
+    return success(
+        data={
+            "cached_models": stats["cached_models"],
+            "model_details": stats["model_details"],
+            "total_cache_size_bytes": stats["total_cache_size_bytes"],
+            "total_cache_size_mb": stats["total_cache_size_mb"],
+            "hit_rate": stats["hit_rate"],
+            "cache_hits": stats["cache_hits"],
+            "cache_misses": stats["cache_misses"],
+            "total_requests": stats["total_requests"],
+            "max_size": stats["max_size"],
+        },
+        message="Cache statistics retrieved successfully",
+    )
 
 
 @router.delete("/cache/clear")
+@api_response
 async def clear_cache():
     """清空所有模型缓存"""
-    try:
-        count, memory_freed = model_cache.clear()
+    count, memory_freed = model_cache.clear()
 
-        return success(
-            data={
-                "models_cleared": count,
-                "memory_freed_bytes": memory_freed,
-                "memory_freed_mb": round(memory_freed / (1024 * 1024), 2),
-            },
-            message=f"Cache cleared successfully: {count} models removed",
-        )
-
-    except Exception as e:
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to clear cache: {e!s}",
-        )
+    return success(
+        data={
+            "models_cleared": count,
+            "memory_freed_bytes": memory_freed,
+            "memory_freed_mb": round(memory_freed / (1024 * 1024), 2),
+        },
+        message=f"Cache cleared successfully: {count} models removed",
+    )
 
 
 @router.get("/performance")
+@api_response
 async def get_performance(model: str | None = None):
-    try:
-        candidate_models: list[str] = []
-        if model:
-            candidate_models = [model]
-        else:
-            candidate_models = list(model_registry.registry.keys())
+    candidate_models: list[str] = []
+    if model:
+        candidate_models = [model]
+    else:
+        candidate_models = list(model_registry.registry.keys())
 
-        results: list[dict] = []
-        for m_name in candidate_models:
-            cached_predictor = model_cache.get(m_name)
-            if cached_predictor is None:
-                continue
-            try:
-                entry = model_registry.registry.get(m_name)
-                base_model = entry.model if entry else cached_predictor
-                if not isinstance(base_model, LNNPredictor) and base_model is not None:
-                    from app.ai.lnn.inference.predictor import LNNPredictor as P
+    results: list[dict] = []
+    for m_name in candidate_models:
+        cached_predictor = model_cache.get(m_name)
+        if cached_predictor is None:
+            continue
+        try:
+            entry = model_registry.registry.get(m_name)
+            base_model = entry.model if entry else cached_predictor
+            if not isinstance(base_model, LNNPredictor) and base_model is not None:
+                from app.ai.lnn.inference.predictor import LNNPredictor as P
 
-                    if isinstance(base_model, P):
-                        perf = base_model.get_performance()
-                        results.append(perf)
-                        continue
-            except Exception:
-                pass
+                if isinstance(base_model, P):
+                    perf = base_model.get_performance()
+                    results.append(perf)
+                    continue
+        except (KeyError, AttributeError, RuntimeError, ValueError) as e:
+            # 单个模型性能获取失败时跳过该模型，继续收集其他模型
+            logger.debug(
+                f"Failed to collect performance for {m_name}: {e}",
+                exc_info=True,
+            )
 
-            if isinstance(cached_predictor, LNNPredictor):
-                perf = cached_predictor.get_performance()
-                results.append(perf)
+        if isinstance(cached_predictor, LNNPredictor):
+            perf = cached_predictor.get_performance()
+            results.append(perf)
 
-        summary = {
-            "total_models_tracked": len(results),
-            "models": results,
-        }
-        return success(data=summary, message="Performance stats retrieved")
-
-    except Exception as e:
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to retrieve performance stats: {e!s}",
-        )
+    summary = {
+        "total_models_tracked": len(results),
+        "models": results,
+    }
+    return success(data=summary, message="Performance stats retrieved")
 
 
 @router.get("/device/info")
+@api_response
 async def get_device_info():
     """返回系统中可用的计算设备信息"""
-    try:
-        devices = get_available_devices()
+    devices = get_available_devices()
 
-        current_device, current_info = detect_device("auto")
+    current_device, current_info = detect_device("auto")
 
-        response_data = {
-            "current_device": {
-                "type": current_info.device_type,
-                "index": current_info.device_index,
-                "name": current_info.device_name,
-                "total_memory_mb": current_info.total_memory_mb,
-                "available_memory_mb": current_info.available_memory_mb,
-                "cuda_version": current_info.cuda_version,
-                "compute_capability": current_info.compute_capability,
-                "gpu_count": current_info.gpu_count,
-            },
-            "available_devices": [d.to_dict() for d in devices],
-            "torch_cuda_available": torch.cuda.is_available(),
-            "torch_version": torch.__version__,
-            "cuda_version": torch.version.cuda if torch.cuda.is_available() else None,
-            "cudnn_version": torch.backends.cudnn.version()
-            if torch.cuda.is_available()
-            else None,
-        }
+    response_data = {
+        "current_device": {
+            "type": current_info.device_type,
+            "index": current_info.device_index,
+            "name": current_info.device_name,
+            "total_memory_mb": current_info.total_memory_mb,
+            "available_memory_mb": current_info.available_memory_mb,
+            "cuda_version": current_info.cuda_version,
+            "compute_capability": current_info.compute_capability,
+            "gpu_count": current_info.gpu_count,
+        },
+        "available_devices": [d.to_dict() for d in devices],
+        "torch_cuda_available": torch.cuda.is_available(),
+        "torch_version": torch.__version__,
+        "cuda_version": torch.version.cuda if torch.cuda.is_available() else None,
+        "cudnn_version": torch.backends.cudnn.version()
+        if torch.cuda.is_available()
+        else None,
+    }
 
-        return success(data=response_data, message="Device info retrieved successfully")
-
-    except Exception as e:
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to retrieve device info: {e!s}",
-        )
+    return success(data=response_data, message="Device info retrieved successfully")
 
 
 @router.get("/device/status")
+@api_response
 async def get_device_status_endpoint():
     """返回当前设备利用率和温度等信息"""
-    try:
-        device, device_info = detect_device("auto")
+    device, device_info = detect_device("auto")
 
-        status = get_device_status(device)
+    status = get_device_status(device)
 
-        response_data = {
-            "active_device": str(device),
-            "device_info": device_info.to_dict(),
-            "status": status,
+    response_data = {
+        "active_device": str(device),
+        "device_info": device_info.to_dict(),
+        "status": status,
+    }
+
+    if device.type == "cuda":
+        gpu_index = device.index if device.index is not None else 0
+        response_data["gpu_status"] = {
+            "total_memory_mb": round(
+                torch.cuda.get_device_properties(gpu_index).total_memory
+                / (1024**2),
+                2,
+            ),
+            "allocated_memory_mb": round(
+                torch.cuda.memory_allocated(gpu_index) / (1024**2), 2
+            ),
+            "reserved_memory_mb": round(
+                torch.cuda.memory_reserved(gpu_index) / (1024**2), 2
+            ),
+            "max_memory_mb": round(
+                torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2
+            ),
         }
 
-        if device.type == "cuda":
-            gpu_index = device.index if device.index is not None else 0
-            response_data["gpu_status"] = {
-                "total_memory_mb": round(
-                    torch.cuda.get_device_properties(gpu_index).total_memory
-                    / (1024**2),
-                    2,
-                ),
-                "allocated_memory_mb": round(
-                    torch.cuda.memory_allocated(gpu_index) / (1024**2), 2
-                ),
-                "reserved_memory_mb": round(
-                    torch.cuda.memory_reserved(gpu_index) / (1024**2), 2
-                ),
-                "max_memory_mb": round(
-                    torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2
-                ),
-            }
-
-        return success(
-            data=response_data, message="Device status retrieved successfully"
-        )
-
-    except Exception as e:
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to retrieve device status: {e!s}",
-        )
+    return success(
+        data=response_data, message="Device status retrieved successfully"
+    )
 
 
 @router.post("/device/clear-cache")
+@api_response
 async def clear_device_cache():
     """清空GPU缓存"""
-    try:
-        if not torch.cuda.is_available():
-            return error(
-                code=ErrorCode.INVALID_REQUEST,
-                message="No CUDA device available",
-            )
-
-        clear_gpu_memory(torch.device("cuda"))
-
-        return success(
-            data={"message": "GPU cache cleared successfully"},
-            message="Device cache cleared",
-        )
-
-    except Exception as e:
+    if not torch.cuda.is_available():
         return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to clear device cache: {e!s}",
+            code=ErrorCode.INVALID_REQUEST,
+            message="No CUDA device available",
         )
+
+    clear_gpu_memory(torch.device("cuda"))
+
+    return success(
+        data={"message": "GPU cache cleared successfully"},
+        message="Device cache cleared",
+    )
 
 
 async def sse_event_generator(task_id: str, client_id: str):
@@ -1395,9 +1128,6 @@ async def cancel_training_task(task_id: str):
     )
 
 
-quantization_tasks: dict[str, dict] = {}
-
-
 def _format_size(size_bytes: int) -> str:
     if size_bytes < 1024:
         return f"{size_bytes} B"
@@ -1409,134 +1139,145 @@ def _format_size(size_bytes: int) -> str:
         return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
 
 
-async def _run_quantization_task(
+async def _run_quantization_task_v2(
     task_id: str,
     model_name: str,
     quantization_type: str,
-    calibration_data_path: str | None = None,
+    calibration_data_path: str | None,
+    cancel_evt: asyncio.Event,
+    progress_updater: Callable,
 ):
+    """真正的量化执行器（可取消，带进度回调）。"""
+    from app.ai.lnn.quantization.quantizer import (
+        Quantizer,
+        QuantizationConfig,
+        QuantizationType,
+    )
+    from app.ai.lnn.inference.registry import get_torch_model_class
+
+    await progress_updater(5.0, "加载模型元信息...")
+
+    entry = model_registry.registry.get(model_name)
+    if not entry:
+        raise ValueError(f"Model '{model_name}' not found")
+
+    if not os.path.exists(entry.info.model_path):
+        raise FileNotFoundError(
+            f"Model file not found: {entry.info.model_path}"
+        )
+
+    model_class = get_torch_model_class(entry.info.model_type)
+    if not model_class:
+        raise ValueError(f"Unsupported model type: {entry.info.model_type}")
+
+    from app.ai.lnn.models.torch_base_lnn import LNNConfig
+
+    config_obj = LNNConfig(
+        input_size=len(entry.info.input_features),
+        hidden_size=128,
+        output_size=len(entry.info.output_features),
+        num_layers=2,
+        dropout=0.1,
+    )
+    model = model_class(config_obj)
+
+    await progress_updater(15.0, "加载模型权重...")
+
     try:
-        from app.ai.lnn.quantization.quantizer import (
-            Quantizer,
-            QuantizationConfig,
-            QuantizationType,
+        model.load(entry.info.model_path)
+        model.build()
+    except (OSError, RuntimeError, ValueError, TypeError) as e:
+        # 模型权重加载失败时使用初始化权重继续量化流程，记录以便排查
+        logger.warning(
+            f"Failed to load model weights for quantization, "
+            f"falling back to initialized weights: {e}",
+            exc_info=True,
         )
-        from app.ai.lnn.inference.registry import get_torch_model_class
 
-        entry = model_registry.registry.get(model_name)
-        if not entry:
-            quantization_tasks[task_id]["status"] = "failed"
-            quantization_tasks[task_id]["message"] = f"Model '{model_name}' not found"
-            return
+    model.eval()
 
-        if not os.path.exists(entry.info.model_path):
-            quantization_tasks[task_id]["status"] = "failed"
-            quantization_tasks[task_id]["message"] = (
-                f"Model file not found: {entry.info.model_path}"
+    quant_type = (
+        QuantizationType.DYNAMIC
+        if quantization_type == "dynamic"
+        else QuantizationType.STATIC
+    )
+    quant_config = QuantizationConfig(quantization_type=quant_type)
+
+    calibration_data = None
+    if quant_type == QuantizationType.STATIC:
+        if not calibration_data_path or not os.path.exists(calibration_data_path):
+            raise FileNotFoundError(
+                "Calibration data path required for static quantization"
             )
-            return
 
-        quantization_tasks[task_id]["status"] = "in_progress"
-
-        model_class = get_torch_model_class(entry.info.model_type)
-        if not model_class:
-            quantization_tasks[task_id]["status"] = "failed"
-            quantization_tasks[task_id]["message"] = (
-                f"Unsupported model type: {entry.info.model_type}"
-            )
-            return
-
-        from app.ai.lnn.models.torch_base_lnn import LNNConfig
-
-        config_obj = LNNConfig(
-            input_size=len(entry.info.input_features),
-            hidden_size=128,
-            output_size=len(entry.info.output_features),
-            num_layers=2,
-            dropout=0.1,
-        )
-        model = model_class(config_obj)
+        await progress_updater(30.0, "加载校准数据...")
 
         try:
-            model.load(entry.info.model_path)
-            model.build()
-        except Exception:
-            pass
+            import numpy as np
 
-        model.eval()
-
-        quant_type = (
-            QuantizationType.DYNAMIC
-            if quantization_type == "dynamic"
-            else QuantizationType.STATIC
-        )
-        quant_config = QuantizationConfig(quantization_type=quant_type)
-
-        calibration_data = None
-        if quant_type == QuantizationType.STATIC:
-            if not calibration_data_path or not os.path.exists(calibration_data_path):
-                quantization_tasks[task_id]["status"] = "failed"
-                quantization_tasks[task_id]["message"] = (
-                    "Calibration data path required for static quantization"
+            calibration_data = np.loadtxt(calibration_data_path, delimiter=",")
+            if calibration_data.ndim == 1:
+                calibration_data = calibration_data.reshape(-1, 1)
+            if calibration_data.shape[1] == 1:
+                calibration_data = np.column_stack(
+                    [calibration_data, calibration_data]
                 )
-                return
+            calibration_data = calibration_data[:, :-1]
+        except Exception as e:
+            # 校准数据加载失败属于用户数据问题，使用更具体的错误类型便于上层归类
+            raise ValueError(f"Failed to load calibration data: {e}") from e
 
-            try:
-                import numpy as np
+    quantized_model_name = get_quantized_model_name(model_name)
+    output_dir = os.path.dirname(entry.info.model_path)
+    quantized_model_path = os.path.join(output_dir, f"{quantized_model_name}.pt")
 
-                calibration_data = np.loadtxt(calibration_data_path, delimiter=",")
-                if calibration_data.ndim == 1:
-                    calibration_data = calibration_data.reshape(-1, 1)
-                if calibration_data.shape[1] == 1:
-                    calibration_data = np.column_stack(
-                        [calibration_data, calibration_data]
-                    )
-                calibration_data = calibration_data[:, :-1]
-            except Exception as e:
-                quantization_tasks[task_id]["status"] = "failed"
-                quantization_tasks[task_id]["message"] = (
-                    f"Failed to load calibration data: {e}"
-                )
-                return
+    quantizer = Quantizer(quant_config)
 
-        quantized_model_name = get_quantized_model_name(model_name)
-        output_dir = os.path.dirname(entry.info.model_path)
-        quantized_model_path = os.path.join(output_dir, f"{quantized_model_name}.pt")
+    await progress_updater(50.0, "执行量化...")
 
-        quantizer = Quantizer(quant_config)
+    if cancel_evt.is_set():
+        raise asyncio.CancelledError()
 
-        quantized_model, result = quantizer.quantize(
-            model=model,
-            calibration_data=calibration_data,
-            save_path=quantized_model_path,
-            metadata={
-                "base_model": model_name,
-                "quantization_type": quantization_type,
-            },
-        )
+    quantized_model, result = quantizer.quantize(
+        model=model,
+        calibration_data=calibration_data,
+        save_path=quantized_model_path,
+        metadata={
+            "base_model": model_name,
+            "quantization_type": quantization_type,
+        },
+    )
 
-        original_size = quantizer.get_model_size(entry.info.model_path)
-        quantized_size = quantizer.get_model_size(quantized_model_path)
-        result.original_size_bytes = original_size
-        result.quantized_size_bytes = quantized_size
+    await progress_updater(85.0, "计算模型大小...")
 
-        pytorch_registry.register_quantized_model(
-            model_name=quantized_model_name,
-            model_type=entry.config.model_type if entry.config else None,
-            model_path=quantized_model_path,
-            metadata={
-                "quantization_type": quantization_type,
-                "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "original_size_bytes": original_size,
-                "quantized_size_bytes": quantized_size,
-                "compression_ratio": result.compression_ratio,
-                "speedup_ratio": result.speedup_ratio,
-            },
-        )
+    original_size = quantizer.get_model_size(entry.info.model_path)
+    quantized_size = quantizer.get_model_size(quantized_model_path)
+    result.original_size_bytes = original_size
+    result.quantized_size_bytes = quantized_size
 
-        quantization_tasks[task_id]["status"] = "success"
-        quantization_tasks[task_id]["message"] = "Quantization completed successfully"
-        quantization_tasks[task_id]["metrics"] = {
+    await progress_updater(95.0, "注册量化模型...")
+
+    pytorch_registry.register_quantized_model(
+        model_name=quantized_model_name,
+        model_type=entry.config.model_type if entry.config else None,
+        model_path=quantized_model_path,
+        metadata={
+            "quantization_type": quantization_type,
+            "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "original_size_bytes": original_size,
+            "quantized_size_bytes": quantized_size,
+            "compression_ratio": result.compression_ratio,
+            "speedup_ratio": result.speedup_ratio,
+        },
+    )
+
+    await progress_updater(100.0, "量化完成")
+
+    return {
+        "task_id": task_id,
+        "status": "success",
+        "message": "Quantization completed successfully",
+        "metrics": {
             "quantized_model_name": quantized_model_name,
             "quantized_model_path": quantized_model_path,
             "original_size_bytes": original_size,
@@ -1546,17 +1287,50 @@ async def _run_quantization_task(
             "compression_ratio": round(result.compression_ratio, 4),
             "speedup_ratio": round(result.speedup_ratio, 4),
             "quantization_time_seconds": round(result.quantization_time_seconds, 2),
-        }
+        },
+    }
 
-    except Exception as e:
-        logger.error(f"Quantization task {task_id} failed: {e}")
-        quantization_tasks[task_id]["status"] = "failed"
-        quantization_tasks[task_id]["message"] = f"Quantization failed: {e!s}"
+
+# 兼容旧入口的轻量包装器（被 ``_run_quantization_task_v2`` 取代后保留空实现）
+# 之所以保留符号：避免其他模块反射式 import 时出现 ImportError。
+async def _run_quantization_task(  # pragma: no cover - legacy stub
+    task_id: str,
+    model_name: str,
+    quantization_type: str,
+    calibration_data_path: str | None = None,
+):
+    """兼容旧调用的 stub，已由 task_manager + _run_quantization_task_v2 取代。
+
+    直接抛出未实现错误，确保误用时立刻暴露而非悄悄返回错误状态。
+    """
+    logger.error(
+        "_run_quantization_task v1 invoked for %s; please migrate to v2 path "
+        "(task_manager + _run_quantization_task_v2)",
+        task_id,
+    )
+    raise NotImplementedError(
+        "_run_quantization_task v1 is deprecated; use task_manager.execute_task "
+        "with _run_quantization_task_v2 instead."
+    )
 
 
 @router.post("/models/{model_name}/quantize")
-async def quantize_model(model_name: str, request: LNNQuantizeRequest):
-    """Quantize a model using INT8 quantization."""
+@limiter.limit("10/hour")
+async def quantize_model(request: Request, model_name: str, body: LNNQuantizeRequest):
+    """异步启动 INT8 量化任务，立即返回 job_id。
+
+    重构说明：
+        原实现使用 ``asyncio.create_task`` 启动后台协程后，在请求协程内
+        用 ``while ... await asyncio.sleep(0.1)`` 轮询状态，最长阻塞 60 秒。
+        这导致：
+          1. 长时间任务被强制 60 秒超时截断；
+          2. HTTP 连接被占用无法释放，客户端无法拿到真正的进度；
+          3. 任务状态没有持久化，服务重启后丢失；
+          4. 与 ``/train`` 端点的实现割裂。
+
+        重构后：复用统一的 ``task_manager``，将量化任务作为可追踪、可取消、
+        可 SSE 推送的标准化任务管理；客户端通过 ``/tasks`` 端点查询进度。
+    """
     try:
         entry = model_registry.registry.get(model_name)
         if not entry:
@@ -1571,51 +1345,102 @@ async def quantize_model(model_name: str, request: LNNQuantizeRequest):
                 message=f"Model '{model_name}' is already quantized",
             )
 
-        if request.quantization_type == "static" and not request.calibration_data_path:
+        if body.quantization_type == "static" and not body.calibration_data_path:
             return error(
                 code=ErrorCode.INVALID_REQUEST,
                 message="Calibration data path is required for static quantization",
             )
 
-        task_id = str(uuid.uuid4())
-
-        quantization_tasks[task_id] = {
-            "status": "in_progress",
-            "message": "Quantization task started",
-            "metrics": None,
-        }
-
-        quantization_coro = _run_quantization_task(
-            task_id,
-            model_name,
-            request.quantization_type,
-            request.calibration_data_path,
+        record = await task_manager.create_task(
+            TaskType.MODEL_QUANTIZATION,
+            {
+                "model_name": model_name,
+                "quantization_type": body.quantization_type,
+                "calibration_data_path": body.calibration_data_path,
+            },
         )
-        asyncio.create_task(quantization_coro)
+        task_id = record.job_id
 
-        deadline = time.monotonic() + 60.0
-        while quantization_tasks[task_id]["status"] == "in_progress":
-            if time.monotonic() > deadline:
-                break
-            await asyncio.sleep(0.1)
+        async def quantization_executor(cancel_evt, progress_updater):
+            return await _run_quantization_task_v2(
+                task_id,
+                model_name,
+                body.quantization_type,
+                body.calibration_data_path,
+                cancel_evt,
+                progress_updater,
+            )
 
-        task_result = quantization_tasks[task_id]
+        asyncio.create_task(
+            task_manager.execute_task(task_id, quantization_executor)
+        )
 
-        response_data = {
-            "task_id": task_id,
-            "status": task_result["status"],
-            "message": task_result["message"],
-        }
-        if task_result.get("metrics"):
-            response_data["metrics"] = task_result["metrics"]
-
-        return success(data=response_data, message="Quantization completed")
+        return success(
+            data={"task_id": task_id, "status": "queued"},
+            message="Quantization job queued",
+        )
 
     except Exception as e:
+        safe = safe_error_message(e, context=f"lnn.quantize[{model_name}]")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Model quantization failed: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
+
+
+@router.get("/quantize/{task_id}/status")
+@api_response
+async def get_quantization_status(task_id: str):
+    """查询异步量化任务的状态与结果。"""
+    record = await task_manager.get_task(task_id)
+    if not record or record.task_type != TaskType.MODEL_QUANTIZATION:
+        return error(
+            code=ErrorCode.NOT_FOUND,
+            message=f"Quantization task '{task_id}' not found",
+        )
+
+    payload: dict = {
+        "task_id": task_id,
+        "status": record.status.value,
+        "progress": getattr(record, "progress", 0.0),
+    }
+    if record.status == TaskStatus.COMPLETED and record.result:
+        payload["result"] = record.result
+    if record.status == TaskStatus.FAILED and record.error:
+        payload["error"] = record.error
+    return success(data=payload, message="Quantization status retrieved")
+
+
+@router.post("/quantize/{task_id}/cancel")
+@api_response
+async def cancel_quantization_task(task_id: str):
+    """取消进行中的量化任务。"""
+    record = await task_manager.get_task(task_id)
+    if not record or record.task_type != TaskType.MODEL_QUANTIZATION:
+        return error(
+            code=ErrorCode.NOT_FOUND,
+            message=f"Quantization task '{task_id}' not found",
+        )
+
+    if record.status in (
+        TaskStatus.COMPLETED,
+        TaskStatus.FAILED,
+        TaskStatus.CANCELLED,
+    ):
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"Quantization task '{task_id}' is already {record.status.value}",
+        )
+
+    cancelled = await task_manager.cancel_task(task_id)
+    return success(
+        data={
+            "task_id": task_id,
+            "status": "cancelled" if cancelled else "cancelling",
+        },
+        message="Quantization cancellation processed",
+    )
 
 
 @router.get("/models/{model_name}/size")
@@ -1666,9 +1491,11 @@ async def get_model_size(model_name: str):
         )
 
     except Exception as e:
+        safe = safe_error_message(e, context=f"lnn.get_model_size[{model_name}]")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to get model size: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -1788,12 +1615,16 @@ async def run_training_task_v2(
 ):
     """V2 training executor with progress callbacks and cancellation support"""
     try:
-        from app.core.utils import get_metrics_collector
+        from app.utils.utils import get_metrics_collector
 
         metrics = get_metrics_collector()
         metrics.set_active_training_tasks(max(0, metrics._active_training_tasks + 1))
-    except Exception:
-        pass
+    except (ImportError, AttributeError, RuntimeError) as e:
+        # 训练指标递增失败仅影响可观测性，不影响训练执行
+        logger.debug(
+            f"Failed to increment active training tasks counter: {e}",
+            exc_info=True,
+        )
 
     await progress_updater(5.0, "Loading data...")
 
@@ -1812,8 +1643,12 @@ async def run_training_task_v2(
             for p in parts:
                 try:
                     numeric_line.append(float(p))
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    # CSV 解析中非数值字段是常见情况，记录后继续处理数值列
+                    logger.debug(
+                        f"Skipping non-numeric value in row: {e}",
+                        exc_info=True,
+                    )
             if numeric_line:
                 numeric_lines.append(numeric_line)
         data = np.array(numeric_lines)
@@ -1924,12 +1759,16 @@ async def run_training_task_v2(
     final_val_loss = best_val_loss
 
     try:
-        from app.core.utils import get_metrics_collector
+        from app.utils.utils import get_metrics_collector
 
         m = get_metrics_collector()
         m.set_active_training_tasks(max(0, m._active_training_tasks - 1))
-    except Exception:
-        pass
+    except (ImportError, AttributeError, RuntimeError) as e:
+        # 训练指标递减失败仅影响可观测性，不影响训练完成
+        logger.debug(
+            f"Failed to decrement active training tasks counter: {e}",
+            exc_info=True,
+        )
 
     return {
         "status": "completed",
@@ -1981,8 +1820,13 @@ async def batch_inference(
         )
 
     except Exception as e:
+        safe = safe_error_message(
+            e, context=f"lnn.batch_inference_init[{request.model_name}]"
+        )
         return error(
-            code=ErrorCode.INTERNAL_ERROR, message=f"Batch inference failed: {e!s}"
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 

@@ -71,7 +71,11 @@ async def _get_ollama_status() -> dict[str, Any]:
     except httpx.TimeoutException:
         return {"running": False, "error": "Connection timeout"}
     except Exception as e:
-        return {"running": False, "error": str(e)}
+        # 兜底捕获：HTTP 请求可能抛出网络层/序列化层未预期的异常
+        # 健康检查端点应始终返回结构化数据，不应向上抛 5xx
+        # 修复：仅返回异常类型名，避免泄露内部路径/库版本等敏感信息
+        logger.debug("Ollama健康检查异常: %s", e, exc_info=True)
+        return {"running": False, "error": f"unhealthy: {type(e).__name__}"}
 
 
 def _get_disk_info() -> dict[str, Any]:
@@ -85,8 +89,10 @@ def _get_disk_info() -> dict[str, Any]:
             "used_percent": round((usage.used / usage.total) * 100, 1) if usage.total > 0 else 0,
         }
     except Exception as e:
-        logger.warning("Failed to get disk info: %s", e)
-        return {"error": str(e)}
+        # 兜底捕获：磁盘信息读取可能因 OSError/权限错误失败
+        # 修复：仅返回异常类型名
+        logger.warning("Failed to get disk info: %s", e, exc_info=True)
+        return {"error": f"unavailable: {type(e).__name__}"}
 
 
 def _get_memory_info() -> dict[str, Any]:
@@ -101,8 +107,10 @@ def _get_memory_info() -> dict[str, Any]:
     except ImportError:
         return {"error": "psutil not installed"}
     except Exception as e:
-        logger.warning("Failed to get memory info: %s", e)
-        return {"error": str(e)}
+        # 兜底捕获：psutil 内部可能因 /proc 不可读抛出 OSError
+        # 修复：仅返回异常类型名
+        logger.warning("Failed to get memory info: %s", e, exc_info=True)
+        return {"error": f"unavailable: {type(e).__name__}"}
 
 
 @router.get("/system")
@@ -236,18 +244,30 @@ async def quick_health():
 
 
 # =============================================================================
-# Unified health check endpoints (mounted at /api/health and /api/health/ping)
+# 标准化健康检查端点（容器/探针专用）
+# =============================================================================
+# 标准化端点设计：
+#   - GET /api/health       — 主健康检查，返回标准 JSON（status/version/timestamp）
+#   - GET /api/health/ping  — 轻量级存活探测，仅返回 {"ping": true}，
+#                            用于 Docker HEALTHCHECK 等高频探活场景
+# 两个端点均为公开访问路径（unified_auth 的 PUBLIC_PATHS 中已注册），
+# 不需要任何身份验证或授权校验。
+# 旧的根路径 /health 已在主程序中彻底移除，避免端点重复和潜在混淆。
 # =============================================================================
 
 
-@simple_health_router.get("/api/health")
+@simple_health_router.get(
+    "/api/health",
+    summary="标准化主健康检查",
+    description="返回标准格式：{\"status\": \"ok\", \"version\": \"x.x.x\", \"timestamp\": \"<ISO 8601>\"}",
+)
 async def main_health():
     """主健康检查端点 — 返回统一格式的健康状态。
 
     返回格式: {"status": "ok", "version": "x.x.x", "timestamp": "..."}
-    - status: 固定为 "ok"
-    - version: 动态获取应用版本号
-    - timestamp: ISO 8601 格式当前时间戳
+    - status: 固定为 "ok"，表示服务进程已就绪
+    - version: 动态获取的应用版本号（来自 app.version）
+    - timestamp: ISO 8601 格式（UTC）的当前时间戳
     """
     return {
         "status": "ok",
@@ -256,7 +276,11 @@ async def main_health():
     }
 
 
-@simple_health_router.get("/api/health/ping")
+@simple_health_router.get(
+    "/api/health/ping",
+    summary="轻量级健康探针",
+    description="轻量级存活探测，严格返回 {\"ping\": true}，用于 Docker HEALTHCHECK",
+)
 async def ping():
     """轻量级 ping 检查端点 — 返回简单的存活状态。
 

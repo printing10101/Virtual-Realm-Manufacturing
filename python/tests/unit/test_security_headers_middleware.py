@@ -1,10 +1,10 @@
-"""Tests for SecurityHeadersMiddleware (pure ASGI)."""
+﻿"""Tests for SecurityHeadersMiddleware (pure ASGI)."""
 
 import pytest
 from starlette.testclient import TestClient
 from fastapi import FastAPI
 
-from app.core.middleware.security_headers_asgi import (
+from app.auth.security_headers_asgi import (
     SecurityHeadersMiddleware,
     SECURITY_HEADERS,
 )

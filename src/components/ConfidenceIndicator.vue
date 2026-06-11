@@ -22,7 +22,7 @@
       class="confidence-tooltip"
     >
       <div class="tooltip-header">
-        <span class="tooltip-title">置信度详情</span>
+        <span class="tooltip-title">{{ $t('confidence.tooltipTitle') }}</span>
         <span
           class="tooltip-value"
           :style="{ color: getConfidenceColor(confidence) }"
@@ -31,13 +31,13 @@
         </span>
       </div>
       <div class="tooltip-body">
-        <p><strong>等级:</strong> {{ getConfidenceLabel(confidence) }}</p>
-        <p><strong>说明:</strong> {{ confidenceDescription }}</p>
+        <p><strong>{{ $t('confidence.labelLevel') }}</strong> {{ getConfidenceLabel(confidence) }}</p>
+        <p><strong>{{ $t('confidence.labelDescription') }}</strong> {{ confidenceDescription }}</p>
         <div
           v-if="recommendation"
           class="tooltip-recommendation"
         >
-          <strong>建议:</strong> {{ recommendation }}
+          <strong>{{ $t('confidence.labelRecommendation') }}</strong> {{ recommendation }}
         </div>
       </div>
     </div>
@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getConfidenceColor, getConfidenceLabel } from '@/utils/statusHelpers'
 
 interface Props {
@@ -69,26 +70,28 @@ const props = withDefaults(defineProps<Props>(), {
   showNumericValue: true,
 })
 
+const { t } = useI18n()
+
 const showTooltip = ref(false)
 
 const confidenceDescription = computed(() => {
   if (props.confidence >= 0.8) {
-    return 'AI对该预测结果有较高把握，建议可以直接采用。'
+    return t('confidence.descHigh')
   }
   if (props.confidence >= 0.5) {
-    return 'AI对该预测结果有一定把握，建议结合实际情况综合判断。'
+    return t('confidence.descMedium')
   }
-  return 'AI对该预测结果把握较低，强烈建议参考备选方案或人工审核。'
+  return t('confidence.descLow')
 })
 
 const recommendation = computed(() => {
   if (props.confidence >= 0.8) {
-    return '可以直接采用AI推荐结果'
+    return t('confidence.recHigh')
   }
   if (props.confidence >= 0.5) {
-    return '建议审查后采用，注意关注潜在风险'
+    return t('confidence.recMedium')
   }
-  return '建议修改或拒绝AI推荐，使用人工判断'
+  return t('confidence.recLow')
 })
 </script>
 

@@ -51,6 +51,16 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 'toolpath:edit' },
     },
     {
+      path: '/process-planning',
+      name: 'process-planning',
+      component: () => import('../views/ProcessPlanning.vue'),
+      meta: {
+        requiresAuth: true,
+        title: '工艺规划',
+        permission: 'process:plan',
+      },
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/admin/UserManagement.vue'),

@@ -1,4 +1,4 @@
-"""Functional tests for A/B Testing Framework."""
+﻿"""Functional tests for A/B Testing Framework."""
 
 import os
 import sys
@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.core.template_ab_testing import ABTestingFramework  # noqa: E402
+from app.templates.template_ab_testing import ABTestingFramework  # noqa: E402
 
 
 @pytest.fixture

@@ -45,6 +45,12 @@
                 <el-icon><EditPen /></el-icon>{{ $t('navigation.toolpathEdit') }}
               </el-menu-item>
               <el-menu-item
+                v-permission="'process:plan'"
+                index="/process-planning"
+              >
+                <el-icon><SetUp /></el-icon>{{ $t('navigation.processPlanning') }}
+              </el-menu-item>
+              <el-menu-item
                 v-permission="'user:manage'"
                 index="/admin/users"
               >
@@ -54,6 +60,7 @@
           </div>
 
           <div class="header-right">
+            <BackendStatusIndicator />
             <el-dropdown
               trigger="click"
               @command="handleFileCommand"
@@ -95,6 +102,9 @@
                     command="import-step"
                   >
                     <el-icon><upload /></el-icon>{{ $t('app.importStep') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item command="import-dxf">
+                    <el-icon><document-copy /></el-icon>{{ $t('app.importDxf') }}
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -357,19 +367,26 @@
       </el-dialog>
 
       <StepImportDialog />
+      <DxfImportDialog />
       <ErrorConflictDialog />
+      <BackendStartupDialog v-if="showStartupDialog" v-model="showStartupDialog" />
     </el-config-provider>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, inject, ref, reactive, type Ref } from 'vue'
+import { computed, onMounted, inject, ref, reactive, watch, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useVersionStore } from '@/stores/version'
 import { useProjectStore } from '@/stores/project'
 import { useStepImportStore } from '@/stores/stepImport'
+import { useDxfImportStore } from '@/stores/dxfImport'
 import StepImportDialog from '@/components/step_import/StepImportDialog.vue'
+import DxfImportDialog from '@/components/dxf_import/DxfImportDialog.vue'
 import ErrorConflictDialog from '@/components/ErrorConflictDialog.vue'
+import BackendStatusIndicator from '@/components/BackendStatusIndicator.vue'
+import BackendStartupDialog from '@/components/BackendStartupDialog.vue'
+import { useBackendStatus } from '@/composables/useBackendStatus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
 import type { ProjectSummary } from '@/types'
@@ -384,6 +401,24 @@ const versionStore = useVersionStore()
 const frontendVersion = computed(() => versionStore.frontendVersion)
 const projectStore = useProjectStore()
 const stepImportStore = useStepImportStore()
+const dxfImportStore = useDxfImportStore()
+
+// 后端进程状态监听
+const { state: backendState, tauriMode } = useBackendStatus()
+const showStartupDialog = ref(false)
+
+watch(
+  () => backendState.status,
+  (status) => {
+    if (!tauriMode.value) return
+    if (status === 'starting' || status === 'failed' || status === 'crashed') {
+      showStartupDialog.value = true
+    } else if (status === 'running' || status === 'stopped') {
+      showStartupDialog.value = false
+    }
+  },
+  { immediate: true },
+)
 
 const showNewDialog = ref(false)
 const showOpenDialog = ref(false)
@@ -468,6 +503,9 @@ function executeCommand(cmd: string) {
       break
     case 'import-step':
       stepImportStore.showDialog = true
+      break
+    case 'import-dxf':
+      dxfImportStore.openDialog()
       break
   }
 }

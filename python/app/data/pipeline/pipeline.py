@@ -187,8 +187,10 @@ class DataPipeline:
                 if feat is not None:
                     features[name] = feat
             except Exception as e:
-                error_log.append(f"{name} (preprocess/extract): {str(e)}")
-                logger.error("处理失败 %s: %s", name, e)
+                logger.error("处理失败 %s: %s", name, e, exc_info=True)
+                error_log.append(
+                    f"{name} (preprocess/extract): {type(e).__name__}"
+                )
         stage_timings["preprocess"] = (time.perf_counter() - t) * 1000
 
         t = time.perf_counter()

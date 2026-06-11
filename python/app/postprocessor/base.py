@@ -52,6 +52,19 @@ class BasePostProcessor(ABC):
 
         self.config = config or {}
         self.limiter: Optional[ConfigLimiter] = None
+        # Always initialize defaults so subclasses can rely on these
+        # attributes being present regardless of whether a config dict
+        # is supplied.
+        self._spindle_min_rpm = 50
+        self._spindle_max_rpm = 24000
+        self._spindle_default_rpm = 8000
+        self._feed_min_rate = 10.0
+        self._feed_max_rate = 20000.0
+        self._feed_default_rate = 1000.0
+        self._work_coordinates: Dict[str, Dict[str, Any]] = {
+            cs: {} for cs in ("G54", "G55", "G56", "G57", "G58", "G59")
+        }
+        self._default_coordinate_system = "G54"
         if self.config:
             self.limiter = create_limiter(self.config)
             self._init_from_config()

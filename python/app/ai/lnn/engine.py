@@ -150,8 +150,9 @@ class HybridInferenceEngine:
                 cfc.build()
                 self.lnn_models["CFC-Fast"] = cfc
                 self.registry.register("CFC-Fast", ModelType.CFC)
-        except Exception as e:
-            logger.error(f"CFC模型初始化失败: {e}")
+        except (ImportError, AttributeError, RuntimeError, ValueError, TypeError) as e:
+            # 模型初始化阶段可能涉及模块导入、属性访问、构建参数错误
+            logger.error(f"CFC模型初始化失败: {e}", exc_info=True)
 
         # 注册LTC模型
         try:
@@ -168,8 +169,9 @@ class HybridInferenceEngine:
                 ltc.build()
                 self.lnn_models["LTC-TimeSeries"] = ltc
                 self.registry.register("LTC-TimeSeries", ModelType.LTC)
-        except Exception as e:
-            logger.error(f"LTC模型初始化失败: {e}")
+        except (ImportError, AttributeError, RuntimeError, ValueError, TypeError) as e:
+            # 模型初始化阶段可能涉及模块导入、属性访问、构建参数错误
+            logger.error(f"LTC模型初始化失败: {e}", exc_info=True)
 
         # 注册Hybrid模型
         try:
@@ -184,8 +186,9 @@ class HybridInferenceEngine:
                 hybrid.build()
                 self.lnn_models["Hybrid-Multimodal"] = hybrid
                 self.registry.register("Hybrid-Multimodal", ModelType.HYBRID_LNN)
-        except Exception as e:
-            logger.error(f"Hybrid模型初始化失败: {e}")
+        except (ImportError, AttributeError, RuntimeError, ValueError, TypeError) as e:
+            # 模型初始化阶段可能涉及模块导入、属性访问、构建参数错误
+            logger.error(f"Hybrid模型初始化失败: {e}", exc_info=True)
 
         # 验证初始化结果并提供降级策略
         if not self.lnn_models:
@@ -426,9 +429,11 @@ class HybridInferenceEngine:
                     result = future.result(timeout=30)
                     if result:
                         results.append(result)
-                except Exception as e:
+                except (concurrent.futures.TimeoutError, concurrent.futures.CancelledError, RuntimeError) as e:
                     engine_type = future_to_engine[future]
-                    logger.error(f"并行推理失败 ({engine_type}): {e}")
+                    logger.error(
+                        "并行推理失败 (%s): %s", engine_type, e, exc_info=True
+                    )
 
         return results
 
@@ -523,6 +528,8 @@ class HybridInferenceEngine:
                 e, {"retry_count": retry_count, "max_retry": self.max_retry}
             )
         except Exception as e:
+            # 兜底捕获：模型推理过程中可能抛出未预期的非运行时异常（如网络、数据格式问题）
+            # 此处保留宽泛捕获以避免推理任务崩溃，全部信息已通过 exc_info 记录到日志
             logger.error(
                 "%s推理失败（未知错误）: %s", engine_type.value, e, exc_info=True
             )
@@ -556,12 +563,18 @@ class HybridInferenceEngine:
 
             return result
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            # LLM 后处理可能在序列化、属性访问等环节出错，记录以便排查
+            from app.core.safe_errors import safe_error_message
+
+            safe = safe_error_message(
+                e, context="lnn.engine.llm_inference", fallback="LLM推理失败"
+            )
             return InferenceResult(
                 prediction=None,
                 confidence=0.0,
                 engine_used=EngineType.LLM,
-                metadata={"error": str(e)},
+                metadata={"error": safe["message"], "error_id": safe["error_id"]},
             )
 
     def _rule_inference(
@@ -611,12 +624,18 @@ class HybridInferenceEngine:
 
             return result
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            # 规则推理可能在上下文构建、规则匹配、属性访问环节出错
+            from app.core.safe_errors import safe_error_message
+
+            safe = safe_error_message(
+                e, context="lnn.engine.rule_inference", fallback="规则推理失败"
+            )
             return InferenceResult(
                 prediction=None,
                 confidence=0.0,
                 engine_used=EngineType.RULE,
-                metadata={"error": str(e)},
+                metadata={"error": safe["message"], "error_id": safe["error_id"]},
             )
 
     def _load_process_rules(self) -> None:
@@ -631,8 +650,9 @@ class HybridInferenceEngine:
             else:
                 logger.info("未找到工艺规则，规则引擎将为空")
                 self.rule_engine = LnnRuleEngine()
-        except Exception as e:
-            logger.error(f"工艺规则加载失败: {e}")
+        except (ImportError, IOError, OSError, RuntimeError, ValueError, AttributeError) as e:
+            # 加载规则可能涉及文件 IO、SQLite 数据库访问、模块导入等
+            logger.error(f"工艺规则加载失败: {e}", exc_info=True)
             self.rule_engine = LnnRuleEngine()
 
     def _build_rule_context(self, task: TaskInput) -> Dict[str, Any]:

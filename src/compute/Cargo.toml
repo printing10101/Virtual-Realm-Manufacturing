@@ -1,0 +1,42 @@
+[workspace]
+members = ["crates/core", "crates/pyo3_bindings"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+authors = ["Lingjing Manufacturing Team"]
+license = "MIT"
+repository = "https://example.local/compute"
+
+[workspace.dependencies]
+# 内部 crate
+compute-core = { path = "crates/core", version = "0.1.0" }
+
+# 第三方依赖
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py38", "numpy"] }
+numpy = "0.22"
+ndarray = "0.15"
+thiserror = "1.0"
+anyhow = "1.0"
+log = "0.4"
+env_logger = "0.11"
+once_cell = "1.19"
+parking_lot = "0.12"
+rayon = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+
+# 性能分析（仅在 bench/test 中使用）
+criterion = { version = "0.5", features = ["html_reports"], optional = true }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+debug = true
+
+[profile.bench]
+opt-level = 3
+lto = "thin"
+debug = true

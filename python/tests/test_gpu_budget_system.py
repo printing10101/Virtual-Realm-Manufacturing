@@ -1,4 +1,4 @@
-"""
+﻿"""
 GPU Budget Management System - Comprehensive Integration Test Suite
 
 Tests all 8 budget management scenarios:
@@ -22,12 +22,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest  # noqa: E402
 
-from app.core.budget_enforcer import (  # noqa: E402
+from app.budget.budget_enforcer import (  # noqa: E402
     BudgetEnforcer,
     CostOptimizer,
     EnforcementAction,
 )
-from app.core.cost_tracker import (  # noqa: E402
+from app.budget.cost_tracker import (  # noqa: E402
     BudgetEvent,
     CostDimension,
     CostType,

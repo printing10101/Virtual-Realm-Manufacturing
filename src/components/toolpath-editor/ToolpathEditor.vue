@@ -3,7 +3,7 @@
     <div class="editor-toolbar">
       <div class="toolbar-left">
         <h2 class="page-title">
-          刀路编辑器
+          {{ $t('toolpathEditor.pageTitle') }}
         </h2>
         <el-button
           size="small"
@@ -11,7 +11,7 @@
           @click="showImportDialog = true"
         >
           <el-icon><FolderOpened /></el-icon>
-          导入G代码
+          {{ $t('toolpathEditor.importGcode') }}
         </el-button>
       </div>
 
@@ -20,20 +20,20 @@
           <el-button
             size="small"
             :disabled="!store.canUndo"
-            title="Ctrl+Z"
+            :title="$t('toolpathEditor.undoKb')"
             @click="store.undo()"
           >
             <el-icon><RefreshLeft /></el-icon>
-            撤销 ({{ store.undoCount }}) <kbd>Ctrl+Z</kbd>
+            {{ $t('toolpathEditor.undo', { count: store.undoCount }) }} <kbd>{{ $t('toolpathEditor.undoKb') }}</kbd>
           </el-button>
           <el-button
             size="small"
             :disabled="!store.canRedo"
-            title="Ctrl+Y"
+            :title="$t('toolpathEditor.redoKb')"
             @click="store.redo()"
           >
             <el-icon><RefreshRight /></el-icon>
-            重做 ({{ store.redoCount }}) <kbd>Ctrl+Y</kbd>
+            {{ $t('toolpathEditor.redo', { count: store.redoCount }) }} <kbd>{{ $t('toolpathEditor.redoKb') }}</kbd>
           </el-button>
         </el-button-group>
       </div>
@@ -44,7 +44,7 @@
           type="warning"
           effect="dark"
         >
-          有未保存的编辑
+          {{ $t('toolpathEditor.unsavedTag') }}
         </el-tag>
         <el-button
           size="small"
@@ -53,7 +53,7 @@
           @click="showExportDialog = true"
         >
           <el-icon><Download /></el-icon>
-          导出G代码
+          {{ $t('toolpathEditor.exportGcode') }}
         </el-button>
       </div>
     </div>
@@ -71,17 +71,17 @@
 
       <div class="editor-sidebar">
         <div class="sidebar-section">
-          <h4>刀路信息</h4>
+          <h4>{{ $t('toolpathEditor.infoTitle') }}</h4>
           <div class="stat-row">
-            <span>总段数</span>
+            <span>{{ $t('toolpathEditor.statTotal') }}</span>
             <span>{{ store.segments.length }}</span>
           </div>
           <div class="stat-row">
-            <span>活动段</span>
+            <span>{{ $t('toolpathEditor.statActive') }}</span>
             <span>{{ store.activeSegments.length }}</span>
           </div>
           <div class="stat-row">
-            <span>已删除</span>
+            <span>{{ $t('toolpathEditor.statDeleted') }}</span>
             <span>{{ store.segments.length - store.activeSegments.length }}</span>
           </div>
         </div>
@@ -90,9 +90,9 @@
           v-if="selectedSegment"
           class="sidebar-section"
         >
-          <h4>选中刀路段</h4>
+          <h4>{{ $t('toolpathEditor.selectedTitle') }}</h4>
           <div class="stat-row">
-            <span>类型</span>
+            <span>{{ $t('toolpathEditor.labelType') }}</span>
             <el-tag
               :type="segmentTypeTag(selectedSegment.type)"
               size="small"
@@ -101,24 +101,24 @@
             </el-tag>
           </div>
           <div class="stat-row">
-            <span>块号</span>
+            <span>{{ $t('toolpathEditor.labelBlock') }}</span>
             <span>#{{ selectedSegment.blockNumber }}</span>
           </div>
           <div class="stat-row">
-            <span>进给率</span>
-            <span>{{ selectedSegment.feedRate }} mm/min</span>
+            <span>{{ $t('toolpathEditor.labelFeedRate') }}</span>
+            <span>{{ selectedSegment.feedRate }} {{ $t('toolpathEditor.unitFeedRate') }}</span>
           </div>
           <div class="stat-row">
-            <span>起点</span>
+            <span>{{ $t('toolpathEditor.labelStart') }}</span>
             <span class="coord">X{{ fmt(selectedSegment.startPoint[0]) }} Y{{ fmt(selectedSegment.startPoint[1]) }} Z{{ fmt(selectedSegment.startPoint[2]) }}</span>
           </div>
           <div class="stat-row">
-            <span>终点</span>
+            <span>{{ $t('toolpathEditor.labelEnd') }}</span>
             <span class="coord">X{{ fmt(selectedSegment.endPoint[0]) }} Y{{ fmt(selectedSegment.endPoint[1]) }} Z{{ fmt(selectedSegment.endPoint[2]) }}</span>
           </div>
           <div class="stat-row">
-            <span>主轴转速</span>
-            <span>{{ selectedSegment.spindleSpeed }} rpm</span>
+            <span>{{ $t('toolpathEditor.labelSpindle') }}</span>
+            <span>{{ selectedSegment.spindleSpeed }} {{ $t('toolpathEditor.unitSpindle') }}</span>
           </div>
         </div>
       </div>

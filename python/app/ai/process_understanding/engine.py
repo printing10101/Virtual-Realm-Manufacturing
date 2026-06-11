@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -529,7 +530,7 @@ class ProcessUnderstandingEngine:
     @staticmethod
     def _parse_entity_json(content: str) -> dict[str, str]:
         """解析实体提取的JSON结果。"""
-        from app.core.utils import extract_json_from_markdown
+        from app.utils.utils import extract_json_from_markdown
         try:
             return extract_json_from_markdown(content)
         except Exception:
@@ -661,14 +662,40 @@ def task_type_to_code(task_type: TaskType) -> str:
     return task_type.value
 
 
-# 全局单例
-_engine: ProcessUnderstandingEngine | None = None
+class _ProcessUnderstandingEngineHolder:
+    """Thread-safe lazy holder for the :class:`ProcessUnderstandingEngine` singleton."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._instance: ProcessUnderstandingEngine | None = None
+
+    def get(self) -> ProcessUnderstandingEngine:
+        # 快速路径：已存在则直接返回，避免持锁开销
+        if self._instance is not None:
+            return self._instance
+        with self._lock:
+            if self._instance is None:
+                self._instance = ProcessUnderstandingEngine()
+                logger.info("ProcessUnderstandingEngine initialized")
+            return self._instance
+
+    def reset(self) -> None:
+        """Reset the cached instance (mainly for tests)."""
+        with self._lock:
+            self._instance = None
+
+
+_holder = _ProcessUnderstandingEngineHolder()
 
 
 def get_process_understanding_engine() -> ProcessUnderstandingEngine:
-    """获取工艺理解引擎全局单例。"""
-    global _engine
-    if _engine is None:
-        _engine = ProcessUnderstandingEngine()
-        logger.info("ProcessUnderstandingEngine initialized")
-    return _engine
+    """获取共享的 :class:`ProcessUnderstandingEngine` 单例；首次访问时懒初始化。
+
+    Returns:
+        :class:`ProcessUnderstandingEngine` 实例（应用生命周期内同一实例）。
+
+    Note:
+        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_process_understanding_engine)``。
+        实现是线程安全的，行为与重构前完全一致。
+    """
+    return _holder.get()

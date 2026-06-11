@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.simulation.api import router as simulation_router
 from app.projects.project_api import router as project_router
 from app.config import config
-from app.core.cors_config import cors_settings
+from app.middleware.cors_config import cors_settings
 
 assert cors_settings._env == "development", (
     "Test server is only allowed in development environment. "

@@ -1,15 +1,20 @@
 """ChromaDB vector store operations wrapper.
 
 Provides persistent vector storage with cosine similarity search.
+
+Refactored to use a thread-safe lazy singleton holder instead of the
+``global _`` pattern.  :func:`get_vector_store` is also exposed as a
+FastAPI dependency factory so it can be used with ``Depends(get_vector_store)``.
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -168,8 +173,9 @@ class VectorStore:
             elapsed = (time.time() - start) * 1000
             logger.info("Index optimization completed in %.0fms", elapsed)
             return True
-        except Exception as e:
-            logger.warning("Index optimization failed: %s", e)
+        except (OSError, RuntimeError, ValueError) as e:
+            # ChromaDB 索引优化失败（IO/运行时/类型错误），不影响主流程
+            logger.warning("Index optimization failed: %s", e, exc_info=True)
             return False
 
     def export_backup(self, backup_dir: str) -> str:
@@ -218,12 +224,59 @@ class VectorStore:
         }
 
 
-_vector_store: VectorStore | None = None
+# ---------------------------------------------------------------------------
+# Thread-safe lazy singleton (替代 ``global _`` 模式)
+# ---------------------------------------------------------------------------
+# 原实现使用 ``global _vector_store``；现改为将状态封装在内部类中，并使用
+# 线程锁保证并发环境下的安全。调用方仍然通过 :func:`get_vector_store` 访问，
+# 行为与重构前完全一致：首次访问时懒初始化、之后返回同一实例。
+# ---------------------------------------------------------------------------
+
+
+class _VectorStoreHolder:
+    """Thread-safe lazy holder for the :class:`VectorStore` singleton."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._instance: Optional[VectorStore] = None
+
+    def get(self) -> VectorStore:
+        # 快速路径：已存在则直接返回，避免持锁开销
+        if self._instance is not None:
+            return self._instance
+        with self._lock:
+            # 双重检查：可能在获取锁的过程中其他线程已创建实例
+            if self._instance is not None:
+                return self._instance
+            self._instance = VectorStore()
+            logger.info("Initialized vector store")
+            return self._instance
+
+    def reset(self) -> None:
+        """Reset the cached instance (mainly for tests)."""
+        with self._lock:
+            self._instance = None
+
+
+_holder = _VectorStoreHolder()
 
 
 def get_vector_store() -> VectorStore:
-    global _vector_store
-    if _vector_store is None:
-        _vector_store = VectorStore()
-        logger.info("Initialized vector store")
-    return _vector_store
+    """获取共享的 :class:`VectorStore` 单例；首次访问时懒初始化。
+
+    Returns:
+        :class:`VectorStore` 实例（应用生命周期内同一实例）。
+
+    Note:
+        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_vector_store)``。
+        实现是线程安全的，行为与重构前完全一致。
+    """
+    return _holder.get()
+
+
+__all__ = [
+    "VectorStore",
+    "get_vector_store",
+    "DEFAULT_COLLECTION",
+    "DEFAULT_PERSIST_DIR",
+]

@@ -1,4 +1,4 @@
-"""Functional tests for Template Update Service."""
+﻿"""Functional tests for Template Update Service."""
 
 import os
 import sys
@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
-from app.core.template_update_service import TemplateUpdateService  # noqa: E402
+from app.templates.template_update_service import TemplateUpdateService  # noqa: E402
 
 
 @pytest.fixture

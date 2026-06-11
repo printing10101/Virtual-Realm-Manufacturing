@@ -10,6 +10,7 @@ from fastapi import APIRouter
 
 from app.config import config
 from app.core.response import success, error, ErrorCode
+from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +41,18 @@ async def get_ollama_status() -> dict[str, Any]:
                     message=f"Ollama returned status {response.status_code}",
                 )
     except Exception as e:
-        logger.error("Ollama status check failed: %s", e)
+        # 修复：使用 safe_error_message 包装异常，避免泄露内部网络错误细节
+        safe = safe_error_message(e, context="ollama.status")
+        logger.error(
+            "Ollama status check failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
-            message=f"Ollama service unavailable: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -77,8 +86,16 @@ async def list_ollama_models() -> dict[str, Any]:
                     message=f"Ollama returned status {response.status_code}",
                 )
     except Exception as e:
-        logger.error("Failed to list Ollama models: %s", e)
+        # 修复：使用 safe_error_message 包装异常
+        safe = safe_error_message(e, context="ollama.list_models")
+        logger.error(
+            "Failed to list Ollama models | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
-            message=f"Failed to list Ollama models: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )

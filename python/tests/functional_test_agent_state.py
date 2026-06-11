@@ -1,4 +1,4 @@
-"""
+﻿"""
 Functional Test Suite: Agent State Management
 ==============================================
 Aligns with the 9-category test plan:
@@ -35,7 +35,7 @@ from app.models.agent_state import (
     MemoryEntry,
     SessionContext,
 )
-from app.core.state_persistence import (
+from app.state.state_persistence import (
     StatePersistenceManager,
     StateRecoveryManager,
 )

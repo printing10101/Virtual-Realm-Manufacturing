@@ -39,8 +39,13 @@ def _get_commit_hash() -> Optional[str]:
         )
         if result.returncode == 0:
             return result.stdout.strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as git_err:
+        # git 命令失败时不影响版本号加载（VERSION 文件已可用），记录以便排查
+        logger.debug(
+            "Failed to read git commit hash, continuing without it: %s",
+            git_err,
+            exc_info=True,
+        )
     return None
 
 

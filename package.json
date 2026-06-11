@@ -1,6 +1,6 @@
 {
   "name": "lingjing-v4",
-  "version": "1.12.0",
+  "version": "2.0.0",
   "description": "灵境制造 V4 - AI驱动的3D建模与工艺规划系统",
   "private": true,
   "scripts": {
@@ -8,11 +8,15 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "sidecar:build": "python python/scripts/build_backend.py",
+    "app:build": "python build.py",
     "test": "vitest",
     "test:run": "vitest run",
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint src/**/*.{ts,vue} --fix",
-    "format": "prettier src/**/*.{ts,vue,css} --write",
+    "format": "prettier --write src/**/*.{ts,vue,css}",
     "prepare": "husky"
   },
   "dependencies": {
@@ -70,5 +74,22 @@
     "src-tauri/**/*.rs": [
       "cargo fmt --"
     ]
-  }
+  },
+  "main": "commitlint.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/printing10101/Virtual-Realm-Manufacturing.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/printing10101/Virtual-Realm-Manufacturing/issues"
+  },
+  "homepage": "https://github.com/printing10101/Virtual-Realm-Manufacturing#readme"
 }

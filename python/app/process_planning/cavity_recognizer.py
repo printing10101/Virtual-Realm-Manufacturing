@@ -334,7 +334,9 @@ class CavityRecognizer:
                 cavities.append(cavity)
 
             except (ValueError, TypeError, KeyError) as e:
-                errors.append(f"解析型腔条目 {raw.get('id', i)} 时出错: {str(e)}")
+                errors.append(
+                    f"解析型腔条目 {raw.get('id', i)} 时出错: {type(e).__name__}"
+                )
                 continue
 
         type_summary: dict[str, int] = {}

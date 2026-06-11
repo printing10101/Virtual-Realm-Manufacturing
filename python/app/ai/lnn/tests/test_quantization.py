@@ -267,8 +267,12 @@ class TestQuantizationSaveLoad:
 
             try:
                 loaded_model.load_state_dict(state_dict)
-            except RuntimeError:
-                pass
+            except RuntimeError as e:
+                # 测试中结构不匹配的 state_dict 是预期行为（验证错误路径）
+                logger.debug(
+                    f"Expected state_dict mismatch during quantization test: {e}",
+                    exc_info=True,
+                )
 
 
 class TestQuantizationResult:

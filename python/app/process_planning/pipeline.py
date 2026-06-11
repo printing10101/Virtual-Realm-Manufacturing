@@ -378,11 +378,11 @@ class ProcessPlanningPipeline:
                 name="G代码生成",
                 status="failed",
                 duration_ms=(time.time() - stage5_start) * 1000,
-                errors=[f"G代码生成异常: {str(e)}"],
+                errors=[f"G代码生成异常: {type(e).__name__}"],
             )
             stages.append(stage5)
             result.stages = stages
-            result.summary = f"流水线在G代码生成阶段失败: {e}"
+            result.summary = f"流水线在G代码生成阶段失败: {type(e).__name__}"
             return result
 
         stages.append(stage5)

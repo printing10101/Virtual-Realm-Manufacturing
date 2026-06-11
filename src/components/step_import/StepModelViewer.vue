@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="visible"
-    title="STEP 模型 3D 预览"
+    :title="$t('stepModelViewer.title')"
     width="900px"
     top="3vh"
     :close-on-click-modal="false"
@@ -18,25 +18,25 @@
       <div class="viewer-controls">
         <el-button-group size="small">
           <el-button @click="fitView">
-            <el-icon><aim /></el-icon> 居中
+            <el-icon><aim /></el-icon> {{ $t('stepModelViewer.btnFit') }}
           </el-button>
           <el-button @click="viewFront">
-            前
+            {{ $t('stepModelViewer.btnFront') }}
           </el-button>
           <el-button @click="viewTop">
-            顶
+            {{ $t('stepModelViewer.btnTop') }}
           </el-button>
           <el-button @click="viewRight">
-            右
+            {{ $t('stepModelViewer.btnRight') }}
           </el-button>
           <el-button @click="viewIso">
-            3D
+            {{ $t('stepModelViewer.btnIso') }}
           </el-button>
         </el-button-group>
 
         <el-divider direction="vertical" />
 
-        <span class="control-label">透明度</span>
+        <span class="control-label">{{ $t('stepModelViewer.labelOpacity') }}</span>
         <el-slider
           v-model="opacity"
           :min="0.1"
@@ -50,7 +50,7 @@
 
         <el-switch
           v-model="showGrid"
-          active-text="网格"
+          :active-text="$t('stepModelViewer.switchGrid')"
           size="small"
           @change="toggleGrid"
         />
@@ -59,29 +59,29 @@
 
         <el-switch
           v-model="lodEnabled"
-          active-text="LOD"
+          :active-text="$t('stepModelViewer.switchLod')"
           size="small"
           @change="toggleLOD"
         />
 
         <el-divider direction="vertical" />
 
-        <span class="fps-display">{{ fps }} FPS</span>
+        <span class="fps-display">{{ $t('stepModelViewer.fpsLabel', { fps }) }}</span>
       </div>
 
       <div
         v-if="modelStats"
         class="model-info-bar"
       >
-        <span>顶点: {{ modelStats.vertexCount?.toLocaleString() }}</span>
-        <span>三角面: {{ modelStats.faceCount?.toLocaleString() }}</span>
-        <span>文件: {{ modelStats.fileSize ? formatFileSize(modelStats.fileSize) : '-' }}</span>
+        <span>{{ $t('stepModelViewer.statVertices', { count: modelStats.vertexCount?.toLocaleString() ?? 0 }) }}</span>
+        <span>{{ $t('stepModelViewer.statFaces', { count: modelStats.faceCount?.toLocaleString() ?? 0 }) }}</span>
+        <span>{{ $t('stepModelViewer.statFile', { size: modelStats.fileSize ? formatFileSize(modelStats.fileSize) : '-' }) }}</span>
       </div>
     </div>
 
     <template #footer>
       <el-button @click="visible = false">
-        关闭
+        {{ $t('stepModelViewer.close') }}
       </el-button>
     </template>
   </el-dialog>
@@ -89,10 +89,13 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { formatFileSize } from '@/utils/formatters'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelUrl: string
@@ -250,7 +253,7 @@ function loadModel(url: string) {
     },
     () => {},
     (err) => {
-      console.error('STL加载失败:', err)
+      console.error('STL load failed:', err)
     },
   )
 }

@@ -24,6 +24,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.core.response import error, ErrorCode, success
+from app.core.safe_errors import safe_error_message
 from app.projects.project_store import (
     ProjectStore,
     ProjectManifest,
@@ -40,7 +41,31 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 TEMP_UPLOAD_DIR = OUTPUT_DIR / "_uploads"
 TEMP_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+# 修复 [路径遍历]：解析后的安全输出根目录。所有下载/删除接口必须把请求路径解析
+# 后与该根做 is_relative_to 校验，避免 ../ 等逃逸字符触达工作区之外的文件。
+_OUTPUT_DIR_RESOLVED = OUTPUT_DIR.resolve()
+
 _store = ProjectStore(str(OUTPUT_DIR))
+
+
+def _safe_project_path(project_name: str) -> Path:
+    """校验工程名拼装出的路径严格位于 OUTPUT_DIR 内。
+
+    修复 [路径遍历]：原实现直接将 ``OUTPUT_DIR / project_name`` 暴露给删除/下载
+    端点，攻击者可构造 ``../../../etc/passwd`` 等输入越权访问或删除工作区外文件。
+    这里采用 ``resolve()`` + ``is_relative_to()`` 双重校验，确保最终路径一定在
+    ``OUTPUT_DIR`` 之内。
+    """
+    if not project_name:
+        raise HTTPException(status_code=400, detail="无效的工程名")
+    # 仅保留 ``Path.name`` 兼容层，剥离任何目录分隔符；后续 resolve() 兜底
+    base_name = Path(project_name).name
+    if base_name != project_name and (os.sep in project_name or "/" in project_name):
+        raise HTTPException(status_code=400, detail="无效的工程名")
+    candidate = (OUTPUT_DIR / project_name).resolve()
+    if not candidate.is_relative_to(_OUTPUT_DIR_RESOLVED):
+        raise HTTPException(status_code=400, detail="无效的工程路径")
+    return candidate
 
 
 # ============================================================
@@ -109,10 +134,12 @@ async def create_project(request: ProjectMetadataRequest) -> dict:
             message=f'工程 "{request.name}" 创建成功',
         )
     except Exception as e:
-        logger.exception("创建工程失败: %s", e)
+        # 修复：使用 safe_error_message 包装，避免将内部异常细节（堆栈/路径/库版本）暴露给前端
+        safe = safe_error_message(e, context="projects.create", fallback="创建工程失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"创建工程失败: {str(e)}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )
 
 
@@ -179,17 +206,25 @@ async def open_project(
             recoverable=True,
         )
     except Exception as e:
-        logger.exception("打开工程失败: %s", e)
+        # 修复：避免 str(e) 直接进入响应，泄露内部异常细节
+        safe = safe_error_message(e, context="projects.open", fallback="打开工程失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"打开工程失败: {str(e)}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )
     finally:
         if tmp_path and tmp_path.exists():
             try:
                 tmp_path.unlink(missing_ok=True)
-            except Exception:
-                pass
+            except (OSError, FileNotFoundError) as cleanup_err:
+                # 临时文件清理失败不应阻塞响应，记录以便后续排查
+                logger.debug(
+                    "Failed to cleanup project tmp file %s: %s",
+                    tmp_path,
+                    cleanup_err,
+                    exc_info=True,
+                )
 
 
 @router.post("/save")
@@ -229,10 +264,12 @@ async def save_project(request: SaveRequest) -> dict:
             message="工程保存成功",
         )
     except Exception as e:
-        logger.exception("保存工程失败: %s", e)
+        # 修复：避免 str(e) 直接进入响应
+        safe = safe_error_message(e, context="projects.save", fallback="保存工程失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"保存工程失败: {str(e)}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )
 
 
@@ -277,10 +314,12 @@ async def save_as_project(request: SaveRequest) -> dict:
             message=f'工程另存为 "{Path(saved_path).name}" 成功',
         )
     except Exception as e:
-        logger.exception("另存为工程失败: %s", e)
+        # 修复：避免 str(e) 直接进入响应
+        safe = safe_error_message(e, context="projects.save_as", fallback="另存为工程失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"另存为工程失败: {str(e)}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )
 
 
@@ -301,9 +340,12 @@ async def list_projects() -> dict:
             message="OK",
         )
     except Exception as e:
+        # 修复：避免 str(e) 直接进入响应
+        safe = safe_error_message(e, context="projects.list", fallback="获取工程列表失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"获取工程列表失败: {str(e)}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )
 
 
@@ -320,7 +362,8 @@ async def delete_project(project_name: str) -> dict:
     try:
         if not project_name.endswith(PROJECT_FILE_EXTENSION):
             project_name += PROJECT_FILE_EXTENSION
-        file_path = OUTPUT_DIR / project_name
+        # 修复 [路径遍历]：先校验拼装出的路径在 OUTPUT_DIR 内，再交给 store。
+        file_path = _safe_project_path(project_name)
         if _store.delete_project(file_path):
             return success(message=f"工程 {project_name} 已删除")
         return error(
@@ -328,10 +371,15 @@ async def delete_project(project_name: str) -> dict:
             message=f"工程文件不存在: {project_name}",
             recoverable=True,
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        # 修复：避免 str(e) 直接进入响应
+        safe = safe_error_message(e, context="projects.delete", fallback="删除工程失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"删除工程失败: {str(e)}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )
 
 
@@ -347,13 +395,14 @@ async def download_project(project_name: str) -> FileResponse:
     """
     if not project_name.endswith(PROJECT_FILE_EXTENSION):
         project_name += PROJECT_FILE_EXTENSION
-    file_path = OUTPUT_DIR / project_name
+    # 修复 [路径遍历]：阻止 ``../`` 等逃逸字符越权读取 OUTPUT_DIR 之外的文件。
+    file_path = _safe_project_path(project_name)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="工程文件不存在")
     return FileResponse(
         path=str(file_path),
         media_type="application/zip",
-        filename=project_name,
+        filename=file_path.name,
     )
 
 
@@ -393,7 +442,10 @@ async def upload_resource(
             message="资源上传成功",
         )
     except Exception as e:
+        # 修复：避免 str(e) 直接进入响应
+        safe = safe_error_message(e, context="projects.upload_resource", fallback="资源上传失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"资源上传失败: {str(e)}",
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
         )

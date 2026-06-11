@@ -1073,8 +1073,18 @@ class ToolWearPredictor:
                     r2,
                 )
             except Exception as e:
-                self._logger.error("Uniwear training failed for %s: %s", ds.value, e)
-                results["datasets"][ds.value] = {"error": str(e)}
+                self._logger.error("Uniwear training failed for %s: %s", ds.value, e, exc_info=True)
+                from app.core.safe_errors import safe_error_message
+
+                safe = safe_error_message(
+                    e,
+                    context="tool_wear_predictor.train_uniwear",
+                    fallback="Uniwear训练失败",
+                )
+                results["datasets"][ds.value] = {
+                    "error": safe["message"],
+                    "error_id": safe["error_id"],
+                }
 
         return results
 

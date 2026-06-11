@@ -9,14 +9,14 @@
       @click="handleDelete"
     >
       <el-icon><Delete /></el-icon>
-      <span>删除此段</span>
+      <span>{{ $t('rightClickMenu.delete') }}</span>
     </div>
     <div
       class="menu-item"
       @click="handleAdjustFeed"
     >
       <el-icon><Edit /></el-icon>
-      <span>在此处调整进给率</span>
+      <span>{{ $t('rightClickMenu.adjustFeed') }}</span>
     </div>
   </div>
 </template>

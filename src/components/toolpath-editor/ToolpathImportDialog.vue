@@ -1,25 +1,25 @@
 <template>
   <el-dialog
     v-model="visible"
-    title="导入G代码"
+    :title="$t('toolpathImport.title')"
     width="650px"
     :close-on-click-modal="false"
   >
     <el-tabs v-model="importMode">
       <el-tab-pane
-        label="粘贴G代码"
+        :label="$t('toolpathImport.pasteTab')"
         name="paste"
       >
         <el-input
           v-model="gcodeText"
           type="textarea"
           :rows="14"
-          placeholder="在此粘贴G代码..."
+          :placeholder="$t('toolpathImport.pastePlaceholder')"
           style="font-family: monospace; font-size: 12px"
         />
       </el-tab-pane>
       <el-tab-pane
-        label="上传文件"
+        :label="$t('toolpathImport.uploadTab')"
         name="upload"
       >
         <el-upload
@@ -34,11 +34,11 @@
             <UploadFilled />
           </el-icon>
           <div class="el-upload__text">
-            拖拽文件到此处或 <em>点击选择</em>
+            {{ $t('toolpathImport.dragOrClick') }} <em>{{ $t('toolpathImport.clickSelect') }}</em>
           </div>
           <template #tip>
             <div class="el-upload__tip">
-              支持 .nc / .h / .txt 格式
+              {{ $t('toolpathImport.fileTypeTip') }}
             </div>
           </template>
         </el-upload>
@@ -49,7 +49,7 @@
       v-if="previewLines.length > 0"
       class="preview-section"
     >
-      <h4>预览 ({{ previewLines.length }} 行)</h4>
+      <h4>{{ $t('toolpathImport.preview', { count: previewLines.length }) }}</h4>
       <div class="preview-content">
         <div
           v-for="(line, i) in previewLines"
@@ -63,14 +63,14 @@
 
     <template #footer>
       <el-button @click="visible = false">
-        取消
+        {{ $t('common.cancel') }}
       </el-button>
       <el-button
         type="primary"
         :disabled="!gcodeText.trim()"
         @click="handleImport"
       >
-        导入并加载
+        {{ $t('toolpathImport.import') }}
       </el-button>
     </template>
   </el-dialog>

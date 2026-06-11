@@ -384,7 +384,9 @@ class BossRecognizer:
                 bosses.append(boss)
 
             except (ValueError, TypeError, KeyError) as e:
-                errors.append(f"解析凸台条目 {raw.get('id', i)} 时出错: {str(e)}")
+                errors.append(
+                    f"解析凸台条目 {raw.get('id', i)} 时出错: {type(e).__name__}"
+                )
                 continue
 
         bosses = self._merge_coaxial_bosses(bosses, warnings)

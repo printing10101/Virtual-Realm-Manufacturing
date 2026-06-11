@@ -9,13 +9,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.core.response import success, error, ErrorCode
+from app.core.safe_errors import safe_error_message
 from app.step_import.step_parser import StepParser, StepParseError
 from app.step_import.step_converter import (
     StepConverter,
@@ -258,9 +259,30 @@ async def import_step_file(
         content = await asyncio.to_thread(_read_file_content, file)
     except HTTPException as e:
         return error(code=ErrorCode.INVALID_REQUEST, message=e.detail)
+    except (OSError, ValueError, RuntimeError, TypeError) as e:
+        # 文件读取涉及磁盘IO与 multipart 解析，捕获核心错误；
+        # 使用 safe_error_message 避免直接 str(e) 暴露内部异常。
+        safe = safe_error_message(e, context="step_import.read_file")
+        logger.error(
+            "STEP 文件读取失败 | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        logger.exception("文件读取失败")
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"文件读取失败: {e}")
+        # 兜底：API 入口必须捕获所有异常以避免 5xx 直接抛给客户端
+        safe = safe_error_message(e, context="step_import.read_file_unexpected")
+        logger.exception("文件读取未预期错误 | error_id=%s", safe.get("error_id"))
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
 
     temp_path = None
     try:
@@ -281,10 +303,18 @@ async def import_step_file(
         return success(data=result_data, message="STEP文件导入成功")
 
     except StepParseError as e:
-        logger.exception("STEP解析失败")
+        # StepParseError 是业务级解析错误（用户可理解），但仍通过
+        # safe_error_message 包装以便审计/脱敏统一管理。
+        safe = safe_error_message(e, context="step_import.parse")
+        logger.warning(
+            "STEP 解析失败 | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"STEP文件解析失败: {e}",
+            message=safe["message"],
             suggestion="请确认文件为有效的STEP格式(AP203/AP214/AP242)，且未被损坏。",
         )
     except MemoryError:
@@ -295,15 +325,49 @@ async def import_step_file(
             recoverable=True,
         )
     except Exception as e:
-        logger.exception("STEP导入未预期错误")
+        # 兜底：API 入口必须捕获所有异常以避免 5xx 直接抛给客户端
+        safe = safe_error_message(e, context="step_import.import_unexpected")
+        logger.exception("STEP导入未预期错误 | error_id=%s", safe.get("error_id"))
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"导入过程中发生错误: {e}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
+def _sanitize_filename(file_name: str) -> str:
+    """严格净化文件名，防止路径遍历攻击。
+
+    净化规则（任何一条不满足即视为无效输入，返回空字符串）：
+    1. 输入必须为非空字符串；
+    2. 禁止包含路径分隔符（/ 或 \\）；
+    3. 禁止包含 ".." 序列（任意父目录引用均被拒绝）；
+    4. 通过 pathlib.Path.name 提取纯文件名后不得为空。
+
+    Args:
+        file_name: 用户传入的原始文件名。
+
+    Returns:
+        净化后的纯文件名；无效输入返回空字符串。
+    """
+    # [路径遍历修复] 输入类型与空值检查
+    if not file_name or not isinstance(file_name, str):
+        return ""
+    # [路径遍历修复] 明确拒绝包含路径分隔符的输入
+    if "/" in file_name or "\\" in file_name:
+        return ""
+    # [路径遍历修复] 明确拒绝包含 ".." 序列的输入
+    if ".." in file_name:
+        return ""
+    # [路径遍历修复] 防御性编程：使用 Path.name 提取纯文件名
+    safe_name = Path(file_name).name
+    if not safe_name:
+        return ""
+    return safe_name
+
+
 @router.get("/output/{file_name}")
-async def get_output_file(file_name: str) -> FileResponse:
+async def get_output_file(file_name: str):
     """获取转换后的输出文件(STL/BREP)。
 
     Args:
@@ -311,21 +375,37 @@ async def get_output_file(file_name: str) -> FileResponse:
 
     Returns:
         FileResponse: 文件流
+
+    Raises:
+        HTTPException: 400 当文件路径净化或验证失败时；
+                       404 当文件不存在时。
+
+    [路径遍历修复] 增加了双重路径验证：
+    1. 通过 _sanitize_filename 拒绝包含路径分隔符或 ".." 的输入；
+    2. 通过 resolve() + is_relative_to() 确保最终路径严格位于 OUTPUT_DIR 内。
     """
-    safe_name = PurePosixPath(file_name).name
+    # [路径遍历修复] 第一层：用户输入净化
+    safe_name = _sanitize_filename(file_name)
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="无效的文件名")
+
+    # [路径遍历修复] 第二层：解析为绝对路径并验证在允许目录内
+    allowed_dir = OUTPUT_DIR.resolve()
     file_path = (OUTPUT_DIR / safe_name).resolve()
-    if not file_path.is_relative_to(OUTPUT_DIR.resolve()):
-        return error(
-            code=ErrorCode.INVALID_REQUEST, message="无效的文件路径"
-        )
+    if not file_path.is_relative_to(allowed_dir):
+        raise HTTPException(status_code=400, detail="无效的文件路径")
+
+    # 保留原有的文件存在性检查
     if not file_path.exists():
-        return error(
-            code=ErrorCode.FILE_NOT_FOUND, message=f"输出文件未找到: {safe_name}"
+        raise HTTPException(
+            status_code=404, detail=f"输出文件未找到: {safe_name}"
         )
 
+    # 保留原有的媒体类型判断逻辑
     media_type = (
         "application/sla" if safe_name.endswith(".stl") else "application/octet-stream"
     )
+    # 保留原有的 FileResponse 返回机制
     return FileResponse(
         path=str(file_path),
         media_type=media_type,
@@ -402,10 +482,12 @@ async def get_import_history(limit: int = Query(default=20, ge=1, le=100)) -> di
                 if base not in seen:
                     seen.add(base)
                     history.append(entry)
-            except Exception:
+            except (OSError, ValueError, KeyError, AttributeError, TypeError):
+                # 单个历史文件解析失败不应阻塞整体列表展示
                 continue
 
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
+        # 获取历史涉及文件系统遍历，捕获核心错误
         logger.warning("获取导入历史失败: %s", e)
 
     return success(
@@ -434,12 +516,38 @@ async def delete_import_file(file_name: str) -> dict:
         for related in OUTPUT_DIR.glob(f"{base}*"):
             try:
                 related.unlink()
-            except Exception:
-                pass
+            except (OSError, PermissionError) as e:
+                # 关联产物清理失败不应阻塞主删除流程
+                logger.warning(
+                    f"Failed to remove related output file {related}: {e}",
+                    exc_info=True,
+                )
 
         cache = get_step_cache()
         cache.clear()
 
         return success(message=f"文件 {file_name} 已删除")
+    except (OSError, ValueError, RuntimeError, TypeError) as e:
+        # 删除涉及文件 IO 与缓存清理，捕获核心错误；
+        # 使用 safe_error_message 包装。
+        safe = safe_error_message(e, context="step_import.delete_file")
+        logger.error(
+            "STEP 文件删除失败 | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"删除失败: {e}")
+        # 兜底：API 入口必须捕获所有异常以避免 5xx 直接抛给客户端
+        safe = safe_error_message(e, context="step_import.delete_unexpected")
+        logger.exception("删除文件未预期错误 | error_id=%s", safe.get("error_id"))
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )

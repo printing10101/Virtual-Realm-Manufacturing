@@ -1,4 +1,4 @@
-"""
+﻿"""
 Comprehensive tests for the Goal Alignment Task System.
 
 Covers:
@@ -33,9 +33,9 @@ from app.models.tasks import (  # noqa: E402
     EnhancedTaskType,
     EnhancedTaskStatus,
 )
-from app.core.goal_chain_store import GoalChainStore  # noqa: E402
-from app.core.goal_alignment import GoalAlignmentChecker, GoalAlignmentError  # noqa: E402
-from app.core.context_builder import ContextBuilder  # noqa: E402
+from app.goals.goal_chain_store import GoalChainStore  # noqa: E402
+from app.goals.goal_alignment import GoalAlignmentChecker, GoalAlignmentError  # noqa: E402
+from app.context.context_builder import ContextBuilder  # noqa: E402
 
 
 @pytest.fixture

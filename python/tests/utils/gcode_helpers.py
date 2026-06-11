@@ -44,7 +44,13 @@ def circle_polygon_intersection_area(
     circle_r: float,
     vertices: list[tuple[float, float]],
 ) -> float:
-    """Estimate circle-polygon intersection area using Monte Carlo sampling."""
+    """Estimate circle-polygon intersection area using Monte Carlo sampling.
+
+    The estimator uses a deterministic, well-distributed pseudo-random
+    number generator (a SplitMix64 stream seeded from the call) so the
+    result is reproducible across runs and across operating systems
+    while still being uniformly distributed across the bounding box.
+    """
     samples = 10000
     x_min = min(v[0] for v in vertices) - circle_r
     x_max = max(v[0] for v in vertices) + circle_r
@@ -55,17 +61,30 @@ def circle_polygon_intersection_area(
     if bbox_area == 0:
         return 0.0
 
+    # Seed SplitMix64 from a stable hash of the inputs so that the
+    # estimate is reproducible while still being well-distributed.
+    seed = (
+        abs(hash((circle_cx, circle_cy, circle_r, tuple(vertices)))) or 0x9E3779B9
+    ) & 0xFFFFFFFFFFFFFFFF
+
+    state = [seed]
+    for _ in range(2):
+        state.append((state[-1] + 0x9E3779B97F4A7C15) & 0xFFFFFFFFFFFFFFFF)
+
+    def _next() -> float:
+        state[0] = (state[0] + 0x9E3779B97F4A7C15) & 0xFFFFFFFFFFFFFFFF
+        z = state[0]
+        z = ((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9) & 0xFFFFFFFFFFFFFFFF
+        z = ((z ^ (z >> 27)) * 0x94D049BB133111EB) & 0xFFFFFFFFFFFFFFFF
+        z = z ^ (z >> 31)
+        return (z & 0xFFFFFFFFFFFFFFFF) / float(1 << 64)
+
     inside_both = 0
     inside_polygon = 0
 
     for _ in range(samples):
-        px = x_min + (x_max - x_min) * hash((_, "x")) / (2**32 - 1)
-        py = y_min + (y_max - y_min) * hash((_, "y")) / (2**32 - 1)
-
-        px = x_min + ((hash(str(_ * 7919)) & 0xFFFFFFFF) / 0xFFFFFFFF) * (x_max - x_min)
-        py = y_min + ((hash(str(_ * 104729)) & 0xFFFFFFFF) / 0xFFFFFFFF) * (
-            y_max - y_min
-        )
+        px = x_min + _next() * (x_max - x_min)
+        py = y_min + _next() * (y_max - y_min)
 
         in_poly = point_in_polygon(px, py, vertices)
         if in_poly:

@@ -1,8 +1,13 @@
+import logging
+
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.core.response import ErrorCode, error, success
+from app.core.safe_errors import safe_error_message
 from app.services.tool_wear_predictor import ToolWearPredictor
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/wear", tags=["Tool Wear Prediction"])
 
@@ -68,7 +73,20 @@ async def predict_wear(request: WearPredictRequest):
             data=curve.to_dict(), message="Wear curve predicted successfully"
         )
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Prediction failed: {e!s}")
+        # 兜底捕获：API 端点必须捕获所有异常以避免 5xx 抛给客户端
+        # 业务层异常族多源（数值/模型/数据 I/O），统一收口并通过 safe_error_message 脱敏
+        safe = safe_error_message(e, context="wear_prediction.predict")
+        logger.error(
+            "Wear prediction failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
 
 
 @router.post("/remaining-life")
@@ -92,7 +110,18 @@ async def predict_remaining_life(request: RemainingLifeRequest):
             message="Remaining life predicted successfully",
         )
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Prediction failed: {e!s}")
+        safe = safe_error_message(e, context="wear_prediction.remaining_life")
+        logger.error(
+            "Remaining life prediction failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
 
 
 @router.post("/suggest")
@@ -113,7 +142,19 @@ async def suggest_adjustment(request: SuggestRequest):
             data=suggestion.to_dict(), message="Adjustment suggestions generated"
         )
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Suggestion failed: {e!s}")
+        # 兜底捕获：API 端点统一收口所有异常
+        safe = safe_error_message(e, context="wear_prediction.suggest")
+        logger.error(
+            "Wear suggestion failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
 
 
 @router.get("/models")
@@ -139,8 +180,17 @@ async def get_supported_models():
             message="Supported models retrieved successfully",
         )
     except Exception as e:
+        safe = safe_error_message(e, context="wear_prediction.get_models")
+        logger.error(
+            "Failed to get supported models | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
-            code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get models: {e!s}"
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -153,8 +203,17 @@ async def get_threshold(material_type: str = "default"):
             message="Replacement threshold retrieved",
         )
     except Exception as e:
+        safe = safe_error_message(e, context="wear_prediction.get_threshold")
+        logger.error(
+            "Failed to get replacement threshold | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
-            code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get threshold: {e!s}"
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -173,8 +232,18 @@ async def calibrate_prediction(request: CalibrateRequest):
         )
         return success(data=result, message="Prediction calibrated successfully")
     except Exception as e:
+        # 兜底捕获：标定涉及数值计算 + 模型预测，异常族多源
+        safe = safe_error_message(e, context="wear_prediction.calibrate")
+        logger.error(
+            "Wear calibration failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
-            code=ErrorCode.INTERNAL_ERROR, message=f"Calibration failed: {e!s}"
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -189,8 +258,17 @@ async def train_uniwear_model(
         )
         return success(data=result, message="Uniwear model training completed")
     except Exception as e:
+        safe = safe_error_message(e, context="wear_prediction.train_uniwear")
+        logger.error(
+            "Uniwear training failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
-            code=ErrorCode.INTERNAL_ERROR, message=f"Uniwear training failed: {e!s}"
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -205,8 +283,18 @@ async def predict_wear_from_signal_features(
         )
         return success(data=result, message="Wear predicted from signal features")
     except Exception as e:
+        # 兜底捕获：信号特征预测涉及特征工程 + 模型推理
+        safe = safe_error_message(e, context="wear_prediction.predict_signals")
+        logger.error(
+            "Signal prediction failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
-            code=ErrorCode.INTERNAL_ERROR, message=f"Signal prediction failed: {e!s}"
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -216,9 +304,17 @@ async def get_cross_dataset_analysis():
         analysis = predictor.cross_dataset_analysis()
         return success(data=analysis, message="Cross-dataset analysis completed")
     except Exception as e:
+        safe = safe_error_message(e, context="wear_prediction.cross_dataset")
+        logger.error(
+            "Cross-dataset analysis failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Cross-dataset analysis failed: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -228,7 +324,15 @@ async def get_uniwear_materials():
         materials = predictor.get_uniwear_material_params()
         return success(data=materials, message="Uniwear material parameters retrieved")
     except Exception as e:
+        safe = safe_error_message(e, context="wear_prediction.uniwear_materials")
+        logger.error(
+            "Failed to get uniwear materials | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
-            message=f"Failed to get uniwear materials: {e!s}",
+            message=safe["message"],
+            detail=safe.get("detail"),
         )

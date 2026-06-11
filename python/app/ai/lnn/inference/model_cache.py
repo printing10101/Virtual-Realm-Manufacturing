@@ -219,13 +219,38 @@ class ModelCache:
             return len(self._cache) >= self._max_size
 
 
-_instance: Optional[ModelCache] = None
-_lock = threading.Lock()
+class _ModelCacheHolder:
+    """Thread-safe lazy holder for the :class:`ModelCache` singleton.
+
+    Uses function-level double-checked locking to avoid race conditions
+    during initialization.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._instance: Optional[ModelCache] = None
+
+    def get(self, max_size: int = 3) -> ModelCache:
+        # 快速路径：已存在则直接返回，避免持锁开销
+        if self._instance is not None:
+            return self._instance
+        with self._lock:
+            if self._instance is None:
+                self._instance = ModelCache(max_size=max_size)
+            return self._instance
+
+    def reset(self) -> None:
+        """Reset the singleton instance (mainly for testing purposes)."""
+        with self._lock:
+            if self._instance is not None:
+                self._instance = None
+
+
+_holder = _ModelCacheHolder()
 
 
 def get_model_cache(max_size: int = 3) -> ModelCache:
-    """
-    Get the singleton ModelCache instance in a thread-safe manner.
+    """获取共享的 :class:`ModelCache` 单例；首次访问时懒初始化。
 
     Uses function-level double-checked locking to avoid race conditions
     during initialization.
@@ -235,18 +260,14 @@ def get_model_cache(max_size: int = 3) -> ModelCache:
 
     Returns:
         Singleton ModelCache instance
+
+    Note:
+        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_model_cache)``。
+        实现是线程安全的，行为与重构前完全一致。
     """
-    global _instance
-    if _instance is None:
-        with _lock:
-            if _instance is None:
-                _instance = ModelCache(max_size=max_size)
-    return _instance
+    return _holder.get(max_size)
 
 
 def reset_model_cache() -> None:
     """Reset the singleton instance (mainly for testing purposes)."""
-    global _instance
-    with _lock:
-        if _instance is not None:
-            _instance = None
+    _holder.reset()

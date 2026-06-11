@@ -444,8 +444,18 @@ class ValidationCalibrator:
                     "sample_count": wear_stats.get("sample_count", 0),
                 }
             except Exception as e:
-                logger.warning("Uniwear calibration failed for %s: %s", ds.value, e)
-                result["sources"][ds.value] = {"error": str(e)}
+                logger.warning("Uniwear calibration failed for %s: %s", ds.value, e, exc_info=True)
+                from app.core.safe_errors import safe_error_message
+
+                safe = safe_error_message(
+                    e,
+                    context="validation_calibrator.calibrate_uniwear",
+                    fallback="Uniwear校准失败",
+                )
+                result["sources"][ds.value] = {
+                    "error": safe["message"],
+                    "error_id": safe["error_id"],
+                }
 
         result["joint_thresholds"] = {
             "description": "基于 Bosch CNC + Uniwear 联合数据的跨源验证阈值",
@@ -496,8 +506,18 @@ class ValidationCalibrator:
 
             result["cross_validation"] = cross_validation
         except Exception as e:
-            logger.warning("Cross-source calibration failed: %s", e)
-            result["cross_validation"] = {"error": str(e)}
+            logger.warning("Cross-source calibration failed: %s", e, exc_info=True)
+            from app.core.safe_errors import safe_error_message
+
+            safe = safe_error_message(
+                e,
+                context="validation_calibrator.cross_source",
+                fallback="跨源校准失败",
+            )
+            result["cross_validation"] = {
+                "error": safe["message"],
+                "error_id": safe["error_id"],
+            }
 
         return result
 

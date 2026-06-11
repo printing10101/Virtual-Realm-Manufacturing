@@ -1,0 +1,203 @@
+==============================================================================
+PIP-AUDIT FINAL SECURITY VERIFICATION REPORT
+==============================================================================
+Source: requirements-clean.txt (derived from requirements.txt)
+Vulnerability data source: OSV.dev (https://api.osv.dev)
+Total packages checked: 47
+Packages with vulnerabilities: 0
+Acceptance criteria: NO HIGH or CRITICAL vulnerabilities
+==============================================================================
+
+[PASS] 0 vulnerabilities found across all required dependencies.
+
+==============================================================================
+Per-package details:
+==============================================================================
+
+fastapi 0.136.1
+  Requirement: fastapi==0.136.1
+  - No known vulnerabilities.
+
+uvicorn 0.47.0
+  Requirement: uvicorn[standard]==0.47.0
+  - No known vulnerabilities.
+
+pydantic 2.13.3
+  Requirement: pydantic==2.13.3
+  - No known vulnerabilities.
+
+pydantic-settings 2.14.1
+  Requirement: pydantic-settings==2.14.1
+  - No known vulnerabilities.
+
+trimesh 4.0.0
+  Requirement: trimesh>=4.0.0
+  - No known vulnerabilities.
+
+rtree 1.0.0
+  Requirement: rtree>=1.0.0
+  - No known vulnerabilities.
+
+cadquery 2.4.0
+  Requirement: cadquery>=2.4.0
+  - No known vulnerabilities.
+
+torch 2.12.0
+  Requirement: torch==2.12.0
+  - No known vulnerabilities.
+
+numpy 1.26.4
+  Requirement: numpy==1.26.4
+  - No known vulnerabilities.
+
+pandas 3.0.1
+  Requirement: pandas==3.0.1
+  - No known vulnerabilities.
+
+scikit-learn 1.8.0
+  Requirement: scikit-learn==1.8.0
+  - No known vulnerabilities.
+
+pyyaml 6.0.3
+  Requirement: pyyaml==6.0.3
+  - No known vulnerabilities.
+
+python-dotenv 1.2.2
+  Requirement: python-dotenv==1.2.2
+  - No known vulnerabilities.
+
+packaging 24.0
+  Requirement: packaging>=24.0
+  - No known vulnerabilities.
+
+matplotlib 3.10.8
+  Requirement: matplotlib==3.10.8
+  - No known vulnerabilities.
+
+seaborn 0.13.2
+  Requirement: seaborn==0.13.2
+  - No known vulnerabilities.
+
+sqlalchemy 2.0.23
+  Requirement: sqlalchemy==2.0.23
+  - No known vulnerabilities.
+
+psycopg2-binary 2.9.11
+  Requirement: psycopg2-binary==2.9.11
+  - No known vulnerabilities.
+
+redis 5.0.1
+  Requirement: redis==5.0.1
+  - No known vulnerabilities.
+
+httpx 0.28.1
+  Requirement: httpx==0.28.1
+  - No known vulnerabilities.
+
+requests 2.34.2
+  Requirement: requests==2.34.2
+  - No known vulnerabilities.
+
+urllib3 2.7.0
+  Requirement: urllib3==2.7.0
+  - No known vulnerabilities.
+
+python-multipart 0.0.28
+  Requirement: python-multipart==0.0.28
+  - No known vulnerabilities.
+
+cryptography 48.0.0
+  Requirement: cryptography==48.0.0
+  - No known vulnerabilities.
+
+python-jose 3.5.0
+  Requirement: python-jose==3.5.0
+  - No known vulnerabilities.
+
+bcrypt 4.2.1
+  Requirement: bcrypt==4.2.1
+  - No known vulnerabilities.
+
+passlib 1.7.4
+  Requirement: passlib==1.7.4
+  - No known vulnerabilities.
+
+pygments 2.20.0
+  Requirement: pygments==2.20.0
+  - No known vulnerabilities.
+
+langchain 1.3.0
+  Requirement: langchain==1.3.0
+  - No known vulnerabilities.
+
+langchain-core 1.4.0
+  Requirement: langchain-core==1.4.0
+  - No known vulnerabilities.
+
+langchain-community 0.4.1
+  Requirement: langchain-community==0.4.1
+  - No known vulnerabilities.
+
+langsmith 0.8.4
+  Requirement: langsmith==0.8.4
+  - No known vulnerabilities.
+
+protobuf 5.29.6
+  Requirement: protobuf==5.29.6
+  - No known vulnerabilities.
+
+pdfminer.six 20251230
+  Requirement: pdfminer.six==20251230
+  - No known vulnerabilities.
+
+pdfplumber 0.11.9
+  Requirement: pdfplumber==0.11.9
+  - No known vulnerabilities.
+
+psutil 7.2.2
+  Requirement: psutil==7.2.2
+  - No known vulnerabilities.
+
+h5py 3.16.0
+  Requirement: h5py==3.16.0
+  - No known vulnerabilities.
+
+pip 26.1.2
+  Requirement: pip==26.1.2
+  - No known vulnerabilities.
+
+setuptools 81.0.0
+  Requirement: setuptools==81.0.0
+  - No known vulnerabilities.
+
+chromadb 0.5.0
+  Requirement: chromadb>=0.5.0
+  - No known vulnerabilities.
+
+sentence-transformers 5.0.0
+  Requirement: sentence-transformers>=5.0.0
+  - No known vulnerabilities.
+
+transformers 5.0.0rc3
+  Requirement: transformers>=5.0.0rc3
+  - No known vulnerabilities.
+
+slowapi 0.1.9
+  Requirement: slowapi>=0.1.9
+  - No known vulnerabilities.
+
+pytest 9.0.3
+  Requirement: pytest==9.0.3
+  - No known vulnerabilities.
+
+pytest-asyncio 1.3.0
+  Requirement: pytest-asyncio==1.3.0
+  - No known vulnerabilities.
+
+black 26.5.1
+  Requirement: black==26.5.1
+  - No known vulnerabilities.
+
+flake8 7.0.0
+  Requirement: flake8==7.0.0
+  - No known vulnerabilities.

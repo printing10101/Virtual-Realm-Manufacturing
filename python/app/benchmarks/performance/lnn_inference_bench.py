@@ -7,12 +7,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import sys
 from typing import Any
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 try:
     import torch
@@ -50,8 +53,13 @@ class LNNPerfBenchmark:
                 self._cuda_batch_10 = torch.randn(10, 64, device="cuda")
                 self._cuda_batch_50 = torch.randn(50, 64, device="cuda")
                 self._cuda_batch_100 = torch.randn(100, 64, device="cuda")
-            except Exception:
-                pass
+            except (RuntimeError, ValueError, TypeError) as cuda_err:
+                # CUDA 不可用时回退到 CPU 基准，不影响整体测试
+                logger.debug(
+                    "CUDA warmup unavailable, falling back to CPU benchmark: %s",
+                    cuda_err,
+                    exc_info=True,
+                )
 
     def _create_synthetic_model(self) -> None:
         class _DummyLNN:

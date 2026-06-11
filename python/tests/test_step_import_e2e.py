@@ -61,7 +61,7 @@ def _generate_test_step(output_path: Path) -> Path:
     return output_path
 
 
-async def test_api_functional():
+def test_api_functional():
     """T1: API功能测试 — 上传STEP验证响应字段。"""
     section("T1: API功能测试")
 
@@ -160,7 +160,7 @@ async def test_api_functional():
     return data
 
 
-async def test_error_handling():
+def test_error_handling():
     """T3: 错误处理测试 — 上传.txt验证400+错误信息。"""
     section("T3: 错误处理测试")
 
@@ -225,7 +225,7 @@ async def test_error_handling():
     result("损坏文件包含错误提示", "message" in body_corrupt)
 
 
-async def test_downstream_compatibility(step_data: dict):
+def test_downstream_compatibility(step_data: dict = None):
     """T4: 下游兼容性测试 — 毛坯定义+刀路生成+几何匹配。"""
     section("T4: 下游兼容性测试")
 
@@ -233,6 +233,9 @@ async def test_downstream_compatibility(step_data: dict):
     from app.simulation.toolpath_parser import ToolpathParser
 
     # T4.1: 验证STL文件可用于下游仿真
+    if step_data is None:
+        result("跳过下游测试: 无step_data", False, "前置条件不满足")
+        return
     stl_files = step_data.get("stl_files", [])
     if not stl_files:
         result("跳过下游测试: 无STL文件", False, "前置条件不满足")
@@ -338,7 +341,7 @@ G00 Z10
                     )
 
 
-async def test_frontend_validation():
+def test_frontend_validation():
     """T2: 前端显示验证 — 代码级组件检查。"""
     section("T2: 前端显示验证(代码级检查)")
 

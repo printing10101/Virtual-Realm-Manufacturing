@@ -343,8 +343,13 @@ class TaskClassifier:
                         confidence=float(data.get("confidence", 0.5)),
                         raw_response=content,
                     )
-            except (json.JSONDecodeError, ValueError):
-                pass
+            except (json.JSONDecodeError, ValueError) as parse_err:
+                # LLM 输出非 JSON 时回退到原始文本解析，记录失败原因
+                logger.debug(
+                    "Failed to parse LLM classification JSON, fallback to text scan: %s",
+                    parse_err,
+                    exc_info=True,
+                )
 
         # 降级：从原始文本中提取单个字母
         for ch in content:

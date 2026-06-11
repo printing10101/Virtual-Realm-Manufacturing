@@ -1,9 +1,9 @@
 <template>
   <div class="user-management-page">
     <div class="page-header">
-      <h2>用户管理</h2>
+      <h2>{{ $t('userManagement.pageTitle') }}</h2>
       <el-tag type="info">
-        管理员专用
+        {{ $t('userManagement.adminOnly') }}
       </el-tag>
     </div>
 
@@ -17,11 +17,11 @@
       >
         <el-table-column
           prop="username"
-          label="用户名"
+          :label="$t('userManagement.colUsername')"
           min-width="120"
         />
         <el-table-column
-          label="角色"
+          :label="$t('userManagement.colRole')"
           min-width="140"
         >
           <template #default="{ row }">
@@ -32,37 +32,37 @@
               @change="(val: string) => handleRoleChange(row.username, val)"
             >
               <el-option
-                label="管理员"
+                :label="$t('userManagement.roleAdmin')"
                 value="admin"
               />
               <el-option
-                label="工程师"
+                :label="$t('userManagement.roleEngineer')"
                 value="engineer"
               />
               <el-option
-                label="操作员"
+                :label="$t('userManagement.roleOperator')"
                 value="operator"
               />
             </el-select>
           </template>
         </el-table-column>
         <el-table-column
-          label="状态"
+          :label="$t('userManagement.colStatus')"
           width="100"
         >
           <template #default="{ row }">
             <el-switch
               :model-value="row.is_active"
               :disabled="row.username === currentUsername"
-              active-text="启用"
-              inactive-text="禁用"
+              :active-text="$t('userManagement.activeText')"
+              :inactive-text="$t('userManagement.inactiveText')"
               @change="(val: string | number | boolean) => handleStatusChange(row.username, Boolean(val))"
             />
           </template>
         </el-table-column>
         <el-table-column
           prop="created_at"
-          label="创建时间"
+          :label="$t('userManagement.colCreatedAt')"
           min-width="170"
         >
           <template #default="{ row }">
@@ -71,7 +71,7 @@
         </el-table-column>
         <el-table-column
           prop="last_login"
-          label="最后登录"
+          :label="$t('userManagement.colLastLogin')"
           min-width="170"
         >
           <template #default="{ row }">
@@ -86,6 +86,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import http from '@/utils/http'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate } from '@/utils/formatters'
@@ -98,6 +99,7 @@ interface UserItem {
   last_login: string | null
 }
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const currentUsername = authStore.currentUsername
 
@@ -112,7 +114,7 @@ async function fetchUsers() {
       users.value = res.data.data.users || []
     }
   } catch {
-    ElMessage.error('获取用户列表失败')
+    ElMessage.error(t('userManagement.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -124,10 +126,10 @@ async function handleRoleChange(username: string, newRole: string) {
     if (res.data?.code === 0) {
       const user = users.value.find((u) => u.username === username)
       if (user) user.role = newRole
-      ElMessage.success(`已将 ${username} 的角色修改为 ${newRole}`)
+      ElMessage.success(t('userManagement.roleChangeSuccess', { username, role: newRole }))
     }
   } catch {
-    ElMessage.error('角色修改失败')
+    ElMessage.error(t('userManagement.roleChangeFailed'))
   }
 }
 
@@ -137,11 +139,13 @@ async function handleStatusChange(username: string, active: boolean) {
     if (res.data?.code === 0) {
       const user = users.value.find((u) => u.username === username)
       if (user) user.is_active = active
-      const action = active ? '启用' : '禁用'
-      ElMessage.success(`已${action}用户 ${username}`)
+      const action = active
+        ? t('userManagement.statusActionEnable')
+        : t('userManagement.statusActionDisable')
+      ElMessage.success(t('userManagement.statusChangeSuccess', { username, action }))
     }
   } catch {
-    ElMessage.error('状态修改失败')
+    ElMessage.error(t('userManagement.statusChangeFailed'))
   }
 }
 

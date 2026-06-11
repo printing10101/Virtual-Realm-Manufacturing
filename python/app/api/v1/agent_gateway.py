@@ -12,7 +12,8 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
-from app.core.permissions import paper_only_guard
+from app.core.safe_errors import safe_error_message
+from app.auth.permissions import paper_only_guard
 from app.agent.auth import agent_token_store
 from app.agent.middleware import (
     agent_audit_log,
@@ -163,7 +164,16 @@ async def agent_predict(request: AgentPredictRequest):
         return success(data=resp, message="Prediction completed")
 
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Prediction failed: {e!s}")
+        # 修复：使用 safe_error_message 包装异常，避免 str(e) 泄露
+        # 内部错误详情到前端用户/调用方。
+        safe = safe_error_message(
+            e, context=f"agent.predict[{request.model_name}]"
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
 
 
 async def _run_agent_training(
@@ -281,8 +291,21 @@ async def _run_agent_training(
                 training_tasks[task_id]["status"] = "cancelled"
                 training_tasks[task_id]["message"] = "Training cancelled"
             except Exception as e:
+                # 修复：使用 safe_error_message 包装异常，避免直接
+                # 将 str(e) 写入 training_tasks.message 暴露内部错误详情。
+                safe = safe_error_message(
+                    e, context=f"agent.train_worker[{task_id}]"
+                )
+                logger.error(
+                    "Agent training worker failed | task_id=%s | error_id=%s | exc=%s: %s",
+                    task_id,
+                    safe.get("error_id"),
+                    type(e).__name__,
+                    e,
+                )
                 training_tasks[task_id]["status"] = "failed"
-                training_tasks[task_id]["message"] = f"Training failed: {e!s}"
+                training_tasks[task_id]["message"] = safe["message"]
+                training_tasks[task_id]["error_id"] = safe.get("error_id")
 
         finally:
             _active_training.discard(task_id)
@@ -326,8 +349,15 @@ async def agent_train(request: AgentTrainRequest):
         )
 
     except Exception as e:
+        # 修复：使用 safe_error_message 包装异常，避免直接
+        # 将 str(e) 暴露到 HTTP 错误响应中。
+        safe = safe_error_message(
+            e, context=f"agent.train_init[{request.model_name}]"
+        )
         return error(
-            code=ErrorCode.INTERNAL_ERROR, message=f"Training initiation failed: {e!s}"
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 
@@ -361,6 +391,7 @@ async def _sse_stream(task_id: str, client_id: str):
             except asyncio.TimeoutError:
                 yield ": heartbeat\n\n"
     except asyncio.CancelledError:
+        # SSE 连接被客户端主动关闭时静默退出（业务预期行为）
         pass
     finally:
         await sse_manager.unsubscribe(task_id, client_id)
@@ -414,7 +445,14 @@ async def agent_execute(request: AgentExecuteRequest):
         )
 
     except Exception as e:
-        return error(code=ErrorCode.INTERNAL_ERROR, message=f"Execution failed: {e!s}")
+        # 修复：使用 safe_error_message 包装异常，避免直接
+        # 将 str(e) 暴露到 HTTP 错误响应中。
+        safe = safe_error_message(e, context="agent.execute")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
 
 
 @router.get("/audit-log")
@@ -472,8 +510,13 @@ async def create_agent_token(req: AgentTokenCreateRequest):
         )
 
     except Exception as e:
+        # 修复：使用 safe_error_message 包装异常，避免直接
+        # 将 str(e) 暴露到 HTTP 错误响应中。
+        safe = safe_error_message(e, context="agent.create_token")
         return error(
-            code=ErrorCode.INTERNAL_ERROR, message=f"Token creation failed: {e!s}"
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
         )
 
 

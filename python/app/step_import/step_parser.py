@@ -99,8 +99,9 @@ class StepParser:
             return result
         try:
             return result.val()
-        except Exception:
-            raise StepParseError("无法从导入结果中提取几何体")
+        except (AttributeError, RuntimeError, ValueError, TypeError) as extract_err:
+            # CadQuery Workplane.val() 失败时，包装为可识别的 StepParseError
+            raise StepParseError("无法从导入结果中提取几何体") from extract_err
 
     def parse(self, file_path: str | Path) -> StepParseResult:
         """解析STEP文件并提取模型信息。
@@ -130,14 +131,18 @@ class StepParser:
 
         try:
             raw_result = cq.importers.importStep(str(file_path))
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError, TypeError) as e:
+            # cadquery STEP 导入涉及 C++ OCCT 绑定，捕获核心错误类型
+            logger.error("STEP文件解析失败: %s", e, exc_info=True)
             raise StepParseError(f"STEP文件解析失败: {e}") from e
 
         shape = self._extract_shape(raw_result)
 
         try:
             model_info = self._extract_model_info(shape)
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:
+            # 模型信息提取涉及 cadquery Shape 属性访问与几何遍历
+            logger.error("模型信息提取失败: %s", e, exc_info=True)
             raise StepParseError(f"模型信息提取失败: {e}") from e
 
         entities = self._extract_entities(shape)
@@ -179,8 +184,9 @@ class StepParser:
         try:
             raw_result = cq.importers.importStep(str(file_path))
             return self._extract_shape(raw_result)
-        except Exception as e:
-            raise StepParseError(f"STEP文件导入失败: {e}") from e
+        except (RuntimeError, ValueError, TypeError, OSError, AttributeError) as import_err:
+            # 导入流程任何环节失败都包装为业务异常，包含原始 cause
+            raise StepParseError(f"STEP文件导入失败: {import_err}") from import_err
 
     def _extract_model_info(self, shape) -> ModelInfo:
         """从CadQuery Shape提取整体模型信息。"""
@@ -196,54 +202,108 @@ class StepParser:
                 min_point=(round(bb.xmin, 4), round(bb.ymin, 4), round(bb.zmin, 4)),
                 max_point=(round(bb.xmax, 4), round(bb.ymax, 4), round(bb.zmax, 4)),
             )
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as geom_err:
+            # CadQuery 包围盒计算失败时回退为零包围盒，记录以便排查
+            logger.debug(
+                "Failed to compute BoundingBox for shape: %s",
+                geom_err,
+                exc_info=True,
+            )
             bbox = BoundingBox(0, 0, 0)
 
         try:
             volume = shape.Volume()
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as vol_err:
+            # CadQuery 体积计算失败时回退为 0.0，记录以便排查
+            logger.debug(
+                "Failed to compute shape Volume: %s",
+                vol_err,
+                exc_info=True,
+            )
             volume = 0.0
 
         try:
             surface_area = shape.Area()
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as area_err:
+            # CadQuery 表面积计算失败时回退为 0.0，记录以便排查
+            logger.debug(
+                "Failed to compute shape Area: %s",
+                area_err,
+                exc_info=True,
+            )
             surface_area = 0.0
 
         try:
             com = shape.Center()
             center = (round(com.x, 4), round(com.y, 4), round(com.z, 4))
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as com_err:
+            # CadQuery 重心计算失败时回退到原点，记录以便排查
+            logger.debug(
+                "Failed to compute shape Center: %s",
+                com_err,
+                exc_info=True,
+            )
             center = (0.0, 0.0, 0.0)
 
         try:
             faces = shape.Faces()
             face_count = len(list(faces))
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as face_err:
+            # CadQuery 面枚举失败时回退为 0，记录以便排查
+            logger.debug(
+                "Failed to enumerate shape Faces: %s",
+                face_err,
+                exc_info=True,
+            )
             face_count = 0
 
         try:
             vertices = shape.Vertices()
             vertex_count = len(list(vertices))
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as vert_err:
+            # CadQuery 顶点枚举失败时回退为 0，记录以便排查
+            logger.debug(
+                "Failed to enumerate shape Vertices: %s",
+                vert_err,
+                exc_info=True,
+            )
             vertex_count = 0
 
         try:
             edges = shape.Edges()
             edge_count = len(list(edges))
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as edge_err:
+            # CadQuery 边枚举失败时回退为 0，记录以便排查
+            logger.debug(
+                "Failed to enumerate shape Edges: %s",
+                edge_err,
+                exc_info=True,
+            )
             edge_count = 0
 
         try:
             shells = shape.Shells()
             shell_count = len(list(shells))
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as shell_err:
+            # CadQuery 壳枚举失败时回退为 0，记录以便排查
+            logger.debug(
+                "Failed to enumerate shape Shells: %s",
+                shell_err,
+                exc_info=True,
+            )
             shell_count = 0
 
         try:
             solids = shape.Solids()
             solid_count = len(list(solids))
             entity_count = max(solid_count, 1)
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as sol_err:
+            # CadQuery 实体枚举失败时回退为单个实体，记录以便排查
+            logger.debug(
+                "Failed to enumerate shape Solids: %s",
+                sol_err,
+                exc_info=True,
+            )
             solid_count = 0
             entity_count = 1
 
@@ -266,7 +326,13 @@ class StepParser:
 
         try:
             solids = list(shape.Solids())
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError) as sol_err:
+            # 装配体实体枚举失败时按单实体处理，记录以便排查
+            logger.debug(
+                "Failed to enumerate assembly solids: %s",
+                sol_err,
+                exc_info=True,
+            )
             solids = []
 
         if len(solids) <= 1:
@@ -279,23 +345,47 @@ class StepParser:
                     min_point=(round(bb.xmin, 4), round(bb.ymin, 4), round(bb.zmin, 4)),
                     max_point=(round(bb.xmax, 4), round(bb.ymax, 4), round(bb.zmax, 4)),
                 )
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as bb_err:
+                # 单实体包围盒计算失败时回退为零包围盒，记录以便排查
+                logger.debug(
+                    "Failed to compute single-entity BoundingBox: %s",
+                    bb_err,
+                    exc_info=True,
+                )
                 bbox = BoundingBox(0, 0, 0)
 
             try:
                 com = shape.Center()
                 center = (round(com.x, 4), round(com.y, 4), round(com.z, 4))
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as com_err:
+                # 单实体重心计算失败时回退为原点，记录以便排查
+                logger.debug(
+                    "Failed to compute single-entity Center: %s",
+                    com_err,
+                    exc_info=True,
+                )
                 center = (0.0, 0.0, 0.0)
 
             try:
                 face_count = len(list(shape.Faces()))
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as face_err:
+                # 单实体面枚举失败时回退为 0，记录以便排查
+                logger.debug(
+                    "Failed to enumerate single-entity faces: %s",
+                    face_err,
+                    exc_info=True,
+                )
                 face_count = 0
 
             try:
                 vertex_count = len(list(shape.Vertices()))
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as vert_err:
+                # 单实体顶点枚举失败时回退为 0，记录以便排查
+                logger.debug(
+                    "Failed to enumerate single-entity vertices: %s",
+                    vert_err,
+                    exc_info=True,
+                )
                 vertex_count = 0
 
             entities.append(
@@ -325,7 +415,13 @@ class StepParser:
                     min_point=(round(bb.xmin, 4), round(bb.ymin, 4), round(bb.zmin, 4)),
                     max_point=(round(bb.xmax, 4), round(bb.ymax, 4), round(bb.zmax, 4)),
                 )
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as bb_err:
+                # 装配体包围盒计算失败时回退为零包围盒，记录以便排查
+                logger.debug(
+                    "Failed to compute entity BoundingBox: %s",
+                    bb_err,
+                    exc_info=True,
+                )
                 entity_bbox = BoundingBox(0, 0, 0)
 
             try:
@@ -335,27 +431,57 @@ class StepParser:
                     round(entity_com.y, 4),
                     round(entity_com.z, 4),
                 )
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as com_err:
+                # 装配体重心计算失败时回退为原点，记录以便排查
+                logger.debug(
+                    "Failed to compute entity Center: %s",
+                    com_err,
+                    exc_info=True,
+                )
                 e_center = (0.0, 0.0, 0.0)
 
             try:
                 e_faces = len(list(solid.Faces()))
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as face_err:
+                # 装配体面枚举失败时回退为 0，记录以便排查
+                logger.debug(
+                    "Failed to enumerate entity faces: %s",
+                    face_err,
+                    exc_info=True,
+                )
                 e_faces = 0
 
             try:
                 e_verts = len(list(solid.Vertices()))
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as vert_err:
+                # 装配体顶点枚举失败时回退为 0，记录以便排查
+                logger.debug(
+                    "Failed to enumerate entity vertices: %s",
+                    vert_err,
+                    exc_info=True,
+                )
                 e_verts = 0
 
             try:
                 e_vol = round(solid.Volume(), 4)
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as vol_err:
+                # 装配体体积计算失败时回退为 0.0，记录以便排查
+                logger.debug(
+                    "Failed to compute entity Volume: %s",
+                    vol_err,
+                    exc_info=True,
+                )
                 e_vol = 0.0
 
             try:
                 e_area = round(solid.Area(), 4)
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError, TypeError) as area_err:
+                # 装配体表面积计算失败时回退为 0.0，记录以便排查
+                logger.debug(
+                    "Failed to compute entity Area: %s",
+                    area_err,
+                    exc_info=True,
+                )
                 e_area = 0.0
 
             entities.append(

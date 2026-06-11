@@ -1,4 +1,4 @@
-"""
+﻿"""
 Heartbeat Scheduling API Routes
 
 Provides RESTful interfaces for task scheduling, budget management,
@@ -74,7 +74,7 @@ class ExecutionResultResponse(BaseModel):
 @router.post("/tasks", response_model=TaskResponse)
 async def create_scheduled_task(request: CreateScheduledTaskRequest):
     """创建调度任务"""
-    from app.core.heartbeat import get_scheduler, ScheduledTask, ScheduleStatus
+    from app.heartbeat.heartbeat import get_scheduler, ScheduledTask, ScheduleStatus
 
     scheduler = get_scheduler()
 
@@ -115,7 +115,7 @@ async def create_scheduled_task(request: CreateScheduledTaskRequest):
 @router.get("/tasks/{task_id}", response_model=TaskResponse)
 async def get_scheduled_task(task_id: str):
     """获取调度任务详情"""
-    from app.core.heartbeat import get_scheduler
+    from app.heartbeat.heartbeat import get_scheduler
 
     scheduler = get_scheduler()
     task = scheduler.wakeup_queue.get_task(task_id)
@@ -143,7 +143,7 @@ async def list_scheduled_tasks(
     agent_id: Optional[str] = None, status: Optional[str] = None
 ):
     """列出所有调度任务"""
-    from app.core.heartbeat import get_scheduler, ScheduleStatus
+    from app.heartbeat.heartbeat import get_scheduler, ScheduleStatus
 
     scheduler = get_scheduler()
 
@@ -171,7 +171,7 @@ async def list_scheduled_tasks(
 @router.post("/tasks/{task_id}/trigger")
 async def trigger_task_now(task_id: str):
     """立即触发任务执行"""
-    from app.core.heartbeat import get_scheduler
+    from app.heartbeat.heartbeat import get_scheduler
 
     scheduler = get_scheduler()
 
@@ -185,7 +185,7 @@ async def trigger_task_now(task_id: str):
 @router.post("/tasks/{task_id}/pause")
 async def pause_task(task_id: str):
     """暂停任务"""
-    from app.core.heartbeat import get_scheduler
+    from app.heartbeat.heartbeat import get_scheduler
 
     scheduler = get_scheduler()
     task = scheduler.wakeup_queue.get_task(task_id)
@@ -200,7 +200,7 @@ async def pause_task(task_id: str):
 @router.post("/tasks/{task_id}/resume")
 async def resume_task(task_id: str):
     """恢复任务"""
-    from app.core.heartbeat import get_scheduler
+    from app.heartbeat.heartbeat import get_scheduler
 
     scheduler = get_scheduler()
 
@@ -214,7 +214,7 @@ async def resume_task(task_id: str):
 @router.delete("/tasks/{task_id}")
 async def delete_task(task_id: str):
     """删除任务"""
-    from app.core.heartbeat import get_scheduler
+    from app.heartbeat.heartbeat import get_scheduler
 
     scheduler = get_scheduler()
     deleted = scheduler.wakeup_queue.delete_task(task_id)
@@ -228,7 +228,7 @@ async def delete_task(task_id: str):
 @router.get("/tasks/{task_id}/history")
 async def get_task_history(task_id: str, limit: int = 50):
     """获取任务执行历史"""
-    from app.core.heartbeat import get_scheduler
+    from app.heartbeat.heartbeat import get_scheduler
 
     scheduler = get_scheduler()
     task = scheduler.wakeup_queue.get_task(task_id)
@@ -243,7 +243,7 @@ async def get_task_history(task_id: str, limit: int = 50):
 @router.get("/budget/{agent_id}", response_model=BudgetCheckResponse)
 async def check_budget(agent_id: str):
     """检查代理预算状态"""
-    from app.core.budget import get_budget_manager
+    from app.budget.budget import get_budget_manager
 
     budget_manager = get_budget_manager()
     result = budget_manager.check_budget(agent_id)
@@ -260,7 +260,7 @@ async def check_budget(agent_id: str):
 @router.get("/budget/notifications")
 async def get_budget_notifications(agent_id: Optional[str] = None, limit: int = 50):
     """获取预算通知"""
-    from app.core.budget import get_budget_manager
+    from app.budget.budget import get_budget_manager
 
     budget_manager = get_budget_manager()
     notifications = budget_manager.get_notifications(agent_id, limit)
@@ -271,8 +271,8 @@ async def get_budget_notifications(agent_id: Optional[str] = None, limit: int = 
 @router.get("/stats")
 async def get_scheduler_stats():
     """获取调度器统计信息"""
-    from app.core.heartbeat import get_scheduler
-    from app.core.execution import get_engine
+    from app.heartbeat.heartbeat import get_scheduler
+    from app.tasks.execution import get_engine
 
     scheduler = get_scheduler()
     engine = get_engine()
@@ -288,7 +288,7 @@ async def get_scheduler_stats():
 @router.post("/recovery/orphaned")
 async def recover_orphaned_tasks():
     """手动触发孤立任务恢复"""
-    from app.core.execution import get_engine
+    from app.tasks.execution import get_engine
 
     engine = get_engine()
     recovered = await engine.recover_orphaned_tasks()

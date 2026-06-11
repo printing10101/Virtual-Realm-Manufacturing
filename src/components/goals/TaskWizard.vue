@@ -5,19 +5,19 @@
       finish-status="success"
       style="margin-bottom: 24px"
     >
-      <el-step title="选择父目标" />
-      <el-step title="填写任务信息" />
-      <el-step title="确认创建" />
+      <el-step :title="t('taskWizard.step1Title')" />
+      <el-step :title="t('taskWizard.step2Title')" />
+      <el-step :title="t('taskWizard.step3Title')" />
     </el-steps>
 
     <div
       v-if="currentStep === 0"
       class="step-content"
     >
-      <h4>选择任务所属目标</h4>
+      <h4>{{ t('taskWizard.selectGoalTitle') }}</h4>
       <el-input
         v-model="searchQuery"
-        placeholder="搜索目标..."
+        :placeholder="t('taskWizard.searchGoalPlaceholder')"
         prefix-icon="Search"
         style="margin-bottom: 16px"
       />
@@ -54,7 +54,7 @@
       </el-radio-group>
       <el-empty
         v-if="filteredGoals.length === 0"
-        description="没有找到匹配的目标"
+        :description="t('taskWizard.noGoalMatched')"
       />
     </div>
 
@@ -66,48 +66,48 @@
         :model="taskForm"
         label-width="100px"
       >
-        <el-form-item label="任务标题">
+        <el-form-item :label="t('taskWizard.taskTitle')">
           <el-input
             v-model="taskForm.title"
-            placeholder="请输入任务标题"
+            :placeholder="t('taskWizard.taskTitlePlaceholder')"
           />
         </el-form-item>
-        <el-form-item label="任务描述">
+        <el-form-item :label="t('taskWizard.taskDesc')">
           <el-input
             v-model="taskForm.description"
             type="textarea"
             :rows="3"
-            placeholder="请输入任务详细描述"
+            :placeholder="t('taskWizard.taskDescPlaceholder')"
           />
         </el-form-item>
-        <el-form-item label="任务类型">
+        <el-form-item :label="t('taskWizard.taskType')">
           <el-select
             v-model="taskForm.task_type"
             style="width: 100%"
           >
             <el-option
-              label="预测 (prediction)"
+              :label="t('taskWizard.typePrediction')"
               value="prediction"
             />
             <el-option
-              label="训练 (training)"
+              :label="t('taskWizard.typeTraining')"
               value="training"
             />
             <el-option
-              label="分析 (analysis)"
+              :label="t('taskWizard.typeAnalysis')"
               value="analysis"
             />
             <el-option
-              label="执行 (execution)"
+              :label="t('taskWizard.typeExecution')"
               value="execution"
             />
             <el-option
-              label="审查 (review)"
+              :label="t('taskWizard.typeReview')"
               value="review"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="阻塞依赖">
+        <el-form-item :label="t('taskWizard.blockers')">
           <el-select
             v-model="taskForm.blockers"
             multiple
@@ -115,11 +115,11 @@
             style="width: 100%"
           >
             <el-option
-              label="无"
+              :label="t('taskWizard.blockersNone')"
               value=""
             />
           </el-select>
-          <span class="form-hint">该任务必须等待这些依赖任务完成后才能开始</span>
+          <span class="form-hint">{{ t('taskWizard.blockersHint') }}</span>
         </el-form-item>
       </el-form>
     </div>
@@ -128,27 +128,27 @@
       v-if="currentStep === 2"
       class="step-content"
     >
-      <h4>确认任务信息</h4>
+      <h4>{{ t('taskWizard.confirmTitle') }}</h4>
       <el-descriptions
         :column="1"
         border
       >
-        <el-descriptions-item label="父目标">
+        <el-descriptions-item :label="t('taskWizard.parentGoal')">
           {{ selectedParentGoal?.name || '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="任务标题">
+        <el-descriptions-item :label="t('taskWizard.taskTitle')">
           {{ taskForm.title }}
         </el-descriptions-item>
-        <el-descriptions-item label="任务描述">
+        <el-descriptions-item :label="t('taskWizard.taskDesc')">
           {{ taskForm.description }}
         </el-descriptions-item>
-        <el-descriptions-item label="任务类型">
+        <el-descriptions-item :label="t('taskWizard.taskType')">
           {{ taskForm.task_type }}
         </el-descriptions-item>
       </el-descriptions>
       <el-alert
         v-if="goalChainPreview.length > 0"
-        title="目标链预览"
+        :title="t('taskWizard.goalChainPreview')"
         type="info"
         :closable="false"
         style="margin-top: 16px"
@@ -169,7 +169,7 @@
         v-if="currentStep > 0"
         @click="currentStep--"
       >
-        上一步
+        {{ t('taskWizard.prevStep') }}
       </el-button>
       <el-button
         v-if="currentStep < 2"
@@ -177,7 +177,7 @@
         :disabled="!canProceed"
         @click="currentStep++"
       >
-        下一步
+        {{ t('taskWizard.nextStep') }}
       </el-button>
       <el-button
         v-if="currentStep === 2"
@@ -185,7 +185,7 @@
         :loading="loading"
         @click="submitTask"
       >
-        创建任务
+        {{ t('taskWizard.createTask') }}
       </el-button>
     </div>
   </div>
@@ -194,7 +194,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { getGoalLevelLabel, getGoalLevelTagType } from '@/utils/statusHelpers'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   goals: any[]
@@ -251,7 +255,7 @@ const canProceed = computed(() => {
 
 const submitTask = async () => {
   if (!selectedParentId.value) {
-    ElMessage.warning('请选择父目标')
+    ElMessage.warning(t('taskWizard.selectParentFirst'))
     return
   }
   try {
@@ -267,7 +271,7 @@ const submitTask = async () => {
     selectedParentId.value = undefined
     currentStep.value = 0
   } catch (e: any) {
-    ElMessage.error('任务创建失败: ' + (e.response?.data?.message || e.message))
+    ElMessage.error(t('taskWizard.createFailed', { message: e.response?.data?.message || e.message }))
   }
 }
 </script>

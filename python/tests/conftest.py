@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import sys
 import tempfile
 import time
+import types
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Generator
@@ -15,15 +17,486 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# ---------------------------------------------------------------------------
+# 测试环境配置：补齐 ``app.auth.security`` 在导入期读取的强制环境变量。
+# 背景：``app.auth.security.SECRET_KEY`` 在模块加载时会调用
+# ``_validate_and_get_secret``，未设置 ``LNN_JWT_SECRET`` 时会抛出 RuntimeError
+# 阻断后续任何依赖 ``app.api.v1.auth`` 的测试。这里在 conftest 入口补齐默认值。
+# ---------------------------------------------------------------------------
+if not os.environ.get("LNN_JWT_SECRET"):
+    os.environ["LNN_JWT_SECRET"] = "test_conftest_default_secret_value_min_32chars_safe"
+
+
+# ---------------------------------------------------------------------------
+# Torch stub: 避免测试触发真实的 torch C 扩展重复初始化
+# ---------------------------------------------------------------------------
+# 背景：
+# - ``app.api.v1.__init__`` 会触发 ``app.api.v1.lnn`` 的导入，进而 ``import torch``。
+# - 在 ``pytest-cov`` / ``importlib`` 重新加载场景下，torch C 扩展函数
+#   ``_has_torch_function`` 二次注册时会抛出
+#   ``RuntimeError: function '_has_torch_function' already has a docstring``。
+# - 通过在 conftest 中预先注入轻量级 ``torch`` 桩，让所有受影响的导入链走桩
+#   实现，从而避免真实的 torch 初始化和冲突。仅用于单元测试，性能不受影响。
+if "torch" not in sys.modules:
+    def _stub_function(*args, **kwargs):
+        return None
+
+    def _stub_decorator(*args, **kwargs):
+        """Stub decorator that can be used bare or as ``@stub()`` / ``@stub(fn)``."""
+
+        def _wrap(fn=None):
+            if fn is None:
+                return _stub_decorator
+            return fn
+
+        if len(args) == 1 and callable(args[0]) and not kwargs:
+            return args[0]
+        return _wrap
+
+    class _LazyStubModule(types.ModuleType):
+        """A ``ModuleType`` that lazily fabricates missing attributes.
+
+        Accessing an attribute that has not been explicitly set returns a
+        ``_LazyStub`` so that production code which introspects torch
+        sub-modules (e.g. ``torch.optim.Optimizer``, ``torch.utils.data.DataLoader``)
+        can be imported and used as a type annotation without raising
+        ``AttributeError``.  A ``_LazyStub`` itself is callable, subscriptable,
+        iterable, and supports attribute access - mirroring the typical
+        usage pattern of ``torch.<x>.<y>`` in the codebase.
+        """
+
+        def __getattr__(self, name):
+            # Avoid recursion for dunder lookups
+            if name.startswith("__") and name.endswith("__"):
+                raise AttributeError(name)
+            value = _LazyStub(name)
+            # Cache on the module so the same attribute returns the same object
+            try:
+                object.__setattr__(self, name, value)
+            except Exception:
+                pass
+            return value
+
+    class _LazyStub:
+        """A recursive stub object usable as a function, class, container, or module."""
+
+        def __init__(self, name: str = "stub"):
+            self.__name__ = name
+
+        def __getattr__(self, name):
+            if name.startswith("__") and name.endswith("__"):
+                raise AttributeError(name)
+            value = _LazyStub(name)
+            try:
+                object.__setattr__(self, name, value)
+            except Exception:
+                pass
+            return value
+
+        def __call__(self, *args, **kwargs):
+            # If called with a single callable, behave like a passthrough decorator
+            if len(args) == 1 and callable(args[0]) and not kwargs:
+                return args[0]
+            return _stub_function(*args, **kwargs)
+
+        def __getitem__(self, key):
+            return self
+
+        def __iter__(self):
+            return iter(())
+
+        def __bool__(self):
+            return True
+
+        def __repr__(self) -> str:
+            return f"<torch-stub {self.__name__}>"
+
+        def __or__(self, other):
+            return other
+
+        def __ror__(self, other):
+            return other
+
+    # Build a lazy stub root module
+    _torch_stub = _LazyStubModule("torch")
+
+    _torch_stub.Tensor = type("Tensor", (), {})
+    _torch_stub.nn = _LazyStubModule("torch.nn")
+    _torch_stub.nn.Module = type("Module", (), {})
+    _torch_stub.nn.functional = _LazyStubModule("torch.nn.functional")
+    # Common nn.functional entry points - return None to satisfy import + light call sites
+    for _fn_name in (
+        "mse_loss",
+        "l1_loss",
+        "smooth_l1_loss",
+        "cross_entropy",
+        "binary_cross_entropy",
+        "cosine_similarity",
+        "normalize",
+        "relu",
+        "sigmoid",
+        "tanh",
+        "softmax",
+        "log_softmax",
+        "dropout",
+        "linear",
+        "conv2d",
+        "max_pool2d",
+        "avg_pool2d",
+        "adaptive_avg_pool2d",
+        "one_hot",
+        "embedding",
+    ):
+        setattr(_torch_stub.nn.functional, _fn_name, _stub_function)
+    # Common nn.* entry points (parameter factory + containers)
+    for _nn_name in (
+        "Linear",
+        "Conv2d",
+        "Conv1d",
+        "Conv3d",
+        "BatchNorm1d",
+        "BatchNorm2d",
+        "LayerNorm",
+        "Dropout",
+        "Sequential",
+        "ModuleList",
+        "ModuleDict",
+        "ParameterList",
+        "ParameterDict",
+        "Parameter",
+        "ReLU",
+        "Sigmoid",
+        "Tanh",
+        "Softmax",
+        "LogSoftmax",
+        "Embedding",
+        "MultiheadAttention",
+        "TransformerEncoder",
+        "TransformerDecoder",
+        "TransformerEncoderLayer",
+        "TransformerDecoderLayer",
+        "MSELoss",
+        "L1Loss",
+        "SmoothL1Loss",
+        "CrossEntropyLoss",
+        "BCELoss",
+    ):
+        setattr(_torch_stub.nn, _nn_name, type(_nn_name, (), {}))
+    # Common torch.* attributes used in production code
+
+    class _DeviceStub:
+        """Stub for ``torch.device`` that accepts any positional args."""
+
+        def __init__(self, *args, **kwargs):
+            self.args = args
+            self.kwargs = kwargs
+            self.type = args[0] if args else kwargs.get("type", "cpu")
+
+        def __repr__(self) -> str:
+            return f"device({self.type!r})"
+
+        def __eq__(self, other) -> bool:
+            if isinstance(other, _DeviceStub):
+                return self.type == other.type
+            return False
+
+        def __hash__(self) -> int:
+            return hash(self.type)
+
+    _torch_stub.device = _DeviceStub
+    _torch_stub.dtype = _LazyStub("dtype")
+    _torch_stub.float = "float"
+    _torch_stub.double = "double"
+    _torch_stub.int = "int"
+    _torch_stub.bool = "bool"
+    _torch_stub.bfloat16 = "bfloat16"
+    _torch_stub.float64 = "float64"
+    _torch_stub.float16 = "float16"
+    _torch_stub.int8 = "int8"
+    _torch_stub.int16 = "int16"
+    _torch_stub.int32 = "int32"
+    _torch_stub.int64 = "int64"
+    _torch_stub.uint8 = "uint8"
+    _torch_stub.pi = 3.141592653589793
+    _torch_stub.inf = float("inf")
+    _torch_stub.nan = float("nan")
+    _torch_stub.is_tensor = lambda *a, **k: False
+    _torch_stub.from_numpy = _stub_function
+    _torch_stub.stack = _stub_function
+    _torch_stub.cat = _stub_function
+    _torch_stub.matmul = _stub_function
+    _torch_stub.bmm = _stub_function
+    _torch_stub.einsum = _stub_function
+    _torch_stub.sum = _stub_function
+    _torch_stub.mean = _stub_function
+    _torch_stub.max = _stub_function
+    _torch_stub.min = _stub_function
+    _torch_stub.argmax = _stub_function
+    _torch_stub.argmin = _stub_function
+    _torch_stub.softmax = _stub_function
+    _torch_stub.transpose = _stub_function
+    _torch_stub.reshape = _stub_function
+    _torch_stub.view = _stub_function
+    _torch_stub.squeeze = _stub_function
+    _torch_stub.unsqueeze = _stub_function
+    _torch_stub.expand = _stub_function
+    _torch_stub.repeat = _stub_function
+    _torch_stub.permute = _stub_function
+    _torch_stub.contiguous = _stub_function
+    _torch_stub.to = _stub_function
+    _torch_stub.optim = _LazyStubModule("torch.optim")
+    # Common torch.optim entry points
+    for _opt_name in (
+        "Optimizer",
+        "SGD",
+        "Adam",
+        "AdamW",
+        "RMSprop",
+        "Adagrad",
+        "Adadelta",
+        "LBFGS",
+    ):
+        setattr(_torch_stub.optim, _opt_name, type(_opt_name, (), {}))
+    # torch.optim.lr_scheduler submodule
+    _torch_stub.optim.lr_scheduler = _LazyStubModule("torch.optim.lr_scheduler")
+    for _sched_name in (
+        "StepLR",
+        "MultiStepLR",
+        "ExponentialLR",
+        "CosineAnnealingLR",
+        "ReduceLROnPlateau",
+        "LambdaLR",
+    ):
+        setattr(_torch_stub.optim.lr_scheduler, _sched_name, type(_sched_name, (), {}))
+    _torch_stub.utils = _LazyStubModule("torch.utils")
+    _torch_stub.utils.data = _LazyStubModule("torch.utils.data")
+    # Common torch.utils.data entry points
+    for _data_name in (
+        "DataLoader",
+        "TensorDataset",
+        "Dataset",
+        "IterableDataset",
+        "Subset",
+        "ConcatDataset",
+        "ChainDataset",
+        "random_split",
+        "default_collate",
+    ):
+        setattr(_torch_stub.utils.data, _data_name, type(_data_name, (), {}))
+    _torch_stub.jit = _LazyStubModule("torch.jit")
+    _torch_stub.jit.ScriptModule = type("ScriptModule", (), {})
+    _torch_stub.cuda = _LazyStubModule("torch.cuda")
+    _torch_stub.cuda.is_available = lambda: False
+    _torch_stub.tensor = _stub_function
+    _torch_stub.zeros = _stub_function
+    _torch_stub.ones = _stub_function
+    _torch_stub.empty = _stub_function
+    _torch_stub.full = _stub_function
+    _torch_stub.arange = _stub_function
+    _torch_stub.linspace = _stub_function
+    _torch_stub.eye = _stub_function
+    _torch_stub.rand = _stub_function
+    _torch_stub.randn = _stub_function
+    _torch_stub.randperm = _stub_function
+    _torch_stub.no_grad = _stub_decorator
+    _torch_stub.enable_grad = _stub_decorator
+    _torch_stub.inference_mode = _stub_decorator
+    _torch_stub.set_grad_enabled = _stub_function
+    _torch_stub.is_grad_enabled = lambda: False
+    _torch_stub.save = _stub_function
+    _torch_stub.load = _stub_function
+    _torch_stub.manual_seed = _stub_function
+    _torch_stub.cuda.manual_seed = _stub_function
+    _torch_stub.cuda.device_count = lambda: 0
+    _torch_stub.float32 = "float32"
+    _torch_stub.long = "long"
+    _torch_stub.half = "half"
+    _torch_stub.Size = tuple
+    sys.modules["torch"] = _torch_stub
+    sys.modules["torch.nn"] = _torch_stub.nn
+    sys.modules["torch.nn.functional"] = _torch_stub.nn.functional
+    sys.modules["torch.optim"] = _torch_stub.optim
+    sys.modules["torch.optim.lr_scheduler"] = _torch_stub.optim.lr_scheduler
+    sys.modules["torch.utils"] = _torch_stub.utils
+    sys.modules["torch.utils.data"] = _torch_stub.utils.data
+    sys.modules["torch.jit"] = _torch_stub.jit
+    sys.modules["torch.cuda"] = _torch_stub.cuda
+
+
+# ---------------------------------------------------------------------------
+# Stub ``app.api.v1`` package: 避免导入 auth 模块时触发 ``lnn`` 等子模块的副作用链
+# ---------------------------------------------------------------------------
+# 背景：
+# - ``app.api.v1/__init__.py`` 一次性导入所有子模块（lnn/jobs/plugins/...）。
+# - 其中 lnn 会进一步触发 ``app.ai.lnn`` -> ``torch`` 的初始化，pytest-cov 多次
+#   运行时会与 C 扩展冲突。
+# - 我们关心的只有 ``app.api.v1.auth``，因此在测试环境下将 ``app.api.v1`` 替换为
+#   懒加载式的桩包：仅当真正访问 ``app.api.v1.auth`` 等子模块时才进行按需加载。
+# - 这种方法对其他测试无影响，因为生产代码中 ``app.api.v1.auth`` 仍然按需加载。
+def _install_lazy_app_api_v1() -> None:
+    """将 ``app.api.v1`` 替换为懒加载桩包。"""
+    import importlib
+    import importlib.util
+    from pathlib import Path as _Path
+
+    # 清理已加载的中间包，确保 stub 生效
+    for mod_name in [
+        "app.api",
+        "app.api.v1",
+        "app.api.v1.lnn",
+        "app.api.v1.jobs",
+        "app.api.v1.plugins",
+        "app.api.v1.skills",
+        "app.api.v1.sse",
+        "app.api.v1.agent_gateway",
+        "app.api.v1.cost_budget",
+        "app.api.v1.governance",
+        "app.api.v1.goal_alignment",
+        "app.api.v1.heartbeat",
+        "app.api.v1.wear_prediction",
+        "app.api.v1.user_sovereignty",
+        "app.api.v1.task_checkout",
+        "app.api.v1.template_ab_testing_routes",
+        "app.api.v1.template_branching_routes",
+        "app.api.v1.template_evolution_routes",
+        "app.api.v1.template_market",
+        "app.api.v1.template_update_routes",
+        "app.api.v1.pattern_engine_routes",
+        "app.ai.lnn",
+    ]:
+        sys.modules.pop(mod_name, None)
+
+    # 从本 conftest.py 位置推断 app 包物理路径
+    _python_dir = _Path(__file__).resolve().parent.parent
+    _real_app_path = _python_dir / "app"
+    _real_app_api_path = _real_app_path / "api"
+    _real_app_api_v1_path = _real_app_api_path / "v1"
+
+    if not _real_app_api_v1_path.exists():
+        raise RuntimeError(
+            f"无法定位 app.api.v1 目录: {_real_app_api_v1_path}"
+        )
+
+    # 安装一个非常薄的 ``app.api`` 桩，保持 __path__ 指向真实目录
+    _app_api_pkg = types.ModuleType("app.api")
+    _app_api_pkg.__path__ = [str(_real_app_api_path)]  # type: ignore[attr-defined]
+    sys.modules["app.api"] = _app_api_pkg
+
+    # 安装 ``app.api.v1`` 桩，但其 ``__init__`` 是空白（不触发子模块导入）
+    _app_api_v1_pkg = types.ModuleType("app.api.v1")
+    _app_api_v1_pkg.__path__ = [str(_real_app_api_v1_path)]  # type: ignore[attr-defined]
+    sys.modules["app.api.v1"] = _app_api_v1_pkg
+
+    def _resolve(name: str):
+        # 先尝试从真实 v1 目录加载子模块
+        spec = importlib.util.spec_from_file_location(
+            f"app.api.v1.{name}", _real_app_api_v1_path / f"{name}.py"
+        )
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Cannot load app.api.v1.{name}")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = mod
+        spec.loader.exec_module(mod)
+        return mod
+
+    # 暴露常用子模块（按需加载）。仅在测试中真正访问时才加载。
+    setattr(_app_api_v1_pkg, "auth", _resolve("auth"))
+
+
+_install_lazy_app_api_v1()
+
+
+# ---------------------------------------------------------------------------
+# Python 3.11.0rc2 traceback 模块 CJK 异常消息 UnicodeDecodeError 兼容补丁
+# 背景：
+# - 当前 CI 使用 Python 3.11.0rc2，其 ``traceback.TracebackException.format_frame_summary``
+#   在格式化包含非 ASCII 字符（如 CJK）的异常链时会出现 UnicodeDecodeError。
+# - 该问题在 Python 3.11.0 正式版及更高版本已修复。
+# - 我们的异常处理器大量使用中文提示信息来告知用户具体错误原因，
+#   所以测试中需要规避此 traceback bug。
+# - 此处 monkey-patch 掉 ``TracebackException.format`` 与 ``print_exception``，
+#   在 UnicodeDecodeError 时回退到 ``format_exception_only`` 输出来自异常类型 + 消息，
+#   保证测试不因 traceback bug 崩溃，同时保留足够的诊断信息。
+# ---------------------------------------------------------------------------
+def _patch_traceback_for_cjk() -> None:
+    import sys as _sys
+
+    if _sys.version_info[:3] >= (3, 11, 1):
+        # 正式版或更高版本无需该补丁
+        return
+
+    try:
+        import traceback as _tb
+    except ImportError:
+        return
+
+    if getattr(_tb, "_lingjing_cjk_patch_applied", False):
+        return
+
+    _orig_print_exception = _tb.print_exception
+
+    def _safe_print_exception(exc, value, tb, limit=None, file=None, chain=True):
+        try:
+            return _orig_print_exception(exc, value, tb, limit, file, chain)
+        except UnicodeDecodeError:
+            # 退化输出：只保留异常类型 + 消息摘要，避免格式化整个 traceback 链
+            try:
+                if file is None:
+                    import io as _io
+
+                    file = _io.StringIO()
+                for line in _tb.format_exception_only(exc, value):
+                    file.write(line + "\n")
+                return file
+            except Exception:
+                return file
+
+    _tb.print_exception = _safe_print_exception
+
+    # 同时对 logging.Formatter.formatException 进行容错（该方法内部调用
+    # traceback.print_exception），从而覆盖 pytest 捕获异常格式化路径。
+    _orig_format_exception = _tb.format_exception
+
+    def _safe_format_exception(etype, value, tb, limit=None, chain=True):
+        try:
+            return _orig_format_exception(etype, value, tb, limit, chain)
+        except UnicodeDecodeError:
+            return _tb.format_exception_only(etype, value)
+
+    _tb.format_exception = _safe_format_exception
+
+    _tb._lingjing_cjk_patch_applied = True
+
+
+_patch_traceback_for_cjk()
+
 
 @pytest.fixture(autouse=True)
-def _env_setup(monkeypatch):
-    """Ensure test environment variables are set before each test."""
+def _env_setup(monkeypatch, tmp_path):
+    """Ensure test environment variables are set before each test.
+
+    同时为 ``LNN_BANNED_TOKENS_FILE`` 指向临时目录，避免测试间持久化状态泄漏
+    （特别是 ``test_jwt_with_banned_token_returns_401`` 会写入 ban list，
+    其他测试不应被该状态影响）。
+
+    注意：``app.auth.security.BANNED_TOKENS_FILE`` 是在模块导入时计算的常量，
+    改变环境变量后必须同步更新该常量并重置 ``_token_ban_list`` 单例。
+    """
     monkeypatch.setenv("LNN_AUTH_ENABLED", "false")
     monkeypatch.setenv("AGENT_AUTH_ENABLED", "false")
     monkeypatch.setenv("LNN_PERMISSION_ENFORCED", "false")
     monkeypatch.setenv("LNN_GSTACK_DIR", ".lingjing/.gstack_test")
     monkeypatch.setenv("ENVIRONMENT", "testing")
+    # 使用临时文件隔离 ban list 状态，防止跨测试污染
+    banned_file = str(tmp_path / ".lnn_banned_tokens.json")
+    monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", banned_file)
+    # 强制重置 ban list 单例并更新 BANNED_TOKENS_FILE 常量，使新的临时文件生效
+    try:
+        from app.auth import security as _sec
+        _sec.BANNED_TOKENS_FILE = banned_file
+        _sec._token_ban_list = None
+    except Exception:
+        pass
     yield
 
 

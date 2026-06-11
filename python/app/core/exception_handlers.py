@@ -18,7 +18,7 @@ from app.core.exceptions import (
     NotFoundException,
     ValidationException,
 )
-from app.core.repository.exceptions import RecordNotFoundError, RepositoryError
+from app.repository.exceptions import RecordNotFoundError, RepositoryError
 from app.core.response import error_response, manufacturing_error
 from app.core.error_taxonomy import ManufacturingError
 
@@ -88,8 +88,13 @@ async def validation_exception_handler(
     for error in exc.errors():
         loc = " -> ".join(str(p) for p in error.get("loc", []))
         msg = error.get("msg", "校验失败")
+        # 仅暴露字段路径与校验提示，不回传 Pydantic 内部 ctx/type 等敏感字段
         errors.append(f"{loc}: {msg}")
-    detail = "; ".join(errors) if errors else str(exc)
+    if errors:
+        detail = "; ".join(errors)
+    else:
+        # 兜底文案，不直接回传 str(exc) 以避免内部异常信息泄露
+        detail = "请求参数校验失败"
     exc_obj = ValidationException(message="请求参数校验失败", detail=detail)
     logger.warning("Validation failed: %s", detail)
     return _build_json_response(

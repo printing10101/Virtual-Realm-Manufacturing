@@ -7,10 +7,7 @@
 from __future__ import annotations
 
 import sys
-import os
-import json
 import math
-import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -272,7 +269,7 @@ def phase3_real_scenario():
     material = matdb.get("steel_40cr")
     tool_entry = tdb.get("endmill_wc_flat_d10")
 
-    print(f"\n  场景配置:")
+    print("\n  场景配置:")
     print(f"    机床: {machine.name} (主轴{machine.spindle_power_kw}kW, "
           f"行程{machine.travel_xyz_mm[0]}×{machine.travel_xyz_mm[1]}×{machine.travel_xyz_mm[2]}mm)")
     print(f"    材料: {material.name} (HB{material.hardness_hb:.0f}, "
@@ -283,8 +280,6 @@ def phase3_real_scenario():
     # --- 3a. 工艺参数计算 ---
     print("\n  --- 3a. 切削参数计算 ---")
     vc_range = material.get_cutting_speed("roughing")
-    f_range = material.get_feed("roughing")
-    ap_range = material.get_depth_of_cut("roughing")
 
     vc = (vc_range[0] + vc_range[1]) / 2.0
     spindle_speed = vc * 1000 / (math.pi * 10)
@@ -354,13 +349,13 @@ def phase3_real_scenario():
     check("G代码生成成功", len(gcode_lines) > 0)
     check("G代码包含程序头%", gcode_lines[0] == "%")
     check("G代码包含程序尾%", gcode_lines[-1] == "%")
-    check("G代码包含刀具调用T1 M06", any("T1 M06" in l for l in gcode_lines))
-    check("G代码包含安全高度G00 Z50", any("G00 Z50" in l for l in gcode_lines))
+    check("G代码包含刀具调用T1 M06", any("T1 M06" in line for line in gcode_lines))
+    check("G代码包含安全高度G00 Z50", any("G00 Z50" in line for line in gcode_lines))
     check("G代码包含主轴启动M03 S2548",
-          any("S2548" in l and "M03" in l for l in gcode_lines))
+          any("S2548" in line and "M03" in line for line in gcode_lines))
 
     gcode_text = "\n".join(gcode_lines)
-    check(f"G代码总行数≥25", len(gcode_lines) >= 25,
+    check("G代码总行数≥25", len(gcode_lines) >= 25,
           f"实际: {len(gcode_lines)}行")
 
     # --- 3d. 刀路解析 ---
@@ -382,11 +377,8 @@ def phase3_real_scenario():
     # --- 3e. 碰撞检测 ---
     print("\n  --- 3e. AABB碰撞检测 ---")
     from app.simulation.collision_detector import CollisionDetector
-    from app.simulation.stock_model import StockModel, StockBoundingBox
+    from app.simulation.stock_model import StockModel
 
-    stock_bbox = StockBoundingBox(
-        x_min=-75, x_max=75, y_min=-50, y_max=50, z_min=0, z_max=40
-    )
     stock = StockModel(length=150, width=100, height=40)
     detector = CollisionDetector(stock=stock, safe_z_height=10.0)
 
@@ -409,7 +401,6 @@ def phase3_real_scenario():
     output_dir = PROJECT_ROOT / "output" / "simulation" / "e2e_test"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    start = time.perf_counter()
     result = cutter.run_simulation(
         stock_stl_path=Path("nonexistent_test.stl"),
         tool=roughing_tool,
@@ -418,13 +409,12 @@ def phase3_real_scenario():
         safe_z_height=10.0,
         task_id="e2e_test_001",
     )
-    elapsed = time.perf_counter() - start
 
     check("仿真执行完成", result is not None)
     check(f"仿真耗时: {result.duration_seconds:.3f}s",
           result.duration_seconds >= 0)
     check("仿真TaskID正确", result.task_id == "e2e_test_001")
-    check(f"体素总数>0", result.voxel_count > 0,
+    check("体素总数>0", result.voxel_count > 0,
           f"实际: {result.voxel_count}")
     check("体素尺寸2.0mm", abs(result.voxel_size - 2.0) < 0.01)
 
@@ -514,8 +504,8 @@ def phase4_rust_interface_compatibility():
 
     print("\n--- config.py版本号一致性 ---")
     from app.config import config
-    check("config.app_version = 1.12.0",
-          config.app_version == "1.12.0",
+    check("config.app_version = 2.0.0",
+          config.app_version == "2.0.0",
           f"实际: {config.app_version}")
     check("SimulationConfig.voxel_size默认1.0",
           abs(config.simulation.voxel_size - 1.0) < 0.01)
@@ -535,10 +525,10 @@ def phase4_rust_interface_compatibility():
 def phase5_edge_cases():
     header("阶段5：边界条件与鲁棒性测试")
 
-    from app.simulation.voxel_cutter import VoxelCutter, ToolModel
+    from app.simulation.voxel_cutter import ToolModel
     from app.simulation.toolpath_parser import ToolpathParser
     from app.simulation.collision_detector import CollisionDetector
-    from app.simulation.stock_model import StockModel, StockBoundingBox
+    from app.simulation.stock_model import StockModel
 
     print("\n--- 空G代码 ---")
     parser = ToolpathParser()
@@ -601,7 +591,7 @@ def generate_real_gcode() -> list[str]:
     return [
         "%",
         "O1000 (Bracket Machining - VMC850 + 40Cr + φ10 Carbide Endmill)",
-        "(Programmed by 灵境制造 V1.12.0)",
+        "(Programmed by 灵境制造 V2.0.0)",
         "",
         "N10 G90 G21 G17 G40 G49 G80",
         "N20 G91 G28 Z0",
@@ -675,7 +665,7 @@ def generate_real_gcode() -> list[str]:
 # =============================================================================
 if __name__ == "__main__":
     print("+" + "=" * 70 + "+")
-    print("|     Lingjing Manufacturing -- E2E Machining Scenario Test V1.12.0  |")
+    print("|     Lingjing Manufacturing -- E2E Machining Scenario Test V2.0.0  |")
     print("|     Python Domain Models <-> Rust Interface Full-Chain Verify       |")
     print("+" + "=" * 70 + "+")
 

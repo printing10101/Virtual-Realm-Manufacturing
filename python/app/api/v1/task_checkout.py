@@ -1,4 +1,4 @@
-"""
+﻿"""
 Task Checkout API Routes
 
 Endpoints for atomic task checkout, execution lock management,
@@ -12,7 +12,7 @@ import logging
 from fastapi import APIRouter, Query
 
 from app.core.response import ErrorCode, error, success
-from app.core.task_checkout import (
+from app.tasks.task_checkout import (
     get_checkout_manager,
     TaskCheckoutManager,
     CheckoutRequest,
@@ -21,7 +21,7 @@ from app.core.task_checkout import (
     AgentMode,
     TaskRecord,
 )
-from app.core.execution_lock import (
+from app.tasks.execution_lock import (
     LockError,
     LockNotFoundError,
 )

@@ -214,13 +214,15 @@ def get_device_status(device: torch.device) -> Dict[str, Any]:
         try:
             temp = torch.cuda.temperature(gpu_index)
             status["temperature_celsius"] = temp
-        except Exception:
+        except (RuntimeError, AttributeError, OSError):
+            # GPU 温度查询可能在驱动未就绪/CUDA 不可用时失败，回退为 None
             status["temperature_celsius"] = None
 
         try:
             utilization = torch.cuda.utilization(gpu_index)
             status["utilization_percent"] = utilization
-        except Exception:
+        except (RuntimeError, AttributeError, OSError):
+            # GPU 利用率查询同上
             status["utilization_percent"] = None
     else:
         import psutil

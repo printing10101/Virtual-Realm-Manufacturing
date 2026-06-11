@@ -414,8 +414,13 @@ class DxfParser:
             for entity in modelspace.query("TEXT"):
                 try:
                     result.texts.append(_extract_single_text(entity))
-                except Exception:
-                    pass
+                except Exception as e:
+                    # 修复：保留诊断信息（handle + 原因），并通过 warnings 反馈
+                    handle = getattr(entity.dxf, "handle", "<unknown>")
+                    logger.debug("TEXT实体提取跳过(handle=%s): %s", handle, e)
+                    result.warnings.append(
+                        f"TEXT实体提取失败(handle={handle}): {e}"
+                    )
         except Exception as e:
             result.warnings.append(f"TEXT实体查询异常: {e}")
 
@@ -423,8 +428,12 @@ class DxfParser:
             for entity in modelspace.query("MTEXT"):
                 try:
                     result.texts.append(_extract_single_mtext(entity))
-                except Exception:
-                    pass
+                except Exception as e:
+                    handle = getattr(entity.dxf, "handle", "<unknown>")
+                    logger.debug("MTEXT实体提取跳过(handle=%s): %s", handle, e)
+                    result.warnings.append(
+                        f"MTEXT实体提取失败(handle={handle}): {e}"
+                    )
         except Exception as e:
             result.warnings.append(f"MTEXT实体查询异常: {e}")
 
@@ -499,8 +508,14 @@ class DxfParser:
                 geo_handle = entity.dxf.geometry
                 if geo_handle:
                     associated.append(str(geo_handle))
-        except Exception:
-            pass
+        except (AttributeError, KeyError, TypeError, ValueError) as assoc_err:
+            # 标注几何关联属性访问失败时不影响其他属性返回，记录以便排查
+            logger.debug(
+                "Failed to read DIMENSION geometry handle (handle=%s): %s",
+                getattr(entity.dxf, "handle", "?"),
+                assoc_err,
+                exc_info=True,
+            )
 
         return DxfDimension(
             dim_type=dim_type,
@@ -531,7 +546,15 @@ class DxfParser:
         try:
             flag = entity.dxf.dimtype
             return dimtype_map.get(flag & 0x7F, f"UNKNOWN_{flag}")
-        except Exception:
+        except (AttributeError, KeyError, TypeError) as exc:
+            # 修复：原代码用裸 except Exception 静默吞掉所有错误，
+            # 实际只可能是 DIMENSION 字段缺失/类型异常。
+            logger.debug(
+                "_get_dimtype 降级到 UNKNOWN | handle=%s | exc=%s: %s",
+                getattr(entity.dxf, "handle", "?"),
+                type(exc).__name__,
+                exc,
+            )
             return "UNKNOWN"
 
     @staticmethod
@@ -546,8 +569,14 @@ class DxfParser:
                 nums = re.findall(r'[\d.]+', raw_text)
                 if nums:
                     return float(nums[0])
-            except Exception:
-                pass
+            except (AttributeError, TypeError, ValueError) as parse_err:
+                # 备选策略：解析失败时使用 0.0 占位，记录以便后续排查
+                logger.debug(
+                    "Failed to parse measurement fallback from text (handle=%s): %s",
+                    getattr(entity.dxf, "handle", "?"),
+                    parse_err,
+                    exc_info=True,
+                )
             return 0.0
 
     @staticmethod
@@ -557,11 +586,23 @@ class DxfParser:
             text = entity.dxf.text
             if text:
                 return str(text).strip()
-        except Exception:
-            pass
+        except (AttributeError, TypeError, ValueError) as text_err:
+            # 主路径读不到文本时，会回退到 measurement 占位，记录失败原因
+            logger.debug(
+                "Failed to read DIMENSION text (handle=%s): %s",
+                getattr(entity.dxf, "handle", "?"),
+                text_err,
+                exc_info=True,
+            )
         try:
             return str(entity.dxf.measurement)
-        except Exception:
+        except (AttributeError, TypeError, ValueError) as exc:
+            # 修复：原代码用裸 except Exception 静默吞掉所有错误。
+            logger.debug(
+                "_get_dimension_text measurement 兜底失败 (handle=%s): %s",
+                getattr(entity.dxf, "handle", "?"),
+                exc,
+            )
             return ""
 
     @staticmethod
@@ -573,14 +614,25 @@ class DxfParser:
                 float(entity.dxf.text_midpoint.y),
                 float(entity.dxf.text_midpoint.z) if hasattr(entity.dxf.text_midpoint, 'z') else 0.0,
             )
-        except Exception:
+        except (AttributeError, TypeError, ValueError) as exc:
+            # 修复：原代码用裸 except Exception 静默吞掉所有错误。
+            logger.debug(
+                "_get_dimension_position: text_midpoint 缺失, 尝试 def_point (handle=%s): %s",
+                getattr(entity.dxf, "handle", "?"),
+                exc,
+            )
             try:
                 return (
                     float(entity.dxf.def_point.x),
                     float(entity.dxf.def_point.y),
                     float(entity.dxf.def_point.z) if hasattr(entity.dxf.def_point, 'z') else 0.0,
                 )
-            except Exception:
+            except (AttributeError, TypeError, ValueError) as exc2:
+                logger.debug(
+                    "_get_dimension_position: def_point 兜底失败 (handle=%s): %s",
+                    getattr(entity.dxf, "handle", "?"),
+                    exc2,
+                )
                 return (0.0, 0.0, 0.0)
 
     @staticmethod
@@ -588,7 +640,13 @@ class DxfParser:
         """安全获取实体颜色索引。"""
         try:
             return int(entity.dxf.color)
-        except Exception:
+        except (AttributeError, TypeError, ValueError) as exc:
+            # 修复：原代码用裸 except Exception 静默吞掉所有错误。
+            logger.debug(
+                "_safe_color 降级到 256 (handle=%s): %s",
+                getattr(entity.dxf, "handle", "?"),
+                exc,
+            )
             return 256
 
     def _compute_extents(self, result: DxfParseResult) -> None:

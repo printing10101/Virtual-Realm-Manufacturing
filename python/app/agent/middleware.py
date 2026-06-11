@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from app.core.permissions import PERMISSION_HIERARCHY, PermissionLevel
+from app.auth.permissions import PERMISSION_HIERARCHY, PermissionLevel
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +55,14 @@ class AgentAuditLog:
         try:
             with open(str(self._log_path), "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry.__dict__) + "\n")
-        except (OSError, IOError):
-            pass  # Log write should not break the request
+        except (OSError, IOError) as log_err:
+            # 审计日志写入失败不应阻塞主请求，记录以便后续排查
+            logger.debug(
+                "Failed to append agent audit log to %s: %s",
+                self._log_path,
+                log_err,
+                exc_info=True,
+            )
 
     def get_entries(
         self,

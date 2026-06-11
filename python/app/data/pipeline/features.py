@@ -169,8 +169,13 @@ class TimeSeriesFeatureEngineer:
                     np.percentile(amplitudes, 90),
                     np.var(amplitudes),
                 ])
-        except ImportError:
-            pass
+        except ImportError as imp_err:
+            # numpy 高级统计不可用时仅使用基础特征，记录以便排查
+            logger.debug(
+                "Advanced numpy features unavailable, using basic stats only: %s",
+                imp_err,
+                exc_info=True,
+            )
         return np.array(features, dtype=np.float32)
 
     def extract(self, processed_ts: ProcessedData) -> np.ndarray:

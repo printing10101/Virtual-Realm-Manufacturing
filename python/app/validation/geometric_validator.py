@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import time
@@ -158,27 +159,22 @@ class GeometricValidator:
             for d in dim_checks
         ]
 
-        detected_features = [
-            {
-                "name": f.feature_name,
-                "confidence": f.confidence,
-                "iou": f.iou,
-                "area": ft.area
-                if (ft := self._find_feature_def(metadata, f.feature_name))
-                else 0.0,
-                "bbox": ft.bbox
-                if (ft := self._find_feature_def(metadata, f.feature_name))
-                else (0, 0, 0, 0),
-                "volume": ft.volume
-                if (ft := self._find_feature_def(metadata, f.feature_name))
-                else 0.0,
-                "bbox_3d": ft.bbox_3d
-                if (ft := self._find_feature_def(metadata, f.feature_name))
-                else (0, 0, 0, 0, 0, 0),
-            }
-            for f in feature_checks
-            if f.detected
-        ]
+        detected_features = []
+        for f in feature_checks:
+            if not f.detected:
+                continue
+            ft = self._find_feature_def(metadata, f.feature_name)
+            detected_features.append(
+                {
+                    "name": f.feature_name,
+                    "confidence": f.confidence,
+                    "iou": f.iou,
+                    "area": ft.area if ft is not None else 0.0,
+                    "bbox": ft.bbox if ft is not None else (0, 0, 0, 0),
+                    "volume": ft.volume if ft is not None else 0.0,
+                    "bbox_3d": ft.bbox_3d if ft is not None else (0, 0, 0, 0, 0, 0),
+                }
+            )
 
         gt_features = [
             {
@@ -403,16 +399,23 @@ class GeometricValidator:
 
     def _build_html_report(self, report: ValidationReport) -> str:
         m = report.metrics
+
+        # 修复 [XSS]：所有用户/数据来源控制的字段（dimension_name、feature_name、
+        # feature_type、relation、edge 等）在拼接到 HTML 字符串前必须经 html.escape 处理，
+        # 避免恶意数据中包含 <script>、&、" 等字符触发反射型或存储型 XSS。
+        def _h(value: Any) -> str:
+            return html.escape("" if value is None else str(value), quote=True)
+
         dim_rows = ""
         for d in report.dimension_checks:
             status = "PASS" if d.within_tolerance else "FAIL"
             color = "#4caf50" if d.within_tolerance else "#f44336"
             dim_rows += f"""<tr>
-<td>{d.dimension_name}</td>
-<td>{d.nominal}</td>
-<td>{d.measured}</td>
-<td>{d.deviation:.3f}</td>
-<td>{d.tolerance_lower} ~ {d.tolerance_upper}</td>
+<td>{_h(d.dimension_name)}</td>
+<td>{_h(d.nominal)}</td>
+<td>{_h(d.measured)}</td>
+<td>{_h(round(d.deviation, 3))}</td>
+<td>{_h(d.tolerance_lower)} ~ {_h(d.tolerance_upper)}</td>
 <td style="color:{color};font-weight:bold">{status}</td>
 </tr>"""
 
@@ -421,23 +424,25 @@ class GeometricValidator:
             status = "DETECTED" if f.detected else "MISSING"
             color = "#4caf50" if f.detected else "#f44336"
             feat_rows += f"""<tr>
-<td>{f.feature_name}</td>
-<td>{f.feature_type}</td>
+<td>{_h(f.feature_name)}</td>
+<td>{_h(f.feature_type)}</td>
 <td style="color:{color};font-weight:bold">{status}</td>
-<td>{f.confidence:.4f}</td>
-<td>{f.iou:.4f}</td>
+<td>{_h(round(f.confidence, 4))}</td>
+<td>{_h(round(f.iou, 4))}</td>
 </tr>"""
 
         topo_rows = ""
         for t in report.topology_checks:
             edge = t.get("edge", ["-", "-"])
+            edge_a = edge[0] if len(edge) > 0 else "-"
+            edge_b = edge[1] if len(edge) > 1 else "-"
             rel = t.get("relation", "-")
-            matched = t.get("matched", False)
+            matched = bool(t.get("matched", False))
             status = "MATCHED" if matched else "MISMATCH"
             color = "#4caf50" if matched else "#ff9800"
             topo_rows += f"""<tr>
-<td>{edge[0]} ↔ {edge[1]}</td>
-<td>{rel}</td>
+<td>{_h(edge_a)} &harr; {_h(edge_b)}</td>
+<td>{_h(rel)}</td>
 <td style="color:{color};font-weight:bold">{status}</td>
 </tr>"""
 
@@ -455,14 +460,21 @@ class GeometricValidator:
         warnings_html = ""
         if report.warnings:
             for w in report.warnings:
-                warnings_html += f'<div class="warning">{w}</div>'
+                warnings_html += f'<div class="warning">{_h(w)}</div>'
+
+        # 修复 [XSS]：对 part_name、part_id 等报告头字段做 HTML 转义，
+        # 同时对 IoU 表的字典键（特征名）做转义以避免通过文件名注入脚本。
+        iou_rows_html = "".join(
+            f"<tr><td>{_h(k)}</td><td>{round(float(v), 4):.4f}</td></tr>"
+            for k, v in m.feature_iou.items()
+        ) or '<tr><td colspan="2">无数据</td></tr>'
 
         return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D重建几何精度验证报告 - {report.part_name}</title>
+<title>3D重建几何精度验证报告 - {_h(report.part_name)}</title>
 <style>
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{ font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background:#f5f5f5; color:#333; }}
@@ -493,10 +505,10 @@ tr:hover {{ background:#fafafa; }}
 <div class="header">
 <h1>3D重建几何精度验证报告</h1>
 <div class="meta">
-零件: {report.part_name} ({report.part_id}) |
-验证时间: {report.timestamp} |
+零件: {_h(report.part_name)} ({_h(report.part_id)}) |
+验证时间: {_h(report.timestamp)} |
 耗时: {report.validation_duration_seconds:.2f}s |
-报告版本: {report.report_version}
+报告版本: {_h(report.report_version)}
 </div>
 </div>
 
@@ -537,7 +549,7 @@ tr:hover {{ background:#fafafa; }}
 <h2>特征交并比 (IoU)</h2>
 <table>
 <tr><th>特征名称</th><th>IoU</th></tr>
-{"".join(f"<tr><td>{k}</td><td>{v:.4f}</td></tr>" for k, v in m.feature_iou.items()) or '<tr><td colspan="2">无数据</td></tr>'}  # noqa: E501
+{iou_rows_html}
 </table>
 </div>
 

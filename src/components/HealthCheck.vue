@@ -2,7 +2,7 @@
   <div
     class="health-check-panel"
     role="region"
-    aria-label="系统健康检查"
+    :aria-label="$t('healthCheck.ariaLabel')"
   >
     <div class="health-status-bar">
       <div class="status-summary">
@@ -15,7 +15,7 @@
           <el-icon class="is-loading">
             <Loading />
           </el-icon>
-          检查中...
+          {{ $t('healthCheck.checking') }}
         </el-tag>
         <el-tag
           v-else-if="overallStatus === 'ok'"
@@ -23,7 +23,7 @@
           size="large"
           effect="dark"
         >
-          所有系统正常
+          {{ $t('healthCheck.allOk') }}
         </el-tag>
         <el-tag
           v-else-if="overallStatus === 'warning'"
@@ -31,7 +31,7 @@
           size="large"
           effect="dark"
         >
-          {{ warningCount }} 项警告
+          {{ $t('healthCheck.warningCount', { count: warningCount }) }}
         </el-tag>
         <el-tag
           v-else
@@ -39,7 +39,11 @@
           size="large"
           effect="dark"
         >
-          {{ errorCount }} 项异常 {{ warningCount > 0 ? '· ' + warningCount + ' 项警告' : '' }}
+          {{
+            warningCount > 0
+              ? $t('healthCheck.errorSummary', { errors: errorCount, warnings: '· ' + warningCount + ' ' + $t('healthCheck.warningCount', { count: '' }).replace(/\d+/, '').trim() })
+              : $t('healthCheck.errorSummary', { errors: errorCount, warnings: '' })
+          }}
         </el-tag>
       </div>
       <div class="status-actions">
@@ -50,7 +54,7 @@
           size="small"
           @click="runAllChecks"
         >
-          重新检查
+          {{ $t('healthCheck.rerun') }}
         </el-button>
         <el-button
           :disabled="checking || items.length === 0"
@@ -58,7 +62,7 @@
           @click="copyDiagnostics"
         >
           <el-icon><CopyDocument /></el-icon>
-          复制诊断信息
+          {{ $t('healthCheck.copyDiagnostics') }}
         </el-button>
       </div>
     </div>
@@ -78,7 +82,7 @@
           tabindex="0"
           role="button"
           :aria-expanded="expandedId === item.id"
-          :aria-label="'检查项: ' + item.name + ' - ' + statusLabel(item.status)"
+          :aria-label="$t('healthCheck.checkItemAria', { name: item.name, status: statusLabel(item.status) })"
           @click="toggleExpand(item.id)"
           @keydown.enter="toggleExpand(item.id)"
           @keydown.space.prevent="toggleExpand(item.id)"
@@ -140,7 +144,7 @@
               class="check-fix"
             >
               <el-alert
-                :title="item.fix_auto ? '可尝试自动修复' : '需要手动操作'"
+                :title="item.fix_auto ? $t('healthCheck.fixAutoHint') : $t('healthCheck.fixManualHint')"
                 :type="item.status === 'error' ? 'error' : 'warning'"
                 :closable="false"
                 show-icon
@@ -154,14 +158,14 @@
                     :loading="fixingId === item.id"
                     @click.stop="runAutoFix(item.id)"
                   >
-                    一键修复
+                    {{ $t('healthCheck.oneClickFix') }}
                   </el-button>
                   <el-button
                     size="small"
                     :loading="singleCheckingId === item.id"
                     @click.stop="retrySingleCheck(item.id)"
                   >
-                    重新检查此项
+                    {{ $t('healthCheck.retryItem') }}
                   </el-button>
                 </div>
               </el-alert>
@@ -175,6 +179,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 import { ElMessage } from 'element-plus'
 import {
@@ -200,6 +205,8 @@ const fixingId = ref<string | null>(null)
 const singleCheckingId = ref<string | null>(null)
 const expandedId = ref<string | null>(null)
 
+const { t } = useI18n()
+
 const overallStatus = computed(() => {
   if (items.value.length === 0) return ''
   const hasError = items.value.some(i => i.status === 'error')
@@ -214,9 +221,9 @@ const warningCount = computed(() => items.value.filter(i => i.status === 'warnin
 
 function statusLabel(status: string) {
   switch (status) {
-    case 'ok': return '正常'
-    case 'warning': return '警告'
-    case 'error': return '异常'
+    case 'ok': return t('healthCheck.statusOk')
+    case 'warning': return t('healthCheck.statusWarning')
+    case 'error': return t('healthCheck.statusError')
     default: return status
   }
 }
@@ -241,7 +248,7 @@ async function runAllChecks() {
     const results = await invoke<HealthItem[]>('run_health_check')
     items.value = results
   } catch (e: any) {
-    ElMessage.error('健康检查失败: ' + (e?.toString() || '未知错误'))
+    ElMessage.error(t('healthCheck.checkFailed', { message: e?.toString() || t('common.unknownError') }))
   } finally {
     checking.value = false
   }
@@ -256,7 +263,7 @@ async function retrySingleCheck(id: string) {
       items.value[idx] = result
     }
   } catch (e: any) {
-    ElMessage.error('检查失败: ' + (e?.toString() || '未知错误'))
+    ElMessage.error(t('healthCheck.singleCheckFailed', { message: e?.toString() || t('common.unknownError') }))
   } finally {
     singleCheckingId.value = null
   }
@@ -269,7 +276,7 @@ async function runAutoFix(id: string) {
     ElMessage.success(result)
     await retrySingleCheck(id)
   } catch (e: any) {
-    ElMessage.error('自动修复失败: ' + (e?.toString() || '未知错误'))
+    ElMessage.error(t('healthCheck.autoFixFailed', { message: e?.toString() || t('common.unknownError') }))
   } finally {
     fixingId.value = null
   }
@@ -279,9 +286,9 @@ async function copyDiagnostics() {
   try {
     const text = await invoke<string>('get_diagnostics_text')
     await navigator.clipboard.writeText(text)
-    ElMessage.success('诊断信息已复制到剪贴板')
+    ElMessage.success(t('healthCheck.diagnosticsCopied'))
   } catch (e: any) {
-    ElMessage.error('复制失败: ' + (e?.toString() || '未知错误'))
+    ElMessage.error(t('healthCheck.copyFailed', { message: e?.toString() || t('common.unknownError') }))
   }
 }
 

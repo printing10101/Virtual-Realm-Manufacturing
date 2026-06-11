@@ -686,12 +686,43 @@ class RuleDatabase:
         return self._row_to_group(row)
 
 
-_global_db: Optional[RuleDatabase] = None
+class _RuleDbHolder:
+    """Thread-safe lazy holder for the :class:`RuleDatabase` singleton."""
+
+    def __init__(self) -> None:
+        import threading
+
+        self._lock = threading.Lock()
+        self._instance: Optional[RuleDatabase] = None
+
+    def get(self) -> RuleDatabase:
+        # 快速路径：已存在则直接返回，避免持锁开销
+        if self._instance is not None:
+            return self._instance
+        with self._lock:
+            # 双重检查：可能在获取锁的过程中其他线程已创建实例
+            if self._instance is not None:
+                return self._instance
+            self._instance = RuleDatabase()
+            return self._instance
+
+    def reset(self) -> None:
+        """Reset the cached instance (mainly for tests)."""
+        with self._lock:
+            self._instance = None
+
+
+_holder = _RuleDbHolder()
 
 
 def get_rule_db() -> RuleDatabase:
-    """获取全局规则数据库实例（单例模式）"""
-    global _global_db
-    if _global_db is None:
-        _global_db = RuleDatabase()
-    return _global_db
+    """获取共享的 :class:`RuleDatabase` 单例；首次访问时懒初始化。
+
+    Returns:
+        :class:`RuleDatabase` 实例（应用生命周期内同一实例）。
+
+    Note:
+        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_rule_db)``。
+        实现是线程安全的，行为与重构前完全一致。
+    """
+    return _holder.get()
