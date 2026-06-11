@@ -3,6 +3,7 @@
 供 .github/workflows/geometry-validation.yml 调用，
 执行完整的验证流程并输出汇总结果。
 """
+# 2026-06-11: 触发工作流重跑（手动 re-run 的替代方式）
 
 from __future__ import annotations
 
