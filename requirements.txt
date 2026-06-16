@@ -31,12 +31,16 @@ seaborn==0.13.2         # 0.13.1→0.13.2 (minor)
 sqlalchemy==2.0.23      # ~ (no change)
 psycopg2-binary==2.9.11 # 2.9.9→2.9.11 (minor)
 redis==5.0.1            # ~ (no change)
+taospy==2.7.21          # TDengine 时序数据库官方 Python 驱动（taos-ws-py 备选；native 协议性能最佳）
 
 # HTTP & Networking (Security Fixes)
 httpx==0.28.1           # 0.26.0→0.28.1 (minor)
 requests==2.34.2        # 2.32.5→2.34.2 (CVE-2026-25645 修复)
 urllib3==2.7.0          # 2.6.3→2.7.0 (CVE-2026-44431/44432 修复)
 python-multipart==0.0.28    # 0.0.6→0.0.28 (CVE-2024-53981/2026-24486/40347/42561 修复)
+
+# XML Parsing (MTConnect Adapter - M0.3 任务新增)
+lxml==5.3.0             # MTConnect XML 解析（与 stdlib ElementTree 互为备份）
 
 # Security
 cryptography==48.0.0    # 46.0.6→48.0.0 (CVE-2026-39892 修复)

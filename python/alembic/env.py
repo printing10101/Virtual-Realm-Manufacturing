@@ -28,11 +28,15 @@ if config.config_file_name is not None:
 # Import all models for autogenerate support
 from app.database.models import Base as TaskBase  # noqa: E402
 from app.database.rule_models import Base as RuleBase  # noqa: E402
+from app.database.models.machining_record import (  # noqa: E402
+    Base as MachiningRecordBase,
+)
+from app.knowledge_graph.models import Base as KnowledgeGraphBase  # noqa: E402
 
 # Merge metadata from all model bases
 from sqlalchemy import MetaData  # noqa: E402
 target_metadata = MetaData()
-for base in (TaskBase, RuleBase):
+for base in (TaskBase, RuleBase, MachiningRecordBase, KnowledgeGraphBase):
     for table in base.metadata.tables.values():
         table.tometadata(target_metadata)
 

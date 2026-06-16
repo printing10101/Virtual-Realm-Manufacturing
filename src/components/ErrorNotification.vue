@@ -143,20 +143,48 @@
 
         <!-- 操作按钮 -->
         <div
-          v-if="notification.recoverable"
+          v-if="notification.recoverable || notification.severity === 'critical'"
           class="error-actions"
         >
           <button
+            v-if="notification.recoverable"
             class="btn-accept"
             @click.stop="accept(notification)"
           >
             {{ $t('errorNotification.acceptAdjust') }}
           </button>
           <button
+            v-if="notification.recoverable"
             class="btn-manual"
             @click.stop="manualEdit(notification)"
           >
             {{ $t('errorNotification.manualModify') }}
+          </button>
+          <button
+            class="btn-copy-diagnostic"
+            @click.stop="copyDiagnosticInfo(notification)"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect
+                x="9"
+                y="9"
+                width="13"
+                height="13"
+                rx="2"
+                ry="2"
+              />
+              <path
+                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              />
+            </svg>
+            {{ copySuccessId === notification.id ? '已复制' : '复制诊断信息' }}
           </button>
         </div>
       </div>
@@ -167,6 +195,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useErrorBus } from '@/composables/useErrorBus'
+import {
+  type StandardError,
+  collectDiagnosticContext,
+  copyDiagnosticText,
+} from '@/utils/error-handler'
 
 interface ErrorNotification {
   id: string
@@ -180,10 +213,13 @@ interface ErrorNotification {
   adjusted_values?: Record<string, any>
   expanded?: boolean
   createdAt: number
+  requestId?: string
+  traceId?: string
 }
 
 const notifications = ref<ErrorNotification[]>([])
 const errorBus = useErrorBus()
+const copySuccessId = ref<string | null>(null)
 let nextId = 0
 
 const visibleNotifications = computed(() =>
@@ -269,6 +305,35 @@ function manualEdit(notification: ErrorNotification): void {
     )
   }
   dismiss(notification.id)
+}
+
+async function copyDiagnosticInfo(notification: ErrorNotification): Promise<void> {
+  // 构建标准化错误对象
+  const standardError: StandardError = {
+    code: typeof notification.code === 'number' ? notification.code : 0,
+    errorCode: notification.errorCode || String(notification.code || 'UNKNOWN'),
+    message: notification.message,
+    errorType: 'business',
+    severity: notification.severity,
+    timestamp: new Date(notification.createdAt).toISOString(),
+    requestId: notification.requestId || '',
+    traceId: notification.traceId || notification.requestId || '',
+    detail: notification.detail,
+    suggestion: notification.suggestion,
+    adjustedValues: notification.adjusted_values,
+  }
+
+  const context = collectDiagnosticContext(standardError)
+  const success = await copyDiagnosticText(context)
+
+  if (success) {
+    copySuccessId.value = notification.id
+    setTimeout(() => {
+      if (copySuccessId.value === notification.id) {
+        copySuccessId.value = null
+      }
+    }, 2000)
+  }
 }
 
 defineExpose({ push, dismiss })
@@ -437,6 +502,29 @@ defineExpose({ push, dismiss })
 
 .btn-manual:hover {
   background: #e0e0e0;
+}
+
+.btn-copy-diagnostic {
+  padding: 7px 16px;
+  border: 1px solid #1976d2;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+  background: white;
+  color: #1976d2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-copy-diagnostic:hover {
+  background: #e3f2fd;
+}
+
+.btn-copy-diagnostic svg {
+  flex-shrink: 0;
 }
 
 /* 进入/离开动画 */

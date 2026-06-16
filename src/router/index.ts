@@ -67,6 +67,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 'user:manage' },
     },
     {
+      path: '/ux-demo',
+      name: 'ux-demo',
+      component: () => import('../views/UXDemo.vue'),
+      meta: { requiresAuth: true, title: 'UX功能演示' },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('@/views/NotFound.vue'),

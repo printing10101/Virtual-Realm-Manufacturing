@@ -1,0 +1,530 @@
+name: 正式发版流水线
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 匹配 v1.0.0, v1.2.3 等格式
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '发布版本号 (例如: 1.2.3)'
+        required: true
+        type: string
+      release_type:
+        description: '发布类型'
+        required: true
+        type: choice
+        default: 'production'
+        options:
+          - production
+          - staging
+          - hotfix
+      skip_tests:
+        description: '跳过测试 (不推荐)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: '3.10'
+  NODE_VERSION: '18'
+  PIP_CACHE_DIR: ~/.cache/pip
+  PNPM_CACHE_DIR: ~/.local/share/pnpm/store
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY || 'ghcr.io' }}
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: write
+  packages: write
+  deployments: write
+
+jobs:
+  # ============================================
+  # Job 1: 准备发布
+  # ============================================
+  prepare-release:
+    name: 准备发布
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release_type: ${{ steps.version.outputs.release_type }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 确定版本号
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          else
+            # 从 tag 提取版本号
+            VERSION=${GITHUB_REF#refs/tags/v}
+            RELEASE_TYPE="production"
+          fi
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "release_type=${RELEASE_TYPE}" >> $GITHUB_OUTPUT
+          echo "发布版本: ${VERSION}"
+          echo "发布类型: ${RELEASE_TYPE}"
+
+      - name: 生成变更日志
+        id: changelog
+        run: |
+          echo "=== 生成变更日志 ==="
+          
+          # 获取上一个 tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "首次发布，生成完整变更日志"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            echo "从 ${PREV_TAG} 生成变更日志"
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          # 保存到输出
+          {
+            echo 'changelog<<EOF'
+            echo "$CHANGELOG"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+          
+          # 保存到文件
+          echo "$CHANGELOG" > CHANGELOG.md
+          
+          echo "✓ 变更日志生成完成"
+
+      - name: 验证版本号
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # 验证版本格式
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+            echo "❌ 无效的版本号格式: ${VERSION}"
+            echo "版本号必须符合语义化版本规范 (例如: 1.2.3, 1.2.3-beta.1)"
+            exit 1
+          fi
+          
+          echo "✓ 版本号格式验证通过: ${VERSION}"
+
+  # ============================================
+  # Job 2: 完整测试套件 (可选跳过)
+  # ============================================
+  full-test-suite:
+    name: 完整测试套件
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [prepare-release]
+    if: ${{ !inputs.skip_tests }}
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 配置 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: 缓存依赖
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.PIP_CACHE_DIR }}
+            ${{ env.PNPM_CACHE_DIR }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('python/requirements.txt', 'pnpm-lock.yaml') }}
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
+          pip install pytest pytest-cov pytest-asyncio httpx
+          pnpm install --frozen-lockfile
+
+      - name: 运行 Python 完整测试
+        working-directory: python
+        run: |
+          pytest tests/unit/ tests/integration/ -v \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -m "unit or integration"
+
+      - name: 运行前端测试
+        run: |
+          pnpm test:run -- --coverage
+
+      - name: 代码质量检查
+        run: |
+          pip install ruff
+          cd python && ruff check app/
+          cd .. && pnpm run lint
+
+  # ============================================
+  # Job 3: 构建发布版本
+  # ============================================
+  build-release:
+    name: 构建发布版本
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [prepare-release, full-test-suite]
+    if: always() && (needs.full-test-suite.result == 'success' || needs.full-test-suite.result == 'skipped')
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 配置 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
+          pnpm install --frozen-lockfile
+
+      - name: 更新版本号
+        run: |
+          VERSION="${{ needs.prepare-release.outputs.version }}"
+          echo "${VERSION}" > VERSION
+          
+          # 更新 package.json 版本号
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '${VERSION}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+          
+          echo "✓ 版本号已更新: ${VERSION}"
+
+      - name: 构建前端
+        run: |
+          echo "=== 构建生产环境前端 ==="
+          pnpm run build
+          echo "✓ 前端构建完成"
+
+      - name: 构建 Python 后端
+        run: |
+          echo "=== 构建 Python 后端 ==="
+          cd python
+          python -m pip install build
+          python -m build --wheel
+          echo "✓ Python 后端构建完成"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            dist/
+            python/dist/
+            VERSION
+            CHANGELOG.md
+          retention-days: 30
+
+  # ============================================
+  # Job 4: 构建并推送 Docker 镜像
+  # ============================================
+  docker-release:
+    name: 构建 Docker 发布镜像
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [prepare-release, build-release]
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 提取元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},value=v${{ needs.prepare-release.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=v${{ needs.prepare-release.outputs.version }}
+            type=semver,pattern={{major}},value=v${{ needs.prepare-release.outputs.version }}
+            type=raw,value=latest
+            type=raw,value=stable
+
+      - name: 构建并推送 Docker 镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_VERSION=${{ needs.prepare-release.outputs.version }}
+
+      - name: 镜像推送完成确认
+        run: |
+          echo "✓ Docker 发布镜像构建并推送成功"
+          echo "镜像标签:"
+          echo "${{ steps.meta.outputs.tags }}"
+
+  # ============================================
+  # Job 5: 部署到生产环境
+  # ============================================
+  deploy-production:
+    name: 部署到生产环境
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [prepare-release, build-release, docker-release]
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.production_url }}
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Kubernetes 上下文
+        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: 部署到 Kubernetes (Production)
+        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        id: deploy-k8s
+        run: |
+          echo "=== 部署到 Kubernetes 生产环境 ==="
+          VERSION="${{ needs.prepare-release.outputs.version }}"
+          
+          cd deploy/k8s
+          sed -i "s|image:.*|image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:v${VERSION}|g" deployment.yml
+          
+          kubectl apply -f deployment.yml -n production
+          kubectl rollout status deployment/lingjing-app -n production --timeout=600s
+          
+          echo "✓ Kubernetes 生产环境部署完成"
+
+      - name: 部署到云服务器 (Production)
+        if: ${{ secrets.SSH_HOST_PRODUCTION != '' && secrets.KUBE_CONFIG_PRODUCTION == '' }}
+        id: deploy-vm
+        run: |
+          echo "=== 部署到云服务器生产环境 ==="
+          VERSION="${{ needs.prepare-release.outputs.version }}"
+          
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY_PRODUCTION }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PRODUCTION }}@${{ secrets.SSH_HOST_PRODUCTION }} << EOF
+            cd /opt/lingjing-production
+            export IMAGE_TAG=v${VERSION}
+            docker-compose pull
+            docker-compose up -d
+            sleep 15
+            docker-compose ps
+          EOF
+          
+          echo "✓ 云服务器生产环境部署完成"
+
+      - name: 设置生产环境 URL
+        id: deploy
+        run: |
+          PRODUCTION_URL="${{ secrets.PRODUCTION_URL || 'https://lingjing.example.com' }}"
+          echo "production_url=${PRODUCTION_URL}" >> $GITHUB_OUTPUT
+          echo "Production URL: ${PRODUCTION_URL}"
+
+      - name: 生产环境健康检查
+        run: |
+          echo "=== 执行生产环境健康检查 ==="
+          PRODUCTION_URL="${{ steps.deploy.outputs.production_url }}"
+          
+          sleep 30
+          
+          MAX_RETRIES=15
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${PRODUCTION_URL}/api/health/ping" || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✓ 生产环境健康检查通过 (HTTP ${HTTP_CODE})"
+              exit 0
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "健康检查重试 ${RETRY_COUNT}/${MAX_RETRIES} (HTTP ${HTTP_CODE})"
+            sleep 15
+          done
+          
+          echo "❌ 生产环境健康检查失败"
+          exit 1
+
+  # ============================================
+  # Job 6: 创建 GitHub Release
+  # ============================================
+  create-release:
+    name: 创建 GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [prepare-release, build-release, docker-release, deploy-production]
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: release-files
+
+      - name: 准备 Release 资产
+        run: |
+          mkdir -p release-assets
+          
+          # 复制构建产物
+          cp release-files/VERSION release-assets/
+          cp release-files/CHANGELOG.md release-assets/
+          
+          # 如果有 Python wheel 包
+          if [ -d "release-files/python/dist" ]; then
+            cp release-files/python/dist/*.whl release-assets/ 2>/dev/null || true
+          fi
+          
+          # 创建发布说明
+          cat > RELEASE_NOTES.md << EOF
+          # 灵境制造 v${{ needs.prepare-release.outputs.version }}
+          
+          ## 发布类型
+          ${{ needs.prepare-release.outputs.release_type }}
+          
+          ## 变更内容
+          $(cat release-files/CHANGELOG.md)
+          
+          ## Docker 镜像
+          \`\`\`bash
+          docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ needs.prepare-release.outputs.version }}
+          \`\`\`
+          
+          ## 安装说明
+          请参阅 [安装指南](https://github.com/${{ github.repository }}/blob/main/docs/user-guide/安装指南.md)
+          
+          ## 完整变更日志
+          查看 [完整变更日志](https://github.com/${{ github.repository }}/compare/v$(cat release-files/VERSION)...v${{ needs.prepare-release.outputs.version }})
+          EOF
+          
+          echo "✓ Release 资产准备完成"
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.prepare-release.outputs.version }}
+          name: 灵境制造 v${{ needs.prepare-release.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ contains(needs.prepare-release.outputs.version, '-') }}
+          files: |
+            release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release 创建完成确认
+        run: |
+          echo "✓ GitHub Release 创建成功"
+          echo "版本: v${{ needs.prepare-release.outputs.version }}"
+          echo "URL: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.prepare-release.outputs.version }}"
+
+  # ============================================
+  # Job 7: 发布汇总与通知
+  # ============================================
+  release-summary:
+    name: 发布汇总与通知
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [prepare-release, build-release, docker-release, deploy-production, create-release]
+    if: always()
+
+    steps:
+      - name: 生成发布汇总
+        run: |
+          echo "## 🚀 发布汇总 - v${{ needs.prepare-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 任务 | 状态 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 准备发布 | ${{ needs.prepare-release.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 完整测试套件 | ${{ needs.full-test-suite.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 构建发布版本 | ${{ needs.build-release.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker 镜像构建 | ${{ needs.docker-release.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 部署到生产环境 | ${{ needs.deploy-production.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 创建 GitHub Release | ${{ needs.create-release.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**发布版本**: v${{ needs.prepare-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**发布类型**: ${{ needs.prepare-release.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.deploy-production.result }}" = "success" ]; then
+            echo "**生产环境**: ${{ needs.deploy-production.outputs.production_url }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "**GitHub Release**: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.prepare-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: 发布成功通知
+        if: needs.deploy-production.result == 'success' && needs.create-release.result == 'success'
+        run: |
+          echo "✅ 发布成功！"
+          echo "版本: v${{ needs.prepare-release.outputs.version }}"
+          echo "生产环境: ${{ needs.deploy-production.outputs.production_url }}"
+          echo "GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.prepare-release.outputs.version }}"
+
+      - name: 发布失败通知
+        if: needs.deploy-production.result != 'success' || needs.create-release.result != 'success'
+        run: |
+          echo "❌ 发布失败！"
+          echo "请检查日志以获取详细信息。"
+          exit 1

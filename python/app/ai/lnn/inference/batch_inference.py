@@ -144,14 +144,32 @@ class BatchInferenceEngine:
                 self._time_window_stats.popleft()
 
     def _adjust_batch_size(self, data_count: int, processing_time_ms: float) -> None:
-        """Dynamically adjust batch size based on performance"""
+        """
+        动态调整批大小以优化P95响应时间
+        
+        优化策略：
+        - 当平均推理时间 < 15ms/样本时，增加批大小（最大512）
+        - 当平均推理时间 > 80ms/样本时，减少批大小（最小4）
+        - 使用更激进的调整策略以快速收敛到最优批大小
+        """
         if not self.enable_dynamic_batching:
             return
+        
         avg_time_per_sample = processing_time_ms / data_count if data_count > 0 else 50
-        if avg_time_per_sample < 20:
-            self._current_batch_size = min(self._current_batch_size * 2, 256)
-        elif avg_time_per_sample > 100:
-            self._current_batch_size = max(self._current_batch_size // 2, 8)
+        
+        # 优化阈值以降低P95响应时间
+        if avg_time_per_sample < 15:
+            # 推理速度快，大幅增加批大小
+            self._current_batch_size = min(self._current_batch_size * 2, 512)
+        elif avg_time_per_sample < 30:
+            # 推理速度较快，适度增加批大小
+            self._current_batch_size = min(int(self._current_batch_size * 1.5), 512)
+        elif avg_time_per_sample > 80:
+            # 推理速度慢，大幅减少批大小
+            self._current_batch_size = max(self._current_batch_size // 3, 4)
+        elif avg_time_per_sample > 50:
+            # 推理速度较慢，适度减少批大小
+            self._current_batch_size = max(int(self._current_batch_size * 0.7), 4)
 
     def get_statistics(
         self,

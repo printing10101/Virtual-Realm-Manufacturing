@@ -53,10 +53,19 @@ export default defineConfig({
           'framework-vendor': ['vue', 'vue-router', 'pinia'],
           'element-plus-icons': ['@element-plus/icons-vue'],
           'element-plus-locale': ['element-plus/es/locale/lang/zh-cn', 'element-plus/es/locale/lang/en'],
+          'three-vendor': ['three'],
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
-        assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name && assetInfo.name.endsWith('.vue')) {
+            return 'assets/views/[name]-[hash].[ext]'
+          }
+          if (assetInfo.name && (assetInfo.name.includes('.png') || assetInfo.name.includes('.jpg') || assetInfo.name.includes('.svg'))) {
+            return 'assets/images/[name]-[hash].[ext]'
+          }
+          return 'assets/[ext]/[name]-[hash].[ext]'
+        },
       },
     },
     // Tauri 在 Windows 上要求明确空值
@@ -67,9 +76,18 @@ export default defineConfig({
       compress: {
         drop_console: true,
         drop_debugger: true,
+        passes: 2,
+      },
+      mangle: {
+        safari10: true,
       },
     },
     target: 'es2021',
+    chunkSizeWarningLimit: 1000,
+    cssCodeSplit: true,
+    modulePreload: {
+      polyfill: true,
+    },
   },
   optimizeDeps: {
     include: [

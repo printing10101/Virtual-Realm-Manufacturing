@@ -1,0 +1,539 @@
+"""MTConnect Adapter V1 – HTTP polling + TDengine persistence.
+
+The :class:`MTConnectAdapter` is the entry point used by both the CLI
+and any future background workers.  Its responsibilities are deliberately
+narrow:
+
+1. **Probe the agent** – verify it speaks MTConnect and surface a
+   useful error if it does not.
+2. **Poll the ``/sample`` endpoint** at a configurable rate (default
+   1 Hz, per the M0.3 spec).
+3. **Parse the response** with :func:`app.integrations.mtconnect.parser
+   .parse_sample_response`.
+4. **Buffer samples** until either a batch-size threshold or a flush
+   interval is reached, then persist them with the project's TDengine
+   client (M0.2 deliverable).
+5. **Exponential back-off retry** on transient network errors so a
+   momentary agent hiccup does not derail the whole stream.
+
+The class is intentionally **synchronous** in its public API so it can
+be driven from both the CLI (``python -m``) and the FastAPI side
+through ``run_in_executor`` – the underlying ``requests`` library is
+synchronous and there is no need to pay the async tax in M0.3.
+"""
+
+from __future__ import annotations
+
+import logging
+import random
+import re
+import threading
+import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional, Tuple
+from xml.etree import ElementTree as ET
+
+import requests
+from requests import Session
+
+from app.integrations.mtconnect.parser import Sample, parse_sample_response
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+
+# Table schema for TDengine.  Kept here (rather than in the TDengine
+# client) because the column set is a property of the *MTConnect*
+# contract, not of the storage backend.
+DEFAULT_TABLE_DDL: Tuple[str, ...] = (
+    "(ts TIMESTAMP, ",
+    "spindle_speed DOUBLE, ",
+    "spindle_load DOUBLE, ",
+    "feedrate DOUBLE, ",
+    "execution BINARY(32))",
+)
+
+
+@dataclass
+class AdapterConfig:
+    """Runtime configuration for :class:`MTConnectAdapter`."""
+
+    # Network
+    agent_url: str = "http://demo.mtconnect.org:80"
+    timeout: float = 10.0
+    sample_path: str = "/sample"
+
+    # Polling
+    interval: float = 1.0            # seconds between samples (1 Hz default)
+
+    # Batching
+    batch_size: int = 10             # flush after this many samples
+    batch_interval: float = 5.0      # ...or after this many seconds
+
+    # Retry
+    max_retries: int = 5             # bounded – never spin forever
+    initial_backoff: float = 0.5     # seconds for the first retry
+    max_backoff: float = 16.0        # ...but capped so we don't sleep forever
+
+    # Storage
+    database: str = "test"           # TDengine DB (override per env)
+    table: str = "mtconnect"         # TDengine super/sub-table name
+
+    def __post_init__(self) -> None:
+        # Normalise the agent URL so the rest of the code can rely on
+        # ``urljoin`` semantics.  Trailing slashes are removed to
+        # avoid double-slash URLs after path joining.
+        self.agent_url = self.agent_url.rstrip("/")
+        if not self.agent_url.lower().startswith(("http://", "https://")):
+            raise ValueError(
+                f"agent_url must be an http(s) URL, got: {self.agent_url!r}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Adapter
+# ---------------------------------------------------------------------------
+
+
+# Callback type used by the adapter to publish "live" samples to the
+# CLI or any other observer.  Receives a fully populated ``Sample``.
+SampleCallback = Callable[[Sample], None]
+
+
+class MTConnectAdapter:
+    """Polling + persistence orchestrator for a single MTConnect Agent.
+
+    Typical usage::
+
+        cfg = AdapterConfig(agent_url="http://demo.mtconnect.org", interval=1.0)
+        adapter = MTConnectAdapter(cfg)
+        adapter.probe()                              # fail fast on misconfig
+        adapter.run(duration=20.0, on_sample=print)  # blocks for 20 s
+
+    Or, in a long-running service, drain the batch buffer on a timer.
+    """
+
+    # ------------------------------------------------------------------
+    # Construction
+    # ------------------------------------------------------------------
+
+    def __init__(
+        self,
+        config: Optional[AdapterConfig] = None,
+        session: Optional[Session] = None,
+        tdengine_client: Optional[Any] = None,
+    ) -> None:
+        self.config = config or AdapterConfig()
+        # Allow tests to inject a mocked ``requests.Session``; in
+        # production we just create a real one with a sensible UA.
+        self._session = session or self._build_default_session()
+        # Same trick for the TDengine client – the dependency is
+        # imported lazily so unit tests don't need a running TDengine.
+        self._tdengine = tdengine_client
+        # Internal state
+        self._buffer: List[Sample] = []
+        self._buffer_lock = threading.Lock()
+        self._stop_event = threading.Event()
+        self._last_flush = time.monotonic()
+        self._ingested_count = 0
+        self._error_count = 0
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def probe(self) -> Dict[str, str]:
+        """Verify the agent responds to ``/probe``.
+
+        Returns a dict with the agent's identity information:
+
+        * ``instance_id``
+        * ``sender``
+        * ``version``
+        * ``mtconnect_version``
+
+        Raises:
+            requests.RequestException: on transport errors
+            RuntimeError: if the response is not a valid MTConnect probe
+        """
+        url = f"{self.config.agent_url}/probe"
+        logger.info("Probing MTConnect agent at %s", url)
+        response = self._session.get(url, timeout=self.config.timeout)
+        response.raise_for_status()
+
+        root = ET.fromstring(response.text)
+        # The MTConnect namespace is declared on the root element, which
+        # means ElementTree exposes all attributes (including ``sender``
+        # / ``instanceId``) with the Clark notation prefix
+        # ``{urn:mtconnect.org:MTConnectDevices:1.5}attr``.  We build a
+        # lookup that transparently handles both namespaced and
+        # namespace-free payloads so the parser works for v1.5 as well
+        # as for any future spec revision that may drop the namespace.
+        #
+        # ``sender`` / ``instanceId`` / ``mtconnectVersion`` live on the
+        # ``<Header>`` child element (per the MTConnect spec), *not* on
+        # the document root.  We therefore merge the root attributes
+        # with those of the first ``<Header>`` we find in the tree so
+        # the lookup below works for both the strict v1.5 layout and
+        # for any conformant agent that places the identity header on
+        # the root element.
+        namespace_attrs: Dict[str, str] = {}
+        for attr_name, attr_value in root.attrib.items():
+            namespace_attrs[_local_attr_name(attr_name)] = attr_value
+        for header in root.iter():
+            if _local_attr_name(header.tag) == "Header":
+                for attr_name, attr_value in header.attrib.items():
+                    namespace_attrs.setdefault(
+                        _local_attr_name(attr_name), attr_value
+                    )
+                break
+
+        # Map the spec attribute names (which may be CamelCase) onto the
+        # dict keys we expose to callers (snake_case for ergonomics).
+        attrs = {
+            "instance_id": "instanceId",
+            "sender": "sender",
+            "version": "version",
+            "mtconnect_version": "mtconnectVersion",
+        }
+        result: Dict[str, str] = {}
+        for out_key, attr_name in attrs.items():
+            value = namespace_attrs.get(attr_name)
+            if value is not None:
+                result[out_key] = value
+        if not result:
+            raise RuntimeError(
+                f"Agent at {url} did not return a valid MTConnect probe document"
+            )
+        logger.info("Probe OK: %s", result)
+        return result
+
+    def fetch_sample(self) -> Sample:
+        """Pull exactly one ``/sample`` response and parse it.
+
+        Network errors propagate to the caller; the polling loop is
+        responsible for retry/back-off.  XML parse errors are also
+        propagated because they usually indicate a contract break
+        with the agent.
+        """
+        url = f"{self.config.agent_url}{self.config.sample_path}"
+        logger.debug("GET %s", url)
+        response = self._session.get(url, timeout=self.config.timeout)
+        response.raise_for_status()
+        return parse_sample_response(response.text)
+
+    def run(
+        self,
+        duration: Optional[float] = None,
+        on_sample: Optional[SampleCallback] = None,
+    ) -> int:
+        """Poll the agent until ``duration`` seconds elapse or :meth:`stop`.
+
+        Args:
+            duration: Maximum wall-clock time to run, in seconds.
+                ``None`` means run until :meth:`stop` is called.
+            on_sample: Optional callback invoked synchronously for every
+                successfully parsed sample.  Used by the CLI to print
+                the live data stream.
+
+        Returns:
+            Number of samples ingested (i.e. successfully written to
+            TDengine or accepted by the on_sample callback).
+        """
+        deadline = (time.monotonic() + duration) if duration else None
+        logger.info(
+            "Starting MTConnect polling (agent=%s, interval=%.2fs, duration=%s)",
+            self.config.agent_url,
+            self.config.interval,
+            f"{duration}s" if duration else "indefinite",
+        )
+
+        while not self._stop_event.is_set():
+            if deadline is not None and time.monotonic() >= deadline:
+                logger.info("Reached duration deadline, stopping")
+                break
+
+            sample = self._fetch_with_retry()
+            if sample is None:
+                # Persistent failure – sleep one full interval so we
+                # don't hot-loop, then try again.
+                self._sleep_interval()
+                continue
+
+            # 1) Hand the sample to any observer (CLI / metrics).
+            if on_sample is not None:
+                try:
+                    on_sample(sample)
+                except Exception:  # pragma: no cover - defensive
+                    logger.exception("on_sample callback raised")
+
+            # 2) Buffer it for batched storage.
+            self._enqueue(sample)
+            self._maybe_flush()
+
+            # 3) Sleep until the next tick, but remain responsive to
+            #    stop requests.
+            self._sleep_interval()
+
+        # Always flush at the end so the last partial batch is not lost.
+        self.flush()
+        logger.info(
+            "Polling stopped. ingested=%d, errors=%d", self.ingested_count, self.error_count
+        )
+        return self.ingested_count
+
+    def stop(self) -> None:
+        """Request the polling loop to exit at the next opportunity."""
+        self._stop_event.set()
+
+    def flush(self) -> int:
+        """Persist any samples currently buffered in TDengine.
+
+        Returns the number of rows written.  Safe to call from a
+        background thread – the buffer is guarded by a lock.
+        """
+        with self._buffer_lock:
+            if not self._buffer:
+                return 0
+            batch = self._buffer
+            self._buffer = []
+            self._last_flush = time.monotonic()
+
+        if self._tdengine is None:
+            # No storage configured – drop the batch but count it.
+            # The CLI uses this mode for "dry-run" / smoke testing.
+            logger.debug("No TDengine client wired; dropping %d samples", len(batch))
+            self._ingested_count += len(batch)
+            return len(batch)
+
+        rows = [self._row_for_storage(s) for s in batch]
+        written = self._persist_rows(rows)
+        if written > 0:
+            self._ingested_count += written
+            logger.info("Flushed batch of %d samples to TDengine", written)
+        return written
+
+    # ------------------------------------------------------------------
+    # Public, read-only state
+    # ------------------------------------------------------------------
+
+    @property
+    def ingested_count(self) -> int:
+        return self._ingested_count
+
+    @property
+    def error_count(self) -> int:
+        return self._error_count
+
+    @property
+    def buffer_size(self) -> int:
+        return len(self._buffer)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _build_default_session(self) -> Session:
+        session = requests.Session()
+        session.headers.update(
+            {
+                "User-Agent": "APT-MTConnect-Adapter/1.0",
+                "Accept": "application/xml,text/xml;q=0.9,*/*;q=0.5",
+            }
+        )
+        return session
+
+    def _fetch_with_retry(self) -> Optional[Sample]:
+        """Fetch + parse a single sample, with exponential back-off.
+
+        Returns ``None`` if every retry attempt failed; the caller
+        should sleep one full interval and try again later.
+        """
+        backoff = self.config.initial_backoff
+        last_error: Optional[Exception] = None
+
+        for attempt in range(1, self.config.max_retries + 1):
+            try:
+                return self.fetch_sample()
+            except requests.RequestException as exc:
+                last_error = exc
+                self._error_count += 1
+                if attempt >= self.config.max_retries:
+                    logger.warning(
+                        "MTConnect fetch failed after %d attempts: %s",
+                        attempt,
+                        exc,
+                    )
+                    break
+                # Add a small jitter to avoid thundering-herd retries
+                # if multiple adapters restart simultaneously.
+                sleep_for = backoff * (0.5 + random.random())
+                logger.info(
+                    "MTConnect fetch attempt %d/%d failed (%s); retrying in %.2fs",
+                    attempt,
+                    self.config.max_retries,
+                    exc,
+                    sleep_for,
+                )
+                if self._stop_event.wait(sleep_for):
+                    # Stop was requested mid-backoff.
+                    return None
+                backoff = min(backoff * 2, self.config.max_backoff)
+            except ET.ParseError as exc:
+                # Malformed XML almost certainly won't fix itself with
+                # another immediate attempt.  Log and bail.
+                self._error_count += 1
+                logger.error("MTConnect returned malformed XML: %s", exc)
+                last_error = exc
+                break
+
+        logger.debug("Giving up on this polling cycle: %s", last_error)
+        return None
+
+    def _sleep_interval(self) -> None:
+        """Sleep ``interval`` seconds while remaining responsive to :meth:`stop`."""
+        self._stop_event.wait(self.config.interval)
+
+    def _enqueue(self, sample: Sample) -> None:
+        with self._buffer_lock:
+            self._buffer.append(sample)
+
+    def _maybe_flush(self) -> None:
+        """Flush if either the size or the age threshold is met."""
+        with self._buffer_lock:
+            too_many = len(self._buffer) >= self.config.batch_size
+            too_old = (
+                time.monotonic() - self._last_flush
+            ) >= self.config.batch_interval and bool(self._buffer)
+        if too_many or too_old:
+            self.flush()
+
+    def _row_for_storage(self, sample: Sample) -> List[Any]:
+        """Convert a :class:`Sample` into a row matching ``DEFAULT_TABLE_DDL``.
+
+        Column order must stay in lockstep with the DDL constant
+        declared at module top.
+        """
+        ts = sample.observed_at or datetime.now(timezone.utc)
+        return [
+            ts.strftime("%Y-%m-%d %H:%M:%S.%f"),
+            sample.spindle_speed,
+            sample.spindle_load,
+            sample.feedrate,
+            sample.execution,
+        ]
+
+    def _persist_rows(self, rows: List[List[Any]]) -> int:
+        """Persist a batch of rows through the TDengine client.
+
+        The TDengine client API exposed by M0.2 is async; we run it
+        through the adapter's own event loop so callers can drive the
+        adapter synchronously from a CLI / script.
+        """
+        if not rows:
+            return 0
+        client = self._tdengine
+        if client is None:
+            return 0
+
+        # If the injected client exposes a ``insert_rows`` coroutine
+        # we drive it from an event loop; otherwise we look for a
+        # synchronous ``insert_rows_sync`` for ergonomic test stubs.
+        insert = getattr(client, "insert_rows", None)
+        if insert is None:
+            logger.error("TDengine client does not expose insert_rows; aborting flush")
+            return 0
+
+        import asyncio  # local import – keeps top-level cost low
+
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # We're inside an event loop – schedule and wait.
+                return loop.run_until_complete(
+                    self._insert_async(client, insert, rows)
+                )
+            return loop.run_until_complete(
+                self._insert_async(client, insert, rows)
+            )
+        except RuntimeError:
+            # No event loop in this thread (typical CLI scenario).
+            return asyncio.run(self._insert_async(client, insert, rows))
+
+    async def _insert_async(self, client: Any, insert: Callable, rows: List[Any]) -> int:
+        result = await insert(
+            table_name=self.config.table,
+            rows=rows,
+            database=self.config.database,
+        )
+        if result is None or result < 0:
+            logger.error("TDengine insert returned %r (rows=%d)", result, len(rows))
+            return 0
+        return int(result)
+
+
+# ---------------------------------------------------------------------------
+# Convenience: CLI / one-shot helper
+# ---------------------------------------------------------------------------
+
+
+def build_table_ddl() -> Tuple[str, ...]:
+    """Return the canonical TDengine DDL column list for the table."""
+    return DEFAULT_TABLE_DDL
+
+
+# Regex used by the CLI to translate ``tds://host:port/db`` shorthand
+# into the (host, port, database) tuple the TDengine client expects.
+_TDS_URL_RE = re.compile(r"^tds://([^:/]+):(\d+)/(.+)$")
+
+
+def _local_attr_name(attr_name: str) -> str:
+    """Return the local part of an ElementTree attribute name.
+
+    ElementTree uses Clark notation (``{namespace}local``) to expose
+    namespaced attribute keys.  When the MTConnect namespace is
+    declared on the root element (as in :file:`MTConnectDevices` /
+    :file:`MTConnectStreams` documents) every header attribute – e.g.
+    ``sender`` / ``instanceId`` – shows up with the
+    ``{urn:mtconnect.org:MTConnectDevices:1.5}`` prefix.  This helper
+    strips the prefix so the rest of the parser can look up the
+    attribute by its bare local name.  When the attribute is already
+    local (no namespace) it is returned unchanged.
+    """
+    if attr_name.startswith("{"):
+        return attr_name.split("}", 1)[1]
+    return attr_name
+
+
+def parse_tds_url(url: str) -> Tuple[str, int, str]:
+    """Parse a ``tds://host:port/database`` URL.
+
+    Args:
+        url: Connection string of the form ``tds://localhost:6030/test``.
+
+    Returns:
+        ``(host, port, database)`` tuple.
+
+    Raises:
+        ValueError: if the URL does not match the expected format.
+    """
+    match = _TDS_URL_RE.match(url)
+    if not match:
+        raise ValueError(
+            f"Invalid TDS URL: {url!r}. Expected tds://host:port/database"
+        )
+    host, port, database = match.group(1), int(match.group(2)), match.group(3)
+    return host, port, database
+
+
+__all__ = [
+    "AdapterConfig",
+    "MTConnectAdapter",
+    "build_table_ddl",
+    "parse_tds_url",
+]
