@@ -2,14 +2,40 @@
 
 import { config } from '@vue/test-utils'
 
+// Mock localStorage for happy-dom environment
+const localStorageMock = (() => {
+  let store: Record<string, string> = {}
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => { store[key] = value },
+    removeItem: (key: string) => { delete store[key] },
+    clear: () => { store = {} },
+    get length() { return Object.keys(store).length },
+    key: (index: number) => Object.keys(store)[index] || null
+  }
+})()
+
+Object.defineProperty(globalThis, 'localStorage', {
+  value: localStorageMock,
+  writable: true
+})
+
+// Mock scrollIntoView for happy-dom environment
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function(options?: ScrollIntoViewOptions) {
+    // No-op in test environment
+  }
+}
+
 // Mock Element Plus components globally
 config.global.stubs = {
   ElDialog: {
     template: '<div class="el-dialog"><slot /></div>',
   },
   ElButton: {
-    template: '<button class="el-button"><slot /></button>',
-    props: ['type', 'loading', 'disabled', 'size', 'text'],
+    template: '<button class="el-button" @click="$emit(\'click\', $event)"><slot /></button>',
+    props: ['type', 'loading', 'disabled', 'size', 'text', 'icon', 'circle'],
+    emits: ['click'],
   },
   ElUpload: {
     template: '<div class="el-upload"><slot /><slot name="tip" /></div>',
@@ -85,5 +111,15 @@ config.global.stubs = {
   ElDescriptionsItem: {
     template: '<div class="el-descriptions-item"><slot /></div>',
     props: ['label'],
+  },
+  ElCheckbox: {
+    template: '<label class="el-checkbox"><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" /><span><slot /></span></label>',
+    props: ['modelValue'],
+    emits: ['update:modelValue', 'change'],
+  },
+  ElSlider: {
+    template: '<div class="el-slider"><input type="range" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" /></div>',
+    props: ['modelValue', 'min', 'max', 'step', 'disabled'],
+    emits: ['update:modelValue', 'input', 'change'],
   },
 }

@@ -17,3 +17,9 @@ from app.models.governance import (  # noqa: F401
     ApprovalRequest,
     AgentRole,
 )
+from app.models.machining_record import (  # noqa: F401
+    MachiningRecordBase,
+    MachiningRecordCreate,
+    MachiningRecordUpdate,
+    MachiningRecordRead,
+)

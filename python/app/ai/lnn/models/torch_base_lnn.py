@@ -18,8 +18,14 @@ Example:
 
 import torch
 import torch.nn as nn
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 from typing import Any, Dict, Tuple
+
+
+# 解决 nn.Module 和 ABC 多重继承的元类冲突
+class _ModuleABCMeta(ABCMeta, type(nn.Module)):
+    """元类：协调 nn.Module 和 ABC 的元类"""
+    pass
 
 
 class LNNConfig:
@@ -84,7 +90,7 @@ class LNNConfig:
         return f"LNNConfig({self.to_dict()})"
 
 
-class BaseLNN(nn.Module, ABC):
+class BaseLNN(nn.Module, ABC, metaclass=_ModuleABCMeta):
     """
     Abstract base class for all LNN models.
 
@@ -95,15 +101,12 @@ class BaseLNN(nn.Module, ABC):
     def __init__(self, config: LNNConfig):
         super().__init__()
         self.config = config
-        self.device = (
-            next(self.parameters()).device
-            if len(list(self.parameters())) > 0
-            else torch.device("cpu")
-        )
         self.input_dim = config.input_size
         self.output_dim = config.output_size
         self.is_trained = False
         self.model_name = "BaseLNN"
+        # 使用默认 CPU 设备，避免在初始化早期调用 parameters()
+        self._device = torch.device("cpu")
 
     @abstractmethod
     def forward(

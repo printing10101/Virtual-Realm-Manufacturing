@@ -13,6 +13,10 @@ from app.database.constraints import (
     ConstraintViolation,
     CuttingConstraintValidator,
 )
+from app.database.models.machining_record import (
+    Base as MachiningRecordBase,
+    MachiningRecord,
+)
 
 __all__ = [
     "MaterialDatabase",
@@ -24,4 +28,6 @@ __all__ = [
     "CuttingConstraintValidator",
     "ConstraintResult",
     "ConstraintViolation",
+    "MachiningRecordBase",
+    "MachiningRecord",
 ]

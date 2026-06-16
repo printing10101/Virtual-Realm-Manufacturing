@@ -28,6 +28,97 @@
       </div>
     </div>
 
+    <!-- 仿真数据可视化控制面板 -->
+    <div
+      v-if="simulationData"
+      class="visualization-controls"
+    >
+      <div class="control-section">
+        <h4>可视化选项</h4>
+        <div class="control-item">
+          <el-checkbox
+            v-model="showForceVectors"
+            @change="updateVisualization"
+          >
+            力矢量
+          </el-checkbox>
+        </div>
+        <div class="control-item">
+          <el-checkbox
+            v-model="showTemperatureMap"
+            @change="updateVisualization"
+          >
+            温度云图
+          </el-checkbox>
+        </div>
+        <div class="control-item">
+          <el-checkbox
+            v-model="showVibrationData"
+            @change="updateVisualization"
+          >
+            振动数据
+          </el-checkbox>
+        </div>
+      </div>
+
+      <div class="control-section">
+        <h4>显示参数</h4>
+        <div class="control-item">
+          <label>力箭头缩放</label>
+          <el-slider
+            v-model="forceArrowScale"
+            :min="0.1"
+            :max="3"
+            :step="0.1"
+            @change="updateVisualization"
+          />
+        </div>
+        <div class="control-item">
+          <label>温度透明度</label>
+          <el-slider
+            v-model="temperatureOpacity"
+            :min="0"
+            :max="1"
+            :step="0.1"
+            @change="updateVisualization"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- 时间轴控制 -->
+    <div
+      v-if="simulationData && hasTimeSeriesData"
+      class="timeline-control"
+    >
+      <div class="timeline-header">
+        <el-button
+          :icon="isPlaying ? VideoPause : VideoPlay"
+          circle
+          @click="togglePlayback"
+        />
+        <span class="time-display">
+          {{ currentTimeDisplay }}
+        </span>
+      </div>
+      <el-slider
+        v-model="currentTimeIndex"
+        :min="0"
+        :max="maxTimeIndex"
+        :step="1"
+        :disabled="isPlaying"
+        @input="(val: any) => onTimeChange(Number(val))"
+      />
+      <div class="timeline-footer">
+        <el-button
+          size="small"
+          @click="resetTimeline"
+        >
+          重置
+        </el-button>
+      </div>
+    </div>
+
     <div class="coordinate-axes">
       <span class="axis-x">X</span>
       <span class="axis-y">Y</span>
@@ -40,20 +131,52 @@
     >
       FPS: {{ fps }}
     </div>
+
+    <!-- 颜色图例 -->
+    <div
+      v-if="simulationData && (showForceVectors || showTemperatureMap)"
+      class="color-legend"
+    >
+      <div
+        v-if="showForceVectors && forceRange"
+        class="legend-item"
+      >
+        <div class="legend-gradient force-gradient" />
+        <div class="legend-labels">
+          <span>{{ forceRange.min.toFixed(0) }} N</span>
+          <span>{{ forceRange.max.toFixed(0) }} N</span>
+        </div>
+      </div>
+      <div
+        v-if="showTemperatureMap && temperatureRange"
+        class="legend-item"
+      >
+        <div class="legend-gradient temperature-gradient" />
+        <div class="legend-labels">
+          <span>{{ temperatureRange.min.toFixed(0) }}°C</span>
+          <span>{{ temperatureRange.max.toFixed(0) }}°C</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as THREE from 'three'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { VideoPlay, VideoPause } from '@element-plus/icons-vue'
 import type { SimulationResult, CollisionInfo, ToolpathSegmentData } from '@/types'
+import type { SimulationVisualizationData, ForceData, TemperatureData, VibrationData } from '@/api/simulation'
 import { useThreeScene } from '@/composables/useThreeScene'
+import { useSimulationVisualization } from '@/composables/useSimulationVisualization'
 
 const props = defineProps<{
   stockStlUrl?: string
   resultStlUrl?: string
   collisionData?: CollisionInfo
   toolpathSegments?: ToolpathSegmentData[]
+  simulationData?: SimulationVisualizationData
   backgroundColor?: string
   showGrid?: boolean
   playing?: boolean
@@ -65,6 +188,7 @@ const emit = defineEmits<{
   'segment-change': [index: number]
   'fps-update': [fps: number]
   'collision-click': [position: [number, number, number]]
+  'time-change': [timeIndex: number]
 }>()
 
 const containerRef = ref<HTMLElement>()
@@ -73,7 +197,53 @@ const loading = ref(false)
 const progress = ref(0)
 const fps = ref(0)
 
+// 可视化控制
+const showForceVectors = ref(true)
+const showTemperatureMap = ref(true)
+const showVibrationData = ref(true)
+const forceArrowScale = ref(1.0)
+const temperatureOpacity = ref(0.7)
+
+// 时间轴控制
+const currentTimeIndex = ref(0)
+const maxTimeIndex = ref(0)
+const isPlaying = ref(false)
+let playbackInterval: number | null = null
+
+// 计算属性
+const hasTimeSeriesData = computed(() => {
+  return props.simulationData && maxTimeIndex.value > 0
+})
+
+const currentTimeDisplay = computed(() => {
+  const time = currentTimeIndex.value * 0.1 // 假设每帧0.1秒
+  return `${time.toFixed(1)}s`
+})
+
+const forceRange = computed(() => {
+  if (!props.simulationData?.force_data || props.simulationData.force_data.length === 0) {
+    return null
+  }
+  const magnitudes = props.simulationData.force_data.map(f => f.magnitude)
+  return {
+    min: Math.min(...magnitudes),
+    max: Math.max(...magnitudes)
+  }
+})
+
+const temperatureRange = computed(() => {
+  if (!props.simulationData?.temperature_data || props.simulationData.temperature_data.length === 0) {
+    return null
+  }
+  const temps = props.simulationData.temperature_data.map(t => t.temperature)
+  return {
+    min: Math.min(...temps),
+    max: Math.max(...temps)
+  }
+})
+
 let threeScene: ReturnType<typeof useThreeScene> | null = null
+let simulationViz: ReturnType<typeof useSimulationVisualization> | null = null
 
 let stockMesh: THREE.Mesh | null = null
 let resultMesh: THREE.Mesh | null = null
@@ -124,10 +294,14 @@ onMounted(() => {
   if (props.collisionData?.collided) {
     drawCollisionMarkers(props.collisionData)
   }
+  if (props.simulationData) {
+    renderSimulationData()
+  }
 })
 
 onBeforeUnmount(() => {
   threeScene?.cleanup()
+  stopPlayback()
 })
 
 watch(() => props.stockStlUrl, (url) => {
@@ -152,6 +326,12 @@ watch(() => props.currentSegmentIndex, (idx) => {
   }
 })
 
+watch(() => props.simulationData, (data) => {
+  if (data) {
+    renderSimulationData()
+  }
+}, { deep: true })
+
 function initScene() {
   if (!containerRef.value) return
 
@@ -164,6 +344,8 @@ function initScene() {
     showGrid: props.showGrid !== false,
     gridSize: 300,
   })
+
+  simulationViz = useSimulationVisualization()
 
   const { scene, addLight } = threeScene
 
@@ -432,7 +614,125 @@ function fitCameraToModel(mesh: THREE.Mesh): void {
   controls.update()
 }
 
-defineExpose({ focusOnCollision })
+// 仿真数据可视化函数
+function renderSimulationData(): void {
+  if (!threeScene || !simulationViz || !props.simulationData) return
+
+  const { scene } = threeScene
+  const data = props.simulationData
+
+  // 清除旧的可视化
+  simulationViz.clearVisualization(scene)
+
+  // 计算时间索引对应的数据切片
+  const timeSlice = getTimeSliceData(data, currentTimeIndex.value)
+
+  // 渲染力矢量
+  if (showForceVectors.value && timeSlice.forceData.length > 0) {
+    const forceGroup = simulationViz.createForceVectorGroup(timeSlice.forceData, {
+      forceArrowScale: forceArrowScale.value,
+      lodEnabled: true,
+    })
+    scene.add(forceGroup)
+  }
+
+  // 渲染温度云图
+  if (showTemperatureMap.value && timeSlice.temperatureData.length > 0 && resultMesh) {
+    const tempMesh = simulationViz.createTemperatureCloud(
+      timeSlice.temperatureData,
+      resultMesh.geometry,
+      { temperatureOpacity: temperatureOpacity.value }
+    )
+    scene.add(tempMesh)
+  }
+
+  // 渲染振动数据
+  if (showVibrationData.value && timeSlice.vibrationData.length > 0) {
+    const vibrationGroup = simulationViz.createVibrationVisualization(timeSlice.vibrationData, {
+      vibrationScale: 1.0,
+    })
+    scene.add(vibrationGroup)
+  }
+
+  // 更新时间轴最大值
+  if (data.force_data && data.force_data.length > 0) {
+    const timestamps = data.force_data.map(f => f.timestamp)
+    const uniqueTimestamps = [...new Set(timestamps)]
+    maxTimeIndex.value = uniqueTimestamps.length - 1
+  }
+}
+
+function getTimeSliceData(data: SimulationVisualizationData, timeIndex: number) {
+  // 获取所有唯一时间戳
+  const allTimestamps = new Set<number>()
+  data.force_data?.forEach(f => allTimestamps.add(f.timestamp))
+  data.temperature_data?.forEach(t => allTimestamps.add(t.timestamp))
+  data.vibration_data?.forEach(v => allTimestamps.add(v.timestamp))
+
+  const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b)
+  const targetTimestamp = sortedTimestamps[timeIndex] || sortedTimestamps[0]
+
+  return {
+    forceData: data.force_data?.filter(f => f.timestamp === targetTimestamp) || [],
+    temperatureData: data.temperature_data?.filter(t => t.timestamp === targetTimestamp) || [],
+    vibrationData: data.vibration_data?.filter(v => v.timestamp === targetTimestamp) || [],
+  }
+}
+
+function updateVisualization(): void {
+  if (threeScene && simulationViz && props.simulationData) {
+    renderSimulationData()
+  }
+}
+
+// 时间轴控制函数
+function togglePlayback(): void {
+  if (isPlaying.value) {
+    stopPlayback()
+  } else {
+    startPlayback()
+  }
+}
+
+function startPlayback(): void {
+  if (isPlaying.value) return
+
+  isPlaying.value = true
+  playbackInterval = window.setInterval(() => {
+    if (currentTimeIndex.value < maxTimeIndex.value) {
+      currentTimeIndex.value++
+      emit('time-change', currentTimeIndex.value)
+      renderSimulationData()
+    } else {
+      stopPlayback()
+    }
+  }, 100) // 100ms per frame
+}
+
+function stopPlayback(): void {
+  if (!isPlaying.value) return
+
+  isPlaying.value = false
+  if (playbackInterval !== null) {
+    clearInterval(playbackInterval)
+    playbackInterval = null
+  }
+}
+
+function onTimeChange(value: number): void {
+  currentTimeIndex.value = value
+  emit('time-change', value)
+  renderSimulationData()
+}
+
+function resetTimeline(): void {
+  stopPlayback()
+  currentTimeIndex.value = 0
+  emit('time-change', 0)
+  renderSimulationData()
+}
+
+defineExpose({ focusOnCollision, renderSimulationData, updateVisualization })
 </script>
 
 <style lang="scss" scoped>
@@ -534,6 +834,131 @@ defineExpose({ focusOnCollision })
     border-radius: 4px;
     font-size: 12px;
     font-family: monospace;
+  }
+
+  .visualization-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.75);
+    border-radius: 8px;
+    padding: 12px;
+    min-width: 200px;
+    color: #fff;
+    font-size: 12px;
+
+    h4 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #8bc34a;
+    }
+
+    .control-section {
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+      &:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+      }
+    }
+
+    .control-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+
+      label {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .el-slider {
+        width: 100px;
+      }
+    }
+  }
+
+  .timeline-control {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.75);
+    border-radius: 8px;
+    padding: 12px 16px;
+    min-width: 300px;
+    color: #fff;
+
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+
+      .time-display {
+        font-family: monospace;
+        font-size: 13px;
+        color: #8bc34a;
+      }
+    }
+
+    .timeline-footer {
+      display: flex;
+      justify-content: center;
+      margin-top: 8px;
+    }
+  }
+
+  .color-legend {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.75);
+    border-radius: 8px;
+    padding: 10px;
+    color: #fff;
+    font-size: 11px;
+
+    .legend-item {
+      margin-bottom: 8px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .legend-gradient {
+      width: 120px;
+      height: 12px;
+      border-radius: 2px;
+      margin-bottom: 4px;
+    }
+
+    .force-gradient,
+    .temperature-gradient {
+      background: linear-gradient(
+        to right,
+        #3b4cc0,
+        #6688ee,
+        #88ccee,
+        #aaddaa,
+        #eeee66,
+        #ee8866,
+        #cc3333
+      );
+    }
+
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.7);
+    }
   }
 }
 </style>

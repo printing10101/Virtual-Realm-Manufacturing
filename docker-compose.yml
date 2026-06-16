@@ -44,6 +44,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      lnn-tdengine:
+        condition: service_healthy
     networks:
       - lnn-network
     restart: unless-stopped
@@ -100,6 +102,36 @@ services:
       retries: 3
       start_period: 15s
 
+  lnn-tdengine:
+    # TDengine 时序数据库 - 用于机床高频传感器数据存储
+    # 官方镜像文档: https://hub.docker.com/r/tdengine/tdengine
+    image: tdengine/tdengine:3.0.7.5
+    container_name: lnn-tdengine
+    hostname: lnn-tdengine
+    # 仅通过容器网络 lnn-network 内部通信，不对外暴露端口
+    # 如需调试可临时取消注释:
+    #   - "6030:6030"  # native protocol
+    #   - "6041:6041"  # REST API
+    #   - "6043:6043"  # WebSocket
+    environment:
+      - TAOS_FQDN=lnn-tdengine
+      # 首次启动自动创建 root 用户密码（生产环境请通过 .env 覆盖）
+      - TAOS_FIRST_EP=lnn-tdengine
+    volumes:
+      - lnn-tdengine-data:/var/lib/taos
+      - lnn-tdengine-cfg:/etc/taos
+    networks:
+      - lnn-network
+    restart: unless-stopped
+    # TDengine 容器初始化通常需要 10-30 秒（节点注册 + 集群发现）
+    healthcheck:
+      # 双重验证：taos CLI 检测数据库 + HTTP /api/health 端点检测 REST 服务
+      test: ["CMD-SHELL", "taos -s 'show databases;' >/dev/null 2>&1 && curl -fsS http://localhost:6041/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   prometheus:
     image: prom/prometheus:latest
     container_name: lnn-prometheus
@@ -147,6 +179,8 @@ services:
 volumes:
   redis-data:
   postgres-data:
+  lnn-tdengine-data:
+  lnn-tdengine-cfg:
   prometheus-data:
   grafana-data:
 

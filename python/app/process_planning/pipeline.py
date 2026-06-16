@@ -42,6 +42,7 @@ from app.process_planning.gcode_generator import GCodeGenerator, GCodeResult
 from app.process_planning.boss_recognizer import BossFeature
 from app.process_planning.cavity_recognizer import CavityFeature
 from app.process_planning.plane_recognizer import PlaneFeature
+from app.process_planning.sim_integration import SimulationIntegration, SimulationResult
 from app.data.process_data_manager import ProcessPlanningDataManager, DataLoadError, QueryError
 
 
@@ -98,6 +99,7 @@ class PipelineResult:
     process_plans: list[HoleProcessPlan] = field(default_factory=list)
     operation_plan: Optional[OperationPlan] = None
     gcode_result: Optional[GCodeResult] = None
+    simulation: Optional[dict[str, Any]] = None
     total_duration_ms: float = 0.0
     summary: str = ""
 
@@ -127,6 +129,17 @@ class PipelineResult:
                 "warnings": self.gcode_result.warnings,
                 "errors": self.gcode_result.errors,
             }
+        # 始终包含仿真字段，确保接口一致性
+        result["simulation"] = self.simulation if self.simulation else {
+            "status": "not_run",
+            "score": 0.0,
+            "passed": False,
+            "recommendation": "not_recommended",
+            "cutting_force": None,
+            "chatter_stability": None,
+            "duration_ms": 0.0,
+            "error_message": "仿真未执行（流水线提前终止）",
+        }
         return result
 
 
@@ -347,6 +360,27 @@ class ProcessPlanningPipeline:
         )
         stages.append(stage4)
         result.operation_plan = operation_plan
+
+        # ========== Stage 4.5: 仿真验证 ==========
+        stage4_5_start = time.time()
+        simulation_result = self._run_simulation(
+            material=material_name,
+            operation_plan=operation_plan,
+        )
+
+        stage4_5 = PipelineStage(
+            name="仿真验证",
+            status=simulation_result.get("status", "failed"),
+            duration_ms=simulation_result.get("duration_ms", 0),
+            input_summary=f"材料: {material_name}, 工序数: {len(operation_plan.operations)}",
+            output_summary=(
+                f"仿真评分: {simulation_result.get('score', 0):.1f}, "
+                f"推荐级别: {simulation_result.get('recommendation', 'unknown')}"
+            ),
+            errors=[simulation_result.get("error_message")] if simulation_result.get("error_message") else [],
+        )
+        stages.append(stage4_5)
+        result.simulation = simulation_result
 
         # ========== Stage 5: G代码生成 ==========
         stage5_start = time.time()
@@ -638,3 +672,123 @@ class ProcessPlanningPipeline:
             errors.append("缺少G代码生成结果")
 
         return errors, warnings
+
+    def _run_simulation(
+        self,
+        material: str,
+        operation_plan: OperationPlan,
+    ) -> dict[str, Any]:
+        """运行仿真验证。
+
+        调用仿真集成器对工序规划结果进行切削力和颤振稳定性分析。
+
+        Args:
+            material: 材料名称
+            operation_plan: 工序规划结果
+
+        Returns:
+            包含仿真结果的字典，包括：
+            - status: 仿真状态 ('success', 'timeout', 'failed', 'not_run')
+            - score: 仿真评分 (0-100)
+            - passed: 是否通过仿真
+            - recommendation: 推荐级别 ('recommended', 'acceptable', 'not_recommended')
+            - cutting_force: 切削力预测结果
+            - chatter_stability: 颤振稳定性分析结果
+            - duration_ms: 仿真耗时(毫秒)
+        """
+        try:
+            simulator = SimulationIntegration(timeout_seconds=5.0)
+
+            # 从工序规划中提取典型加工参数
+            # 使用第一个工序的参数作为代表（如有多个工序，可考虑加权平均）
+            if operation_plan.operations:
+                first_op = operation_plan.operations[0]
+                # 从工序中提取切削参数（如果存在）
+                cutting_params = first_op.get("cutting_params", {})
+                spindle_rpm = cutting_params.get("spindle_rpm", 8000)
+                feed_rate = cutting_params.get("feed_rate", 1200)
+                depth_of_cut = cutting_params.get("depth_of_cut", 2.0)
+                tool = first_op.get("tool", "endmill_d10")
+            else:
+                # 默认参数
+                spindle_rpm = 8000
+                feed_rate = 1200
+                depth_of_cut = 2.0
+                tool = "endmill_d10"
+
+            # 运行仿真
+            sim_result = simulator.run_simulation(
+                material=material,
+                tool=tool,
+                spindle_rpm=spindle_rpm,
+                feed_rate=feed_rate,
+                depth_of_cut=depth_of_cut,
+            )
+
+            return sim_result.to_dict()
+
+        except Exception as e:
+            # 仿真失败时返回降级结果，不阻断主流程
+            return {
+                "status": "failed",
+                "score": 0.0,
+                "passed": False,
+                "recommendation": "not_recommended",
+                "cutting_force": None,
+                "chatter_stability": None,
+                "duration_ms": 0.0,
+                "error_message": f"仿真服务调用失败: {type(e).__name__}",
+            }
+
+
+def plan_process(
+    feature: str = "pocket_cavity",
+    material: str = "45steel",
+    tool: str = "endmill_d10",
+    **kwargs,
+) -> dict[str, Any]:
+    """工艺规划便捷函数。
+
+    提供简化的工艺规划接口，支持端到端测试和快速调用。
+
+    Args:
+        feature: 加工特征类型 (如 'pocket_cavity', 'hole', 'slot')
+        material: 材料名称 (如 '45steel', 'aluminum_6061')
+        tool: 刀具标识 (如 'endmill_d10', 'drill_d8')
+        **kwargs: 其他可选参数
+
+    Returns:
+        工艺规划结果字典，包含：
+        - success: 是否成功
+        - simulation: 仿真结果（包含 score, passed, recommendation 等）
+        - operation_plan: 工序规划结果
+        - gcode: G代码生成结果
+        - 其他流水线输出字段
+    """
+    pipeline = ProcessPlanningPipeline()
+
+    # 构建零件描述
+    part_description = {
+        "material": material,
+        "part_type": kwargs.get("part_type", "general"),
+        "holes": kwargs.get("holes", []),
+        "features": kwargs.get("features", []),
+    }
+
+    # 如果指定了特征类型，添加到 features
+    if feature:
+        part_description["features"].append({
+            "type": feature,
+            "name": f"{feature}_001",
+        })
+
+    # 执行工艺规划流水线
+    result = pipeline.run(
+        part_description=part_description,
+        controller_type=kwargs.get("controller_type", "fanuc_0i"),
+        safe_z=kwargs.get("safe_z", 50.0),
+        program_number=kwargs.get("program_number", 1000),
+    )
+
+    # 转换为字典格式返回
+    return result.to_dict()

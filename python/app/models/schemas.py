@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from app.tasks.task_manager import TaskType
 
@@ -381,6 +381,12 @@ class UserListResponse(BaseModel):
 
 class RoleAssignRequest(BaseModel):
     role_code: str = Field(..., description="角色代码", min_length=1)
+
+
+class UncertaintyResponse(BaseModel):
+    prediction: float = Field(..., description="预测结果值")
+    uncertainty: float = Field(..., description="预测不确定性度量（标准差）", ge=0)
+    confidence: float = Field(..., description="置信度，范围[0, 1]", ge=0, le=1)
 
 
 class UserStatusRequest(BaseModel):

@@ -1,0 +1,508 @@
+/**
+ * 前端统一错误处理模块
+ * 
+ * 提供：
+ * - 统一的错误捕获和处理逻辑
+ * - 错误分类和标准化
+ * - 与后端结构化错误响应的对接
+ * - 诊断信息收集支持
+ */
+
+import type { ErrorDialogPayload } from '@/composables/useErrorBus'
+
+// ============================================================
+// 错误类型定义
+// ============================================================
+
+/**
+ * 错误分类
+ */
+export type ErrorType = 
+  | 'business'      // 业务错误
+  | 'system'        // 系统错误
+  | 'external'      // 外部服务错误
+  | 'validation'    // 参数校验错误
+  | 'auth'          // 认证授权错误
+  | 'network'       // 网络错误
+  | 'manufacturing' // 制造工艺错误
+  | 'unknown'       // 未知错误
+
+/**
+ * 错误严重程度
+ */
+export type ErrorSeverity = 'info' | 'warning' | 'error' | 'critical'
+
+/**
+ * 标准化错误对象
+ */
+export interface StandardError {
+  /** 数值错误码 */
+  code: number
+  /** 字符串错误标识 */
+  errorCode: string
+  /** 用户可读错误消息 */
+  message: string
+  /** 错误分类 */
+  errorType: ErrorType
+  /** 严重程度 */
+  severity: ErrorSeverity
+  /** ISO 8601 格式时间戳 */
+  timestamp: string
+  /** 请求追踪ID */
+  requestId: string
+  /** 链路追踪ID */
+  traceId: string
+  /** 请求路径 */
+  path?: string
+  /** 详细错误信息 */
+  detail?: any
+  /** 修复建议 */
+  suggestion?: string
+  /** 是否可自动恢复 */
+  recoverable?: boolean
+  /** 自动调整后的参数值 */
+  adjustedValues?: Record<string, any>
+  /** 原始错误对象 */
+  originalError?: any
+}
+
+/**
+ * 诊断信息上下文
+ */
+export interface DiagnosticContext {
+  /** 错误对象 */
+  error: StandardError
+  /** 用户代理 */
+  userAgent: string
+  /** 当前URL */
+  currentUrl: string
+  /** 屏幕分辨率 */
+  screenResolution: string
+  /** 浏览器语言 */
+  language: string
+  /** 时间戳 */
+  timestamp: string
+  /** 额外信息 */
+  extra?: Record<string, any>
+}
+
+// ============================================================
+// 错误码映射
+// ============================================================
+
+/**
+ * 数值错误码到字符串标识的映射
+ */
+const NUMERIC_TO_STRING_CODE: Record<number, string> = {
+  1001: 'BIZ_NOT_FOUND',
+  1002: 'BIZ_VALIDATION',
+  1003: 'AUTH_UNAUTHORIZED',
+  1004: 'AUTH_FORBIDDEN',
+  1005: 'BIZ_CONFLICT',
+  1006: 'BIZ_BAD_REQUEST',
+  1007: 'BIZ_RATE_LIMIT',
+  2001: 'SYS_INTERNAL',
+  2002: 'SYS_UNAVAILABLE',
+  2003: 'SYS_GATEWAY',
+  2004: 'SYS_TIMEOUT',
+  3001: 'REPO_ERROR',
+  3002: 'REPO_NOT_FOUND',
+  3003: 'REPO_STORAGE',
+  4001: 'LOCK_ERROR',
+  4002: 'LOCK_CONFLICT',
+  6001: 'EXT_LLM_ERROR',
+  6002: 'EXT_LLM_RATE_LIMIT',
+  6003: 'EXT_LLM_RESPONSE',
+  7001: 'BIZ_CAD_ERROR',
+  7002: 'BIZ_CAD_SCRIPT',
+  7003: 'BIZ_CAD_EXPORT',
+}
+
+/**
+ * 错误码范围到类型的映射
+ */
+const CODE_RANGES: Array<{ min: number; max: number; type: ErrorType }> = [
+  { min: 1000, max: 1099, type: 'business' },
+  { min: 2000, max: 2099, type: 'system' },
+  { min: 3000, max: 3099, type: 'business' },
+  { min: 4000, max: 4099, type: 'business' },
+  { min: 5000, max: 5099, type: 'system' },
+  { min: 6000, max: 6099, type: 'external' },
+  { min: 7000, max: 7099, type: 'business' },
+]
+
+// ============================================================
+// 错误分类工具函数
+// ============================================================
+
+/**
+ * 根据错误码推断错误分类
+ */
+export function classifyErrorByCode(code: number | string): ErrorType {
+  if (typeof code === 'string') {
+    // 字符串错误码 (E1xxx-E5xxx)
+    const prefix = code.substring(0, 2)
+    if (['E1', 'E2', 'E3', 'E4'].includes(prefix)) {
+      return 'manufacturing'
+    }
+    if (prefix === 'E5') {
+      return 'system'
+    }
+    return 'unknown'
+  }
+
+  // 特殊处理校验和认证错误（优先于范围检查）
+  if (code === 1002) return 'validation'
+  if (code === 1003 || code === 1004) return 'auth'
+
+  // 数值错误码范围检查
+  for (const range of CODE_RANGES) {
+    if (code >= range.min && code <= range.max) {
+      return range.type
+    }
+  }
+
+  return 'unknown'
+}
+
+/**
+ * 根据HTTP状态码或错误码推断严重程度
+ */
+export function classifySeverity(
+  httpStatus?: number,
+  code?: number | string
+): ErrorSeverity {
+  if (httpStatus !== undefined) {
+    if (httpStatus < 400) return 'info'
+    if (httpStatus < 500) return 'warning'
+    return 'error'
+  }
+
+  if (code !== undefined) {
+    const errorType = classifyErrorByCode(code)
+    if (errorType === 'system' || errorType === 'external') {
+      return 'error'
+    }
+    return 'warning'
+  }
+
+  return 'error'
+}
+
+/**
+ * 将数值错误码转换为字符串标识
+ */
+export function getStringErrorCode(numericCode: number): string {
+  return NUMERIC_TO_STRING_CODE[numericCode] || `ERR_${numericCode}`
+}
+
+// ============================================================
+// 错误对象构建
+// ============================================================
+
+/**
+ * 从API响应构建标准化错误对象
+ */
+export function buildErrorFromResponse(
+  response: any,
+  originalError?: any
+): StandardError {
+  const data = response?.data || {}
+  const status = response?.status
+
+  const code = data.code || data.error_code || status || 2001
+  const message = data.message || data.detail?.message || '操作失败'
+  const errorCode = typeof code === 'string' 
+    ? code 
+    : (data.error_code || getStringErrorCode(code))
+  const errorType = classifyErrorByCode(code)
+  const severity = data.severity || classifySeverity(status, code)
+  const timestamp = data.timestamp || new Date().toISOString()
+  const requestId = data.request_id || data.trace_id || ''
+  const traceId = data.trace_id || requestId
+  const path = data.path
+  const detail = data.detail
+  const suggestion = data.suggestion
+  const recoverable = data.recoverable
+  const adjustedValues = data.adjusted_values
+
+  return {
+    code: typeof code === 'string' ? parseInt(code) || 2001 : code,
+    errorCode,
+    message,
+    errorType,
+    severity,
+    timestamp,
+    requestId,
+    traceId,
+    path,
+    detail,
+    suggestion,
+    recoverable,
+    adjustedValues,
+    originalError,
+  }
+}
+
+/**
+ * 从Axios错误构建标准化错误对象
+ */
+export function buildErrorFromAxiosError(error: any): StandardError {
+  // 网络错误
+  if (!error.response) {
+    const isNetworkErr = isNetworkError(error)
+    return {
+      code: 0,
+      errorCode: 'NETWORK_ERROR',
+      message: isNetworkErr 
+        ? '网络连接错误，请检查网络后重试' 
+        : error.message || '未知网络错误',
+      errorType: 'network',
+      severity: 'error',
+      timestamp: new Date().toISOString(),
+      requestId: '',
+      traceId: '',
+      originalError: error,
+    }
+  }
+
+  // HTTP错误响应
+  return buildErrorFromResponse(error.response, error)
+}
+
+/**
+ * 从普通Error对象构建标准化错误对象
+ */
+export function buildErrorFromError(
+  error: Error,
+  code: number = 2001,
+  message?: string
+): StandardError {
+  return {
+    code,
+    errorCode: getStringErrorCode(code),
+    message: message || error.message || '未知错误',
+    errorType: classifyErrorByCode(code),
+    severity: classifySeverity(undefined, code),
+    timestamp: new Date().toISOString(),
+    requestId: '',
+    traceId: '',
+    originalError: error,
+  }
+}
+
+// ============================================================
+// 网络错误检测
+// ============================================================
+
+/**
+ * 判断是否为网络错误
+ */
+export function isNetworkError(error: any): boolean {
+  if (!error) return false
+  return Boolean(
+    error?.code === 'ERR_NETWORK' ||
+    error?.code === 'ECONNABORTED' ||
+    error?.message === 'Network Error' ||
+    error?.message?.includes('timeout') ||
+    error?.message?.includes('Network Error')
+  )
+}
+
+/**
+ * 判断是否应该显示冲突对话框
+ */
+export function shouldShowConflictDialog(data: any): boolean {
+  return Boolean(
+    data?.severity && data?.error_code && data?.suggestion
+  )
+}
+
+// ============================================================
+// 错误转换为ErrorBus载荷
+// ============================================================
+
+/**
+ * 将标准化错误转换为ErrorBus载荷
+ */
+export function toErrorBusPayload(error: StandardError): ErrorDialogPayload {
+  return {
+    title: error.message,
+    code: error.code,
+    message: error.message,
+    severity: error.severity,
+    detail: typeof error.detail === 'string' 
+      ? error.detail 
+      : JSON.stringify(error.detail || ''),
+    suggestion: error.suggestion || '',
+    recoverable: error.recoverable || false,
+    adjusted_values: error.adjustedValues,
+    error_id: error.requestId,
+  }
+}
+
+// ============================================================
+// 诊断信息收集
+// ============================================================
+
+/**
+ * 收集诊断信息上下文
+ */
+export function collectDiagnosticContext(
+  error: StandardError,
+  extra?: Record<string, any>
+): DiagnosticContext {
+  return {
+    error,
+    userAgent: navigator.userAgent,
+    currentUrl: window.location.href,
+    screenResolution: `${window.screen.width}x${window.screen.height}`,
+    language: navigator.language,
+    timestamp: new Date().toISOString(),
+    extra,
+  }
+}
+
+/**
+ * 生成人类可读的诊断信息文本
+ */
+export function generateDiagnosticText(context: DiagnosticContext): string {
+  const lines = [
+    '=== 错误诊断信息 ===',
+    `时间: ${context.timestamp}`,
+    `错误码: ${context.error.errorCode}`,
+    `消息: ${context.error.message}`,
+    `严重程度: ${context.error.severity}`,
+    `请求ID: ${context.error.requestId || 'N/A'}`,
+    `链路ID: ${context.error.traceId || 'N/A'}`,
+  ]
+
+  if (context.error.path) {
+    lines.push(`路径: ${context.error.path}`)
+  }
+
+  lines.push('')
+  lines.push('--- 环境信息 ---')
+  lines.push(`浏览器: ${context.userAgent}`)
+  lines.push(`当前URL: ${context.currentUrl}`)
+  lines.push(`屏幕分辨率: ${context.screenResolution}`)
+  lines.push(`语言: ${context.language}`)
+
+  if (context.error.detail) {
+    lines.push('')
+    lines.push('--- 详细信息 ---')
+    if (typeof context.error.detail === 'object') {
+      lines.push(JSON.stringify(context.error.detail, null, 2))
+    } else {
+      lines.push(String(context.error.detail))
+    }
+  }
+
+  if (context.error.suggestion) {
+    lines.push('')
+    lines.push(`建议: ${context.error.suggestion}`)
+  }
+
+  if (context.extra && Object.keys(context.extra).length > 0) {
+    lines.push('')
+    lines.push('--- 附加信息 ---')
+    lines.push(JSON.stringify(context.extra, null, 2))
+  }
+
+  lines.push('')
+  lines.push('===================')
+
+  return lines.join('\n')
+}
+
+/**
+ * 复制诊断信息到剪贴板
+ */
+export async function copyDiagnosticText(
+  context: DiagnosticContext
+): Promise<boolean> {
+  const text = generateDiagnosticText(context)
+  
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    } else {
+      // 降级方案：使用 textarea
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      const success = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      return success
+    }
+  } catch (err) {
+    console.error('[ErrorHandler] Failed to copy diagnostic text:', err)
+    return false
+  }
+}
+
+// ============================================================
+// 全局错误处理
+// ============================================================
+
+/**
+ * 全局错误处理器类型
+ */
+export type GlobalErrorHandler = (error: StandardError) => void
+
+/**
+ * 全局错误处理器集合
+ */
+const globalErrorHandlers: Set<GlobalErrorHandler> = new Set()
+
+/**
+ * 注册全局错误处理器
+ */
+export function registerGlobalErrorHandler(handler: GlobalErrorHandler): () => void {
+  globalErrorHandlers.add(handler)
+  return () => {
+    globalErrorHandlers.delete(handler)
+  }
+}
+
+/**
+ * 触发全局错误处理器
+ */
+export function triggerGlobalErrorHandlers(error: StandardError): void {
+  for (const handler of globalErrorHandlers) {
+    try {
+      handler(error)
+    } catch (err) {
+      console.error('[ErrorHandler] Global handler threw:', err)
+    }
+  }
+}
+
+/**
+ * 安装全局错误捕获
+ */
+export function installGlobalErrorCapture(): void {
+  // 捕获未处理的Promise拒绝
+  window.addEventListener('unhandledrejection', (event) => {
+    const error = event.reason
+    const standardError = error instanceof Error
+      ? buildErrorFromError(error)
+      : buildErrorFromAxiosError(error)
+    
+    triggerGlobalErrorHandlers(standardError)
+  })
+
+  // 捕获未处理的错误
+  window.addEventListener('error', (event) => {
+    const error = event.error
+    const standardError = error instanceof Error
+      ? buildErrorFromError(error)
+      : buildErrorFromError(new Error(String(error)))
+    
+    triggerGlobalErrorHandlers(standardError)
+  })
+}

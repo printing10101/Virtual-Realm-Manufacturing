@@ -38,6 +38,7 @@ from app.config import config
 from app.version import get_version_info, VERSION as PY_VERSION
 from app.api.v1 import (
     lnn,
+    lnn_uncertain,
     wear_prediction,
     user_sovereignty,
     agent_gateway,
@@ -51,6 +52,7 @@ from app.api.v1 import (
     goal_alignment,
     heartbeat,
     task_checkout,
+    flywheel,
     template_ab_testing_routes as template_ab,
     template_branching_routes as template_branches,
     template_evolution_routes as template_evolution,
@@ -324,6 +326,7 @@ async def query_logs(
 
 
 app.include_router(lnn.router)
+app.include_router(lnn_uncertain.router)
 app.include_router(wear_prediction.router)
 app.include_router(user_sovereignty.router)
 app.include_router(agent_gateway.router)
@@ -355,6 +358,7 @@ app.include_router(template_branches.router)
 app.include_router(template_evolution.router)
 app.include_router(template_updates.router)
 app.include_router(pattern_engine.router)
+app.include_router(flywheel.router)
 
 register_exception_handlers(app)
 

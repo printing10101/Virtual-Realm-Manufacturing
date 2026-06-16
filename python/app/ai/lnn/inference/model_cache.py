@@ -30,7 +30,7 @@ class ModelCache:
         model = cache.get("model_name")
     """
 
-    def __init__(self, max_size: int = 3):
+    def __init__(self, max_size: int = 5):
         if max_size < 1:
             raise ValueError(f"max_size must be >= 1, got {max_size}")
 
