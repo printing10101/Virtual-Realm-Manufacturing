@@ -210,7 +210,8 @@ class TokenBanList:
                 data = json.loads(self._file_path.read_text())
                 self._banned = set(data.get("tokens", []))
                 self._cleanup_expired(data.get("expiry", {}))
-            except Exception:
+            except Exception as e:
+                logger.warning("加载 token 黑名单文件失败，使用空黑名单: %s", e)
                 self._banned = set()
 
     def _save(self):

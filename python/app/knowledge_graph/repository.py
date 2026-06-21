@@ -156,14 +156,23 @@ class KnowledgeGraphRepository:
     # ----------------------------------------------------------------- schema
 
     def init_schema(self) -> None:
-        """在当前数据库上创建知识图谱相关表（幂等）。"""
-        engine = self._session().get_bind()
-        Base.metadata.create_all(engine)
+        """在当前数据库上创建知识图谱相关表（幂等）。
+
+        使用 ``with self._session()`` 上下文管理器确保 Session 被正确关闭，
+        避免连接泄漏。
+        """
+        with self._session() as session:
+            engine = session.get_bind()
+            Base.metadata.create_all(engine)
 
     def drop_schema(self) -> None:
-        """删除知识图谱相关表（谨慎使用）。"""
-        engine = self._session().get_bind()
-        Base.metadata.drop_all(engine)
+        """删除知识图谱相关表（谨慎使用）。
+
+        同样使用上下文管理器确保 Session 被正确关闭。
+        """
+        with self._session() as session:
+            engine = session.get_bind()
+            Base.metadata.drop_all(engine)
 
     # ============================================================== 节点操作
 

@@ -499,7 +499,7 @@ curl http://localhost:8000/health
 # 预期响应
 {
   "status": "healthy",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "database": "connected",
   "lnn_engine": "ready"
 }

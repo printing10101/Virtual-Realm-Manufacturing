@@ -22,12 +22,17 @@
 from app.knowledge_graph.graph_store import GraphStore
 from app.knowledge_graph.models import Base, KGEdge, KGNode
 from app.knowledge_graph.persistence import GraphPersistence
+from app.knowledge_graph.query_api import KnowledgeGraphQueryAPI
 from app.knowledge_graph.repository import KnowledgeGraphRepository
+from app.knowledge_graph.material_tool_graph import MaterialToolGraph, ProcessRecommendation
 
 __all__ = [
     "GraphStore",
+    "KnowledgeGraphQueryAPI",
     "KnowledgeGraphRepository",
     "GraphPersistence",
+    "MaterialToolGraph",
+    "ProcessRecommendation",
     "Base",
     "KGNode",
     "KGEdge",

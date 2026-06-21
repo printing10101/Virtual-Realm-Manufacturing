@@ -92,10 +92,10 @@ class TestMaterialDatabase:
         assert feed[0] == 0.2
         assert feed[1] == 0.5
 
-    def test_material_entry_get_doc(self):
+    def test_material_entry_get_depth_of_cut(self):
         db = MaterialDatabase()
         m = db.get("cast_iron_ht250")
-        doc = m.get_doc("roughing")
+        doc = m.get_depth_of_cut("roughing")
         assert doc[0] == 2
         assert doc[1] == 8
 

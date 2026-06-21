@@ -448,9 +448,9 @@ pip-audit 发现 39 个已知 CVE，包括 cryptography、python-jose、python-m
 请统一 python/app/main.py 和 python/app/api/v1/health.py 中的健康检查端点。
 
 当前问题：
-- /health 返回 {"status": "healthy", ...}
-- /api/health 返回 {"status": "ok", "version": "2.0.0"}
-- /api/health/ping 返回 {"ping": True}
+- /health 返回格式: status=healthy
+- /api/health 返回格式: status=ok, version=2.2.0
+- /api/health/ping 返回格式: ping=True
 - Dockerfile HEALTHCHECK 使用 /api/v1/health（不存在）
 
 修复要求：

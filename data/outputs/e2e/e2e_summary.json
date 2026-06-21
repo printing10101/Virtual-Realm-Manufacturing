@@ -1,0 +1,1253 @@
+{
+  "started_at": "2026-06-18T01:57:42",
+  "fixture_count": 20,
+  "postprocessors": [
+    "fanuc_0i",
+    "gsk_980_25i",
+    "hnc_848_22",
+    "knd_1000_2000_3000"
+  ],
+  "fixtures": [
+    {
+      "name": "case10_i_shape.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 59.2,
+          "output_files": {
+            "case10_i_shape.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case10_i_shape\\case10_i_shape.fanuc_0i.nc",
+            "case10_i_shape.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case10_i_shape\\case10_i_shape.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 62.49,
+          "output_files": {
+            "case10_i_shape.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case10_i_shape\\case10_i_shape.gsk_980_25i.nc",
+            "case10_i_shape.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case10_i_shape\\case10_i_shape.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 50.89,
+          "output_files": {
+            "case10_i_shape.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case10_i_shape\\case10_i_shape.hnc_848_22.nc",
+            "case10_i_shape.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case10_i_shape\\case10_i_shape.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 49.93,
+          "output_files": {
+            "case10_i_shape.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case10_i_shape\\case10_i_shape.knd_1000_2000_3000.nc",
+            "case10_i_shape.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case10_i_shape\\case10_i_shape.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case11_perforated_plate.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 45.95,
+          "output_files": {
+            "case11_perforated_plate.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case11_perforated_plate\\case11_perforated_plate.fanuc_0i.nc",
+            "case11_perforated_plate.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case11_perforated_plate\\case11_perforated_plate.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 46.54,
+          "output_files": {
+            "case11_perforated_plate.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case11_perforated_plate\\case11_perforated_plate.gsk_980_25i.nc",
+            "case11_perforated_plate.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case11_perforated_plate\\case11_perforated_plate.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 45.41,
+          "output_files": {
+            "case11_perforated_plate.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case11_perforated_plate\\case11_perforated_plate.hnc_848_22.nc",
+            "case11_perforated_plate.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case11_perforated_plate\\case11_perforated_plate.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 45.89,
+          "output_files": {
+            "case11_perforated_plate.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case11_perforated_plate\\case11_perforated_plate.knd_1000_2000_3000.nc",
+            "case11_perforated_plate.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case11_perforated_plate\\case11_perforated_plate.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case12_triangle_support.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 42.39,
+          "output_files": {
+            "case12_triangle_support.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case12_triangle_support\\case12_triangle_support.fanuc_0i.nc",
+            "case12_triangle_support.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case12_triangle_support\\case12_triangle_support.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 51.21,
+          "output_files": {
+            "case12_triangle_support.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case12_triangle_support\\case12_triangle_support.gsk_980_25i.nc",
+            "case12_triangle_support.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case12_triangle_support\\case12_triangle_support.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 43.85,
+          "output_files": {
+            "case12_triangle_support.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case12_triangle_support\\case12_triangle_support.hnc_848_22.nc",
+            "case12_triangle_support.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case12_triangle_support\\case12_triangle_support.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 39.97,
+          "output_files": {
+            "case12_triangle_support.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case12_triangle_support\\case12_triangle_support.knd_1000_2000_3000.nc",
+            "case12_triangle_support.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case12_triangle_support\\case12_triangle_support.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case13_rounded_rect.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 45.74,
+          "output_files": {
+            "case13_rounded_rect.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case13_rounded_rect\\case13_rounded_rect.fanuc_0i.nc",
+            "case13_rounded_rect.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case13_rounded_rect\\case13_rounded_rect.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 51.78,
+          "output_files": {
+            "case13_rounded_rect.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case13_rounded_rect\\case13_rounded_rect.gsk_980_25i.nc",
+            "case13_rounded_rect.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case13_rounded_rect\\case13_rounded_rect.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 183.52,
+          "output_files": {
+            "case13_rounded_rect.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case13_rounded_rect\\case13_rounded_rect.hnc_848_22.nc",
+            "case13_rounded_rect.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case13_rounded_rect\\case13_rounded_rect.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 49.64,
+          "output_files": {
+            "case13_rounded_rect.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case13_rounded_rect\\case13_rounded_rect.knd_1000_2000_3000.nc",
+            "case13_rounded_rect.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case13_rounded_rect\\case13_rounded_rect.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case14_round_disk.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 77.34,
+          "output_files": {
+            "case14_round_disk.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case14_round_disk\\case14_round_disk.fanuc_0i.nc",
+            "case14_round_disk.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case14_round_disk\\case14_round_disk.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 76.58,
+          "output_files": {
+            "case14_round_disk.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case14_round_disk\\case14_round_disk.gsk_980_25i.nc",
+            "case14_round_disk.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case14_round_disk\\case14_round_disk.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 76.84,
+          "output_files": {
+            "case14_round_disk.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case14_round_disk\\case14_round_disk.hnc_848_22.nc",
+            "case14_round_disk.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case14_round_disk\\case14_round_disk.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 77.32,
+          "output_files": {
+            "case14_round_disk.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case14_round_disk\\case14_round_disk.knd_1000_2000_3000.nc",
+            "case14_round_disk.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case14_round_disk\\case14_round_disk.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case15_ellipse_outline.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 80.39,
+          "output_files": {
+            "case15_ellipse_outline.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case15_ellipse_outline\\case15_ellipse_outline.fanuc_0i.nc",
+            "case15_ellipse_outline.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case15_ellipse_outline\\case15_ellipse_outline.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 77.93,
+          "output_files": {
+            "case15_ellipse_outline.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case15_ellipse_outline\\case15_ellipse_outline.gsk_980_25i.nc",
+            "case15_ellipse_outline.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case15_ellipse_outline\\case15_ellipse_outline.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 77.2,
+          "output_files": {
+            "case15_ellipse_outline.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case15_ellipse_outline\\case15_ellipse_outline.hnc_848_22.nc",
+            "case15_ellipse_outline.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case15_ellipse_outline\\case15_ellipse_outline.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 77.68,
+          "output_files": {
+            "case15_ellipse_outline.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case15_ellipse_outline\\case15_ellipse_outline.knd_1000_2000_3000.nc",
+            "case15_ellipse_outline.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case15_ellipse_outline\\case15_ellipse_outline.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case16_irregular.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 48.48,
+          "output_files": {
+            "case16_irregular.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case16_irregular\\case16_irregular.fanuc_0i.nc",
+            "case16_irregular.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case16_irregular\\case16_irregular.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 46.7,
+          "output_files": {
+            "case16_irregular.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case16_irregular\\case16_irregular.gsk_980_25i.nc",
+            "case16_irregular.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case16_irregular\\case16_irregular.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 47.37,
+          "output_files": {
+            "case16_irregular.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case16_irregular\\case16_irregular.hnc_848_22.nc",
+            "case16_irregular.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case16_irregular\\case16_irregular.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 47.74,
+          "output_files": {
+            "case16_irregular.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case16_irregular\\case16_irregular.knd_1000_2000_3000.nc",
+            "case16_irregular.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case16_irregular\\case16_irregular.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case17_arc_profile.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 54.81,
+          "output_files": {
+            "case17_arc_profile.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case17_arc_profile\\case17_arc_profile.fanuc_0i.nc",
+            "case17_arc_profile.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case17_arc_profile\\case17_arc_profile.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 56.98,
+          "output_files": {
+            "case17_arc_profile.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case17_arc_profile\\case17_arc_profile.gsk_980_25i.nc",
+            "case17_arc_profile.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case17_arc_profile\\case17_arc_profile.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 55.22,
+          "output_files": {
+            "case17_arc_profile.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case17_arc_profile\\case17_arc_profile.hnc_848_22.nc",
+            "case17_arc_profile.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case17_arc_profile\\case17_arc_profile.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 57.46,
+          "output_files": {
+            "case17_arc_profile.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case17_arc_profile\\case17_arc_profile.knd_1000_2000_3000.nc",
+            "case17_arc_profile.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case17_arc_profile\\case17_arc_profile.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case18_sprocket.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 184.89,
+          "output_files": {
+            "case18_sprocket.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case18_sprocket\\case18_sprocket.fanuc_0i.nc",
+            "case18_sprocket.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case18_sprocket\\case18_sprocket.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 189.83,
+          "output_files": {
+            "case18_sprocket.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case18_sprocket\\case18_sprocket.gsk_980_25i.nc",
+            "case18_sprocket.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case18_sprocket\\case18_sprocket.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 180.21,
+          "output_files": {
+            "case18_sprocket.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case18_sprocket\\case18_sprocket.hnc_848_22.nc",
+            "case18_sprocket.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case18_sprocket\\case18_sprocket.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 190.06,
+          "output_files": {
+            "case18_sprocket.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case18_sprocket\\case18_sprocket.knd_1000_2000_3000.nc",
+            "case18_sprocket.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case18_sprocket\\case18_sprocket.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case19_coupling.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 169.62,
+          "output_files": {
+            "case19_coupling.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case19_coupling\\case19_coupling.fanuc_0i.nc",
+            "case19_coupling.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case19_coupling\\case19_coupling.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 175.67,
+          "output_files": {
+            "case19_coupling.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case19_coupling\\case19_coupling.gsk_980_25i.nc",
+            "case19_coupling.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case19_coupling\\case19_coupling.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 173.35,
+          "output_files": {
+            "case19_coupling.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case19_coupling\\case19_coupling.hnc_848_22.nc",
+            "case19_coupling.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case19_coupling\\case19_coupling.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 156.68,
+          "output_files": {
+            "case19_coupling.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case19_coupling\\case19_coupling.knd_1000_2000_3000.nc",
+            "case19_coupling.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case19_coupling\\case19_coupling.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case1_simple_box.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 54.08,
+          "output_files": {
+            "case1_simple_box.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case1_simple_box\\case1_simple_box.fanuc_0i.nc",
+            "case1_simple_box.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case1_simple_box\\case1_simple_box.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 54.69,
+          "output_files": {
+            "case1_simple_box.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case1_simple_box\\case1_simple_box.gsk_980_25i.nc",
+            "case1_simple_box.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case1_simple_box\\case1_simple_box.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 54.98,
+          "output_files": {
+            "case1_simple_box.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case1_simple_box\\case1_simple_box.hnc_848_22.nc",
+            "case1_simple_box.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case1_simple_box\\case1_simple_box.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 57.98,
+          "output_files": {
+            "case1_simple_box.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case1_simple_box\\case1_simple_box.knd_1000_2000_3000.nc",
+            "case1_simple_box.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case1_simple_box\\case1_simple_box.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case20_special_keyway.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 54.65,
+          "output_files": {
+            "case20_special_keyway.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case20_special_keyway\\case20_special_keyway.fanuc_0i.nc",
+            "case20_special_keyway.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case20_special_keyway\\case20_special_keyway.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 46.15,
+          "output_files": {
+            "case20_special_keyway.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case20_special_keyway\\case20_special_keyway.gsk_980_25i.nc",
+            "case20_special_keyway.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case20_special_keyway\\case20_special_keyway.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 44.63,
+          "output_files": {
+            "case20_special_keyway.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case20_special_keyway\\case20_special_keyway.hnc_848_22.nc",
+            "case20_special_keyway.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case20_special_keyway\\case20_special_keyway.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 47.86,
+          "output_files": {
+            "case20_special_keyway.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case20_special_keyway\\case20_special_keyway.knd_1000_2000_3000.nc",
+            "case20_special_keyway.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case20_special_keyway\\case20_special_keyway.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case2_box_4holes.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 91.94,
+          "output_files": {
+            "case2_box_4holes.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case2_box_4holes\\case2_box_4holes.fanuc_0i.nc",
+            "case2_box_4holes.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case2_box_4holes\\case2_box_4holes.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 89.0,
+          "output_files": {
+            "case2_box_4holes.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case2_box_4holes\\case2_box_4holes.gsk_980_25i.nc",
+            "case2_box_4holes.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case2_box_4holes\\case2_box_4holes.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 88.46,
+          "output_files": {
+            "case2_box_4holes.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case2_box_4holes\\case2_box_4holes.hnc_848_22.nc",
+            "case2_box_4holes.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case2_box_4holes\\case2_box_4holes.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 87.38,
+          "output_files": {
+            "case2_box_4holes.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case2_box_4holes\\case2_box_4holes.knd_1000_2000_3000.nc",
+            "case2_box_4holes.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case2_box_4holes\\case2_box_4holes.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case3_polyline_outer.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 43.83,
+          "output_files": {
+            "case3_polyline_outer.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case3_polyline_outer\\case3_polyline_outer.fanuc_0i.nc",
+            "case3_polyline_outer.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case3_polyline_outer\\case3_polyline_outer.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 41.59,
+          "output_files": {
+            "case3_polyline_outer.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case3_polyline_outer\\case3_polyline_outer.gsk_980_25i.nc",
+            "case3_polyline_outer.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case3_polyline_outer\\case3_polyline_outer.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 43.39,
+          "output_files": {
+            "case3_polyline_outer.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case3_polyline_outer\\case3_polyline_outer.hnc_848_22.nc",
+            "case3_polyline_outer.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case3_polyline_outer\\case3_polyline_outer.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 44.39,
+          "output_files": {
+            "case3_polyline_outer.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case3_polyline_outer\\case3_polyline_outer.knd_1000_2000_3000.nc",
+            "case3_polyline_outer.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case3_polyline_outer\\case3_polyline_outer.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case4_polyline_outer_with_hole.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 74.84,
+          "output_files": {
+            "case4_polyline_outer_with_hole.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case4_polyline_outer_with_hole\\case4_polyline_outer_with_hole.fanuc_0i.nc",
+            "case4_polyline_outer_with_hole.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case4_polyline_outer_with_hole\\case4_polyline_outer_with_hole.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 74.24,
+          "output_files": {
+            "case4_polyline_outer_with_hole.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case4_polyline_outer_with_hole\\case4_polyline_outer_with_hole.gsk_980_25i.nc",
+            "case4_polyline_outer_with_hole.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case4_polyline_outer_with_hole\\case4_polyline_outer_with_hole.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 79.52,
+          "output_files": {
+            "case4_polyline_outer_with_hole.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case4_polyline_outer_with_hole\\case4_polyline_outer_with_hole.hnc_848_22.nc",
+            "case4_polyline_outer_with_hole.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case4_polyline_outer_with_hole\\case4_polyline_outer_with_hole.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 75.09,
+          "output_files": {
+            "case4_polyline_outer_with_hole.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case4_polyline_outer_with_hole\\case4_polyline_outer_with_hole.knd_1000_2000_3000.nc",
+            "case4_polyline_outer_with_hole.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case4_polyline_outer_with_hole\\case4_polyline_outer_with_hole.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case5_complex_panel.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 107.3,
+          "output_files": {
+            "case5_complex_panel.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case5_complex_panel\\case5_complex_panel.fanuc_0i.nc",
+            "case5_complex_panel.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case5_complex_panel\\case5_complex_panel.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 96.43,
+          "output_files": {
+            "case5_complex_panel.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case5_complex_panel\\case5_complex_panel.gsk_980_25i.nc",
+            "case5_complex_panel.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case5_complex_panel\\case5_complex_panel.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 108.43,
+          "output_files": {
+            "case5_complex_panel.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case5_complex_panel\\case5_complex_panel.hnc_848_22.nc",
+            "case5_complex_panel.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case5_complex_panel\\case5_complex_panel.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 102.53,
+          "output_files": {
+            "case5_complex_panel.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case5_complex_panel\\case5_complex_panel.knd_1000_2000_3000.nc",
+            "case5_complex_panel.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case5_complex_panel\\case5_complex_panel.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case6_flange.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 159.48,
+          "output_files": {
+            "case6_flange.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case6_flange\\case6_flange.fanuc_0i.nc",
+            "case6_flange.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case6_flange\\case6_flange.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 161.85,
+          "output_files": {
+            "case6_flange.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case6_flange\\case6_flange.gsk_980_25i.nc",
+            "case6_flange.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case6_flange\\case6_flange.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 148.46,
+          "output_files": {
+            "case6_flange.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case6_flange\\case6_flange.hnc_848_22.nc",
+            "case6_flange.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case6_flange\\case6_flange.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 148.49,
+          "output_files": {
+            "case6_flange.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case6_flange\\case6_flange.knd_1000_2000_3000.nc",
+            "case6_flange.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case6_flange\\case6_flange.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case7_bracket.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 76.79,
+          "output_files": {
+            "case7_bracket.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case7_bracket\\case7_bracket.fanuc_0i.nc",
+            "case7_bracket.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case7_bracket\\case7_bracket.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 78.63,
+          "output_files": {
+            "case7_bracket.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case7_bracket\\case7_bracket.gsk_980_25i.nc",
+            "case7_bracket.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case7_bracket\\case7_bracket.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 76.94,
+          "output_files": {
+            "case7_bracket.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case7_bracket\\case7_bracket.hnc_848_22.nc",
+            "case7_bracket.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case7_bracket\\case7_bracket.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 79.72,
+          "output_files": {
+            "case7_bracket.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case7_bracket\\case7_bracket.knd_1000_2000_3000.nc",
+            "case7_bracket.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case7_bracket\\case7_bracket.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case8_gear_blank.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 111.79,
+          "output_files": {
+            "case8_gear_blank.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case8_gear_blank\\case8_gear_blank.fanuc_0i.nc",
+            "case8_gear_blank.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case8_gear_blank\\case8_gear_blank.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 92.76,
+          "output_files": {
+            "case8_gear_blank.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case8_gear_blank\\case8_gear_blank.gsk_980_25i.nc",
+            "case8_gear_blank.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case8_gear_blank\\case8_gear_blank.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 87.86,
+          "output_files": {
+            "case8_gear_blank.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case8_gear_blank\\case8_gear_blank.hnc_848_22.nc",
+            "case8_gear_blank.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case8_gear_blank\\case8_gear_blank.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 88.63,
+          "output_files": {
+            "case8_gear_blank.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case8_gear_blank\\case8_gear_blank.knd_1000_2000_3000.nc",
+            "case8_gear_blank.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case8_gear_blank\\case8_gear_blank.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    },
+    {
+      "name": "case9_rect_block.dxf",
+      "results_by_controller": {
+        "fanuc_0i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 99.94,
+          "output_files": {
+            "case9_rect_block.fanuc_0i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case9_rect_block\\case9_rect_block.fanuc_0i.nc",
+            "case9_rect_block.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\fanuc_0i\\case9_rect_block\\case9_rect_block.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "gsk_980_25i": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 101.63,
+          "output_files": {
+            "case9_rect_block.gsk_980_25i.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case9_rect_block\\case9_rect_block.gsk_980_25i.nc",
+            "case9_rect_block.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\gsk_980_25i\\case9_rect_block\\case9_rect_block.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "hnc_848_22": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 106.63,
+          "output_files": {
+            "case9_rect_block.hnc_848_22.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case9_rect_block\\case9_rect_block.hnc_848_22.nc",
+            "case9_rect_block.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\hnc_848_22\\case9_rect_block\\case9_rect_block.stl"
+          },
+          "errors": [],
+          "warnings": []
+        },
+        "knd_1000_2000_3000": {
+          "success": true,
+          "parse_ok": true,
+          "features_ok": true,
+          "model3d_ok": true,
+          "gcode_ok": true,
+          "total_latency_ms": 102.17,
+          "output_files": {
+            "case9_rect_block.knd_1000_2000_3000.nc": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case9_rect_block\\case9_rect_block.knd_1000_2000_3000.nc",
+            "case9_rect_block.stl": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\data\\outputs\\e2e\\knd_1000_2000_3000\\case9_rect_block\\case9_rect_block.stl"
+          },
+          "errors": [],
+          "warnings": []
+        }
+      }
+    }
+  ],
+  "totals": {
+    "total": 80,
+    "success": 80,
+    "parse_ok": 20,
+    "features_ok": 20,
+    "model3d_ok": 20,
+    "gcode_ok": 80,
+    "gcode_ok_fanuc_0i": 20,
+    "gcode_ok_gsk_980_25i": 20,
+    "gcode_ok_hnc_848_22": 20,
+    "gcode_ok_knd_1000_2000_3000": 20
+  },
+  "success_rate": 100.0,
+  "parse_rate": 100.0,
+  "features_rate": 100.0,
+  "model3d_rate": 100.0,
+  "gcode_rate_fanuc_0i": 100.0,
+  "gcode_rate_gsk_980_25i": 100.0,
+  "gcode_rate_hnc_848_22": 100.0,
+  "gcode_rate_knd_1000_2000_3000": 100.0,
+  "ended_at": "2026-06-18T01:57:54"
+}

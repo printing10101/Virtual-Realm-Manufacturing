@@ -16,7 +16,43 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-VALID_CONTROLLER_IDS = ("fanuc", "siemens", "heidenhain")
+VALID_CONTROLLER_IDS = (
+    "fanuc",
+    "siemens",
+    "heidenhain",
+    "gsk",
+    "hnc",
+    "knd",
+    "mitsubishi",
+    "fagor",
+    "xmachine",
+)
+
+# 顶层控制器全名 -> 控制器标识的映射（与 registry.py 保持一致）
+CONTROLLER_FULL_ID_MAP = {
+    "fanuc_0i": "fanuc",
+    "siemens_840d": "siemens",
+    "heidenhain_tnc": "heidenhain",
+    "gsk_980_25i": "gsk",
+    "hnc_848_22": "hnc",
+    "knd_1000_2000_3000": "knd",
+    "mitsubishi_m70_m80": "mitsubishi",
+    "fagor_8055": "fagor",
+    "xmachine_xm100": "xmachine",
+}
+
+# 控制器标识 -> 顶层控制器全名的映射（与 registry.py _register_builtin 保持一致）
+CONTROLLER_ID_TO_FULL = {
+    "fanuc": "fanuc_0i",
+    "siemens": "siemens_840d",
+    "heidenhain": "heidenhain_tnc",
+    "gsk": "gsk_980_25i",
+    "hnc": "hnc_848_22",
+    "knd": "knd_1000_2000_3000",
+    "mitsubishi": "mitsubishi_m70_m80",
+    "fagor": "fagor_8055",
+    "xmachine": "xmachine_xm100",
+}
 
 REQUIRED_TOP_KEYS = ("base", "controllers")
 REQUIRED_BASE_KEYS = (
@@ -788,21 +824,12 @@ class ConfigLoader:
             控制器标识字符串
         """
         top_controller = raw_config.get("target_controller", "")
-        top_to_id = {
-            "fanuc_0i": "fanuc",
-            "siemens_840d": "siemens",
-            "heidenhain_tnc": "heidenhain",
-        }
-        if top_controller in top_to_id:
-            return top_to_id[top_controller]
+        if top_controller in CONTROLLER_FULL_ID_MAP:
+            return CONTROLLER_FULL_ID_MAP[top_controller]
 
-        for cid, name in [
-            ("fanuc", "fanuc_0i"),
-            ("siemens", "siemens_840d"),
-            ("heidenhain", "heidenhain_tnc"),
-        ]:
+        for cid, full_name in CONTROLLER_ID_TO_FULL.items():
             ctrl = raw_config.get("controllers", {}).get(cid, {})
-            if ctrl.get("target_controller") == name:
+            if ctrl.get("target_controller") == full_name:
                 return cid
 
         logger.warning(

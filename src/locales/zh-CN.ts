@@ -583,7 +583,7 @@ export default {
   about: {
     pageTitle: "关于灵境制造",
     productName: "灵境制造 V4",
-    version: "版本：2.0.0",
+    version: "版本：2.2.0",
     description: "基于神经逻辑网络(LNN)的智能制造AI推理与训练API服务",
     coreTech: "核心技术",
     techLnn: "LNN (Logical Neural Network) - 逻辑神经网络推理引擎",

@@ -4,7 +4,7 @@
 - $TC_DP6刀具表数据调用
 - G41/G42配合DISC偏置
 - G02/G03 CR=圆心半径模式
-- CYCLE81/CYCLE83钻孔循环
+- CYCLE81/CYCLE82/CYCLE83钻孔循环（81=简单钻，82=带暂停，83=啄钻）
 - CYCLE84攻丝循环
 - CYCLE86/CYCLE89镗孔循环
 - CYCLE76螺纹加工循环
@@ -120,11 +120,15 @@ class SiemensPostProcessor(BasePostProcessor):
         depth: float,
         dwell: float = 0.0,
     ) -> str:
-        # On Siemens 840D, CYCLE81 is the simple drilling cycle that
-        # is normally paired with a dwell at the bottom of the hole.
-        # CYCLE83 is the deep-hole peck-drilling cycle used when no
-        # dwell is requested.
-        cycle_code = "CYCLE81" if dwell > 0 else "CYCLE83"
+        # Siemens 840D 钻孔循环族：
+        #   CYCLE81 = 简单钻孔（无 dwell）
+        #   CYCLE82 = 钻孔 + 底部暂停（支持 dwell）
+        #   CYCLE83 = 深孔啄钻（无 dwell，分段进给）
+        # 之前实现错误：dwell>0 时仍用 CYCLE81（不支持 dwell 参数）。
+        if dwell > 0:
+            cycle_code = "CYCLE82"
+        else:
+            cycle_code = "CYCLE83"
         cfg = self.get_cycle_config("drilling", cycle_code)
         r_plane = self.safe_z_height
         peck_depth = cfg.get("peck_depth", 5.0)
@@ -133,12 +137,12 @@ class SiemensPostProcessor(BasePostProcessor):
 
         if dwell > 0:
             lines = [
-                f"N{self._next_block():05d} CYCLE81("
+                f"N{self._next_block():05d} CYCLE82("
                 f"{self._fmt(r_plane)}, {self._fmt(0.0)}, "
                 f"{self._fmt(retract_dist)}, {self._fmt(-abs(depth))}, "
                 f"{drill_feed}, {self._fmt(dwell)})",
                 f"N{self._next_block():05d} G00 X{self._fmt(x)} Y{self._fmt(y)}",
-                f"N{self._next_block():05d} CYCLE81",
+                f"N{self._next_block():05d} CYCLE82",
             ]
         else:
             lines = [

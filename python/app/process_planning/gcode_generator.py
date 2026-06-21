@@ -24,6 +24,7 @@ from app.postprocessor.base import BasePostProcessor
 from app.postprocessor.fanuc import FanucPostProcessor
 from app.postprocessor.siemens import SiemensPostProcessor
 from app.postprocessor.heidenhain import HeidenhainPostProcessor
+from app.postprocessor.xmachine import XMachineXM100PostProcessor
 from app.postprocessor.registry import PostProcessorRegistry
 
 
@@ -101,6 +102,7 @@ class GCodeGenerator:
         "fanuc_0i": FanucPostProcessor,
         "siemens_840d": SiemensPostProcessor,
         "heidenhain_tnc": HeidenhainPostProcessor,
+        "xmachine_xm100": XMachineXM100PostProcessor,
     }
 
     def __init__(self) -> None:
@@ -415,6 +417,7 @@ class GCodeGenerator:
         recommended_speed = str(cut_params.get("recommended_speed", "80 m/min"))
 
         method = op.machining_method.lower()
+        is_five_axis = controller_type == "xmachine_xm100"
 
         if "钻" in method:
             # === 钻孔类工序 ===
@@ -438,6 +441,10 @@ class GCodeGenerator:
             lines.append(f"S{spindle_speed} M03")
             lines.append(postprocessor._comment(f"进给: {recommended_feed}, 切速: {recommended_speed}"))
 
+            # 五轴模式：开启 RTCP
+            if is_five_axis and hasattr(postprocessor, "format_rtcp_on"):
+                lines.append(postprocessor.format_rtcp_on())
+
             # 使用后处理器的钻孔固定循环
             lines.append(postprocessor.format_cycle_drill(
                 x=0.0, y=0.0, z=-abs(depth),
@@ -446,12 +453,35 @@ class GCodeGenerator:
             ))
             lines.append("G80")  # 取消固定循环
 
+            # 五轴模式：关闭 RTCP
+            if is_five_axis and hasattr(postprocessor, "format_rtcp_off"):
+                lines.append(postprocessor.format_rtcp_off())
+
         elif "铣" in method:
             # === 铣削类工序 ===
             lines.append(postprocessor._comment(f"铣削: {op.feature_name}"))
             lines.append("S2500 M03")
             feed_rate = int(300 * feed_factor)
-            lines.append(f"G01 Z{-5.0:.3f} F{feed_rate}")
+
+            if is_five_axis and hasattr(postprocessor, "format_rtcp_on"):
+                # 五轴铣削：RTCP + A/C 轴联动
+                lines.append(postprocessor.format_rtcp_on())
+                # 五轴联动铣削：A轴前倾，C轴旋转
+                lines.append(postprocessor.format_linear_move(
+                    x=0.0, y=0.0, z=-5.0, feed=feed_rate,
+                    a=5.0, c=0.0,
+                ))
+                lines.append(postprocessor.format_linear_move(
+                    x=10.0, y=0.0, z=-5.0, feed=feed_rate,
+                    a=5.0, c=45.0,
+                ))
+                lines.append(postprocessor.format_linear_move(
+                    x=10.0, y=10.0, z=-5.0, feed=feed_rate,
+                    a=5.0, c=90.0,
+                ))
+                lines.append(postprocessor.format_rtcp_off())
+            else:
+                lines.append(f"G01 Z{-5.0:.3f} F{feed_rate}")
 
         elif "车" in method:
             # === 车削类工序 ===
@@ -465,12 +495,45 @@ class GCodeGenerator:
             lines.append("G85 X0 Y0 Z-30.0 R3.0 F80")
             lines.append("G80")
 
+        elif "五轴" in method or "3+2" in method or "联动" in method:
+            # === 五轴专用工序 ===
+            lines.append(postprocessor._comment(f"五轴加工: {op.feature_name}"))
+            lines.append("S3000 M03")
+            feed_rate = int(200 * feed_factor)
+
+            if is_five_axis and hasattr(postprocessor, "format_rtcp_on"):
+                lines.append(postprocessor.format_rtcp_on())
+                # 五轴联动路径
+                lines.append(postprocessor.format_linear_move(
+                    x=0.0, y=0.0, z=-3.0, feed=feed_rate,
+                    a=10.0, c=0.0,
+                ))
+                lines.append(postprocessor.format_linear_move(
+                    x=20.0, y=0.0, z=-3.0, feed=feed_rate,
+                    a=10.0, c=90.0,
+                ))
+                lines.append(postprocessor.format_linear_move(
+                    x=20.0, y=20.0, z=-3.0, feed=feed_rate,
+                    a=10.0, c=180.0,
+                ))
+                lines.append(postprocessor.format_linear_move(
+                    x=0.0, y=20.0, z=-3.0, feed=feed_rate,
+                    a=10.0, c=270.0,
+                ))
+                lines.append(postprocessor.format_rtcp_off())
+            else:
+                lines.append(postprocessor._comment("警告: 五轴工序需要 xmachine_xm100 控制器"))
+                lines.append(f"G01 Z{-3.0:.3f} F{feed_rate}")
+
         else:
             # === 通用工序 ===
             lines.append(postprocessor._comment(f"加工: {op.feature_name} ({op.machining_method})"))
 
         # 工序结束后抬刀至安全高度
-        lines.append(f"G00 Z{safe_z:.3f}")
+        if is_five_axis and hasattr(postprocessor, "format_rapid_move"):
+            lines.append(postprocessor.format_rapid_move(x=0.0, y=0.0, z=safe_z))
+        else:
+            lines.append(f"G00 Z{safe_z:.3f}")
 
         return lines
 

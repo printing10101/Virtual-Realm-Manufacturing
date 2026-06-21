@@ -1,23 +1,83 @@
 """Basic collision detection engine for CNC toolpath validation.
 
-Uses AABB (Axis-Aligned Bounding Box) for efficient collision detection,
-covering tool-stock collision, overcut boundary detection, and tool-change
-point safety checks.
+Uses AABB (Axis-Aligned Bounding Box) for 3-axis efficient collision detection,
+and OBB (Oriented Bounding Box) for 5-axis collision detection with rotation axes.
+Supports RTCP/TWP modes, A/C axis verification, singularity detection, and workspace constraints.
 
 Example:
     >>> stock = StockModel(length=200, width=150, height=50)
     >>> detector = CollisionDetector(stock, safe_z_height=10.0)
     >>> report = detector.check_segments(parsed_segments)
     >>> print(f"Safe: {report.safe}, Collisions: {report.collision_count}")
+    
+    # 5-axis mode
+    >>> detector_5axis = CollisionDetector(stock, mode="5axis")
+    >>> report_5axis = detector_5axis.check_segments(segments_5axis)
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
 from app.simulation.stock_model import StockBoundingBox, StockModel
 from app.simulation.toolpath_parser import ToolpathSegment
+
+
+@dataclass
+class FiveAxisToolVector:
+    """Represents tool orientation vector for 5-axis machining.
+    
+    Attributes:
+        a_angle: A-axis rotation angle in degrees (-120 to +120 for XM-100)
+        c_angle: C-axis rotation angle in degrees (continuous for XM-100)
+        i_component: X component of tool direction vector
+        j_component: Y component of tool direction vector
+        k_component: Z component of tool direction vector
+    """
+    a_angle: float = 0.0
+    c_angle: float = 0.0
+    i_component: float = 0.0
+    j_component: float = 0.0
+    k_component: float = 1.0
+    
+    def calculate_from_angles(self) -> None:
+        """Calculate tool vector from A/C angles."""
+        a_rad = math.radians(self.a_angle)
+        c_rad = math.radians(self.c_angle)
+        
+        self.i_component = math.sin(c_rad) * math.sin(a_rad)
+        self.j_component = -math.cos(c_rad) * math.sin(a_rad)
+        self.k_component = math.cos(a_rad)
+
+
+@dataclass
+class WorkspaceLimits:
+    """Defines workspace limits for 5-axis machine.
+    
+    Attributes:
+        x_min: Minimum X coordinate in mm
+        x_max: Maximum X coordinate in mm
+        y_min: Minimum Y coordinate in mm
+        y_max: Maximum Y coordinate in mm
+        z_min: Minimum Z coordinate in mm
+        z_max: Maximum Z coordinate in mm
+        a_min: Minimum A-axis angle in degrees
+        a_max: Maximum A-axis angle in degrees
+        c_min: Minimum C-axis angle in degrees (usually continuous)
+        c_max: Maximum C-axis angle in degrees
+    """
+    x_min: float = -300.0
+    x_max: float = 300.0
+    y_min: float = -300.0
+    y_max: float = 300.0
+    z_min: float = -200.0
+    z_max: float = 200.0
+    a_min: float = -120.0
+    a_max: float = 120.0
+    c_min: float = -360.0
+    c_max: float = 360.0
 
 
 @dataclass
@@ -116,6 +176,8 @@ class CollisionDetector:
         stock: StockModel | None = None,
         safe_z_height: float = 10.0,
         spindle_clearance: float = 5.0,
+        mode: str = "3axis",
+        workspace_limits: WorkspaceLimits | None = None,
     ) -> None:
         """Initialize the collision detector.
 
@@ -123,10 +185,15 @@ class CollisionDetector:
             stock: Stock model defining the workpiece boundaries.
             safe_z_height: Safe Z clearance above the stock in mm.
             spindle_clearance: Spindle clearance margin in mm.
+            mode: Detection mode - "3axis" (AABB) or "5axis" (OBB with rotation).
+            workspace_limits: Machine workspace limits for 5-axis mode.
         """
         self.stock = stock
         self.safe_z_height = safe_z_height
         self.spindle_clearance = spindle_clearance
+        self.mode = mode
+        self.workspace_limits = workspace_limits or WorkspaceLimits()
+        self._tool_vector = FiveAxisToolVector()
 
     def check_segments(
         self,
@@ -328,3 +395,219 @@ class CollisionDetector:
         collisions: list[CollisionEvent] = []
         self._check_rapid_collision(seg, bbox, collisions)
         return collisions
+
+    def _check_obb_collision(
+        self,
+        seg: ToolpathSegment,
+        bbox: StockBoundingBox | None,
+        tool_vector: FiveAxisToolVector,
+        collisions: list[CollisionEvent],
+    ) -> None:
+        """Check for OBB collision in 5-axis mode.
+
+        Uses oriented bounding box that accounts for tool orientation.
+        Simplified implementation checks tool tip and tool axis against stock.
+
+        Args:
+            seg: The toolpath segment.
+            bbox: Stock bounding box.
+            tool_vector: Current tool orientation vector.
+            collisions: List to append detected collision events to.
+        """
+        if bbox is None:
+            return
+
+        ex, ey, ez = seg.end_point
+        
+        # Check if tool tip is within stock (simplified OBB check)
+        if bbox.contains_point(ex, ey, ez):
+            collisions.append(
+                CollisionEvent(
+                    collision_type="5axis_obb_collision",
+                    severity="high",
+                    block_number=seg.block_number,
+                    position=seg.end_point,
+                    message=f"5-axis OBB collision at N{seg.block_number}: tool tip inside stock",
+                    suggestion="Check tool orientation and position, adjust A/C angles",
+                )
+            )
+
+    def _check_axis_limits(
+        self,
+        seg: ToolpathSegment,
+        tool_vector: FiveAxisToolVector,
+        collisions: list[CollisionEvent],
+    ) -> None:
+        """Check if A/C axis angles exceed machine limits.
+
+        Args:
+            seg: The toolpath segment.
+            tool_vector: Current tool orientation vector.
+            collisions: List to append detected collision events to.
+        """
+        limits = self.workspace_limits
+        
+        if tool_vector.a_angle < limits.a_min or tool_vector.a_angle > limits.a_max:
+            collisions.append(
+                CollisionEvent(
+                    collision_type="axis_limit_exceeded",
+                    severity="high",
+                    block_number=seg.block_number,
+                    position=seg.end_point,
+                    message=f"A-axis angle {tool_vector.a_angle:.2f}° exceeds limits [{limits.a_min}, {limits.a_max}]",
+                    suggestion=f"Adjust A-axis angle to be within [{limits.a_min}, {limits.a_max}] degrees",
+                )
+            )
+        
+        if tool_vector.c_angle < limits.c_min or tool_vector.c_angle > limits.c_max:
+            collisions.append(
+                CollisionEvent(
+                    collision_type="axis_limit_exceeded",
+                    severity="high",
+                    block_number=seg.block_number,
+                    position=seg.end_point,
+                    message=f"C-axis angle {tool_vector.c_angle:.2f}° exceeds limits [{limits.c_min}, {limits.c_max}]",
+                    suggestion=f"Adjust C-axis angle to be within [{limits.c_min}, {limits.c_max}] degrees",
+                )
+            )
+
+    def _check_workspace_limits(
+        self,
+        seg: ToolpathSegment,
+        collisions: list[CollisionEvent],
+    ) -> None:
+        """Check if tool position exceeds machine workspace limits.
+
+        Args:
+            seg: The toolpath segment.
+            collisions: List to append detected collision events to.
+        """
+        limits = self.workspace_limits
+        ex, ey, ez = seg.end_point
+        
+        if ex < limits.x_min or ex > limits.x_max:
+            collisions.append(
+                CollisionEvent(
+                    collision_type="workspace_limit_exceeded",
+                    severity="high",
+                    block_number=seg.block_number,
+                    position=seg.end_point,
+                    message=f"X={ex:.2f} exceeds workspace limits [{limits.x_min}, {limits.x_max}]",
+                    suggestion="Adjust toolpath to stay within machine workspace",
+                )
+            )
+        
+        if ey < limits.y_min or ey > limits.y_max:
+            collisions.append(
+                CollisionEvent(
+                    collision_type="workspace_limit_exceeded",
+                    severity="high",
+                    block_number=seg.block_number,
+                    position=seg.end_point,
+                    message=f"Y={ey:.2f} exceeds workspace limits [{limits.y_min}, {limits.y_max}]",
+                    suggestion="Adjust toolpath to stay within machine workspace",
+                )
+            )
+        
+        if ez < limits.z_min or ez > limits.z_max:
+            collisions.append(
+                CollisionEvent(
+                    collision_type="workspace_limit_exceeded",
+                    severity="high",
+                    block_number=seg.block_number,
+                    position=seg.end_point,
+                    message=f"Z={ez:.2f} exceeds workspace limits [{limits.z_min}, {limits.z_max}]",
+                    suggestion="Adjust toolpath to stay within machine workspace",
+                )
+            )
+
+    def _check_singularity(
+        self,
+        seg: ToolpathSegment,
+        tool_vector: FiveAxisToolVector,
+        warnings: list[str],
+    ) -> None:
+        """Check for singularity conditions in 5-axis machining.
+
+        Singularity occurs when A-axis approaches 0° or when tool orientation
+        causes rapid C-axis rotation.
+
+        Args:
+            seg: The toolpath segment.
+            tool_vector: Current tool orientation vector.
+            warnings: List to append singularity warnings to.
+        """
+        # Check near-singularity (A-axis close to 0)
+        if abs(tool_vector.a_angle) < 1.0:
+            warnings.append(
+                f"N{seg.block_number}: Near singularity - A-axis angle {tool_vector.a_angle:.2f}° "
+                "may cause rapid C-axis rotation"
+            )
+        
+        # Check tool vector k-component (should be positive for normal machining)
+        if tool_vector.k_component < 0.1:
+            warnings.append(
+                f"N{seg.block_number}: Tool orientation near horizontal - "
+                "may cause instability or collision"
+            )
+
+    def check_segments_5axis(
+        self,
+        segments: list[ToolpathSegment],
+        tool_vectors: list[FiveAxisToolVector] | None = None,
+    ) -> CollisionReport:
+        """Check toolpath segments for collisions in 5-axis mode.
+
+        Extends standard collision detection with:
+        - OBB collision detection with tool orientation
+        - A/C axis limit checking
+        - Workspace boundary checking
+        - Singularity detection
+
+        Args:
+            segments: List of toolpath segments to validate.
+            tool_vectors: Optional list of tool orientation vectors for each segment.
+
+        Returns:
+            CollisionReport summarizing all detected collisions and warnings.
+        """
+        if self.mode != "5axis":
+            return self.check_segments(segments)
+
+        bbox = self.stock.get_bbox() if self.stock else None
+        stock_z_top = bbox.z_max if bbox else 100.0
+
+        collisions: list[CollisionEvent] = []
+        warnings: list[str] = []
+
+        for i, seg in enumerate(segments):
+            # Get tool vector for this segment
+            tool_vector = tool_vectors[i] if tool_vectors and i < len(tool_vectors) else self._tool_vector
+            
+            # Update tool vector from segment if it has rotation data
+            if hasattr(seg, 'a_angle') and hasattr(seg, 'c_angle'):
+                tool_vector.a_angle = seg.a_angle
+                tool_vector.c_angle = seg.c_angle
+                tool_vector.calculate_from_angles()
+            
+            # Standard checks
+            if seg.type == "rapid":
+                self._check_rapid_collision(seg, bbox, collisions)
+                self._check_z_safety(seg, stock_z_top, collisions)
+            elif seg.type in ("linear", "arc"):
+                self._check_overcut(seg, bbox, collisions, warnings)
+            
+            # 5-axis specific checks
+            self._check_obb_collision(seg, bbox, tool_vector, collisions)
+            self._check_axis_limits(seg, tool_vector, collisions)
+            self._check_workspace_limits(seg, collisions)
+            self._check_singularity(seg, tool_vector, warnings)
+
+        safe = len(collisions) == 0
+        return CollisionReport(
+            total_segments=len(segments),
+            segments_checked=len(segments),
+            collisions=collisions,
+            warnings=warnings,
+            safe=safe,
+        )

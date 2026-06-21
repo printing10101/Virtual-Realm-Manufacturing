@@ -58,6 +58,9 @@ from app.api.v1 import (
     template_evolution_routes as template_evolution,
     template_update_routes as template_updates,
     pattern_engine_routes as pattern_engine,
+    knowledge_graph as knowledge_graph_routes,
+    status as status_routes,
+    dxf_pipeline as dxf_pipeline_routes,
 )
 from app.rag import routes as rag_routes
 from app.ai import ollama_routes
@@ -92,7 +95,7 @@ def get_state_file_path() -> str:
 
 app = FastAPI(
     title="灵境制造 API",
-    version="2.0.0",
+    version="2.2.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -359,6 +362,9 @@ app.include_router(template_evolution.router)
 app.include_router(template_updates.router)
 app.include_router(pattern_engine.router)
 app.include_router(flywheel.router)
+app.include_router(knowledge_graph_routes.router)
+app.include_router(status_routes.router)
+app.include_router(dxf_pipeline_routes.router)
 
 register_exception_handlers(app)
 

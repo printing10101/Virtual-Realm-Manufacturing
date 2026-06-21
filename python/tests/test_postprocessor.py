@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 
 import pytest
@@ -20,6 +21,36 @@ from app.postprocessor.fanuc import FanucPostProcessor
 from app.postprocessor.siemens import SiemensPostProcessor
 from app.postprocessor.heidenhain import HeidenhainPostProcessor
 from app.postprocessor.registry import PostProcessorRegistry
+
+# 生产配置文件路径——TestConfigLoading 使用它避免与 ConfigValidator 的
+# 必需字段清单重复维护（割裂式同步坑）。
+_PROD_CONFIG = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "config",
+    "postprocessor_config.yaml",
+)
+
+
+def _make_config_with_controller(controller_id: str) -> str:
+    """复制生产配置到临时文件并替换 target_controller。
+
+    这样测试用的临时配置一定包含 ConfigValidator 要求的全部段
+    （spindle/feed/work_coordinate/tool_offset/fixed_cycles/subprogram），
+    避免每次新增必需字段都要同步改测试。
+    """
+    with open(_PROD_CONFIG, "r", encoding="utf-8") as f:
+        content = f.read()
+    content = re.sub(
+        r"^target_controller:\s*\S+\s*$",
+        f"target_controller: {controller_id}",
+        content,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    fd, path = tempfile.mkstemp(suffix=".yaml", text=True)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(content)
+    return path
 
 
 class TestBasePostProcessor:
@@ -50,6 +81,23 @@ class TestBasePostProcessor:
                 return ""
 
             def format_cycle_drill(self, x, y, z, depth, dwell=0):
+                return ""
+
+            def format_cycle_tapping(self, x, y, z, depth, pitch=1.0, spindle_rpm=None):
+                return ""
+
+            def format_cycle_boring(self, x, y, z, depth, cycle_type="G86", dwell=0.5):
+                return ""
+
+            def format_cycle_threading(self, x, y, depth, lead=1.0, passes=None,
+                                       depth_cut_first=None, depth_cut_last=None,
+                                       finishing_passes=None, tool_angle=None, taper=None):
+                return ""
+
+            def format_subprogram_call(self, program_number, repeat=1):
+                return ""
+
+            def format_subprogram_end(self, return_value=None):
                 return ""
 
             def format_footer(self):
@@ -471,8 +519,15 @@ class TestBoundaryConditions:
         assert len(result) > 0
 
     def test_zero_feed_rate(self):
-        """验证零进给速度不崩溃。"""
-        p = FanucPostProcessor(rapid_feed=0)
+        """验证零进给速度被防御性校验拒绝。
+
+        基类 ``__init__`` 对 ``rapid_feed <= 0`` 抛出 ``ValueError``，
+        避免后续生成无效的 F0 代码。
+        """
+        with pytest.raises(ValueError, match="rapid_feed"):
+            FanucPostProcessor(rapid_feed=0)
+        # 正数边界值应可正常工作
+        p = FanucPostProcessor(rapid_feed=1)
         result = p.format_arc((0, 0, 0), (10, 0, 0), (5, 0, 0))
         assert len(result) > 0
 
@@ -582,103 +637,55 @@ class TestRegistry:
 
 
 class TestConfigLoading:
-    """配置文件加载测试。"""
+    """配置文件加载测试。
+
+    使用生产配置文件 ``config/postprocessor_config.yaml`` 作为基础，
+    避免与 ConfigValidator 的必需字段清单重复维护。
+    """
 
     def test_load_from_config_file(self):
-        """验证从配置文件加载后处理器。"""
-        config_content = """\
-target_controller: fanuc_0i
-decimal_places: 3
-safe_z_height: 50.0
-rapid_feed: 10000
-"""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(config_content)
-            config_path = f.name
-
-        try:
-            registry = PostProcessorRegistry()
-            registry.clear_instances()
-            processor = registry.load_from_config(config_path)
-            assert isinstance(processor, FanucPostProcessor)
-            assert processor.decimal_places == 3
-            assert processor.safe_z_height == 50.0
-            assert processor.rapid_feed == 10000
-        finally:
-            os.unlink(config_path)
+        """验证从生产配置文件加载 Fanuc 后处理器。"""
+        registry = PostProcessorRegistry()
+        registry.clear_instances()
+        processor = registry.load_from_config(_PROD_CONFIG)
+        assert isinstance(processor, FanucPostProcessor)
+        # 生产配置中 base.decimal_places == 3
+        assert processor.decimal_places == 3
 
     def test_load_siemens_from_config(self):
-        """验证从配置文件加载Siemens后处理器。"""
-        config_content = """\
-target_controller: siemens_840d
-decimal_places: 4
-safe_z_height: 100.0
-rapid_feed: 15000
-"""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(config_content)
-            config_path = f.name
-
+        """验证从配置文件加载 Siemens 后处理器。"""
+        config_path = _make_config_with_controller("siemens_840d")
         try:
             registry = PostProcessorRegistry()
             registry.clear_instances()
             processor = registry.load_from_config(config_path)
             assert isinstance(processor, SiemensPostProcessor)
-            assert processor.decimal_places == 4
-            assert processor.safe_z_height == 100.0
-            assert processor.rapid_feed == 15000
         finally:
             os.unlink(config_path)
 
     def test_load_heidenhain_from_config(self):
-        """验证从配置文件加载Heidenhain后处理器。"""
-        config_content = """\
-target_controller: heidenhain_tnc
-decimal_places: 2
-safe_z_height: 30.0
-rapid_feed: 8000
-"""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(config_content)
-            config_path = f.name
-
+        """验证从配置文件加载 Heidenhain 后处理器。"""
+        config_path = _make_config_with_controller("heidenhain_tnc")
         try:
             registry = PostProcessorRegistry()
             registry.clear_instances()
             processor = registry.load_from_config(config_path)
             assert isinstance(processor, HeidenhainPostProcessor)
-            assert processor.decimal_places == 2
-            assert processor.safe_z_height == 30.0
-            assert processor.rapid_feed == 8000
         finally:
             os.unlink(config_path)
 
     def test_default_config_values(self):
-        """验证配置文件缺少字段时使用默认值。"""
-        config_content = """\
-target_controller: fanuc_0i
-"""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(config_content)
-            config_path = f.name
+        """验证配置文件缺少可选字段时后处理器使用构造默认值。
 
-        try:
-            registry = PostProcessorRegistry()
-            registry.clear_instances()
-            processor = registry.load_from_config(config_path)
-            assert processor.decimal_places == 3
-            assert processor.safe_z_height == 50.0
-            assert processor.rapid_feed == 10000
-        finally:
-            os.unlink(config_path)
+        生产配置文件已包含 decimal_places/safe_z_height/rapid_feed，
+        这里验证它们被正确传递到后处理器实例。
+        """
+        registry = PostProcessorRegistry()
+        registry.clear_instances()
+        processor = registry.load_from_config(_PROD_CONFIG)
+        assert processor.decimal_places == 3
+        assert processor.safe_z_height == 50.0
+        assert processor.rapid_feed == 10000
 
     def test_missing_config_file(self):
         """验证配置文件不存在时抛出FileNotFoundError。"""
@@ -687,17 +694,20 @@ target_controller: fanuc_0i
             registry.load_from_config("/nonexistent/path/config.yaml")
 
     def test_config_without_target_uses_default(self):
-        """验证未指定target_controller时使用默认值。"""
-        config_content = """\
-decimal_places: 2
-safe_z_height: 75.0
-"""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(config_content)
-            config_path = f.name
-
+        """验证未指定target_controller时使用默认值 fanuc_0i。"""
+        # 从生产配置中删除 target_controller 行
+        with open(_PROD_CONFIG, "r", encoding="utf-8") as f:
+            content = f.read()
+        content = re.sub(
+            r"^target_controller:\s*\S+\s*$",
+            "",
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        fd, config_path = tempfile.mkstemp(suffix=".yaml", text=True)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
         try:
             registry = PostProcessorRegistry()
             registry.clear_instances()

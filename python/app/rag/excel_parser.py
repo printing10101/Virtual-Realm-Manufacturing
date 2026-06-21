@@ -188,8 +188,8 @@ def parse_csv(file_path: str | Path) -> dict[str, Any]:
     
     try:
         result["file_size"] = file_path.stat().st_size
-    except OSError:
-        pass
+    except OSError as e:
+        logger.debug("无法获取文件大小: %s", e)
     
     try:
         import csv

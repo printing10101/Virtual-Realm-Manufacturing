@@ -1,0 +1,139 @@
+{
+  "title": "XM-100 知识图谱加工经验导入报告",
+  "machine": "XM-100 (Xmaker, Fanuc 0i 兼容)",
+  "timestamp": "2026-06-21 03:39:22",
+  "imported_records": [
+    {
+      "record_id": "XM100-REC-001",
+      "tool": "tool-endmill_wc_d10",
+      "material": "material-45steel",
+      "first_pass": true,
+      "stats": {
+        "process_nodes_updated": 2,
+        "tool_material_edges_updated": 1,
+        "process_feature_edges_updated": 2,
+        "confidence_adjustments": 1
+      }
+    },
+    {
+      "record_id": "XM100-REC-002",
+      "tool": "tool-endmill_wc_taper_d6",
+      "material": "material-aluminum_6061",
+      "first_pass": true,
+      "stats": {
+        "process_nodes_updated": 1,
+        "tool_material_edges_updated": 1,
+        "process_feature_edges_updated": 1,
+        "confidence_adjustments": 1
+      }
+    },
+    {
+      "record_id": "XM100-REC-003",
+      "tool": "tool-endmill_wc_d10",
+      "material": "material-stainless_304",
+      "first_pass": false,
+      "stats": {
+        "process_nodes_updated": 1,
+        "tool_material_edges_updated": 1,
+        "process_feature_edges_updated": 1,
+        "confidence_adjustments": 1
+      }
+    },
+    {
+      "record_id": "XM100-REC-004",
+      "tool": "tool-endmill_wc_micro_d1",
+      "material": "material-abs",
+      "first_pass": true,
+      "stats": {
+        "process_nodes_updated": 1,
+        "tool_material_edges_updated": 1,
+        "process_feature_edges_updated": 1,
+        "confidence_adjustments": 1
+      }
+    },
+    {
+      "record_id": "XM100-REC-005",
+      "tool": "tool-facemill_wc_d50",
+      "material": "material-45steel",
+      "first_pass": true,
+      "stats": {
+        "process_nodes_updated": 1,
+        "tool_material_edges_updated": 1,
+        "process_feature_edges_updated": 1,
+        "confidence_adjustments": 1
+      }
+    },
+    {
+      "record_id": "XM100-REC-006",
+      "tool": "tool-endmill_wc_taper_d6",
+      "material": "material-brass",
+      "first_pass": true,
+      "stats": {
+        "process_nodes_updated": 1,
+        "tool_material_edges_updated": 1,
+        "process_feature_edges_updated": 1,
+        "confidence_adjustments": 1
+      }
+    },
+    {
+      "record_id": "XM100-REC-007",
+      "tool": "tool-endmill_wc_d10",
+      "material": "material-45steel",
+      "first_pass": true,
+      "stats": {
+        "process_nodes_updated": 1,
+        "tool_material_edges_updated": 1,
+        "process_feature_edges_updated": 1,
+        "confidence_adjustments": 1
+      }
+    },
+    {
+      "record_id": "XM100-REC-008",
+      "tool": "tool-vbit_wc_60deg",
+      "material": "material-wood_walnut",
+      "first_pass": true,
+      "stats": {
+        "process_nodes_updated": 1,
+        "tool_material_edges_updated": 1,
+        "process_feature_edges_updated": 1,
+        "confidence_adjustments": 1
+      }
+    }
+  ],
+  "graph_stats": {
+    "node_count": 27,
+    "edge_count": 15,
+    "node_types": {
+      "process": 8,
+      "tool": 5,
+      "material": 6,
+      "feature": 8
+    },
+    "edge_types": {
+      "APPLIED_TO": 8,
+      "SUITABLE_FOR": 7
+    }
+  },
+  "qa_log": [
+    {
+      "question": "45钢可以用哪些刀具加工？",
+      "answer": "知识图谱中有 2 把刀具适配 45钢：tool-endmill_wc_d10, tool-facemill_wc_d50（可信度分别为 0.75, 0.55）"
+    },
+    {
+      "question": "φ10立铣刀(tool-endmill_wc_d10)能加工哪些材料？",
+      "answer": "知识图谱中该刀具适配 2 种材料：material-45steel, material-stainless_304（可信度分别为 0.75, 0.40）"
+    },
+    {
+      "question": "XM-100 有哪些锥度球头刀适合五轴加工？",
+      "answer": "知识图谱中有 1 把锥度球头刀：tool-endmill_wc_taper_d6，均标记 suitable_for_5axis=true，适合 RTCP/TWP 五轴加工"
+    },
+    {
+      "question": "当前知识图谱的规模如何？",
+      "answer": "节点 27 个，关系 15 条。节点类型分布: {'process': 8, 'tool': 5, 'material': 6, 'feature': 8}，关系类型分布: {'APPLIED_TO': 8, 'SUITABLE_FOR': 7}"
+    },
+    {
+      "question": "哪些工艺已有 XM-100 实测数据？",
+      "answer": "有 8 个工艺节点已有实测数据：process-5axis-curve-aluminum(n=1, 合格率=100%); process-5axis-impeller-brass(n=1, 合格率=100%); process-engraving-abs(n=1, 合格率=100%); process-facemill-steel(n=1, 合格率=100%); process-shoulder-mill-steel-finish(n=1, 合格率=100%); process-shoulder-mill-steel-rough(n=2, 合格率=100%); process-slot-mill-304(n=1, 合格率=0%); process-vcarve-wood(n=1, 合格率=100%)"
+    }
+  ]
+}
