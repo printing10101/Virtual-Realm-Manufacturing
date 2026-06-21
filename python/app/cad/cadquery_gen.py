@@ -14,6 +14,8 @@ from typing import Any
 
 import cadquery as cq
 
+from app.cad.advanced_features import AdvancedFeatureBuilder
+
 logger = logging.getLogger(__name__)
 
 
@@ -197,6 +199,42 @@ class CadQueryGenerator:
                 "3) CadQuery 版本不兼容。"
                 "请检查脚本内容和几何参数，或查看日志获取详细错误信息。"
             ) from e
+
+    def generate_with_features(
+        self,
+        params: dict[str, Any],
+        features: list[dict[str, Any]] | None = None,
+        output_format: str = "stl",
+    ) -> str:
+        """带高级特征的 3D 模型生成。
+
+        Args:
+            params: 同 generate_3d_model
+            features: 特征列表，每项 dict 包含 type 字段：
+                - "chamfer": {length, angle?, edges_selector?}
+                - "fillet": {radius, edges_selector?}
+                - "step": {length?, width?, height?, offset_x?, offset_y?, offset_z?}
+                - "slot": {center_x, center_y, length, width, depth, axis?, surface_z?}
+            output_format: 输出格式（stl/step/obj/gltf）
+
+        Returns:
+            输出文件路径
+        """
+        logger.info("生成带特征的 3D 模型: params=%s features=%d", params, len(features or []))
+
+        shape_type, dimensions, position = _unpack_generation_params(params)
+        base = _build_solid(shape_type, dimensions, position)
+
+        if features:
+            builder = AdvancedFeatureBuilder()
+            base = builder.apply_features(base, features)
+
+        output_dir = Path(tempfile.gettempdir()) / "cadquery_models"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / f"model_{shape_type}_with_features.{output_format}"
+        cq.exporters.export(base, str(output_path))
+        logger.info("带特征的 3D 模型已导出: %s", output_path)
+        return str(output_path)
 
     def generate_from_views(self, front: str, top: str, side: str) -> str:
         """Generate 3D model from three-view drawing descriptions."""

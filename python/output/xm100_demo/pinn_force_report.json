@@ -1,0 +1,280 @@
+{
+  "title": "XM-100 PINN 切削力预测展示报告",
+  "machine": "XM-100 (Xmaker, Fanuc 0i 兼容)",
+  "pinn_training_range": {
+    "speed_rpm": [
+      500,
+      10000
+    ],
+    "feed_mm_min": [
+      100,
+      5000
+    ],
+    "depth_mm": [
+      0.1,
+      5.0
+    ]
+  },
+  "timestamp": "2026-06-21 03:39:17",
+  "scenarios": {
+    "material_comparison": [
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 6000,
+        "feed": 800,
+        "depth": 1.0,
+        "fx": 108.509521484375,
+        "fy": 145.42686462402344,
+        "fz": 362.4179382324219,
+        "method": "pinn",
+        "elapsed_ms": 16.782399965450168,
+        "resultant": 405.3
+      },
+      {
+        "material": "aluminum_6061",
+        "tool": "endmill_d10",
+        "speed": 8000,
+        "feed": 1200,
+        "depth": 1.5,
+        "fx": 220.49232482910156,
+        "fy": 295.3190612792969,
+        "fz": 736.0508422851562,
+        "method": "pinn",
+        "elapsed_ms": 1.0012000566348433,
+        "resultant": 823.17
+      },
+      {
+        "material": "stainless_304",
+        "tool": "endmill_d10",
+        "speed": 5000,
+        "feed": 600,
+        "depth": 0.8,
+        "fx": 71.29315948486328,
+        "fy": 95.55799102783203,
+        "fz": 238.21054077148438,
+        "method": "pinn",
+        "elapsed_ms": 0.7943999953567982,
+        "resultant": 266.38
+      },
+      {
+        "material": "titanium_tc4",
+        "tool": "endmill_d10",
+        "speed": 4000,
+        "feed": 400,
+        "depth": 0.5,
+        "fx": 32.44230270385742,
+        "fy": 43.46553421020508,
+        "fz": 108.52198028564453,
+        "method": "pinn",
+        "elapsed_ms": 0.6816999521106482,
+        "resultant": 121.32
+      },
+      {
+        "material": "cast_iron_ht200",
+        "tool": "endmill_d10",
+        "speed": 6000,
+        "feed": 900,
+        "depth": 1.2,
+        "fx": 148.158935546875,
+        "fy": 198.4850311279297,
+        "fz": 494.6634216308594,
+        "method": "pinn",
+        "elapsed_ms": 0.6444000173360109,
+        "resultant": 553.21
+      },
+      {
+        "material": "copper",
+        "tool": "endmill_d10",
+        "speed": 7000,
+        "feed": 1000,
+        "depth": 1.0,
+        "fx": 107.61336517333984,
+        "fy": 144.22349548339844,
+        "fz": 359.4278259277344,
+        "method": "pinn",
+        "elapsed_ms": 0.6581000052392483,
+        "resultant": 401.96
+      }
+    ],
+    "pinn_vs_kienzle_45steel": {
+      "pinn": [
+        {
+          "material": "45steel",
+          "tool": "endmill_d10",
+          "speed": 6000,
+          "feed": 800,
+          "depth": 1.0,
+          "fx": 108.509521484375,
+          "fy": 145.42686462402344,
+          "fz": 362.4179382324219,
+          "method": "pinn",
+          "elapsed_ms": 0.6776999216526747,
+          "resultant": 405.3
+        }
+      ],
+      "kienzle": [
+        {
+          "material": "45steel",
+          "tool": "endmill_d10",
+          "speed": 6000,
+          "feed": 800,
+          "depth": 1.0,
+          "fx": 106.69676460233538,
+          "fy": 142.26235280311386,
+          "fz": 355.6558820077846,
+          "method": "kienzle",
+          "elapsed_ms": 0.3997000167146325,
+          "resultant": 397.64
+        }
+      ]
+    },
+    "speed_sweep_45steel": [
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 2000,
+        "feed": 800,
+        "depth": 1.0,
+        "fx": 108.8101577758789,
+        "fy": 145.76145935058594,
+        "fz": 363.202880859375,
+        "method": "pinn",
+        "elapsed_ms": 0.6343000568449497,
+        "resultant": 406.2
+      },
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 4000,
+        "feed": 800,
+        "depth": 1.0,
+        "fx": 106.64342498779297,
+        "fy": 142.91299438476562,
+        "fz": 356.1337585449219,
+        "method": "pinn",
+        "elapsed_ms": 0.7300999714061618,
+        "resultant": 398.28
+      },
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 6000,
+        "feed": 800,
+        "depth": 1.0,
+        "fx": 108.509521484375,
+        "fy": 145.42686462402344,
+        "fz": 362.4179382324219,
+        "method": "pinn",
+        "elapsed_ms": 0.7485999958589673,
+        "resultant": 405.3
+      },
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 8000,
+        "feed": 800,
+        "depth": 1.0,
+        "fx": 105.63956451416016,
+        "fy": 141.56900024414062,
+        "fz": 352.79803466796875,
+        "method": "pinn",
+        "elapsed_ms": 0.6282000103965402,
+        "resultant": 394.55
+      },
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 10000,
+        "feed": 800,
+        "depth": 1.0,
+        "fx": 110.7146224975586,
+        "fy": 148.4020233154297,
+        "fz": 369.7462158203125,
+        "method": "pinn",
+        "elapsed_ms": 0.6588000105693936,
+        "resultant": 413.51
+      }
+    ],
+    "depth_sweep_45steel": [
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 6000,
+        "feed": 800,
+        "depth": 0.2,
+        "fx": 7.36531400680542,
+        "fy": 9.761064529418945,
+        "fz": 24.574018478393555,
+        "method": "pinn",
+        "elapsed_ms": 0.6531999679282308,
+        "resultant": 27.45
+      },
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 6000,
+        "feed": 800,
+        "depth": 0.5,
+        "fx": 34.85740661621094,
+        "fy": 46.76401138305664,
+        "fz": 116.70832061767578,
+        "method": "pinn",
+        "elapsed_ms": 0.6286000134423375,
+        "resultant": 130.47
+      },
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 6000,
+        "feed": 800,
+        "depth": 1.0,
+        "fx": 108.509521484375,
+        "fy": 145.42686462402344,
+        "fz": 362.4179382324219,
+        "method": "pinn",
+        "elapsed_ms": 0.7100999355316162,
+        "resultant": 405.3
+      },
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 6000,
+        "feed": 800,
+        "depth": 1.5,
+        "fx": 216.95704650878906,
+        "fy": 290.5722351074219,
+        "fz": 724.235595703125,
+        "method": "pinn",
+        "elapsed_ms": 0.6832999642938375,
+        "resultant": 809.95
+      },
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 6000,
+        "feed": 800,
+        "depth": 2.0,
+        "fx": 361.3310546875,
+        "fy": 483.7934265136719,
+        "fz": 1205.7249755859375,
+        "method": "pinn",
+        "elapsed_ms": 0.6769000319764018,
+        "resultant": 1348.48
+      },
+      {
+        "material": "45steel",
+        "tool": "endmill_d10",
+        "speed": 6000,
+        "feed": 800,
+        "depth": 3.0,
+        "fx": 731.172607421875,
+        "fy": 979.0841674804688,
+        "fz": 2439.75634765625,
+        "method": "pinn",
+        "elapsed_ms": 0.7007999811321497,
+        "resultant": 2728.67
+      }
+    ]
+  }
+}

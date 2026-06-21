@@ -78,8 +78,8 @@ def get_kienzle_coefficients(material: str) -> Dict[str, float]:
                 mat_coeffs = rule.get("details", {}).get("materials", {})
                 if material in mat_coeffs:
                     return mat_coeffs[material]
-    except (FileNotFoundError, json.JSONDecodeError, KeyError):
-        pass
+    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+        logger.debug("加载材料系数失败，使用默认值: %s", e)
 
     if material in DEFAULT_MATERIAL_COEFFICIENTS:
         return DEFAULT_MATERIAL_COEFFICIENTS[material]

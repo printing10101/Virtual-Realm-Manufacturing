@@ -169,5 +169,91 @@
     "material": "HSS",
     "application": "打中心孔定位",
     "description": "高速钢中心钻，用于钻孔前打中心孔定位"
+  },
+  {
+    "id": "tool_ball_nose_1",
+    "series": "ball_nose",
+    "name": "球头铣刀 R0.5",
+    "diameter_mm": 1,
+    "radius_mm": 0.5,
+    "material": "carbide",
+    "application": "五轴精加工",
+    "description": "硬质合金球头铣刀，五轴精加工标配，适合曲面精加工"
+  },
+  {
+    "id": "tool_ball_nose_2",
+    "series": "ball_nose",
+    "name": "球头铣刀 R1",
+    "diameter_mm": 2,
+    "radius_mm": 1,
+    "material": "carbide",
+    "application": "五轴精加工",
+    "description": "硬质合金球头铣刀，适合小型曲面精加工"
+  },
+  {
+    "id": "tool_ball_nose_4",
+    "series": "ball_nose",
+    "name": "球头铣刀 R2",
+    "diameter_mm": 4,
+    "radius_mm": 2,
+    "material": "carbide",
+    "application": "五轴精加工",
+    "description": "硬质合金球头铣刀，适合中型曲面精加工"
+  },
+  {
+    "id": "tool_ball_nose_6",
+    "series": "ball_nose",
+    "name": "球头铣刀 R3",
+    "diameter_mm": 6,
+    "radius_mm": 3,
+    "material": "carbide",
+    "application": "五轴精加工",
+    "description": "硬质合金球头铣刀，适合较大曲面精加工"
+  },
+  {
+    "id": "tool_ball_nose_10",
+    "series": "ball_nose",
+    "name": "球头铣刀 R5",
+    "diameter_mm": 10,
+    "radius_mm": 5,
+    "material": "carbide",
+    "application": "五轴精加工",
+    "description": "硬质合金球头铣刀，适合大曲面精加工"
+  },
+  {
+    "id": "tool_taper_ball_05_6",
+    "series": "taper_ball",
+    "name": "锥度球头刀 R0.5×6°",
+    "diameter_mm": 1,
+    "radius_mm": 0.5,
+    "taper_angle": 6,
+    "neck_length_mm": 10,
+    "material": "carbide",
+    "application": "五轴深腔加工",
+    "description": "锥度球头刀，适合深腔加工，避免刀柄干涉"
+  },
+  {
+    "id": "tool_taper_ball_1_6",
+    "series": "taper_ball",
+    "name": "锥度球头刀 R1×6°",
+    "diameter_mm": 2,
+    "radius_mm": 1,
+    "taper_angle": 6,
+    "neck_length_mm": 15,
+    "material": "carbide",
+    "application": "五轴深腔加工",
+    "description": "锥度球头刀，适合深腔加工，避免刀柄干涉"
+  },
+  {
+    "id": "tool_taper_ball_1_10",
+    "series": "taper_ball",
+    "name": "锥度球头刀 R1×10°",
+    "diameter_mm": 2,
+    "radius_mm": 1,
+    "taper_angle": 10,
+    "neck_length_mm": 20,
+    "material": "carbide",
+    "application": "五轴深腔加工",
+    "description": "锥度球头刀，适合深腔加工，避免刀柄干涉"
   }
 ]

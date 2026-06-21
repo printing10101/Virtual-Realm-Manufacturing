@@ -96,9 +96,6 @@ class FanucPostProcessor(BasePostProcessor):
             f"R{self._fmt(radius)} F{feed}"
         )
 
-    def format_coolant(self, state: str) -> str:
-        return self._format_coolant(state) or "M09"
-
     def format_tool_compensation(
         self,
         length_offset: int = 0,

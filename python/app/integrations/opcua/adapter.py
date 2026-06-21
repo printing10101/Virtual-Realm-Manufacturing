@@ -231,8 +231,8 @@ class OPCUAAdapter:
                 if self._client:
                     try:
                         self._run_coro(self._client.disconnect())
-                    except Exception:
-                        pass
+                    except Exception as cleanup_exc:  # noqa: BLE001
+                        logger.debug("断开连接清理失败: %s", cleanup_exc)
                 raise
 
         except ImportError as exc:
@@ -306,7 +306,8 @@ class OPCUAAdapter:
                                 if sub_browse.Name.lower() in target_names:
                                     node_id = sub_child.nodeid.to_string()
                                     discovered_nodes.append(node_id)
-                            except Exception:
+                            except Exception as browse_exc:  # noqa: BLE001
+                                logger.debug("浏览子节点失败: %s", browse_exc)
                                 continue
 
                     # Also check if the child itself matches
@@ -314,7 +315,8 @@ class OPCUAAdapter:
                         node_id = child.nodeid.to_string()
                         discovered_nodes.append(node_id)
 
-                except Exception:
+                except Exception as child_exc:  # noqa: BLE001
+                    logger.debug("处理子节点失败: %s", child_exc)
                     continue
 
         except Exception as exc:

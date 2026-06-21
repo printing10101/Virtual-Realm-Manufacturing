@@ -16,6 +16,7 @@ import logging
 import math
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from app.dxf.dxf_parser import (
@@ -184,11 +185,12 @@ class FeatureExtractor:
     def __init__(self) -> None:
         logger.info("FeatureExtractor初始化完成")
 
-    def extract(self, parse_result: DxfParseResult) -> FeatureExtractionResult:
+    def extract(self, parse_result) -> FeatureExtractionResult:
         """从DXF解析结果中提取加工特征。
 
         Args:
-            parse_result: DxfParser的解析结果
+            parse_result: DxfParseResult 或者 DXF 文件路径（str / Path）
+                          ——传字符串时会自动 parse，方便调用方单步骤使用
 
         Returns:
             FeatureExtractionResult: 包含孔和平面特征列表
@@ -199,6 +201,11 @@ class FeatureExtractor:
         if parse_result is None:
             raise DxfFeatureError("DXF解析结果为空，无法提取特征。"
                                   "请先调用DxfParser.parse()获取解析结果。")
+
+        # 兼容字符串/路径输入：自动 parse
+        if isinstance(parse_result, (str, Path)):
+            from app.dxf.dxf_parser import DxfParser
+            parse_result = DxfParser().parse(parse_result)
 
         result = FeatureExtractionResult()
 

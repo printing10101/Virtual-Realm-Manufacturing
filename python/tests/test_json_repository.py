@@ -68,7 +68,7 @@ class TestJsonRepositoryCreate:
 
     def test_create_duplicate_id_raises(self, repository):
         repository.create({"id": "duplicate", "name": "First"})
-        with pytest.raises(ValueError, match="Record already exists"):
+        with pytest.raises(ValueError, match="已存在"):
             repository.create({"id": "duplicate", "name": "Second"})
 
     def test_create_timestamp_set(self, repository):

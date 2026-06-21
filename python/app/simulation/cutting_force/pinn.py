@@ -42,7 +42,7 @@ class CuttingForcePINN(nn.Module):
         3. 输出头预测三向切削力
 
     输入参数归一化范围 [0, 1]：
-        - speed_norm: 主轴转速归一化 (范围: 500~10000 rpm)
+        - speed_norm: 主轴转速归一化 (范围: 500~20000 rpm)
         - feed_norm: 进给量归一化 (范围: 100~5000 mm/min)
         - depth_norm: 切深归一化 (范围: 0.1~5.0 mm)
 
@@ -55,7 +55,7 @@ class CuttingForcePINN(nn.Module):
 
     # 输入参数归一化范围
     PARAM_RANGES: Dict[str, Tuple[float, float]] = {
-        "speed": (500.0, 10000.0),
+        "speed": (500.0, 20000.0),
         "feed": (100.0, 5000.0),
         "depth": (0.1, 5.0),
     }

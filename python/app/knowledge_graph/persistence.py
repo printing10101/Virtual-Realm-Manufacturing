@@ -24,9 +24,11 @@ from typing import Any, Callable, Optional, Sequence
 from sqlalchemy.orm import Session
 
 from app.knowledge_graph.graph_store import GraphStore
+from app.knowledge_graph.models import KGEdge, KGNode
 from app.knowledge_graph.repository import (
     KnowledgeGraphRepository,
     SessionFactory,
+    _new_edge_id,
     get_sync_sessionmaker,
 )
 
@@ -111,25 +113,38 @@ class GraphPersistence:
                 if clear_first:
                     # 先清空关系再清空节点，避免某些数据库（如 SQLite 默认
                     # 关闭外键）下出现孤儿关系。
-                    from app.knowledge_graph.models import KGEdge, KGNode
-
                     session.query(KGEdge).delete()
                     session.flush()
                     session.query(KGNode).delete()
                     session.flush()
 
                 # --- 节点 ---
+                # 内联 upsert 逻辑到同一会话，保证事务原子性
+                # （之前调用 self._repo.upsert_node 会开启独立会话并独立 commit，
+                #  导致 clear_first 回滚时已 commit 的 upsert 无法回滚）
                 for nid, data in graph._graph.nodes(data=True):
                     node_type = data.get("type", "")
                     properties = dict(data.get("properties", {}))
-                    self._repo.upsert_node(
-                        node_id=str(nid),
-                        node_type=node_type,
-                        properties=properties,
-                    )
+                    existing_node = session.get(KGNode, str(nid))
+                    if existing_node is None:
+                        session.add(
+                            KGNode(
+                                node_id=str(nid),
+                                node_type=node_type,
+                                properties=properties,
+                            )
+                        )
+                    else:
+                        existing_node.node_type = node_type
+                        merged = dict(existing_node.properties or {})
+                        merged.update(properties)
+                        existing_node.properties = merged
                     nodes_written += 1
 
                 # --- 关系 ---
+                # 同样内联 upsert 逻辑，避免独立会话破坏原子性
+                from sqlalchemy import and_, select
+
                 for u, v, k, data in graph._graph.edges(keys=True, data=True):
                     edge_type = k
                     properties = dict(data.get("properties", {}))
@@ -146,13 +161,32 @@ class GraphPersistence:
                         for key, val in properties.items()
                         if key != "confidence"
                     }
-                    self._repo.upsert_edge(
-                        source_id=str(u),
-                        target_id=str(v),
-                        edge_type=edge_type,
-                        confidence=confidence_f,
-                        properties=props_for_db,
+                    # 查询现有边（不主动校验端点节点存在性，因为节点
+                    # 已在同一事务内 upsert，外键约束会保证一致性）
+                    stmt = select(KGEdge).where(
+                        and_(
+                            KGEdge.source_id == str(u),
+                            KGEdge.target_id == str(v),
+                            KGEdge.edge_type == edge_type,
+                        )
                     )
+                    existing_edge = session.execute(stmt).scalar_one_or_none()
+                    if existing_edge is None:
+                        session.add(
+                            KGEdge(
+                                edge_id=_new_edge_id(),
+                                source_id=str(u),
+                                target_id=str(v),
+                                edge_type=edge_type,
+                                confidence=confidence_f,
+                                properties=props_for_db,
+                            )
+                        )
+                    else:
+                        existing_edge.confidence = confidence_f
+                        merged = dict(existing_edge.properties or {})
+                        merged.update(props_for_db)
+                        existing_edge.properties = merged
                     edges_written += 1
 
                 session.commit()

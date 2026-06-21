@@ -184,19 +184,19 @@ async function setupCommonMocks(page: Page) {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ version: '2.0.0', commit: 'e2e-flywheel' }),
+      body: JSON.stringify({ version: '2.2.0', commit: 'e2e-flywheel' }),
     }),
   )
   await page.route('**/api/health/ping', (route) =>
     route.fulfill({ status: 200, body: JSON.stringify({ ping: true }) }),
   )
   await page.route('**/api/health', (route) =>
-    route.fulfill({ status: 200, body: JSON.stringify({ status: 'ok', version: '2.0.0' }) }),
+    route.fulfill({ status: 200, body: JSON.stringify({ status: 'ok', version: '2.2.0' }) }),
   )
   await page.route('**/health', (route) =>
     route.fulfill({
       status: 200,
-      body: JSON.stringify({ status: 'healthy', timestamp: Date.now(), version: '2.0.0', uptime: 7200 }),
+      body: JSON.stringify({ status: 'healthy', timestamp: Date.now(), version: '2.2.0', uptime: 7200 }),
     }),
   )
 }

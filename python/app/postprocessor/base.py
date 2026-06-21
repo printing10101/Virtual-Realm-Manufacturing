@@ -169,6 +169,17 @@ class BasePostProcessor(ABC):
         """将数值格式化为指定小数位数的字符串。"""
         return f"{value:.{self.decimal_places}f}"
 
+    def _comment(self, text: str) -> str:
+        """生成 G-code 注释行。
+
+        Args:
+            text: 注释文本
+
+        Returns:
+            格式化后的注释字符串
+        """
+        return f"; {text}"
+
     @staticmethod
     def _calc_arc_radius(
         end: Tuple[float, float, float],
@@ -182,14 +193,16 @@ class BasePostProcessor(ABC):
         """统一冷却液格式化。
 
         Args:
-            state: 冷却液状态，"on"开启，"off"关闭
+            state: 冷却液状态，"on"开启，"off"关闭，"fog"雾冷
 
         Returns:
-            "on" -> "M08", "off" -> "M09", 否则返回空字符串
+            "on" -> "M08", "fog" -> "M07", "off" -> "M09", 否则返回空字符串
         """
         state_lower = state.lower()
         if state_lower == "on":
             return "M08"
+        if state_lower == "fog":
+            return "M07"
         if state_lower == "off":
             return "M09"
         return ""
@@ -245,16 +258,19 @@ class BasePostProcessor(ABC):
             圆弧插补NC代码字符串
         """
 
-    @abstractmethod
     def format_coolant(self, state: str) -> str:
         """生成冷却液控制指令。
 
+        默认实现使用 ``_format_coolant`` 静态方法，支持 "on"/"off"/"fog"。
+        子类如需添加行号前缀等控制器特定格式，可覆盖此方法。
+
         Args:
-            state: 冷却液状态，"on"开启，"off"关闭
+            state: 冷却液状态，"on"开启，"off"关闭，"fog"雾冷
 
         Returns:
-            冷却液控制NC代码字符串
+            冷却液控制NC代码字符串（默认 "M08"/"M07"/"M09"）
         """
+        return self._format_coolant(state) or "M09"
 
     @abstractmethod
     def format_tool_compensation(
@@ -280,6 +296,7 @@ class BasePostProcessor(ABC):
         z: float,
         depth: float,
         dwell: float = 0.0,
+        pecking: bool = True,
     ) -> str:
         """生成钻孔固定循环指令。
 
@@ -289,6 +306,7 @@ class BasePostProcessor(ABC):
             z: 孔位Z坐标（起始高度）
             depth: 钻孔深度
             dwell: 孔底暂停时间(秒)
+            pecking: 是否啄钻，True用G83，False用G81
 
         Returns:
             钻孔循环NC代码字符串

@@ -527,7 +527,7 @@ class ValidationCalibrator:
 
         unified: dict = {
             "metadata": {
-                "version": "2.0.0",
+                "version": "2.2.0",
                 "description": "Unified validation rules calibrated with Bosch CNC + Uniwear",
                 "last_updated": self._get_timestamp_str(),
             },

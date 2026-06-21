@@ -37,6 +37,7 @@ class HeidenhainPostProcessor(BasePostProcessor):
     ) -> None:
         super().__init__(decimal_places, safe_z_height, rapid_feed, config)
         self._block_counter = 0
+        self._last_program_number = 1  # 与 format_header 默认值一致
 
     def _next_block(self) -> int:
         self._block_counter += 1
@@ -44,6 +45,7 @@ class HeidenhainPostProcessor(BasePostProcessor):
 
     def format_header(self, program_number: int = 1) -> str:
         self._block_counter = 0
+        self._last_program_number = program_number  # 记录供 format_footer 使用
         default_rpm = int(self.get_spindle_rpm())
 
         lines = [
@@ -96,9 +98,6 @@ class HeidenhainPostProcessor(BasePostProcessor):
             f"Y+{self._fmt(end[1])} F{self._fmt(self.rapid_feed)}",
         ]
         return "\n".join(lines)
-
-    def format_coolant(self, state: str) -> str:
-        return self._format_coolant(state) or "M09"
 
     def format_tool_compensation(
         self,
@@ -330,6 +329,6 @@ class HeidenhainPostProcessor(BasePostProcessor):
             f"{self._next_block()}  L  Z+{self._fmt(self.safe_z_height)} R0 FMAX",
             f"{self._next_block()}  L  X+0 Y+0 R0 FMAX",
             f"{self._next_block()}  M30",
-            f"{self._next_block()}  END PGM {0:04d} MM",
+            f"{self._next_block()}  END PGM {self._last_program_number:04d} MM",
         ]
         return "\n".join(lines)

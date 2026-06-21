@@ -22,6 +22,11 @@ from app.dxf.feature_extractor import (
     FeatureExtractionResult,
     HoleFeatureInfo,
 )
+from app.dxf.polyline_outline import (
+    PolylineOutlineProcessor,
+    OutlineInfo,
+)
+from app.dxf.dxf_parser import DxfPolyline
 from app.dxf.exceptions import DxfModelError
 
 logger = logging.getLogger(__name__)
@@ -75,6 +80,8 @@ class DxfToModelConverter:
     def convert(
         self,
         feature_result: FeatureExtractionResult,
+        user_id: str | None = None,
+        source_dxf: str | None = None,
     ) -> ModelConversionResult:
         """将特征提取结果转换为3D CadQuery模型。
 
@@ -144,6 +151,28 @@ class DxfToModelConverter:
             hole_count,
             feature_result.hole_count,
         )
+
+        # 桥接层：把建模结果脱敏后落盘
+        try:
+            from app.research_bridge import UsageDataCollector
+
+            collector = UsageDataCollector.get_instance()
+            collector.record_recognition(
+                feature="dxf_to_model",
+                dxf_path=source_dxf or "",
+                success=len(result.errors) == 0,
+                latency_ms=0,
+                user_id=user_id,
+                extra={
+                    "length": length,
+                    "width": width,
+                    "height": height,
+                    "hole_count": hole_count,
+                },
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.debug("bridge 数据收集失败（不影响主流程）: %s", e)
+
         return result
 
     def _create_base_solid(
@@ -280,6 +309,96 @@ class DxfToModelConverter:
             return path
         except Exception as e:
             raise DxfModelError(f"STEP导出失败({path}): {e}") from e
+
+    def convert_from_polylines(
+        self,
+        polylines: list[DxfPolyline],
+        height: float = 10.0,
+    ) -> ModelConversionResult:
+        """从多段线轮廓生成 3D 模型。
+
+        流程：
+        1. 用 PolylineOutlineProcessor 提取外轮廓和内部孔
+        2. 用 CadQuery 拉伸外轮廓
+        3. 用 cut 挖掉内部孔
+        4. 返回 ModelConversionResult
+
+        Args:
+            polylines: DXF 解析得到的 polylines
+            height: 拉伸高度（Z 方向），默认 10mm
+
+        Returns:
+            ModelConversionResult
+        """
+        result = ModelConversionResult()
+        result.height = height
+
+        if not polylines:
+            result.errors.append("无多段线数据，无法生成 3D 模型")
+            return result
+
+        processor = PolylineOutlineProcessor()
+        outlines = processor.extract_outlines(polylines)
+
+        if not outlines:
+            result.errors.append("未找到闭合多段线轮廓")
+            return result
+
+        outer = outlines[0]
+        holes = [o for o in outlines[1:] if o.is_hole]
+
+        # 计算包围盒
+        xs = [v[0] for v in outer.vertices]
+        ys = [v[1] for v in outer.vertices]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+        length = max_x - min_x
+        width = max_y - min_y
+        result.length = length
+        result.width = width
+
+        try:
+            # 1. 画外轮廓
+            wp = cq.Workplane("XY")
+            # 移动到外轮廓的起点
+            wp = wp.moveTo(outer.vertices[0][0], outer.vertices[0][1])
+            for v in outer.vertices[1:]:
+                wp = wp.lineTo(v[0], v[1])
+            if outer.is_closed:
+                wp = wp.close()
+            wp = wp.extrude(height)
+            base = wp
+
+            # 2. 挖掉内部孔
+            for hole in holes:
+                try:
+                    hwp = cq.Workplane("XY")
+                    hwp = hwp.moveTo(hole.vertices[0][0], hole.vertices[0][1])
+                    for v in hole.vertices[1:]:
+                        hwp = hwp.lineTo(v[0], v[1])
+                    if hole.is_closed:
+                        hwp = hwp.close()
+                    hwp = hwp.extrude(height * 1.2)
+                    base = base.cut(hwp)
+                    result.hole_count += 1
+                except Exception as e:
+                    result.warnings.append(
+                        f"挖孔失败(handle={hole.source_handle}): {e}"
+                    )
+                    logger.warning("挖孔失败: %s", e)
+
+            # 平移让最小 Z=0
+            base = base.translate((0, 0, 0))
+
+            result.workplane = base
+            logger.info(
+                "polyline→3D 完成: %.1fx%.1fx%.1f, 孔=%d",
+                length, width, height, result.hole_count,
+            )
+        except Exception as e:
+            result.errors.append(f"多段线建模失败: {e}")
+            logger.error("多段线建模失败: %s", e, exc_info=True)
+        return result
 
     def create_model_from_dimensions(
         self,

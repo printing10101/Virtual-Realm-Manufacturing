@@ -20,6 +20,8 @@ from app.dxf.dxf_parser import DxfParser
 from app.dxf.feature_extractor import FeatureExtractor
 from app.dxf.dxf_to_model import DxfToModelConverter
 from app.dxf.pipeline import DxfProcessPipeline
+from app.process_planning.gcode_generator import GCodeGenerator
+from app.xmaker.integration import XmakerIntegration
 
 logger = logging.getLogger(__name__)
 
@@ -445,3 +447,171 @@ async def validate_dxf(file: UploadFile = File(...)):
                 cleanup_err,
                 exc_info=True,
             )
+
+
+# ==================== XM-100 五轴加工端点 ====================
+
+_xmaker_client = XmakerIntegration()
+
+
+@router.post("/xm100/generate", response_model=dict)
+async def generate_xm100_gcode(
+    file: UploadFile = File(...),
+    material: str = Form(default="45#钢"),
+    part_type: str = Form(default="general"),
+    enable_five_axis: bool = Form(default=True),
+    strategy: str = Form(default="lead_angle"),
+):
+    """为 XM-100 五轴机床生成 G 代码。
+
+    上传 DXF 文件，使用 xmachine_xm100 后处理器生成五轴联动 G 代码。
+    支持三种五轴策略：lead_angle（引导角）、tilt_angle（倾斜角）、interpolation（插值）。
+    """
+    _validate_dxf_file(file)
+    temp_path = _save_upload(file)
+
+    try:
+        # 解析 DXF
+        parse_result = _dxf_parser.parse(temp_path)
+        feature_result = _feature_extractor.extract(parse_result)
+
+        # 生成五轴 G 代码
+        generator = GCodeGenerator(controller_type="xmachine_xm100")
+        from app.process_planning.process_planner import ProcessPlanner
+
+        planner = ProcessPlanner()
+        plan_result = planner.plan(
+            features=feature_result,
+            material=material,
+            part_type=part_type,
+        )
+
+        gcode_result = generator.generate(
+            operation_plan=plan_result.operation_plan,
+            material=material,
+        )
+
+        if not gcode_result.success:
+            return error(
+                code=ErrorCode.INTERNAL,
+                message=f"G 代码生成失败: {'; '.join(gcode_result.errors)}",
+            )
+
+        # 保存 G 代码文件
+        output_path = OUTPUT_DIR / f"{uuid.uuid4().hex}_xm100.gcode"
+        output_path.write_text(gcode_result.program_text, encoding="utf-8")
+
+        return success(data={
+            "file_name": output_path.name,
+            "file_size": output_path.stat().st_size,
+            "controller_type": "xmachine_xm100",
+            "five_axis_enabled": enable_five_axis,
+            "strategy": strategy,
+            "total_lines": gcode_result.total_lines,
+            "estimated_time_min": gcode_result.estimated_cycle_time_min,
+            "download_url": f"/api/dxf/model/download/{output_path.name}",
+        })
+    except Exception as e:
+        safe = safe_error_message(e, context="dxf.xm100.generate")
+        return error(
+            code=ErrorCode.INTERNAL,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("detail") else None,
+        )
+    finally:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError as cleanup_err:
+            logger.debug(
+                "Failed to cleanup temp DXF upload %s: %s",
+                temp_path,
+                cleanup_err,
+                exc_info=True,
+            )
+
+
+@router.post("/xm100/upload", response_model=dict)
+async def upload_to_xmaker(
+    file: UploadFile = File(...),
+    job_name: str = Form(default=""),
+):
+    """上传 G 代码到 Xmaker 平台。
+
+    上传 G 代码文件到 Xmaker 云平台，返回文件 ID 和下载链接。
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in {".gcode", ".nc", ".tap"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的文件格式: {ext}。请上传 .gcode/.nc/.tap 格式文件。",
+        )
+
+    temp_path = _save_upload(file)
+
+    try:
+        upload_result = _xmaker_client.upload_gcode(
+            file_path=temp_path,
+            job_name=job_name or temp_path.stem,
+        )
+
+        if not upload_result.success:
+            return error(
+                code=ErrorCode.INTERNAL,
+                message=f"上传失败: {upload_result.error_message}",
+            )
+
+        return success(data={
+            "file_id": upload_result.file_id,
+            "file_url": upload_result.file_url,
+            "upload_time_ms": upload_result.upload_time_ms,
+        })
+    except Exception as e:
+        safe = safe_error_message(e, context="dxf.xm100.upload")
+        return error(
+            code=ErrorCode.INTERNAL,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("detail") else None,
+        )
+    finally:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError as cleanup_err:
+            logger.debug(
+                "Failed to cleanup temp upload %s: %s",
+                temp_path,
+                cleanup_err,
+                exc_info=True,
+            )
+
+
+@router.get("/xm100/status", response_model=dict)
+async def get_xm100_status(machine_id: str = "default"):
+    """获取 XM-100 机床状态。
+
+    查询指定机床的实时状态，包括加工进度、剩余时间、错误信息等。
+    """
+    try:
+        status_info = _xmaker_client.get_machine_status(machine_id)
+
+        return success(data={
+            "machine_id": machine_id,
+            "status": status_info.status.value,
+            "current_job_id": status_info.current_job_id,
+            "progress_percent": status_info.progress_percent,
+            "elapsed_time_sec": status_info.elapsed_time_sec,
+            "remaining_time_sec": status_info.remaining_time_sec,
+            "current_line": status_info.current_line,
+            "total_lines": status_info.total_lines,
+            "error_code": status_info.error_code,
+            "error_message": status_info.error_message,
+        })
+    except Exception as e:
+        safe = safe_error_message(e, context="dxf.xm100.status")
+        return error(
+            code=ErrorCode.INTERNAL,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("detail") else None,
+        )

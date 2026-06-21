@@ -10,10 +10,16 @@ import logging
 from typing import Any, Optional, Type
 
 from app.postprocessor.base import BasePostProcessor
-from app.postprocessor.config_loader import ConfigLoader
+from app.postprocessor.config_loader import ConfigLoader, CONTROLLER_ID_TO_FULL
 from app.postprocessor.fanuc import FanucPostProcessor
 from app.postprocessor.siemens import SiemensPostProcessor
 from app.postprocessor.heidenhain import HeidenhainPostProcessor
+from app.postprocessor.gsk import GSKPostProcessor
+from app.postprocessor.hnc import HNCPostProcessor
+from app.postprocessor.knd import KNDPostProcessor
+from app.postprocessor.mitsubishi import MitsubishiPostProcessor
+from app.postprocessor.fagor import FagorPostProcessor
+from app.postprocessor.xmachine import XMachineXM100PostProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +53,15 @@ class PostProcessorRegistry:
         self._processors["fanuc_0i"] = FanucPostProcessor
         self._processors["siemens_840d"] = SiemensPostProcessor
         self._processors["heidenhain_tnc"] = HeidenhainPostProcessor
+        # 国产 CNC（Fanuc 0i 兼容方言）
+        self._processors["gsk_980_25i"] = GSKPostProcessor
+        self._processors["hnc_848_22"] = HNCPostProcessor
+        self._processors["knd_1000_2000_3000"] = KNDPostProcessor
+        # 国际高端 CNC
+        self._processors["mitsubishi_m70_m80"] = MitsubishiPostProcessor
+        self._processors["fagor_8055"] = FagorPostProcessor
+        # 桌面级五轴机床
+        self._processors["xmachine_xm100"] = XMachineXM100PostProcessor
 
     def register(
         self,
@@ -141,12 +156,8 @@ class PostProcessorRegistry:
 
         controller_id = merged_config.get("_controller_id", "fanuc")
 
-        controller_map = {
-            "fanuc": "fanuc_0i",
-            "siemens": "siemens_840d",
-            "heidenhain": "heidenhain_tnc",
-        }
-        full_id = controller_map.get(controller_id, "fanuc_0i")
+        # 使用 config_loader 中统一定义的映射表，避免割裂式维护
+        full_id = CONTROLLER_ID_TO_FULL.get(controller_id, "fanuc_0i")
 
         decimal_places = merged_config.get("decimal_places", 3)
         safe_z_height = float(merged_config.get("safe_z_height", 50.0))
