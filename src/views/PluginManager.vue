@@ -568,20 +568,20 @@ const getStatusType = (status: string) => {
 .stat-value {
   font-size: 32px;
   font-weight: bold;
-  color: #409eff;
+  color: var(--accent-primary);
 }
 .stat-label {
-  color: #909399;
+  color: var(--text-tertiary);
   margin-top: 5px;
 }
 .stat-card.enabled .stat-value {
-  color: #67c23a;
+  color: var(--success);
 }
 .stat-card.disabled .stat-value {
-  color: #e6a23c;
+  color: var(--warning);
 }
 .stat-card.error .stat-value {
-  color: #f56c6c;
+  color: var(--error);
 }
 .plugins-card {
   min-height: 400px;
@@ -594,6 +594,6 @@ const getStatusType = (status: string) => {
 }
 .section h4 {
   margin-bottom: 10px;
-  color: #303133;
+  color: var(--text-primary);
 }
 </style>

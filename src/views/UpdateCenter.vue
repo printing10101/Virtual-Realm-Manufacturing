@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { formatSecondsTimestamp } from '@/utils/formatters'
+import http from '@/utils/http'
 
 const notifications = ref<any[]>([])
 const loading = ref(false)
@@ -9,7 +10,7 @@ const previewDialog = ref(false)
 const previewData = ref<any>(null)
 const projectId = 'default'
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+const API_BASE = '/api/v1'
 
 const filteredNotifications = computed(() => {
   if (statusFilter.value === 'all') return notifications.value
@@ -39,37 +40,45 @@ function statusTag(status: string): { text: string; type: TagType } {
 async function fetchNotifications() {
   loading.value = true
   try {
-    const res = await fetch(`${API_BASE}/templates/updates/${projectId}?status=${statusFilter.value === 'all' ? '' : statusFilter.value}`)
-    const data = await res.json()
-    if (data.code === 'SUCCESS') notifications.value = data.data
-  } catch { /* empty */ } finally {
+    const res = await http.get(`${API_BASE}/templates/updates/${projectId}`, {
+      params: { status: statusFilter.value === 'all' ? undefined : statusFilter.value }
+    })
+    if (res.data.code === 'SUCCESS') notifications.value = res.data.data
+  } catch (e: unknown) {
+    console.warn('Failed to fetch notifications:', e)
+  } finally {
     loading.value = false
   }
 }
 
 async function applyUpdate(id: string) {
   try {
-    await fetch(`${API_BASE}/templates/updates/apply/${id}`, { method: 'POST' })
+    await http.post(`${API_BASE}/templates/updates/apply/${id}`)
     fetchNotifications()
-  } catch { /* empty */ }
+  } catch (e: unknown) {
+    console.warn('Failed to apply update:', e)
+  }
 }
 
 async function dismissUpdate(id: string) {
   try {
-    await fetch(`${API_BASE}/templates/updates/dismiss/${id}`, { method: 'POST' })
+    await http.post(`${API_BASE}/templates/updates/dismiss/${id}`)
     fetchNotifications()
-  } catch { /* empty */ }
+  } catch (e: unknown) {
+    console.warn('Failed to dismiss update:', e)
+  }
 }
 
 async function showPreview(id: string) {
   try {
-    const res = await fetch(`${API_BASE}/templates/updates/preview/${id}`)
-    const data = await res.json()
-    if (data.code === 'SUCCESS') {
-      previewData.value = data.data
+    const res = await http.get(`${API_BASE}/templates/updates/preview/${id}`)
+    if (res.data.code === 'SUCCESS') {
+      previewData.value = res.data.data
       previewDialog.value = true
     }
-  } catch { /* empty */ }
+  } catch (e: unknown) {
+    console.warn('Failed to show preview:', e)
+  }
 }
 
 onMounted(fetchNotifications)
@@ -220,15 +229,15 @@ onMounted(fetchNotifications)
 .notif-header { display: flex; justify-content: space-between; align-items: center; }
 .notif-title { font-weight: 600; font-size: 15px; }
 .notif-tags { display: flex; gap: 8px; }
-.notif-body { font-size: 14px; color: #555; }
-.impact-section { margin-top: 12px; padding: 8px 12px; background: #f5f7fa; border-radius: 4px; }
-.impact-section h4 { margin: 0 0 8px; font-size: 13px; color: #666; }
+.notif-body { font-size: 14px; color: var(--text-secondary); }
+.impact-section { margin-top: 12px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius-sm); }
+.impact-section h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); }
 .impact-item { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
-.impact-label { color: #888; }
-.impact-value { font-weight: 600; color: #409eff; }
-.notif-time { margin-top: 8px; font-size: 12px; color: #999; }
+.impact-label { color: var(--text-tertiary); }
+.impact-value { font-weight: 600; color: var(--accent-primary); }
+.notif-time { margin-top: 8px; font-size: 12px; color: var(--text-tertiary); }
 .notif-actions { display: flex; gap: 8px; }
-.loading { text-align: center; padding: 40px; color: #999; }
-.change-preview, .impact-preview { background: #f5f7fa; padding: 12px; border-radius: 4px; font-size: 13px; max-height: 200px; overflow: auto; }
+.loading { text-align: center; padding: 40px; color: var(--text-tertiary); }
+.change-preview, .impact-preview { background: var(--bg-secondary); padding: 12px; border-radius: var(--radius-sm); font-size: 13px; max-height: 200px; overflow: auto; }
 .header-card { margin-bottom: 16px; }
 </style>

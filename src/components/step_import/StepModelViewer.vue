@@ -91,9 +91,26 @@
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { formatFileSize } from '@/utils/formatters'
+import { useThreeScene } from '@/composables/useThreeScene'
+
+// 视图距离常量
+const VIEW_DISTANCE = {
+  FRONT: 300,
+  TOP: 300,
+  RIGHT: 300,
+  ISO: 200,
+} as const
+
+// LOD 简化比例与距离常量
+const LOD_SIMPLIFY_RATIOS = [0.5, 0.8] as const
+const LOD_DISTANCES = [200, 500] as const
+
+// 网格与辅助工具常量
+const GRID_SIZE = 500
+const GRID_DIVISIONS = 20
+const AXES_SIZE = 100
 
 const { t } = useI18n()
 
@@ -122,13 +139,10 @@ const modelStats = ref<{
   fileSize: number
 } | null>(null)
 
-let renderer: THREE.WebGLRenderer | null = null
-let scene: THREE.Scene | null = null
-let camera: THREE.PerspectiveCamera | null = null
-let controls: OrbitControls | null = null
+let threeScene: ReturnType<typeof useThreeScene> | null = null
 let modelMesh: THREE.Mesh | null = null
 let gridHelper: THREE.GridHelper | null = null
-let animationId = 0
+let axesHelperRef: THREE.AxesHelper | null = null
 let fpsFrames = 0
 let fpsLastTime = 0
 let lod: THREE.LOD | null = null
@@ -136,43 +150,35 @@ let lod: THREE.LOD | null = null
 function initViewer() {
   if (!canvasContainer.value) return
 
-  scene = new THREE.Scene()
-  scene.background = new THREE.Color('#1a1a2e')
+  threeScene = useThreeScene({
+    container: canvasContainer.value,
+    backgroundColor: '#1a1a2e',
+    fov: 45,
+    cameraPosition: [200, -200, 150],
+    enableDamping: true,
+    dampingFactor: 0.08,
+    showGrid: showGrid.value,
+    gridSize: GRID_SIZE,
+    gridDivisions: GRID_DIVISIONS,
+  })
 
-  const w = canvasContainer.value.clientWidth
-  const h = canvasContainer.value.clientHeight
-  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 10000)
-  camera.position.set(200, -200, 150)
+  const { scene, camera, renderer, controls, addLight, startAnimation } = threeScene
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-  renderer.setSize(w, h)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.2
-  renderer.shadowMap.enabled = true
-  canvasContainer.value.appendChild(renderer.domElement)
-
-  controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true
-  controls.dampingFactor = 0.08
-  controls.target.set(0, 0, 0)
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
-  scene.add(ambientLight)
-
+  // 灯光
+  addLight(new THREE.AmbientLight(0xffffff, 0.6))
   const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8)
   dirLight1.position.set(1, 1, 1)
-  scene.add(dirLight1)
-
+  addLight(dirLight1)
   const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4)
   dirLight2.position.set(-1, -0.5, -0.5)
-  scene.add(dirLight2)
+  addLight(dirLight2)
 
-  gridHelper = new THREE.GridHelper(500, 20, 0x444466, 0x222244)
-  if (showGrid.value) scene.add(gridHelper)
+  // 坐标轴辅助
+  axesHelperRef = new THREE.AxesHelper(AXES_SIZE)
+  scene.add(axesHelperRef)
 
-  const axesHelper = new THREE.AxesHelper(100)
-  scene.add(axesHelper)
+  // 阴影
+  renderer.shadowMap.enabled = true
 
   modelStats.value = {
     vertexCount: props.vertexCount ?? 0,
@@ -184,23 +190,27 @@ function initViewer() {
     loadModel(props.modelUrl)
   }
 
-  const resizeObserver = new ResizeObserver(() => {
-    if (!canvasContainer.value || !renderer || !camera) return
-    const nw = canvasContainer.value.clientWidth
-    const nh = canvasContainer.value.clientHeight
-    renderer.setSize(nw, nh)
-    camera.aspect = nw / nh
-    camera.updateProjectionMatrix()
-  })
-  resizeObserver.observe(canvasContainer.value)
-
+  // FPS 计算与动画循环
   fpsFrames = 0
   fpsLastTime = performance.now()
-  animate()
+  startAnimation(() => {
+    fpsFrames++
+    const now = performance.now()
+    if (now - fpsLastTime >= 1000) {
+      fps.value = fpsFrames
+      fpsFrames = 0
+      fpsLastTime = now
+    }
+    // LOD 更新
+    if (lod && lodEnabled.value) {
+      lod.update(camera)
+    }
+  })
 }
 
 function loadModel(url: string) {
-  if (!scene) return
+  if (!threeScene) return
+  const { scene } = threeScene
 
   if (modelMesh) {
     scene.remove(modelMesh)
@@ -217,7 +227,8 @@ function loadModel(url: string) {
   loader.load(
     url,
     (geometry) => {
-      if (!scene) return
+      if (!threeScene) return
+      const { scene } = threeScene
 
       geometry.computeVertexNormals()
       geometry.center()
@@ -259,7 +270,8 @@ function loadModel(url: string) {
 }
 
 function buildLOD(geometry: THREE.BufferGeometry, baseMaterial: THREE.Material) {
-  if (!scene || !modelMesh) return
+  if (!threeScene || !modelMesh) return
+  const { scene } = threeScene
 
   scene.remove(modelMesh)
 
@@ -269,14 +281,12 @@ function buildLOD(geometry: THREE.BufferGeometry, baseMaterial: THREE.Material) 
   const fullMesh = new THREE.Mesh(fullGeo, baseMaterial.clone())
   lod.addLevel(fullMesh, 0)
 
-  const simplifyRatios = [0.5, 0.8]
-  const distances = [200, 500]
-  for (let i = 0; i < simplifyRatios.length; i++) {
-    const simplified = simplifyGeometry(geometry, simplifyRatios[i])
+  for (let i = 0; i < LOD_SIMPLIFY_RATIOS.length; i++) {
+    const simplified = simplifyGeometry(geometry, LOD_SIMPLIFY_RATIOS[i])
     if (simplified) {
       const mat = baseMaterial.clone()
       const simpleMesh = new THREE.Mesh(simplified, mat)
-      lod.addLevel(simpleMesh, distances[i])
+      lod.addLevel(simpleMesh, LOD_DISTANCES[i])
     }
   }
 
@@ -323,7 +333,8 @@ function simplifyGeometry(
 }
 
 function fitView() {
-  if (!modelMesh || !camera || !controls) return
+  if (!threeScene || !modelMesh) return
+  const { camera, controls } = threeScene
   const box = new THREE.Box3().setFromObject(modelMesh)
   const center = box.getCenter(new THREE.Vector3())
   const size = box.getSize(new THREE.Vector3())
@@ -341,30 +352,34 @@ function fitView() {
 }
 
 function viewFront() {
-  if (!camera || !controls) return
+  if (!threeScene) return
+  const { camera, controls } = threeScene
   const target = controls.target.clone()
-  camera.position.set(target.x, target.y, target.z + 300)
+  camera.position.set(target.x, target.y, target.z + VIEW_DISTANCE.FRONT)
   controls.update()
 }
 
 function viewTop() {
-  if (!camera || !controls) return
+  if (!threeScene) return
+  const { camera, controls } = threeScene
   const target = controls.target.clone()
-  camera.position.set(target.x, target.y + 300, target.z)
+  camera.position.set(target.x, target.y + VIEW_DISTANCE.TOP, target.z)
   controls.update()
 }
 
 function viewRight() {
-  if (!camera || !controls) return
+  if (!threeScene) return
+  const { camera, controls } = threeScene
   const target = controls.target.clone()
-  camera.position.set(target.x + 300, target.y, target.z)
+  camera.position.set(target.x + VIEW_DISTANCE.RIGHT, target.y, target.z)
   controls.update()
 }
 
 function viewIso() {
-  if (!camera || !controls) return
+  if (!threeScene) return
+  const { camera, controls } = threeScene
   const target = controls.target.clone()
-  const d = 200
+  const d = VIEW_DISTANCE.ISO
   camera.position.set(target.x + d, target.y - d, target.z + d)
   controls.update()
 }
@@ -376,16 +391,18 @@ function updateOpacity() {
 }
 
 function toggleGrid() {
-  if (!gridHelper || !scene) return
+  if (!threeScene) return
+  const { scene } = threeScene
   if (showGrid.value) {
-    scene.add(gridHelper)
+    if (gridHelper) scene.add(gridHelper)
   } else {
-    scene.remove(gridHelper)
+    if (gridHelper) scene.remove(gridHelper)
   }
 }
 
 function toggleLOD() {
-  if (!scene || !modelMesh) return
+  if (!threeScene || !modelMesh) return
+  const { scene } = threeScene
   if (lodEnabled.value) {
     const geometry = modelMesh.geometry
     const material = modelMesh.material as THREE.Material
@@ -401,30 +418,16 @@ function toggleLOD() {
   }
 }
 
-function animate() {
-  animationId = requestAnimationFrame(animate)
-
-  fpsFrames++
-  const now = performance.now()
-  if (now - fpsLastTime >= 1000) {
-    fps.value = fpsFrames
-    fpsFrames = 0
-    fpsLastTime = now
-  }
-
-  controls?.update()
-  renderer?.render(scene!, camera!)
-}
-
 function disposeViewer() {
-  if (animationId) cancelAnimationFrame(animationId)
-
-  controls?.dispose()
-  renderer?.dispose()
+  if (threeScene) {
+    threeScene.cleanup()
+    threeScene = null
+  }
 
   if (modelMesh) {
     modelMesh.geometry?.dispose()
     ;(modelMesh.material as THREE.Material)?.dispose()
+    modelMesh = null
   }
   if (lod) {
     lod.traverse((obj) => {
@@ -433,23 +436,16 @@ function disposeViewer() {
         ;(obj.material as THREE.Material)?.dispose()
       }
     })
+    lod = null
   }
 
   if (canvasContainer.value) {
     canvasContainer.value.innerHTML = ''
   }
-
-  renderer = null
-  scene = null
-  camera = null
-  controls = null
-  modelMesh = null
-  gridHelper = null
-  lod = null
 }
 
 watch(() => props.modelUrl, (newUrl) => {
-  if (newUrl && scene) {
+  if (newUrl && threeScene) {
     loadModel(newUrl)
   }
 })
@@ -476,20 +472,20 @@ watch(() => props.modelUrl, (newUrl) => {
   gap: 8px;
   padding: 8px 12px;
   margin-top: 8px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 6px;
   flex-wrap: wrap;
 }
 
 .control-label {
   font-size: 12px;
-  color: #606266;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .fps-display {
   font-size: 12px;
-  color: #67c23a;
+  color: var(--success);
   font-weight: 600;
   font-family: monospace;
 }
@@ -499,8 +495,8 @@ watch(() => props.modelUrl, (newUrl) => {
   gap: 16px;
   padding: 6px 12px;
   font-size: 12px;
-  color: #909399;
-  background: #fafafa;
+  color: var(--text-tertiary);
+  background: var(--bg-secondary);
   border-radius: 4px;
   margin-top: 4px;
 }

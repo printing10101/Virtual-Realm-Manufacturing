@@ -361,12 +361,14 @@ class ValidationCalibrator:
     def merge_calibration_rules(self) -> dict:
         try:
             bosch_calibrated = self._load_or_calibrate()
-        except Exception:
+        except Exception as e:
+            logger.warning("加载 Bosch 校准规则失败: %s", e)
             bosch_calibrated = {}
 
         try:
             uniwear_calibrated = self.calibrate_with_uniwear()
-        except Exception:
+        except Exception as e:
+            logger.warning("加载 Uniwear 校准规则失败: %s", e)
             uniwear_calibrated = {}
 
         merged_rules = self._load_rules()
@@ -563,7 +565,8 @@ class ValidationCalibrator:
         try:
             rate = uniwear_analysis["sources"][source]["mean_wear_rate"]
             return [round(rate * 0.5, 8), round(rate * 1.5, 8)]
-        except (KeyError, TypeError):
+        except (KeyError, TypeError) as e:
+            logger.warning("Missing expected data in calibration result: %s", e)
             return [0.0, 0.0]
 
     @staticmethod

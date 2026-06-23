@@ -254,6 +254,10 @@ onMounted(() => {
   window.addEventListener('resize', checkMobile)
 })
 
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkMobile)
+})
+
 // 暴露方法
 defineExpose({
   open,
@@ -279,7 +283,7 @@ defineExpose({
 }
 
 .command-palette {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   overflow: hidden;
@@ -293,12 +297,12 @@ defineExpose({
   display: flex;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #e4e7ed;
-  background: #fafafa;
+  border-bottom: 1px solid var(--border-medium);
+  background: var(--bg-secondary);
 
   .search-icon {
     font-size: 20px;
-    color: #909399;
+    color: var(--text-tertiary);
     margin-right: 12px;
   }
 
@@ -310,16 +314,16 @@ defineExpose({
     background: transparent;
 
     &::placeholder {
-      color: #c0c4cc;
+      color: var(--text-tertiary);
     }
   }
 
   .shortcut-hint {
-    background: #e4e7ed;
+    background: var(--border-medium);
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 12px;
-    color: #606266;
+    color: var(--text-secondary);
   }
 }
 
@@ -334,7 +338,7 @@ defineExpose({
     align-items: center;
     justify-content: center;
     padding: 40px 20px;
-    color: #909399;
+    color: var(--text-tertiary);
 
     .el-icon {
       font-size: 48px;
@@ -352,7 +356,7 @@ defineExpose({
       padding: 8px 20px 4px;
       font-size: 12px;
       font-weight: 600;
-      color: #909399;
+      color: var(--text-tertiary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -366,11 +370,11 @@ defineExpose({
 
       &:hover,
       &--selected {
-        background-color: #f5f7fa;
+        background-color: var(--bg-tertiary);
       }
 
       &--selected {
-        background-color: #ecf5ff;
+        background-color: var(--bg-secondary);
       }
 
       .command-icon {
@@ -380,7 +384,7 @@ defineExpose({
         align-items: center;
         justify-content: center;
         margin-right: 12px;
-        color: #409eff;
+        color: var(--accent-primary);
         font-size: 18px;
       }
 
@@ -391,13 +395,13 @@ defineExpose({
         .command-name {
           font-size: 14px;
           font-weight: 500;
-          color: #303133;
+          color: var(--text-primary);
           margin-bottom: 2px;
         }
 
         .command-description {
           font-size: 12px;
-          color: #909399;
+          color: var(--text-tertiary);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -411,11 +415,11 @@ defineExpose({
         margin-left: 12px;
 
         .command-shortcut {
-          background: #e4e7ed;
+          background: var(--border-medium);
           padding: 2px 6px;
           border-radius: 3px;
           font-size: 11px;
-          color: #606266;
+          color: var(--text-secondary);
           font-family: monospace;
         }
       }
@@ -428,8 +432,8 @@ defineExpose({
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  border-top: 1px solid #e4e7ed;
-  background: #fafafa;
+  border-top: 1px solid var(--border-medium);
+  background: var(--bg-secondary);
   font-size: 12px;
 
   .footer-hints {
@@ -440,21 +444,21 @@ defineExpose({
       display: flex;
       align-items: center;
       gap: 4px;
-      color: #909399;
+      color: var(--text-tertiary);
 
       kbd {
-        background: #e4e7ed;
+        background: var(--border-medium);
         padding: 2px 6px;
         border-radius: 3px;
         font-size: 11px;
-        color: #606266;
+        color: var(--text-secondary);
         font-family: monospace;
       }
     }
   }
 
   .footer-stats {
-    color: #909399;
+    color: var(--text-tertiary);
   }
 }
 

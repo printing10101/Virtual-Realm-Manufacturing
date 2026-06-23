@@ -105,7 +105,7 @@ const recommendation = computed(() => {
 .confidence-bar-container {
   position: relative;
   height: 24px;
-  background: #f0f0f0;
+  background: var(--border-medium);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -124,7 +124,7 @@ const recommendation = computed(() => {
   transform: translate(-50%, -50%);
   font-size: 12px;
   font-weight: 600;
-  color: #fff;
+  color: var(--bg-card);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   z-index: 1;
 }
@@ -134,8 +134,8 @@ const recommendation = computed(() => {
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  background: #fff;
-  border: 1px solid #dcdfe6;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 12px;
   min-width: 280px;
@@ -161,13 +161,13 @@ const recommendation = computed(() => {
   align-items: center;
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .tooltip-title {
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .tooltip-value {
@@ -177,7 +177,7 @@ const recommendation = computed(() => {
 
 .tooltip-body {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -188,10 +188,10 @@ const recommendation = computed(() => {
 .tooltip-recommendation {
   margin-top: 8px;
   padding: 8px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 4px;
   font-size: 12px;
-  color: #409eff;
+  color: var(--accent-primary);
 }
 
 .confidence-text {

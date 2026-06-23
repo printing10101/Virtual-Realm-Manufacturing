@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import http from '@/utils/http'
 import { extractErrorMessage } from '@/utils/errorUtils'
 import type {
   StepImportResult,
@@ -83,7 +83,7 @@ export const useStepImportStore = defineStore('stepImport', () => {
     formData.append('use_cache', 'true')
 
     try {
-      const response = await axios.post<{ code: number; data: StepImportResult; message: string }>(
+      const response = await http.post<{ code: number; data: StepImportResult; message: string }>(
         '/api/import/step',
         formData,
         {
@@ -136,7 +136,7 @@ export const useStepImportStore = defineStore('stepImport', () => {
   async function fetchImportHistory() {
     historyLoading.value = true
     try {
-      const response = await axios.get<{ code: number; data: { history: ImportHistoryEntry[]; total: number } }>(
+      const response = await http.get<{ code: number; data: { history: ImportHistoryEntry[]; total: number } }>(
         '/api/import/step/history',
         { params: { limit: 20 } },
       )
@@ -152,18 +152,18 @@ export const useStepImportStore = defineStore('stepImport', () => {
 
   async function deleteHistoryFile(fileName: string) {
     try {
-      await axios.delete(`/api/import/step/history/${encodeURIComponent(fileName)}`)
+      await http.delete(`/api/import/step/history/${encodeURIComponent(fileName)}`)
       await fetchImportHistory()
-    } catch {
-      // silently fail
+    } catch (e: unknown) {
+      console.warn('Failed to delete history file:', e)
     }
   }
 
   async function clearCache() {
     try {
-      await axios.delete('/api/import/step/cache')
-    } catch {
-      // silently fail
+      await http.delete('/api/import/step/cache')
+    } catch (e: unknown) {
+      console.warn('Failed to clear cache:', e)
     }
   }
 

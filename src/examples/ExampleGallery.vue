@@ -69,7 +69,7 @@
           <div class="card-header">
             <div class="card-title">
               <h4>{{ example.name }}</h4>
-              <el-tag :type="getDifficultyType(example.difficulty)" size="small">
+              <el-tag :type="(getDifficultyType(example.difficulty) as any)" size="small">
                 {{ getDifficultyLabel(example.difficulty) }}
               </el-tag>
             </div>
@@ -137,7 +137,7 @@
           <template #default="{ row }">
             <div class="table-name">
               <strong>{{ row.name }}</strong>
-              <el-tag :type="getDifficultyType(row.difficulty)" size="small">
+              <el-tag :type="(getDifficultyType(row.difficulty) as any)" size="small">
                 {{ getDifficultyLabel(row.difficulty) }}
               </el-tag>
             </div>
@@ -162,7 +162,7 @@
             <el-button
               size="small"
               icon="View"
-              @click.stop="handlePreview(row)"
+              @click.stop="handlePreview(row as ExampleProject)"
             >
               预览
             </el-button>
@@ -170,7 +170,7 @@
               size="small"
               type="primary"
               icon="CopyDocument"
-              @click.stop="handleCopy(row)"
+              @click.stop="handleCopy(row as ExampleProject)"
             >
               复制
             </el-button>
@@ -191,7 +191,7 @@
           <el-tab-pane label="说明" name="details">
             <div class="detail-section">
               <div class="detail-meta">
-                <el-tag :type="getDifficultyType(selectedExample.difficulty)">
+                <el-tag :type="(getDifficultyType(selectedExample.difficulty) as any)">
                   {{ getDifficultyLabel(selectedExample.difficulty) }}
                 </el-tag>
                 <el-tag type="info" effect="plain">
@@ -484,7 +484,7 @@ function renderMarkdown(content: string) {
 
       .card-description {
         margin: 12px 0;
-        color: #606266;
+        color: var(--text-secondary);
         font-size: 14px;
         line-height: 1.5;
       }
@@ -505,12 +505,12 @@ function renderMarkdown(content: string) {
         justify-content: space-between;
         align-items: center;
         padding-top: 12px;
-        border-top: 1px solid #ebeef5;
+        border-top: 1px solid var(--border-light);
 
         .card-stats {
           display: flex;
           gap: 16px;
-          color: #909399;
+          color: var(--text-tertiary);
           font-size: 13px;
 
           .stat-item {
@@ -548,24 +548,24 @@ function renderMarkdown(content: string) {
         gap: 12px;
         margin-bottom: 20px;
         padding-bottom: 16px;
-        border-bottom: 1px solid #ebeef5;
+        border-bottom: 1px solid var(--border-light);
 
         .meta-item {
           display: flex;
           align-items: center;
           gap: 4px;
-          color: #909399;
+          color: var(--text-tertiary);
           font-size: 13px;
         }
       }
 
       .detail-content {
         line-height: 1.8;
-        color: #606266;
+        color: var(--text-secondary);
 
         :deep(h1), :deep(h2), :deep(h3) {
           margin: 20px 0 12px;
-          color: #303133;
+          color: var(--text-primary);
         }
 
         :deep(h1) {
@@ -590,7 +590,7 @@ function renderMarkdown(content: string) {
         }
 
         :deep(code) {
-          background-color: #f5f7fa;
+          background-color: var(--bg-tertiary);
           padding: 2px 6px;
           border-radius: 3px;
           font-family: 'Courier New', monospace;
@@ -601,13 +601,13 @@ function renderMarkdown(content: string) {
       .detail-use-cases {
         margin-top: 24px;
         padding: 16px;
-        background-color: #f5f7fa;
+        background-color: var(--bg-tertiary);
         border-radius: 6px;
 
         h4 {
           margin: 0 0 12px;
           font-size: 15px;
-          color: #303133;
+          color: var(--text-primary);
         }
 
         ul {
@@ -616,7 +616,7 @@ function renderMarkdown(content: string) {
 
           li {
             margin: 8px 0;
-            color: #606266;
+            color: var(--text-secondary);
             line-height: 1.6;
           }
         }
@@ -632,14 +632,14 @@ function renderMarkdown(content: string) {
 
         .code-language {
           font-size: 13px;
-          color: #909399;
+          color: var(--text-tertiary);
           text-transform: uppercase;
         }
       }
 
       .code-block {
-        background-color: #282c34;
-        color: #abb2bf;
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
         padding: 16px;
         border-radius: 6px;
         overflow-x: auto;
@@ -658,8 +658,8 @@ function renderMarkdown(content: string) {
 
   .preview-content {
     .code-block {
-      background-color: #282c34;
-      color: #abb2bf;
+      background-color: var(--bg-tertiary);
+      color: var(--text-secondary);
       padding: 16px;
       border-radius: 6px;
       overflow-x: auto;

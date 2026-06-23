@@ -101,9 +101,8 @@ class StepConverter:
         base_url: str = "/api/import/step/output",
     ) -> None:
         if output_dir is None:
-            output_dir = (
-                Path(__file__).resolve().parent.parent.parent / "output" / "step_import"
-            )
+            from app.utils.utils import get_output_dir
+            output_dir = get_output_dir("step_import")
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.base_url = base_url

@@ -27,6 +27,11 @@ from .torch_base_lnn import BaseLNN, LNNConfig
 from .torch_ltc_model import LTCCell
 
 
+# Hybrid LNN model constants
+DEFAULT_CNN_KERNEL_SIZES = [5, 5, 5, 3, 3]  # Default kernel sizes for CNN layers
+DEFAULT_OUTPUT_DROPOUT_RATE = 0.2  # Default dropout rate for output layer
+
+
 class HybridLNN(BaseLNN):
     """Hybrid LNN model combining CNN feature extraction with LTC temporal modeling.
 
@@ -122,7 +127,7 @@ class HybridLNN(BaseLNN):
         MaxPool1d (stride 2) is added between conv layers only when
         input dimension is large enough to avoid zero-size output.
         """
-        kernel_sizes = [5, 5, 5, 3, 3][: max(num_layers, 3)]
+        kernel_sizes = DEFAULT_CNN_KERNEL_SIZES[: max(num_layers, 3)]
         filter_sizes = [hidden_size // 4, hidden_size // 2, hidden_size] + [
             hidden_size
         ] * (max(num_layers, 3) - 3)
@@ -161,7 +166,7 @@ class HybridLNN(BaseLNN):
         hidden_dim: int,
         output_size: int,
         use_dropout: bool = True,
-        dropout_rate: float = 0.2,
+        dropout_rate: float = DEFAULT_OUTPUT_DROPOUT_RATE,
     ) -> nn.Sequential:
         """
         Build output fully connected layers with at least 2 layers.

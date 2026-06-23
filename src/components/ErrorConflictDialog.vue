@@ -132,7 +132,7 @@ useErrorBus().on(handleError)
 }
 
 .conflict-dialog {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 12px;
   width: 540px;
   max-width: 90vw;
@@ -150,13 +150,13 @@ useErrorBus().on(handleError)
   color: #fff;
 
   &.severity-critical {
-    background: linear-gradient(135deg, #ff1744, #d50000);
+    background: linear-gradient(135deg, var(--error), #d50000);
   }
   &.severity-error {
-    background: linear-gradient(135deg, #ff9800, #e65100);
+    background: linear-gradient(135deg, var(--warning), #e65100);
   }
   &.severity-warning {
-    background: linear-gradient(135deg, #ffc107, #f9a825);
+    background: linear-gradient(135deg, var(--warning), #f9a825);
   }
 
   .header-icon {
@@ -183,7 +183,7 @@ useErrorBus().on(handleError)
   .code-text {
     font-family: monospace;
     font-size: 12px;
-    color: #999;
+    color: var(--text-tertiary);
   }
 }
 
@@ -193,7 +193,7 @@ useErrorBus().on(handleError)
   .error-message {
     margin: 0;
     font-size: 15px;
-    color: #333;
+    color: var(--text-primary);
     line-height: 1.6;
   }
 }
@@ -201,29 +201,29 @@ useErrorBus().on(handleError)
 .detail-section {
   margin-bottom: 16px;
   padding: 12px;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
   border-radius: 8px;
-  border-left: 3px solid #e0e0e0;
+  border-left: 3px solid var(--border-light);
 
   h4 {
     margin: 0 0 6px;
     font-size: 13px;
-    color: #666;
+    color: var(--text-secondary);
   }
 
   p {
     margin: 0;
     font-size: 13px;
-    color: #555;
+    color: var(--text-secondary);
     line-height: 1.6;
   }
 }
 
 .suggestion-section {
   padding: 14px;
-  background: #e3f2fd;
+  background: var(--bg-secondary);
   border-radius: 8px;
-  border-left: 3px solid #1976d2;
+  border-left: 3px solid var(--accent-primary);
 
   h4 {
     display: flex;
@@ -231,13 +231,13 @@ useErrorBus().on(handleError)
     gap: 6px;
     margin: 0 0 8px;
     font-size: 14px;
-    color: #1565c0;
+    color: var(--accent-primary);
   }
 
   .suggestion-text {
     margin: 0;
     font-size: 13px;
-    color: #333;
+    color: var(--text-primary);
     line-height: 1.7;
     white-space: pre-wrap;
   }
@@ -247,7 +247,7 @@ useErrorBus().on(handleError)
   display: flex;
   justify-content: flex-end;
   padding: 16px 24px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-light);
 }
 
 .dialog-fade-enter-active,

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import http from '@/utils/http'
 import { ref, computed } from 'vue'
 import type {
   ProcessRule,
@@ -59,7 +59,7 @@ export const useRuleStore = defineStore('rules', () => {
   }) {
     loading.value = true
     try {
-      const response = await axios.get('/api/rules/list', { params })
+      const response = await http.get('/api/rules/list', { params })
       const data: RuleListResponse = response.data.data
       rules.value = data.rules
       totalRules.value = data.total
@@ -75,7 +75,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function fetchGroups() {
     try {
-      const response = await axios.get('/api/rules/groups/list')
+      const response = await http.get('/api/rules/groups/list')
       const data: RuleGroupListResponse = response.data.data
       groups.value = data.groups
     } catch (e: unknown) {
@@ -85,7 +85,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function fetchStats() {
     try {
-      const response = await axios.get('/api/rules/stats')
+      const response = await http.get('/api/rules/stats')
       stats.value = response.data.data
     } catch (e: unknown) {
       console.error('获取规则统计失败:', e)
@@ -94,7 +94,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function createRule(rule: RuleCreateRequest) {
     try {
-      const response = await axios.post('/api/rules/create', rule)
+      const response = await http.post('/api/rules/create', rule)
       ElMessage.success(response.data.message || '规则创建成功')
       await fetchRules()
       await fetchStats()
@@ -107,7 +107,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function updateRule(ruleId: number, rule: RuleUpdateRequest) {
     try {
-      const response = await axios.put(`/api/rules/update/${ruleId}`, rule)
+      const response = await http.put(`/api/rules/update/${ruleId}`, rule)
       ElMessage.success(response.data.message || '规则更新成功')
       await fetchRules()
       await fetchStats()
@@ -120,7 +120,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function deleteRule(ruleId: number) {
     try {
-      const response = await axios.delete(`/api/rules/delete/${ruleId}`)
+      const response = await http.delete(`/api/rules/delete/${ruleId}`)
       ElMessage.success(response.data.message || '规则删除成功')
       await fetchRules()
       await fetchStats()
@@ -132,7 +132,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function getRule(ruleId: number) {
     try {
-      const response = await axios.get(`/api/rules/detail/${ruleId}`)
+      const response = await http.get(`/api/rules/detail/${ruleId}`)
       currentRule.value = response.data.data
       return response.data.data
     } catch (e: unknown) {
@@ -143,7 +143,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function createGroup(group: RuleGroupCreateRequest) {
     try {
-      const response = await axios.post('/api/rules/groups/create', group)
+      const response = await http.post('/api/rules/groups/create', group)
       ElMessage.success(response.data.message || '分组创建成功')
       await fetchGroups()
       await fetchStats()
@@ -156,7 +156,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function updateGroup(groupId: number, group: RuleGroupUpdateRequest) {
     try {
-      const response = await axios.put(`/api/rules/groups/update/${groupId}`, group)
+      const response = await http.put(`/api/rules/groups/update/${groupId}`, group)
       ElMessage.success(response.data.message || '分组更新成功')
       await fetchGroups()
       return response.data.data
@@ -168,7 +168,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function deleteGroup(groupId: number) {
     try {
-      const response = await axios.delete(`/api/rules/groups/delete/${groupId}`)
+      const response = await http.delete(`/api/rules/groups/delete/${groupId}`)
       ElMessage.success(response.data.message || '分组删除成功')
       await fetchGroups()
       await fetchStats()
@@ -180,7 +180,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function exportRules() {
     try {
-      const response = await axios.get('/api/rules/export', {
+      const response = await http.get('/api/rules/export', {
         responseType: 'blob',
       })
       const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -208,7 +208,7 @@ export const useRuleStore = defineStore('rules', () => {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const response = await axios.post('/api/rules/import', formData, {
+      const response = await http.post('/api/rules/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       const data: RuleImportResponse = response.data.data
@@ -227,7 +227,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function backupDatabase() {
     try {
-      const response = await axios.post('/api/rules/backup')
+      const response = await http.post('/api/rules/backup')
       ElMessage.success(response.data.message || '数据库备份成功')
       return response.data.data
     } catch (e: unknown) {

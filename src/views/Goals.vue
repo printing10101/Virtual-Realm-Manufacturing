@@ -57,7 +57,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { ElMessage } from 'element-plus'
+import http from '@/utils/http'
 import GoalTreeView from '../components/goals/GoalTreeView.vue'
 import GoalDetail from '../components/goals/GoalDetail.vue'
 import TaskWizard from '../components/goals/TaskWizard.vue'
@@ -76,9 +77,9 @@ const alignmentSummary = ref<any>(null)
 const loadGoalTree = async () => {
   treeLoading.value = true
   try {
-    const res = await axios.get('/api/v1/goal-alignment/goals/tree')
+    const res = await http.get('/api/v1/goal-alignment/goals/tree')
     goalTree.value = res.data?.data || []
-    const goalsRes = await axios.get('/api/v1/goal-alignment/goals')
+    const goalsRes = await http.get('/api/v1/goal-alignment/goals')
     allGoals.value = goalsRes.data?.data || []
   } catch (e: any) {
     ElMessage.error('加载目标树失败: ' + (e.message || '未知错误'))
@@ -100,7 +101,7 @@ const onTaskCreated = () => {
 const runAlignmentScan = async () => {
   scanLoading.value = true
   try {
-    await axios.post('/api/v1/goal-alignment/scan')
+    await http.post('/api/v1/goal-alignment/scan')
     await loadAlignmentSummary()
     ElMessage.success('对齐检查完成')
   } catch (e: any) {
@@ -112,7 +113,7 @@ const runAlignmentScan = async () => {
 
 const loadAlignmentSummary = async () => {
   try {
-    const res = await axios.get('/api/v1/goal-alignment/summary')
+    const res = await http.get('/api/v1/goal-alignment/summary')
     alignmentSummary.value = res.data?.data
   } catch (e: any) {
     console.error('Failed to load alignment summary:', e)
@@ -127,10 +128,12 @@ onMounted(() => {
 
 <style scoped>
 .goals-page {
-  padding: 16px;
+  padding: var(--spacing-md);
 }
 
 .el-tabs {
   min-height: 600px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
 }
 </style>

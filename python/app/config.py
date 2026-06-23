@@ -55,14 +55,16 @@ def _bool_env(key: str, default: bool = False) -> bool:
 def _int_env(key: str, default: int) -> int:
     try:
         return int(_env(key, str(default)))
-    except ValueError:
+    except ValueError as e:
+        logger.debug("环境变量 %s 转换整数失败，使用默认值: %s", key, e, exc_info=True)
         return default
 
 
 def _float_env(key: str, default: float) -> float:
     try:
         return float(_env(key, str(default)))
-    except ValueError:
+    except ValueError as e:
+        logger.debug("环境变量 %s 转换浮点数失败，使用默认值: %s", key, e, exc_info=True)
         return default
 
 

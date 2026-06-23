@@ -19,4 +19,18 @@ import UISettings from '@/components/settings/UISettings.vue'
   max-width: 900px;
   margin: 0 auto;
 }
+
+.settings-page :deep(.el-card) {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+}
+
+.settings-page :deep(h3) {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.settings-page :deep(label) {
+  color: var(--text-secondary);
+}
 </style>

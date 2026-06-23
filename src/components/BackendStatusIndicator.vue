@@ -6,13 +6,13 @@ const { state, restart, tauriMode } = useBackendStatus()
 
 const indicator = computed(() => {
   const map: Record<BackendStatusKind, { color: string; label: string; pulse: boolean }> = {
-    idle: { color: '#909399', label: '未启动', pulse: false },
-    starting: { color: '#E6A23C', label: '启动中', pulse: true },
-    running: { color: '#67C23A', label: '运行中', pulse: false },
-    stopping: { color: '#E6A23C', label: '停止中', pulse: true },
-    crashed: { color: '#F56C6C', label: '已崩溃', pulse: true },
-    failed: { color: '#F56C6C', label: '启动失败', pulse: false },
-    stopped: { color: '#909399', label: '已停止', pulse: false },
+    idle: { color: 'var(--text-tertiary)', label: '未启动', pulse: false },
+    starting: { color: 'var(--warning)', label: '启动中', pulse: true },
+    running: { color: 'var(--success)', label: '运行中', pulse: false },
+    stopping: { color: 'var(--warning)', label: '停止中', pulse: true },
+    crashed: { color: 'var(--error)', label: '已崩溃', pulse: true },
+    failed: { color: 'var(--error)', label: '启动失败', pulse: false },
+    stopped: { color: 'var(--text-tertiary)', label: '已停止', pulse: false },
   }
   return map[state.status] || map.idle
 })

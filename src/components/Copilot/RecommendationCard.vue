@@ -25,7 +25,7 @@
       </div>
 
       <div class="reasoning-section">
-        <div 
+        <div
           class="reasoning-header"
           @click="toggleReasoning"
         >
@@ -37,8 +37,8 @@
             <ArrowDown />
           </el-icon>
         </div>
-        
-        <div 
+
+        <div
           v-show="isReasoningExpanded"
           class="reasoning-content"
         >
@@ -51,15 +51,15 @@
       <div class="alternatives-section" v-if="alternatives && alternatives.length > 0">
         <div class="section-label">{{ $t('copilot.card.alternatives') }}</div>
         <div class="alternatives-list">
-          <div 
-            v-for="(alt, index) in alternatives" 
+          <div
+            v-for="(alt, index) in alternatives"
             :key="index"
             class="alternative-item"
           >
             <div class="alternative-header">
               <span class="alternative-label">{{ alt.label || `方案 ${index + 1}` }}</span>
-              <el-tag 
-                :type="getConfidenceTagType(alt.confidence)" 
+              <el-tag
+                :type="getConfidenceTagType(alt.confidence)"
                 size="small"
               >
                 {{ (alt.confidence * 100).toFixed(0) }}%
@@ -72,7 +72,7 @@
     </div>
 
     <div class="card-actions">
-      <DecisionActions 
+      <DecisionActions
         ref="actionsRef"
         :disabled="actionsDisabled"
         @accept="handleAccept"
@@ -160,8 +160,8 @@ defineExpose({
 
 <style scoped>
 .copilot-recommendation-card {
-  background: #fff;
-  border: 1px solid #e4e7ed;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
@@ -172,8 +172,8 @@ defineExpose({
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
+  color: var(--bg-card);
 }
 
 .header-left {
@@ -208,7 +208,7 @@ defineExpose({
 .section-label {
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
   margin-bottom: 12px;
 }
 
@@ -217,7 +217,7 @@ defineExpose({
 }
 
 .recommendation-content {
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 6px;
   padding: 12px;
 }
@@ -225,7 +225,7 @@ defineExpose({
 .recommendation-json {
   margin: 0;
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-all;
   font-family: 'Courier New', monospace;
@@ -237,7 +237,7 @@ defineExpose({
 
 .reasoning-section {
   margin-bottom: 20px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--border-medium);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -247,13 +247,13 @@ defineExpose({
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .reasoning-header:hover {
-  background: #ebeef5;
+  background: var(--bg-secondary);
 }
 
 .reasoning-title {
@@ -262,7 +262,7 @@ defineExpose({
   gap: 8px;
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .collapse-icon {
@@ -275,13 +275,13 @@ defineExpose({
 
 .reasoning-content {
   padding: 16px;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .reasoning-text {
   margin: 0;
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -297,9 +297,9 @@ defineExpose({
 
 .alternative-item {
   padding: 12px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 6px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--border-medium);
 }
 
 .alternative-header {
@@ -312,17 +312,17 @@ defineExpose({
 .alternative-label {
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .alternative-description {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .card-actions {
-  border-top: 1px solid #e4e7ed;
-  background: #fafafa;
+  border-top: 1px solid var(--border-medium);
+  background: var(--bg-secondary);
 }
 </style>

@@ -13,6 +13,7 @@ pydantic-settings==2.14.1   # 2.1.0→2.14.1 (feature updates)
 trimesh>=4.0.0          # 三角网格处理与体素化
 rtree>=1.0.0            # 空间索引加速(trimesh依赖)
 cadquery>=2.4.0         # 参数化CAD几何生成
+Pillow>=10.0.0          # 图像处理与CV几何参数提取
 
 # AI & Deep Learning
 torch==2.12.0           # 2.1.2→2.12.0 (major upgrade: stability+features)

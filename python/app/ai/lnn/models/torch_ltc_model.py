@@ -21,6 +21,9 @@ from typing import Tuple
 
 from .torch_base_lnn import BaseLNN, LNNConfig
 
+# LTC model constants
+MIN_TAU_VALUE = 0.1  # Minimum time constant to prevent division by zero
+
 
 class LTCCell(nn.Module):
     """LTC cell with learnable time constants and weight matrices.
@@ -84,7 +87,7 @@ class LTCCell(nn.Module):
         Returns:
             Updated hidden state tensor
         """
-        tau = self.tau.clamp(min=0.1)
+        tau = self.tau.clamp(min=MIN_TAU_VALUE)
 
         dh = torch.mm(h, self.U.t()) + torch.mm(x, self.W.t()) + self.bias
         dh = torch.tanh(dh)

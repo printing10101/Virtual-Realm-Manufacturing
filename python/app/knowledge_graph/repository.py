@@ -281,7 +281,7 @@ class KnowledgeGraphRepository:
         """按主键删除节点；级联删除其关联关系。
 
         实现说明：
-            - 优先采用 ORM 级别的 cascade 行为：先查询并删除该节点关联的
+            - 优先采用 ORM 级别的 cascade 行为：先批量删除该节点关联的
               所有 ``KGEdge`` 记录，再删除节点本身。
             - 同时保留 ``ondelete=CASCADE`` 数据库级约束作为兜底。
             - 此举避免对数据库外键强制启用（SQLite 默认关闭）的依赖。
@@ -290,16 +290,15 @@ class KnowledgeGraphRepository:
             orm_obj = session.get(KGNode, node_id)
             if orm_obj is None:
                 return False
-            # 先删除关联关系
-            edge_stmt = select(KGEdge).where(
+            # 批量删除关联关系（避免 N+1 查询）
+            from sqlalchemy import delete
+            edge_delete_stmt = delete(KGEdge).where(
                 or_(
                     KGEdge.source_id == node_id,
                     KGEdge.target_id == node_id,
                 )
             )
-            for edge in session.execute(edge_stmt).scalars().all():
-                session.delete(edge)
-            session.flush()
+            session.execute(edge_delete_stmt)
             session.delete(orm_obj)
             session.commit()
             return True

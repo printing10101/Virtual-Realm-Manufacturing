@@ -277,9 +277,47 @@ async function loadModel(url: string) {
   if (!threeScene || !modelGroup) return
 
   try {
-    // 这里应该实现模型加载逻辑
-    // 暂时使用占位符
-    console.log('Loading model:', url)
+    // 清空现有模型
+    while (modelGroup.children.length > 0) {
+      modelGroup.remove(modelGroup.children[0])
+    }
+
+    // 根据文件扩展名选择加载器
+    const lowerUrl = url.toLowerCase()
+    let loadedModel: THREE.Object3D | null = null
+
+    if (lowerUrl.endsWith('.gltf') || lowerUrl.endsWith('.glb')) {
+      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
+      const loader = new GLTFLoader()
+      loadedModel = await new Promise((resolve, reject) => {
+        loader.load(
+          url,
+          (gltf) => resolve(gltf.scene),
+          undefined,
+          reject
+        )
+      })
+    } else if (lowerUrl.endsWith('.obj')) {
+      const { OBJLoader } = await import('three/examples/jsm/loaders/OBJLoader.js')
+      const loader = new OBJLoader()
+      loadedModel = await new Promise((resolve, reject) => {
+        loader.load(
+          url,
+          (obj) => resolve(obj),
+          undefined,
+          reject
+        )
+      })
+    } else {
+      console.warn('Unsupported model format:', url)
+      return
+    }
+
+    if (loadedModel) {
+      modelGroup.add(loadedModel)
+      // 居中相机
+      threeScene.camera.lookAt(modelGroup.position)
+    }
   } catch (error) {
     console.error('Failed to load model:', error)
   }

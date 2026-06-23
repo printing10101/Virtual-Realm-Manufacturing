@@ -348,6 +348,22 @@ class AgentExecuteRequest(BaseModel):
     simulate: bool = Field(default=True, description="是否模拟执行")
 
 
+class AgentPipelineRequest(BaseModel):
+    """Agent 管线执行请求"""
+    pipeline_type: str = Field(
+        ...,
+        description="管线类型（process_planning/model_training/quality_analysis）",
+        min_length=1,
+    )
+    input_data: dict = Field(..., description="管线输入数据")
+    mode: str = Field(
+        default="sequential",
+        description="执行模式（sequential/conditional）",
+        pattern="^(sequential|conditional)$",
+    )
+    agent_id: str | None = Field(default=None, description="Agent ID（用于审计）")
+
+
 class AgentAuditLogQueryRequest(BaseModel):
     agent_id: str | None = Field(default=None, description="Agent ID过滤")
     permission_class: str | None = Field(default=None, description="权限类别过滤")

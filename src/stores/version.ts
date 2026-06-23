@@ -50,12 +50,29 @@ export const useVersionStore = defineStore('version', () => {
   async function fetchVersionInfo() {
     isLoading.value = true
     try {
-      const result = await invoke<VersionStatus>('get_version_info')
-      rustVersion.value = result.rust_version
-      rustCommit.value = result.rust_commit
-      pythonVersion.value = result.python_version
-      pythonCommit.value = result.python_commit
-      isConsistent.value = result.is_consistent
+      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+        const result = await invoke<VersionStatus>('get_version_info')
+        rustVersion.value = result.rust_version
+        rustCommit.value = result.rust_commit
+        pythonVersion.value = result.python_version
+        pythonCommit.value = result.python_commit
+        isConsistent.value = result.is_consistent
+      } else {
+        // 浏览器环境：尝试通过 HTTP API 获取版本信息
+        try {
+          const resp = await fetch('/api/v1/version')
+          if (resp.ok) {
+            const result = await resp.json()
+            rustVersion.value = result?.rust_version ?? ''
+            rustCommit.value = result?.rust_commit ?? ''
+            pythonVersion.value = result?.python_version ?? null
+            pythonCommit.value = result?.python_commit ?? null
+            isConsistent.value = result?.is_consistent ?? true
+          }
+        } catch {
+          // API 不可用时保持默认值
+        }
+      }
     } catch (e) {
       console.error('Failed to fetch version info:', e)
       isConsistent.value = false

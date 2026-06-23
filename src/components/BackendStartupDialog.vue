@@ -77,7 +77,7 @@ function onStop() {
           :show-text="true"
           status="warning"
         />
-        <p class="status-hint">首次启动可能需要数秒到一分钟，请稍候...</p>
+        <p class="status-hint">首次启动可能需要数秒到一分钟,请稍候...</p>
       </template>
 
       <!-- 错误 -->
@@ -96,7 +96,7 @@ function onStop() {
           <pre class="error-detail">{{ state.last_error }}</pre>
         </el-alert>
         <p class="status-hint">
-          请检查您的安装包是否完整，或尝试重启后端服务。如问题持续存在，请联系技术支持。
+          请检查您的安装包是否完整,或尝试重启后端服务。如问题持续存在,请联系技术支持。
         </p>
       </template>
     </div>
@@ -136,8 +136,8 @@ export default { components: { Loading, CircleCloseFilled } }
   font-size: 56px;
   line-height: 1;
 }
-.status-icon.starting { color: #E6A23C; }
-.status-icon.error { color: #F56C6C; }
+.status-icon.starting { color: var(--warning); }
+.status-icon.error { color: var(--error); }
 .rotating {
   animation: rotate 1.4s linear infinite;
 }
@@ -148,21 +148,21 @@ export default { components: { Loading, CircleCloseFilled } }
   font-size: 15px;
   font-weight: 500;
   margin: 0;
-  color: #303133;
+  color: var(--text-primary);
 }
 .status-msg.error {
-  color: #F56C6C;
+  color: var(--error);
 }
 .status-hint {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin: 0;
   max-width: 360px;
 }
 .error-detail {
   margin: 0;
   padding: 8px 12px;
-  background: #fef0f0;
+  background: var(--bg-secondary);
   border-radius: 4px;
   font-size: 12px;
   font-family: 'Consolas', 'Monaco', monospace;
@@ -170,6 +170,6 @@ export default { components: { Loading, CircleCloseFilled } }
   word-break: break-all;
   max-height: 160px;
   overflow: auto;
-  color: #c45656;
+  color: var(--error);
 }
 </style>

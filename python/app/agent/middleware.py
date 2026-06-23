@@ -29,7 +29,9 @@ class AgentAuditLog:
 
     def __init__(self, log_path: str | None = None):
         if log_path is None:
-            log_path = str(Path.home() / ".lingjing" / "agent_audit.log")
+            # 使用项目根目录下的 logs/audit 目录
+            from app.utils.utils import get_project_root
+            log_path = get_project_root() / "logs" / "audit" / "agent_audit.log"
         self._log_path = Path(log_path)
         self._log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -90,7 +92,8 @@ class AgentAuditLog:
                         ):
                             continue
                         entries.append(e)
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
+                        logger.debug("跳过损坏的审计日志行: %s", e, exc_info=True)
                         continue
         entries.reverse()
         return entries[offset : offset + limit]

@@ -1,5 +1,5 @@
 import { ref, reactive, onMounted } from 'vue'
-import axios from 'axios'
+import http from '@/utils/http'
 import { formatTimestamp } from '@/utils/formatters'
 import {
   getAuditModuleName as getModuleName,
@@ -91,9 +91,9 @@ export interface UseAuditLogReturn {
   formatTimestamp: (ts: number) => string
   getModuleName: (module: string) => string
   getDecisionName: (decision: string) => string
-  getDecisionType: (decision: string) => string
+  getDecisionType: (decision: string) => import('@/utils/statusHelpers').TagType
   getStatusName: (status: string) => string
-  getStatusType: (status: string) => string
+  getStatusType: (status: string) => import('@/utils/statusHelpers').TagType
 }
 
 export function useAuditLog(): UseAuditLogReturn {
@@ -133,7 +133,7 @@ export function useAuditLog(): UseAuditLogReturn {
         params.end_time = logFilters.dateRange[1].getTime()
       }
 
-      const res = await axios.post<{ data: AuditLogResponse }>('/api/v1/user-sovereignty/audit-log/query', params)
+      const res = await http.post<{ data: AuditLogResponse }>('/api/v1/user-sovereignty/audit-log/query', params)
       auditLogs.value = res.data.data.logs
       logPagination.total = res.data.data.total
     } catch (e: unknown) {
@@ -151,7 +151,7 @@ export function useAuditLog(): UseAuditLogReturn {
 
     loadingLogs.value = true
     try {
-      const res = await axios.post<{ data: AuditLogResponse }>('/api/v1/user-sovereignty/audit-log/search', {
+      const res = await http.post<{ data: AuditLogResponse }>('/api/v1/user-sovereignty/audit-log/search', {
         keyword: logSearchKeyword.value,
         limit: 50,
       })
@@ -166,7 +166,7 @@ export function useAuditLog(): UseAuditLogReturn {
 
   async function loadStatistics() {
     try {
-      const res = await axios.get<{ data: AuditLogStatistics }>('/api/v1/user-sovereignty/audit-log/statistics')
+      const res = await http.get<{ data: AuditLogStatistics }>('/api/v1/user-sovereignty/audit-log/statistics')
       auditLogStatistics.value = res.data.data
     } catch (e: unknown) {
       console.warn('Failed to load audit log statistics:', e)
@@ -183,7 +183,7 @@ export function useAuditLog(): UseAuditLogReturn {
         params.end_time = logFilters.dateRange[1].getTime()
       }
 
-      const res = await axios.post<{ data: { content: string } }>('/api/v1/user-sovereignty/audit-log/export', params)
+      const res = await http.post<{ data: { content: string } }>('/api/v1/user-sovereignty/audit-log/export', params)
       const blob = new Blob([res.data.data.content], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -207,7 +207,7 @@ export function useAuditLog(): UseAuditLogReturn {
         type: 'warning',
       })
 
-      const res = await axios.delete<{ data: ClearLogsResponse }>('/api/v1/user-sovereignty/audit-log/clear')
+      const res = await http.delete<{ data: ClearLogsResponse }>('/api/v1/user-sovereignty/audit-log/clear')
       ElMessage.success(`已清空 ${res.data.data.cleared_entries} 条日志`)
       loadAuditLogs()
       loadStatistics()

@@ -4,7 +4,7 @@
       <span class="confidence-label">{{ $t('copilot.confidence.label') }}</span>
       <span 
         class="confidence-value" 
-        :style="{ color: confidenceColor }"
+        :class="confidenceClass"
       >
         {{ (confidence * 100).toFixed(1) }}%
       </span>
@@ -14,9 +14,9 @@
       <div class="confidence-bar-bg">
         <div 
           class="confidence-bar-fill"
+          :class="confidenceClass"
           :style="{ 
-            width: `${confidence * 100}%`,
-            backgroundColor: confidenceColor
+            width: `${confidence * 100}%`
           }"
         />
       </div>
@@ -28,10 +28,10 @@
     </div>
     
     <div class="confidence-description">
-      <el-icon :style="{ color: confidenceColor }">
+      <el-icon :class="confidenceClass">
         <component :is="confidenceIcon" />
       </el-icon>
-      <span :style="{ color: confidenceColor }">{{ confidenceText }}</span>
+      <span :class="confidenceClass">{{ confidenceText }}</span>
     </div>
   </div>
 </template>
@@ -49,10 +49,10 @@ const props = defineProps<Props>()
 
 const { t } = useI18n()
 
-const confidenceColor = computed(() => {
-  if (props.confidence >= 0.8) return '#67c23a'
-  if (props.confidence >= 0.5) return '#e6a23c'
-  return '#f56c6c'
+const confidenceClass = computed(() => {
+  if (props.confidence >= 0.8) return 'confidence-high'
+  if (props.confidence >= 0.5) return 'confidence-medium'
+  return 'confidence-low'
 })
 
 const confidenceIcon = computed(() => {
@@ -72,7 +72,7 @@ const confidenceText = computed(() => {
 .copilot-confidence-indicator {
   width: 100%;
   padding: 12px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 8px;
 }
 
@@ -86,7 +86,7 @@ const confidenceText = computed(() => {
 .confidence-label {
   font-size: 14px;
   font-weight: 500;
-  color: #606266;
+  color: var(--text-secondary);
 }
 
 .confidence-value {
@@ -101,7 +101,7 @@ const confidenceText = computed(() => {
 .confidence-bar-bg {
   width: 100%;
   height: 8px;
-  background: #e4e7ed;
+  background: var(--border-medium);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -117,7 +117,7 @@ const confidenceText = computed(() => {
   justify-content: space-between;
   margin-top: 4px;
   font-size: 11px;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 .confidence-description {
@@ -126,5 +126,31 @@ const confidenceText = computed(() => {
   gap: 6px;
   font-size: 13px;
   margin-top: 8px;
+}
+
+/* Confidence level classes - text color */
+.confidence-high {
+  color: var(--success);
+}
+
+.confidence-medium {
+  color: var(--warning);
+}
+
+.confidence-low {
+  color: var(--error);
+}
+
+/* Bar fill background colors */
+.confidence-bar-fill.confidence-high {
+  background-color: var(--success);
+}
+
+.confidence-bar-fill.confidence-medium {
+  background-color: var(--warning);
+}
+
+.confidence-bar-fill.confidence-low {
+  background-color: var(--error);
 }
 </style>

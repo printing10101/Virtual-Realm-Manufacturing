@@ -320,7 +320,7 @@
                   size="small"
                   text
                   type="primary"
-                  @click="handlePreviewHistory(row)"
+                  @click="handlePreviewHistory(row as ImportHistoryEntry)"
                 >
                   {{ $t('stepImport.historyView') }}
                 </el-button>
@@ -328,7 +328,7 @@
                   size="small"
                   text
                   type="danger"
-                  @click="handleDeleteHistory(row)"
+                  @click="handleDeleteHistory(row as ImportHistoryEntry)"
                 >
                   {{ $t('stepImport.historyDelete') }}
                 </el-button>
@@ -507,122 +507,25 @@ async function handleDeleteHistory(row: ImportHistoryEntry) {
 </script>
 
 <style scoped>
-.step-import-container {
-  min-height: 200px;
-}
-
-.step-uploader {
-  width: 100%;
-}
-
-.import-options {
-  margin-top: 16px;
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 6px;
-}
-
-.precision-hint {
-  margin-left: 12px;
-  font-size: 12px;
-  color: #909399;
-}
-
-.progress-section {
-  padding: 24px 0;
-  text-align: center;
-}
-
-.progress-status {
-  margin-bottom: 16px;
-  font-size: 14px;
-  color: #606266;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.progress-detail {
-  margin-top: 12px;
-  font-size: 12px;
-  color: #909399;
-}
-
-.result-section {
-  max-height: 50vh;
-  overflow-y: auto;
-}
-
-.model-overview {
-  margin-top: 16px;
-}
-
-.model-overview h4,
-.model-dimensions h4,
-.entity-selector h4 {
-  margin: 12px 0 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.dimension-cards {
-  display: flex;
-  gap: 12px;
-}
-
-.dim-card {
-  flex: 1;
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 6px;
-  text-align: center;
-}
-
-.dim-label {
-  display: block;
-  font-size: 12px;
-  color: #909399;
-  margin-bottom: 4px;
-}
-
-.dim-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.dim-extra {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #606266;
-  text-align: center;
-}
-
-.warning-section {
-  margin-top: 12px;
-}
-
-.entity-selector {
-  margin-top: 16px;
-}
-
-.error-section {
-  padding: 24px 0;
-}
-
-.error-detail {
-  margin-top: 12px;
-}
-
-.history-container {
-  min-height: 200px;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
+.step-import-container { min-height: 200px; }
+.step-uploader { width: 100%; }
+.import-options { margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 6px; }
+.precision-hint { margin-left: 12px; font-size: 12px; color: var(--text-tertiary); }
+.progress-section { padding: 24px 0; text-align: center; }
+.progress-status { margin-bottom: 16px; font-size: 14px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 8px; }
+.progress-detail { margin-top: 12px; font-size: 12px; color: var(--text-tertiary); }
+.result-section { max-height: 50vh; overflow-y: auto; }
+.model-overview { margin-top: 16px; }
+.model-overview h4,.model-dimensions h4,.entity-selector h4 { margin: 12px 0 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.dimension-cards { display: flex; gap: 12px; }
+.dim-card { flex: 1; padding: 12px; background: var(--bg-tertiary); border-radius: 6px; text-align: center; }
+.dim-label { display: block; font-size: 12px; color: var(--text-tertiary); margin-bottom: 4px; }
+.dim-value { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.dim-extra { margin-top: 8px; font-size: 12px; color: var(--text-secondary); text-align: center; }
+.warning-section { margin-top: 12px; }
+.entity-selector { margin-top: 16px; }
+.error-section { padding: 24px 0; }
+.error-detail { margin-top: 12px; }
+.history-container { min-height: 200px; }
+.dialog-footer { display: flex; justify-content: flex-end; gap: 8px; }
 </style>

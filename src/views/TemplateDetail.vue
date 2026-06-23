@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getBranchTypeTagType } from '@/utils/statusHelpers'
+import http from '@/utils/http'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -15,45 +16,49 @@ const metrics = ref<any>(null)
 const loading = ref(false)
 const activeTab = ref('info')
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+const API_BASE = '/api/v1'
 
 async function fetchBranch() {
   loading.value = true
   try {
-    const res = await fetch(`${API_BASE}/templates/branches/${branchId}`)
-    const data = await res.json()
-    if (data.code === 'SUCCESS') branch.value = data.data
-  } catch { /* empty */ } finally {
+    const res = await http.get(`${API_BASE}/templates/branches/${branchId}`)
+    if (res.data.code === 'SUCCESS') branch.value = res.data.data
+  } catch (e: unknown) {
+    console.warn('Failed to fetch branch:', e)
+  } finally {
     loading.value = false
   }
 }
 
 async function fetchEvolutionHistory() {
   try {
-    const res = await fetch(`${API_BASE}/templates/evolution/history?branch_id=${branchId}`)
-    const data = await res.json()
-    if (data.code === 'SUCCESS') evolutionHistory.value = data.data
-  } catch { /* empty */ }
+    const res = await http.get(`${API_BASE}/templates/evolution/history`, { params: { branch_id: branchId } })
+    if (res.data.code === 'SUCCESS') evolutionHistory.value = res.data.data
+  } catch (e: unknown) {
+    console.warn('Failed to fetch evolution history:', e)
+  }
 }
 
 async function fetchABExperiments() {
   try {
-    const res = await fetch(`${API_BASE}/templates/ab_tests`)
-    const data = await res.json()
-    if (data.code === 'SUCCESS') {
-      abExperiments.value = (data.data || []).filter(
+    const res = await http.get(`${API_BASE}/templates/ab_tests`)
+    if (res.data.code === 'SUCCESS') {
+      abExperiments.value = (res.data.data || []).filter(
         (e: any) => e.control_branch === branchId || e.candidate_branch === branchId
       )
     }
-  } catch { /* empty */ }
+  } catch (e: unknown) {
+    console.warn('Failed to fetch AB experiments:', e)
+  }
 }
 
 async function fetchMetrics() {
   try {
-    const res = await fetch(`${API_BASE}/template_market/templates/${branchId}/metrics`)
-    const data = await res.json()
-    if (data.code === 'SUCCESS') metrics.value = data.data
-  } catch { /* empty */ }
+    const res = await http.get(`${API_BASE}/template_market/templates/${branchId}/metrics`)
+    if (res.data.code === 'SUCCESS') metrics.value = res.data.data
+  } catch (e: unknown) {
+    console.warn('Failed to fetch metrics:', e)
+  }
 }
 
 onMounted(() => {
@@ -232,8 +237,8 @@ onMounted(() => {
 .branch-header { display: flex; align-items: center; gap: 12px; }
 .branch-header h2 { margin: 0; }
 .detail-tabs { margin-top: 16px; }
-.template-data { max-height: 400px; overflow: auto; font-family: monospace; font-size: 13px; background: #f5f7fa; padding: 12px; border-radius: 4px; }
+.template-data { max-height: 400px; overflow: auto; font-family: monospace; font-size: 13px; background: var(--bg-secondary); padding: 12px; border-radius: var(--radius-sm); }
 .evolution-detail { margin-top: 4px; font-size: 13px; }
-.evolution-detail pre { max-height: 200px; overflow: auto; background: #f5f7fa; padding: 8px; border-radius: 4px; margin-top: 4px; }
+.evolution-detail pre { max-height: 200px; overflow: auto; background: var(--bg-secondary); padding: 8px; border-radius: var(--radius-sm); margin-top: 4px; }
 .info-card { margin-bottom: 16px; }
 </style>

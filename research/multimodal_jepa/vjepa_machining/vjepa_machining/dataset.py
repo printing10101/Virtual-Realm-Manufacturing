@@ -153,11 +153,13 @@ class MachiningVideoDataset(Dataset):
         config=None,
         augment: bool = True,
         seed: int = 42,
+        lazy_load: bool = False,
     ):
         super().__init__()
         self.data_dir = data_dir
         self.split = split
         self.augment = augment and (split == "train")
+        self.lazy_load = lazy_load
 
         from app.ai.vjepa_machining.config import VJEPAMachiningConfig
         self.config = config or VJEPAMachiningConfig()
@@ -192,10 +194,31 @@ class MachiningVideoDataset(Dataset):
 
         self.annotations = [self.video_annotations[i] for i in selected]
 
-        # 构建片段索引
-        self.clips = []
+        # 构建片段索引（支持延迟加载）
+        self._clips = None
+        if not lazy_load:
+            self._build_clip_index()
+
+        # 数据增强
+        self.transform = VideoAugmentation(
+            self.config.rotation_range,
+            self.config.brightness_range,
+            self.config.gaussian_noise_std,
+        ) if self.augment else None
+
+        if not lazy_load:
+            logger.info(f"Loaded MachiningVideoDataset [{split}]: {len(self.clips)} clips")
+        else:
+            logger.info(f"Loaded MachiningVideoDataset [{split}] in lazy mode: {len(self.annotations)} annotations")
+
+    def _build_clip_index(self):
+        """构建片段索引（可延迟调用）"""
+        if self._clips is not None:
+            return
+
+        self._clips = []
         for ann in self.annotations:
-            video_path = os.path.join(data_dir, ann["video_path"])
+            video_path = os.path.join(self.data_dir, ann["video_path"])
             total_frames = int(ann.get("duration_seconds", 10) * ann.get("fps", 30))
             num_clips = max(1, total_frames // self.num_frames)
 
@@ -214,7 +237,7 @@ class MachiningVideoDataset(Dataset):
                         anomaly_info = interval
                         break
 
-                self.clips.append({
+                self._clips.append({
                     "video_path": video_path,
                     "start_frame": start_frame,
                     "end_frame": end_frame,
@@ -223,14 +246,12 @@ class MachiningVideoDataset(Dataset):
                     "anomaly_info": anomaly_info,
                 })
 
-        # 数据增强
-        self.transform = VideoAugmentation(
-            self.config.rotation_range,
-            self.config.brightness_range,
-            self.config.gaussian_noise_std,
-        ) if self.augment else None
-
-        logger.info(f"Loaded MachiningVideoDataset [{split}]: {len(self.clips)} clips")
+    @property
+    def clips(self):
+        """延迟加载片段索引"""
+        if self._clips is None:
+            self._build_clip_index()
+        return self._clips
 
     def __len__(self) -> int:
         return len(self.clips)

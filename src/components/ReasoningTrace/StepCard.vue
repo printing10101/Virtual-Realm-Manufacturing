@@ -208,8 +208,8 @@ const confidenceColor = computed(() => {
 
 <style scoped>
 .step-card {
-  background: white;
-  border: 1px solid #e4e7ed;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
@@ -221,17 +221,17 @@ const confidenceColor = computed(() => {
 }
 
 .step-card.status-running {
-  border-color: #e6a23c;
-  background: #fdf6ec;
+  border-color: var(--warning);
+  background: rgba(212, 168, 87, 0.1);
 }
 
 .step-card.status-completed {
-  border-color: #67c23a;
+  border-color: var(--success);
 }
 
 .step-card.status-failed {
-  border-color: #f56c6c;
-  background: #fef0f0;
+  border-color: var(--error);
+  background: rgba(199, 107, 107, 0.1);
 }
 
 .step-header {
@@ -248,15 +248,15 @@ const confidenceColor = computed(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #409eff;
-  color: white;
+  background: var(--accent-primary);
+  color: var(--bg-card);
 }
 
 .step-title {
   flex: 1;
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .step-status {
@@ -265,19 +265,19 @@ const confidenceColor = computed(() => {
 
 .step-duration {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-tertiary);
   flex-shrink: 0;
 }
 
 .step-evidence {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-light);
 }
 
 .evidence-summary {
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 12px;
 }
@@ -297,7 +297,7 @@ const confidenceColor = computed(() => {
 .evidence-label {
   font-size: 13px;
   font-weight: 600;
-  color: #909399;
+  color: var(--text-tertiary);
   text-transform: uppercase;
 }
 
@@ -312,19 +312,19 @@ const confidenceColor = computed(() => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   padding: 6px 8px;
   border-radius: 4px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
 }
 
 .rule-item.matched {
-  background: #f0f9ff;
-  color: #409eff;
+  background: rgba(139, 125, 107, 0.1);
+  color: var(--accent-primary);
 }
 
 .rule-desc {
-  color: #909399;
+  color: var(--text-tertiary);
   font-size: 12px;
 }
 
@@ -339,14 +339,14 @@ const confidenceColor = computed(() => {
   align-items: center;
   gap: 12px;
   padding: 8px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 4px;
 }
 
 .case-id {
   font-size: 13px;
   font-weight: 600;
-  color: #409eff;
+  color: var(--accent-primary);
   min-width: 80px;
 }
 
@@ -358,13 +358,13 @@ const confidenceColor = computed(() => {
 .similarity-text {
   font-size: 13px;
   font-weight: 600;
-  color: #67c23a;
+  color: var(--success);
   min-width: 40px;
 }
 
 .case-result {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 .formula-list {
@@ -375,20 +375,20 @@ const confidenceColor = computed(() => {
 
 .formula-list code {
   padding: 8px 12px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 4px;
   font-family: 'Courier New', monospace;
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
 }
 
 .curve-info {
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   padding: 8px 12px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 4px;
 }
 
@@ -403,34 +403,34 @@ const confidenceColor = computed(() => {
   align-items: center;
   gap: 12px;
   padding: 8px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 4px;
   font-size: 13px;
 }
 
 .sample-source {
   font-weight: 600;
-  color: #409eff;
+  color: var(--accent-primary);
 }
 
 .sample-label {
-  color: #67c23a;
+  color: var(--success);
 }
 
 .sample-features {
-  color: #909399;
+  color: var(--text-tertiary);
   font-size: 12px;
 }
 
 .step-confidence {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-light);
 }
 
 .confidence-label {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-bottom: 6px;
   display: block;
 }

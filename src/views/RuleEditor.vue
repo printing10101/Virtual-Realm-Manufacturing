@@ -184,7 +184,7 @@
           <template #default="{ row }">
             <el-link
               type="primary"
-              @click="handleViewDetail(row)"
+              @click="handleViewDetail(row as ProcessRule)"
             >
               {{ row.name }}
             </el-link>
@@ -245,7 +245,7 @@
               size="small"
               type="primary"
               link
-              @click="ruleStore.openEditDialog(row)"
+              @click="ruleStore.openEditDialog(row as ProcessRule)"
             >
               {{ $t('ruleEditor.edit') }}
             </el-button>
@@ -253,7 +253,7 @@
               size="small"
               type="success"
               link
-              @click="handleToggleStatus(row)"
+              @click="handleToggleStatus(row as ProcessRule)"
             >
               {{ row.status === 'active' ? $t('ruleEditor.disable') : $t('ruleEditor.enable') }}
             </el-button>
@@ -452,12 +452,12 @@ function handlePageChange(page: number) {
   })
 }
 
-function handleSortChange({ prop, order }: { prop: string; order: string }) {
+function handleSortChange({ prop, order }: { prop: string | null; order: string | null }) {
   ruleStore.fetchRules({
     keyword: searchKeyword.value || undefined,
     group_id: filterGroup.value,
     status: filterStatus.value,
-    sort_by: prop,
+    sort_by: prop || undefined,
     sort_order: order === 'ascending' ? 'ASC' : 'DESC',
     page: ruleStore.currentPage,
     page_size: ruleStore.pageSize,
@@ -514,12 +514,13 @@ function getGroupName(groupId?: number): string {
 .page-header h2 {
   margin: 0 0 4px 0;
   font-size: 24px;
-  color: #303133;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .subtitle {
   margin: 0;
-  color: #909399;
+  color: var(--text-tertiary);
   font-size: 14px;
 }
 
@@ -530,34 +531,43 @@ function getGroupName(groupId?: number): string {
 .stat-card {
   text-align: center;
   padding: 8px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-fast);
+}
+
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .stat-value {
   font-size: 28px;
   font-weight: 600;
-  color: #409eff;
+  color: var(--accent-primary);
 }
 
 .stat-card.active .stat-value {
-  color: #67c23a;
+  color: var(--success);
 }
 
 .stat-card.draft .stat-value {
-  color: #e6a23c;
+  color: var(--warning);
 }
 
 .stat-card.groups .stat-value {
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 .stat-label {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
   margin-top: 4px;
 }
 
 .toolbar-card {
   margin-bottom: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
 }
 
 .toolbar {
@@ -583,7 +593,7 @@ function getGroupName(groupId?: number): string {
 
 .preview-text {
   font-size: 12px;
-  color: #606266;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -604,20 +614,22 @@ function getGroupName(groupId?: number): string {
 .section-title {
   margin: 20px 0 12px 0;
   font-size: 16px;
-  color: #303133;
-  border-left: 3px solid #409eff;
+  color: var(--text-primary);
+  border-left: 3px solid var(--accent-primary);
   padding-left: 8px;
+  font-weight: 600;
 }
 
 .description {
   margin-top: 16px;
-  color: #606266;
+  color: var(--text-secondary);
   font-size: 14px;
+  line-height: 1.6;
 }
 
 .time-info {
   margin-top: 16px;
-  color: #909399;
+  color: var(--text-tertiary);
   font-size: 12px;
   text-align: right;
 }

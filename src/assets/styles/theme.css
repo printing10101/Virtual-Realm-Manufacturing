@@ -1,0 +1,167 @@
+/* 灵境制造 - 米白色简约主题 */
+
+:root {
+  /* 主色调 - 米白色系 */
+  --bg-primary: #FAFAF7;
+  --bg-secondary: #F5F5F0;
+  --bg-tertiary: #EFEFEA;
+  --bg-card: #FFFFFF;
+  
+  /* 文字颜色 */
+  --text-primary: #2C2C2C;
+  --text-secondary: #5A5A5A;
+  --text-tertiary: #8A8A8A;
+  --text-accent: #6B5D4F;
+  
+  /* 边框颜色 */
+  --border-light: #E8E8E3;
+  --border-medium: #D8D8D3;
+  --border-dark: #C8C8C3;
+  
+  /* 强调色 - 温暖的棕色 */
+  --accent-primary: #8B7D6B;
+  --accent-hover: #6B5D4F;
+  --accent-light: #A89B8C;
+  
+  /* 状态颜色 */
+  --success: #67A67A;
+  --warning: #D4A857;
+  --error: #C76B6B;
+  --info: #7B9AAF;
+  
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  
+  /* 间距 */
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* 过渡 */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.35s ease;
+}
+
+/* 全局基础样式 */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Element Plus 主题覆盖 */
+.el-button--primary {
+  --el-button-bg-color: var(--accent-primary);
+  --el-button-border-color: var(--accent-primary);
+  --el-button-hover-bg-color: var(--accent-hover);
+  --el-button-hover-border-color: var(--accent-hover);
+  --el-button-active-bg-color: var(--accent-hover);
+  --el-button-active-border-color: var(--accent-hover);
+}
+
+.el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: var(--text-secondary);
+  --el-menu-active-color: var(--accent-primary);
+  --el-menu-hover-bg-color: var(--bg-secondary);
+}
+
+.el-card {
+  --el-card-border-color: var(--border-light);
+  --el-card-bg-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-normal);
+}
+
+.el-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.el-dialog {
+  border-radius: var(--radius-lg);
+}
+
+.el-input__wrapper {
+  border-radius: var(--radius-sm);
+}
+
+.el-select-dropdown {
+  border-radius: var(--radius-md);
+}
+
+.el-tabs__item.is-active {
+  color: var(--accent-primary);
+}
+
+.el-tabs__active-bar {
+  background-color: var(--accent-primary);
+}
+
+.el-tag {
+  border-radius: var(--radius-sm);
+}
+
+.el-tag--info {
+  --el-tag-bg-color: var(--bg-secondary);
+  --el-tag-border-color: var(--border-light);
+  --el-tag-text-color: var(--text-secondary);
+}
+
+.el-table {
+  --el-table-border-color: var(--border-light);
+  --el-table-header-bg-color: var(--bg-secondary);
+  --el-table-row-hover-bg-color: var(--bg-secondary);
+}
+
+.el-progress__text {
+  color: var(--text-primary);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-dark);
+}
+
+/* 链接样式 */
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* 选中文字样式 */
+::selection {
+  background-color: var(--accent-light);
+  color: white;
+}

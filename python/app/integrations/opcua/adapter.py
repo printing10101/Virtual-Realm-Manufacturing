@@ -232,7 +232,7 @@ class OPCUAAdapter:
                     try:
                         self._run_coro(self._client.disconnect())
                     except Exception as cleanup_exc:  # noqa: BLE001
-                        logger.debug("断开连接清理失败: %s", cleanup_exc)
+                        logger.warning("断开连接清理失败: %s", cleanup_exc, exc_info=True)
                 raise
 
         except ImportError as exc:
@@ -307,7 +307,7 @@ class OPCUAAdapter:
                                     node_id = sub_child.nodeid.to_string()
                                     discovered_nodes.append(node_id)
                             except Exception as browse_exc:  # noqa: BLE001
-                                logger.debug("浏览子节点失败: %s", browse_exc)
+                                logger.warning("浏览子节点失败: %s", browse_exc, exc_info=True)
                                 continue
 
                     # Also check if the child itself matches
@@ -316,7 +316,7 @@ class OPCUAAdapter:
                         discovered_nodes.append(node_id)
 
                 except Exception as child_exc:  # noqa: BLE001
-                    logger.debug("处理子节点失败: %s", child_exc)
+                    logger.warning("处理子节点失败: %s", child_exc, exc_info=True)
                     continue
 
         except Exception as exc:
@@ -427,7 +427,7 @@ class OPCUAAdapter:
         if self._tdengine is None:
             # No storage configured – drop the batch but count it.
             # The CLI uses this mode for "dry-run" / smoke testing.
-            logger.debug("No TDengine client wired; dropping %d samples", len(batch))
+            logger.warning("No TDengine client wired; dropping %d samples", len(batch))
             self._ingested_count += len(batch)
             return len(batch)
 

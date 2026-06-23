@@ -92,6 +92,6 @@ function handleClose() {
 <style lang="scss" scoped>
 .current-value {
   font-weight: 600;
-  color: #409eff;
+  color: var(--accent-primary);
 }
 </style>

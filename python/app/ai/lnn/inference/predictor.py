@@ -8,10 +8,13 @@ Supports automatic device selection and AMP (Automatic Mixed Precision) accelera
 import os
 import numpy as np
 import time
+import json
 import logging
 import psutil
 from typing import Any, Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass, field
+from pathlib import Path
+from datetime import datetime
 
 try:
     import torch
@@ -154,6 +157,17 @@ class LNNPredictor:
         }
         self._max_recent_times = 10_000
 
+        # Trace log persistence
+        self._trace_log_path = os.path.join(
+            os.getcwd(), "data", "traces", "trace_log.jsonl"
+        )
+        self._trace_log_enabled = True
+        try:
+            Path(self._trace_log_path).parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            logger.warning("无法创建 trace log 目录: %s", exc)
+            self._trace_log_enabled = False
+
     def _select_device(self) -> Any:
         """Automatically select best available device"""
         if not self.auto_device or not HAS_TORCH:
@@ -245,6 +259,10 @@ class LNNPredictor:
             inference_time = (time.perf_counter() - start_time) * 1000
             mem_after = self._get_memory_usage_mb()
             self._update_stats(inference_time, mem_after)
+            
+            # 持久化真实推理性能数据
+            input_shape = features.shape if hasattr(features, 'shape') else (1,)
+            self._write_trace(inference_time, input_shape, success=True)
 
             try:
                 from app.utils.utils import get_metrics_collector
@@ -563,6 +581,44 @@ class LNNPredictor:
         if len(times) > self._max_recent_times:
             self._stats["inference_times"] = times[-self._max_recent_times :]
         self._stats["window_inferences"] += 1
+
+    def _write_trace(
+        self,
+        inference_time_ms: float,
+        input_shape: tuple,
+        success: bool = True,
+        error_msg: Optional[str] = None,
+    ) -> None:
+        """
+        持久化推理性能数据到 trace_log.jsonl
+        
+        Args:
+            inference_time_ms: 真实推理耗时（毫秒）
+            input_shape: 输入数据形状
+            success: 是否成功
+            error_msg: 错误信息（如有）
+        """
+        if not self._trace_log_enabled:
+            return
+        
+        try:
+            trace_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "model_name": self.model_name,
+                "device": str(self.device),
+                "input_shape": list(input_shape),
+                "inference_time_ms": round(inference_time_ms, 4),
+                "memory_mb": round(self._get_memory_usage_mb(), 2),
+                "success": success,
+                "error": error_msg,
+                "amp_enabled": self.use_amp,
+                "engine_type": self.engine_type.value if hasattr(self.engine_type, "value") else str(self.engine_type),
+            }
+            
+            with open(self._trace_log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(trace_entry, ensure_ascii=False) + "\n")
+        except (OSError, IOError, TypeError, ValueError) as exc:
+            logger.debug("写入 trace log 失败: %s", exc)
 
     @classmethod
     def from_registry(

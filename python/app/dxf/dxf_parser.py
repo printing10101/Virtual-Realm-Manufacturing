@@ -26,6 +26,7 @@ from typing import Any, Optional
 import ezdxf
 
 from app.dxf.exceptions import DxfParseError, DxfFormatError
+from app.utils.utils import safe_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -361,21 +362,32 @@ class DxfParser:
         file_path: str | Path,
         *,
         user_id: Optional[str] = None,
+        base_dir: Optional[str] = None,
     ) -> DxfParseResult:
         """解析DXF文件并返回结构化数据。
 
         Args:
             file_path: DXF文件路径
             user_id: 可选的用户标识，仅用于桥接层数据收集，不影响解析逻辑
+            base_dir: 可选的基础目录，用于路径安全检查。如果提供，将验证 file_path 是否在 base_dir 内
 
         Returns:
             DxfParseResult: 包含所有提取的几何实体和元数据
 
         Raises:
             DxfParseError: 文件不存在或读取失败
-            DxfFormatError: DXF格式无效或版本不支持
+            DxfFormatError: 格式无效或版本不支持
+            ValueError: 路径安全检查失败（当提供 base_dir 时）
         """
-        path = Path(file_path)
+        # 路径安全检查
+        if base_dir is not None:
+            try:
+                path = safe_file_path(str(file_path), base_dir)
+            except ValueError as e:
+                raise DxfParseError(f"路径安全检查失败: {file_path}。错误: {e}") from e
+        else:
+            path = Path(file_path)
+        
         start_time = time.time()
         result = DxfParseResult(file_name=path.name)
 
@@ -483,16 +495,16 @@ class DxfParser:
                 user_id=user_id,
                 extra=extra,
             )
-            for err in result.errors:
-                collector.record_error(
+            if result.errors:
+                collector.record_batch_errors(
                     feature="dxf_parser",
                     error_type="parse_error",
-                    error_message=err,
+                    error_messages=result.errors,
                     context={"file_path": str(path)},
                     user_id=user_id,
                 )
         except Exception as e:  # noqa: BLE001
-            logger.debug("bridge 数据收集失败（不影响主流程）: %s", e)
+            logger.warning("bridge 数据收集失败（不影响主流程）: %s", e, exc_info=True)
 
         return result
 
@@ -521,7 +533,7 @@ class DxfParser:
                     )
                     result.lines.append(line)
                 except Exception as e:
-                    logger.debug("LINE实体提取跳过(handle=%s): %s", entity.dxf.handle, e)
+                    logger.warning("LINE实体提取跳过(handle=%s): %s", entity.dxf.handle, e, exc_info=True)
         except Exception as e:
             result.warnings.append(f"LINE实体查询异常: {e}")
 
@@ -547,7 +559,7 @@ class DxfParser:
                     if circle.radius > 0:
                         result.circles.append(circle)
                 except Exception as e:
-                    logger.debug("CIRCLE实体提取跳过(handle=%s): %s", entity.dxf.handle, e)
+                    logger.warning("CIRCLE实体提取跳过(handle=%s): %s", entity.dxf.handle, e, exc_info=True)
         except Exception as e:
             result.warnings.append(f"CIRCLE实体查询异常: {e}")
 
@@ -574,7 +586,7 @@ class DxfParser:
                     )
                     result.arcs.append(arc)
                 except Exception as e:
-                    logger.debug("ARC实体提取跳过(handle=%s): %s", entity.dxf.handle, e)
+                    logger.warning("ARC实体提取跳过(handle=%s): %s", entity.dxf.handle, e, exc_info=True)
         except Exception as e:
             result.warnings.append(f"ARC实体查询异常: {e}")
 
@@ -592,7 +604,7 @@ class DxfParser:
                 except Exception as e:
                     # 修复：保留诊断信息（handle + 原因），并通过 warnings 反馈
                     handle = getattr(entity.dxf, "handle", "<unknown>")
-                    logger.debug("TEXT实体提取跳过(handle=%s): %s", handle, e)
+                    logger.warning("TEXT实体提取跳过(handle=%s): %s", handle, e, exc_info=True)
                     result.warnings.append(
                         f"TEXT实体提取失败(handle={handle}): {e}"
                     )
@@ -605,7 +617,7 @@ class DxfParser:
                     result.texts.append(_extract_single_mtext(entity))
                 except Exception as e:
                     handle = getattr(entity.dxf, "handle", "<unknown>")
-                    logger.debug("MTEXT实体提取跳过(handle=%s): %s", handle, e)
+                    logger.warning("MTEXT实体提取跳过(handle=%s): %s", handle, e, exc_info=True)
                     result.warnings.append(
                         f"MTEXT实体提取失败(handle={handle}): {e}"
                     )
@@ -662,7 +674,7 @@ class DxfParser:
                     if dim is not None:
                         result.dimensions.append(dim)
                 except Exception as e:
-                    logger.debug("DIMENSION实体提取跳过(handle=%s): %s", entity.dxf.handle, e)
+                    logger.warning("DIMENSION实体提取跳过(handle=%s): %s", entity.dxf.handle, e, exc_info=True)
         except Exception as e:
             result.warnings.append(f"DIMENSION实体查询异常: {e}")
 
@@ -685,7 +697,7 @@ class DxfParser:
                     associated.append(str(geo_handle))
         except (AttributeError, KeyError, TypeError, ValueError) as assoc_err:
             # 标注几何关联属性访问失败时不影响其他属性返回，记录以便排查
-            logger.debug(
+            logger.warning(
                 "Failed to read DIMENSION geometry handle (handle=%s): %s",
                 getattr(entity.dxf, "handle", "?"),
                 assoc_err,
@@ -724,11 +736,12 @@ class DxfParser:
         except (AttributeError, KeyError, TypeError) as exc:
             # 修复：原代码用裸 except Exception 静默吞掉所有错误，
             # 实际只可能是 DIMENSION 字段缺失/类型异常。
-            logger.debug(
+            logger.warning(
                 "_get_dimtype 降级到 UNKNOWN | handle=%s | exc=%s: %s",
                 getattr(entity.dxf, "handle", "?"),
                 type(exc).__name__,
                 exc,
+                exc_info=True,
             )
             return "UNKNOWN"
 
@@ -738,8 +751,8 @@ class DxfParser:
         try:
             return float(entity.dxf.measurement)
         except Exception as e:  # noqa: BLE001
-            logger.debug("无法从 entity.dxf.measurement 获取测量值 (handle=%s): %s",
-                        getattr(entity.dxf, "handle", "?"), e)
+            logger.warning("无法从 entity.dxf.measurement 获取测量值 (handle=%s): %s",
+                        getattr(entity.dxf, "handle", "?"), e, exc_info=True)
             try:
                 raw_text = DxfParser._get_dimension_text(entity)
                 import re
@@ -748,7 +761,7 @@ class DxfParser:
                     return float(nums[0])
             except (AttributeError, TypeError, ValueError) as parse_err:
                 # 备选策略：解析失败时使用 0.0 占位，记录以便后续排查
-                logger.debug(
+                logger.warning(
                     "Failed to parse measurement fallback from text (handle=%s): %s",
                     getattr(entity.dxf, "handle", "?"),
                     parse_err,
@@ -765,7 +778,7 @@ class DxfParser:
                 return str(text).strip()
         except (AttributeError, TypeError, ValueError) as text_err:
             # 主路径读不到文本时，会回退到 measurement 占位，记录失败原因
-            logger.debug(
+            logger.warning(
                 "Failed to read DIMENSION text (handle=%s): %s",
                 getattr(entity.dxf, "handle", "?"),
                 text_err,
@@ -775,10 +788,11 @@ class DxfParser:
             return str(entity.dxf.measurement)
         except (AttributeError, TypeError, ValueError) as exc:
             # 修复：原代码用裸 except Exception 静默吞掉所有错误。
-            logger.debug(
+            logger.warning(
                 "_get_dimension_text measurement 兜底失败 (handle=%s): %s",
                 getattr(entity.dxf, "handle", "?"),
                 exc,
+                exc_info=True,
             )
             return ""
 
@@ -793,10 +807,11 @@ class DxfParser:
             )
         except (AttributeError, TypeError, ValueError) as exc:
             # 修复：原代码用裸 except Exception 静默吞掉所有错误。
-            logger.debug(
+            logger.warning(
                 "_get_dimension_position: text_midpoint 缺失, 尝试 def_point (handle=%s): %s",
                 getattr(entity.dxf, "handle", "?"),
                 exc,
+                exc_info=True,
             )
             try:
                 return (
@@ -805,10 +820,11 @@ class DxfParser:
                     float(entity.dxf.def_point.z) if hasattr(entity.dxf.def_point, 'z') else 0.0,
                 )
             except (AttributeError, TypeError, ValueError) as exc2:
-                logger.debug(
+                logger.warning(
                     "_get_dimension_position: def_point 兜底失败 (handle=%s): %s",
                     getattr(entity.dxf, "handle", "?"),
                     exc2,
+                    exc_info=True,
                 )
                 return (0.0, 0.0, 0.0)
 
@@ -819,10 +835,11 @@ class DxfParser:
             return int(entity.dxf.color)
         except (AttributeError, TypeError, ValueError) as exc:
             # 修复：原代码用裸 except Exception 静默吞掉所有错误。
-            logger.debug(
+            logger.warning(
                 "_safe_color 降级到 256 (handle=%s): %s",
                 getattr(entity.dxf, "handle", "?"),
                 exc,
+                exc_info=True,
             )
             return 256
 
@@ -846,8 +863,8 @@ class DxfParser:
                         )  # x, y, start_width, end_width, bulge
                     except Exception as e:  # noqa: BLE001
                         # 旧版 ezdxf 退路
-                        logger.debug("LWPOLYLINE get_points(format='xyseb') 失败，尝试 vertices() (handle=%s): %s",
-                                   str(entity.dxf.handle), e)
+                        logger.warning("LWPOLYLINE get_points(format='xyseb') 失败，尝试 vertices() (handle=%s): %s",
+                                   str(entity.dxf.handle), e, exc_info=True)
                         points_with_bulge = [
                             (p[0], p[1], 0.0, 0.0, p[2] if len(p) > 2 else 0.0)
                             for p in entity.vertices()
@@ -902,8 +919,8 @@ class DxfParser:
                                 else:
                                     vertices.append((float(loc.x), float(loc.y), 0.0))
                         except Exception as e:  # noqa: BLE001
-                            logger.debug("POLYLINE 顶点解析失败，跳过 (handle=%s): %s",
-                                       str(entity.dxf.handle), e)
+                            logger.warning("POLYLINE 顶点解析失败，跳过 (handle=%s): %s",
+                                       str(entity.dxf.handle), e, exc_info=True)
                             continue
                     is_closed = bool(entity.is_closed)
                     polyline = DxfPolyline(
@@ -990,18 +1007,20 @@ class DxfParser:
                                                     )
                                                 )
                                 except Exception as e_inner:  # noqa: BLE001
-                                    logger.debug(
+                                    logger.warning(
                                         "HATCH 边界路径点提取失败，跳过该路径: %s",
                                         e_inner,
+                                        exc_info=True,
                                     )
                             if pts:
                                 boundary_paths.append(pts)
                     except Exception as e_outer:  # noqa: BLE001
                         # 极简兜底：边界抽取失败时记录日志，便于排查
-                        logger.debug(
+                        logger.warning(
                             "HATCH 边界抽取失败(handle=%s): %s",
                             getattr(entity.dxf, "handle", "<unknown>"),
                             e_outer,
+                            exc_info=True,
                         )
                     hatch = DxfHatch(
                         pattern_name=pattern_name,
@@ -1018,8 +1037,8 @@ class DxfParser:
                     handle = getattr(
                         entity.dxf, "handle", "<unknown>"
                     )
-                    logger.debug(
-                        "HATCH实体提取跳过(handle=%s): %s", handle, e
+                    logger.warning(
+                        "HATCH实体提取跳过(handle=%s): %s", handle, e, exc_info=True
                     )
         except Exception as e:
             result.warnings.append(f"HATCH实体查询异常: {e}")
@@ -1075,8 +1094,8 @@ class DxfParser:
                     handle = getattr(
                         entity.dxf, "handle", "<unknown>"
                     )
-                    logger.debug(
-                        "INSERT实体提取跳过(handle=%s): %s", handle, e
+                    logger.warning(
+                        "INSERT实体提取跳过(handle=%s): %s", handle, e, exc_info=True
                     )
         except Exception as e:
             result.warnings.append(f"INSERT实体查询异常: {e}")
@@ -1111,7 +1130,7 @@ class DxfParser:
                             )
                     except Exception as e:  # noqa: BLE001
                         # 退化：基于 fit_points 估计
-                        logger.debug("SPLINE control_points 解析失败，尝试 fit_points: %s", e)
+                        logger.warning("SPLINE control_points 解析失败，尝试 fit_points: %s", e, exc_info=True)
                         try:
                             for f in entity.fit_points:
                                 cp.append(
@@ -1127,13 +1146,13 @@ class DxfParser:
                                 (float(f[0]), float(f[1]), float(f[2]))
                             )
                     except Exception as e:  # noqa: BLE001
-                        logger.debug("SPLINE fit_points 解析失败: %s", e)
+                        logger.warning("SPLINE fit_points 解析失败: %s", e, exc_info=True)
                     # knots
                     knots: list[float] = []
                     try:
                         knots = [float(k) for k in entity.knots]
                     except Exception as e:  # noqa: BLE001
-                        logger.debug("SPLINE knots 解析失败: %s", e)
+                        logger.warning("SPLINE knots 解析失败: %s", e, exc_info=True)
                     # closed —— 显式取布尔值，避免 0/False 混淆
                     _closed_dxf = getattr(entity.dxf, "closed", 0)
                     _closed_attr = getattr(entity, "closed", False)
@@ -1154,8 +1173,8 @@ class DxfParser:
                     handle = getattr(
                         entity.dxf, "handle", "<unknown>"
                     )
-                    logger.debug(
-                        "SPLINE实体提取跳过(handle=%s): %s", handle, e
+                    logger.warning(
+                        "SPLINE实体提取跳过(handle=%s): %s", handle, e, exc_info=True
                     )
         except Exception as e:
             result.warnings.append(f"SPLINE实体查询异常: {e}")

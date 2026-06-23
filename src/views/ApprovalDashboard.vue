@@ -309,7 +309,7 @@
               <template #default="{ row }">
                 <el-button
                   size="small"
-                  @click="viewDetail(row)"
+                  @click="viewDetail(row as ApprovalRequest)"
                 >
                   查看
                 </el-button>
@@ -516,7 +516,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { Refresh, Document } from '@element-plus/icons-vue'
-import axios from 'axios'
+import http from '@/utils/http'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getPriorityTagType, getPriorityLabel, getApprovalStatusTagType, getApprovalStatusLabel } from '@/utils/statusHelpers'
 
@@ -591,7 +591,7 @@ const counts = computed(() => dashboard.value.counts)
 async function loadDashboard() {
   loading.value = true
   try {
-    const res = await axios.get('/api/v1/governance/approval-dashboard')
+    const res = await http.get('/api/v1/governance/approval-dashboard')
     dashboard.value = res.data?.data || dashboard.value
   } catch (e: any) {
     ElMessage.error('加载审批看板失败: ' + (e.message || '未知错误'))
@@ -603,7 +603,7 @@ async function loadDashboard() {
 async function loadHistory() {
   historyLoading.value = true
   try {
-    const res = await axios.get('/api/v1/governance/approval-requests', {
+    const res = await http.get('/api/v1/governance/approval-requests', {
       params: { limit: 100 },
     })
     history.value = res.data?.data || []
@@ -623,7 +623,7 @@ function viewDetail(request: ApprovalRequest) {
 async function quickApprove(request: ApprovalRequest, decision: string) {
   try {
     const comment = decision === 'approved' ? '快速批准' : decision === 'rejected' ? '快速拒绝' : '快速升级'
-    await axios.post(`/api/v1/governance/approval-requests/${request.request_id}/decide`, {
+    await http.post(`/api/v1/governance/approval-requests/${request.request_id}/decide`, {
       approver_id: 'current_user',
       decision,
       comment,
@@ -638,7 +638,7 @@ async function quickApprove(request: ApprovalRequest, decision: string) {
 async function submitDecision(decision: string) {
   if (!selectedRequest.value) return
   try {
-    await axios.post(`/api/v1/governance/approval-requests/${selectedRequest.value.request_id}/decide`, {
+    await http.post(`/api/v1/governance/approval-requests/${selectedRequest.value.request_id}/decide`, {
       approver_id: 'current_user',
       decision,
       comment: decisionComment.value,
@@ -654,7 +654,7 @@ async function submitDecision(decision: string) {
 async function loadReport() {
   reportLoading.value = true
   try {
-    const res = await axios.get('/api/v1/governance/reports/governance', {
+    const res = await http.get('/api/v1/governance/reports/governance', {
       params: { days: 30 },
     })
     report.value = res.data?.data || null
@@ -667,7 +667,7 @@ async function loadReport() {
 
 async function exportAuditLog() {
   try {
-    const res = await axios.get('/api/v1/governance/audit-log/export', {
+    const res = await http.get('/api/v1/governance/audit-log/export', {
       params: { format: 'csv' },
     })
     const blob = new Blob([res.data.data], { type: 'text/csv' })
@@ -747,13 +747,13 @@ onMounted(() => {
 
 .stat-label {
   font-size: 14px;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
-.stat-pending .stat-value { color: #e6a23c; }
-.stat-review .stat-value { color: #409eff; }
-.stat-approved .stat-value { color: #67c23a; }
-.stat-rejected .stat-value { color: #f56c6c; }
+.stat-pending .stat-value { color: var(--warning); }
+.stat-review .stat-value { color: var(--info); }
+.stat-approved .stat-value { color: var(--success); }
+.stat-rejected .stat-value { color: var(--error); }
 
 .approval-tabs {
   margin-top: 16px;
@@ -766,7 +766,7 @@ onMounted(() => {
 
 .request-card {
   margin-bottom: 12px;
-  border-left: 4px solid #409eff;
+  border-left: 4px solid var(--accent-primary);
 }
 
 .request-header {
@@ -800,7 +800,7 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-light);
   padding-top: 12px;
 }
 
@@ -810,9 +810,9 @@ onMounted(() => {
 }
 
 .context-json {
-  background: #f5f7fa;
+  background: var(--bg-secondary);
   padding: 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   max-height: 200px;
   overflow: auto;

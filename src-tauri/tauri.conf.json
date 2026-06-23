@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "vite build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -62,14 +62,7 @@
     "longDescription": "灵境制造 V4 - 一体化部署的AI驱动3D建模与工艺规划系统，内置Python后端服务，开箱即用。",
     "windows": {
       "wix": {
-        "language": ["zh-CN", "en-US"],
-        "languageStrings": {
-          "zh-CN": {
-            "FileDescription": "灵境制造",
-            "ProductName": "灵境制造",
-            "Manufacturer": "Lingjing Manufacturing"
-          }
-        }
+        "language": "zh-CN"
       },
       "nsis": {
         "languages": ["SimpChinese", "English"],

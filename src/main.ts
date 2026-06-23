@@ -5,6 +5,7 @@ import en from 'element-plus/es/locale/lang/en'
 import App from './App.vue'
 import router from './router'
 import { i18n, setLocale, SUPPORTED_LOCALES, type SupportedLocale } from './i18n'
+import './assets/styles/theme.css'
 
 const elLocale = ref(getLocale() === 'en' ? en : zhCn)
 
