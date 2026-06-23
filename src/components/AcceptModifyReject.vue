@@ -217,7 +217,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const selectedAlternative = ref<string | null>(null)
+const selectedAlternative = ref<string | undefined>(undefined)
 const modifyDrawerVisible = ref(false)
 const modifiedParams = ref<Record<string, any>>({})
 
@@ -257,10 +257,10 @@ function handleReject() {
 
 <style scoped>
 .accept-modify-reject {
-  border: 1px solid #dcdfe6;
-  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
   padding: 16px;
-  background: #fafafa;
+  background: var(--bg-secondary);
 }
 
 .decision-header {
@@ -273,21 +273,21 @@ function handleReject() {
 .decision-header .title {
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .decision-header .timestamp {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 .recommendation-card,
 .reasoning-card {
-  background: #fff;
-  border-radius: 6px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
   padding: 12px;
   margin-bottom: 12px;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--border-light);
 }
 
 .card-header {
@@ -296,11 +296,11 @@ function handleReject() {
   gap: 8px;
   margin-bottom: 8px;
   font-weight: 500;
-  color: #409eff;
+  color: var(--accent-primary);
 }
 
 .card-content {
-  color: #606266;
+  color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -309,9 +309,9 @@ function handleReject() {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-all;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   padding: 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
 }
 
@@ -325,7 +325,7 @@ function handleReject() {
   gap: 8px;
   margin-bottom: 12px;
   font-weight: 500;
-  color: #67c23a;
+  color: var(--success);
 }
 
 .alternatives-list {
@@ -341,12 +341,12 @@ function handleReject() {
 }
 
 .alternative-card:hover {
-  border-color: #409eff;
+  border-color: var(--accent-primary);
 }
 
 .alternative-card.is-selected {
-  border-color: #409eff;
-  background: #ecf5ff;
+  border-color: var(--accent-primary);
+  background: var(--bg-secondary);
 }
 
 .alternative-header {
@@ -357,14 +357,14 @@ function handleReject() {
 
 .alternative-title {
   font-size: 14px;
-  color: #303133;
+  color: var(--text-primary);
   line-height: 1.5;
 }
 
 .alternative-reasoning {
   margin-top: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
   line-height: 1.5;
 }
 
@@ -374,7 +374,7 @@ function handleReject() {
   justify-content: center;
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-light);
 }
 
 .modify-content {

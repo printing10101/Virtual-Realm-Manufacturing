@@ -399,7 +399,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Refresh, Delete, Lock } from '@element-plus/icons-vue'
-import axios from 'axios'
+import http from '@/utils/http'
 import { formatDate, formatDuration } from '@/utils/formatters'
 import { getPriorityTagType, getPriorityLabel, getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 
@@ -493,7 +493,7 @@ function getColumnTasks(status: string): TaskItem[] {
 async function loadBoard() {
   loading.value = true
   try {
-    const res = await axios.get('/api/v1/task-checkout/board')
+    const res = await http.get('/api/v1/task-checkout/board')
     board.value = res.data?.data || {
       pending: [],
       in_progress: [],
@@ -516,7 +516,7 @@ async function viewTaskDetail(task: TaskItem) {
   taskDetail.value = null
 
   try {
-    const res = await axios.get(`/api/v1/task-checkout/tasks/${task.id}/history`)
+    const res = await http.get(`/api/v1/task-checkout/tasks/${task.id}/history`)
     taskDetail.value = res.data?.data
   } catch (e: any) {
     ElMessage.error('加载任务详情失败: ' + (e.message || '未知错误'))
@@ -528,7 +528,7 @@ async function viewTaskDetail(task: TaskItem) {
 async function loadLocks() {
   locksLoading.value = true
   try {
-    const res = await axios.get('/api/v1/task-checkout/locks')
+    const res = await http.get('/api/v1/task-checkout/locks')
     locks.value = res.data?.data || []
   } catch (e: any) {
     ElMessage.error('加载锁列表失败: ' + (e.message || '未知错误'))
@@ -544,7 +544,7 @@ async function forceReleaseLock(taskId: string) {
       '确认强制释放',
       { confirmButtonText: '释放', cancelButtonText: '取消', type: 'warning' }
     )
-    await axios.delete(`/api/v1/task-checkout/locks/${taskId}?admin_id=admin`)
+    await http.delete(`/api/v1/task-checkout/locks/${taskId}?admin_id=admin`)
     ElMessage.success(`任务 ${taskId} 的锁已释放`)
     await loadLocks()
     await loadBoard()
@@ -565,7 +565,7 @@ async function forceReleaseFromDetail() {
 async function cleanupExpired() {
   cleaningUp.value = true
   try {
-    const res = await axios.post('/api/v1/task-checkout/cleanup')
+    const res = await http.post('/api/v1/task-checkout/cleanup')
     const data = res.data?.data
     ElMessage.success(`清理完成，释放了 ${data?.count || 0} 个过期的锁`)
     await loadBoard()
@@ -699,27 +699,27 @@ onUnmounted(() => {
 }
 
 .task-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .column-pending .task-card {
-  border-left-color: #909399;
+  border-left-color: var(--border-dark);
 }
 
 .column-in_progress .task-card {
-  border-left-color: #e6a23c;
+  border-left-color: var(--warning);
 }
 
 .column-completed .task-card {
-  border-left-color: #67c23a;
+  border-left-color: var(--success);
 }
 
 .column-failed .task-card {
-  border-left-color: #f56c6c;
+  border-left-color: var(--error);
 }
 
 .column-cancelled .task-card {
-  border-left-color: #c0c4cc;
+  border-left-color: var(--border-medium);
 }
 
 .task-card-header {
@@ -731,7 +731,7 @@ onUnmounted(() => {
 
 .task-id {
   font-size: 11px;
-  color: #909399;
+  color: var(--text-tertiary);
   font-family: monospace;
 }
 
@@ -746,7 +746,7 @@ onUnmounted(() => {
 
 .task-description {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;

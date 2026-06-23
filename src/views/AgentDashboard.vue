@@ -249,7 +249,7 @@ function viewDetail(agentId: string) {
 
 async function handleResume(agentId: string) {
   try {
-    const result = await agentStore.resumeAgent(agentId)
+    const result = await agentStore.resumeAgent(agentId) as { action: string }
     ElMessage.success(`代理 ${agentId} 恢复成功 (${result.action})`)
     agentStore.fetchAgents()
   } catch (e: any) {
@@ -317,15 +317,15 @@ async function handleDelete(agentId: string) {
 .stat-label {
   margin-top: 4px;
   font-size: 0.85rem;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
-.stat-total .stat-value { color: #409eff; }
-.stat-active .stat-value { color: #67c23a; }
-.stat-idle .stat-value { color: #909399; }
-.stat-error .stat-value { color: #f56c6c; }
+.stat-total .stat-value { color: var(--accent-primary); }
+.stat-active .stat-value { color: var(--success); }
+.stat-idle .stat-value { color: var(--text-tertiary); }
+.stat-error .stat-value { color: var(--error); }
 
 .text-muted {
-  color: #c0c4cc;
+  color: var(--text-tertiary);
 }
 </style>

@@ -37,6 +37,7 @@ export function useToolpathInteraction(
   let currentHoveredLine: THREE.Line | null = null
   let currentHoveredId: string | null = null
   const originalMaterials = new Map<THREE.Line, THREE.Material>()
+  let highlightTimeoutId: number | null = null
 
   function onMouseMove(event: MouseEvent): void {
     if (!canvasRef.value || !camera.value) return
@@ -143,11 +144,12 @@ export function useToolpathInteraction(
 
   function selectHighlight(line: THREE.Line): void {
     line.material = selectedHighlightMaterial
-    setTimeout(() => {
+    highlightTimeoutId = window.setTimeout(() => {
       if (line && originalMaterials.has(line)) {
         line.material = originalMaterials.get(line)!
         originalMaterials.delete(line)
       }
+      highlightTimeoutId = null
     }, 800)
   }
 
@@ -162,6 +164,10 @@ export function useToolpathInteraction(
   }
 
   function dispose(): void {
+    if (highlightTimeoutId !== null) {
+      clearTimeout(highlightTimeoutId)
+      highlightTimeoutId = null
+    }
     clearHoverHighlight()
     hoverHighlightMaterial.dispose()
     selectedHighlightMaterial.dispose()

@@ -131,15 +131,15 @@ function handleImport() {
     margin: 0 0 8px;
     font-size: 13px;
     font-weight: 600;
-    color: #555;
+    color: var(--text-secondary);
   }
 }
 
 .preview-content {
   max-height: 200px;
   overflow-y: auto;
-  background: #fafafa;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   padding: 8px;
   font-family: monospace;

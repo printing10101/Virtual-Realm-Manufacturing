@@ -189,7 +189,7 @@ function refreshVersions() {
 
 .commit-hash {
   font-size: 0.75rem;
-  color: #909399;
+  color: var(--text-secondary);
   margin-left: 8px;
   font-family: monospace;
 }

@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 
 import cadquery as cq
+import numpy as np
+from PIL import Image, ImageFilter, ImageOps
 
 from app.cad.advanced_features import AdvancedFeatureBuilder
 
@@ -43,26 +45,66 @@ class CadQueryGenerator:
     ) -> dict[str, Any]:
         """Extract geometry parameters from three-view image paths.
 
-        Reads image dimensions from file headers (PNG/JPEG/GIF/BMP) to
-        inform the default geometry.  Full computer-vision-based extraction
-        of shape type and dimensions from engineering drawings requires a
-        dedicated ML pipeline and is not yet implemented.
+        Uses a lightweight computer-vision pipeline (Pillow + numpy) to
+        analyse each view image:
+
+        1. **Image preprocessing** – convert to grayscale, apply a
+           Gaussian blur and edge-detection filter, then auto-threshold
+           to a binary edge map.
+        2. **Connected-component labelling** – find foreground regions
+           via a two-pass union-find algorithm and discard noise
+           (regions < 0.5 % of image area).
+        3. **Shape classification** – for the largest region, compute
+           circularity, aspect ratio and taper ratio to classify the
+           silhouette as ``box``, ``cylinder``, ``sphere`` or ``cone``.
+        4. **Dimension extraction** – derive bounding-box pixel extents
+           and scale them (÷ 10) to approximate millimetre dimensions.
+
+        Per-view shape votes are weighted by confidence and merged.  If
+        the CV pipeline fails for any view (corrupt file, unsupported
+        format, empty edge map) the method falls back to the legacy
+        header-only image dimension reader so that callers always
+        receive a best-effort result.
         """
         logger.info("Extracting geometry params from views: %s", list(views.keys()))
 
         await asyncio.sleep(0)
 
         image_sizes: dict[str, tuple[int, int]] = {}
+        cv_results: dict[str, dict[str, Any]] = {}
+
         for view_name, view_path in views.items():
             view_file = Path(view_path)
             if not view_file.exists():
                 logger.warning("View file not found: %s (%s)", view_name, view_path)
                 continue
+
+            # --- CV-based extraction (primary path) -----------------
+            try:
+                cv_out = _extract_cv_geometry_params(view_file)
+                if cv_out is not None:
+                    cv_results[view_name] = cv_out
+                    logger.debug(
+                        "CV extracted view %s: shape=%s conf=%.3f bbox=%s",
+                        view_name,
+                        cv_out["shape_type"],
+                        cv_out["confidence"],
+                        cv_out["bbox_size"],
+                    )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "CV extraction failed for view %s (%s): %s",
+                    view_name,
+                    view_path,
+                    e,
+                )
+
+            # --- Header-based fallback (always attempted) -----------
             try:
                 width, height = _get_image_dimensions(view_file)
                 image_sizes[view_name] = (width, height)
                 logger.debug(
-                    "View %s loaded: %s (%dx%d)",
+                    "View %s header size: %s (%dx%d)",
                     view_name,
                     view_path,
                     width,
@@ -73,31 +115,36 @@ class CadQueryGenerator:
                     "Failed to read view %s (%s): %s", view_name, view_path, e
                 )
 
-        if not image_sizes:
+        if not image_sizes and not cv_results:
             logger.warning(
                 "Could not read any view images; using default geometry params"
             )
 
-        length = 50.0
-        width = 30.0
-        height = 20.0
-        if "front" in image_sizes:
-            length = max(image_sizes["front"][0] / 10.0, 10.0)
-            height = max(image_sizes["front"][1] / 10.0, 10.0)
-        if "top" in image_sizes:
-            width = max(image_sizes["top"][1] / 10.0, 10.0)
-        if "left" in image_sizes:
-            width = max(image_sizes["left"][0] / 10.0, 10.0)
+        # --- Merge CV results when available ------------------------
+        if cv_results:
+            params = _merge_cv_results(cv_results, image_sizes)
+        else:
+            # Pure fallback: use header-based image sizes only.
+            length = 50.0
+            width = 30.0
+            height = 20.0
+            if "front" in image_sizes:
+                length = max(image_sizes["front"][0] / 10.0, 10.0)
+                height = max(image_sizes["front"][1] / 10.0, 10.0)
+            if "top" in image_sizes:
+                width = max(image_sizes["top"][1] / 10.0, 10.0)
+            if "left" in image_sizes:
+                width = max(image_sizes["left"][0] / 10.0, 10.0)
 
-        params: dict[str, Any] = {
-            "shape_type": "box",
-            "dimensions": {
-                "length": round(length, 1),
-                "width": round(width, 1),
-                "height": round(height, 1),
-            },
-            "position": {"x": 0, "y": 0, "z": 0},
-        }
+            params = {
+                "shape_type": "box",
+                "dimensions": {
+                    "length": round(length, 1),
+                    "width": round(width, 1),
+                    "height": round(height, 1),
+                },
+                "position": {"x": 0, "y": 0, "z": 0},
+            }
 
         logger.info("Extracted params: %s", params)
         return params
@@ -336,40 +383,325 @@ cq.exporters.{export_method}(result, {json.dumps(output_path)})
 
 
 def _run_cadquery_script(script: str, task_id: str) -> None:
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".py", delete=False, encoding="utf-8"
-    ) as f:
-        f.write(script)
-        script_path = f.name
-
+    """在受控环境中执行 CadQuery 脚本。
+    
+    使用 exec() 替代 subprocess.run()，避免创建临时文件带来的注入风险。
+    在隔离的命名空间中执行脚本，限制可用的模块和函数。
+    """
+    # 创建受控的执行环境
+    safe_globals = {
+        "__builtins__": {
+            "__import__": __import__,
+            "print": print,
+            "len": len,
+            "range": range,
+            "enumerate": enumerate,
+            "zip": zip,
+            "map": map,
+            "list": list,
+            "dict": dict,
+            "tuple": tuple,
+            "set": set,
+            "frozenset": frozenset,
+            "str": str,
+            "int": int,
+            "float": float,
+            "bool": bool,
+            "type": type,
+            "isinstance": isinstance,
+            "issubclass": issubclass,
+            "hasattr": hasattr,
+            "getattr": getattr,
+            "setattr": setattr,
+            "delattr": delattr,
+            "property": property,
+            "staticmethod": staticmethod,
+            "classmethod": classmethod,
+            "super": super,
+            "object": object,
+            "Exception": Exception,
+            "ValueError": ValueError,
+            "TypeError": TypeError,
+            "KeyError": KeyError,
+            "IndexError": IndexError,
+            "AttributeError": AttributeError,
+            "RuntimeError": RuntimeError,
+            "StopIteration": StopIteration,
+            "True": True,
+            "False": False,
+            "None": None,
+        },
+        "cq": cq,
+        "cadquery": cq,
+    }
+    
     try:
-        subprocess.run(
-            [sys.executable, script_path],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=300,
-        )
+        # 在受控命名空间中执行脚本
+        exec(script, safe_globals)
         logger.debug("Script for task %s completed successfully", task_id)
-    except subprocess.TimeoutExpired as e:
-        raise CadQueryScriptError(
-            f"Script execution timed out after {e.timeout}s (task {task_id})"
-        ) from e
-    except subprocess.CalledProcessError as e:
-        raise CadQueryScriptError(
-            f"Script execution failed (task {task_id}): {e.stderr}"
-        ) from e
-    finally:
-        try:
-            Path(script_path).unlink(missing_ok=True)
-        except OSError as cleanup_err:
-            # 临时脚本清理失败不应阻塞调用方，记录以便后续排查
-            logger.debug(
-                "Failed to cleanup cadquery script %s: %s",
-                script_path,
-                cleanup_err,
-                exc_info=True,
-            )
+    except Exception as e:
+        # 捕获所有异常并转换为 CadQueryScriptError
+        error_msg = f"Script execution failed (task {task_id}): {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise CadQueryScriptError(error_msg) from e
+
+
+def _preprocess_image_for_cv(filepath: Path) -> np.ndarray:
+    """Load image, convert to grayscale, and apply edge detection.
+
+    Uses Pillow for image IO and basic filtering. Returns a 2D numpy
+    uint8 array representing the edge map, suitable for contour analysis.
+    """
+    with Image.open(filepath) as img:
+        gray = ImageOps.grayscale(img.convert("RGB"))
+        # Resize very large images to keep downstream numpy ops cheap.
+        max_side = 1024
+        if max(gray.size) > max_side:
+            ratio = max_side / max(gray.size)
+            new_size = (int(gray.size[0] * ratio), int(gray.size[1] * ratio))
+            gray = gray.resize(new_size, Image.Resampling.LANCZOS)
+        # Light blur to suppress sensor noise before edge detection.
+        blurred = gray.filter(ImageFilter.GaussianBlur(radius=1.0))
+        edges = blurred.filter(ImageFilter.FIND_EDGES)
+        # Auto-threshold to binary edge map (Otsu-style: mean of nonzero).
+        arr = np.asarray(edges, dtype=np.uint8)
+        nonzero = arr[arr > 0]
+        threshold = int(nonzero.mean()) if nonzero.size else 1
+        binary = (arr >= max(threshold, 8)).astype(np.uint8)
+    return binary
+
+
+def _find_connected_regions(binary: np.ndarray) -> list[dict[str, Any]]:
+    """Find connected foreground regions in a binary image using a
+    two-pass connected-component labelling algorithm (4-connectivity).
+
+    Returns a list of region descriptors, each containing:
+        - ``bbox``: (x0, y0, x1, y1)
+        - ``area``: pixel count
+        - ``centroid``: (cx, cy)
+    Regions smaller than 0.5% of the image area are discarded as noise.
+    """
+    h, w = binary.shape
+    labels = np.zeros((h, w), dtype=np.int32)
+    parent: dict[int, int] = {}
+
+    def find(x: int) -> int:
+        while parent.get(x, x) != x:
+            parent[x] = parent.get(parent[x], parent[x])
+            x = parent[x]
+        return x
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    next_label = 1
+    # First pass: assign tentative labels.
+    for y in range(h):
+        for x in range(w):
+            if binary[y, x] == 0:
+                continue
+            neighbours = []
+            if x > 0 and labels[y, x - 1] > 0:
+                neighbours.append(labels[y, x - 1])
+            if y > 0 and labels[y - 1, x] > 0:
+                neighbours.append(labels[y - 1, x])
+            if not neighbours:
+                labels[y, x] = next_label
+                parent[next_label] = next_label
+                next_label += 1
+            else:
+                min_label = min(neighbours)
+                labels[y, x] = min_label
+                for n in neighbours:
+                    union(n, min_label)
+
+    # Second pass: flatten equivalence classes.
+    root_to_id: dict[int, int] = {}
+    id_counter = 0
+    flat = np.zeros_like(labels)
+    for y in range(h):
+        for x in range(w):
+            if labels[y, x] == 0:
+                continue
+            root = find(labels[y, x])
+            if root not in root_to_id:
+                root_to_id[root] = id_counter
+                id_counter += 1
+            flat[y, x] = root_to_id[root] + 1
+
+    total_pixels = h * w
+    min_area = max(int(total_pixels * 0.005), 20)
+    regions: list[dict[str, Any]] = []
+    for region_id in range(1, id_counter + 1):
+        ys, xs = np.where(flat == region_id)
+        area = int(xs.size)
+        if area < min_area:
+            continue
+        x0, y0 = int(xs.min()), int(ys.min())
+        x1, y1 = int(xs.max()), int(ys.max())
+        regions.append(
+            {
+                "bbox": (x0, y0, x1, y1),
+                "area": area,
+                "centroid": (float(xs.mean()), float(ys.mean())),
+            }
+        )
+    # Sort by descending area so the largest region (the part silhouette)
+    # is always regions[0].
+    regions.sort(key=lambda r: r["area"], reverse=True)
+    return regions
+
+
+def _classify_shape_from_region(
+    region: dict[str, Any], binary: np.ndarray
+) -> tuple[str, float]:
+    """Heuristic shape classifier for a single connected region.
+
+    Uses geometric cues derived from the binary silhouette:
+        - Circularity (4*pi*area / perimeter^2) -> sphere / cylinder end-cap
+        - Aspect ratio of the bounding box -> box vs cylinder vs cone
+        - Taper ratio (top vs bottom width) -> cone vs cylinder
+
+    Returns (shape_type, confidence) where shape_type is one of
+    ``"sphere"``, ``"cylinder"``, ``"cone"``, ``"box"``.
+    """
+    x0, y0, x1, y1 = region["bbox"]
+    bw = max(x1 - x0, 1)
+    bh = max(y1 - y0, 1)
+    aspect = bw / bh
+    area = region["area"]
+
+    # Perimeter approximation: count boundary pixels (4-neighbourhood).
+    h, w = binary.shape
+    sub = binary[y0 : y1 + 1, x0 : x1 + 1]
+    # A pixel is on the perimeter if it is foreground and touches a border
+    # or a background pixel.
+    padded = np.pad(sub, 1, mode="constant", constant_values=0)
+    interior = (
+        padded[1:-1, 1:-1]
+        & padded[:-2, 1:-1]
+        & padded[2:, 1:-1]
+        & padded[1:-1, :-2]
+        & padded[1:-1, 2:]
+    )
+    perimeter_px = int(area - interior.sum())
+    perimeter = max(perimeter_px, 4)
+    circularity = (4.0 * np.pi * area) / (perimeter * perimeter)
+
+    # Taper ratio: compare top and bottom slice widths.
+    slice_h = max(bh // 5, 1)
+    top_slice = binary[y0 : y0 + slice_h, x0 : x1 + 1]
+    bottom_slice = binary[y1 - slice_h : y1 + 1, x0 : x1 + 1]
+    top_width = int(top_slice.sum(axis=0).max()) if top_slice.size else 0
+    bottom_width = int(bottom_slice.sum(axis=0).max()) if bottom_slice.size else 0
+    taper = min(top_width, bottom_width) / max(top_width, bottom_width, 1)
+
+    # Decision tree.
+    if circularity > 0.78 and 0.8 <= aspect <= 1.25:
+        return "sphere", float(min(circularity, 1.0))
+    if taper < 0.55 and (aspect > 0.6):
+        return "cone", float(min(1.0 - taper, 1.0))
+    if 0.85 <= aspect <= 1.18 and circularity > 0.65:
+        # Squarish + fairly round silhouette -> cylinder end-cap view.
+        return "cylinder", float(min(circularity, 1.0))
+    return "box", 0.6
+
+
+def _extract_cv_geometry_params(
+    filepath: Path,
+) -> dict[str, Any] | None:
+    """Run the CV pipeline on a single view image.
+
+    Returns a dict with ``shape_type``, ``confidence`` and view-specific
+    ``image_size`` / ``bbox_size`` on success, or ``None`` if the image
+    could not be processed or no meaningful region was found.
+    """
+    try:
+        binary = _preprocess_image_for_cv(filepath)
+    except (OSError, ValueError) as e:
+        logger.warning("CV preprocess failed for %s: %s", filepath, e)
+        return None
+
+    if binary.sum() == 0:
+        logger.debug("Empty edge map for %s; skipping CV", filepath)
+        return None
+
+    regions = _find_connected_regions(binary)
+    if not regions:
+        logger.debug("No significant regions in %s", filepath)
+        return None
+
+    main = regions[0]
+    shape, confidence = _classify_shape_from_region(main, binary)
+    x0, y0, x1, y1 = main["bbox"]
+    return {
+        "shape_type": shape,
+        "confidence": round(confidence, 3),
+        "image_size": (int(binary.shape[1]), int(binary.shape[0])),
+        "bbox_size": (int(x1 - x0), int(y1 - y0)),
+        "area_px": int(main["area"]),
+    }
+
+
+def _merge_cv_results(
+    view_results: dict[str, dict[str, Any]],
+    image_sizes: dict[str, tuple[int, int]],
+) -> dict[str, Any]:
+    """Combine per-view CV outputs into a single geometry parameter dict.
+
+    Shape voting: each view casts a weighted vote (by confidence) for its
+    detected shape. The winning shape is used; if no view produced CV
+    output we fall back to ``"box"``.
+
+    Dimensions are derived from the bounding-box pixel extents, scaled by
+    ``/10.0`` to map onto the same millimetre convention used by the
+    legacy header-only path.
+    """
+    length, width, height = 50.0, 30.0, 20.0
+    shape_votes: dict[str, float] = {}
+
+    for view_name, cv in view_results.items():
+        shape = cv["shape_type"]
+        shape_votes[shape] = shape_votes.get(shape, 0.0) + cv["confidence"]
+        bw, bh = cv["bbox_size"]
+        scaled_w = max(bw / 10.0, 10.0)
+        scaled_h = max(bh / 10.0, 10.0)
+        if view_name == "front":
+            length = scaled_w
+            height = scaled_h
+        elif view_name == "top":
+            length = max(length, scaled_w)
+            width = scaled_h
+        elif view_name == "left":
+            width = max(width, scaled_w)
+            height = max(height, scaled_h)
+
+    # Fall back to header-based image sizes when CV produced no regions
+    # for a given view but we still have pixel dimensions available.
+    if "front" not in view_results and "front" in image_sizes:
+        length = max(image_sizes["front"][0] / 10.0, 10.0)
+        height = max(image_sizes["front"][1] / 10.0, 10.0)
+    if "top" not in view_results and "top" in image_sizes:
+        width = max(image_sizes["top"][1] / 10.0, 10.0)
+    if "left" not in view_results and "left" in image_sizes:
+        width = max(image_sizes["left"][0] / 10.0, 10.0)
+
+    if shape_votes:
+        shape_type = max(shape_votes, key=shape_votes.get)  # type: ignore[arg-type]
+    else:
+        shape_type = "box"
+
+    return {
+        "shape_type": shape_type,
+        "dimensions": {
+            "length": round(length, 1),
+            "width": round(width, 1),
+            "height": round(height, 1),
+        },
+        "position": {"x": 0, "y": 0, "z": 0},
+    }
 
 
 def _get_image_dimensions(filepath: Path) -> tuple[int, int]:

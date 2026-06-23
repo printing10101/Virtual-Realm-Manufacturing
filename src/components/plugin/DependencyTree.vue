@@ -18,7 +18,7 @@ defineProps<{
 <style scoped>
 .dependency-tree {
   padding: 10px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 4px;
 }
 </style>

@@ -547,6 +547,7 @@ const statusTagType = computed(() => {
 
 // 仿真状态
 const simulating = ref(false)
+let simulationTimeoutId: number | null = null
 
 // 3D模型地址（来自工程）
 const modelUrl = computed(() => {
@@ -575,6 +576,14 @@ function checkScreenSize() {
 onMounted(() => {
   checkScreenSize()
   window.addEventListener('resize', checkScreenSize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkScreenSize)
+  if (simulationTimeoutId !== null) {
+    clearTimeout(simulationTimeoutId)
+    simulationTimeoutId = null
+  }
 })
 
 // 最后一次响应的元信息
@@ -777,7 +786,10 @@ function runSimulation() {
   // ThreeViewer 已经在挂载时显示工件；此处仅作状态展示
   ElMessage.success(t('processPlanning.messages.simulateSuccess'))
   nextTick(() => {
-    setTimeout(() => { simulating.value = false }, 1500)
+    simulationTimeoutId = window.setTimeout(() => {
+      simulating.value = false
+      simulationTimeoutId = null
+    }, 1500)
   })
 }
 
@@ -820,11 +832,11 @@ watch(operationTreeData, (val) => {
   h2 {
     margin: 0 0 4px 0;
     font-size: 1.5rem;
-    color: #1f2937;
+    color: var(--text-primary);
   }
   .subtitle {
     margin: 0;
-    color: #6b7280;
+    color: var(--text-secondary);
     font-size: 13px;
   }
   .status-tag {
@@ -874,20 +886,20 @@ watch(operationTreeData, (val) => {
   gap: 6px;
   font-weight: 600;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .part-form {
   .size-sep {
     margin: 0 4px;
-    color: #909399;
+    color: var(--text-tertiary);
   }
   :deep(.el-form-item) {
     margin-bottom: 10px;
   }
   :deep(.el-form-item__label) {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-secondary);
     padding-bottom: 2px;
   }
 }
@@ -896,7 +908,7 @@ watch(operationTreeData, (val) => {
   .section-label {
     font-size: 12px;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--text-secondary);
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -924,12 +936,12 @@ watch(operationTreeData, (val) => {
   width: 100%;
 }
 .feature-icon {
-  color: #2563eb;
+  color: var(--accent-primary);
 }
 .feature-name {
   flex: 1;
   font-size: 13px;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 .feature-count {
   flex-shrink: 0;
@@ -959,15 +971,15 @@ watch(operationTreeData, (val) => {
 }
 .op-summary {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .tree-container {
   height: calc(100% - 40px);
   overflow-y: auto;
-  background: #fafbfc;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
   padding: 8px;
 }
 
@@ -992,7 +1004,7 @@ watch(operationTreeData, (val) => {
   gap: 8px;
   .node-label {
     font-weight: 500;
-    color: #1f2937;
+    color: var(--text-primary);
   }
 }
 .tree-node-meta {
@@ -1000,7 +1012,7 @@ watch(operationTreeData, (val) => {
   flex-wrap: wrap;
   gap: 12px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
   padding-left: 4px;
   .meta-item {
     display: inline-flex;
@@ -1014,7 +1026,7 @@ watch(operationTreeData, (val) => {
   display: flex;
   flex-direction: column;
   background: #0b0d11;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 .three-viewer {
@@ -1026,7 +1038,7 @@ watch(operationTreeData, (val) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fafbfc;
+  background: var(--bg-secondary);
 }
 
 .gcode-hint {
@@ -1037,8 +1049,8 @@ watch(operationTreeData, (val) => {
   display: flex;
   height: 100%;
   min-height: 360px;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: #1e1e1e;
 }
@@ -1087,16 +1099,16 @@ watch(operationTreeData, (val) => {
   justify-content: space-between;
   margin-top: 12px;
   padding: 12px 16px;
-  background: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   .action-bar-left {
     display: flex;
     gap: 10px;
   }
   .action-bar-right {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-secondary);
   }
   .meta-info {
     font-family: monospace;

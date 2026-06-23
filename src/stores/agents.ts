@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import http from '@/utils/http'
 import { extractErrorMessage } from '@/utils/errorUtils'
 
 export interface AgentSummary {
@@ -128,7 +128,7 @@ export const useAgentStore = defineStore('agents', () => {
     try {
       const params: Record<string, string> = {}
       if (statusFilter.value) params.status = statusFilter.value
-      const response = await axios.get(API_BASE + '/', { params })
+      const response = await http.get(API_BASE + '/', { params })
       agents.value = response.data.data || []
     } catch (e: unknown) {
       error.value = extractErrorMessage(e, '获取Agent列表失败')
@@ -146,7 +146,7 @@ export const useAgentStore = defineStore('agents', () => {
     detailLoading.value = true
     error.value = null
     try {
-      const response = await axios.get(`${API_BASE}/${agentId}`)
+      const response = await http.get(`${API_BASE}/${agentId}`)
       currentAgent.value = response.data.data
       return response.data.data as AgentDetail
     } catch (e: unknown) {
@@ -164,7 +164,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 检查点数据
    */
   async function saveCheckpoint(agentId: string, data: Record<string, unknown>): Promise<unknown> {
-    const response = await axios.post(`${API_BASE}/${agentId}/checkpoints/save`, data)
+    const response = await http.post(`${API_BASE}/${agentId}/checkpoints/save`, data)
     return response.data.data
   }
 
@@ -175,7 +175,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 回滚结果
    */
   async function rollbackCheckpoint(agentId: string, checkpointId: string): Promise<unknown> {
-    const response = await axios.post(`${API_BASE}/${agentId}/checkpoints/rollback`, {
+    const response = await http.post(`${API_BASE}/${agentId}/checkpoints/rollback`, {
       checkpoint_id: checkpointId,
     })
     return response.data.data
@@ -188,7 +188,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 克隆结果
    */
   async function cloneAgent(sourceId: string, targetId: string): Promise<unknown> {
-    const response = await axios.post(`${API_BASE}/${sourceId}/clone`, {
+    const response = await http.post(`${API_BASE}/${sourceId}/clone`, {
       target_agent_id: targetId,
     })
     return response.data.data
@@ -200,7 +200,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 恢复结果
    */
   async function resumeAgent(agentId: string): Promise<unknown> {
-    const response = await axios.post(`${API_BASE}/${agentId}/resume`)
+    const response = await http.post(`${API_BASE}/${agentId}/resume`)
     return response.data.data
   }
 
@@ -211,7 +211,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 保存结果
    */
   async function saveAgentState(agentId: string, payload: Record<string, unknown>): Promise<unknown> {
-    const response = await axios.post(`${API_BASE}/${agentId}/save`, payload)
+    const response = await http.post(`${API_BASE}/${agentId}/save`, payload)
     return response.data.data
   }
 
@@ -220,7 +220,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @param agentId - Agent ID
    */
   async function startHeartbeat(agentId: string): Promise<void> {
-    await axios.post(`${API_BASE}/${agentId}/heartbeat/start`)
+    await http.post(`${API_BASE}/${agentId}/heartbeat/start`)
   }
 
   /**
@@ -228,7 +228,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @param agentId - Agent ID
    */
   async function stopHeartbeat(agentId: string): Promise<void> {
-    await axios.post(`${API_BASE}/${agentId}/heartbeat/stop`)
+    await http.post(`${API_BASE}/${agentId}/heartbeat/stop`)
   }
 
   /**
@@ -236,7 +236,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @param agentId - Agent ID
    */
   async function deleteAgent(agentId: string): Promise<void> {
-    await axios.delete(`${API_BASE}/${agentId}`)
+    await http.delete(`${API_BASE}/${agentId}`)
     agents.value = agents.value.filter((a) => a.agent_id !== agentId)
   }
 
@@ -247,7 +247,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 更新结果
    */
   async function updateContext(agentId: string, updates: Record<string, unknown>): Promise<unknown> {
-    const response = await axios.post(`${API_BASE}/${agentId}/context/update`, { updates })
+    const response = await http.post(`${API_BASE}/${agentId}/context/update`, { updates })
     return response.data.data
   }
 

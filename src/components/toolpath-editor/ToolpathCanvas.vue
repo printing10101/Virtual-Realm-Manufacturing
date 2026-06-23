@@ -32,13 +32,22 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { EditableToolpathSegment } from './types/editor'
 import {
   useToolpathInteraction,
   createSegmentLine,
   getSegmentColor,
 } from './composables/useToolpathInteraction'
+import { useThreeScene } from '@/composables/useThreeScene'
+
+// 场景常量
+const CAMERA_FOV = 50
+const CAMERA_POSITION: [number, number, number] = [200, -200, 150]
+const LOOK_AT_TARGET: [number, number, number] = [0, 0, 30]
+const CONTROLS_TARGET: [number, number, number] = [0, 0, 25]
+const DAMPING_FACTOR = 0.08
+const GRID_SIZE = 300
+const GRID_DIVISIONS = 20
 
 const props = defineProps<{
   segments: EditableToolpathSegment[]
@@ -55,11 +64,8 @@ const canvasRef = ref<HTMLElement>()
 const initialized = ref(false)
 const fps = ref(0)
 
-let scene: THREE.Scene | null = null
-let camera: THREE.PerspectiveCamera | null = null
-let renderer: THREE.WebGLRenderer | null = null
-let controls: OrbitControls | null = null
-let animationId: number | null = null
+let threeScene: ReturnType<typeof useThreeScene> | null = null
+let resizeObserver: ResizeObserver | null = null
 
 const cameraRef = ref<THREE.PerspectiveCamera | null>(null)
 const segmentLines = ref<Map<string, THREE.Line>>(new Map())
@@ -97,64 +103,45 @@ watch(
 function initScene() {
   if (!canvasRef.value) return
 
-  const w = canvasRef.value.clientWidth
-  const h = canvasRef.value.clientHeight
+  threeScene = useThreeScene({
+    container: canvasRef.value,
+    backgroundColor: '#1a1a2e',
+    fov: CAMERA_FOV,
+    cameraPosition: CAMERA_POSITION,
+    enableDamping: true,
+    dampingFactor: DAMPING_FACTOR,
+    showGrid: true,
+    gridSize: GRID_SIZE,
+    gridDivisions: GRID_DIVISIONS,
+  })
 
-  scene = new THREE.Scene()
-  scene.background = new THREE.Color('#1a1a2e')
+  const { scene, camera, renderer, controls, addLight } = threeScene
 
-  camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 10000)
-  camera.position.set(200, -200, 150)
-  camera.lookAt(0, 0, 30)
+  camera.lookAt(...LOOK_AT_TARGET)
   cameraRef.value = camera
+  controls.target.set(...CONTROLS_TARGET)
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
-  renderer.setSize(w, h)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-
-  canvasRef.value.appendChild(renderer.domElement)
-
-  controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true
-  controls.dampingFactor = 0.08
-  controls.target.set(0, 0, 25)
-
-  const ambient = new THREE.AmbientLight(0xffffff, 0.6)
-  scene.add(ambient)
+  addLight(new THREE.AmbientLight(0xffffff, 0.6))
   const dir1 = new THREE.DirectionalLight(0xffffff, 0.8)
   dir1.position.set(100, 100, 150)
-  scene.add(dir1)
+  addLight(dir1)
   const dir2 = new THREE.DirectionalLight(0xffffff, 0.3)
   dir2.position.set(-100, -50, 50)
-  scene.add(dir2)
-
-  const grid = new THREE.GridHelper(300, 20, 0x444444, 0x222222)
-  scene.add(grid)
+  addLight(dir2)
 
   renderer.domElement.addEventListener('mousemove', onMouseMove)
   renderer.domElement.addEventListener('contextmenu', onContextMenuEvent)
   renderer.domElement.addEventListener('click', onClick)
 
-  const resizeObserver = new ResizeObserver(() => {
-    if (!canvasRef.value || !camera || !renderer) return
-    const nw = canvasRef.value.clientWidth
-    const nh = canvasRef.value.clientHeight
-    camera.aspect = nw / nh
-    camera.updateProjectionMatrix()
-    renderer.setSize(nw, nh)
+  resizeObserver = new ResizeObserver(() => {
+    if (!canvasRef.value) return
+    // Resize is handled internally by useThreeScene's ResizeObserver
   })
   resizeObserver.observe(canvasRef.value)
 
-  startAnimation()
-}
-
-function startAnimation() {
-  const animate = () => {
-    animationId = requestAnimationFrame(animate)
-    if (controls) controls.update()
-    if (renderer && scene && camera) {
-      renderer.render(scene, camera)
-    }
+  frameCount = 0
+  fpsTime = performance.now()
+  threeScene.startAnimation(() => {
     frameCount++
     const now = performance.now()
     if (now - fpsTime >= 1000) {
@@ -162,15 +149,15 @@ function startAnimation() {
       frameCount = 0
       fpsTime = now
     }
-  }
-  animate()
+  })
 }
 
 function redrawSegments() {
-  if (!scene) return
+  if (!threeScene) return
+  const { scene } = threeScene
 
   segmentLines.value.forEach((line) => {
-    scene!.remove(line)
+    scene.remove(line)
     line.geometry?.dispose()
     ;(line.material as THREE.Material)?.dispose()
   })
@@ -187,29 +174,19 @@ function redrawSegments() {
 }
 
 function cleanup() {
-  if (animationId) {
-    cancelAnimationFrame(animationId)
-    animationId = null
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
   }
-  if (renderer) {
+  if (threeScene) {
+    const { renderer } = threeScene
     renderer.domElement.removeEventListener('mousemove', onMouseMove)
     renderer.domElement.removeEventListener('contextmenu', onContextMenuEvent)
     renderer.domElement.removeEventListener('click', onClick)
+    threeScene.cleanup()
+    threeScene = null
   }
   disposeInteraction()
-  if (controls) {
-    controls.dispose()
-    controls = null
-  }
-  if (renderer) {
-    renderer.dispose()
-    if (renderer.domElement.parentNode) {
-      renderer.domElement.parentNode.removeChild(renderer.domElement)
-    }
-    renderer = null
-  }
-  scene = null
-  camera = null
   cameraRef.value = null
 }
 </script>
@@ -254,7 +231,7 @@ function cleanup() {
     span {
       width: 20px; height: 20px;
       display: flex; align-items: center; justify-content: center;
-      border-radius: 4px; font-size: 11px; font-weight: 700; color: #fff;
+      border-radius: 4px; font-size: 11px; font-weight: 700; color: var(--bg-card);
     }
     .axis-x { background: #ff5252; }
     .axis-y { background: #4caf50; }

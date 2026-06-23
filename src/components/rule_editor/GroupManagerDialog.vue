@@ -62,7 +62,7 @@
               size="small"
               type="primary"
               link
-              @click="handleEdit(row)"
+              @click="handleEdit(row as RuleGroup)"
             >
               编辑
             </el-button>

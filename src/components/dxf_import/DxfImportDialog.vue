@@ -278,12 +278,19 @@
  */
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { useDxfImportStore } from '@/stores/dxfImport'
 import { formatFileSize } from '@/utils/formatters'
+import { useThreeScene } from '@/composables/useThreeScene'
 import type { DxfParseResponse } from '@/types'
+
+// 预览场景常量
+const PREVIEW_CAMERA_FOV = 45
+const PREVIEW_CAMERA_POSITION: [number, number, number] = [0, -200, 200]
+const PREVIEW_GRID_SIZE = 500
+const PREVIEW_GRID_DIVISIONS = 25
+const PREVIEW_AXES_SIZE = 50
 
 const { t } = useI18n()
 
@@ -319,12 +326,8 @@ const featuresCount = computed(() => {
 })
 
 // —— Three.js 资源（统一管理生命周期） ——
-let renderer: THREE.WebGLRenderer | null = null
-let scene: THREE.Scene | null = null
-let camera: THREE.PerspectiveCamera | null = null
-let controls: OrbitControls | null = null
+let threeScene: ReturnType<typeof useThreeScene> | null = null
 let contentGroup: THREE.Group | null = null
-let animationId = 0
 
 watch(() => store.showDialog, (val) => {
   if (val) {
@@ -412,40 +415,39 @@ function initPreview(result: DxfParseResponse) {
     // 释放旧资源
     disposePreview()
 
-    const w = previewContainer.value.clientWidth
-    const h = previewContainer.value.clientHeight
+    // 使用 useThreeScene composable
+    threeScene = useThreeScene({
+      container: previewContainer.value,
+      backgroundColor: '#0e1525',
+      fov: PREVIEW_CAMERA_FOV,
+      cameraPosition: PREVIEW_CAMERA_POSITION,
+      enableDamping: true,
+      dampingFactor: 0.08,
+      showGrid: true,
+      gridSize: PREVIEW_GRID_SIZE,
+      gridDivisions: PREVIEW_GRID_DIVISIONS,
+    })
 
-    scene = new THREE.Scene()
-    scene.background = new THREE.Color('#0e1525')
+    const { scene, camera, renderer, controls, addLight } = threeScene
 
-    camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 100000)
-    camera.position.set(0, -200, 200)
-    camera.up.set(0, 0, 1) // Z 轴向上，更符合工程图习惯
-
-    renderer = new THREE.WebGLRenderer({ antialias: true })
-    renderer.setSize(w, h)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    previewContainer.value.appendChild(renderer.domElement)
-
-    controls = new OrbitControls(camera, renderer.domElement)
-    controls.enableDamping = true
-    controls.dampingFactor = 0.08
-    controls.target.set(0, 0, 0)
+    // Z 轴向上，更符合工程图习惯
+    camera.up.set(0, 0, 1)
+    camera.updateProjectionMatrix()
 
     // 灯光
-    const ambient = new THREE.AmbientLight(0xffffff, 0.7)
-    scene.add(ambient)
+    addLight(new THREE.AmbientLight(0xffffff, 0.7))
     const dir = new THREE.DirectionalLight(0xffffff, 0.7)
     dir.position.set(50, 50, 100)
-    scene.add(dir)
+    addLight(dir)
 
-    // 网格（XY 平面）
-    const grid = new THREE.GridHelper(500, 25, 0x2a3550, 0x1a2238)
-    grid.rotation.x = Math.PI / 2 // 旋转到 XY 平面
-    scene.add(grid)
+    // 网格旋转到 XY 平面
+    const grid = scene.children.find((c) => c instanceof THREE.GridHelper) as THREE.GridHelper
+    if (grid) {
+      grid.rotation.x = Math.PI / 2
+    }
 
     // 坐标轴
-    const axes = new THREE.AxesHelper(50)
+    const axes = new THREE.AxesHelper(PREVIEW_AXES_SIZE)
     scene.add(axes)
 
     // 创建几何
@@ -455,13 +457,8 @@ function initPreview(result: DxfParseResponse) {
     // 缩放到合适视角
     resetView()
 
-    // 启动渲染
-    animate()
-
-    // 监听窗口变化
-    const ro = new ResizeObserver(() => onPreviewResize())
-    ro.observe(previewContainer.value)
-    ;(renderer as any).__ro = ro
+    // 启动渲染循环
+    threeScene.startAnimation()
   } finally {
     previewLoading.value = false
   }
@@ -538,7 +535,9 @@ function createDxfGroup(result: DxfParseResponse): THREE.Group {
 }
 
 function animate() {
-  animationId = requestAnimationFrame(animate)
+  if (!threeScene) return
+  // Animation is handled by threeScene.startAnimation(), this function is kept for potential future use
+  const { scene, camera, renderer, controls } = threeScene
   controls?.update()
   if (renderer && scene && camera) {
     renderer.render(scene, camera)
@@ -546,7 +545,9 @@ function animate() {
 }
 
 function onPreviewResize() {
-  if (!previewContainer.value || !renderer || !camera) return
+  if (!previewContainer.value || !threeScene) return
+  const { renderer, camera } = threeScene
+  if (!renderer || !camera) return
   const w = previewContainer.value.clientWidth
   const h = previewContainer.value.clientHeight
   if (w === 0 || h === 0) return
@@ -556,7 +557,8 @@ function onPreviewResize() {
 }
 
 function resetView() {
-  if (!camera || !controls || !contentGroup) return
+  if (!threeScene || !contentGroup) return
+  const { camera, controls } = threeScene
   const box = new THREE.Box3().setFromObject(contentGroup)
   if (box.isEmpty()) {
     camera.position.set(0, -200, 200)
@@ -574,7 +576,8 @@ function resetView() {
 }
 
 function viewTop() {
-  if (!camera || !controls) return
+  if (!threeScene) return
+  const { camera, controls } = threeScene
   const target = controls.target.clone()
   camera.position.set(target.x, target.y, target.z + 200)
   camera.up.set(0, 1, 0)
@@ -582,7 +585,8 @@ function viewTop() {
 }
 
 function view3D() {
-  if (!camera || !controls) return
+  if (!threeScene) return
+  const { camera, controls } = threeScene
   const target = controls.target.clone()
   const d = 200
   camera.position.set(target.x + d, target.y - d, target.z + d)
@@ -602,14 +606,6 @@ function toggleWireframe() {
 }
 
 function disposePreview() {
-  if (animationId) {
-    cancelAnimationFrame(animationId)
-    animationId = 0
-  }
-  if (controls) {
-    controls.dispose()
-    controls = null
-  }
   if (contentGroup) {
     contentGroup.traverse((obj) => {
       if (obj instanceof THREE.LineSegments || obj instanceof THREE.Line) {
@@ -623,17 +619,10 @@ function disposePreview() {
     })
     contentGroup = null
   }
-  if (renderer) {
-    const ro = (renderer as any).__ro
-    if (ro && previewContainer.value) ro.unobserve(previewContainer.value)
-    renderer.dispose()
-    if (renderer.domElement.parentNode) {
-      renderer.domElement.parentNode.removeChild(renderer.domElement)
-    }
-    renderer = null
+  if (threeScene) {
+    threeScene.cleanup()
+    threeScene = null
   }
-  scene = null
-  camera = null
 }
 
 // ============= 业务操作 =============
@@ -706,25 +695,25 @@ async function handleImportToProject() {
 }
 
 .drop-zone {
-  border: 2px dashed #c0c4cc;
+  border: 2px dashed var(--border-light);
   border-radius: 8px;
   padding: 48px 16px;
   text-align: center;
   cursor: pointer;
-  background: #fafbfc;
+  background: var(--bg-secondary);
   transition: all 0.2s ease;
   user-select: none;
 }
 
 .drop-zone:hover,
 .drop-zone.is-dragover {
-  border-color: #409eff;
-  background: #ecf5ff;
+  border-color: var(--accent-primary);
+  background: rgba(139, 125, 107, 0.1);
 }
 
 .upload-icon {
   font-size: 48px;
-  color: #409eff;
+  color: var(--accent-primary);
   margin-bottom: 12px;
 }
 
@@ -733,18 +722,18 @@ async function handleImportToProject() {
   flex-direction: column;
   gap: 4px;
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
 }
 
 .drop-text .em-text {
-  color: #409eff;
+  color: var(--accent-primary);
   font-style: normal;
 }
 
 .drop-tip {
   margin-top: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 /* 进度区 */
@@ -758,12 +747,12 @@ async function handleImportToProject() {
   justify-content: center;
   gap: 8px;
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
   margin-bottom: 16px;
 }
 
 .file-name-inline {
-  color: #909399;
+  color: var(--text-tertiary);
   font-size: 12px;
   margin-left: 8px;
   max-width: 220px;
@@ -776,7 +765,7 @@ async function handleImportToProject() {
   margin-top: 12px;
   text-align: center;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 /* 结果区 */
@@ -793,7 +782,7 @@ async function handleImportToProject() {
   margin: 8px 0 8px;
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .stat-grid {
@@ -805,7 +794,7 @@ async function handleImportToProject() {
 
 .stat-card {
   padding: 12px;
-  background: #f5f7fa;
+  background: var(--bg-tertiary);
   border-radius: 6px;
   text-align: center;
   transition: transform 0.15s ease;
@@ -822,7 +811,7 @@ async function handleImportToProject() {
 
 .stat-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-bottom: 4px;
 }
 
@@ -833,7 +822,7 @@ async function handleImportToProject() {
 .stat-value {
   font-size: 20px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .stat-card.highlight .stat-value {
@@ -877,7 +866,7 @@ async function handleImportToProject() {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #fff;
+  color: var(--bg-card);
   font-size: 14px;
   background: rgba(0, 0, 0, 0.4);
   padding: 8px 16px;

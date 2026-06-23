@@ -250,7 +250,7 @@
                     size="small"
                     text
                     type="primary"
-                    @click="handleOpenFromList(row)"
+                    @click="handleOpenFromList(row as ProjectSummary)"
                   >
                     {{ $t('app.open') }}
                   </el-button>
@@ -258,7 +258,7 @@
                     size="small"
                     text
                     type="danger"
-                    @click="handleDeleteProject(row)"
+                    @click="handleDeleteProject(row as ProjectSummary)"
                   >
                     {{ $t('common.delete') }}
                   </el-button>
@@ -432,7 +432,7 @@ const openTab = ref('local')
 
 const newForm = reactive({ name: '', author: '', description: '' })
 const saveAsForm = reactive({ outputName: '' })
-const importFileList = ref<Array<{ raw?: File }>>([])
+const importFileList = ref<any[]>([])
 const selectedSummary = ref<ProjectSummary | null>(null)
 const pendingFileCommand = ref('')
 
@@ -534,7 +534,7 @@ async function handleOpenFromList(row: ProjectSummary) {
 }
 
 function handleFileSelected(file: any) {
-  importFileList.value = [{ raw: file.raw }]
+  importFileList.value = [{ raw: file.raw }] as any
 }
 
 async function handleOpen() {
@@ -592,29 +592,36 @@ function cancelProceed() {
 
 <style>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
 }
 
 .app-container {
   min-height: 100vh;
+  background-color: var(--bg-primary);
 }
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--border-light);
+  background-color: var(--bg-card);
   gap: 16px;
-  padding: 0 20px;
+  padding: 0 24px;
+  height: 60px;
+  box-shadow: var(--shadow-sm);
 }
 
 .app-title {
   margin: 0;
   font-size: 1.25rem;
+  font-weight: 600;
   white-space: nowrap;
+  color: var(--text-primary);
 }
 
 .header-left {
@@ -626,7 +633,7 @@ function cancelProceed() {
 
 .app-version {
   font-size: 0.75rem;
-  color: #909399;
+  color: var(--text-tertiary);
   white-space: nowrap;
 }
 
@@ -638,6 +645,12 @@ function cancelProceed() {
 
 .header-menu {
   border-bottom: none;
+  background: transparent;
+}
+
+.header-menu .el-menu-item {
+  font-weight: 500;
+  transition: all var(--transition-fast);
 }
 
 .header-right {
@@ -649,7 +662,7 @@ function cancelProceed() {
 
 .project-indicator {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -661,5 +674,6 @@ function cancelProceed() {
 
 .app-main {
   padding: 24px;
+  background-color: var(--bg-primary);
 }
 </style>

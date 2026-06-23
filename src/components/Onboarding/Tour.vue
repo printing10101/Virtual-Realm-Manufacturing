@@ -371,39 +371,39 @@ defineExpose({
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #dcdfe6;
+  background-color: var(--border-light);
   transition: all 0.3s ease;
 }
 
 .tour-indicator--active {
-  background-color: #409eff;
+  background-color: var(--accent-primary);
   width: 24px;
   border-radius: 4px;
 }
 
 .tour-indicator--completed {
-  background-color: #67c23a;
+  background-color: var(--success);
 }
 
 .tour-title {
   margin: 0 0 12px;
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .tour-description {
   margin: 0 0 16px;
   font-size: 14px;
   line-height: 1.6;
-  color: #606266;
+  color: var(--text-secondary);
 }
 
 .tour-image {
   margin-bottom: 16px;
   border-radius: 4px;
   overflow: hidden;
-  background-color: #f5f7fa;
+  background-color: var(--bg-tertiary);
 }
 
 .tour-image img {

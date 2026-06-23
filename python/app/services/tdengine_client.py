@@ -440,7 +440,8 @@ def _format_value(value: Any) -> str:
     if isinstance(value, (bytes, bytearray)):
         try:
             return "'" + value.decode("utf-8").replace("'", "''") + "'"
-        except Exception:
+        except Exception as e:
+            logger.debug("字节数据 UTF-8 解码失败，使用十六进制表示: %s", e)
             return "'" + value.hex() + "'"
     if isinstance(value, str):
         return "'" + value.replace("'", "''") + "'"

@@ -218,7 +218,7 @@
               class="trend-bar"
               :style="{
                 height: Math.max(4, (item.duration_ms / Math.max(healthStatus.maxRecentDuration, 1)) * 40) + 'px',
-                backgroundColor: item.duration_ms > 500 ? '#f56c6c' : item.duration_ms > 200 ? '#e6a23c' : '#67c23a'
+                backgroundColor: item.duration_ms > 500 ? 'var(--error)' : item.duration_ms > 200 ? 'var(--warning)' : 'var(--success)'
               }"
               :title="`${item.model}: ${item.duration_ms}ms`"
             />
@@ -253,7 +253,7 @@
         >
           Prometheus
         </el-tag>
-        <span style="margin-left:12px;font-size:12px;color:#909399">{{ $t('settings.autoRefresh') }}: {{ healthStatus.pollInterval }}s</span>
+        <span style="margin-left:12px;font-size:12px;color:var(--text-secondary)">{{ $t('settings.autoRefresh') }}: {{ healthStatus.pollInterval }}s</span>
       </div>
     </el-card>
 
@@ -261,7 +261,7 @@
       <template #header>
         <div class="card-header">
           <span>{{ $t('settings.systemHealthCheck') }}</span>
-          <span style="font-size:12px;color:#909399">{{ $t('settings.healthCheckDesc') }}</span>
+          <span style="font-size:12px;color:var(--text-secondary)">{{ $t('settings.healthCheckDesc') }}</span>
         </div>
       </template>
       <HealthCheck ref="healthCheckRef" />
@@ -270,7 +270,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Refresh } from '@element-plus/icons-vue'
 import { useSovereigntySettings } from '@/composables/useSovereigntySettings'
@@ -299,6 +299,8 @@ const {
 
 const showSovereigntyIntro = ref(true)
 
+let healthCheckTimeoutId: number | null = null
+
 const autonomyLabels = computed(() => [
   t('settings.fullyManual'),
   t('settings.confirmRequired'),
@@ -308,9 +310,16 @@ const autonomyLabels = computed(() => [
 ])
 
 onMounted(() => {
-  setTimeout(() => {
+  healthCheckTimeoutId = window.setTimeout(() => {
     healthCheckRef.value?.runAllChecks()
   }, 300)
+})
+
+onBeforeUnmount(() => {
+  if (healthCheckTimeoutId !== null) {
+    clearTimeout(healthCheckTimeoutId)
+    healthCheckTimeoutId = null
+  }
 })
 </script>
 
@@ -346,7 +355,7 @@ onMounted(() => {
 
 .autonomy-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
   text-align: center;
   flex: 1;
 }
@@ -365,7 +374,7 @@ onMounted(() => {
 .stat-label {
   display: block;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
@@ -373,13 +382,13 @@ onMounted(() => {
   display: block;
   font-size: 20px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .stat-sub {
   display: block;
   font-size: 11px;
-  color: #c0c4cc;
+  color: var(--text-tertiary);
   margin-top: 2px;
 }
 
@@ -414,7 +423,7 @@ onMounted(() => {
 
 .trend-bar-label {
   font-size: 9px;
-  color: #c0c4cc;
+  color: var(--text-tertiary);
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;

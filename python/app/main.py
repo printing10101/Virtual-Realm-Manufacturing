@@ -37,7 +37,6 @@ from slowapi.errors import RateLimitExceeded
 from app.config import config
 from app.version import get_version_info, VERSION as PY_VERSION
 from app.api.v1 import (
-    lnn,
     lnn_uncertain,
     wear_prediction,
     user_sovereignty,
@@ -62,9 +61,25 @@ from app.api.v1 import (
     status as status_routes,
     dxf_pipeline as dxf_pipeline_routes,
 )
+
+# torch 相关模块：桌面版可能没有 torch，条件导入
+_TORCH_AVAILABLE = False
+try:
+    from app.api.v1 import lnn
+    _TORCH_AVAILABLE = True
+except ImportError:
+    pass
 from app.rag import routes as rag_routes
-from app.ai import ollama_routes
 from app.ai.process_understanding import routes as process_understanding_routes
+
+# ollama 相关模块：桌面版可能没有 ollama，条件导入
+_OLLAMA_AVAILABLE = False
+try:
+    from app.ai import ollama_routes
+    _OLLAMA_AVAILABLE = True
+except ImportError:
+    pass
+
 from app.simulation import api as simulation_api
 from app.projects import project_api as project_routes
 from app.step_import import api as step_import_api
@@ -328,14 +343,16 @@ async def query_logs(
     return {"code": 0, "message": "OK", "data": result, "request_id": get_request_id()}
 
 
-app.include_router(lnn.router)
+if _TORCH_AVAILABLE:
+    app.include_router(lnn.router)
 app.include_router(lnn_uncertain.router)
 app.include_router(wear_prediction.router)
 app.include_router(user_sovereignty.router)
 app.include_router(agent_gateway.router)
 app.include_router(jobs.router)
 app.include_router(rag_routes.router)
-app.include_router(ollama_routes.router)
+if _OLLAMA_AVAILABLE:
+    app.include_router(ollama_routes.router)
 app.include_router(simulation_api.router)
 app.include_router(project_routes.router)
 app.include_router(step_import_api.router)

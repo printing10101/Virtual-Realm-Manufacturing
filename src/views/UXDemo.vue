@@ -117,8 +117,7 @@ const tourSteps: TourStep[] = [
   },
   {
     title: '准备开始',
-    description: '引导已完成！您可以随时从帮助菜单重新启动引导流程。现在让我们开始探索系统的强大功能吧！',
-    placement: 'center'
+    description: '引导已完成！您可以随时从帮助菜单重新启动引导流程。现在让我们开始探索系统的强大功能吧！'
   }
 ]
 
@@ -227,11 +226,11 @@ function openCommandPalette() {
 }
 
 function onTourStart() {
-  console.log('引导流程开始')
+  // 引导流程开始
 }
 
 function onTourStepChange(index: number) {
-  console.log('引导步骤变化:', index)
+  // 引导步骤变化: index
 }
 
 function onTourFinish() {
@@ -243,14 +242,12 @@ function onTourSkip(index: number) {
 }
 
 function onCommandExecute(command: Command) {
-  console.log('命令已执行:', command.name)
+  // 命令已执行: command.name
 }
 
 // 生命周期
 onMounted(() => {
-  console.log('UX 演示页面已加载')
-  console.log(`示例工程数量: ${exampleCount.value}`)
-  console.log(`注册命令数量: ${commandCount.value}`)
+  // UX 演示页面已加载
 })
 </script>
 
@@ -287,12 +284,12 @@ onMounted(() => {
         margin: 0 0 16px;
         font-size: 16px;
         font-weight: 600;
-        color: #303133;
+        color: var(--text-primary);
       }
 
       .feature-desc {
         margin-left: 12px;
-        color: #606266;
+        color: var(--text-secondary);
         font-size: 14px;
       }
     }

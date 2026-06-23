@@ -61,14 +61,14 @@ class BaseLLMClient:
         temperature: float,
         model: str | None,
     ) -> tuple[dict[str, Any], dict[str, str] | None, str]:
-        raise NotImplementedError
+        raise NotImplementedError("LLM 客户端必须实现 _do_call() 方法来调用模型 API")
 
     def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
-        raise NotImplementedError
+        raise NotImplementedError("LLM 客户端必须实现 _parse_response() 方法来解析模型响应")
 
     def _default_model(self) -> str:
         """Return the default model name for this client."""
-        raise NotImplementedError
+        raise NotImplementedError("LLM 客户端必须实现 _default_model() 方法返回默认模型名称")
 
     @staticmethod
     def _validate_inputs(

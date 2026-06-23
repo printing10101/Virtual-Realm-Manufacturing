@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from app.core.response import error, ErrorCode, success
 from app.core.safe_errors import safe_error_message
+from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file
 from app.projects.project_store import (
     ProjectStore,
     ProjectManifest,
@@ -36,10 +37,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/projects", tags=["Project Management"])
 
-OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output" / "projects"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-TEMP_UPLOAD_DIR = OUTPUT_DIR / "_uploads"
-TEMP_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR = get_output_dir("projects")
+TEMP_UPLOAD_DIR = get_upload_dir("projects")
 
 # 修复 [路径遍历]：解析后的安全输出根目录。所有下载/删除接口必须把请求路径解析
 # 后与该根做 is_relative_to 校验，避免 ../ 等逃逸字符触达工作区之外的文件。

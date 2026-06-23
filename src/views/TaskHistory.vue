@@ -236,8 +236,8 @@
 import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import http from '@/utils/http'
 import { formatDate } from '@/utils/formatters'
 import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 
@@ -265,7 +265,7 @@ async function loadTasks() {
       params.status = filterStatus.value
     }
 
-    const res = await axios.get('/api/v1/jobs', { params })
+    const res = await http.get('/api/v1/jobs', { params })
     tasks.value = res.data.data.jobs || []
     total.value = res.data.data.total || 0
   } catch (e: any) {
@@ -295,14 +295,14 @@ async function rerunTask(task: any) {
   try {
     let res
     if (task.task_type === 'lnn_training') {
-      res = await axios.post('/api/v1/lnn/train', {
+      res = await http.post('/api/v1/lnn/train', {
         model_name: task.params.model_name,
         data_path: task.params.data_path,
         hyperparameters: task.params.hyperparameters,
         device: task.params.device,
       })
     } else if (task.task_type === 'lnn_batch_inference') {
-      res = await axios.post('/api/v1/lnn/batch-inference', {
+      res = await http.post('/api/v1/lnn/batch-inference', {
         model_name: task.params.model_name,
         input_data: task.params.input_data,
         batch_size: task.params.batch_size,
@@ -366,8 +366,8 @@ pre {
   white-space: pre-wrap;
   word-break: break-all;
   font-size: 12px;
-  background: #f5f7fa;
+  background: var(--bg-secondary);
   padding: 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import http from '@/utils/http'
 
 const router = useRouter()
 
@@ -17,23 +18,25 @@ const publishForm = ref({
   description: ''
 })
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+const API_BASE = '/api/v1'
 
 async function fetchTrending() {
   try {
-    const res = await fetch(`${API_BASE}/template_market/trending`)
-    const data = await res.json()
-    if (data.code === 'SUCCESS') trending.value = data.data
-  } catch { /* empty */ }
+    const res = await http.get(`${API_BASE}/template_market/trending`)
+    if (res.data.code === 'SUCCESS') trending.value = res.data.data
+  } catch (e: unknown) {
+    console.warn('Failed to fetch trending:', e)
+  }
 }
 
 async function fetchTemplates() {
   loading.value = true
   try {
-    const res = await fetch(`${API_BASE}/templates/branches`)
-    const data = await res.json()
-    if (data.code === 'SUCCESS') templates.value = data.data
-  } catch { /* empty */ } finally {
+    const res = await http.get(`${API_BASE}/templates/branches`)
+    if (res.data.code === 'SUCCESS') templates.value = res.data.data
+  } catch (e: unknown) {
+    console.warn('Failed to fetch templates:', e)
+  } finally {
     loading.value = false
   }
 }
@@ -41,27 +44,25 @@ async function fetchTemplates() {
 async function subscribe() {
   if (!subscribeCategory.value.trim()) return
   try {
-    await fetch(`${API_BASE}/template_market/subscribe`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: 'default', category: subscribeCategory.value })
+    await http.post(`${API_BASE}/template_market/subscribe`, {
+      project_id: 'default', category: subscribeCategory.value
     })
     subscriptions.value.push(subscribeCategory.value)
     subscribeCategory.value = ''
-  } catch { /* empty */ }
+  } catch (e: unknown) {
+    console.warn('Failed to subscribe:', e)
+  }
 }
 
 async function publishTemplate() {
   if (!publishForm.value.branch_id || !publishForm.value.name) return
   try {
-    await fetch(`${API_BASE}/template_market/publish`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(publishForm.value)
-    })
+    await http.post(`${API_BASE}/template_market/publish`, publishForm.value)
     publishForm.value = { branch_id: '', name: '', category: 'general', description: '' }
     fetchTrending()
-  } catch { /* empty */ }
+  } catch (e: unknown) {
+    console.warn('Failed to publish template:', e)
+  }
 }
 
 function viewDetail(branchId: string) {
@@ -299,15 +300,15 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.template-market-page { padding: 20px; }
+.template_market-page { padding: 20px; }
 .page-header { display: flex; justify-content: space-between; align-items: center; }
 .page-header h2 { margin: 0; }
 .main-tabs { margin-top: 16px; }
 .template-card { cursor: pointer; margin-bottom: 16px; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .template-name { font-weight: 600; font-size: 16px; }
-.template-meta { color: #666; font-size: 13px; line-height: 1.8; }
-.loading { text-align: center; padding: 40px; color: #999; }
+.template-meta { color: var(--text-secondary); font-size: 13px; line-height: 1.8; }
+.loading { text-align: center; padding: 40px; color: var(--text-tertiary); }
 .subscribe-section { padding: 20px 0; }
 .header-card { margin-bottom: 16px; }
 </style>

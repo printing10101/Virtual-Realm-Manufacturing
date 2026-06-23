@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { extractErrorMessage } from '@/utils/errorUtils'
+import http from '@/utils/http'
 
 /** 任务基本信息接口 */
 export interface TaskInfo {
@@ -28,7 +29,7 @@ export interface TaskStats {
   available_slots: number
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 /** 任务管理 Store */
 export const useTasksStore = defineStore('tasks', () => {
@@ -87,8 +88,8 @@ export const useTasksStore = defineStore('tasks', () => {
       searchParams.set('limit', String(params?.limit ?? 50))
       searchParams.set('offset', String(params?.offset ?? 0))
 
-      const response = await fetch(`${API_BASE}/api/v1/jobs?${searchParams}`)
-      const json = await response.json()
+      const response = await http.get(`${API_BASE}/jobs`, { params: Object.fromEntries(searchParams) })
+      const json = response.data
       if (json.code === 0) {
         tasks.value = json.data.jobs || []
       } else {
@@ -110,8 +111,8 @@ export const useTasksStore = defineStore('tasks', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetch(`${API_BASE}/api/v1/jobs/${jobId}`)
-      const json = await response.json()
+      const response = await http.get(`${API_BASE}/jobs/${jobId}`)
+      const json = response.data
       if (json.code === 0) {
         currentTask.value = json.data
         return json.data
@@ -134,8 +135,8 @@ export const useTasksStore = defineStore('tasks', () => {
    */
   async function fetchTaskProgress(jobId: string): Promise<unknown> {
     try {
-      const response = await fetch(`${API_BASE}/api/v1/jobs/${jobId}/progress`)
-      const json = await response.json()
+      const response = await http.get(`${API_BASE}/jobs/${jobId}/progress`)
+      const json = response.data
       if (json.code === 0 && currentTask.value) {
         currentTask.value.progress = json.data.progress_db ?? currentTask.value.progress
         currentTask.value.progress_redis = {
@@ -160,10 +161,8 @@ export const useTasksStore = defineStore('tasks', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetch(`${API_BASE}/api/v1/jobs/${jobId}/cancel`, {
-        method: 'POST',
-      })
-      const json = await response.json()
+      const response = await http.post(`${API_BASE}/jobs/${jobId}/cancel`)
+      const json = response.data
       if (json.code === 0) {
         const idx = tasks.value.findIndex(t => t.job_id === jobId)
         if (idx !== -1) {
@@ -190,8 +189,8 @@ export const useTasksStore = defineStore('tasks', () => {
    */
   async function fetchStats(): Promise<unknown> {
     try {
-      const response = await fetch(`${API_BASE}/api/v1/jobs/stats`)
-      const json = await response.json()
+      const response = await http.get(`${API_BASE}/api/v1/jobs/stats`)
+      const json = response.data
       if (json.code === 0) {
         stats.value = json.data
       }

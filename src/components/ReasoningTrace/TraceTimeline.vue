@@ -174,8 +174,8 @@ defineExpose({
 
 <style scoped>
 .trace-timeline {
-  background: white;
-  border: 1px solid #e4e7ed;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 20px;
 }
@@ -186,13 +186,13 @@ defineExpose({
   gap: 12px;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .progress-info {
   margin-left: auto;
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
 }
 
 .timeline-track {
@@ -209,7 +209,7 @@ defineExpose({
   top: 28px;
   left: 0;
   height: 2px;
-  background: #409eff;
+  background: var(--accent-primary);
   transition: width 0.3s;
   z-index: 0;
 }
@@ -229,26 +229,26 @@ defineExpose({
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #e4e7ed;
+  background: var(--border-light);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--bg-card);
   transition: all 0.3s;
 }
 
 .timeline-node.active .node-dot {
-  background: #409eff;
+  background: var(--accent-primary);
   box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.2);
 }
 
 .timeline-node.completed .node-dot {
-  background: #67c23a;
+  background: var(--success);
 }
 
 .node-label {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   text-align: center;
   max-width: 100px;
   overflow: hidden;
@@ -257,13 +257,13 @@ defineExpose({
 }
 
 .timeline-node.active .node-label {
-  color: #409eff;
+  color: var(--accent-primary);
   font-weight: 600;
 }
 
 .node-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 .timeline-content {

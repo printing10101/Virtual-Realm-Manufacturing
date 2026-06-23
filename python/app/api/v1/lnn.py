@@ -306,38 +306,51 @@ async def _run_training_task(  # pragma: no cover - legacy stub, see _run_traini
         "(task_manager + run_training_task_v2)",
         task_id,
     )
-    raise NotImplementedError(
-        "run_training_task v1 is deprecated; use task_manager.execute_task "
-        "with run_training_task_v2 instead."
+    return error(
+        code=ErrorCode.GONE,
+        message="run_training_task v1 is deprecated; use task_manager.execute_task with run_training_task_v2 instead.",
     )
 
 
 @router.post("/train/dry_run")
 async def dry_run_training(request: LNNTrainDryRunRequest):
     try:
-        if not os.path.exists(request.data_path):
+        # 直接尝试打开文件，避免 TOCTOU 漏洞
+        max_size = 100 * 1024 * 1024
+        try:
+            with open(request.data_path, 'rb') as f:
+                # 读取文件大小
+                f.seek(0, 2)  # 移动到文件末尾
+                file_size = f.tell()
+                
+                if file_size > max_size:
+                    return error(
+                        code=ErrorCode.INVALID_REQUEST,
+                        message=f"File too large ({file_size / 1024 / 1024:.1f} MB), max {max_size / 1024 / 1024:.0f} MB",
+                    )
+                
+                # 重置文件指针到开头
+                f.seek(0)
+                
+                import numpy as np
+                
+                # 从文件对象加载数据
+                data = np.loadtxt(f, delimiter=",")
+        except FileNotFoundError:
             return error(
                 code=ErrorCode.NOT_FOUND,
                 message=f"Data file not found: {request.data_path}",
             )
-
-        if not os.path.isfile(request.data_path):
+        except IsADirectoryError:
             return error(
                 code=ErrorCode.INVALID_REQUEST,
                 message=f"Not a regular file: {request.data_path}",
             )
-
-        file_size = os.path.getsize(request.data_path)
-        max_size = 100 * 1024 * 1024
-        if file_size > max_size:
+        except PermissionError:
             return error(
                 code=ErrorCode.INVALID_REQUEST,
-                message=f"File too large ({file_size / 1024 / 1024:.1f} MB), max {max_size / 1024 / 1024:.0f} MB",
+                message=f"Permission denied: {request.data_path}",
             )
-
-        import numpy as np
-
-        data = np.loadtxt(request.data_path, delimiter=",")
         if data.ndim == 1:
             data = data.reshape(-1, 1)
 
@@ -1161,11 +1174,7 @@ async def _run_quantization_task_v2(
     if not entry:
         raise ValueError(f"Model '{model_name}' not found")
 
-    if not os.path.exists(entry.info.model_path):
-        raise FileNotFoundError(
-            f"Model file not found: {entry.info.model_path}"
-        )
-
+    # 直接尝试加载模型，避免 TOCTOU 漏洞
     model_class = get_torch_model_class(entry.info.model_type)
     if not model_class:
         raise ValueError(f"Unsupported model type: {entry.info.model_type}")
@@ -1186,6 +1195,10 @@ async def _run_quantization_task_v2(
     try:
         model.load(entry.info.model_path)
         model.build()
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"Model file not found: {entry.info.model_path}"
+        )
     except (OSError, RuntimeError, ValueError, TypeError) as e:
         # 模型权重加载失败时使用初始化权重继续量化流程，记录以便排查
         logger.warning(
@@ -1308,9 +1321,9 @@ async def _run_quantization_task(  # pragma: no cover - legacy stub
         "(task_manager + _run_quantization_task_v2)",
         task_id,
     )
-    raise NotImplementedError(
-        "_run_quantization_task v1 is deprecated; use task_manager.execute_task "
-        "with _run_quantization_task_v2 instead."
+    return error(
+        code=ErrorCode.GONE,
+        message="_run_quantization_task v1 is deprecated; use task_manager.execute_task with _run_quantization_task_v2 instead.",
     )
 
 
@@ -1628,14 +1641,17 @@ async def run_training_task_v2(
 
     await progress_updater(5.0, "Loading data...")
 
-    if not os.path.exists(data_path):
-        raise FileNotFoundError(f"Data file not found: {data_path}")
-
+    # 直接尝试加载数据，避免 TOCTOU 漏洞
     try:
         data = np.loadtxt(data_path, delimiter=",", skiprows=1, dtype=float)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Data file not found: {data_path}")
     except (ValueError, UnicodeDecodeError):
-        with open(data_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+        try:
+            with open(data_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Data file not found: {data_path}")
         numeric_lines = []
         for line in lines[1:]:
             parts = line.strip().split(",")

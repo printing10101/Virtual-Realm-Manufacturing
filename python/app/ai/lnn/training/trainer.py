@@ -22,7 +22,7 @@ Example:
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 import time
 import os
 import asyncio
@@ -36,6 +36,18 @@ from app.ai.lnn.training.device_manager import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# Trainer constants
+DEFAULT_SGD_MOMENTUM = 0.9  # Default momentum for SGD optimizer
+DEFAULT_STEP_LR_STEP_SIZE = 30  # Default step size for StepLR scheduler
+DEFAULT_LR_DECAY_GAMMA = 0.1  # Default gamma for learning rate decay
+DEFAULT_PLATEAU_PATIENCE = 10  # Default patience for ReduceLROnPlateau
+DEFAULT_EXPONENTIAL_GAMMA = 0.95  # Default gamma for ExponentialLR scheduler
+BCE_CONFIDENCE_THRESHOLD = 0.5  # Confidence threshold for BCE loss predictions
+GPU_MEMORY_LOG_INTERVAL = 10  # Epoch interval for GPU memory logging
+BYTES_PER_MB = 1024**2  # Conversion factor from bytes to megabytes
+GPU_MEMORY_WARNING_THRESHOLD = 95.0  # GPU memory usage warning threshold (percent)
 
 
 class LNNTrainer:

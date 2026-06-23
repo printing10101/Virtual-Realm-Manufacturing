@@ -206,15 +206,21 @@ class PatternEngine:
             new_patterns.extend(self._detect_anti_patterns(min_samples))
             new_patterns.extend(self._detect_combination_patterns(min_samples))
 
+            # 批量插入新发现的 pattern（避免 N+1 查询）
+            patterns_to_insert = []
+            existing_ids = {p.pattern_id for p in self._patterns}
             for p in new_patterns:
-                if not any(
-                    existing.pattern_id == p.pattern_id for existing in self._patterns
-                ):
+                if p.pattern_id not in existing_ids:
                     self._patterns.append(p)
-                    self._db.execute(
-                        """INSERT OR REPLACE INTO patterns
-                           (pattern_id, pattern_type, description, elements, conditions, metrics, sample_size, suggestion, created_at)  # noqa: E501
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    patterns_to_insert.append(p)
+
+            if patterns_to_insert:
+                # 使用 executemany 批量插入
+                self._db.executemany(
+                    """INSERT OR REPLACE INTO patterns
+                       (pattern_id, pattern_type, description, elements, conditions, metrics, sample_size, suggestion, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    [
                         (
                             p.pattern_id,
                             p.pattern_type,
@@ -225,8 +231,10 @@ class PatternEngine:
                             p.sample_size,
                             p.suggestion,
                             p.created_at,
-                        ),
-                    )
+                        )
+                        for p in patterns_to_insert
+                    ],
+                )
             self._db.commit()
             return new_patterns
 

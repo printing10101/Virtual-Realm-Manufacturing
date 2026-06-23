@@ -18,7 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # 脚本在 python/scripts/ 下，parents[2] 才是项目根
 PYTHON_DIR = PROJECT_ROOT / "python"
 TAURI_BINARIES = PROJECT_ROOT / "src-tauri" / "binaries"
 
@@ -64,14 +64,16 @@ def run_pyinstaller(onefile: bool = False) -> Path:
         print("[ERROR] PyInstaller 构建失败")
         sys.exit(result.returncode)
 
-    dist_dir = PYTHON_DIR / "dist" / "lingjing-backend"
-    if not dist_dir.exists():
-        print(f"[ERROR] 预期产物不存在: {dist_dir}")
+    # --onefile 模式产物为单文件：lingjing-backend.exe (Windows) 或 lingjing-backend (Linux/macOS)
+    suffix = ".exe" if platform.system().lower() == "windows" else ""
+    dist_file = PYTHON_DIR / "dist" / f"lingjing-backend{suffix}"
+    if not dist_file.exists():
+        print(f"[ERROR] 预期产物不存在: {dist_file}")
         sys.exit(1)
-    return dist_dir
+    return dist_file
 
 
-def copy_to_tauri(src_dir: Path) -> Path:
+def copy_to_tauri(src_file: Path) -> Path:
     TAURI_BINARIES.mkdir(parents=True, exist_ok=True)
     triple = get_target_triple()
     suffix = ".exe" if platform.system().lower() == "windows" else ""
@@ -86,24 +88,8 @@ def copy_to_tauri(src_dir: Path) -> Path:
 
     print(f"[INFO] 复制构建产物 -> {target_path}")
 
-    # PyInstaller 生成的 dist/lingjing-backend 是一个目录：
-    #   lingjing-backend.exe   (Windows)
-    #   lingjing-backend       (macOS/Linux)
-    #   + _internal/
-    #
-    # Tauri Sidecar 期望一个可执行文件 + 附属文件在同一目录。
-    # 为此我们在 binaries/lingjing-backend-<triple>/ 下平铺。
-    target_dir = TAURI_BINARIES / f"lingjing-backend-{triple}"
-    if target_dir.exists():
-        shutil.rmtree(target_dir)
-    shutil.copytree(src_dir, target_dir)
-
-    # 在 Tauri binaries/ 目录根放一个可识别的"入口"软链接/副本，
-    # 命名遵循 Tauri externalBin 约定：<name>-<triple>[.exe]
-    if platform.system().lower() == "windows":
-        shutil.copy2(target_dir / f"lingjing-backend{suffix}", target_path)
-    else:
-        os.symlink(target_dir / "lingjing-backend", target_path)
+    # --onefile 模式产物为单个可执行文件，直接复制并重命名为 Tauri sidecar 约定名称
+    shutil.copy2(src_file, target_path)
     os.chmod(target_path, 0o755)
     return target_path
 

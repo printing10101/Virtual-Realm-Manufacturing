@@ -51,7 +51,7 @@ class BaseTrigger(ABC):
     @property
     def event_type(self) -> str:
         """返回此触发器产生的事件类型"""
-        raise NotImplementedError
+        raise NotImplementedError("子类必须实现 event_type 属性，返回触发器产生的事件类型标识符")
     
     @abstractmethod
     def check(self, **kwargs) -> Optional[TriggerEvent]:

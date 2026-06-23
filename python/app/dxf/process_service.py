@@ -141,11 +141,11 @@ class DxfProcessService:
             and (result.model3d is None or result.model3d.success or result.model3d.summary)
         )
         result.total_latency_ms = (time.time() - t0) * 1000
-        # 影子模式：研究轨 IJepa-3D chamfer 识别（不阻塞产品流程）
+        # 影子模式：研究轨 IJepa-3D chamfer 启发式识别（不阻塞产品流程）
         try:
             self._run_ijepa3d_shadow(path, result, user_id)
         except Exception as e:  # noqa: BLE001
-            logger.debug("ijepa3d shadow run failed: %s", e)
+            logger.warning("ijepa3d shadow run failed: %s", e, exc_info=True)
         # 桥接层落盘
         try:
             from app.research_bridge import UsageDataCollector
@@ -165,7 +165,7 @@ class DxfProcessService:
                 },
             )
         except Exception as e:  # noqa: BLE001
-            logger.debug("bridge collect failed: %s", e)
+            logger.warning("bridge collect failed: %s", e, exc_info=True)
         return result
 
     def _run_ijepa3d_shadow(
@@ -184,14 +184,14 @@ class DxfProcessService:
             from research.multimodal_jepa.ijepa_3d.chamfer_heuristic import detect_all_extended
             from app.dxf.dxf_parser import DxfParser
         except ImportError as e:
-            logger.debug("ijepa3d import failed: %s", e)
+            logger.warning("ijepa3d import failed: %s", e, exc_info=True)
             return
 
         # 解析 DXF 拿几何
         try:
             parsed = DxfParser().parse(str(path))
         except Exception as e:  # noqa: BLE001
-            logger.debug("ijepa3d shadow parse failed: %s", e)
+            logger.warning("ijepa3d shadow parse failed: %s", e, exc_info=True)
             return
 
         # 跑启发式（使用 detect_all_extended：8 个识别器）
@@ -201,7 +201,7 @@ class DxfProcessService:
         except Exception as e:  # noqa: BLE001
             # detect_all_extended 内部已对 detect_all 做了 try-except 保护，
             # 这里仅记录日志，不再回退调用 detect_all（避免重复抛出相同异常）
-            logger.debug("ijepa3d shadow detect_all_extended failed: %s", e)
+            logger.warning("ijepa3d shadow detect_all_extended failed: %s", e, exc_info=True)
             research_feats = []
         research_latency_ms = int((time.time() - t0) * 1000)
 
@@ -272,12 +272,14 @@ class DxfProcessService:
                 error=err,
             )
         except (DxfParseError, DxfFormatError) as e:
+            logger.warning("DXF parse failed: %s", e, exc_info=True)
             return StageResult(
                 name="parse", success=False,
                 latency_ms=(time.time() - t0) * 1000,
                 error=str(e),
             )
         except Exception as e:  # noqa: BLE001
+            logger.error("Unexpected DXF parse error: %s", e, exc_info=True)
             return StageResult(
                 name="parse", success=False,
                 latency_ms=(time.time() - t0) * 1000,
@@ -304,6 +306,7 @@ class DxfProcessService:
                 error="; ".join(r.errors) if r.errors else "",
             )
         except Exception as e:  # noqa: BLE001
+            logger.error("DXF feature extraction failed: %s", e, exc_info=True)
             return StageResult(
                 name="features", success=False,
                 latency_ms=(time.time() - t0) * 1000,
@@ -355,6 +358,7 @@ class DxfProcessService:
                 error="; ".join(result.errors) if result.errors else "",
             )
         except Exception as e:  # noqa: BLE001
+            logger.error("DXF 3D conversion failed: %s", e, exc_info=True)
             return StageResult(
                 name="model3d", success=False,
                 latency_ms=(time.time() - t0) * 1000,

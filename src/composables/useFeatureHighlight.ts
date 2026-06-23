@@ -485,13 +485,14 @@ export function useFeatureHighlight(options: {
     const duration = 600
     const startTime = performance.now()
 
+    const cameraRef = camera // Capture for closure
     function animate() {
       const elapsed = performance.now() - startTime
       const t = Math.min(elapsed / duration, 1.0)
       const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
 
-      camera.position.lerpVectors(startPos, targetPos, ease)
-      camera.lookAt(center)
+      cameraRef.position.lerpVectors(startPos, targetPos, ease)
+      cameraRef.lookAt(center)
 
       if (t < 1.0) {
         requestAnimationFrame(animate)

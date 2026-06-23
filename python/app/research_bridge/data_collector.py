@@ -128,6 +128,44 @@ class UsageDataCollector:
         )
         self._append_jsonl(self._error_samples_dir / "errors.jsonl", sample)
 
+    def record_batch_errors(
+        self,
+        feature: str,
+        error_type: str,
+        error_messages: list[str],
+        context: Optional[dict] = None,
+        user_id: Optional[str] = None,
+    ) -> None:
+        """批量记录错误，避免循环中的 N+1 I/O 操作。"""
+        if not error_messages:
+            return
+        timestamp = datetime.now().isoformat()
+        samples = []
+        for msg in error_messages:
+            payload = {
+                "feature": feature,
+                "error_type": error_type,
+                "error_message": msg,
+                "context": context or {},
+                "timestamp": timestamp,
+            }
+            sample = self._anonymizer.anonymize_payload(
+                feature_name=f"error.{feature}",
+                payload=payload,
+                user_id=user_id,
+            )
+            samples.append(sample)
+        # 批量写入文件
+        path = self._error_samples_dir / "errors.jsonl"
+        try:
+            self._maybe_rotate(path)
+            with open(path, "a", encoding="utf-8") as f:
+                for sample in samples:
+                    f.write(json.dumps(sample.__dict__, ensure_ascii=False))
+                    f.write("\n")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("record_batch_errors failed: %s", e)
+
     def record_user_feedback(
         self,
         feature: str,

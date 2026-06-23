@@ -1,5 +1,5 @@
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
-import axios from 'axios'
+import http from '@/utils/http'
 
 interface RecentInference {
   model: string
@@ -35,7 +35,7 @@ export function useHealthMonitor() {
     healthLoading.value = true
     let backendOk = false
     try {
-      const pingRes = await axios.get('/api/health/ping', { timeout: 3000 })
+      const pingRes = await http.get('/api/health/ping', { timeout: 3000 })
       backendOk = pingRes.status === 200
     } catch {
       backendOk = false
@@ -49,9 +49,9 @@ export function useHealthMonitor() {
 
     try {
       const [metricRes, lnnHealthRes, lnnPerfRes] = await Promise.all([
-        axios.get('/api/metrics', { timeout: 5000 }).catch(() => null),
-        axios.get('/api/v1/lnn/health', { timeout: 5000 }).catch(() => null),
-        axios.get('/api/v1/lnn/performance', { timeout: 5000 }).catch(() => null),
+        http.get('/api/metrics', { timeout: 5000 }).catch(() => null),
+        http.get('/api/v1/lnn/health', { timeout: 5000 }).catch(() => null),
+        http.get('/api/v1/lnn/performance', { timeout: 5000 }).catch(() => null),
       ])
 
       if (metricRes && typeof metricRes.data === 'string') {

@@ -18,6 +18,7 @@ from app.agent.auth import agent_token_store
 from app.agent.middleware import (
     agent_audit_log,
 )
+from app.agent.orchestrator import AgentOrchestrator, OrchestratorMode
 from app.models.schemas import (
     AgentTokenCreateRequest,
     AgentTokenResponse,
@@ -25,8 +26,17 @@ from app.models.schemas import (
     AgentTrainRequest,
     AgentExecuteRequest,
 )
-from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
-from app.services.model_registry_service import get_model_registry_service
+
+# torch 相关模块：桌面版可能没有 torch，条件导入
+_TORCH_AVAILABLE = False
+try:
+    from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
+    _TORCH_AVAILABLE = True
+except ImportError:
+    LNNPredictor = None  # type: ignore
+    PredictionResult = None  # type: ignore
+
+from app.services.model.registry_service import get_model_registry_service
 from app.api.v1.sse import sse_manager, create_progress_callback
 
 logger = logging.getLogger(__name__)
@@ -42,6 +52,9 @@ training_tasks = registry_service.get_training_tasks()
 MAX_CONCURRENT_TRAINING = 3
 _active_training: set[str] = set()
 _training_sem = asyncio.Semaphore(MAX_CONCURRENT_TRAINING)
+
+# Agent Orchestrator for workflow pipeline execution
+orchestrator = AgentOrchestrator()
 
 
 @router.get("/health")
@@ -542,3 +555,180 @@ async def revoke_all_t_tokens():
     return success(
         data={"revoked_count": count}, message=f"Revoked {count} T-class tokens"
     )
+
+
+# =============================================================================
+# Workflow Pipeline Execution Endpoints
+# =============================================================================
+
+from app.models.schemas import AgentPipelineRequest
+
+
+@router.post("/pipeline/execute")
+async def execute_pipeline(request: AgentPipelineRequest):
+    """
+    执行工作流管线（B类，需要认证）
+    
+    通过 AgentOrchestrator 执行多步骤业务流程，支持：
+    - 顺序执行模式（SEQUENTIAL）
+    - 条件执行模式（CONDITIONAL）
+    
+    管线类型：
+    - process_planning: 工艺规划管线（DXF解析 → 工艺理解 → 参数推荐 → G代码生成）
+    - model_training: 模型训练管线（数据验证 → 训练 → 评估 → 部署）
+    - quality_analysis: 质量分析管线（数据采集 → 特征提取 → 预测 → 报告生成）
+    """
+    try:
+        # 记录审计日志
+        agent_audit_log.log(
+            agent_id=request.agent_id if hasattr(request, 'agent_id') else "unknown",
+            action="pipeline.execute",
+            resource=f"pipeline:{request.pipeline_type}",
+            permission_class="B",
+            details={
+                "pipeline_type": request.pipeline_type,
+                "mode": request.mode.value if hasattr(request.mode, 'value') else str(request.mode),
+                "input_keys": list(request.input_data.keys()),
+            },
+        )
+
+        # 执行管线
+        result = await orchestrator.execute_pipeline(
+            pipeline_type=request.pipeline_type,
+            input_data=request.input_data,
+            mode=request.mode,
+        )
+
+        # 根据结果状态返回相应响应
+        if result.success:
+            return success(
+                data={
+                    "pipeline_id": result.pipeline_id,
+                    "trace_id": result.trace_id,
+                    "status": "completed",
+                    "steps": [
+                        {
+                            "name": step.name,
+                            "status": step.status.value,
+                            "duration_ms": step.duration_ms,
+                            "output_keys": list(step.output.keys()) if step.output else [],
+                        }
+                        for step in result.steps
+                    ],
+                    "total_duration_ms": result.total_duration_ms,
+                    "final_output": result.final_output,
+                },
+                message=f"Pipeline '{request.pipeline_type}' executed successfully",
+            )
+        else:
+            # 管线失败但有降级处理
+            return success(
+                data={
+                    "pipeline_id": result.pipeline_id,
+                    "trace_id": result.trace_id,
+                    "status": "completed_with_fallback",
+                    "steps": [
+                        {
+                            "name": step.name,
+                            "status": step.status.value,
+                            "duration_ms": step.duration_ms,
+                            "error": step.error,
+                        }
+                        for step in result.steps
+                    ],
+                    "total_duration_ms": result.total_duration_ms,
+                    "fallback_triggered": result.fallback_triggered,
+                    "fallback_reason": result.fallback_reason,
+                    "final_output": result.final_output,
+                },
+                message=f"Pipeline '{request.pipeline_type}' completed with fallback",
+            )
+
+    except Exception as e:
+        safe = safe_error_message(
+            e, context=f"agent.pipeline[{request.pipeline_type}]"
+        )
+        logger.error(
+            "Pipeline execution failed | pipeline_type=%s | error_id=%s | exc=%s: %s",
+            request.pipeline_type,
+            safe.get("error_id"),
+            type(e).__name__,
+            e,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
+
+
+@router.get("/pipeline/history")
+async def get_pipeline_history(limit: int = 50, offset: int = 0):
+    """
+    查询管线执行历史（R类，需要认证）
+    
+    返回最近执行的管线记录，包括执行状态、耗时、步骤详情等。
+    """
+    try:
+        history = orchestrator.get_pipeline_history(limit=limit, offset=offset)
+        
+        return success(
+            data={
+                "pipelines": [
+                    {
+                        "pipeline_id": r.pipeline_id,
+                        "trace_id": r.trace_id,
+                        "success": r.success,
+                        "timestamp": r.timestamp,
+                        "total_duration_ms": r.total_duration_ms,
+                        "step_count": len(r.steps),
+                        "fallback_triggered": r.fallback_triggered,
+                    }
+                    for r in history
+                ],
+                "total": len(history),
+                "limit": limit,
+                "offset": offset,
+            },
+            message="Pipeline history retrieved",
+        )
+
+    except Exception as e:
+        safe = safe_error_message(e, context="agent.pipeline_history")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
+
+
+@router.get("/pipeline/{pipeline_id}/trace")
+async def get_pipeline_trace(pipeline_id: str):
+    """
+    获取管线执行追踪详情（R类，需要认证）
+    
+    返回指定管线的完整执行追踪信息，包括每个步骤的输入输出、耗时、错误信息等。
+    """
+    try:
+        trace = orchestrator.get_pipeline_trace(pipeline_id)
+        
+        if not trace:
+            return error(
+                code=ErrorCode.NOT_FOUND,
+                message=f"Pipeline trace '{pipeline_id}' not found",
+            )
+
+        return success(
+            data=trace,
+            message="Pipeline trace retrieved",
+        )
+
+    except Exception as e:
+        safe = safe_error_message(
+            e, context=f"agent.pipeline_trace[{pipeline_id}]"
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )

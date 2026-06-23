@@ -119,25 +119,42 @@ onMounted(async () => {
   margin: 0 auto;
 }
 
+.welcome-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+}
+
 .welcome-card h2 {
   margin: 0 0 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.welcome-card p {
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 
 .status-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.status-item:last-child {
+  border-bottom: none;
 }
 
 .stat-value {
-  font-weight: bold;
-  color: #409eff;
+  font-weight: 600;
+  color: var(--accent-primary);
+  font-size: 16px;
 }
 
 .stat-failed {
-  color: #f56c6c;
+  color: var(--error);
   font-weight: normal;
   font-size: 13px;
 }
@@ -150,5 +167,6 @@ onMounted(async () => {
 
 .status-loading-text {
   margin-left: 2px;
+  color: var(--text-tertiary);
 }
 </style>

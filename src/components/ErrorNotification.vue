@@ -53,13 +53,13 @@
                 cx="12"
                 cy="12"
                 r="10"
-                fill="#ff1744"
+                fill="var(--error)"
               />
               <text
                 x="12"
                 y="17"
                 text-anchor="middle"
-                fill="white"
+                fill="var(--bg-card)"
                 font-size="14"
                 font-weight="bold"
               >!</text>
@@ -73,13 +73,13 @@
             >
               <polygon
                 points="12,3 22,21 2,21"
-                fill="#ff9800"
+                fill="var(--warning)"
               />
               <text
                 x="12"
                 y="17"
                 text-anchor="middle"
-                fill="white"
+                fill="var(--bg-card)"
                 font-size="12"
                 font-weight="bold"
               >!</text>
@@ -93,13 +93,13 @@
             >
               <polygon
                 points="12,3 22,21 2,21"
-                fill="#ffc107"
+                fill="var(--warning)"
               />
               <text
                 x="12"
                 y="17"
                 text-anchor="middle"
-                fill="#333"
+                fill="var(--text-primary)"
                 font-size="12"
                 font-weight="bold"
               >!</text>
@@ -281,7 +281,7 @@ function accept(notification: ErrorNotification): void {
       adjusted_values: notification.adjusted_values,
     })
     if (!delivered) {
-      // 兼容性回退：保留 CustomEvent 行为，避免破坏旧的订阅者
+      // 兼容性回退:保留 CustomEvent 行为,避免破坏旧的订阅者
       window.dispatchEvent(
         new CustomEvent('manufacturing-error-accepted', {
           detail: { id: notification.id, adjusted_values: notification.adjusted_values },
@@ -299,7 +299,7 @@ function manualEdit(notification: ErrorNotification): void {
   }
   const delivered = errorBus.emitManualEdit(payload)
   if (!delivered) {
-    // 兼容性回退：保留 CustomEvent 行为
+    // 兼容性回退:保留 CustomEvent 行为
     window.dispatchEvent(
       new CustomEvent('manufacturing-error-manual', { detail: payload }),
     )
@@ -354,7 +354,7 @@ defineExpose({ push, dismiss })
 
 .error-notification-card {
   pointer-events: all;
-  background: white;
+  background: var(--bg-card);
   border-radius: 10px;
   padding: 16px 18px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.14);
@@ -369,21 +369,21 @@ defineExpose({ push, dismiss })
 }
 
 .severity-critical {
-  border-left: 5px solid #ff1744;
+  border-left: 5px solid var(--error);
   animation: pulse-red 2s infinite;
 }
 
 .severity-error {
-  border-left: 5px solid #ff9800;
+  border-left: 5px solid var(--warning);
 }
 
 .severity-warning {
-  border-left: 5px solid #ffc107;
+  border-left: 5px solid var(--warning);
 }
 
 @keyframes pulse-red {
-  0%, 100% { box-shadow: 0 4px 24px rgba(255, 23, 68, 0.14); }
-  50% { box-shadow: 0 4px 32px rgba(255, 23, 68, 0.28); }
+  0%, 100% { box-shadow: 0 4px 24px rgba(199, 107, 107, 0.14); }
+  50% { box-shadow: 0 4px 32px rgba(199, 107, 107, 0.28); }
 }
 
 .error-close-btn {
@@ -393,15 +393,15 @@ defineExpose({ push, dismiss })
   background: none;
   border: none;
   cursor: pointer;
-  color: #999;
+  color: var(--text-tertiary);
   padding: 2px;
   border-radius: 4px;
   transition: color 0.15s, background 0.15s;
 }
 
 .error-close-btn:hover {
-  color: #333;
-  background: #f0f0f0;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
 }
 
 .error-header {
@@ -418,8 +418,8 @@ defineExpose({ push, dismiss })
 .error-code {
   font-size: 12px;
   font-weight: 600;
-  color: #666;
-  background: #f5f5f5;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Consolas', 'Courier New', monospace;
@@ -428,32 +428,32 @@ defineExpose({ push, dismiss })
 .error-message {
   font-size: 14px;
   font-weight: 600;
-  color: #222;
+  color: var(--text-primary);
 }
 
 .error-body {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-light);
 }
 
 .error-detail {
   font-size: 12.5px;
-  color: #555;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 6px;
 }
 
 .error-suggestion {
   font-size: 12.5px;
-  color: #1976d2;
+  color: var(--info);
   line-height: 1.6;
   margin-bottom: 6px;
 }
 
 .error-adjusted {
   font-size: 12px;
-  color: #2e7d32;
+  color: var(--success);
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -461,7 +461,7 @@ defineExpose({ push, dismiss })
 }
 
 .adjusted-item {
-  background: #e8f5e9;
+  background: var(--bg-secondary);
   padding: 2px 8px;
   border-radius: 4px;
   font-family: 'Consolas', monospace;
@@ -486,41 +486,41 @@ defineExpose({ push, dismiss })
 }
 
 .btn-accept {
-  background: #4caf50;
-  color: white;
+  background: var(--success);
+  color: var(--bg-card);
 }
 
 .btn-accept:hover {
-  background: #388e3c;
+  background: var(--accent-hover);
 }
 
 .btn-manual {
-  background: #f5f5f5;
-  color: #333;
-  border: 1px solid #ddd;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
 }
 
 .btn-manual:hover {
-  background: #e0e0e0;
+  background: var(--bg-tertiary);
 }
 
 .btn-copy-diagnostic {
   padding: 7px 16px;
-  border: 1px solid #1976d2;
+  border: 1px solid var(--info);
   border-radius: 6px;
   font-size: 13px;
   cursor: pointer;
   font-weight: 500;
   transition: background 0.2s, color 0.2s;
-  background: white;
-  color: #1976d2;
+  background: var(--bg-card);
+  color: var(--info);
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
 .btn-copy-diagnostic:hover {
-  background: #e3f2fd;
+  background: var(--bg-secondary);
 }
 
 .btn-copy-diagnostic svg {

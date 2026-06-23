@@ -235,8 +235,42 @@ class CrossLayerRetriever:
         import time
         start_time = time.perf_counter()
 
+        # 批量查询优化：一次性处理所有查询向量（避免 N+1 查询）
+        if target_layer not in self._indices:
+            raise ValueError(
+                f"跨层检索失败：目标层 '{target_layer}' 的索引尚未构建。"
+                f"可用层: {list(self._indices.keys())}。请先调用 build_index() 构建索引。"
+            )
+
+        # 应用轴权重（如果有）
+        if axis_weights:
+            queries = np.array([
+                self._apply_axis_weights(query_embeddings[i], axis_weights)
+                for i in range(query_count)
+            ])
+        else:
+            queries = query_embeddings
+
+        # 归一化所有查询向量
+        queries = self._space.normalize(queries)
+
+        # 批量执行 k-NN 搜索
+        index = self._indices[target_layer]
         for i in range(query_count):
-            results = self.query(target_layer, query_embeddings[i], k, axis_weights)
+            indices, similarities = index.query(queries[i], k)
+            results: List[RetrievalResult] = []
+            for idx, sim in zip(indices, similarities):
+                meta = self._metadata[target_layer][int(idx)] if idx < len(self._metadata[target_layer]) else {}
+                confidence = self._calibrate_confidence(float(sim))
+                results.append(RetrievalResult(
+                    index=int(idx),
+                    similarity=float(sim),
+                    embedding=self._embeddings[target_layer][int(idx)].copy(),
+                    metadata=meta,
+                    layer=target_layer,
+                    modality=str(meta.get("modality", "")),
+                    confidence=confidence,
+                ))
             all_results.append(results)
             for r in results:
                 total_similarities.append(r.similarity)

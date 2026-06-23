@@ -194,7 +194,8 @@ def _decode_token(token: str) -> Optional[dict]:
     try:
         from app.auth.security import decode_token
         return decode_token(token)
-    except Exception:
+    except Exception as e:
+        logger.debug("JWT token 解码失败: %s", e)
         return None
 
 
@@ -203,7 +204,8 @@ def _decode_token_strict(token: str, expected_type: str = "access") -> Optional[
     try:
         from app.auth.security import decode_token_strict
         return decode_token_strict(token, expected_type)
-    except Exception:
+    except Exception as e:
+        logger.debug("JWT token 严格解码失败: %s", e)
         return None
 
 
@@ -212,7 +214,8 @@ def _get_token_ban_list():
     try:
         from app.auth.security import get_token_ban_list
         return get_token_ban_list()
-    except Exception:
+    except Exception as e:
+        logger.warning("获取 token 黑名单失败: %s", e)
         return None
 
 

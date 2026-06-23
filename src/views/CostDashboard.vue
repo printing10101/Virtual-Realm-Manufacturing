@@ -415,9 +415,9 @@
 
 <script lang="ts" setup>
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
-import axios from 'axios'
 import * as echarts from 'echarts'
 import { Refresh } from '@element-plus/icons-vue'
+import http from '@/utils/http'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 
 const API_BASE = '/api/v1/cost-budget'
@@ -492,7 +492,7 @@ function formatNumber(n: number): string {
 
 async function loadBudgetProgress() {
   try {
-    const res = await axios.get(`${API_BASE}/policies`)
+    const res = await http.get(`${API_BASE}/policies`)
     if (!res.data?.ok) return
     const policies = res.data.data || []
 
@@ -517,7 +517,7 @@ async function loadBudgetProgress() {
 async function loadCostDistribution() {
   loading.value.pie = true
   try {
-    const res = await axios.get(`${API_BASE}/summary`, {
+    const res = await http.get(`${API_BASE}/summary`, {
       params: { dimension: costDimension.value }
     })
     if (!res.data?.ok) return
@@ -538,7 +538,7 @@ async function loadCostDistribution() {
           radius: ['45%', '75%'],
           center: ['50%', '50%'],
           roseType: 'area',
-          itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+          itemStyle: { borderRadius: 6, borderColor: 'var(--bg-card)', borderWidth: 2 },
           data: names.map((n: string, i: number) => ({ name: n, value: values[i] })),
           label: { formatter: '{b}\n{d}%' },
         }],
@@ -554,7 +554,7 @@ async function loadCostDistribution() {
 async function loadCostByType() {
   loading.value.bar = true
   try {
-    const res = await axios.get(`${API_BASE}/summary`, {
+    const res = await http.get(`${API_BASE}/summary`, {
       params: { dimension: 'agent' }
     })
     if (!res.data?.ok) return
@@ -577,10 +577,10 @@ async function loadCostByType() {
         xAxis: { type: 'category', data: labels, axisLabel: { rotate: 30, fontSize: 11 } },
         yAxis: { type: 'value', name: '成本 ($)' },
         series: [
-          { name: 'GPU时间', type: 'bar', stack: 'total', data: gpuTimeVals, itemStyle: { color: '#409EFF' } },
-          { name: 'GPU内存', type: 'bar', stack: 'total', data: gpuMemVals, itemStyle: { color: '#67C23A' } },
-          { name: 'API调用', type: 'bar', stack: 'total', data: apiCallVals, itemStyle: { color: '#E6A23C' } },
-          { name: '数据传输', type: 'bar', stack: 'total', data: dataTransferVals, itemStyle: { color: '#F56C6C' } },
+          { name: 'GPU时间', type: 'bar', stack: 'total', data: gpuTimeVals, itemStyle: { color: 'var(--accent-primary)' } },
+          { name: 'GPU内存', type: 'bar', stack: 'total', data: gpuMemVals, itemStyle: { color: 'var(--success)' } },
+          { name: 'API调用', type: 'bar', stack: 'total', data: apiCallVals, itemStyle: { color: 'var(--warning)' } },
+          { name: '数据传输', type: 'bar', stack: 'total', data: dataTransferVals, itemStyle: { color: 'var(--error)' } },
         ],
       })
     }
@@ -594,7 +594,7 @@ async function loadCostByType() {
 async function loadCostTrend() {
   loading.value.trend = true
   try {
-    const res = await axios.get(`${API_BASE}/trend`, {
+    const res = await http.get(`${API_BASE}/trend`, {
       params: { days: trendDays.value, interval_hours: 24 }
     })
     if (!res.data?.ok) return
@@ -619,15 +619,15 @@ async function loadCostTrend() {
         series: [
           {
             name: '总成本', type: 'line', smooth: true,
-            data: totalCosts, lineStyle: { width: 3, color: '#409EFF' },
+            data: totalCosts, lineStyle: { width: 3, color: 'var(--accent-primary)' },
             areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: 'rgba(64,158,255,0.3)' },
               { offset: 1, color: 'rgba(64,158,255,0.05)' },
             ]) },
           },
-          { name: 'GPU时间', type: 'line', smooth: true, data: gpuTimeCosts, lineStyle: { color: '#67C23A' } },
-          { name: 'GPU内存', type: 'line', smooth: true, data: gpuMemCosts, lineStyle: { color: '#E6A23C' } },
-          { name: 'API调用', type: 'line', smooth: true, data: apiCallCosts, lineStyle: { color: '#F56C6C' } },
+          { name: 'GPU时间', type: 'line', smooth: true, data: gpuTimeCosts, lineStyle: { color: 'var(--success)' } },
+          { name: 'GPU内存', type: 'line', smooth: true, data: gpuMemCosts, lineStyle: { color: 'var(--warning)' } },
+          { name: 'API调用', type: 'line', smooth: true, data: apiCallCosts, lineStyle: { color: 'var(--error)' } },
         ],
       })
     }
@@ -643,7 +643,7 @@ async function loadAlerts() {
   try {
     const params: any = { limit: 100 }
     if (alertFilter.value) params.status = alertFilter.value
-    const res = await axios.get(`${API_BASE}/alerts`, { params })
+    const res = await http.get(`${API_BASE}/alerts`, { params })
     if (!res.data?.ok) return
     alerts.value = res.data.data || []
   } catch (e) {
@@ -656,7 +656,7 @@ async function loadAlerts() {
 async function loadSuggestions() {
   loading.value.suggestions = true
   try {
-    const res = await axios.get(`${API_BASE}/suggestions`)
+    const res = await http.get(`${API_BASE}/suggestions`)
     if (!res.data?.ok) return
     suggestions.value = res.data.data || []
   } catch (e) {
@@ -668,7 +668,7 @@ async function loadSuggestions() {
 
 async function markRead(id: number) {
   try {
-    await axios.post(`${API_BASE}/alerts/${id}/read`)
+    await http.post(`${API_BASE}/alerts/${id}/read`)
     const alert = alerts.value.find((a: any) => a.id === id)
     if (alert) alert.is_read = 1
   } catch (e) {
@@ -678,7 +678,7 @@ async function markRead(id: number) {
 
 async function markAllRead() {
   try {
-    await axios.post(`${API_BASE}/alerts/read-all`)
+    await http.post(`${API_BASE}/alerts/read-all`)
     alerts.value.forEach((a: any) => (a.is_read = 1))
   } catch (e) {
     console.error('Failed to mark all read:', e)
@@ -687,7 +687,7 @@ async function markAllRead() {
 
 async function deleteAlert(id: number) {
   try {
-    await axios.delete(`${API_BASE}/alerts/${id}`)
+    await http.delete(`${API_BASE}/alerts/${id}`)
     alerts.value = alerts.value.filter((a: any) => a.id !== id)
   } catch (e) {
     console.error('Failed to delete alert:', e)
@@ -753,17 +753,17 @@ onUnmounted(() => {
 }
 
 .budget-card.budget-warning {
-  border-color: #e6a23c;
+  border-color: var(--warning);
 }
 
 .budget-card.budget-exceeded {
-  border-color: #f56c6c;
+  border-color: var(--error);
 }
 
 .budget-card-title {
   font-size: 14px;
   font-weight: 600;
-  color: #606266;
+  color: var(--text-primary);
   margin-bottom: 12px;
   white-space: nowrap;
   overflow: hidden;
@@ -776,17 +776,17 @@ onUnmounted(() => {
 }
 
 .budget-card-detail .used {
-  color: #409EFF;
+  color: var(--accent-primary);
   font-weight: 600;
 }
 
 .budget-card-detail .separator {
-  color: #C0C4CC;
+  color: var(--border-medium);
   margin: 0 4px;
 }
 
 .budget-card-detail .limit {
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 .chart-card {
@@ -827,12 +827,12 @@ onUnmounted(() => {
 .suggestion-title {
   margin: 8px 0;
   font-size: 15px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .suggestion-desc {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   margin-bottom: 12px;
   line-height: 1.6;
 }
@@ -842,8 +842,8 @@ onUnmounted(() => {
   gap: 16px;
   margin-bottom: 12px;
   padding: 8px 0;
-  border-top: 1px solid #EBEEF5;
-  border-bottom: 1px solid #EBEEF5;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .suggestion-stats .stat {
@@ -860,17 +860,17 @@ onUnmounted(() => {
 .suggestion-stats .stat-label {
   display: block;
   font-size: 11px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-top: 2px;
 }
 
 .suggestion-reco {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
-.text-danger { color: #F56C6C; }
-.text-success { color: #67C23A; }
-.text-warning { color: #E6A23C; }
+.text-danger { color: var(--error); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
 </style>

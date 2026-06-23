@@ -5,7 +5,7 @@
 
 import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
+import http from '@/utils/http'
 
 export interface AgentToken {
   agent_id: string
@@ -110,7 +110,7 @@ export function useTokenManager(): TokenManagerReturn {
   async function loadAgentTokens() {
     loadingTokens.value = true
     try {
-      const res = await axios.get('/api/agent/v1/tokens')
+      const res = await http.get('/api/agent/v1/tokens')
       agentTokens.value = res.data.data.tokens
     } catch (e: unknown) {
       console.warn('Failed to load agent tokens:', e)
@@ -135,7 +135,7 @@ export function useTokenManager(): TokenManagerReturn {
         payload.expires_in = newTokenForm.expires_in
       }
 
-      const res = await axios.post('/api/agent/v1/tokens', payload)
+      const res = await http.post('/api/agent/v1/tokens', payload)
       createdToken.value = res.data.data
       showCreatedTokenDialog.value = true
       showCreateTokenDialog.value = false
@@ -162,7 +162,7 @@ export function useTokenManager(): TokenManagerReturn {
         }
       )
 
-      await axios.delete(`/api/agent/v1/tokens/${agentId}`)
+      await http.delete(`/api/agent/v1/tokens/${agentId}`)
       ElMessage.success(t('settings.revokeSuccess'))
       loadAgentTokens()
     } catch (e: unknown) {
@@ -185,7 +185,7 @@ export function useTokenManager(): TokenManagerReturn {
       )
 
       revokingT.value = true
-      const res = await axios.post('/api/agent/v1/tokens/revoke-t-all')
+      const res = await http.post('/api/agent/v1/tokens/revoke-t-all')
       ElMessage.success(
         t('settings.revokeSuccessCount', { count: res.data.data.revoked_count })
       )

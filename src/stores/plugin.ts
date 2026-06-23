@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import http from '@/utils/http'
 
 /**
  * 插件元数据接口
@@ -83,7 +83,7 @@ export const usePluginStore = defineStore('plugin', {
       this.loading = true
       this.error = null
       try {
-        const response = await axios.get('/api/v1/plugins')
+        const response = await http.get('/api/v1/plugins')
         this.plugins = response.data.data.plugins
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -101,7 +101,7 @@ export const usePluginStore = defineStore('plugin', {
       this.loading = true
       this.error = null
       try {
-        const response = await axios.get(`/api/v1/plugins/${pluginId}`)
+        const response = await http.get(`/api/v1/plugins/${pluginId}`)
         this.currentPlugin = response.data.data
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -118,7 +118,7 @@ export const usePluginStore = defineStore('plugin', {
     async enablePlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
-        await axios.post(`/api/v1/plugins/${pluginId}/enable`)
+        await http.post(`/api/v1/plugins/${pluginId}/enable`)
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -135,7 +135,7 @@ export const usePluginStore = defineStore('plugin', {
     async disablePlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
-        await axios.post(`/api/v1/plugins/${pluginId}/disable`)
+        await http.post(`/api/v1/plugins/${pluginId}/disable`)
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -152,7 +152,7 @@ export const usePluginStore = defineStore('plugin', {
     async uninstallPlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
-        await axios.delete(`/api/v1/plugins/${pluginId}`)
+        await http.delete(`/api/v1/plugins/${pluginId}`)
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -170,7 +170,7 @@ export const usePluginStore = defineStore('plugin', {
     async updatePluginConfig(pluginId: string, config: Record<string, unknown>): Promise<void> {
       this.loading = true
       try {
-        await axios.put(`/api/v1/plugins/${pluginId}/config`, config)
+        await http.put(`/api/v1/plugins/${pluginId}/config`, config)
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -187,7 +187,7 @@ export const usePluginStore = defineStore('plugin', {
     async reloadPlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
-        await axios.post(`/api/v1/plugins/${pluginId}/reload`)
+        await http.post(`/api/v1/plugins/${pluginId}/reload`)
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message

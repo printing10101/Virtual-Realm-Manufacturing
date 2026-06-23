@@ -16,21 +16,20 @@ from pydantic import BaseModel, Field
 
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
+from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file
 from app.dxf.dxf_parser import DxfParser
 from app.dxf.feature_extractor import FeatureExtractor
 from app.dxf.dxf_to_model import DxfToModelConverter
 from app.dxf.pipeline import DxfProcessPipeline
 from app.process_planning.gcode_generator import GCodeGenerator
-from app.xmaker.integration import XmakerIntegration
+from app.xmaker_integration import XmakerIntegration
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/dxf", tags=["DXF Processing"])
 
-OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output" / "dxf_import"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-TEMP_DIR = OUTPUT_DIR / "_uploads"
-TEMP_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR = get_output_dir("dxf_import")
+TEMP_DIR = get_upload_dir("dxf_import")
 
 MAX_FILE_SIZE = 50 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".dxf"}
@@ -174,6 +173,7 @@ async def parse_dxf(file: UploadFile = File(...)):
         })
     except Exception as e:
         # 修复：避免 str(e) 直接泄露内部异常详情给前端。
+        logger.error("DXF 解析失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.parse")
         return error(
             code=ErrorCode.INTERNAL,
@@ -210,6 +210,7 @@ async def extract_features(file: UploadFile = File(...)):
     except Exception as e:
         # 兜底捕获：特征提取涉及几何计算 + ezdxf 实体遍历，异常类型无法穷举
         # 修复：使用 safe_error_message 包装异常，避免 str(e) 直接暴露内部详情。
+        logger.error("DXF 特征提取失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.features")
         return error(
             code=ErrorCode.INTERNAL,
@@ -256,6 +257,7 @@ async def run_dxf_pipeline(
         return success(data=result.to_dict())
     except Exception as e:
         # 修复：避免 str(e) 直接泄露内部异常详情给前端。
+        logger.error("DXF 管道处理失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.pipeline")
         return error(
             code=ErrorCode.INTERNAL,
@@ -308,6 +310,7 @@ async def convert_to_stl(
     except Exception as e:
         # 兜底捕获：STL 转换依赖 cadquery + OCCT 绑定，OCCT 错误以多种异常抛出
         # 修复：使用 safe_error_message 包装异常，避免 str(e) 直接暴露内部详情。
+        logger.error("DXF 转 STL 模型失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.model.stl")
         return error(
             code=ErrorCode.INTERNAL,
@@ -429,8 +432,8 @@ async def validate_dxf(file: UploadFile = File(...)):
         # 兜底捕获：校验端点对任何解析/几何异常均返回统一的"无效"响应
         # 修复：避免 str(e) 直接暴露给调用方，统一以 valid=False 形式表达，
         # 错误信息使用通用描述，仅 error_id 可关联服务端日志排查。
+        logger.warning("DXF 校验失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.validate")
-        logger.warning("DXF校验发现异常: error_id=%s", safe.get("error_id"))
         return success(data={
             "valid": False,
             "issues": ["文件解析失败，请检查DXF格式是否正确"],
@@ -512,6 +515,7 @@ async def generate_xm100_gcode(
             "download_url": f"/api/dxf/model/download/{output_path.name}",
         })
     except Exception as e:
+        logger.error("XM-100 G代码生成失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.xm100.generate")
         return error(
             code=ErrorCode.INTERNAL,
@@ -569,6 +573,7 @@ async def upload_to_xmaker(
             "upload_time_ms": upload_result.upload_time_ms,
         })
     except Exception as e:
+        logger.error("XM-100 上传失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.xm100.upload")
         return error(
             code=ErrorCode.INTERNAL,
@@ -609,6 +614,7 @@ async def get_xm100_status(machine_id: str = "default"):
             "error_message": status_info.error_message,
         })
     except Exception as e:
+        logger.error("获取 XM-100 机床状态失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.xm100.status")
         return error(
             code=ErrorCode.INTERNAL,

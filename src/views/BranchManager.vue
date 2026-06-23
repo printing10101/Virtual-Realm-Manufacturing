@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getBranchTypeTagType } from '@/utils/statusHelpers'
+import http from '@/utils/http'
 
 const branches = ref<any[]>([])
 const loading = ref(false)
@@ -12,7 +13,7 @@ const createForm = ref({ name: '', base_branch: '', type: 'main', data: {} })
 const typeFilter = ref('')
 const branchDataInput = ref('{}')
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+const API_BASE = '/api/v1'
 
 async function fetchBranches() {
   loading.value = true
@@ -20,10 +21,11 @@ async function fetchBranches() {
     const url = typeFilter.value
       ? `${API_BASE}/templates/branches?type=${typeFilter.value}`
       : `${API_BASE}/templates/branches`
-    const res = await fetch(url)
-    const data = await res.json()
-    if (data.code === 'SUCCESS') branches.value = data.data
-  } catch { /* empty */ } finally {
+    const res = await http.get(url)
+    if (res.data.code === 'SUCCESS') branches.value = res.data.data
+  } catch (e: unknown) {
+    console.warn('Failed to fetch branches:', e)
+  } finally {
     loading.value = false
   }
 }
@@ -32,40 +34,37 @@ async function createBranch() {
   let data = {}
   try {
     data = JSON.parse(branchDataInput.value || '{}')
-  } catch {
+  } catch (e: unknown) {
+    console.warn('Failed to parse branch data:', e)
     data = {}
   }
   try {
-    await fetch(`${API_BASE}/templates/branches`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: createForm.value.name,
-        base_branch: createForm.value.base_branch || null,
-        data,
-        metadata: { type: createForm.value.type }
-      })
+    await http.post(`${API_BASE}/templates/branches`, {
+      name: createForm.value.name,
+      base_branch: createForm.value.base_branch || null,
+      data,
+      metadata: { type: createForm.value.type }
     })
     createDialog.value = false
     createForm.value = { name: '', base_branch: '', type: 'main', data: {} }
     branchDataInput.value = '{}'
     fetchBranches()
-  } catch { /* empty */ }
+  } catch (e: unknown) {
+    console.warn('Failed to create branch:', e)
+  }
 }
 
 async function mergeBranch() {
   try {
-    await fetch(`${API_BASE}/templates/branches/${mergeForm.value.source_id}/merge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        target_id: mergeForm.value.target_id,
-        strategy: mergeForm.value.strategy
-      })
+    await http.post(`${API_BASE}/templates/branches/${mergeForm.value.source_id}/merge`, {
+      target_id: mergeForm.value.target_id,
+      strategy: mergeForm.value.strategy
     })
     mergeDialog.value = false
     fetchBranches()
-  } catch { /* empty */ }
+  } catch (e: unknown) {
+    console.warn('Failed to merge branch:', e)
+  }
 }
 
 async function deleteBranch(branchId: string, type: string) {
@@ -75,9 +74,11 @@ async function deleteBranch(branchId: string, type: string) {
   }
   if (!confirm('确定删除此分支？')) return
   try {
-    await fetch(`${API_BASE}/templates/branches/${branchId}`, { method: 'DELETE' })
+    await http.delete(`${API_BASE}/templates/branches/${branchId}`)
     fetchBranches()
-  } catch { /* empty */ }
+  } catch (e: unknown) {
+    console.warn('Failed to delete branch:', e)
+  }
 }
 
 onMounted(fetchBranches)
@@ -357,6 +358,6 @@ onMounted(fetchBranches)
 .page-header { display: flex; justify-content: space-between; align-items: center; }
 .page-header h2 { margin: 0; }
 .header-actions { display: flex; align-items: center; }
-.loading { text-align: center; padding: 40px; color: #999; }
+.loading { text-align: center; padding: 40px; color: var(--text-tertiary); }
 .header-card { margin-bottom: 16px; }
 </style>

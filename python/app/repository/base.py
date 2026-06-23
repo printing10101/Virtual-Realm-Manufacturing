@@ -59,10 +59,10 @@ class Repository(ABC):
         ...
 
     def _do_begin_transaction(self) -> None:
-        raise NotImplementedError
+        raise NotImplementedError("数据库会话必须实现 _do_begin_transaction() 方法来开启事务")
 
     def _do_commit(self) -> None:
-        raise NotImplementedError
+        raise NotImplementedError("数据库会话必须实现 _do_commit() 方法来提交事务")
 
     def _do_rollback(self) -> None:
-        raise NotImplementedError
+        raise NotImplementedError("数据库会话必须实现 _do_rollback() 方法来回滚事务")

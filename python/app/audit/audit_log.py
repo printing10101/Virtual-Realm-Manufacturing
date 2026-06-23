@@ -190,9 +190,11 @@ class AuditLog:
                                 continue
 
                             logs.append(entry)
-                        except json.JSONDecodeError:
+                        except json.JSONDecodeError as e:
+                            logger.debug("跳过损坏的日志行: %s", e, exc_info=True)
                             continue
-            except FileNotFoundError:
+            except FileNotFoundError as e:
+                logger.debug("日志文件不存在: %s", log_file, exc_info=True)
                 continue
 
         logs.sort(key=lambda x: x.timestamp_ms, reverse=True)

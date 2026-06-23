@@ -127,7 +127,7 @@ const handleViewDetail = (plugin: any) => {
   margin-bottom: 16px;
 }
 .plugin-icon {
-  color: #409eff;
+  color: var(--accent-primary);
   margin-bottom: 10px;
 }
 .plugin-name {
@@ -135,7 +135,7 @@ const handleViewDetail = (plugin: any) => {
   font-size: 16px;
 }
 .plugin-desc {
-  color: #909399;
+  color: var(--text-tertiary);
   font-size: 13px;
   margin: 5px 0 15px;
   min-height: 40px;
@@ -148,7 +148,7 @@ const handleViewDetail = (plugin: any) => {
   margin-bottom: 15px;
 }
 .version {
-  color: #606266;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 .plugin-actions {

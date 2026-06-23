@@ -128,7 +128,7 @@
               type="primary"
               link
               size="small"
-              @click="viewTokenDetail(row)"
+              @click="viewTokenDetail(row as AgentToken)"
             >
               {{ $t('common.detail') }}
             </el-button>
@@ -185,7 +185,7 @@
         </el-form-item>
         <el-form-item label="Paper-Only">
           <el-switch v-model="newTokenForm.paper_only" />
-          <span style="margin-left: 8px; font-size: 12px; color: #909399;">
+          <span style="margin-left: 8px; font-size: 12px; color: var(--text-secondary);">
             {{ newTokenForm.paper_only ? $t('settings.paperOnlyHint') : $t('settings.realExecuteHint') }}
           </span>
         </el-form-item>
@@ -319,7 +319,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useSettings } from '@/composables/useSettings'
-import { useTokenManager } from '@/composables/useTokenManager'
+import { useTokenManager, type AgentToken } from '@/composables/useTokenManager'
 
 const { formatTimestamp } = useSettings()
 
@@ -369,6 +369,6 @@ onMounted(() => {
 .mono-text {
   font-family: monospace;
   font-size: 12px;
-  color: #606266;
+  color: var(--text-secondary);
 }
 </style>

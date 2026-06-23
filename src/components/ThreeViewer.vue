@@ -439,11 +439,11 @@ function onLODConfigChange() {
     top: 20px;
     right: 20px;
     width: 280px;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--bg-primary);
     backdrop-filter: blur(10px);
     border-radius: 8px;
     padding: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-sm);
     z-index: 10;
     max-height: calc(100% - 40px);
     overflow-y: auto;
@@ -459,13 +459,13 @@ function onLODConfigChange() {
         display: block;
         font-size: 13px;
         font-weight: 500;
-        color: #333;
+        color: var(--bg-tertiary);
         margin-bottom: 8px;
       }
     }
 
     .lod-settings {
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--border-light);
       padding-top: 16px;
 
       .threshold-row,
@@ -478,7 +478,7 @@ function onLODConfigChange() {
         .simplification-label {
           width: 80px;
           font-size: 12px;
-          color: #666;
+          color: var(--text-secondary);
         }
 
         .el-slider {
@@ -492,18 +492,18 @@ function onLODConfigChange() {
           text-align: right;
           font-size: 12px;
           font-weight: 500;
-          color: #333;
+          color: var(--bg-tertiary);
         }
       }
     }
 
     .simplification-settings {
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--border-light);
       padding-top: 16px;
     }
 
     .performance-monitor {
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--border-light);
       padding-top: 16px;
 
       .metrics-row {
@@ -514,24 +514,24 @@ function onLODConfigChange() {
 
         .metric-label {
           font-size: 12px;
-          color: #666;
+          color: var(--text-secondary);
         }
 
         .metric-value {
           font-size: 12px;
           font-weight: 600;
-          color: #333;
+          color: var(--bg-tertiary);
         }
 
         &.highlight {
           margin-top: 8px;
           padding: 8px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
           border-radius: 6px;
 
           .metric-label,
           .metric-value {
-            color: white;
+            color: var(--text-primary);
           }
         }
       }
@@ -547,7 +547,7 @@ function onLODConfigChange() {
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    color: white;
+    color: var(--text-primary);
     font-size: 14px;
 
     .loading-icon {

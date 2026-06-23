@@ -59,8 +59,9 @@ class _RedisHolder:
             try:
                 await client.ping()
                 return client
-            except Exception:
+            except Exception as e:
                 # 客户端已损坏，置空后走重连分支
+                logger.warning("Redis ping 失败，重新建立连接: %s", e)
                 with self._init_lock:
                     self._client = None
 

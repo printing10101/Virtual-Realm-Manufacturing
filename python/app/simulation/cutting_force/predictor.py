@@ -86,6 +86,8 @@ def predict_cutting_force(
         - Fy: 径向力 (N)
         - Fz: 主切削力 (N)
         - method: 预测方法 ('pinn' 或 'kienzle')
+        - confidence: 置信度 (0.0-1.0)，PINN 模型为 0.85，Kienzle 为 0.60
+        - model_version: 模型版本标识
     """
     if params is None:
         params = {"speed": 3500, "feed": 1200, "depth": 1.5}
@@ -111,6 +113,8 @@ def predict_cutting_force(
             "Fy": kienzle_result["Fy"],
             "Fz": kienzle_result["Fz"],
             "method": "kienzle",
+            "confidence": 0.60,  # 解析解置信度较低
+            "model_version": "kienzle_v1.0",
         }
 
     # PINN 推理
@@ -130,7 +134,10 @@ def predict_cutting_force(
                 "Fx": kienzle_result["Fx"],
                 "Fy": kienzle_result["Fy"],
                 "Fz": kienzle_result["Fz"],
-                "method": "kienzle",
+                "method": "kienzle_fallback",  # 明确标注为回退
+                "confidence": 0.50,  # 回退模式置信度更低
+                "model_version": "kienzle_v1.0_fallback",
+                "warning": "PINN 模型未训练或输出异常，已回退到解析解",
             }
 
         return {
@@ -138,6 +145,8 @@ def predict_cutting_force(
             "Fy": float(forces[1]),
             "Fz": float(forces[2]),
             "method": "pinn",
+            "confidence": 0.85,  # PINN 模型置信度较高
+            "model_version": "pinn_v1.0",
         }
     except Exception as e:
         logger.warning(f"PINN 推理失败 ({e})，回退到 Kienzle 解析解")
@@ -145,7 +154,10 @@ def predict_cutting_force(
             "Fx": kienzle_result["Fx"],
             "Fy": kienzle_result["Fy"],
             "Fz": kienzle_result["Fz"],
-            "method": "kienzle",
+            "method": "kienzle_fallback",
+            "confidence": 0.50,
+            "model_version": "kienzle_v1.0_fallback",
+            "warning": f"PINN 推理失败: {str(e)}，已回退到解析解",
         }
 
 

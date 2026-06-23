@@ -352,7 +352,7 @@ export function useSimulationVisualization() {
     scene.add(legendGroup)
 
     const renderTime = performance.now() - startTime
-    console.log(`仿真结果渲染时间: ${renderTime.toFixed(2)}ms`)
+    // 仿真结果渲染时间: renderTime.toFixed(2)ms
 
     return {
       forceGroup,

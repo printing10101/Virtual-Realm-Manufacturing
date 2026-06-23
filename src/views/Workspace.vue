@@ -356,19 +356,19 @@
                   </el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item :label="$t('common.status')">
-                  <el-tag :type="getTaskStatusTagType(sse.currentStatus)">
-                    {{ getTaskStatusLabel(sse.currentStatus) }}
+                  <el-tag :type="getTaskStatusTagType(sse.currentStatus || 'queued')">
+                    {{ getTaskStatusLabel(sse.currentStatus || 'queued') }}
                   </el-tag>
                 </el-descriptions-item>
               </el-descriptions>
             </div>
 
             <div
-              v-if="sse.currentStatus === 'running' || sse.progress > 0"
+              v-if="sse.currentStatus === 'running' || (sse.progress ?? 0) > 0"
               class="progress-section"
             >
               <el-progress
-                :percentage="Math.round(sse.progress)"
+                :percentage="Math.round(sse.progress ?? 0)"
                 :stroke-width="20"
                 :status="sse.currentStatus === 'completed' ? 'success' : sse.currentStatus === 'failed' ? 'exception' : undefined"
               />
@@ -383,8 +383,8 @@
                   v-if="sse.lastProgressData"
                   class="progress-metrics"
                 >
-                  Train Loss: {{ sse.lastProgressData.train_loss?.toFixed(6) }} | 
-                  Val Loss: {{ sse.lastProgressData.val_loss?.toFixed(6) }}
+                  Train Loss: {{ ((sse.lastProgressData.train_loss as number) ?? 0).toFixed(6) }} | 
+                  Val Loss: {{ ((sse.lastProgressData.val_loss as number) ?? 0).toFixed(6) }}
                 </span>
               </div>
             </div>
@@ -557,7 +557,7 @@ const showAdjustedResult = ref(false)
 
 const currentJobId = ref<string | null>(null)
 const sseJobId = ref('')
-const sse = useEventSource(sseJobId.value, { autoReconnect: true, maxRetries: 10 })
+const sse = reactive(useEventSource(sseJobId.value, { autoReconnect: true, maxRetries: 10 }))
 const cancelling = ref(false)
 const lossChartCanvas = ref<HTMLCanvasElement | null>(null)
 
@@ -567,7 +567,7 @@ function connectToJob(jobId: string) {
   sse.connect()
 }
 
-watch(sse.events, () => {
+watch(() => sse.events, () => {
   if (lossChartCanvas.value) {
     drawLossChart()
   }
@@ -618,6 +618,7 @@ function drawLossChart() {
 
   function drawLine(data: number[], color: string, label: string) {
     if (data.length === 0) return
+    if (!ctx) return
 
     ctx.strokeStyle = color
     ctx.lineWidth = 2
@@ -641,15 +642,16 @@ function drawLossChart() {
     ctx.fillText(label, width - padding + 5, padding)
   }
 
-  drawLine(lossHistory.value, '#409eff', 'Train Loss')
-  drawLine(valLossHistory.value, '#e6a23c', 'Val Loss')
+  drawLine(lossHistory.value, 'var(--accent-primary)', 'Train Loss')
+  drawLine(valLossHistory.value, 'var(--warning)', 'Val Loss')
 }
 
 const lossHistory = computed(() => {
   const losses: number[] = []
-  for (const event of sse.events.value) {
+  if (!sse.events) return losses
+  for (const event of sse.events) {
     if (event.type === 'progress' && event.data.metrics?.train_loss !== undefined) {
-      losses.push(event.data.metrics.train_loss)
+      losses.push(event.data.metrics.train_loss as number)
     }
   }
   return losses
@@ -657,9 +659,10 @@ const lossHistory = computed(() => {
 
 const valLossHistory = computed(() => {
   const losses: number[] = []
-  for (const event of sse.events.value) {
+  if (!sse.events) return losses
+  for (const event of sse.events) {
     if (event.type === 'progress' && event.data.metrics?.val_loss !== undefined) {
-      losses.push(event.data.metrics.val_loss)
+      losses.push(event.data.metrics.val_loss as number)
     }
   }
   return losses
@@ -876,9 +879,10 @@ onMounted(async () => {
 }
 
 .result-section {
-  background: #f5f7fa;
-  border-radius: 4px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
   padding: 16px;
+  border: 1px solid var(--border-light);
 }
 
 .result-header {
@@ -891,39 +895,40 @@ onMounted(async () => {
 .prediction-value {
   margin: 16px 0;
   padding: 12px;
-  background: #fff;
-  border-radius: 4px;
-  border-left: 4px solid #409eff;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--accent-primary);
 }
 
 .prediction-value .label {
   font-weight: 600;
-  color: #606266;
+  color: var(--text-secondary);
   margin-right: 8px;
 }
 
 .prediction-value .value {
   font-size: 18px;
   font-weight: 700;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .reasoning-section {
   margin: 16px 0;
   padding: 12px;
-  background: #fff;
-  border-radius: 4px;
-  border-left: 4px solid #67c23a;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--success);
 }
 
 .reasoning-section h5 {
   margin: 0 0 8px 0;
-  color: #67c23a;
+  color: var(--success);
+  font-weight: 600;
 }
 
 .reasoning-section p {
   margin: 0;
-  color: #606266;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -937,7 +942,8 @@ onMounted(async () => {
 
 .risks-section h5 {
   margin: 0 0 12px 0;
-  color: #e6a23c;
+  color: var(--warning);
+  font-weight: 600;
 }
 
 .recommendations-section {
@@ -946,22 +952,24 @@ onMounted(async () => {
 
 .recommendations-section h5 {
   margin: 0 0 12px 0;
-  color: #67c23a;
+  color: var(--success);
+  font-weight: 600;
 }
 
 .recommendations-section ul {
   margin: 0;
   padding-left: 20px;
-  color: #606266;
+  color: var(--text-secondary);
   line-height: 1.8;
 }
 
 .confirm-section {
   margin: 20px 0;
   padding: 16px;
-  background: #ecf5ff;
-  border-radius: 4px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
   text-align: center;
+  border: 1px solid var(--border-light);
 }
 
 .confirm-section .el-checkbox {
@@ -972,15 +980,17 @@ onMounted(async () => {
 .train-result-section {
   margin-top: 16px;
   padding: 16px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
 }
 
 .adjusted-result {
   margin-top: 16px;
   padding: 12px;
-  background: #fff;
-  border-radius: 4px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
 }
 
 .adjusted-result pre {
@@ -988,6 +998,7 @@ onMounted(async () => {
   white-space: pre-wrap;
   word-break: break-all;
   font-size: 12px;
+  color: var(--text-secondary);
 }
 
 pre {
@@ -995,5 +1006,6 @@ pre {
   white-space: pre-wrap;
   word-break: break-all;
   font-size: 12px;
+  color: var(--text-secondary);
 }
 </style>

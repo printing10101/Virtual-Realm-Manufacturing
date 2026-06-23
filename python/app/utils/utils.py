@@ -4,9 +4,135 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# 集中式路径管理 - 消除各模块重复的路径定义
+# ============================================================
+
+
+def get_project_root() -> Path:
+    """获取项目根目录（python/ 的上一级）。"""
+    return Path(__file__).resolve().parent.parent.parent.parent
+
+
+def get_output_dir(module_name: str) -> Path:
+    """获取模块专属的输出目录，自动创建。
+
+    Args:
+        module_name: 模块名，如 'dxf_import', 'step_import', 'projects'
+
+    Returns:
+        已创建的输出目录路径
+    """
+    output_dir = get_project_root() / "output" / module_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
+def get_upload_dir(module_name: str) -> Path:
+    """获取模块专属的临时上传目录，自动创建。
+
+    Args:
+        module_name: 模块名
+
+    Returns:
+        已创建的上传临时目录路径
+    """
+    upload_dir = get_output_dir(module_name) / "_uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    return upload_dir
+
+
+def make_temp_path(upload_dir: Path, prefix: str, suffix: str) -> Path:
+    """生成唯一的临时文件路径。
+
+    Args:
+        upload_dir: 上传目录
+        prefix: 文件名前缀
+        suffix: 文件扩展名（含点号，如 '.dxf'）
+
+    Returns:
+        唯一的临时文件路径
+    """
+    unique_id = uuid.uuid4().hex[:12]
+    return upload_dir / f"{prefix}_{unique_id}{suffix}"
+
+
+def cleanup_temp_file(temp_path: Path) -> None:
+    """安全清理临时文件，失败时记录日志但不抛出异常。
+
+    Args:
+        temp_path: 要删除的临时文件路径
+    """
+    try:
+        temp_path.unlink(missing_ok=True)
+    except OSError as cleanup_err:
+        logger.debug(
+            "临时文件清理失败 %s: %s", temp_path, cleanup_err, exc_info=True
+        )
+
+
+# ============================================================
+# 路径安全工具函数 - 防止路径遍历攻击
+# ============================================================
+
+def safe_file_path(user_input: str, base_dir: str) -> Path:
+    """验证文件路径，防止目录遍历攻击。
+
+    安全校验逻辑:
+        1. 将基础目录和用户输入都解析为绝对路径
+        2. 验证目标路径必须在基础目录内
+        3. 拒绝任何试图通过 '../' 等序列逃逸基础目录的路径
+
+    Args:
+        user_input: 用户提供的文件路径（可能是相对路径）
+        base_dir: 允许访问的基础目录（绝对路径）
+
+    Returns:
+        验证通过的安全路径
+
+    Raises:
+        ValueError: 路径遍历检测失败时抛出
+    """
+    base = Path(base_dir).resolve()
+    target = (base / user_input).resolve()
+
+    # 核心校验：目标路径必须在基础目录内
+    if not str(target).startswith(str(base)):
+        logger.warning(
+            "路径遍历检测: 用户输入 '%s' 试图访问基础目录 '%s' 之外的路径 '%s'",
+            user_input, base_dir, target
+        )
+        raise ValueError("非法的文件路径: 路径遍历被拒绝")
+
+    return target
+
+
+def safe_open(file_path: str, base_dir: str, mode: str = 'r', **kwargs):
+    """安全文件打开，防止路径遍历攻击。
+
+    在打开文件前验证路径合法性，确保不会访问基础目录之外的文件。
+
+    Args:
+        file_path: 文件路径（可以是相对路径）
+        base_dir: 允许访问的基础目录
+        mode: 文件打开模式，默认 'r'
+        **kwargs: 传递给 open() 的其他参数
+
+    Returns:
+        文件对象
+
+    Raises:
+        ValueError: 路径遍历检测失败时抛出
+    """
+    safe_path = safe_file_path(file_path, base_dir)
+    return open(safe_path, mode, **kwargs)
 
 
 def extract_json_from_markdown(content: str) -> dict[str, Any]:

@@ -5,7 +5,7 @@
  * 负责前端状态与后端 project.json 之间的双向同步。
  */
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import http from '@/utils/http'
 import { extractErrorMessage } from '@/utils/errorUtils'
 import type {
   ProjectManifest,
@@ -82,7 +82,7 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const resp = await axios.post(`${API_BASE}/new`, request)
+      const resp = await http.post(`${API_BASE}/new`, request)
       if (resp.data.code === 0) {
         projectId.value = resp.data.data.project_id
         manifest.value = resp.data.data.manifest as ProjectManifest
@@ -104,7 +104,7 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const resp = await axios.post(`${API_BASE}/open`, {
+      const resp = await http.post(`${API_BASE}/open`, {
         file_path: filePath || undefined,
         upload_data: uploadData || undefined,
       })
@@ -133,7 +133,7 @@ export const useProjectStore = defineStore('project', () => {
         project_id: projectId.value,
         output_name: outputName || '',
       }
-      const resp = await axios.post(`${API_BASE}/save`, payload)
+      const resp = await http.post(`${API_BASE}/save`, payload)
       if (resp.data.code === 0) {
         currentFilePath.value = resp.data.data.file_path
         isModified.value = false
@@ -158,7 +158,7 @@ export const useProjectStore = defineStore('project', () => {
         project_id: projectId.value,
         output_name: outputName,
       }
-      const resp = await axios.post(`${API_BASE}/save-as`, payload)
+      const resp = await http.post(`${API_BASE}/save-as`, payload)
       if (resp.data.code === 0) {
         currentFilePath.value = resp.data.data.file_path
         manifest.value.metadata.name = outputName.replace('.vrm', '')
@@ -178,7 +178,7 @@ export const useProjectStore = defineStore('project', () => {
   async function fetchProjectList(): Promise<void> {
     listLoading.value = true
     try {
-      const resp = await axios.get(`${API_BASE}/list`)
+      const resp = await http.get(`${API_BASE}/list`)
       if (resp.data.code === 0) {
         projectList.value = resp.data.data.items as ProjectSummary[]
       }
@@ -191,7 +191,7 @@ export const useProjectStore = defineStore('project', () => {
 
   async function deleteProject(projectName: string): Promise<boolean> {
     try {
-      const resp = await axios.delete(`${API_BASE}/${projectName}`)
+      const resp = await http.delete(`${API_BASE}/${projectName}`)
       return resp.data.code === 0
     } catch {
       return false

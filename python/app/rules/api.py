@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
+from app.utils.utils import get_output_dir
 from app.database.rule_db import (
     get_rule_db,
     ProcessRule,
@@ -33,8 +34,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/rules", tags=["Process Rules"])
 
-RULE_EXPORT_DIR = Path(__file__).resolve().parent.parent.parent / "output" / "rules"
-RULE_EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+RULE_EXPORT_DIR = get_output_dir("rules")
 
 VALID_OPERATORS = {"=", "<", ">", "<=", ">=", "!="}
 VALID_LOGIC_OPERATORS = {"AND", "OR"}

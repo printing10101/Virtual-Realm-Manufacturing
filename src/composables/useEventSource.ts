@@ -83,12 +83,12 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
     eventSource.onopen = (): void => {
       isConnected.value = true
       retryCount = 0
-      console.log('[SSE] Connected to event stream')
+      // SSE 连接到事件流
     }
 
     eventSource.onerror = (): void => {
       isConnected.value = false
-      console.error('[SSE] Connection error')
+      // SSE 连接错误
 
       if (autoReconnect && !isDone.value && retryCount < maxRetries) {
         scheduleReconnect()
@@ -170,7 +170,7 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
   const scheduleReconnect = (): void => {
     retryCount++
     const delay = Math.min(baseDelay * Math.pow(2, retryCount - 1), maxDelay)
-    console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${retryCount}/${maxRetries})`)
+    // SSE 重连中: delay ms (attempt retryCount/maxRetries)
 
     retryTimer = window.setTimeout(() => {
       connect()

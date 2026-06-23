@@ -23,6 +23,11 @@ from typing import Tuple, Optional
 from .torch_base_lnn import BaseLNN, LNNConfig
 
 
+# CFC model constants
+DEFAULT_DT_VALUE = 0.1  # Default time constant for liquid state updates
+DT_CHECK_EPSILON = 0.0  # Epsilon value for dt check (use model's default dt)
+
+
 class CFCLayer(nn.Module):
     """CFC layer with backbone network and liquid state update mechanism.
 
@@ -42,7 +47,7 @@ class CFCLayer(nn.Module):
         >>> h_new = layer(x, h, dt=0.1)
     """
 
-    def __init__(self, input_size: int, hidden_size: int, dt: float = 0.1):
+    def __init__(self, input_size: int, hidden_size: int, dt: float = DEFAULT_DT_VALUE):
         """
         Initialize CFCLayer
 
@@ -73,7 +78,7 @@ class CFCLayer(nn.Module):
                 nn.init.zeros_(module.bias)
 
     def forward(
-        self, x: torch.Tensor, h: torch.Tensor, dt: float = 0.0
+        self, x: torch.Tensor, h: torch.Tensor, dt: float = DT_CHECK_EPSILON
     ) -> torch.Tensor:
         """
         Compute liquid state update
@@ -86,7 +91,7 @@ class CFCLayer(nn.Module):
         Returns:
             Updated hidden state tensor
         """
-        if dt == 0.0:
+        if dt == DT_CHECK_EPSILON:
             dt = self.dt.item()
 
         combined = torch.cat([x, h], dim=-1)

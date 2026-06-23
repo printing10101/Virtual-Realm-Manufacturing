@@ -43,5 +43,22 @@
 .about-content ul {
   padding-left: 20px;
   line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.about-content h3 {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.about-content h4 {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-top: 24px;
+}
+
+.about-content p {
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 </style>

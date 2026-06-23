@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
+from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file
 from app.step_import.step_parser import StepParser, StepParseError
 from app.step_import.step_converter import (
     StepConverter,
@@ -27,10 +28,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/import/step", tags=["STEP Import"])
 
-OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output" / "step_import"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-TEMP_DIR = OUTPUT_DIR / "_uploads"
-TEMP_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR = get_output_dir("step_import")
+TEMP_DIR = get_upload_dir("step_import")
 
 MAX_FILE_SIZE = 50 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".step", ".stp"}

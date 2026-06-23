@@ -484,25 +484,35 @@ export function triggerGlobalErrorHandlers(error: StandardError): void {
 
 /**
  * 安装全局错误捕获
+ * @returns 清理函数，用于移除全局错误监听器
  */
-export function installGlobalErrorCapture(): void {
+export function installGlobalErrorCapture(): () => void {
   // 捕获未处理的Promise拒绝
-  window.addEventListener('unhandledrejection', (event) => {
+  const rejectionHandler = (event: PromiseRejectionEvent) => {
     const error = event.reason
     const standardError = error instanceof Error
       ? buildErrorFromError(error)
       : buildErrorFromAxiosError(error)
     
     triggerGlobalErrorHandlers(standardError)
-  })
+  }
 
   // 捕获未处理的错误
-  window.addEventListener('error', (event) => {
+  const errorHandler = (event: ErrorEvent) => {
     const error = event.error
     const standardError = error instanceof Error
       ? buildErrorFromError(error)
       : buildErrorFromError(new Error(String(error)))
     
     triggerGlobalErrorHandlers(standardError)
-  })
+  }
+
+  window.addEventListener('unhandledrejection', rejectionHandler)
+  window.addEventListener('error', errorHandler)
+
+  // 返回清理函数
+  return () => {
+    window.removeEventListener('unhandledrejection', rejectionHandler)
+    window.removeEventListener('error', errorHandler)
+  }
 }

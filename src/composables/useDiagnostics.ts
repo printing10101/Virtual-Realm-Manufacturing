@@ -35,7 +35,7 @@
  * ```
  */
 
-import { ref, computed, readonly, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, readonly, onBeforeUnmount, type Ref, type ComputedRef } from 'vue'
 import {
   type StandardError,
   type DiagnosticContext,
@@ -280,11 +280,17 @@ export function useDiagnostics(options: UseDiagnosticsOptions = {}): UseDiagnost
     
     window.addEventListener('unhandledrejection', handler as EventListener)
     window.addEventListener('error', handler as EventListener)
+    
+    // 组件卸载时清理全局错误监听器
+    onBeforeUnmount(() => {
+      window.removeEventListener('unhandledrejection', handler as EventListener)
+      window.removeEventListener('error', handler as EventListener)
+    })
   }
 
   return {
-    diagnosticContext: readonly(currentContext),
-    diagnosticHistory: readonly(history),
+    diagnosticContext: readonly(currentContext) as Readonly<Ref<DiagnosticContext | null>>,
+    diagnosticHistory: readonly(history) as Readonly<Ref<DiagnosticHistoryEntry[]>>,
     hasDiagnostic,
     collectError,
     collectFromResponse,

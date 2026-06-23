@@ -498,10 +498,10 @@ function formatBytes(bytes: number): string {
 }
 
 function importanceColor(imp: number): string {
-  if (imp >= 0.8) return '#f56c6c'
-  if (imp >= 0.5) return '#e6a23c'
-  if (imp >= 0.3) return '#409eff'
-  return '#909399'
+  if (imp >= 0.8) return 'var(--error)'
+  if (imp >= 0.5) return 'var(--warning)'
+  if (imp >= 0.3) return 'var(--accent-primary)'
+  return 'var(--text-tertiary)'
 }
 
 async function handleSaveCheckpoint() {
@@ -626,7 +626,7 @@ async function handleClone() {
 .memory-bar-track {
   flex: 1;
   height: 18px;
-  background: #f0f0f0;
+  background: var(--bg-secondary);
   border-radius: 9px;
   overflow: hidden;
 }
@@ -640,7 +640,7 @@ async function handleClone() {
 .memory-bar-value {
   width: 40px;
   font-size: 0.75rem;
-  color: #909399;
+  color: var(--text-tertiary);
   text-align: right;
 }
 </style>

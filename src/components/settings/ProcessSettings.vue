@@ -56,7 +56,7 @@
             :step="10"
             style="width: 160px;"
           />
-          <span style="margin-left: 8px; color: #909399; font-size: 12px;">MB</span>
+          <span style="margin-left: 8px; color: var(--info); font-size: 12px;">MB</span>
         </el-form-item>
         <el-form-item :label="$t('settings.logRetentionDays')">
           <el-input-number
@@ -66,7 +66,7 @@
             :step="1"
             style="width: 160px;"
           />
-          <span style="margin-left: 8px; color: #909399; font-size: 12px;">{{ $t('settings.days') }}</span>
+          <span style="margin-left: 8px; color: var(--info); font-size: 12px;">{{ $t('settings.days') }}</span>
         </el-form-item>
         <el-form-item :label="$t('settings.logExportDays')">
           <el-input-number
@@ -76,7 +76,7 @@
             :step="1"
             style="width: 160px;"
           />
-          <span style="margin-left: 8px; color: #909399; font-size: 12px;">{{ $t('settings.days') }}</span>
+          <span style="margin-left: 8px; color: var(--info); font-size: 12px;">{{ $t('settings.days') }}</span>
         </el-form-item>
         <el-form-item>
           <el-button
@@ -101,7 +101,7 @@
           <p>{{ exportResult.message }}</p>
           <p
             v-if="exportResult.outputPath"
-            style="font-size: 12px; color: #909399; word-break: break-all;"
+            style="font-size: 12px; color: var(--info); word-break: break-all;"
           >
             {{ $t('settings.exportSavePath') }}: {{ exportResult.outputPath }}
           </p>
@@ -230,7 +230,7 @@
             {{ auditLogStatistics.total_entries }}
           </el-descriptions-item>
           <el-descriptions-item :label="$t('settings.avgConfidence')">
-            {{ (auditLogStatistics.avg_confidence * 100).toFixed(1) }}%
+            {{ ((auditLogStatistics.avg_confidence ?? 0) * 100).toFixed(1) }}%
           </el-descriptions-item>
           <el-descriptions-item :label="$t('settings.recent24h')">
             {{ auditLogStatistics.recent_24h }} 条
@@ -270,7 +270,7 @@
         >
           <template #default="{ row }">
             <el-tag
-              :type="getDecisionType(row.user_decision)"
+              :type="getDecisionType(row.user_decision as string)"
               size="small"
             >
               {{ getDecisionName(row.user_decision) }}
@@ -284,7 +284,7 @@
         >
           <template #default="{ row }">
             <el-tag
-              :type="getStatusType(row.operation_status)"
+              :type="getStatusType(row.operation_status as string)"
               size="small"
             >
               {{ getStatusName(row.operation_status) }}
@@ -355,19 +355,19 @@
         border
       >
         <el-descriptions-item :label="$t('settings.timestamp')">
-          {{ formatTimestamp(selectedLog.timestamp_ms) }}
+          {{ formatTimestamp(selectedLog.timestamp_ms as number) }}
         </el-descriptions-item>
         <el-descriptions-item :label="$t('settings.aiModuleCol')">
-          {{ getModuleName(selectedLog.ai_module) }}
+          {{ getModuleName(selectedLog.ai_module as string) }}
         </el-descriptions-item>
         <el-descriptions-item :label="$t('settings.userDecisionCol')">
-          {{ getDecisionName(selectedLog.user_decision) }}
+          {{ getDecisionName(selectedLog.user_decision as string) }}
         </el-descriptions-item>
         <el-descriptions-item :label="$t('settings.opStatus')">
-          {{ getStatusName(selectedLog.operation_status) }}
+          {{ getStatusName(selectedLog.operation_status as string) }}
         </el-descriptions-item>
         <el-descriptions-item :label="$t('settings.confidence')">
-          {{ selectedLog.confidence !== null ? `${(selectedLog.confidence * 100).toFixed(2)}%` : 'N/A' }}
+          {{ (selectedLog.confidence as number) !== null ? `${((selectedLog.confidence as number) * 100).toFixed(2)}%` : 'N/A' }}
         </el-descriptions-item>
         <el-descriptions-item :label="$t('settings.aiRecommend')">
           <pre>{{ JSON.stringify(selectedLog.ai_recommendation, null, 2) }}</pre>

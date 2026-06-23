@@ -185,14 +185,14 @@ const getLevelType = (level: string) => {
   display: flex;
   align-items: center;
   padding: 5px 10px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-light);
   gap: 10px;
 }
 .log-entry:hover {
-  background-color: #f5f7fa;
+  background-color: var(--bg-secondary);
 }
 .log-time {
-  color: #909399;
+  color: var(--text-tertiary);
   min-width: 80px;
 }
 .log-level {
@@ -200,11 +200,11 @@ const getLevelType = (level: string) => {
   text-align: center;
 }
 .log-plugin {
-  color: #409eff;
+  color: var(--accent-primary);
   min-width: 120px;
 }
 .log-message {
-  color: #303133;
+  color: var(--text-primary);
   flex: 1;
 }
 </style>

@@ -614,7 +614,7 @@ function handleClose() {
   width: 100%;
 }
 
-.preview-empty :deep(.el-alert__title) {
-  color: #c0c4cc;
+.preview_empty :deep(.el-alert__title) {
+  color: var(--text-tertiary);
 }
 </style>

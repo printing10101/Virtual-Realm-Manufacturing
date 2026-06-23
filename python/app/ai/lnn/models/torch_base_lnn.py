@@ -22,6 +22,10 @@ from abc import ABC, ABCMeta, abstractmethod
 from typing import Any, Dict, Tuple
 
 
+# Base LNN model constants
+DEFAULT_TORCHSCRIPT_DT = 0.1  # Default dt for TorchScript tracing
+
+
 # 解决 nn.Module 和 ABC 多重继承的元类冲突
 class _ModuleABCMeta(ABCMeta, type(nn.Module)):
     """元类：协调 nn.Module 和 ABC 的元类"""
@@ -153,7 +157,7 @@ class BaseLNN(nn.Module, ABC, metaclass=_ModuleABCMeta):
         """
         self.eval()
         hidden = self.init_hidden(example_input.shape[0])
-        dt = 0.1
+        dt = DEFAULT_TORCHSCRIPT_DT
         return torch.jit.trace(self, (example_input, torch.tensor(dt), hidden))
 
     def get_info(self) -> Dict[str, Any]:
