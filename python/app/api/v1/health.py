@@ -14,6 +14,9 @@ from fastapi import APIRouter
 
 from app.config import config
 from app.version import VERSION as PY_VERSION
+from app.database.connection import check_db_health
+from app.services.redis_client import check_redis_health
+from app.services.tdengine_client import check_tdengine_health
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +73,7 @@ async def _get_ollama_status() -> dict[str, Any]:
         return {"running": False, "error": "Connection refused — Ollama is not running"}
     except httpx.TimeoutException:
         return {"running": False, "error": "Connection timeout"}
-    except Exception as e:
+    except (httpx.HTTPError, OSError, ValueError, KeyError, TypeError) as e:
         # 兜底捕获：HTTP 请求可能抛出网络层/序列化层未预期的异常
         # 健康检查端点应始终返回结构化数据，不应向上抛 5xx
         # 修复：仅返回异常类型名，避免泄露内部路径/库版本等敏感信息
@@ -88,7 +91,7 @@ def _get_disk_info() -> dict[str, Any]:
             "free_gb": round(usage.free / 1_073_741_824, 1),
             "used_percent": round((usage.used / usage.total) * 100, 1) if usage.total > 0 else 0,
         }
-    except Exception as e:
+    except (OSError, PermissionError, ValueError) as e:
         # 兜底捕获：磁盘信息读取可能因 OSError/权限错误失败
         # 修复：仅返回异常类型名
         logger.warning("Failed to get disk info: %s", e, exc_info=True)
@@ -106,7 +109,7 @@ def _get_memory_info() -> dict[str, Any]:
         }
     except ImportError:
         return {"error": "psutil not installed"}
-    except Exception as e:
+    except (OSError, AttributeError, ValueError) as e:
         # 兜底捕获：psutil 内部可能因 /proc 不可读抛出 OSError
         # 修复：仅返回异常类型名
         logger.warning("Failed to get memory info: %s", e, exc_info=True)
@@ -121,6 +124,11 @@ async def system_health():
     memory = _get_memory_info()
     python_info = _get_python_info()
     packages = _get_package_versions()
+    
+    # 数据库健康检查
+    db_health = await check_db_health()
+    redis_health = await check_redis_health()
+    tdengine_health = await check_tdengine_health()
 
     items = []
 
@@ -218,6 +226,36 @@ async def system_health():
         "status": "ok",
         "version": None,
         "details": packages,
+    })
+    
+    # PostgreSQL 健康检查
+    db_status = db_health.get("status", "disabled")
+    items.append({
+        "component": "postgresql",
+        "name": "PostgreSQL 数据库",
+        "status": "ok" if db_status == "healthy" else ("warning" if db_status == "disabled" else "error"),
+        "version": None,
+        "details": db_health,
+    })
+    
+    # Redis 健康检查
+    redis_status = redis_health.get("status", "disabled")
+    items.append({
+        "component": "redis",
+        "name": "Redis 缓存",
+        "status": "ok" if redis_status == "healthy" else ("warning" if redis_status == "disabled" else "error"),
+        "version": None,
+        "details": redis_health,
+    })
+    
+    # TDengine 健康检查
+    tdengine_status = tdengine_health.get("status", "disabled")
+    items.append({
+        "component": "tdengine",
+        "name": "TDengine 时序数据库",
+        "status": "ok" if tdengine_status == "healthy" else ("warning" if tdengine_status == "disabled" else "error"),
+        "version": None,
+        "details": tdengine_health,
     })
 
     overall_status = "ok"

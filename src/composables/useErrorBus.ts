@@ -81,10 +81,8 @@ function _emit(payload: ErrorDialogPayload): void {
   for (const h of handlers) {
     try {
       h(payload)
-    } catch (err) {
+    } catch {
       // listener 自身抛错不应影响其他订阅者
-      // eslint-disable-next-line no-console
-      console.error('[useErrorBus] handler threw:', err)
     }
   }
 }
@@ -98,17 +96,14 @@ function _on(handler: (p: ErrorDialogPayload) => void): () => void {
 
 function _fanout<T>(set: Set<(p: T) => void>, payload: T, label: string): boolean {
   if (set.size === 0) {
-    // 没有订阅者时给出可观察的提示，避免调用方误以为事件被处理
-    // eslint-disable-next-line no-console
-    console.warn(`[useErrorBus] no listener for ${label}`)
+    // 没有订阅者时返回 false，调用方可据此判断
     return false
   }
   for (const h of set) {
     try {
       h(payload)
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error(`[useErrorBus] ${label} handler threw:`, err)
+    } catch {
+      // 静默处理
     }
   }
   return true

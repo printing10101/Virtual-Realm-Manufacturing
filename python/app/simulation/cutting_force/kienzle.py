@@ -19,9 +19,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass, field
 from typing import Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # 常用材料 Kienzle 系数 (kc1.1, mc)

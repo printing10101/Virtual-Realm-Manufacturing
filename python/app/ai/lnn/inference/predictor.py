@@ -316,7 +316,8 @@ class LNNPredictor:
                 return result
             return result.value
 
-        except Exception as e:
+        except (ValueError, TypeError, RuntimeError, OSError) as e:
+            logger.error("模型预测失败: %s", e, exc_info=True)
             inference_time = (time.perf_counter() - start_time) * 1000
             self._update_stats(inference_time, self._get_memory_usage_mb())
             try:
@@ -334,7 +335,7 @@ class LNNPredictor:
                 "可能原因：1) 模型输入数据格式不匹配；2) 模型权重加载异常；"
                 "3) GPU 内存不足。请检查输入数据格式，确认模型已正确加载，"
                 "如使用 GPU 请检查显存使用情况。"
-            )
+            ) from e
 
     def predict_batch(
         self,

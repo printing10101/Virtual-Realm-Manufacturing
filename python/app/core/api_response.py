@@ -13,7 +13,7 @@ import functools
 import logging
 from typing import Any, Callable, Coroutine, ParamSpec, TypeVar
 
-from app.core.response import ErrorCode, code_to_numeric, error
+from app.core.response import ErrorCode, code_to_numeric, error, success
 from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
@@ -56,9 +56,6 @@ def api_response(
         # 已经是统一响应格式则原样返回
         if isinstance(result, dict) and "code" in result:
             return result
-        # 否则包成 success
-        from app.core.response import success
-
         return success(data=result)
 
     return wrapper

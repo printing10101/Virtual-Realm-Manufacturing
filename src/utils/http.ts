@@ -4,22 +4,7 @@ import {
   emitManufacturingError,
   type ErrorDialogPayload,
 } from '@/composables/useErrorBus'
-
-function isNetworkError(err: any): boolean {
-  return (
-    err.code === 'ERR_NETWORK' ||
-    err.code === 'ECONNABORTED' ||
-    err.message === 'Network Error' ||
-    err.message?.includes('timeout') ||
-    err.message?.includes('Network Error')
-  )
-}
-
-function shouldShowConflictDialog(data: any): boolean {
-  return Boolean(
-    data?.severity && data?.error_code && data?.suggestion,
-  )
-}
+import { isNetworkError, shouldShowConflictDialog } from '@/utils/error-handler'
 
 export type { ErrorDialogPayload }
 
@@ -28,44 +13,14 @@ const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-let isRefreshing = false
-let failedQueue: Array<{
-  resolve: (token: string) => void
-  reject: (err: any) => void
-}> = []
-
-function processQueue(error: any, token: string | null = null) {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error)
-    } else if (token) {
-      prom.resolve(token)
-    }
-  })
-  failedQueue = []
-}
-
-let _authStorePromise: Promise<any> | null = null
-
-async function getAuthStore(): Promise<any> {
-  if (!_authStorePromise) {
-    _authStorePromise = import('@/stores/auth').then(m => m.useAuthStore())
-  }
-  return _authStorePromise
-}
-
+// 请求拦截器：自动携带 Authorization header
 http.interceptors.request.use(
-  async (config) => {
-    try {
-      const store = await getAuthStore()
-      if (store) {
-        const token = store.getAccessToken()
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
-      }
-    } catch (_e) {
-      // Silently ignore token parse errors
+  (config) => {
+    // 从 localStorage 恢复 token（兼容刷新页面后 token 丢失）
+    const stored = localStorage.getItem('auth_token')
+    const token = stored || ''
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
@@ -102,94 +57,18 @@ http.interceptors.response.use(
     }
 
     const response = error.response
-    const originalRequest = error.config
-
-    if (response?.status === 401 && !originalRequest._retry) {
-      const isAuthEndpoint = originalRequest.url?.includes('/api/v1/auth/')
-      if (isAuthEndpoint) {
-        try {
-          const store = await getAuthStore()
-          if (store) store.logout()
-        } catch (_e) {
-          // Silently ignore logout errors
-        }
-        window.location.href = '/login'
-        return Promise.reject(error)
-      }
-
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject })
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`
-          return http(originalRequest)
-        })
-      }
-
-      originalRequest._retry = true
-      isRefreshing = true
-
-      let store: any = null
-      try {
-        store = await getAuthStore()
-      } catch (_e) {
-        // Silently ignore store fetch errors
-      }
-      if (!store) {
-        isRefreshing = false
-        return Promise.reject(error)
-      }
-
-      try {
-        const refreshed = await store.tryRefreshToken()
-        if (refreshed) {
-          const newToken = store.getAccessToken()
-          processQueue(null, newToken)
-          originalRequest.headers.Authorization = `Bearer ${newToken}`
-          return http(originalRequest)
-        } else {
-          processQueue(error)
-          store.logout()
-          window.location.href = '/login'
-          return Promise.reject(error)
-        }
-      } catch (refreshError) {
-        processQueue(refreshError)
-        store.logout()
-        window.location.href = '/login'
-        return Promise.reject(refreshError)
-      } finally {
-        isRefreshing = false
-      }
-    }
 
     if (response) {
       const status = response.status
       const data = response.data || {}
 
       if (status === 401) {
-        ElMessage.error('登录已过期，请重新登录')
-        // 修复：必须 await 以保证 logout 真正完成再跳转
-        try {
-          const store = await getAuthStore()
-          if (store) store.logout()
-        } catch (_e) {
-          // Silently ignore logout errors
-        }
-        window.location.href = '/login'
-        return Promise.reject(error)
-      }
-
-      if (status === 403) {
-        ElMessage.error('权限不足，无法执行该操作')
+        // 桌面应用自动登录，401 不弹错误提示（避免初始化阶段干扰）
         return Promise.reject(error)
       }
 
       if (status === 500) {
         ElMessage.error('系统内部错误，请联系管理员')
-        if (import.meta.env.DEV) {
-          console.warn('[DEV] Server 500 - error_id:', data?.detail?.error_id)
-        }
         return Promise.reject(error)
       }
 

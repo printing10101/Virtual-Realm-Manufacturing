@@ -124,7 +124,7 @@ async def list_skills(
         return success(data=result, message=f"共 {len(result)} 个技能")
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to list skills")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -138,7 +138,7 @@ async def get_skill_stats():
         market_stats = marketplace.get_stats()
         stats["marketplace"] = market_stats
         return success(data=stats, message="技能系统统计")
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to get skill stats")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -160,7 +160,7 @@ async def create_skill(request: SkillContentRequest):
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：技能创建涉及文件 IO + 路径校验 + 注册
         logger.exception("Failed to create skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
@@ -183,7 +183,7 @@ async def update_skill(skill_id: str, request: SkillContentRequest):
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to update skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -203,7 +203,7 @@ async def delete_skill(skill_id: str):
             os.remove(file_path)
 
         return success(data={"skill_id": skill_id}, message=f"技能已删除: {skill_id}")
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：技能删除涉及文件系统 + 注册表清理
         logger.exception("Failed to delete skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
@@ -241,7 +241,7 @@ async def get_skill(skill_id: str):
             },
             message="技能详情",
         )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to get skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -255,7 +255,7 @@ async def reload_skills(skill_id: Optional[str] = None):
             return success(data=result, message=f"技能热重载: {skill_id}")
         init_skill_loader()
         return success(data=result, message="全量技能重新加载完成")
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to reload skills")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -276,7 +276,7 @@ async def get_skill_versions(skill_id: str):
             },
             message="版本历史",
         )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：版本历史查询涉及文件 IO + 注册表
         logger.exception("Failed to get versions")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
@@ -291,7 +291,7 @@ async def export_skill(request: SkillExportRequest):
             return error(ErrorCode.NOT_FOUND, f"技能不存在: {request.skill_id}")
 
         return success(data=package, message=f"技能已导出: {request.skill_id}")
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to export skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -318,7 +318,7 @@ async def import_skill(request: SkillImportRequest):
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to import skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -333,7 +333,7 @@ async def rate_skill(request: SkillRatingRequest):
         return error(ErrorCode.NOT_FOUND, str(e))
     except ValueError as e:
         return error(ErrorCode.INVALID_REQUEST, str(e))
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to rate skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -357,7 +357,7 @@ async def inject_skills_endpoint(
             },
             message="技能注入完成",
         )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to inject skills")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -371,7 +371,7 @@ async def marketplace_list(tag: Optional[str] = Query(None, description="按标�
         marketplace = get_marketplace()
         items = marketplace.list_available(tag)
         return success(data=items, message=f"市场共 {len(items)} 个技能")
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：市场列表查询涉及存储 + 缓存
         logger.exception("Failed to list marketplace")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
@@ -383,7 +383,7 @@ async def marketplace_search(query: str = Query(..., description="搜索关键�
         marketplace = get_marketplace()
         items = marketplace.search(query)
         return success(data=items, message=f"搜索到 {len(items)} 个技能")
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：市场搜索涉及文本匹配 + 索引
         logger.exception("Failed to search marketplace")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
@@ -398,7 +398,7 @@ async def marketplace_publish(request: SkillPublishRequest):
             return error(ErrorCode.NOT_FOUND, f"技能不存在: {request.skill_id}")
 
         return success(data=result, message=f"已发布: {request.skill_id}")
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：发布操作涉及网络 + 存储
         logger.exception("Failed to publish skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
@@ -416,7 +416,7 @@ async def marketplace_download(request: SkillDownloadRequest):
         return success(data=result, message=f"已下载并导入: {request.skill_id}")
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：下载涉及网络 + 文件 IO
         logger.exception("Failed to download skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
@@ -434,7 +434,7 @@ async def marketplace_rate(request: SkillMarketplaceRateRequest):
         return error(ErrorCode.NOT_FOUND, str(e))
     except ValueError as e:
         return error(ErrorCode.INVALID_REQUEST, str(e))
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to rate marketplace skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))
 
@@ -447,6 +447,6 @@ async def marketplace_unpublish(skill_id: str):
         if ok:
             return success(data={"skill_id": skill_id}, message=f"已下架: {skill_id}")
         return error(ErrorCode.NOT_FOUND, f"市场中不存在该技能: {skill_id}")
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.exception("Failed to unpublish skill")
         return error(ErrorCode.INTERNAL_ERROR, str(e))

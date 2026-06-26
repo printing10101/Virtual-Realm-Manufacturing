@@ -23,13 +23,15 @@ from pathlib import Path
 from app.budget.budget import get_budget_manager
 from app.budget.cost_tracker import get_cost_tracker
 from app.plugins.skill_loader import get_skill_loader
+from app.utils.utils import get_output_dir
+from app.utils.sqlite_pool import get_sqlite_manager
 from app.workspace.workspace import get_resolver
 
 logger = logging.getLogger(__name__)
 
 
 class ExecutionStatus(str, Enum):
-    """执行状态"""
+    """执行状态 - 用于详细执行流程控制"""
 
     PENDING = "pending"
     PREPARING = "preparing"
@@ -115,9 +117,7 @@ class StructuredLogger:
             log_dir: 日志目录
         """
         if log_dir is None:
-            from app.config import PROJECT_ROOT
-
-            log_dir = str(Path(PROJECT_ROOT) / "logs" / "execution")
+            log_dir = str(get_output_dir("logs") / "execution")
 
         self.log_dir = log_dir
         os.makedirs(log_dir, exist_ok=True)
@@ -206,7 +206,7 @@ class StructuredLogger:
         try:
             with open(log_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception as e:
+        except OSError as e:
             logger.warning("Failed to write log entry: %s", e)
 
     def get_task_logs(self, task_id: str) -> List[Dict[str, Any]]:
@@ -222,7 +222,7 @@ class StructuredLogger:
                 for line in f:
                     if line.strip():
                         logs.append(json.loads(line))
-        except Exception as e:
+        except OSError as e:
             logger.warning("Failed to read task logs: %s", e)
 
         return logs
@@ -233,16 +233,16 @@ class SessionManager:
 
     def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
-            from app.config import PROJECT_ROOT
-
-            db_path = str(Path(PROJECT_ROOT) / "data" / "sessions.db")
+            db_path = str(get_output_dir("data") / "sessions.db")
 
         db_dir = Path(db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
 
         self.db_path = db_path
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("sessions")
+        self._conn = self._pool.get_connection()
         self._init_schema()
 
     def _init_schema(self) -> None:
@@ -286,6 +286,11 @@ class SessionManager:
         )
         self._conn.commit()
 
+    # 允许的列名白名单，防止 SQL 注入
+    _ALLOWED_COLUMNS = {
+        "status", "last_updated", "checkpoint_data", "retry_count", "max_retries"
+    }
+
     def update_session(
         self,
         session_id: str,
@@ -301,8 +306,14 @@ class SessionManager:
         if checkpoint_data is not None:
             updates["checkpoint_data"] = json.dumps(checkpoint_data)
 
-        set_clause = ", ".join(f"{k} = ?" for k in updates.keys())
-        values = list(updates.values()) + [session_id]
+        # 验证列名是否在白名单中，防止 SQL 注入
+        for key in updates.keys():
+            if key not in self._ALLOWED_COLUMNS:
+                logger.warning(f"Attempted to update disallowed column: {key}")
+                continue
+
+        set_clause = ", ".join(f"{k} = ?" for k in updates.keys() if k in self._ALLOWED_COLUMNS)
+        values = [v for k, v in updates.items() if k in self._ALLOWED_COLUMNS] + [session_id]
 
         self._conn.execute(
             f"UPDATE execution_sessions SET {set_clause} WHERE session_id = ?", values
@@ -400,8 +411,11 @@ class SessionManager:
         return sessions
 
     def close(self) -> None:
-        if self._conn:
-            self._conn.close()
+        """关闭数据库连接，归还连接到连接池"""
+        if hasattr(self, "_conn") and self._conn:
+            self._pool.return_connection(self._conn)
+            self._conn = None
+            logger.info("SessionManager closed")
 
 
 class TaskExecutor:
@@ -458,7 +472,7 @@ class TaskExecutor:
                 duration_ms=duration_ms,
                 result_data=result if isinstance(result, dict) else {"output": result},
             )
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, TimeoutError, OSError) as e:
             duration_ms = (time.time() - start_time) * 1000
 
             return ExecutionResult(
@@ -692,7 +706,7 @@ class ExecutionEngine:
 
             return result
 
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, TimeoutError, OSError) as e:
             logger.error("Task execution failed %s: %s", task_id, e, exc_info=True)
 
             self.structured_logger.log_error(task_id, e)
@@ -796,7 +810,7 @@ class ExecutionEngine:
             resolver = get_resolver()
             resolver.cleanup_workspace(task_id, keep_outputs=True)
             logger.info("Resources cleaned up for task %s", task_id)
-        except Exception as e:
+        except OSError as e:
             logger.warning("Failed to cleanup resources for task %s: %s", task_id, e)
 
     async def recover_orphaned_tasks(self) -> int:
@@ -864,7 +878,7 @@ class ExecutionEngine:
                     backoff = check_interval
                 else:
                     backoff = min(backoff * 2, max_interval)
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 logger.error("Recovery loop error: %s", e)
                 backoff = min(backoff * 2, max_interval)
 

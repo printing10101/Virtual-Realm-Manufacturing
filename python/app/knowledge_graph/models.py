@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import (
     JSON,
     Column,
@@ -27,6 +29,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, relationship
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -58,8 +62,9 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
                 cursor.execute("PRAGMA foreign_keys=ON")
             finally:
                 cursor.close()
-    except Exception:  # pragma: no cover - 防御性兜底
+    except (OSError, RuntimeError) as exc:  # pragma: no cover - 防御性兜底
         # 任何异常都不应阻塞连接；外键失效仅影响级联行为
+        logger.debug("SQLite foreign keys enabling skipped: %s", exc)
         pass
 
 

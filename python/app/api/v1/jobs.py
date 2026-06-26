@@ -1,4 +1,4 @@
-﻿"""
+"""
 Jobs API - Async task management and SSE streaming.
 
 Supports PostgreSQL-persisted task queries, Redis progress retrieval,
@@ -126,7 +126,7 @@ async def list_jobs(
     status: Optional[str] = Query(None),
     owner_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=10000),
 ):
     try:
         tt = TaskType(task_type) if task_type else None
@@ -149,7 +149,10 @@ async def list_jobs(
     tasks = await task_manager.list_tasks(
         task_type=tt, status=st, owner_id=owner_id, limit=limit, offset=offset
     )
-    total = len(tasks)
+    # 修复：从数据库查询真实总数，而非使用分页后的结果长度
+    total = await task_manager.count_tasks(
+        task_type=tt, status=st, owner_id=owner_id
+    )
 
     items = []
     for t in tasks:

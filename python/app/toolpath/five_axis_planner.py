@@ -82,6 +82,7 @@ class FiveAxisToolpathPlanner:
         surface_normal_i: float = 0.0,
         surface_normal_j: float = 0.0,
         surface_normal_k: float = 1.0,
+        num_points: int = 5,
     ) -> list[ToolOrientation]:
         """
         引导角控制策略
@@ -92,9 +93,10 @@ class FiveAxisToolpathPlanner:
             start_x, start_y, start_z: 起点坐标
             end_x, end_y, end_z: 终点坐标
             surface_normal_i, surface_normal_j, surface_normal_k: 表面法向矢量
+            num_points: 沿路径生成的姿态点数量
             
         Returns:
-            刀具姿态列表
+            刀具姿态列表（多个点）
         """
         orientations = []
         
@@ -115,33 +117,38 @@ class FiveAxisToolpathPlanner:
         # 计算引导角
         lead_rad = math.radians(self.params.lead_angle)
         
-        # 刀轴矢量 = 表面法向旋转引导角
-        # 简化计算：假设在XZ平面内倾斜
-        tool_i = feed_dir_i * math.sin(lead_rad) + surface_normal_i * math.cos(lead_rad)
-        tool_j = feed_dir_j * math.sin(lead_rad) + surface_normal_j * math.cos(lead_rad)
-        tool_k = feed_dir_k * math.sin(lead_rad) + surface_normal_k * math.cos(lead_rad)
+        # 沿路径生成多个刀具姿态点
+        for i in range(num_points):
+            t = i / max(1, num_points - 1)  # 0.0 到 1.0
+            
+            # 刀轴矢量 = 表面法向旋转引导角
+            # 简化计算：假设在XZ平面内倾斜
+            tool_i = feed_dir_i * math.sin(lead_rad) + surface_normal_i * math.cos(lead_rad)
+            tool_j = feed_dir_j * math.sin(lead_rad) + surface_normal_j * math.cos(lead_rad)
+            tool_k = feed_dir_k * math.sin(lead_rad) + surface_normal_k * math.cos(lead_rad)
+            
+            # 归一化
+            tool_length = math.sqrt(tool_i*tool_i + tool_j*tool_j + tool_k*tool_k)
+            if tool_length > 1e-6:
+                tool_i /= tool_length
+                tool_j /= tool_length
+                tool_k /= tool_length
+            
+            # 创建刀具姿态
+            orientation = ToolOrientation(
+                i_component=tool_i,
+                j_component=tool_j,
+                k_component=tool_k
+            )
+            orientation.calculate_angles_from_vector()
+            
+            # 检查奇异点
+            if abs(orientation.a_angle) < self.params.singularity_threshold:
+                orientation.a_angle = self.params.singularity_threshold
+                orientation.calculate_from_angles()
+            
+            orientations.append(orientation)
         
-        # 归一化
-        tool_length = math.sqrt(tool_i*tool_i + tool_j*tool_j + tool_k*tool_k)
-        if tool_length > 1e-6:
-            tool_i /= tool_length
-            tool_j /= tool_length
-            tool_k /= tool_length
-        
-        # 创建刀具姿态
-        orientation = ToolOrientation(
-            i_component=tool_i,
-            j_component=tool_j,
-            k_component=tool_k
-        )
-        orientation.calculate_angles_from_vector()
-        
-        # 检查奇异点
-        if abs(orientation.a_angle) < self.params.singularity_threshold:
-            orientation.a_angle = self.params.singularity_threshold
-            orientation.calculate_from_angles()
-        
-        orientations.append(orientation)
         return orientations
     
     def plan_tilt_angle_toolpath(

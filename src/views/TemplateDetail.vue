@@ -5,26 +5,67 @@ import { useI18n } from 'vue-i18n'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getBranchTypeTagType } from '@/utils/statusHelpers'
 import http from '@/utils/http'
+import { API_CONFIG } from '@/config/api'
 
 const { t } = useI18n()
 const route = useRoute()
 const branchId = route.params.id as string
-const branch = ref<any>(null)
-const evolutionHistory = ref<any[]>([])
-const abExperiments = ref<any[]>([])
-const metrics = ref<any>(null)
+
+// 类型定义
+interface Branch {
+  id: string
+  name: string
+  type: string
+  base_branch: string | null
+  data: Record<string, unknown>
+  metadata: Record<string, unknown>
+  created_at: number
+  updated_at: number
+}
+
+interface EvolutionEvent {
+  event_id: string
+  branch_id: string
+  event_type: string
+  description: string
+  timestamp: number
+  metadata: Record<string, unknown>
+}
+
+interface ABExperiment {
+  experiment_id: string
+  name: string
+  control_branch: string
+  candidate_branch: string
+  status: string
+  start_time: number
+  end_time?: number
+  results?: Record<string, unknown>
+}
+
+interface TemplateMetrics {
+  downloads: number
+  subscriptions: number
+  rating: number
+  usage_count: number
+}
+
+const branch = ref<Branch | null>(null)
+const evolutionHistory = ref<EvolutionEvent[]>([])
+const abExperiments = ref<ABExperiment[]>([])
+const metrics = ref<TemplateMetrics | null>(null)
 const loading = ref(false)
 const activeTab = ref('info')
 
-const API_BASE = '/api/v1'
+const API_BASE = API_CONFIG.V1
 
 async function fetchBranch() {
   loading.value = true
   try {
     const res = await http.get(`${API_BASE}/templates/branches/${branchId}`)
     if (res.data.code === 'SUCCESS') branch.value = res.data.data
-  } catch (e: unknown) {
-    console.warn('Failed to fetch branch:', e)
+  } catch {
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -34,8 +75,8 @@ async function fetchEvolutionHistory() {
   try {
     const res = await http.get(`${API_BASE}/templates/evolution/history`, { params: { branch_id: branchId } })
     if (res.data.code === 'SUCCESS') evolutionHistory.value = res.data.data
-  } catch (e: unknown) {
-    console.warn('Failed to fetch evolution history:', e)
+  } catch {
+    // 静默处理
   }
 }
 
@@ -44,11 +85,11 @@ async function fetchABExperiments() {
     const res = await http.get(`${API_BASE}/templates/ab_tests`)
     if (res.data.code === 'SUCCESS') {
       abExperiments.value = (res.data.data || []).filter(
-        (e: any) => e.control_branch === branchId || e.candidate_branch === branchId
+        (e: ABExperiment) => e.control_branch === branchId || e.candidate_branch === branchId
       )
     }
-  } catch (e: unknown) {
-    console.warn('Failed to fetch AB experiments:', e)
+  } catch {
+    // 静默处理
   }
 }
 
@@ -56,8 +97,8 @@ async function fetchMetrics() {
   try {
     const res = await http.get(`${API_BASE}/template_market/templates/${branchId}/metrics`)
     if (res.data.code === 'SUCCESS') metrics.value = res.data.data
-  } catch (e: unknown) {
-    console.warn('Failed to fetch metrics:', e)
+  } catch {
+    // 静默处理
   }
 }
 

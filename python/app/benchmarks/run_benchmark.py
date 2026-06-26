@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import csv
+import logging
 import os
 import time
 from dataclasses import dataclass
@@ -34,6 +35,8 @@ from app.benchmarks.models.xgboost_baseline import XGBoostBaseline  # noqa: E402
 from app.benchmarks.models.rf_baseline import RFBaseline  # noqa: E402
 from app.benchmarks.models.svm_baseline import SVMBaseline  # noqa: E402
 from app.benchmarks.models.mlp_baseline import MLPBaseline  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 plt.rcParams.update(
     {
@@ -106,10 +109,10 @@ class BenchmarkRunner:
         if sample_fractions is None:
             sample_fractions = [0.1, 0.3, 0.5, 0.7, 1.0]
 
-        print("加载UniWear数据集...")
+        logger.info("加载UniWear数据集...")
         X, y, metadata, _scaler = load_uniwear_data()
-        print(f"  样本数: {metadata['n_samples']}, 特征数: {metadata['n_features']}")
-        print(
+        logger.info(f"  样本数: {metadata['n_samples']}, 特征数: {metadata['n_features']}")
+        logger.info(
             f"  标签: {metadata['label_name']}, "
             f"均值={metadata['label_mean']:.3f}, "
             f"范围=[{metadata['label_min']:.3f}, {metadata['label_max']:.3f}]"
@@ -117,7 +120,7 @@ class BenchmarkRunner:
 
         splits = split_dataset(X, y, random_seed=self.random_seed)
         X_test, y_test = splits["test"]
-        print(
+        logger.info(
             f"  训练: {splits['train'][0].shape[0]}, "
             f"验证: {splits['val'][0].shape[0]}, "
             f"测试: {X_test.shape[0]}"
@@ -132,9 +135,9 @@ class BenchmarkRunner:
 
         for fraction in sample_fractions:
             frac_label = f"{fraction:.0%}" if fraction < 1.0 else "100%"
-            print(f"\n{'=' * 60}")
-            print(f"样本比例: {frac_label} ({int(X.shape[0] * fraction)} 样本)")
-            print(f"{'=' * 60}")
+            logger.info(f"\n{'=' * 60}")
+            logger.info(f"样本比例: {frac_label} ({int(X.shape[0] * fraction)} 样本)")
+            logger.info(f"{'=' * 60}")
 
             for model_name, (model_cls, model_config) in models.items():
                 for run_id in range(1, self.n_runs + 1):
@@ -145,10 +148,9 @@ class BenchmarkRunner:
                         fraction=fraction,
                         random_seed=seed,
                     )
-                    print(
+                    logger.info(
                         f"  {model_name} run {run_id}/{self.n_runs} "
-                        f"({X_tr.shape[0]} samples)...",
-                        end=" ",
+                        f"({X_tr.shape[0]} samples)..."
                     )
 
                     result = self._run_single(
@@ -164,7 +166,7 @@ class BenchmarkRunner:
                         fraction,
                     )
                     self._all_results.append(result)
-                    print(f"RMSE={result.rmse:.4f}, R2={result.r2:.4f}")
+                    logger.info(f"RMSE={result.rmse:.4f}, R2={result.r2:.4f}")
 
         self._save_csv()
         self._generate_plots()
@@ -261,7 +263,7 @@ class BenchmarkRunner:
                         "params_count": r.params_count,
                     }
                 )
-        print(f"\n结果已保存: {csv_path}")
+        logger.info(f"\n结果已保存: {csv_path}")
 
     def _compute_summary(
         self,
@@ -434,7 +436,7 @@ class BenchmarkRunner:
         fig.savefig(out_dir / "model_size.png", dpi=150)
         plt.close(fig)
 
-        print(f"图表已保存至: {out_dir}")
+        logger.info(f"图表已保存至: {out_dir}")
 
     def _generate_report(self, metadata: dict[str, Any]) -> None:
         summaries = self._compute_summary(1.0)
@@ -551,7 +553,7 @@ class BenchmarkRunner:
 
         with open(report_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
-        print(f"报告已生成: {report_path}")
+        logger.info(f"报告已生成: {report_path}")
 
     def _build_summary(self) -> dict[str, Any]:
         summaries = self._compute_summary(1.0)
@@ -575,10 +577,10 @@ class BenchmarkRunner:
 def main():
     runner = BenchmarkRunner(n_runs=3)
     summary = runner.run(sample_fractions=[0.1, 0.3, 0.5, 0.7, 1.0])
-    print("\n" + "=" * 60)
-    print("实验概要:")
+    logger.info("\n" + "=" * 60)
+    logger.info("实验概要:")
     for r in summary["results"]:
-        print(f"  {r['model']}: RMSE={r['rmse_mean']}, R²={r['r2_mean']}")
+        logger.info(f"  {r['model']}: RMSE={r['rmse_mean']}, R²={r['r2_mean']}")
 
 
 if __name__ == "__main__":

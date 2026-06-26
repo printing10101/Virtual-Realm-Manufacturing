@@ -1,0 +1,68 @@
+# ============================================================
+# 灵境制造（上线版） Docker Compose 配置 - SQLite 单机部署版
+# ============================================================
+# 适用场景：
+#   - 工厂单机部署（无网络/内网环境）
+#   - 中小企业轻量级使用
+#   - 开发测试环境
+#
+# 特点：
+#   - 仅使用 SQLite（零配置、单文件、断电安全）
+#   - 无需 PostgreSQL、Redis、TDengine
+#   - 安装步骤 ≤ 3 步：解压 → 双击 → 使用
+#
+# 使用说明：
+#   1. 复制环境变量模板：cp .env.sqlite .env
+#   2. 启动服务：docker compose -f docker-compose-sqlite.yml up -d
+#   3. 访问：http://localhost:8765
+# ============================================================
+
+name: lnn-manufacturing-lite
+
+services:
+  lnn-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: lnn-api-lite
+    ports:
+      - "8765:8765"
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - PORT=${PORT:-8765}
+      # 强制使用 SQLite
+      - DB_URL=sqlite+aiosqlite:///./data/app.db
+      # AI 模型配置
+      - AI_MODE=${AI_MODE:-local}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      - CLOUD_API_KEY=${CLOUD_API_KEY:-}
+      - CLOUD_BASE_URL=${CLOUD_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      - CLOUD_MODEL=${CLOUD_MODEL:-qwen-plus}
+    volumes:
+      # 持久化数据目录
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    restart: unless-stopped
+    # 单机模式无需依赖其他服务
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8765/api/health/ping || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+volumes:
+  data:
+  models:
+  logs:

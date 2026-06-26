@@ -252,8 +252,8 @@ function saveProgress() {
       currentStep: currentStepIndex.value,
       timestamp: Date.now()
     }))
-  } catch (e) {
-    console.warn('Failed to save tour progress:', e)
+  } catch {
+    // 静默处理
   }
 }
 
@@ -267,8 +267,8 @@ function loadProgress(): number | null {
         return data.currentStep
       }
     }
-  } catch (e) {
-    console.warn('Failed to load tour progress:', e)
+  } catch {
+    // 静默处理
   }
   return null
 }
@@ -276,8 +276,8 @@ function loadProgress(): number | null {
 function clearProgress() {
   try {
     localStorage.removeItem(props.storageKey)
-  } catch (e) {
-    console.warn('Failed to clear tour progress:', e)
+  } catch {
+    // 静默处理
   }
 }
 

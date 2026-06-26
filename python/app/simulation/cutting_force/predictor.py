@@ -148,7 +148,7 @@ def predict_cutting_force(
             "confidence": 0.85,  # PINN 模型置信度较高
             "model_version": "pinn_v1.0",
         }
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError) as e:
         logger.warning(f"PINN 推理失败 ({e})，回退到 Kienzle 解析解")
         return {
             "Fx": kienzle_result["Fx"],

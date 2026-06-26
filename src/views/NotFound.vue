@@ -35,11 +35,7 @@ const goHome = (): void => {
 }
 
 onMounted(() => {
-  // 404 错误日志：输出访问的不存在 URL
-  // eslint-disable-next-line no-console
-  console.error(
-    `[404] 页面不存在 - 访问路径: ${route.fullPath} | 时间: ${new Date().toISOString()}`
-  )
+  // 404 错误日志：访问不存在路径时不输出控制台日志
 })
 </script>
 

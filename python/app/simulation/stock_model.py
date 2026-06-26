@@ -106,8 +106,10 @@ class StockBoundingBox:
         """Convert the bounding box to a dictionary.
 
         Returns:
-            Dictionary with x_min, x_max, y_min, y_max, z_min, z_max keys.
+            Dictionary with x_min, x_max, y_min, y_max, z_min, z_max,
+            volume, and center keys.
         """
+        cx, cy, cz = self.center()
         return {
             "x_min": self.x_min,
             "x_max": self.x_max,
@@ -115,6 +117,10 @@ class StockBoundingBox:
             "y_max": self.y_max,
             "z_min": self.z_min,
             "z_max": self.z_max,
+            "volume": self.volume(),
+            "center_x": cx,
+            "center_y": cy,
+            "center_z": cz,
         }
 
 

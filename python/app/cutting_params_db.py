@@ -1,0 +1,244 @@
+"""
+Material-Tool Cutting Parameter Database
+
+Provides recommended cutting parameters for different material categories
+and machining operations based on tool diameter.
+"""
+
+from typing import Dict, Optional, Tuple
+
+# Material categories with their machinability properties
+MATERIAL_CATEGORIES = {
+    "aluminum": {
+        "machinability": 1.0,  # Reference material
+        "hardness": "soft",
+    },
+    "steel": {
+        "machinability": 0.6,
+        "hardness": "medium",
+    },
+    "stainless": {
+        "machinability": 0.5,
+        "hardness": "medium-hard",
+    },
+    "titanium": {
+        "machinability": 0.35,
+        "hardness": "hard",
+    },
+    "cast_iron": {
+        "machinability": 0.7,
+        "hardness": "medium",
+    },
+    "brass": {
+        "machinability": 0.9,
+        "hardness": "soft",
+    },
+}
+
+# Base cutting parameters for each operation and material
+# Format: (spindle_speed_rpm, feed_rate_mm_per_min, depth_of_cut_mm)
+# These are baseline values for a 10mm diameter tool
+BASE_PARAMETERS = {
+    "aluminum": {
+        "drilling": {
+            "spindle_speed_range": (2000, 4000),
+            "feed_rate_range": (200, 500),
+            "depth_of_cut_range": (1.0, 3.0),
+        },
+        "milling": {
+            "spindle_speed_range": (2500, 5000),
+            "feed_rate_range": (300, 800),
+            "depth_of_cut_range": (0.5, 2.0),
+        },
+        "turning": {
+            "spindle_speed_range": (1800, 3500),
+            "feed_rate_range": (0.1, 0.3),  # mm/rev for turning
+            "depth_of_cut_range": (0.5, 2.5),
+        },
+    },
+    "steel": {
+        "drilling": {
+            "spindle_speed_range": (800, 1500),
+            "feed_rate_range": (80, 200),
+            "depth_of_cut_range": (0.8, 2.5),
+        },
+        "milling": {
+            "spindle_speed_range": (1200, 2500),
+            "feed_rate_range": (150, 400),
+            "depth_of_cut_range": (0.3, 1.5),
+        },
+        "turning": {
+            "spindle_speed_range": (1000, 2000),
+            "feed_rate_range": (0.08, 0.25),
+            "depth_of_cut_range": (0.5, 2.0),
+        },
+    },
+    "stainless": {
+        "drilling": {
+            "spindle_speed_range": (600, 1200),
+            "feed_rate_range": (60, 150),
+            "depth_of_cut_range": (0.5, 2.0),
+        },
+        "milling": {
+            "spindle_speed_range": (1000, 2000),
+            "feed_rate_range": (120, 300),
+            "depth_of_cut_range": (0.2, 1.2),
+        },
+        "turning": {
+            "spindle_speed_range": (800, 1600),
+            "feed_rate_range": (0.06, 0.2),
+            "depth_of_cut_range": (0.3, 1.8),
+        },
+    },
+    "titanium": {
+        "drilling": {
+            "spindle_speed_range": (400, 800),
+            "feed_rate_range": (40, 100),
+            "depth_of_cut_range": (0.3, 1.5),
+        },
+        "milling": {
+            "spindle_speed_range": (600, 1500),
+            "feed_rate_range": (80, 200),
+            "depth_of_cut_range": (0.2, 1.0),
+        },
+        "turning": {
+            "spindle_speed_range": (500, 1200),
+            "feed_rate_range": (0.05, 0.15),
+            "depth_of_cut_range": (0.2, 1.2),
+        },
+    },
+    "cast_iron": {
+        "drilling": {
+            "spindle_speed_range": (1000, 2000),
+            "feed_rate_range": (100, 250),
+            "depth_of_cut_range": (0.8, 2.5),
+        },
+        "milling": {
+            "spindle_speed_range": (1500, 3000),
+            "feed_rate_range": (200, 500),
+            "depth_of_cut_range": (0.3, 1.8),
+        },
+        "turning": {
+            "spindle_speed_range": (1200, 2500),
+            "feed_rate_range": (0.1, 0.3),
+            "depth_of_cut_range": (0.5, 2.2),
+        },
+    },
+    "brass": {
+        "drilling": {
+            "spindle_speed_range": (1500, 3000),
+            "feed_rate_range": (150, 400),
+            "depth_of_cut_range": (0.8, 2.8),
+        },
+        "milling": {
+            "spindle_speed_range": (2000, 4000),
+            "feed_rate_range": (250, 600),
+            "depth_of_cut_range": (0.4, 1.8),
+        },
+        "turning": {
+            "spindle_speed_range": (1500, 3000),
+            "feed_rate_range": (0.12, 0.35),
+            "depth_of_cut_range": (0.5, 2.5),
+        },
+    },
+}
+
+# Safe defaults for unknown materials
+DEFAULT_PARAMETERS = {
+    "drilling": {
+        "spindle_speed_range": (800, 1500),
+        "feed_rate_range": (80, 200),
+        "depth_of_cut_range": (0.5, 2.0),
+    },
+    "milling": {
+        "spindle_speed_range": (1200, 2500),
+        "feed_rate_range": (150, 400),
+        "depth_of_cut_range": (0.3, 1.5),
+    },
+    "turning": {
+        "spindle_speed_range": (1000, 2000),
+        "feed_rate_range": (0.08, 0.25),
+        "depth_of_cut_range": (0.5, 2.0),
+    },
+}
+
+
+def get_cutting_params(
+    material: str,
+    operation: str,
+    tool_diameter: float,
+) -> Dict[str, float]:
+    """
+    Get recommended cutting parameters for a given material, operation, and tool diameter.
+    
+    Args:
+        material: Material category (aluminum, steel, stainless, titanium, cast_iron, brass)
+        operation: Machining operation (drilling, milling, turning)
+        tool_diameter: Tool diameter in millimeters
+    
+    Returns:
+        Dictionary containing:
+        - spindle_speed: Recommended spindle speed in RPM
+        - feed_rate: Recommended feed rate (mm/min for drilling/milling, mm/rev for turning)
+        - depth_of_cut: Recommended depth of cut in mm
+    
+    Raises:
+        ValueError: If operation is not supported
+    """
+    if operation not in ["drilling", "milling", "turning"]:
+        raise ValueError(f"Unsupported operation: {operation}")
+    
+    # Normalize material name
+    material = material.lower().strip()
+    
+    # Get material parameters or use defaults
+    params = BASE_PARAMETERS.get(material, DEFAULT_PARAMETERS[operation])
+    operation_params = params[operation]
+    
+    # Calculate speed adjustment based on tool diameter
+    # Smaller tools need higher RPM, larger tools need lower RPM
+    # Base parameters are for 10mm tool
+    diameter_ratio = 10.0 / tool_diameter if tool_diameter > 0 else 1.0
+    
+    # Calculate spindle speed (RPM)
+    speed_min, speed_max = operation_params["spindle_speed_range"]
+    base_speed = (speed_min + speed_max) / 2
+    spindle_speed = base_speed * diameter_ratio
+    spindle_speed = max(speed_min, min(speed_max, spindle_speed))
+    
+    # Calculate feed rate
+    feed_min, feed_max = operation_params["feed_rate_range"]
+    base_feed = (feed_min + feed_max) / 2
+    
+    # For turning, feed is in mm/rev and scales differently
+    if operation == "turning":
+        # Feed per revolution decreases slightly with larger diameter
+        feed_rate = base_feed * (10.0 / tool_diameter if tool_diameter > 0 else 1.0) ** 0.3
+        feed_rate = max(feed_min, min(feed_max, feed_rate))
+    else:
+        # For drilling/milling, feed increases with tool diameter
+        feed_rate = base_feed * (tool_diameter / 10.0) ** 0.5
+        feed_rate = max(feed_min, min(feed_max, feed_rate))
+    
+    # Calculate depth of cut
+    depth_min, depth_max = operation_params["depth_of_cut_range"]
+    base_depth = (depth_min + depth_max) / 2
+    # Depth scales with tool diameter
+    depth_of_cut = base_depth * (tool_diameter / 10.0) ** 0.4
+    depth_of_cut = max(depth_min, min(depth_max, depth_of_cut))
+    
+    return {
+        "spindle_speed": int(spindle_speed),
+        "feed_rate": round(feed_rate, 2),
+        "depth_of_cut": round(depth_of_cut, 2),
+    }
+
+
+def get_material_list() -> list:
+    """Get list of supported material categories."""
+    return list(MATERIAL_CATEGORIES.keys())
+
+
+def get_operation_list() -> list:
+    """Get list of supported operations."""
+    return ["drilling", "milling", "turning"]

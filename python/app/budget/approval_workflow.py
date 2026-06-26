@@ -26,6 +26,7 @@ from app.models.governance import (
     ApprovalStatus,
     GovernanceReport,
 )
+from app.utils.sqlite_pool import get_sqlite_manager
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +44,10 @@ class ApprovalWorkflowEngine:
         db_dir.mkdir(parents=True, exist_ok=True)
 
         self.db_path = db_path
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("approval_workflow")
+        self._conn = self._pool.get_connection()
         self._init_schema()
         self._approver_callbacks: Dict[str, Callable] = {}
         self._load_delegations: List[ApprovalDelegation] = []

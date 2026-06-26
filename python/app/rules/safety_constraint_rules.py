@@ -665,8 +665,9 @@ class SafetyRuleEngine:
                     except (ValueError, TypeError):
                         return 0.0
             return safe_eval_math_expression(resolved)
-        except Exception:
-            # 防御性兜底：任何未预期异常都降级为 0.0
+        except (ValueError, TypeError, OSError) as e:
+            # 防御性兜底：解析或求值失败时降级为 0.0
+            logger.warning("规则表达式求值失败: expr=%s, error=%s", expr, e)
             return 0.0
 
     def _record_audit(

@@ -309,7 +309,7 @@ async function loadModel(url: string) {
         )
       })
     } else {
-      console.warn('Unsupported model format:', url)
+      // 不支持的模型格式，静默忽略
       return
     }
 
@@ -318,8 +318,8 @@ async function loadModel(url: string) {
       // 居中相机
       threeScene.camera.lookAt(modelGroup.position)
     }
-  } catch (error) {
-    console.error('Failed to load model:', error)
+  } catch {
+    // 模型加载失败，静默处理
   }
 }
 

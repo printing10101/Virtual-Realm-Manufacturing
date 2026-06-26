@@ -77,11 +77,21 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Search, Setting } from '@element-plus/icons-vue'
+
+interface MarketplacePlugin {
+  id: string
+  name: string
+  version: string
+  description: string
+  plugin_type: string
+  author: string
+}
 
 const searchQuery = ref('')
 
-const marketplacePlugins = ref([
+const marketplacePlugins = ref<MarketplacePlugin[]>([
   { id: 'fanuc-adapter', name: '发那科适配器', version: '1.0.0', description: '支持发那科系列机床通信', plugin_type: 'adapter', author: '灵境制造团队' },
   { id: 'siemens-adapter', name: '西门子适配器', version: '1.0.0', description: '支持西门子840D/828D系统', plugin_type: 'adapter', author: '灵境制造团队' },
   { id: 'opcua-source', name: 'OPC UA数据源', version: '2.0.0', description: 'OPC UA协议数据采集', plugin_type: 'data_source', author: '灵境制造团队' },
@@ -98,11 +108,11 @@ const filteredPlugins = computed(() => {
   )
 })
 
-const handleInstall = (plugin: any) => {
+const handleInstall = (plugin: MarketplacePlugin) => {
   ElMessage.success(`插件 "${plugin.name}" 安装已开始`)
 }
 
-const handleViewDetail = (plugin: any) => {
+const handleViewDetail = (plugin: MarketplacePlugin) => {
   ElMessage.info(`查看插件 "${plugin.name}" 详情`)
 }
 </script>

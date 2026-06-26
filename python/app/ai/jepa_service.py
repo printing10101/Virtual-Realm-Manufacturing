@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import math
 from pathlib import Path
 from typing import Any, Optional
 
@@ -74,8 +73,8 @@ class JEPAServer:
                 logger.warning("多模态 JEPA 特征提取失败: %s", result)
                 return None
                 
-        except Exception as e:
-            logger.error("多模态 JEPA 特征提取异常: %s", e)
+        except (ImportError, ValueError, KeyError, TypeError, OSError) as e:
+            logger.error("多模态 JEPA 特征提取异常: %s", e, exc_info=True)
             return None
     
     def extract_features_video(
@@ -103,6 +102,7 @@ class JEPAServer:
             # 2. 尝试加载视频并采样帧
             sampled_frames = []
             total_frames = 0  # 默认值，防止 OpenCV 导入失败时未定义
+            cap = None
             try:
                 import cv2
                 
@@ -113,7 +113,6 @@ class JEPAServer:
                 
                 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
                 if total_frames <= 0:
-                    cap.release()
                     logger.warning("视频帧数无效: %s", video_path)
                     return None
                 
@@ -128,12 +127,28 @@ class JEPAServer:
                         resized = cv2.resize(gray, (112, 112))
                         sampled_frames.append(resized)
                 
-                cap.release()
+            except ImportError:
+                logger.warning("OpenCV 不可用，使用模拟帧采样")
+                # 模拟帧采样：生成伪随机帧数据
+                rng = np.random.default_rng(seed=int(hashlib.sha256(video_path.encode()).hexdigest()[:8], 16))
+                # 当 OpenCV 导入失败时，total_frames 未定义，使用默认值 10
+                num_frames = min(10, max(1, total_frames // frame_interval)) if 'total_frames' in locals() else 10
+                for _ in range(num_frames):
+                    frame = rng.integers(0, 256, (112, 112), dtype=np.uint8)
+                    sampled_frames.append(frame)
+            except (RuntimeError, OSError, ValueError) as e:
+                # 视频处理过程中的异常，记录后返回 None
+                logger.error("视频帧采样失败 %s: %s", video_path, e, exc_info=True)
+                return None
+            finally:
+                # 确保视频捕获对象被释放
+                if cap is not None:
+                    cap.release()
                 
             except ImportError:
                 logger.warning("OpenCV 不可用，使用模拟帧采样")
                 # 模拟帧采样：生成伪随机帧数据
-                rng = np.random.default_rng(seed=int(hashlib.md5(video_path.encode()).hexdigest()[:8], 16))
+                rng = np.random.default_rng(seed=int(hashlib.sha256(video_path.encode()).hexdigest()[:8], 16))
                 # 当 OpenCV 导入失败时，total_frames 未定义，使用默认值 10
                 num_frames = min(10, max(1, total_frames // frame_interval)) if 'total_frames' in locals() else 10
                 for _ in range(num_frames):
@@ -185,7 +200,7 @@ class JEPAServer:
                     "video_path": video_path,
                 },
             }
-        except Exception as e:
+        except (ImportError, ValueError, OSError, RuntimeError, AttributeError) as e:
             logger.error("视频 JEPA 特征提取异常: %s", e, exc_info=True)
             return None
     
@@ -233,11 +248,11 @@ class JEPAServer:
                 logger.warning("trimesh 不可用，尝试 numpy 加载")
                 try:
                     points = np.load(str(pc_path_obj))
-                except Exception as load_err:
-                    logger.error("点云加载失败: %s", load_err)
+                except (ValueError, OSError, IOError) as load_err:
+                    logger.error("点云加载失败: %s", load_err, exc_info=True)
                     return None
-            except Exception as load_err:
-                logger.error("点云加载异常: %s", load_err)
+            except (ImportError, ValueError, OSError, RuntimeError) as load_err:
+                logger.error("点云加载异常: %s", load_err, exc_info=True)
                 return None
             
             if points is None or len(points) == 0:
@@ -281,8 +296,8 @@ class JEPAServer:
                     len(xyz),
                     len(downsampled_points)
                 )
-            except Exception as voxel_err:
-                logger.warning("体素化失败，使用原始点: %s", voxel_err)
+            except (ValueError, RuntimeError, MemoryError) as voxel_err:
+                logger.warning("体素化失败，使用原始点: %s", voxel_err, exc_info=True)
                 downsampled_points = xyz_normalized if 'xyz_normalized' in locals() else xyz
             
             # 4. MAE 特征提取
@@ -342,7 +357,7 @@ class JEPAServer:
                     "point_cloud_path": point_cloud_path,
                 },
             }
-        except Exception as e:
+        except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
             logger.error("点云 MAE 特征提取异常: %s", e, exc_info=True)
             return None
     
@@ -376,8 +391,8 @@ class JEPAServer:
                 logger.warning("特征向量为空，无法注入知识图谱")
                 return False
             
-            # 使用特征向量的哈希作为唯一标识
-            feature_hash = hashlib.md5(
+            # 使用特征向量的哈希作为唯一标识（SHA256 替代 MD5 防碰撞）
+            feature_hash = hashlib.sha256(
                 str(feature_vector).encode()
             ).hexdigest()[:12]
             feature_node_id = f"jepa_feature-{model_name}-{feature_hash}"
@@ -405,7 +420,7 @@ class JEPAServer:
             
             # 如果包含视频路径，创建与视频源的关联
             if "video_path" in metadata:
-                video_id = f"video-{hashlib.md5(metadata['video_path'].encode()).hexdigest()[:8]}"
+                video_id = f"video-{hashlib.sha256(metadata['video_path'].encode()).hexdigest()[:8]}"
                 if not graph_client.has_node(video_id):
                     graph_client.add_node(
                         node_type="video_source",
@@ -421,7 +436,7 @@ class JEPAServer:
             
             # 如果包含点云路径，创建与点云源的关联
             if "point_cloud_path" in metadata:
-                pc_id = f"pointcloud-{hashlib.md5(metadata['point_cloud_path'].encode()).hexdigest()[:8]}"
+                pc_id = f"pointcloud-{hashlib.sha256(metadata['point_cloud_path'].encode()).hexdigest()[:8]}"
                 if not graph_client.has_node(pc_id):
                     graph_client.add_node(
                         node_type="point_cloud_source",
@@ -462,8 +477,8 @@ class JEPAServer:
                                 feature_node_id,
                                 material_id
                             )
-            except Exception as assoc_err:
-                logger.warning("特征关联到材料/工艺失败: %s", assoc_err)
+            except (ValueError, KeyError, TypeError, AttributeError) as assoc_err:
+                logger.warning("特征关联到材料/工艺失败: %s", assoc_err, exc_info=True)
             
             logger.info(
                 "JEPA 特征注入知识图谱完成: node_id=%s, confidence=%.2f",
@@ -473,7 +488,7 @@ class JEPAServer:
             
             return True
             
-        except Exception as e:
+        except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
             logger.error("JEPA 特征注入知识图谱异常: %s", e, exc_info=True)
             return False
     
@@ -585,7 +600,7 @@ class JEPAServer:
             
             return recommendation
             
-        except Exception as e:
+        except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
             logger.error("JEPA 工艺推荐异常: %s", e, exc_info=True)
             return None
     

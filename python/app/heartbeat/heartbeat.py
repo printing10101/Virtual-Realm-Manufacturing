@@ -19,6 +19,8 @@ from pathlib import Path
 from enum import Enum
 
 from app.utils.sqlite_retry import sqlite_retry
+from app.utils.utils import get_output_dir
+from app.utils.sqlite_pool import get_sqlite_manager, SQLiteConnectionManager
 
 logger = logging.getLogger(__name__)
 
@@ -183,17 +185,26 @@ class WakeupQueue:
             db_path: SQLite数据库路径
         """
         if db_path is None:
-            db_path = str(Path(__file__).parent.parent.parent / "data" / "heartbeat.db")
+            db_path = str(get_output_dir("data") / "heartbeat.db")
 
         db_dir = Path(db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
 
         self.db_path = db_path
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("heartbeat")
+        self._conn = self._pool.get_connection()
         self._init_schema()
 
         logger.info("WakeupQueue initialized at %s", db_path)
+
+    def close(self) -> None:
+        """关闭队列，归还连接到连接池"""
+        if hasattr(self, "_conn") and self._conn:
+            self._pool.return_connection(self._conn)
+            self._conn = None
+            logger.info("WakeupQueue closed")
 
     def _init_schema(self) -> None:
         """初始化数据库模式"""
@@ -331,6 +342,11 @@ class WakeupQueue:
 
         return tasks
 
+    # 允许的列名白名单，防止 SQL 注入
+    _ALLOWED_COLUMNS = {
+        "status", "last_run", "next_run", "updated_at", "retry_count", "metadata"
+    }
+
     @sqlite_retry()
     def update_task_status(
         self, task_id: str, status: ScheduleStatus, last_run: Optional[float] = None
@@ -353,8 +369,14 @@ class WakeupQueue:
                 if task:
                     updates["next_run"] = CronParser.get_next_run(task.schedule, now)
 
-        set_clause = ", ".join(f"{k} = ?" for k in updates.keys())
-        values = list(updates.values()) + [task_id]
+        # 验证列名是否在白名单中，防止 SQL 注入
+        for key in updates.keys():
+            if key not in self._ALLOWED_COLUMNS:
+                logger.warning(f"Attempted to update disallowed column: {key}")
+                continue
+
+        set_clause = ", ".join(f"{k} = ?" for k in updates.keys() if k in self._ALLOWED_COLUMNS)
+        values = [v for k, v in updates.items() if k in self._ALLOWED_COLUMNS] + [task_id]
 
         self._conn.execute(
             f"UPDATE scheduled_tasks SET {set_clause} WHERE task_id = ?", values
@@ -573,7 +595,7 @@ class HeartbeatScheduler:
         while self._running:
             try:
                 await self._tick()
-            except Exception as e:
+            except (ConnectionError, OSError, RuntimeError) as e:
                 logger.error("Heartbeat tick error: %s", e, exc_info=True)
 
             jitter = random.uniform(-base_interval * 0.2, base_interval * 0.2)
@@ -628,7 +650,7 @@ class HeartbeatScheduler:
         if self._on_task_trigger:
             try:
                 await self._on_task_trigger(task)
-            except Exception as e:
+            except (ConnectionError, OSError, RuntimeError) as e:
                 logger.error(
                     "Task %s trigger callback failed: %s",
                     task.task_id,
@@ -677,7 +699,22 @@ class HeartbeatScheduler:
         if task is None:
             raise KeyError(f"Task not found: {task_id}")
 
-        asyncio.create_task(self._trigger_task(task))
+        # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
+        trigger_task = asyncio.create_task(self._trigger_task(task))
+        trigger_task.add_done_callback(
+            lambda t: self._handle_trigger_done(t, task_id)
+        )
+
+    def _handle_trigger_done(self, task: asyncio.Task, task_id: str) -> None:
+        """记录触发任务完成状态"""
+        if task.cancelled():
+            logger.warning("Trigger task %s was cancelled", task_id)
+        elif task.exception():
+            logger.error(
+                "Trigger task %s failed: %s",
+                task_id,
+                task.exception(),
+            )
 
 
 class _SchedulerHolder:

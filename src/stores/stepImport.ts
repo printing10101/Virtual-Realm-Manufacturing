@@ -154,16 +154,16 @@ export const useStepImportStore = defineStore('stepImport', () => {
     try {
       await http.delete(`/api/import/step/history/${encodeURIComponent(fileName)}`)
       await fetchImportHistory()
-    } catch (e: unknown) {
-      console.warn('Failed to delete history file:', e)
+    } catch {
+      // 静默处理
     }
   }
 
   async function clearCache() {
     try {
       await http.delete('/api/import/step/cache')
-    } catch (e: unknown) {
-      console.warn('Failed to clear cache:', e)
+    } catch {
+      // 静默处理
     }
   }
 

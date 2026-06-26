@@ -230,7 +230,8 @@ class StatePersistenceManager:
             await asyncio.to_thread(
                 self._redis.setex, key, self._heartbeat_interval * 2, data
             )
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError) as e:
+            # Redis 缓存写入失败不影响主流程，但需记录以便排查
             logger.warning(
                 "Failed to save heartbeat state to Redis: agent=%s error=%s",
                 state.agent_id,
@@ -249,7 +250,8 @@ class StatePersistenceManager:
                 )
                 raw = self._migration_engine.migrate(raw)
                 return AgentState.from_dict(raw)
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, KeyError, TypeError) as e:
+            # Redis 读取或反序列化失败时返回 None，让上层回退到 DB 层
             logger.warning(
                 "Failed to load state from Redis: agent=%s error=%s", agent_id, e
             )
@@ -350,8 +352,9 @@ class StatePersistenceManager:
                 )
             await session.commit()
             await session.close()
-        except Exception as e:
-            logger.error("DB save failed for agent %s: %s", state.agent_id, e)
+        except (OSError, RuntimeError, ValueError, KeyError) as e:
+            # 数据库保存失败需要记录详细错误以便排查
+            logger.error("DB save failed for agent %s: %s", state.agent_id, e, exc_info=True)
 
     async def _load_db(self, agent_id: str) -> Optional[AgentState]:
         if not self._db_session_factory:
@@ -409,8 +412,9 @@ class StatePersistenceManager:
                 metadata=metadata,
             )
             return state
-        except Exception as e:
-            logger.error("DB load failed for agent %s: %s", agent_id, e)
+        except (OSError, RuntimeError, ValueError, KeyError, TypeError) as e:
+            # 数据库加载失败时返回 None，让上层回退到其他存储层
+            logger.error("DB load failed for agent %s: %s", agent_id, e, exc_info=True)
         return None
 
     async def _save_checkpoint_files(self, state: AgentState):
@@ -481,7 +485,7 @@ class StatePersistenceManager:
         if self._redis:
             try:
                 await asyncio.to_thread(self._redis.delete, self._redis_key(agent_id))
-            except Exception as e:
+            except (ConnectionError, OSError, ValueError) as e:
                 logger.warning(
                     "Failed to delete state from Redis: agent=%s error=%s", agent_id, e
                 )
@@ -614,7 +618,14 @@ class StatePersistenceManager:
             state = AgentState.from_dict(raw)
             await self.save_state(state, trigger="rollback")
             return state
-        except Exception:
+        except (ConnectionError, OSError, ValueError, KeyError, TypeError, UnicodeDecodeError) as e:
+            # 回滚快照读取/解析失败不应抛出，返回 None 让上层处理
+            logger.warning(
+                "Failed to load rollback snapshot from Redis for %s: %s",
+                agent_id,
+                e,
+                exc_info=True,
+            )
             return None
 
     def on_event(self, event: str):
@@ -698,7 +709,9 @@ class StatePersistenceManager:
                 }
                 for r in rows
             ]
-        except Exception:
+        except (OSError, RuntimeError, ValueError, KeyError) as e:
+            # 数据库查询失败时回退到内存状态，保证接口可用性
+            logger.warning("Failed to query agent states from DB, falling back to memory: %s", e, exc_info=True)
             return [
                 {
                     "agent_id": aid,
@@ -800,7 +813,7 @@ class StateRecoveryManager:
                         result["checkpoint_used"] = state.checkpoint.checkpoint_id
                         result["state"] = state
                         return result
-                    except Exception as e:
+                    except (RuntimeError, ValueError, TypeError, OSError, AttributeError) as e:
                         from app.core.safe_errors import safe_error_message
 
                         safe = safe_error_message(
@@ -810,6 +823,18 @@ class StateRecoveryManager:
                         )
                         result["error"] = safe["message"]
                         result["error_id"] = safe["error_id"]
+                    except Exception as e:
+                        # 兜底捕获用户提供的 task_runner 可能抛出的其他异常
+                        from app.core.safe_errors import safe_error_message
+
+                        safe = safe_error_message(
+                            e,
+                            context="state_persistence.resume_with_checkpoint",
+                            fallback="从检查点恢复失败",
+                        )
+                        result["error"] = safe["message"]
+                        result["error_id"] = safe["error_id"]
+                        logger.warning("Unexpected error in task_runner during checkpoint resume: %s", e, exc_info=True)
                 if task_runner:
                     try:
                         (
@@ -825,7 +850,7 @@ class StateRecoveryManager:
                         result["action"] = "restarted_without_checkpoint"
                         result["state"] = state
                         return result
-                    except Exception as e:
+                    except (RuntimeError, ValueError, TypeError, OSError, AttributeError) as e:
                         from app.core.safe_errors import safe_error_message
 
                         safe = safe_error_message(
@@ -835,6 +860,18 @@ class StateRecoveryManager:
                         )
                         result["error"] = safe["message"]
                         result["error_id"] = safe["error_id"]
+                    except Exception as e:
+                        # 兜底捕获用户提供的 task_runner 可能抛出的其他异常
+                        from app.core.safe_errors import safe_error_message
+
+                        safe = safe_error_message(
+                            e,
+                            context="state_persistence.restart_without_checkpoint",
+                            fallback="无检查点重启失败",
+                        )
+                        result["error"] = safe["message"]
+                        result["error_id"] = safe["error_id"]
+                        logger.warning("Unexpected error in task_runner during restart: %s", e, exc_info=True)
                 state.status = AgentStatus.IDLE
                 await self._persistence.save_state(
                     state, trigger="recovery_fallback_idle"
@@ -852,7 +889,7 @@ class StateRecoveryManager:
                 result["action"] = "idle_task_done"
                 result["state"] = state
                 return result
-        except Exception as e:
+        except (StatePersistenceError, OSError, RuntimeError, ValueError, KeyError, AttributeError) as e:
             from app.core.safe_errors import safe_error_message
 
             safe = safe_error_message(
@@ -872,6 +909,32 @@ class StateRecoveryManager:
                 result["state"] = fallback_state
             except (OSError, RuntimeError, AttributeError) as e:
                 # 恢复回退状态失败时仅记录，仍返回已有恢复信息
+                logger.warning(
+                    f"Failed to write recovery fallback state for {agent_id}: {e}",
+                    exc_info=True,
+                )
+            return result
+        except Exception as e:
+            # 兜底捕获其他未预料的异常
+            from app.core.safe_errors import safe_error_message
+
+            safe = safe_error_message(
+                e,
+                context="state_persistence.recover",
+                fallback="状态恢复失败",
+            )
+            result["error"] = safe["message"]
+            result["error_id"] = safe["error_id"]
+            result["action"] = "recovery_failed"
+            logger.warning("Unexpected error during state recovery: %s", e, exc_info=True)
+            try:
+                fallback_state = AgentState(agent_id=agent_id)
+                fallback_state.status = AgentStatus.IDLE
+                await self._persistence.save_state(
+                    fallback_state, trigger="recovery_fallback"
+                )
+                result["state"] = fallback_state
+            except (OSError, RuntimeError, AttributeError) as e:
                 logger.warning(
                     f"Failed to write recovery fallback state for {agent_id}: {e}",
                     exc_info=True,
@@ -973,7 +1036,9 @@ async def create_state_persistence(
                     )
                 )
             db_session_factory = session_factory
-        except Exception:
+        except (ImportError, OSError, RuntimeError, ValueError, TypeError) as e:
+            # 异步数据库初始化失败，尝试回退到同步引擎
+            logger.warning("Async DB initialization failed, falling back to sync: %s", e)
             try:
                 from sqlalchemy import create_engine, text
 
@@ -1007,7 +1072,9 @@ async def create_state_persistence(
 
                 def db_session_factory():
                     return Session(sync_engine)
-            except Exception:
+            except (ImportError, OSError, RuntimeError, ValueError, TypeError) as e2:
+                # 同步回退也失败，禁用数据库持久化
+                logger.error("Sync DB fallback also failed: %s", e2, exc_info=True)
                 db_session_factory = None
 
     return StatePersistenceManager(

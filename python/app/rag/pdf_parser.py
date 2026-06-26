@@ -104,7 +104,7 @@ def parse_pdf(file_path: str | Path) -> dict[str, Any]:
         error_msg = "PyMuPDF(fitz)库未安装，请运行: pip install pymupdf"
         logger.error(error_msg)
         result["error"] = error_msg
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         error_msg = f"PDF解析失败: {str(e)}"
         logger.exception(error_msg)
         result["error"] = error_msg
@@ -156,11 +156,11 @@ def _extract_tables_from_page(page: Any, page_num: int) -> list[dict[str, Any]]:
                 
                 tables.append(table_info)
                 
-            except Exception as e:
+            except (OSError, ValueError, TypeError, KeyError) as e:
                 logger.warning(f"提取第{page_num + 1}页第{idx + 1}个表格失败: {e}")
                 continue
         
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.debug(f"第{page_num + 1}页表格提取失败: {e}")
     
     return tables
@@ -204,7 +204,7 @@ def parse_pdf_text_only(file_path: str | Path) -> dict[str, Any]:
         result["text"] = "\n\n".join(all_text)
         result["status"] = "success"
         
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         result["error"] = str(e)
         logger.exception(f"PDF文本提取失败: {e}")
     
@@ -221,27 +221,27 @@ if __name__ == "__main__":
     )
     
     if len(sys.argv) < 2:
-        print("用法: python pdf_parser.py <pdf_file>")
+        logger.info("用法: python pdf_parser.py <pdf_file>")
         sys.exit(1)
     
     pdf_file = sys.argv[1]
     result = parse_pdf(pdf_file)
     
-    print(f"\n解析状态: {result['status']}")
-    print(f"文件名: {result['file_name']}")
-    print(f"文件大小: {result['file_size']} bytes")
-    print(f"页数: {result['page_count']}")
-    print(f"表格数量: {len(result['tables'])}")
-    print(f"解析耗时: {result['parse_time_ms']:.2f}ms")
+    logger.info(f"\n解析状态: {result['status']}")
+    logger.info(f"文件名: {result['file_name']}")
+    logger.info(f"文件大小: {result['file_size']} bytes")
+    logger.info(f"页数: {result['page_count']}")
+    logger.info(f"表格数量: {len(result['tables'])}")
+    logger.info(f"解析耗时: {result['parse_time_ms']:.2f}ms")
     
     if result['error']:
-        print(f"错误: {result['error']}")
+        logger.error(f"错误: {result['error']}")
     
     if result['tables']:
-        print("\n提取的表格:")
+        logger.info("\n提取的表格:")
         for i, table in enumerate(result['tables'], 1):
-            print(f"\n表格 {i} (第{table['page']}页):")
-            print(f"  表头: {table['headers']}")
-            print(f"  行数: {table['row_count']}")
+            logger.info(f"\n表格 {i} (第{table['page']}页):")
+            logger.info(f"  表头: {table['headers']}")
+            logger.info(f"  行数: {table['row_count']}")
             if table['rows']:
-                print(f"  首行数据: {table['rows'][0]}")
+                logger.info(f"  首行数据: {table['rows'][0]}")

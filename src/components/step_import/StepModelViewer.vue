@@ -263,8 +263,8 @@ function loadModel(url: string) {
       fitView()
     },
     () => {},
-    (err) => {
-      console.error('STL load failed:', err)
+    () => {
+      // STL 加载失败，静默处理
     },
   )
 }

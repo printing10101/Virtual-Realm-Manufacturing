@@ -351,7 +351,7 @@ class DxfParser:
         parser = DxfParser()
         result = parser.parse("path/to/part.dxf")
         for line in result.lines:
-            print(f"直线: {line.start} -> {line.end}")
+            logger.info("直线: %s -> %s", line.start, line.end)
     """
 
     def __init__(self) -> None:
@@ -423,7 +423,12 @@ class DxfParser:
                 f"DXF版本不兼容: {file_path}。支持的版本包括R12、R14、"
                 f"AutoCAD 2000-2021。技术详情: {e}"
             ) from e
-        except Exception as e:
+        except (OSError, IOError, PermissionError) as e:
+            raise DxfParseError(
+                f"DXF文件读取失败: {file_path}。错误: {e}"
+            ) from e
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
+            logger.error("DXF文件读取遇到未知异常: %s", file_path, exc_info=True)
             raise DxfParseError(
                 f"DXF文件读取失败: {file_path}。错误: {e}"
             ) from e
@@ -503,7 +508,7 @@ class DxfParser:
                     context={"file_path": str(path)},
                     user_id=user_id,
                 )
-        except Exception as e:  # noqa: BLE001
+        except (ImportError, AttributeError, KeyError, TypeError, ValueError) as e:  # noqa: BLE001
             logger.warning("bridge 数据收集失败（不影响主流程）: %s", e, exc_info=True)
 
         return result
@@ -532,9 +537,10 @@ class DxfParser:
                         handle=str(entity.dxf.handle),
                     )
                     result.lines.append(line)
-                except Exception as e:
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
                     logger.warning("LINE实体提取跳过(handle=%s): %s", entity.dxf.handle, e, exc_info=True)
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
+            logger.warning("LINE实体查询异常: %s", e, exc_info=True)
             result.warnings.append(f"LINE实体查询异常: {e}")
 
     def _extract_circles(
@@ -558,9 +564,10 @@ class DxfParser:
                     )
                     if circle.radius > 0:
                         result.circles.append(circle)
-                except Exception as e:
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
                     logger.warning("CIRCLE实体提取跳过(handle=%s): %s", entity.dxf.handle, e, exc_info=True)
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
+            logger.warning("CIRCLE实体查询异常: %s", e, exc_info=True)
             result.warnings.append(f"CIRCLE实体查询异常: {e}")
 
     def _extract_arcs(
@@ -585,9 +592,10 @@ class DxfParser:
                         handle=str(entity.dxf.handle),
                     )
                     result.arcs.append(arc)
-                except Exception as e:
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
                     logger.warning("ARC实体提取跳过(handle=%s): %s", entity.dxf.handle, e, exc_info=True)
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
+            logger.warning("ARC实体查询异常: %s", e, exc_info=True)
             result.warnings.append(f"ARC实体查询异常: {e}")
 
     def _extract_texts(
@@ -601,27 +609,29 @@ class DxfParser:
             for entity in modelspace.query("TEXT"):
                 try:
                     result.texts.append(_extract_single_text(entity))
-                except Exception as e:
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
                     # 修复：保留诊断信息（handle + 原因），并通过 warnings 反馈
                     handle = getattr(entity.dxf, "handle", "<unknown>")
                     logger.warning("TEXT实体提取跳过(handle=%s): %s", handle, e, exc_info=True)
                     result.warnings.append(
                         f"TEXT实体提取失败(handle={handle}): {e}"
                     )
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
+            logger.warning("TEXT实体查询异常: %s", e, exc_info=True)
             result.warnings.append(f"TEXT实体查询异常: {e}")
 
         try:
             for entity in modelspace.query("MTEXT"):
                 try:
                     result.texts.append(_extract_single_mtext(entity))
-                except Exception as e:
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
                     handle = getattr(entity.dxf, "handle", "<unknown>")
                     logger.warning("MTEXT实体提取跳过(handle=%s): %s", handle, e, exc_info=True)
                     result.warnings.append(
                         f"MTEXT实体提取失败(handle={handle}): {e}"
                     )
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
+            logger.warning("MTEXT实体查询异常: %s", e, exc_info=True)
             result.warnings.append(f"MTEXT实体查询异常: {e}")
 
     @staticmethod
@@ -673,9 +683,10 @@ class DxfParser:
                     dim = self._extract_single_dimension(entity)
                     if dim is not None:
                         result.dimensions.append(dim)
-                except Exception as e:
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
                     logger.warning("DIMENSION实体提取跳过(handle=%s): %s", entity.dxf.handle, e, exc_info=True)
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
+            logger.warning("DIMENSION实体查询异常: %s", e, exc_info=True)
             result.warnings.append(f"DIMENSION实体查询异常: {e}")
 
     def _extract_single_dimension(self, entity) -> Optional[DxfDimension]:
@@ -750,7 +761,7 @@ class DxfParser:
         """安全获取标注的测量值。"""
         try:
             return float(entity.dxf.measurement)
-        except Exception as e:  # noqa: BLE001
+        except (AttributeError, TypeError, ValueError) as e:  # noqa: BLE001
             logger.warning("无法从 entity.dxf.measurement 获取测量值 (handle=%s): %s",
                         getattr(entity.dxf, "handle", "?"), e, exc_info=True)
             try:
@@ -861,7 +872,7 @@ class DxfParser:
                         points_with_bulge = entity.get_points(
                             format="xyseb"
                         )  # x, y, start_width, end_width, bulge
-                    except Exception as e:  # noqa: BLE001
+                    except (AttributeError, TypeError, ValueError) as e:  # noqa: BLE001
                         # 旧版 ezdxf 退路
                         logger.warning("LWPOLYLINE get_points(format='xyseb') 失败，尝试 vertices() (handle=%s): %s",
                                    str(entity.dxf.handle), e, exc_info=True)
@@ -888,14 +899,14 @@ class DxfParser:
                         entity_type="LWPOLYLINE",
                     )
                     result.polylines.append(polyline)
-                except Exception as e:
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
                     logger.warning(
                         "LWPOLYLINE解析失败 handle=%s: %s",
                         getattr(entity.dxf, "handle", "?"),
                         e,
                     )
-        except Exception as e:
-            logger.warning("LWPOLYLINE query 失败: %s", e)
+        except (AttributeError, TypeError) as e:
+            logger.warning("LWPOLYLINE query 失败: %s", e, exc_info=True)
 
         # 2. POLYLINE（带 VERTEX 子实体）
         try:
@@ -918,7 +929,7 @@ class DxfParser:
                                     )
                                 else:
                                     vertices.append((float(loc.x), float(loc.y), 0.0))
-                        except Exception as e:  # noqa: BLE001
+                        except (AttributeError, KeyError, TypeError, ValueError) as e:  # noqa: BLE001
                             logger.warning("POLYLINE 顶点解析失败，跳过 (handle=%s): %s",
                                        str(entity.dxf.handle), e, exc_info=True)
                             continue
@@ -933,14 +944,14 @@ class DxfParser:
                         entity_type="POLYLINE",
                     )
                     result.polylines.append(polyline)
-                except Exception as e:
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
                     logger.warning(
                         "POLYLINE解析失败 handle=%s: %s",
                         getattr(entity.dxf, "handle", "?"),
                         e,
                     )
-        except Exception as e:
-            logger.warning("POLYLINE query 失败: %s", e)
+        except (AttributeError, TypeError) as e:
+            logger.warning("POLYLINE query 失败: %s", e, exc_info=True)
 
     def _extract_hatches(
         self, modelspace, result: DxfParseResult
@@ -975,7 +986,7 @@ class DxfParser:
                                     x = float(v[0])
                                     y = float(v[1])
                                     pts.append((x, y, 0.0))
-                            except Exception:  # noqa: BLE001
+                            except (AttributeError, TypeError, ValueError):  # noqa: BLE001
                                 # 退化为遍历虚实体
                                 try:
                                     for ve in path.virtual_entities():
@@ -1006,7 +1017,7 @@ class DxfParser:
                                                         ),
                                                     )
                                                 )
-                                except Exception as e_inner:  # noqa: BLE001
+                                except (AttributeError, TypeError, ValueError) as e_inner:  # noqa: BLE001
                                     logger.warning(
                                         "HATCH 边界路径点提取失败，跳过该路径: %s",
                                         e_inner,
@@ -1014,7 +1025,7 @@ class DxfParser:
                                     )
                             if pts:
                                 boundary_paths.append(pts)
-                    except Exception as e_outer:  # noqa: BLE001
+                    except (AttributeError, TypeError, ValueError) as e_outer:  # noqa: BLE001
                         # 极简兜底：边界抽取失败时记录日志，便于排查
                         logger.warning(
                             "HATCH 边界抽取失败(handle=%s): %s",
@@ -1033,14 +1044,15 @@ class DxfParser:
                         handle=str(entity.dxf.handle),
                     )
                     result.hatches.append(hatch)
-                except Exception as e:  # noqa: BLE001
+                except (AttributeError, KeyError, TypeError, ValueError) as e:  # noqa: BLE001
                     handle = getattr(
                         entity.dxf, "handle", "<unknown>"
                     )
                     logger.warning(
                         "HATCH实体提取跳过(handle=%s): %s", handle, e, exc_info=True
                     )
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
+            logger.warning("HATCH实体查询异常: %s", e, exc_info=True)
             result.warnings.append(f"HATCH实体查询异常: {e}")
 
     def _extract_inserts(
@@ -1090,14 +1102,15 @@ class DxfParser:
                         handle=str(entity.dxf.handle),
                     )
                     result.inserts.append(insert)
-                except Exception as e:  # noqa: BLE001
+                except (AttributeError, TypeError, ValueError) as e:  # noqa: BLE001
                     handle = getattr(
                         entity.dxf, "handle", "<unknown>"
                     )
                     logger.warning(
                         "INSERT实体提取跳过(handle=%s): %s", handle, e, exc_info=True
                     )
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
+            logger.warning("INSERT实体查询异常: %s", e, exc_info=True)
             result.warnings.append(f"INSERT实体查询异常: {e}")
 
     def _extract_splines(
@@ -1128,7 +1141,7 @@ class DxfParser:
                             cp.append(
                                 (float(ctl[0]), float(ctl[1]), float(ctl[2]))
                             )
-                    except Exception as e:  # noqa: BLE001
+                    except (AttributeError, TypeError, ValueError) as e:  # noqa: BLE001
                         # 退化：基于 fit_points 估计
                         logger.warning("SPLINE control_points 解析失败，尝试 fit_points: %s", e, exc_info=True)
                         try:
@@ -1136,8 +1149,8 @@ class DxfParser:
                                 cp.append(
                                     (float(f[0]), float(f[1]), float(f[2]))
                                 )
-                        except Exception as e2:  # noqa: BLE001
-                            logger.warning("SPLINE fit_points 也解析失败: %s", e2)
+                        except (AttributeError, TypeError, ValueError) as e2:  # noqa: BLE001
+                            logger.warning("SPLINE fit_points 也解析失败: %s", e2, exc_info=True)
                     # fit points
                     fp: list[tuple[float, float, float]] = []
                     try:
@@ -1145,13 +1158,13 @@ class DxfParser:
                             fp.append(
                                 (float(f[0]), float(f[1]), float(f[2]))
                             )
-                    except Exception as e:  # noqa: BLE001
+                    except (AttributeError, TypeError, ValueError) as e:  # noqa: BLE001
                         logger.warning("SPLINE fit_points 解析失败: %s", e, exc_info=True)
                     # knots
                     knots: list[float] = []
                     try:
                         knots = [float(k) for k in entity.knots]
-                    except Exception as e:  # noqa: BLE001
+                    except (AttributeError, TypeError, ValueError) as e:  # noqa: BLE001
                         logger.warning("SPLINE knots 解析失败: %s", e, exc_info=True)
                     # closed —— 显式取布尔值，避免 0/False 混淆
                     _closed_dxf = getattr(entity.dxf, "closed", 0)
@@ -1169,14 +1182,15 @@ class DxfParser:
                         handle=str(entity.dxf.handle),
                     )
                     result.splines.append(spline)
-                except Exception as e:  # noqa: BLE001
+                except (AttributeError, TypeError, ValueError) as e:  # noqa: BLE001
                     handle = getattr(
                         entity.dxf, "handle", "<unknown>"
                     )
                     logger.warning(
                         "SPLINE实体提取跳过(handle=%s): %s", handle, e, exc_info=True
                     )
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
+            logger.warning("SPLINE实体查询异常: %s", e, exc_info=True)
             result.warnings.append(f"SPLINE实体查询异常: {e}")
 
     def _compute_extents(self, result: DxfParseResult) -> None:

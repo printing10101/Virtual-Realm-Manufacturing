@@ -596,8 +596,8 @@ async function handleSubmit() {
     }
     emit('saved')
     emit('update:visible', false)
-  } catch (e) {
-    console.error('规则保存失败:', e)
+  } catch {
+    // 静默处理
   } finally {
     submitting.value = false
   }

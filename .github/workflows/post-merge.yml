@@ -6,6 +6,10 @@ on:
       - main
       - master
 
+# 安全修复：最小权限原则，默认仅授予只读权限
+permissions:
+  contents: read
+
 env:
   PYTHON_VERSION: '3.10'
   NODE_VERSION: '18'
@@ -120,6 +124,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [build]
+    # 安全修复：此 job 需要推送镜像到 Registry，覆盖默认只读权限
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: 检出代码

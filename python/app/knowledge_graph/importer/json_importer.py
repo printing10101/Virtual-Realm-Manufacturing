@@ -286,7 +286,7 @@ def _retry_with_backoff(
     for i in range(attempts):
         try:
             return func()
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, RuntimeError, ValueError, KeyError) as exc:
             last_exc = exc
             logger.warning(
                 "%s attempt %d/%d failed: %s",
@@ -416,9 +416,10 @@ def import_materials(
         for raw in data:
             try:
                 nid, is_dup = deduper.resolve(raw)
-            except Exception as exc:  # noqa: BLE001
+            except (ValueError, TypeError, KeyError) as exc:
                 stats.failed += 1
                 stats.error_messages.append(f"material dedup error: {exc}")
+                logger.warning("material dedup error for raw=%s: %s", raw.get("id", "?"), exc)
                 continue
             if not nid:
                 stats.failed += 1
@@ -456,7 +457,7 @@ def import_materials(
         _retry_with_backoff(
             _do_import, retries=retries, label="import_materials"
         )
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, RuntimeError, ValueError, KeyError) as exc:
         stats.failed += 1
         stats.error_messages.append(f"materials import aborted: {exc}")
         logger.error("import_materials failed: %s", traceback.format_exc())
@@ -506,9 +507,10 @@ def import_tools(
         for raw in data:
             try:
                 nid, is_dup = deduper.resolve(raw)
-            except Exception as exc:  # noqa: BLE001
+            except (ValueError, TypeError, KeyError) as exc:
                 stats.failed += 1
                 stats.error_messages.append(f"tool dedup error: {exc}")
+                logger.warning("tool dedup error for raw=%s: %s", raw.get("id", "?"), exc)
                 continue
             if not nid:
                 stats.failed += 1
@@ -633,7 +635,7 @@ def import_tools(
         _retry_with_backoff(
             _do_import, retries=retries, label="import_tools"
         )
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, RuntimeError, ValueError, KeyError) as exc:
         stats.failed += 1
         stats.error_messages.append(f"tools import aborted: {exc}")
         logger.error("import_tools failed: %s", traceback.format_exc())
@@ -676,9 +678,10 @@ def import_machines(
         for raw in data:
             try:
                 nid, is_dup = deduper.resolve(raw)
-            except Exception as exc:  # noqa: BLE001
+            except (ValueError, TypeError, KeyError) as exc:
                 stats.failed += 1
                 stats.error_messages.append(f"machine dedup error: {exc}")
+                logger.warning("machine dedup error for raw=%s: %s", raw.get("name", "?"), exc)
                 continue
             if not nid:
                 stats.failed += 1
@@ -726,7 +729,7 @@ def import_machines(
         _retry_with_backoff(
             _do_import, retries=retries, label="import_machines"
         )
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, RuntimeError, ValueError, KeyError) as exc:
         stats.failed += 1
         stats.error_messages.append(f"machines import aborted: {exc}")
         logger.error("import_machines failed: %s", traceback.format_exc())
@@ -797,11 +800,12 @@ def import_process_rules(
 
             try:
                 parsed = parser.parse_single_rule(raw)
-            except Exception as exc:  # noqa: BLE001
+            except (ValueError, TypeError, KeyError) as exc:
                 stats.failed += 1
                 stats.error_messages.append(
                     f"process rule parse error ({process_id}): {exc}"
                 )
+                logger.warning("process rule parse error for id=%s: %s", process_id, exc)
                 continue
 
             node_id = f"process-{_slugify_id(process_id, prefix='').lstrip('-')}"
@@ -919,7 +923,7 @@ def import_process_rules(
         _retry_with_backoff(
             _do_import, retries=retries, label="import_process_rules"
         )
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, RuntimeError, ValueError, KeyError) as exc:
         stats.failed += 1
         stats.error_messages.append(f"process_rules import aborted: {exc}")
         logger.error("import_process_rules failed: %s", traceback.format_exc())
@@ -989,7 +993,7 @@ def import_all(
                 f"edges={stats.get('edges_written', 0)}"
             )
             logger.info(db_message)
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, RuntimeError) as exc:
             db_written = False
             db_message = f"flush_to_repository skipped/failed: {exc}"
             logger.warning(db_message)
@@ -1008,9 +1012,9 @@ def import_all(
     )
 
     # 控制台输出固定格式
-    print(f"导入完成：{report.total_nodes} 节点 {report.total_edges} 关系")
+    logger.info(f"导入完成：{report.total_nodes} 节点 {report.total_edges} 关系")
     if total_failed > 0:
-        print(f"  警告：{total_failed} 条记录失败，详情见 report")
+        logger.warning(f"  警告：{total_failed} 条记录失败，详情见 report")
 
     return report
 
@@ -1027,7 +1031,7 @@ def load_graph_from_repository(
     g = GraphStore(auto_load=False)
     try:
         g.load_from_repository(replace=replace)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, RuntimeError) as exc:
         logger.warning("load_graph_from_repository failed: %s", exc)
     return g
 
@@ -1044,8 +1048,8 @@ def main() -> int:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
     report = import_all(flush_to_db=True, db_clear_first=False)
-    print()
-    print(report.render_markdown())
+    logger.info("")
+    logger.info(report.render_markdown())
     return 0 if report.overall_success else 1
 
 

@@ -95,7 +95,7 @@ class ParallelDataLoader:
                     if self._stop_prefetch.is_set():
                         break
                     self._prefetch_queue.put(item)
-            except Exception as e:
+            except (ValueError, TypeError, KeyError, OSError, RuntimeError) as e:
                 logger.error("预取线程错误: %s", e)
             finally:
                 self._prefetch_queue.put(None)

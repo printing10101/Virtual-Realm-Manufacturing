@@ -9,6 +9,8 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
+from app.utils.sqlite_pool import get_sqlite_manager
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_LOCK_TIMEOUT_HOURS = 4
@@ -62,15 +64,14 @@ class ExecutionLockStore:
     def __init__(self, db_path: str = "execution_locks.db"):
         self._db_path = db_path
         self._lock = threading.Lock()
-        self._conn: Optional[sqlite3.Connection] = None
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("execution_locks")
+        self._conn = self._pool.get_connection()
         self._ensure_tables()
 
     def _get_conn(self) -> sqlite3.Connection:
-        if self._conn is None:
-            self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            self._conn.row_factory = sqlite3.Row
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA busy_timeout=5000")
+        """获取数据库连接（从连接池）"""
         return self._conn
 
     def _ensure_tables(self):
@@ -360,9 +361,11 @@ class ExecutionLockStore:
         return self._row_to_lock(row)
 
     def close(self):
+        """关闭数据库连接，归还连接到连接池"""
         if self._conn:
-            self._conn.close()
+            self._pool.return_connection(self._conn)
             self._conn = None
+            logger.info("ExecutionLockStore closed")
 
     def __del__(self):
         try:

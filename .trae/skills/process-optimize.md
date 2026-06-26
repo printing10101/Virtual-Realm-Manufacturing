@@ -504,7 +504,7 @@ print(f"降级触发: {result.fallback_triggered}")
 ### 6.2 参数调整建议 — API调用
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/wear/suggest \
+curl -X POST http://localhost:8765/api/v1/wear/suggest \
   -H "Content-Type: application/json" \
   -d '{
     "current_wear": 0.15,

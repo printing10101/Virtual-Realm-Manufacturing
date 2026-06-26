@@ -1,1 +1,1 @@
-"""Tests for OPC UA adapter."""
+"""OPC UA集成测试模块。"""

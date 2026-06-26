@@ -6,9 +6,70 @@ import json
 import logging
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Set
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# 文件上传校验工具
+# ============================================================
+
+# 默认大小限制 50MB
+DEFAULT_MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+
+
+class UploadValidationError(ValueError):
+    """文件上传校验失败异常"""
+    pass
+
+
+def validate_file_upload(
+    filename: Optional[str],
+    content_length: int,
+    allowed_extensions: Set[str],
+    max_size_bytes: int = DEFAULT_MAX_UPLOAD_SIZE,
+) -> str:
+    """校验上传文件的合法性（文件名、扩展名、大小）。
+
+    Args:
+        filename: 原始文件名
+        content_length: 文件内容字节长度
+        allowed_extensions: 允许的扩展名集合（小写，带点号，如 {'.pdf', '.txt'}）
+        max_size_bytes: 最大文件大小（字节）
+
+    Returns:
+        规范化后的安全扩展名（小写，带点号）
+
+    Raises:
+        UploadValidationError: 校验失败时抛出
+    """
+    if not filename:
+        raise UploadValidationError("文件名不能为空")
+
+    # 提取纯文件名，剥离任何路径组件
+    pure_name = Path(filename).name
+    if pure_name != filename or not pure_name:
+        raise UploadValidationError("无效的文件名")
+
+    ext = Path(pure_name).suffix.lower()
+    if ext not in allowed_extensions:
+        allowed_str = ", ".join(sorted(allowed_extensions))
+        raise UploadValidationError(
+            f"不支持的文件格式 '{ext}'，允许的格式: {allowed_str}"
+        )
+
+    if content_length > max_size_bytes:
+        size_mb = content_length / (1024 * 1024)
+        limit_mb = max_size_bytes / (1024 * 1024)
+        raise UploadValidationError(
+            f"文件大小 ({size_mb:.1f}MB) 超过限制 ({limit_mb:.0f}MB)"
+        )
+
+    if content_length == 0:
+        raise UploadValidationError("文件内容为空")
+
+    return ext
 
 
 # ============================================================
@@ -118,6 +179,7 @@ def safe_open(file_path: str, base_dir: str, mode: str = 'r', **kwargs):
     """安全文件打开，防止路径遍历攻击。
 
     在打开文件前验证路径合法性，确保不会访问基础目录之外的文件。
+    返回 context manager 确保文件正确关闭。
 
     Args:
         file_path: 文件路径（可以是相对路径）
@@ -126,13 +188,13 @@ def safe_open(file_path: str, base_dir: str, mode: str = 'r', **kwargs):
         **kwargs: 传递给 open() 的其他参数
 
     Returns:
-        文件对象
+        文件对象（context manager）
 
     Raises:
         ValueError: 路径遍历检测失败时抛出
     """
     safe_path = safe_file_path(file_path, base_dir)
-    return open(safe_path, mode, **kwargs)
+    return open(safe_path, mode, **kwargs)  # 调用方应使用 with 语句
 
 
 def extract_json_from_markdown(content: str) -> dict[str, Any]:

@@ -21,7 +21,7 @@ def temp_state_file():
         with open(state_file, "w") as f:
             json.dump({
                 "pid": 12345,
-                "port": 8000,
+                "port": 8765,
                 "token": "test",
                 "startedAt": "2024-01-01T00:00:00",
                 "version": "1.0.0",

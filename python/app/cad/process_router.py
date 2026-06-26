@@ -55,8 +55,8 @@ async def generate_process_plan(body: dict[str, Any]) -> dict[str, Any]:
             code=ErrorCode.SERVICE_UNAVAILABLE,
             message="Process planning module is not available",
         )
-    except Exception as exc:
-        logger.error("Process plan generation failed: %s", exc)
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as exc:
+        logger.error("Process plan generation failed: %s", exc, exc_info=True)
         safe = safe_error_message(exc, context="process.plan")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -89,8 +89,8 @@ async def recognize_features(body: dict[str, Any]) -> dict[str, Any]:
             code=ErrorCode.SERVICE_UNAVAILABLE,
             message="Feature extraction module is not available",
         )
-    except Exception as exc:
-        logger.error("Feature recognition failed: %s", exc)
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as exc:
+        logger.error("Feature recognition failed: %s", exc, exc_info=True)
         safe = safe_error_message(exc, context="process.features")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -123,8 +123,8 @@ async def recommend_parameters(body: dict[str, Any]) -> dict[str, Any]:
             code=ErrorCode.SERVICE_UNAVAILABLE,
             message="Parameter recommendation module is not available",
         )
-    except Exception as exc:
-        logger.error("Parameter recommendation failed: %s", exc)
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
+        logger.error("Parameter recommendation failed: %s", exc, exc_info=True)
         safe = safe_error_message(exc, context="process.parameters")
         return error(
             code=ErrorCode.INTERNAL_ERROR,

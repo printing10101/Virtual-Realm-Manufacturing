@@ -1,5 +1,6 @@
 import { ref, reactive, onMounted } from 'vue'
 import http from '@/utils/http'
+import { triggerFileDownload } from '@/utils/download'
 import { formatTimestamp } from '@/utils/formatters'
 import {
   getAuditModuleName as getModuleName,
@@ -136,8 +137,8 @@ export function useAuditLog(): UseAuditLogReturn {
       const res = await http.post<{ data: AuditLogResponse }>('/api/v1/user-sovereignty/audit-log/query', params)
       auditLogs.value = res.data.data.logs
       logPagination.total = res.data.data.total
-    } catch (e: unknown) {
-      console.warn('Failed to load audit logs:', e)
+    } catch {
+      // 静默处理
     } finally {
       loadingLogs.value = false
     }
@@ -157,8 +158,8 @@ export function useAuditLog(): UseAuditLogReturn {
       })
       auditLogs.value = res.data.data.logs
       logPagination.total = res.data.data.total
-    } catch (e: unknown) {
-      console.warn('Failed to search audit logs:', e)
+    } catch {
+      // 静默处理
     } finally {
       loadingLogs.value = false
     }
@@ -168,8 +169,8 @@ export function useAuditLog(): UseAuditLogReturn {
     try {
       const res = await http.get<{ data: AuditLogStatistics }>('/api/v1/user-sovereignty/audit-log/statistics')
       auditLogStatistics.value = res.data.data
-    } catch (e: unknown) {
-      console.warn('Failed to load audit log statistics:', e)
+    } catch {
+      // 静默处理
     }
   }
 
@@ -185,12 +186,7 @@ export function useAuditLog(): UseAuditLogReturn {
 
       const res = await http.post<{ data: { content: string } }>('/api/v1/user-sovereignty/audit-log/export', params)
       const blob = new Blob([res.data.data.content], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `audit_log_${Date.now()}.json`
-      a.click()
-      URL.revokeObjectURL(url)
+      triggerFileDownload(blob, `audit_log_${Date.now()}.json`)
       ElMessage.success('日志导出成功')
     } catch (e: unknown) {
       ElMessage.error('日志导出失败')

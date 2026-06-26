@@ -484,7 +484,8 @@ class GCodePreprocessor(BasePreprocessor):
                 if prefix in vocab:
                     try:
                         val = float(token[1:])
-                    except ValueError:
+                    except ValueError as e:
+                        logger.debug(f"G代码 token '{token}' 数值解析失败，使用默认值 0.0: {e}")
                         val = 0.0
                     encoded[i, vocab[prefix]] = val
         return encoded

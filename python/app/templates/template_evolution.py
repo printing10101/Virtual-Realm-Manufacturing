@@ -10,6 +10,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
+from app.utils.sqlite_pool import get_sqlite_manager
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,6 +69,9 @@ class TemplateEvolutionEngine:
         self.db_path = db_path
         self.log_dir = log_dir
         self._lock = threading.RLock()
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("template_evolution")
         self._db: Optional[sqlite3.Connection] = None
         self._triggers: Dict[str, EvolutionTrigger] = {}
         self._suggestions: List[EvolutionSuggestion] = []
@@ -76,8 +81,7 @@ class TemplateEvolutionEngine:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         os.makedirs(self.log_dir, exist_ok=True)
 
-        self._db = sqlite3.connect(self.db_path, check_same_thread=False)
-        self._db.row_factory = sqlite3.Row
+        self._db = self._pool.get_connection()
         self._db.execute("""
             CREATE TABLE IF NOT EXISTS evolution_suggestions (
                 suggestion_id TEXT PRIMARY KEY,
@@ -428,8 +432,11 @@ class TemplateEvolutionEngine:
             ]
 
     def close(self) -> None:
+        """关闭数据库连接，归还连接到连接池"""
         if self._db:
-            self._db.close()
+            self._pool.return_connection(self._db)
+            self._db = None
+            logger.info("TemplateEvolutionEngine closed")
 
 
 class _EvolutionEngineHolder:

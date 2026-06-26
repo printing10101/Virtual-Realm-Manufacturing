@@ -1,6 +1,6 @@
 """LNN API 依赖注入和全局状态。"""
 
-from app.services.model.registry_service import get_model_registry_service
+from app.services.model_registry_service import get_model_registry_service
 from app.audit.audit_log import AuditLog
 from app.tasks.task_system import AsyncTaskManager
 

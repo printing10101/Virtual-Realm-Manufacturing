@@ -35,9 +35,12 @@
 """
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 # 词法：每个 G/M/T/S/F 字 + 后面的数字（无空格也识别）
@@ -249,7 +252,8 @@ def parse_gcode(
             continue
         try:
             words = _tokenize(line)
-        except Exception as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError) as e:  # noqa: BLE001
+            logger.warning("line %d tokenize error: %s", line_no, e)
             result.errors.append(f"line {line_no}: tokenize error: {e}")
             result.lines_skipped += 1
             continue
@@ -351,7 +355,8 @@ def parse_gcode(
                 new_pos = (new_pos[0], y, new_pos[2])
             if z is not None and modal.absolute:
                 new_pos = (new_pos[0], new_pos[1], z)
-        except Exception as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError) as e:  # noqa: BLE001
+            logger.warning("line %d position calc error: %s", line_no, e)
             result.errors.append(
                 f"line {line_no}: position calc error: {e}"
             )
@@ -395,7 +400,8 @@ def parse_gcode(
                 radius = math.hypot(
                     cur_pos[0] - cx, cur_pos[1] - cy
                 )
-            except Exception as e:  # noqa: BLE001
+            except (ValueError, TypeError, ZeroDivisionError) as e:  # noqa: BLE001
+                logger.warning("line %d arc center error: %s", line_no, e)
                 result.errors.append(
                     f"line {line_no}: arc center error: {e}"
                 )

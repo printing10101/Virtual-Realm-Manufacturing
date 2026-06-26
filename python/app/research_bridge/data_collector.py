@@ -163,7 +163,7 @@ class UsageDataCollector:
                 for sample in samples:
                     f.write(json.dumps(sample.__dict__, ensure_ascii=False))
                     f.write("\n")
-        except Exception as e:  # noqa: BLE001
+        except (OSError, IOError, ValueError, TypeError) as e:
             logger.warning("record_batch_errors failed: %s", e)
 
     def record_user_feedback(
@@ -196,7 +196,7 @@ class UsageDataCollector:
             with open(path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(sample.__dict__, ensure_ascii=False))
                 f.write("\n")
-        except Exception as e:  # noqa: BLE001
+        except (OSError, IOError, ValueError, TypeError) as e:
             logger.warning("append_jsonl_failed path=%s err=%s", path, e)
 
     def _maybe_rotate(self, path: Path) -> None:
@@ -219,7 +219,7 @@ class UsageDataCollector:
             if first.exists():
                 first.unlink()
             path.rename(first)
-        except Exception as e:  # noqa: BLE001
+        except (OSError, IOError) as e:
             logger.debug("rotate failed path=%s err=%s", path, e)
 
     def record_batch(
@@ -250,7 +250,7 @@ class UsageDataCollector:
                     f.write(json.dumps(sample.__dict__, ensure_ascii=False))
                     f.write("\n")
                     ok += 1
-        except Exception as e:  # noqa: BLE001
+        except (OSError, IOError, ValueError, TypeError) as e:
             logger.warning("record_batch failed: %s", e)
         return ok
 
@@ -279,7 +279,7 @@ class UsageDataCollector:
                 try:
                     with open(f, "r", encoding="utf-8") as fp:
                         lines = sum(1 for _ in fp)
-                except Exception:  # noqa: BLE001
+                except (OSError, IOError):
                     lines = -1
                 result[str(f.relative_to(self._bridge_root))] = lines
         return result

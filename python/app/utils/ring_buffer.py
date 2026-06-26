@@ -222,11 +222,11 @@ class RingLogBuffer:
                         with open(log_path, "a", encoding="utf-8") as f:
                             for entry in new_entries:
                                 f.write(entry.to_json() + "\n")
-                    except OSError as e:
+                    except (OSError, ValueError, TypeError, KeyError) as e:
                         logger.error("Failed to flush %s buffer: %s", buffer_type, e)
                     flushed_counts[buffer_type] = current_total
-            except Exception:
-                logger.exception("Error during ring buffer flush cycle")
+            except (OSError, ValueError, TypeError, KeyError, RuntimeError) as e:
+                logger.exception("Error during ring buffer flush cycle: %s", e)
 
     async def start(self) -> None:
         if self._running:

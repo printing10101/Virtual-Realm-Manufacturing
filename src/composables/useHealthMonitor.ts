@@ -49,9 +49,15 @@ export function useHealthMonitor() {
 
     try {
       const [metricRes, lnnHealthRes, lnnPerfRes] = await Promise.all([
-        http.get('/api/metrics', { timeout: 5000 }).catch(() => null),
-        http.get('/api/v1/lnn/health', { timeout: 5000 }).catch(() => null),
-        http.get('/api/v1/lnn/performance', { timeout: 5000 }).catch(() => null),
+        http.get('/api/metrics', { timeout: 5000 }).catch(() => {
+          return null
+        }),
+        http.get('/api/v1/lnn/health', { timeout: 5000 }).catch(() => {
+          return null
+        }),
+        http.get('/api/v1/lnn/performance', { timeout: 5000 }).catch(() => {
+          return null
+        }),
       ])
 
       if (metricRes && typeof metricRes.data === 'string') {
@@ -131,8 +137,8 @@ export function useHealthMonitor() {
       healthStatus.redisHealthy = true
       healthStatus.prometheusHealthy = true
 
-    } catch (e) {
-      console.warn('Health dashboard refresh error:', e)
+    } catch {
+      // 静默处理
     } finally {
       healthLoading.value = false
     }

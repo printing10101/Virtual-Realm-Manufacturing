@@ -61,7 +61,7 @@ class FeedbackToResearch:
                 f.write(json.dumps(record, ensure_ascii=False))
                 f.write("\n")
             logger.info("feedback_to_research ticket=%s feature=%s", ticket_id, feature)
-        except Exception as e:  # noqa: BLE001
+        except (OSError, IOError, ValueError, TypeError) as e:
             logger.warning("feedback_write_failed err=%s", e)
         return ticket_id
 
@@ -80,7 +80,7 @@ class FeedbackToResearch:
                     if rec.get("status") == "open":
                         if feature is None or rec.get("feature") == feature:
                             cnt += 1
-        except Exception:  # noqa: BLE001
+        except (OSError, IOError, json.JSONDecodeError, ValueError, KeyError, TypeError):
             return -1
         return cnt
 

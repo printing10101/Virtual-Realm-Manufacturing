@@ -64,15 +64,30 @@ import GoalDetail from '../components/goals/GoalDetail.vue'
 import TaskWizard from '../components/goals/TaskWizard.vue'
 import AlignmentChecker from '../components/goals/AlignmentChecker.vue'
 
+interface GoalNode {
+  id: string
+  name: string
+  level: string
+  status: string
+  children?: GoalNode[]
+}
+
+interface AlignmentSummary {
+  total_goals: number
+  aligned_count: number
+  alignment_rate: number
+  [key: string]: unknown
+}
+
 const activeTab = ref('tree')
-const goalTree = ref<any[]>([])
-const allGoals = ref<any[]>([])
+const goalTree = ref<GoalNode[]>([])
+const allGoals = ref<GoalNode[]>([])
 const selectedGoalId = ref<string | null>(null)
 const treeLoading = ref(false)
 const detailLoading = ref(false)
 const taskCreating = ref(false)
 const scanLoading = ref(false)
-const alignmentSummary = ref<any>(null)
+const alignmentSummary = ref<AlignmentSummary | null>(null)
 
 const loadGoalTree = async () => {
   treeLoading.value = true
@@ -81,8 +96,9 @@ const loadGoalTree = async () => {
     goalTree.value = res.data?.data || []
     const goalsRes = await http.get('/api/v1/goal-alignment/goals')
     allGoals.value = goalsRes.data?.data || []
-  } catch (e: any) {
-    ElMessage.error('加载目标树失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('加载目标树失败: ' + errorMsg)
   } finally {
     treeLoading.value = false
   }
@@ -104,8 +120,9 @@ const runAlignmentScan = async () => {
     await http.post('/api/v1/goal-alignment/scan')
     await loadAlignmentSummary()
     ElMessage.success('对齐检查完成')
-  } catch (e: any) {
-    ElMessage.error('对齐检查失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('对齐检查失败: ' + errorMsg)
   } finally {
     scanLoading.value = false
   }
@@ -115,8 +132,8 @@ const loadAlignmentSummary = async () => {
   try {
     const res = await http.get('/api/v1/goal-alignment/summary')
     alignmentSummary.value = res.data?.data
-  } catch (e: any) {
-    console.error('Failed to load alignment summary:', e)
+  } catch {
+    // 静默处理
   }
 }
 

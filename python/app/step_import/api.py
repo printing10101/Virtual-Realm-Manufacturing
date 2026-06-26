@@ -273,7 +273,7 @@ async def import_step_file(
             message=safe["message"],
             detail=safe.get("detail"),
         )
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, TypeError, KeyError) as e:
         # 兜底：API 入口必须捕获所有异常以避免 5xx 直接抛给客户端
         safe = safe_error_message(e, context="step_import.read_file_unexpected")
         logger.exception("文件读取未预期错误 | error_id=%s", safe.get("error_id"))
@@ -323,7 +323,7 @@ async def import_step_file(
             message="服务器内存不足，无法处理该文件。请尝试降低精度设置或使用更小的文件。",
             recoverable=True,
         )
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, TypeError, KeyError) as e:
         # 兜底：API 入口必须捕获所有异常以避免 5xx 直接抛给客户端
         safe = safe_error_message(e, context="step_import.import_unexpected")
         logger.exception("STEP导入未预期错误 | error_id=%s", safe.get("error_id"))
@@ -541,7 +541,7 @@ async def delete_import_file(file_name: str) -> dict:
             message=safe["message"],
             detail=safe.get("detail"),
         )
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, TypeError, KeyError) as e:
         # 兜底：API 入口必须捕获所有异常以避免 5xx 直接抛给客户端
         safe = safe_error_message(e, context="step_import.delete_unexpected")
         logger.exception("删除文件未预期错误 | error_id=%s", safe.get("error_id"))

@@ -281,7 +281,7 @@ tar -xzf backup/models_20240120_020000.tar.gz -C ./
 docker-compose start
 
 # 8. 验证恢复
-curl http://localhost:8000/health
+curl http://localhost:8765/health
 sqlite3 data/lingjing.db "SELECT COUNT(*) FROM users;"
 ```
 

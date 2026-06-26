@@ -399,7 +399,7 @@ model = RandomForestRegressor(
 ### 7.1 磨损曲线预测
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/wear/predict \
+curl -X POST http://localhost:8765/api/v1/wear/predict \
   -H "Content-Type: application/json" \
   -d '{
     "cutting_speed": 150.0,
@@ -416,7 +416,7 @@ curl -X POST http://localhost:8000/api/v1/wear/predict \
 ### 7.2 剩余寿命预测
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/wear/remaining-life \
+curl -X POST http://localhost:8765/api/v1/wear/remaining-life \
   -H "Content-Type: application/json" \
   -d '{
     "current_wear": 0.15,
@@ -431,7 +431,7 @@ curl -X POST http://localhost:8000/api/v1/wear/remaining-life \
 ### 7.3 参数调整建议
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/wear/suggest \
+curl -X POST http://localhost:8765/api/v1/wear/suggest \
   -H "Content-Type: application/json" \
   -d '{
     "current_wear": 0.15,
@@ -448,7 +448,7 @@ curl -X POST http://localhost:8000/api/v1/wear/suggest \
 ### 7.4 实测数据校准
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/wear/calibrate \
+curl -X POST http://localhost:8765/api/v1/wear/calibrate \
   -H "Content-Type: application/json" \
   -d '{
     "measured_wear": 0.12,

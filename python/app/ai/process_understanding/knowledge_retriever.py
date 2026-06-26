@@ -219,8 +219,8 @@ class KnowledgeRetriever:
                     source=meta.get("source", "unknown"),
                 ))
             return docs
-        except Exception as e:
-            logger.warning("向量检索失败: %s", e)
+        except (KeyError, ValueError, TypeError, OSError) as e:
+            logger.warning("向量检索失败: %s", e, exc_info=True)
             return []
 
     async def _keyword_search(
@@ -280,8 +280,8 @@ class KnowledgeRetriever:
                     source=meta.get("source", "unknown"),
                 ))
             return docs
-        except Exception as e:
-            logger.warning("关键词检索失败: %s", e)
+        except (KeyError, ValueError, TypeError, OSError) as e:
+            logger.warning("关键词检索失败: %s", e, exc_info=True)
             return []
 
     @staticmethod

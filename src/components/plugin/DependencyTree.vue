@@ -10,8 +10,16 @@
 <script setup lang="ts">
 import TreeNode from './DependencyTreeNode.vue'
 
+interface DependencyNode {
+  id: string
+  name: string
+  version: string
+  status?: string
+  dependencies?: DependencyNode[]
+}
+
 defineProps<{
-  tree: any
+  tree: DependencyNode
 }>()
 </script>
 

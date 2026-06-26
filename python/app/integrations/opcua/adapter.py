@@ -34,6 +34,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+# Common network/IO exception types for OPC UA communication
+_NETWORK_EXCEPTIONS = (ConnectionError, OSError, TimeoutError)
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -171,7 +174,7 @@ class OPCUAAdapter:
                 self._loop_thread.start()
 
             try:
-                # Connect to server
+                # Connect to server with retry logic
                 self._client = Client(self.config.endpoint)
                 self._client.session_timeout = int(self.config.timeout * 1000)
 
@@ -210,7 +213,7 @@ class OPCUAAdapter:
                         try:
                             browse_name = self._run_coro(node.read_browse_name())
                             handler._node_names[node.nodeid.to_string()] = browse_name.Name
-                        except Exception as exc:
+                        except (asyncio.TimeoutError, TimeoutError, OSError) as exc:
                             logger.warning("Failed to cache node name for %s: %s", 
                                          node.nodeid.to_string(), exc)
                     
@@ -226,12 +229,12 @@ class OPCUAAdapter:
                 logger.info("Connection established: %s", result)
                 return result
 
-            except Exception as exc:
+            except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError) as exc:
                 # Clean up on connection failure
                 if self._client:
                     try:
                         self._run_coro(self._client.disconnect())
-                    except Exception as cleanup_exc:  # noqa: BLE001
+                    except (ConnectionError, OSError, asyncio.TimeoutError) as cleanup_exc:
                         logger.warning("断开连接清理失败: %s", cleanup_exc, exc_info=True)
                 raise
 
@@ -239,10 +242,10 @@ class OPCUAAdapter:
             raise RuntimeError(
                 f"OPC UA client library 'asyncua' not installed: {exc}\n"
                 "Install with: pip install asyncua"
-            )
-        except Exception as exc:
+            ) from exc
+        except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError) as exc:
             logger.error("Failed to connect to OPC UA server: %s", exc)
-            raise RuntimeError(f"Connection failed: {exc}")
+            raise RuntimeError(f"Connection failed: {exc}") from exc
 
     def _run_loop(self) -> None:
         """Run the event loop in a background thread."""
@@ -306,7 +309,7 @@ class OPCUAAdapter:
                                 if sub_browse.Name.lower() in target_names:
                                     node_id = sub_child.nodeid.to_string()
                                     discovered_nodes.append(node_id)
-                            except Exception as browse_exc:  # noqa: BLE001
+                            except (asyncio.TimeoutError, TimeoutError, OSError) as browse_exc:
                                 logger.warning("浏览子节点失败: %s", browse_exc, exc_info=True)
                                 continue
 
@@ -315,11 +318,11 @@ class OPCUAAdapter:
                         node_id = child.nodeid.to_string()
                         discovered_nodes.append(node_id)
 
-                except Exception as child_exc:  # noqa: BLE001
+                except (asyncio.TimeoutError, TimeoutError, OSError) as child_exc:
                     logger.warning("处理子节点失败: %s", child_exc, exc_info=True)
                     continue
 
-        except Exception as exc:
+        except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError) as exc:
             logger.warning("Node auto-discovery failed: %s", exc)
 
         return discovered_nodes
@@ -340,7 +343,7 @@ class OPCUAAdapter:
                 if self._subscription:
                     self._run_coro(self._subscription.delete())
                 self._run_coro(self._client.disconnect())
-            except Exception as exc:
+            except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError) as exc:
                 logger.warning("Error during disconnect: %s", exc)
             finally:
                 self._connected = False
@@ -386,17 +389,50 @@ class OPCUAAdapter:
         self._on_sample_callback = on_sample
 
         # Main loop - just wait and flush periodically
+        consecutive_errors = 0
+        max_consecutive_errors = 10  # 连续错误次数上限
+        
         while not self._stop_event.is_set():
             if deadline is not None and time.monotonic() >= deadline:
                 logger.info("Reached duration deadline, stopping")
                 break
 
-            # Sleep for a short interval, checking for stop event
-            if self._stop_event.wait(self.config.interval):
-                break
+            try:
+                # Check connection health
+                if not self._check_connection_health():
+                    logger.warning("Connection health check failed, attempting reconnection...")
+                    self._attempt_reconnect()
+                    consecutive_errors += 1
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.error("Max reconnection attempts reached, stopping")
+                        break
+                    continue
+                
+                # Reset error counter on successful health check
+                consecutive_errors = 0
 
-            # Flush buffer if needed
-            self._maybe_flush()
+                # Sleep for a short interval, checking for stop event
+                if self._stop_event.wait(self.config.interval):
+                    break
+
+                # Flush buffer if needed
+                self._maybe_flush()
+
+            except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError) as exc:
+                logger.error("Runtime error in subscription loop: %s", exc, exc_info=True)
+                self._error_count += 1
+                consecutive_errors += 1
+                
+                if consecutive_errors >= max_consecutive_errors:
+                    logger.error("Max consecutive errors reached, stopping")
+                    break
+                
+                # Wait before retry
+                backoff_time = min(self.config.initial_backoff * (2 ** (consecutive_errors - 1)), 
+                                  self.config.max_backoff)
+                logger.info("Waiting %.2f seconds before retry", backoff_time)
+                if self._stop_event.wait(backoff_time):
+                    break
 
         # Always flush at the end so the last partial batch is not lost.
         self.flush()
@@ -406,6 +442,64 @@ class OPCUAAdapter:
             self.error_count,
         )
         return self.ingested_count
+
+    def _check_connection_health(self) -> bool:
+        """Check if the OPC UA connection is still healthy.
+        
+        Returns:
+            bool: True if connection is healthy, False otherwise
+        """
+        if not self._client or not self._connected:
+            return False
+        
+        try:
+            # Try to read a simple node to verify connection
+            from asyncua import ua
+            self._run_coro(
+                self._client.get_node(ua.ObjectIds.Server_ServerStatus).get_value()
+            )
+            return True
+        except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError) as exc:
+            logger.debug("Connection health check failed: %s", exc)
+            return False
+        except Exception as exc:
+            logger.warning("Unexpected error in health check: %s", exc)
+            return False
+
+    def _attempt_reconnect(self) -> bool:
+        """Attempt to reconnect to the OPC UA server.
+        
+        Returns:
+            bool: True if reconnection succeeded, False otherwise
+        """
+        logger.info("Attempting to reconnect to OPC UA server...")
+        
+        try:
+            # Clean up old connection
+            if self._client:
+                try:
+                    self._run_coro(self._client.disconnect())
+                except Exception as exc:
+                    logger.debug("Error during disconnect: %s", exc)
+            
+            self._connected = False
+            self._client = None
+            self._subscription = None
+            
+            # Wait before reconnect
+            time.sleep(self.config.initial_backoff)
+            
+            # Try to reconnect
+            self.connect()
+            logger.info("Reconnection successful")
+            return True
+            
+        except (ConnectionError, OSError, TimeoutError, RuntimeError) as exc:
+            logger.error("Reconnection failed: %s", exc)
+            return False
+        except (ValueError, TypeError, AttributeError) as exc:
+            logger.error("Unexpected error during reconnection: %s", exc, exc_info=True)
+            return False
 
     def stop(self) -> None:
         """Request the subscription loop to exit at the next opportunity."""
@@ -504,19 +598,34 @@ class OPCUAAdapter:
             logger.error("TDengine client does not expose insert_rows; aborting flush")
             return 0
 
+        # Check if we're in an async context (FastAPI) or sync context (CLI)
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # We're inside an event loop – schedule and wait.
-                return loop.run_until_complete(
-                    self._insert_async(client, insert, rows)
-                )
-            return loop.run_until_complete(
-                self._insert_async(client, insert, rows)
-            )
+            loop = asyncio.get_running_loop()
         except RuntimeError:
-            # No event loop in this thread (typical CLI scenario).
-            return asyncio.run(self._insert_async(client, insert, rows))
+            loop = None
+
+        if loop is not None and loop.is_running():
+            # We're inside a running event loop (e.g., FastAPI async context).
+            # Cannot use run_until_complete() or asyncio.run() here.
+            # Use run_coroutine_threadsafe() to schedule on the loop from this thread.
+            try:
+                future = asyncio.run_coroutine_threadsafe(
+                    self._insert_async(client, insert, rows),
+                    loop
+                )
+                # Wait for the result with a timeout
+                return future.result(timeout=self.config.timeout)
+            except (RuntimeError, TimeoutError, Exception) as exc:
+                logger.error("Failed to persist rows in async context: %s", exc, exc_info=True)
+                return 0
+        else:
+            # No running loop - typical CLI scenario or sync context.
+            # Use asyncio.run() to create a new event loop.
+            try:
+                return asyncio.run(self._insert_async(client, insert, rows))
+            except Exception as exc:
+                logger.error("Failed to persist rows in sync context: %s", exc, exc_info=True)
+                return 0
 
     async def _insert_async(self, client: Any, insert: Callable, rows: List[Any]) -> int:
         result = await insert(
@@ -569,11 +678,17 @@ class SubHandler:
             if hasattr(self.adapter, "_on_sample_callback") and self.adapter._on_sample_callback:
                 try:
                     self.adapter._on_sample_callback(sample)
-                except Exception:
-                    logger.exception("on_sample callback raised")
+                except (ValueError, TypeError, RuntimeError, AttributeError, KeyError) as callback_exc:
+                    logger.error("on_sample callback raised: %s", callback_exc, exc_info=True)
 
-        except Exception as exc:
-            logger.error("Error processing data change: %s", exc)
+        except (ValueError, TypeError, KeyError, AttributeError) as exc:
+            logger.error("Error processing data change: %s", exc, exc_info=True)
+            self.adapter._error_count += 1
+        except (ConnectionError, OSError, TimeoutError) as exc:
+            logger.error("Network error processing data change: %s", exc, exc_info=True)
+            self.adapter._error_count += 1
+        except (UnicodeDecodeError, IndexError, ArithmeticError) as exc:
+            logger.error("Data processing error: %s", exc, exc_info=True)
             self.adapter._error_count += 1
 
 

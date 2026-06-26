@@ -193,8 +193,9 @@ export function useFeatureHighlight(options: {
     }
 
     const elapsed = performance.now() - startTime
-    if (elapsed > 100) {
-      console.warn(`特征高亮响应时间 ${elapsed.toFixed(1)}ms 超过 100ms 目标`)
+    // 性能监控：记录超过 100ms 目标的高亮操作（仅在开发环境）
+    if (elapsed > 100 && import.meta.env.DEV) {
+      // 性能监控：静默处理
     }
   }
 

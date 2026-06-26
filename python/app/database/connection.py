@@ -81,15 +81,20 @@ class _DatabaseSingletons:
             if not config.enabled:
                 logger.warning("DB_URL not configured, database persistence disabled")
                 return None
-            self._engine = create_async_engine(
-                config.async_url,
-                echo=config.echo,
-                pool_size=config.pool_size,
-                max_overflow=config.max_overflow,
-                pool_timeout=config.pool_timeout,
-                pool_recycle=config.pool_recycle,
-                pool_pre_ping=True,
-            )
+            # Build engine kwargs (SQLite does not support pool_size/max_overflow)
+            engine_kwargs = {"echo": config.echo}
+            if config.async_url.startswith("sqlite"):
+                # SQLite: use StaticPool or NullPool, no pool params
+                engine_kwargs["pool_pre_ping"] = False
+            else:
+                engine_kwargs.update({
+                    "pool_size": config.pool_size,
+                    "max_overflow": config.max_overflow,
+                    "pool_timeout": config.pool_timeout,
+                    "pool_recycle": config.pool_recycle,
+                    "pool_pre_ping": True,
+                })
+            self._engine = create_async_engine(config.async_url, **engine_kwargs)
             logger.info(
                 "Database engine created: pool_size=%d max_overflow=%d",
                 config.pool_size,
@@ -229,8 +234,9 @@ async def get_db() -> AsyncSession:
     async with sessionmaker() as session:
         try:
             yield session
-        except Exception:
+        except (RuntimeError, OSError, ValueError) as e:
             await session.rollback()
+            logger.error("Database session error, rolled back: %s", e, exc_info=True)
             raise
         else:
             await session.commit()

@@ -125,14 +125,17 @@ export async function getSimulationResult(
     })
 
     return visualizationData
-  } catch (error) {
-    console.error('获取仿真结果失败:', error)
-    throw error
+  } catch {
+    throw new Error('获取仿真结果失败')
   }
 }
 
 /**
  * 将仿真结果转换为可视化数据
+ *
+ * 注意：温度场数据和振动数据需要后端提供专用接口。
+ * 在后端实现前，这些字段返回空数组，禁止使用 Math.random() 伪造数据，
+ * 因为伪造数据会误导用户做出错误的加工决策。
  */
 function convertToVisualizationData(result: SimulationResult): SimulationVisualizationData {
   const visualizationData: SimulationVisualizationData = {
@@ -143,70 +146,23 @@ function convertToVisualizationData(result: SimulationResult): SimulationVisuali
     vibration_data: [],
   }
 
-  // 如果有碰撞位置数据，生成力矢量
+  // 碰撞位置 → 力矢量（基于真实碰撞检测结果映射）
   if (result.collision_details && result.collision_details.positions.length > 0) {
-    visualizationData.force_data = result.collision_details.positions.map((pos, index) => ({
+    const magnitude = result.collision_details.severity === 'critical' ? 1000 : 500
+    visualizationData.force_data = result.collision_details.positions.map((pos) => ({
       position: pos,
-      direction: [0, 0, -1], // 默认方向，实际应该从仿真数据计算
-      magnitude: result.collision_details.severity === 'critical' ? 1000 : 500,
+      // 碰撞力方向默认沿 Z 轴负向（刀具进给方向）
+      direction: [0, 0, -1] as [number, number, number],
+      magnitude,
       timestamp: Date.now(),
     }))
   }
 
-  // 生成温度数据（基于体素网格）
-  if (result.simulation_result && result.simulation_result.voxel_count > 0) {
-    // 这里应该从后端获取实际的温度场数据
-    // 暂时生成示例数据
-    const bbox = result.simulation_result.original_bbox
-    if (bbox) {
-      const minX = bbox.min_x || 0
-      const maxX = bbox.max_x || 100
-      const minY = bbox.min_y || 0
-      const maxY = bbox.max_y || 100
-      const minZ = bbox.min_z || 0
-      const maxZ = bbox.max_z || 50
+  // 温度场数据：后端暂未提供温度场接口，返回空数组
+  // 若需启用，应新增 GET /api/v1/simulation/{task_id}/temperature 接口
 
-      // 生成网格点温度数据
-      const gridSize = 10
-      for (let x = minX; x <= maxX; x += (maxX - minX) / gridSize) {
-        for (let y = minY; y <= maxY; y += (maxY - minY) / gridSize) {
-          for (let z = minZ; z <= maxZ; z += (maxZ - minZ) / gridSize) {
-            // 模拟温度分布（中心温度高，边缘温度低）
-            const centerX = (minX + maxX) / 2
-            const centerY = (minY + maxY) / 2
-            const centerZ = (minZ + maxZ) / 2
-            const distance = Math.sqrt(
-              Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2) + Math.pow(z - centerZ, 2)
-            )
-            const maxDistance = Math.sqrt(
-              Math.pow(maxX - minX, 2) + Math.pow(maxY - minY, 2) + Math.pow(maxZ - minZ, 2)
-            )
-            const temperature = 20 + 80 * (1 - distance / maxDistance)
-
-            visualizationData.temperature_data!.push({
-              position: [x, y, z],
-              temperature,
-              timestamp: Date.now(),
-            })
-          }
-        }
-      }
-    }
-  }
-
-  // 生成振动数据（基于刀具路径）
-  if (result.toolpath_segment_count > 0) {
-    // 这里应该从后端获取实际的振动数据
-    // 暂时生成示例数据
-    for (let i = 0; i < result.toolpath_segment_count; i++) {
-      visualizationData.vibration_data!.push({
-        position: [i * 10, 0, 0], // 简化的位置
-        amplitude: Math.random() * 0.1, // 随机振幅
-        frequency: 50 + Math.random() * 50, // 50-100Hz
-        timestamp: Date.now(),
-      })
-    }
-  }
+  // 振动数据：后端暂未提供振动数据接口，返回空数组
+  // 若需启用，应新增 GET /api/v1/simulation/{task_id}/vibration 接口
 
   return visualizationData
 }

@@ -41,12 +41,12 @@ def _baseline_recognize(dxf_path: str) -> dict:
 
 
 def _research_recognize(dxf_path: str) -> dict:
-    """Research：调用 IJepa-3D 桥接。
+    """Research:调用 IJepa-3D 桥接。
 
-    研究阶段是 stub 模式：返回空 features。
+    研究阶段是 stub 模式:返回空 features。
     """
     try:
-        # 走桥接层（产品轨 import research_bridge）
+        # 走桥接层(产品轨 import research_bridge)
         from app.research_bridge import ResearchApiClient
         client = ResearchApiClient.get_instance()
         result = client.call_feature_recognizer(
@@ -54,7 +54,11 @@ def _research_recognize(dxf_path: str) -> dict:
             recognizer="ijepa_3d_recognizer",
         )
         return result or {"status": "no_response"}
+    except ImportError as e:
+        logger.warning(f"Research bridge 模块不可用: {e}。这是研究原型阶段,功能尚未完全集成。")
+        return {"status": "stub_mode", "error": str(e), "message": "Research bridge not available"}
     except Exception as e:  # noqa: BLE001
+        logger.error(f"Research recognition 失败: {e}", exc_info=True)
         return {"error": repr(e)}
 
 

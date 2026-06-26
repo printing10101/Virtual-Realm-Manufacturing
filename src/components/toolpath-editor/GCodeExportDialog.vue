@@ -103,6 +103,7 @@
 import { DocumentCopy, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import { triggerFileDownload } from '@/utils/download'
 import type { GCodeController } from './types/editor'
 import { useToolpathEditorStore } from './stores/toolpathEditor'
 
@@ -144,12 +145,7 @@ function handleDownload() {
   const ext = controller.value === 'heidenhain' ? '.h' : '.nc'
   const filename = `O${String(programNumber.value).padStart(4, '0')}${ext}`
   const blob = new Blob([gcode.value], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerFileDownload(blob, filename)
   ElMessage.success(t('gcodeExport.downloaded', { filename }))
 }
 </script>

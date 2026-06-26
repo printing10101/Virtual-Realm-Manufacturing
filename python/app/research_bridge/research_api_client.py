@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -27,6 +28,10 @@ RESEARCH_ROOT = REPO_ROOT / "research"
 
 # 子进程运行时的 Python 解释器
 PYTHON_BIN = sys.executable
+
+# 安全修复：模块名和函数名白名单正则，防止命令注入
+# 仅允许字母/数字/下划线/点，且必须以字母或下划线开头
+_SAFE_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
 
 
 class ResearchApiError(Exception):
@@ -109,6 +114,13 @@ class ResearchApiClient:
         user_id: Optional[str] = None,
     ) -> Optional[dict]:
         """通过子进程调用研究模块。"""
+        # 安全修复：校验 module 和 func 防止命令注入
+        if not _SAFE_IDENT_RE.match(module):
+            logger.error("Invalid module name rejected: %r", module)
+            return None
+        if not _SAFE_IDENT_RE.match(func):
+            logger.error("Invalid function name rejected: %r", func)
+            return None
         t0 = time.perf_counter()
         try:
             # 把 payload 序列化成 JSON 字符串作为参数
@@ -159,7 +171,7 @@ class ResearchApiClient:
                 user_id=user_id,
             )
             return None
-        except Exception as e:  # noqa: BLE001
+        except (OSError, subprocess.SubprocessError, json.JSONDecodeError, ValueError, TypeError) as e:
             self._collector.record_error(
                 feature=module,
                 error_type="call_failed",

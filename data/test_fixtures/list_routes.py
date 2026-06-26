@@ -1,6 +1,7 @@
-import os, sys
+import os, secrets, sys
 from pathlib import Path
-os.environ.setdefault('LNN_JWT_SECRET', 'eval_secret_2026_32chars_min_xxxxxxxxxx')
+# 安全修复：使用随机密钥替代硬编码密钥
+os.environ.setdefault('LNN_JWT_SECRET', secrets.token_urlsafe(48))
 os.environ.setdefault('LNN_BANNED_TOKENS_FILE', '.lnn_banned_tokens.json')
 os.environ.setdefault('APP_ENV', 'development')
 REPO = Path('c:/Users/Lenovo/Desktop/灵境制造（上线版）').resolve()

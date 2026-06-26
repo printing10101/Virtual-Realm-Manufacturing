@@ -210,7 +210,7 @@ interface ErrorNotification {
   detail?: string
   suggestion?: string
   recoverable?: boolean
-  adjusted_values?: Record<string, any>
+  adjusted_values?: Record<string, unknown>
   expanded?: boolean
   createdAt: number
   requestId?: string

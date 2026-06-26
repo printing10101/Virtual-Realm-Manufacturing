@@ -241,9 +241,9 @@ function Test-NetworkConnectivity {
     param()
     $probes = @(
         @{ Name = 'GitHub';     Url = 'https://github.com' },
-        @{ Name = 'Ollama';     Url = 'https://ollama.com' },
-        @{ Name = 'Rust';       Url = 'https://sh.rustup.rs' },
-        @{ Name = 'Node.js';    Url = 'https://nodejs.org' },
+        @{ Name = 'Ollama';     Url = 'https://ollama.mirror.cn' },
+        @{ Name = 'Rust';       Url = 'https://rsproxy.cn' },
+        @{ Name = 'Node.js';    Url = 'https://npmmirror.com' },
         @{ Name = 'Microsoft';  Url = 'https://aka.ms' }
     )
     $results = @()
@@ -582,8 +582,15 @@ function Install-Ollama {
         Write-Log -Level INFO -Message "已检测到 Ollama：$(& ollama --version)"
     } else {
         $tmp = Join-Path $env:TEMP "OllamaSetup_$Script:AppVersion.exe"
-        $url = 'https://ollama.com/download/OllamaSetup.exe'
-        Invoke-HttpDownload -Url $url -OutFile $tmp
+        # 优先使用国内镜像，失败时回退到官方源
+        $url = 'https://ollama.mirror.cn/download/OllamaSetup.exe'
+        try {
+            Invoke-HttpDownload -Url $url -OutFile $tmp
+        } catch {
+            Write-Log -Level WARN -Message "国内镜像下载失败，尝试官方源..."
+            $url = 'https://ollama.com/download/OllamaSetup.exe'
+            Invoke-HttpDownload -Url $url -OutFile $tmp
+        }
         Write-Progress-Step -Activity 'Ollama' -Status '执行安装程序…'
         $p = Start-Process -FilePath $tmp -ArgumentList '/S' -Wait -PassThru
         if ($p.ExitCode -ne 0) { throw "Ollama 安装失败，退出码 $($p.ExitCode)" }

@@ -78,7 +78,7 @@ class DxfProcessService:
 
         svc = DxfProcessService()
         r = svc.process("part.dxf", output_dir="data/outputs/test1")
-        print(r.success, r.output_files)
+        # r.success, r.output_files
     """
 
     def __init__(self, default_postprocessor: str = "fanuc_0i") -> None:
@@ -144,7 +144,7 @@ class DxfProcessService:
         # 影子模式：研究轨 IJepa-3D chamfer 启发式识别（不阻塞产品流程）
         try:
             self._run_ijepa3d_shadow(path, result, user_id)
-        except Exception as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:  # noqa: BLE001
             logger.warning("ijepa3d shadow run failed: %s", e, exc_info=True)
         # 桥接层落盘
         try:
@@ -164,7 +164,7 @@ class DxfProcessService:
                     "output_files": list(result.output_files.keys()),
                 },
             )
-        except Exception as e:  # noqa: BLE001
+        except (OSError, RuntimeError, ImportError) as e:  # noqa: BLE001
             logger.warning("bridge collect failed: %s", e, exc_info=True)
         return result
 
@@ -190,15 +190,15 @@ class DxfProcessService:
         # 解析 DXF 拿几何
         try:
             parsed = DxfParser().parse(str(path))
-        except Exception as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, OSError) as e:  # noqa: BLE001
             logger.warning("ijepa3d shadow parse failed: %s", e, exc_info=True)
             return
 
         # 跑启发式（使用 detect_all_extended：8 个识别器）
         t0 = time.time()
         try:
-            research_feats = chamfer_heuristic.detect_all_extended(parsed)
-        except Exception as e:  # noqa: BLE001
+            research_feats = detect_all_extended(parsed)
+        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:  # noqa: BLE001
             # detect_all_extended 内部已对 detect_all 做了 try-except 保护，
             # 这里仅记录日志，不再回退调用 detect_all（避免重复抛出相同异常）
             logger.warning("ijepa3d shadow detect_all_extended failed: %s", e, exc_info=True)
@@ -278,7 +278,7 @@ class DxfProcessService:
                 latency_ms=(time.time() - t0) * 1000,
                 error=str(e),
             )
-        except Exception as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:  # noqa: BLE001
             logger.error("Unexpected DXF parse error: %s", e, exc_info=True)
             return StageResult(
                 name="parse", success=False,
@@ -305,7 +305,7 @@ class DxfProcessService:
                 },
                 error="; ".join(r.errors) if r.errors else "",
             )
-        except Exception as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:  # noqa: BLE001
             logger.error("DXF feature extraction failed: %s", e, exc_info=True)
             return StageResult(
                 name="features", success=False,
@@ -342,8 +342,8 @@ class DxfProcessService:
                     stl_path = out_dir / f"{path.stem}.stl"
                     conv.export_stl(result, stl_path)
                     files.append(str(stl_path))
-                except Exception as e:  # noqa: BLE001
-                    logger.warning("STL 导出失败: %s", e)
+                except (OSError, RuntimeError, ValueError, TypeError) as e:  # noqa: BLE001
+                    logger.warning("STL 导出失败: %s", e, exc_info=True)
             return StageResult(
                 name="model3d",
                 success=ok,
@@ -357,7 +357,7 @@ class DxfProcessService:
                 },
                 error="; ".join(result.errors) if result.errors else "",
             )
-        except Exception as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:  # noqa: BLE001
             logger.error("DXF 3D conversion failed: %s", e, exc_info=True)
             return StageResult(
                 name="model3d", success=False,
@@ -393,7 +393,8 @@ class DxfProcessService:
                 latency_ms=(time.time() - t0) * 1000,
                 summary={"controller": controller, "output": str(g_path), "lines": gcode.count("\n")},
             )
-        except Exception as e:  # noqa: BLE001
+        except (OSError, RuntimeError, KeyError, ValueError, TypeError) as e:  # noqa: BLE001
+            logger.error("GCode generation failed: %s", e, exc_info=True)
             return StageResult(
                 name="gcode", success=False,
                 latency_ms=(time.time() - t0) * 1000,

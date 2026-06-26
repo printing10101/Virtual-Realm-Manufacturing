@@ -1,6 +1,6 @@
 {
   "name": "virtual-realm-manufacturing-docs",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "灵境制造文档站 - 自适应工艺孪生平台",
   "type": "module",
   "scripts": {

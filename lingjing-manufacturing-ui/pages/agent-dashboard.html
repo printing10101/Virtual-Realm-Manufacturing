@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能体管理</title>
+    <style id="theme-vars">
+/*
+ * Lingjing Manufacturing design tokens
+ * Brand: Lingjing Manufacturing
+ * Domain: Intelligent manufacturing platform
+ * Style: Restrained, elegant, warm cream/off-white palette
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #faf8f5;
+  --background-100: #f5f2ed;
+  --background-200: #ede9e3;
+  --background-300: #e0dbd4;
+  --background-400: #cec8bf;
+  --background-500: #a8a199;
+  --background-600: #8a847c;
+  --background-700: #3a3632;
+  --background-800: #1c1a18;
+  --background-900: #0e0d0c;
+
+  /* text */
+  --text-50: #f5f2ed;
+  --text-100: #e3dfd8;
+  --text-200: #c7c2b8;
+  --text-300: #aea99f;
+  --text-400: #8e897f;
+  --text-500: #6e6960;
+  --text-600: #48443e;
+  --text-700: #3c3832;
+  --text-800: #1d1b18;
+  --text-900: #0e0d0c;
+
+  /* icon */
+  --icon-50: #f5f2ed;
+  --icon-100: #e0dbd4;
+  --icon-200: #cec8bf;
+  --icon-300: #c7c2b8;
+  --icon-400: #aea99f;
+  --icon-500: #8e897f;
+  --icon-600: #6e6960;
+  --icon-700: #48443e;
+  --icon-800: #2c2926;
+  --icon-900: #1d1b18;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f5ec;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #fdecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-foreground: var(--card-foreground);
+  }
+  @layer base {
+    body { background: var(--card-background); color: var(--card-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="font-family: var(--font-sans);">
+
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 bottom-0 z-30 flex flex-col border-r" style="width: var(--sidebar-width); background: var(--color-bg-50); border-color: var(--color-border-subtle);">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-5 h-14 border-b" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--color-primary-500);">
+                <i data-lucide="cpu" class="w-4 h-4" style="color: var(--color-text-inverse);"></i>
+            </div>
+            <span class="text-headline truncate" style="color: var(--color-text-primary);">灵境制造</span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 overflow-y-auto py-4 px-3 no-scrollbar">
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">核心功能</p>
+                <a href="dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate">生产总览</span>
+                </a>
+                <a href="process-planning.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <i data-lucide="workflow" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate">工艺规划</span>
+                </a>
+                <a href="equipment-monitor.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <i data-lucide="monitor" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate">设备监控</span>
+                </a>
+                <a href="quality-inspection.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <i data-lucide="shield-check" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate">质量检测</span>
+                </a>
+                <a href="agent-dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                    <i data-lucide="bot" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate font-medium">智能体管理</span>
+                </a>
+            </div>
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">资源管理</p>
+                <a href="material-management.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <i data-lucide="package" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate">物料管理</span>
+                </a>
+                <a href="task-board.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <i data-lucide="kanban" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate">任务看板</span>
+                </a>
+                <a href="production-report.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate">生产报表</span>
+                </a>
+                <a href="knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <i data-lucide="book-open" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate">知识库</span>
+                </a>
+            </div>
+            <div>
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">系统</p>
+                <a href="settings.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <i data-lucide="settings" class="w-4 h-4 shrink-0"></i>
+                    <span class="truncate">系统设置</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- User -->
+        <div class="border-t px-4 py-3 flex items-center gap-3" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-caption shrink-0" style="background: var(--color-primary-100); color: var(--color-primary-600);">管</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-body-sm truncate" style="color: var(--color-text-primary);">管理员</p>
+                <p class="text-caption truncate" style="color: var(--color-text-muted);">admin@lingjing.com</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 ml-0 lg:ml-[260px]">
+        <!-- Top Header -->
+        <header class="sticky top-0 z-20 flex items-center justify-between h-14 px-6 border-b" style="background: var(--color-bg-50); border-color: var(--color-border-subtle);">
+            <div class="flex items-center gap-3">
+                <h1 class="text-headline" style="color: var(--color-text-primary);">智能体管理</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <button class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-150 hover:opacity-70" style="background: var(--color-bg-200);">
+                    <i data-lucide="search" class="w-4 h-4" style="color: var(--color-text-tertiary);"></i>
+                </button>
+                <button class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-150 hover:opacity-70" style="background: var(--color-bg-200);">
+                    <i data-lucide="bell" class="w-4 h-4" style="color: var(--color-text-tertiary);"></i>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Hero Section -->
+            <section class="relative overflow-hidden" style="min-height: 220px;">
+                <img src="../assets/hero-ai-agent.jpg" alt="" class="absolute inset-0 w-full h-full object-cover">
+                <div class="absolute inset-0" style="background: linear-gradient(135deg, rgba(19, 39, 58, 0.82) 0%, rgba(42, 65, 94, 0.75) 100%);"></div>
+                <div class="relative z-10 flex flex-col justify-center px-6 lg:px-10 py-10 lg:py-14" style="max-width: var(--content-max-width);">
+                    <h2 class="text-title-1 mb-3" style="color: var(--color-text-inverse); text-wrap: balance; word-break: keep-all; overflow-wrap: break-word;">智能体管理中心</h2>
+                    <p class="text-body mb-6 max-w-lg" style="color: rgba(250, 248, 245, 0.8);">配置和管理您的AI制造助手，优化生产效率</p>
+                    <div>
+                        <button class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-body-sm font-medium whitespace-nowrap transition-all duration-150 hover:opacity-90" style="background: var(--color-primary-500); color: var(--color-text-inverse);">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            部署新智能体
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Agent Cards Grid -->
+            <section class="px-6 lg:px-10 py-8 lg:py-10" style="max-width: var(--content-max-width);">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+                    <!-- Agent 1: 工艺优化助手 -->
+                    <div class="rounded-xl p-6 transition-shadow duration-200 hover:shadow-md" style="background: var(--color-bg-50); border: 1px solid var(--color-border-subtle); box-shadow: var(--shadow-sm);">
+                        <div class="flex items-start gap-4 mb-5">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600));">
+                                <i data-lucide="settings" class="w-5 h-5" style="color: var(--color-text-inverse);"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">工艺优化助手</h3>
+                                    <span class="w-2 h-2 rounded-full shrink-0 status-pulse" style="background: var(--state-success);"></span>
+                                </div>
+                                <span class="text-caption" style="color: var(--state-success);">运行中</span>
+                            </div>
+                        </div>
+                        <p class="text-body-sm mb-5 line-clamp-2" style="color: var(--color-text-tertiary);">基于历史数据与实时参数，自动优化加工工艺流程，提升良品率</p>
+                        <div class="flex items-center gap-0 mb-5 pb-5 border-b" style="border-color: var(--color-border-subtle);">
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">1,284</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">处理任务数</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">96.8%</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">准确率</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">1.2s</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">平均响应</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                                <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                                配置
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-bg-200); color: var(--color-text-secondary);">
+                                <i data-lucide="scroll-text" class="w-3.5 h-3.5"></i>
+                                查看日志
+                            </button>
+                            <button class="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 hover:opacity-80 shrink-0" style="background: var(--color-bg-200);" title="暂停">
+                                <i data-lucide="pause" class="w-3.5 h-3.5" style="color: var(--color-text-tertiary);"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Agent 2: 质量预测引擎 -->
+                    <div class="rounded-xl p-6 transition-shadow duration-200 hover:shadow-md" style="background: var(--color-bg-50); border: 1px solid var(--color-border-subtle); box-shadow: var(--shadow-sm);">
+                        <div class="flex items-start gap-4 mb-5">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, #3a8a5c, #2d6b47);">
+                                <i data-lucide="line-chart" class="w-5 h-5" style="color: var(--color-text-inverse);"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">质量预测引擎</h3>
+                                    <span class="w-2 h-2 rounded-full shrink-0 status-pulse" style="background: var(--state-success);"></span>
+                                </div>
+                                <span class="text-caption" style="color: var(--state-success);">运行中</span>
+                            </div>
+                        </div>
+                        <p class="text-body-sm mb-5 line-clamp-2" style="color: var(--color-text-tertiary);">利用机器学习模型实时预测产品质量趋势，提前预警潜在缺陷</p>
+                        <div class="flex items-center gap-0 mb-5 pb-5 border-b" style="border-color: var(--color-border-subtle);">
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">856</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">处理任务数</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">94.2%</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">准确率</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">0.8s</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">平均响应</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                                <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                                配置
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-bg-200); color: var(--color-text-secondary);">
+                                <i data-lucide="scroll-text" class="w-3.5 h-3.5"></i>
+                                查看日志
+                            </button>
+                            <button class="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 hover:opacity-80 shrink-0" style="background: var(--color-bg-200);" title="暂停">
+                                <i data-lucide="pause" class="w-3.5 h-3.5" style="color: var(--color-text-tertiary);"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Agent 3: 设备诊断专家 -->
+                    <div class="rounded-xl p-6 transition-shadow duration-200 hover:shadow-md" style="background: var(--color-bg-50); border: 1px solid var(--color-border-subtle); box-shadow: var(--shadow-sm);">
+                        <div class="flex items-start gap-4 mb-5">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, #c49a2a, #a07d20);">
+                                <i data-lucide="wrench" class="w-5 h-5" style="color: var(--color-text-inverse);"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">设备诊断专家</h3>
+                                    <span class="w-2 h-2 rounded-full shrink-0" style="background: var(--state-warning);"></span>
+                                </div>
+                                <span class="text-caption" style="color: var(--state-warning);">已暂停</span>
+                            </div>
+                        </div>
+                        <p class="text-body-sm mb-5 line-clamp-2" style="color: var(--color-text-tertiary);">深度分析设备运行数据，精准定位故障根源，提供维修建议</p>
+                        <div class="flex items-center gap-0 mb-5 pb-5 border-b" style="border-color: var(--color-border-subtle);">
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">2,103</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">处理任务数</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">91.5%</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">准确率</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">2.1s</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">平均响应</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                                <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                                配置
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-bg-200); color: var(--color-text-secondary);">
+                                <i data-lucide="scroll-text" class="w-3.5 h-3.5"></i>
+                                查看日志
+                            </button>
+                            <button class="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 hover:opacity-80 shrink-0" style="background: var(--color-bg-200);" title="启动">
+                                <i data-lucide="play" class="w-3.5 h-3.5" style="color: var(--color-text-tertiary);"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Agent 4: 排产调度Agent -->
+                    <div class="rounded-xl p-6 transition-shadow duration-200 hover:shadow-md" style="background: var(--color-bg-50); border: 1px solid var(--color-border-subtle); box-shadow: var(--shadow-sm);">
+                        <div class="flex items-start gap-4 mb-5">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, var(--color-primary-300), var(--color-primary-700));">
+                                <i data-lucide="calendar-range" class="w-5 h-5" style="color: var(--color-text-inverse);"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">排产调度Agent</h3>
+                                    <span class="w-2 h-2 rounded-full shrink-0 status-pulse" style="background: var(--state-success);"></span>
+                                </div>
+                                <span class="text-caption" style="color: var(--state-success);">运行中</span>
+                            </div>
+                        </div>
+                        <p class="text-body-sm mb-5 line-clamp-2" style="color: var(--color-text-tertiary);">智能排产与调度优化，综合考虑订单优先级、设备产能与交期约束</p>
+                        <div class="flex items-center gap-0 mb-5 pb-5 border-b" style="border-color: var(--color-border-subtle);">
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">3,567</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">处理任务数</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">98.1%</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">准确率</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">0.5s</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">平均响应</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                                <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                                配置
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-bg-200); color: var(--color-text-secondary);">
+                                <i data-lucide="scroll-text" class="w-3.5 h-3.5"></i>
+                                查看日志
+                            </button>
+                            <button class="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 hover:opacity-80 shrink-0" style="background: var(--color-bg-200);" title="暂停">
+                                <i data-lucide="pause" class="w-3.5 h-3.5" style="color: var(--color-text-tertiary);"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Agent 5: 物料需求预测 -->
+                    <div class="rounded-xl p-6 transition-shadow duration-200 hover:shadow-md" style="background: var(--color-bg-50); border: 1px solid var(--color-border-subtle); box-shadow: var(--shadow-sm);">
+                        <div class="flex items-start gap-4 mb-5">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, #847254, #6b5c44);">
+                                <i data-lucide="package-search" class="w-5 h-5" style="color: var(--color-text-inverse);"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">物料需求预测</h3>
+                                    <span class="w-2 h-2 rounded-full shrink-0" style="background: var(--color-text-placeholder);"></span>
+                                </div>
+                                <span class="text-caption" style="color: var(--color-text-muted);">离线</span>
+                            </div>
+                        </div>
+                        <p class="text-body-sm mb-5 line-clamp-2" style="color: var(--color-text-tertiary);">结合订单计划与库存数据，精准预测物料需求，减少库存积压</p>
+                        <div class="flex items-center gap-0 mb-5 pb-5 border-b" style="border-color: var(--color-border-subtle);">
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">642</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">处理任务数</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">89.7%</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">准确率</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">1.8s</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">平均响应</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                                <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                                配置
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-bg-200); color: var(--color-text-secondary);">
+                                <i data-lucide="scroll-text" class="w-3.5 h-3.5"></i>
+                                查看日志
+                            </button>
+                            <button class="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 hover:opacity-80 shrink-0" style="background: var(--color-bg-200);" title="启动">
+                                <i data-lucide="play" class="w-3.5 h-3.5" style="color: var(--color-text-tertiary);"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Agent 6: 能耗优化Agent -->
+                    <div class="rounded-xl p-6 transition-shadow duration-200 hover:shadow-md" style="background: var(--color-bg-50); border: 1px solid var(--color-border-subtle); box-shadow: var(--shadow-sm);">
+                        <div class="flex items-start gap-4 mb-5">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, #2d6b47, #1f4f34);">
+                                <i data-lucide="zap" class="w-5 h-5" style="color: var(--color-text-inverse);"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">能耗优化Agent</h3>
+                                    <span class="w-2 h-2 rounded-full shrink-0 status-pulse" style="background: var(--state-success);"></span>
+                                </div>
+                                <span class="text-caption" style="color: var(--state-success);">运行中</span>
+                            </div>
+                        </div>
+                        <p class="text-body-sm mb-5 line-clamp-2" style="color: var(--color-text-tertiary);">实时监控能耗数据，智能调节设备运行参数，降低整体能耗成本</p>
+                        <div class="flex items-center gap-0 mb-5 pb-5 border-b" style="border-color: var(--color-border-subtle);">
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">1,891</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">处理任务数</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">93.4%</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">准确率</p>
+                            </div>
+                            <div class="w-px h-8 shrink-0" style="background: var(--color-border-subtle);"></div>
+                            <div class="flex-1 text-center px-2">
+                                <p class="text-title-3 whitespace-nowrap" style="color: var(--color-text-primary);">0.9s</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">平均响应</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                                <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                                配置
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-body-sm whitespace-nowrap transition-colors duration-150 hover:opacity-80" style="background: var(--color-bg-200); color: var(--color-text-secondary);">
+                                <i data-lucide="scroll-text" class="w-3.5 h-3.5"></i>
+                                查看日志
+                            </button>
+                            <button class="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 hover:opacity-80 shrink-0" style="background: var(--color-bg-200);" title="暂停">
+                                <i data-lucide="pause" class="w-3.5 h-3.5" style="color: var(--color-text-tertiary);"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Activity Timeline -->
+            <section class="px-6 lg:px-10 pb-10" style="max-width: var(--content-max-width);">
+                <h3 class="text-title-3 mb-8" style="color: var(--color-text-primary);">智能体活动日志</h3>
+                <div class="relative pl-8">
+                    <!-- Vertical line -->
+                    <div class="absolute left-3 top-2 bottom-2 w-px" style="background: var(--color-border-default);"></div>
+
+                    <!-- Timeline Item 1 -->
+                    <div class="relative mb-8">
+                        <div class="absolute -left-5 top-1 w-3 h-3 rounded-full border-2" style="background: var(--color-bg-50); border-color: var(--state-success);"></div>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-body-sm font-medium truncate" style="color: var(--color-text-primary);">工艺优化助手</span>
+                                    <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-caption whitespace-nowrap" style="background: var(--state-success-bg); color: var(--state-success);">成功</span>
+                                </div>
+                                <p class="text-body-sm line-clamp-2" style="color: var(--color-text-tertiary);">完成A3产线焊接参数优化，预计良品率提升2.3%</p>
+                            </div>
+                            <span class="text-caption whitespace-nowrap shrink-0" style="color: var(--color-text-muted);">3分钟前</span>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Item 2 -->
+                    <div class="relative mb-8">
+                        <div class="absolute -left-5 top-1 w-3 h-3 rounded-full border-2" style="background: var(--color-bg-50); border-color: var(--state-success);"></div>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-body-sm font-medium truncate" style="color: var(--color-text-primary);">排产调度Agent</span>
+                                    <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-caption whitespace-nowrap" style="background: var(--state-success-bg); color: var(--state-success);">成功</span>
+                                </div>
+                                <p class="text-body-sm line-clamp-2" style="color: var(--color-text-tertiary);">重新排产B2车间本周订单，缩短交付周期1.5天</p>
+                            </div>
+                            <span class="text-caption whitespace-nowrap shrink-0" style="color: var(--color-text-muted);">18分钟前</span>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Item 3 -->
+                    <div class="relative mb-8">
+                        <div class="absolute -left-5 top-1 w-3 h-3 rounded-full border-2" style="background: var(--color-bg-50); border-color: var(--state-warning);"></div>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-body-sm font-medium truncate" style="color: var(--color-text-primary);">质量预测引擎</span>
+                                    <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-caption whitespace-nowrap" style="background: var(--state-warning-bg); color: var(--state-warning);">预警</span>
+                                </div>
+                                <p class="text-body-sm line-clamp-2" style="color: var(--color-text-tertiary);">检测到C1产线批次#20240615表面缺陷概率升至78%，建议抽检</p>
+                            </div>
+                            <span class="text-caption whitespace-nowrap shrink-0" style="color: var(--color-text-muted);">42分钟前</span>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Item 4 -->
+                    <div class="relative mb-8">
+                        <div class="absolute -left-5 top-1 w-3 h-3 rounded-full border-2" style="background: var(--color-bg-50); border-color: var(--state-success);"></div>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-body-sm font-medium truncate" style="color: var(--color-text-primary);">能耗优化Agent</span>
+                                    <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-caption whitespace-nowrap" style="background: var(--state-success-bg); color: var(--state-success);">成功</span>
+                                </div>
+                                <p class="text-body-sm line-clamp-2" style="color: var(--color-text-tertiary);">调整空压机运行策略，预计日节电12%</p>
+                            </div>
+                            <span class="text-caption whitespace-nowrap shrink-0" style="color: var(--color-text-muted);">1小时前</span>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Item 5 -->
+                    <div class="relative mb-8">
+                        <div class="absolute -left-5 top-1 w-3 h-3 rounded-full border-2" style="background: var(--color-bg-50); border-color: var(--state-error);"></div>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-body-sm font-medium truncate" style="color: var(--color-text-primary);">设备诊断专家</span>
+                                    <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-caption whitespace-nowrap" style="background: var(--state-error-bg); color: var(--state-error);">异常</span>
+                                </div>
+                                <p class="text-body-sm line-clamp-2" style="color: var(--color-text-tertiary);">检测到D4号数控机床主轴振动异常，已生成维修工单</p>
+                            </div>
+                            <span class="text-caption whitespace-nowrap shrink-0" style="color: var(--color-text-muted);">2小时前</span>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Item 6 -->
+                    <div class="relative">
+                        <div class="absolute -left-5 top-1 w-3 h-3 rounded-full border-2" style="background: var(--color-bg-50); border-color: var(--color-text-placeholder);"></div>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-body-sm font-medium truncate" style="color: var(--color-text-primary);">物料需求预测</span>
+                                    <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-caption whitespace-nowrap" style="background: var(--color-bg-200); color: var(--color-text-muted);">已停止</span>
+                                </div>
+                                <p class="text-body-sm line-clamp-2" style="color: var(--color-text-tertiary);">服务已暂停，等待管理员重新配置后启动</p>
+                            </div>
+                            <span class="text-caption whitespace-nowrap shrink-0" style="color: var(--color-text-muted);">5小时前</span>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="border-t px-6 lg:px-10 py-6" style="border-color: var(--color-border-subtle); max-width: var(--content-max-width);">
+            <div class="flex items-center justify-between">
+                <p class="text-caption" style="color: var(--color-text-muted);">灵境制造平台 v2.4.0</p>
+                <p class="text-caption" style="color: var(--color-text-muted);">智能体管理模块</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>lucide.createIcons();</script>
+
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.6; transform: scale(1.3); }
+      }
+      .status-pulse {
+        animation: pulse-dot 2s ease-in-out infinite;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .status-pulse { animation: none; }
+      }
+    </style>
+</body>
+</html>

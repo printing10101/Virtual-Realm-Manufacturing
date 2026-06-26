@@ -5,9 +5,12 @@ from __future__ import annotations
 import os
 import sys
 import time
+import logging
 import pytest
 import numpy as np
 from unittest.mock import patch, MagicMock
+
+logger = logging.getLogger(__name__)
 
 # 确保可以导入 app 模块
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
@@ -339,10 +342,10 @@ class TestPerformance:
         assert avg_time < 50, f"平均推理时间 {avg_time:.2f}ms 超过 50ms 限制"
         
         # 打印性能报告
-        print("\n性能测试报告:")
-        print(f"  平均推理时间: {avg_time:.2f} ms")
-        print(f"  最小推理时间: {min(times):.2f} ms")
-        print(f"  最大推理时间: {max(times):.2f} ms")
+        logger.info("\n性能测试报告:")
+        logger.info(f"  平均推理时间: {avg_time:.2f} ms")
+        logger.info(f"  最小推理时间: {min(times):.2f} ms")
+        logger.info(f"  最大推理时间: {max(times):.2f} ms")
 
 
 class TestConsistency:

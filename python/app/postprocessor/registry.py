@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any, Optional, Type
 
 from app.postprocessor.base import BasePostProcessor
@@ -38,15 +39,27 @@ class PostProcessorRegistry:
     """
 
     _instance: Optional[PostProcessorRegistry] = None
+    _instance_lock = threading.Lock()
 
     def __new__(cls) -> PostProcessorRegistry:
+        # 安全修复：双重检查锁，防止并发创建多个实例
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._processors: dict[str, Type[BasePostProcessor]] = {}
-            cls._instance._instances: dict[str, BasePostProcessor] = {}
-            cls._instance._config_loader = ConfigLoader()
-            cls._instance._register_builtin()
+            with cls._instance_lock:
+                if cls._instance is None:
+                    instance = super().__new__(cls)
+                    instance._processors: dict[str, Type[BasePostProcessor]] = {}
+                    instance._instances: dict[str, BasePostProcessor] = {}
+                    instance._config_loader = ConfigLoader()
+                    instance._lock = threading.Lock()
+                    instance._register_builtin()
+                    cls._instance = instance
         return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        """重置单例（主要用于测试）。"""
+        with cls._instance_lock:
+            cls._instance = None
 
     def _register_builtin(self) -> None:
         """注册内置后处理器类型。"""
@@ -82,7 +95,9 @@ class PostProcessorRegistry:
                 f"processor_cls must be a subclass of BasePostProcessor, "
                 f"got {processor_cls.__name__}"
             )
-        self._processors[controller_id] = processor_cls
+        # 安全修复：保护 _processors 字典的并发读写
+        with self._lock:
+            self._processors[controller_id] = processor_cls
         logger.info(
             "Registered post-processor: %s -> %s", controller_id, processor_cls.__name__
         )
@@ -105,27 +120,33 @@ class PostProcessorRegistry:
             KeyError: 如果指定的控制器类型未注册
         """
         config_key = f"{controller_id}:{sorted(config.items())}"
-        if config_key in self._instances:
-            return self._instances[config_key]
+        # 安全修复：保护 _instances 和 _processors 字典的并发读写
+        with self._lock:
+            if config_key in self._instances:
+                return self._instances[config_key]
 
-        processor_cls = self._processors.get(controller_id)
-        if processor_cls is None:
-            available = ", ".join(self._processors.keys())
-            raise KeyError(
-                f"Unknown controller type: '{controller_id}'. Available: {available}"
-            )
+            processor_cls = self._processors.get(controller_id)
+            if processor_cls is None:
+                available = ", ".join(self._processors.keys())
+                raise KeyError(
+                    f"Unknown controller type: '{controller_id}'. Available: {available}"
+                )
 
-        instance = processor_cls(**config)
-        self._instances[config_key] = instance
-        return instance
+            instance = processor_cls(**config)
+            self._instances[config_key] = instance
+            return instance
 
     def list_controllers(self) -> list[str]:
         """列出所有已注册的控制器类型。"""
-        return list(self._processors.keys())
+        # 安全修复：保护 _processors 字典的并发读
+        with self._lock:
+            return list(self._processors.keys())
 
     def clear_instances(self) -> None:
         """清除所有已创建的实例缓存。"""
-        self._instances.clear()
+        # 安全修复：保护 _instances 字典的并发写
+        with self._lock:
+            self._instances.clear()
 
     def load_from_config(
         self,

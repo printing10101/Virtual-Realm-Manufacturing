@@ -79,7 +79,7 @@ class ChatterPredictor:
         except ImportError:
             logger.warning("PyTorch 未安装，使用解析法回退")
             self.model = None
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"加载模型失败: {e}")
             self.model = None
     
@@ -174,7 +174,7 @@ class ChatterPredictor:
             
             return bool(stable), limit_depth
             
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError) as e:
             logger.error(f"神经网络推理失败: {e}")
             return True, 5.0
 
@@ -244,7 +244,7 @@ def predict_stability(
                 "method": "neural_network",
                 "inference_time_ms": inference_time,
             }
-    except Exception as e:
+    except (RuntimeError, ValueError, OSError) as e:
         logger.warning(f"神经网络预测失败: {e}，回退到解析法")
     
     # 回退到解析法

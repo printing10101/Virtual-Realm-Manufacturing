@@ -241,3 +241,7 @@ class BatchInferenceEngine:
     def shutdown(self) -> None:
         """Shutdown the executor and release resources"""
         self._executor.shutdown(wait=True)
+
+
+# Alias for backward compatibility
+BatchPredictor = BatchInferenceEngine

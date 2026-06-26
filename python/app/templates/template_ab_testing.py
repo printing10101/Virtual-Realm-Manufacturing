@@ -12,6 +12,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from app.utils.sqlite_pool import get_sqlite_manager
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,15 +59,18 @@ class ABTestingFramework:
     def __init__(self, db_path: str = "data/templates/ab_testing.db"):
         self.db_path = db_path
         self._lock = threading.RLock()
-        self._db: Optional[sqlite3.Connection] = None
         self._experiments: Dict[str, ABExperiment] = {}
         self._traffic_map: Dict[str, str] = {}
+        # 自动初始化数据库
+        self.initialize()
 
     def initialize(self) -> None:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
-        self._db = sqlite3.connect(self.db_path, check_same_thread=False)
-        self._db.row_factory = sqlite3.Row
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("ab_testing")
+        self._db = self._pool.get_connection()
         self._db.execute("""
             CREATE TABLE IF NOT EXISTS ab_experiments (
                 experiment_id TEXT PRIMARY KEY,
@@ -220,7 +225,8 @@ class ABTestingFramework:
             if exp is None:
                 return "control"
 
-            hash_val = int(hashlib.md5(key.encode()).hexdigest(), 16) % 100
+            # 安全修复：使用 SHA256 替代 MD5，避免分桶预测
+            hash_val = int(hashlib.sha256(key.encode()).hexdigest(), 16) % 100
             branch = "candidate" if hash_val < exp.traffic_split * 100 else "control"
             self._traffic_map[key] = branch
             self._db.execute(

@@ -147,10 +147,10 @@ class AdvancedFeatureBuilder:
                     result = self._apply_slot(result, spec)
                 else:
                     logger.warning("未知特征类型: %s", ftype)
-            except Exception as e:
+            except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
                 logger.error(
-                    "特征应用失败 type=%s params=%s err=%s",
-                    ftype, spec, e, exc_info=True,
+                    "特征应用失败 type=%s params=%s err=%s: %s",
+                    ftype, spec, type(e).__name__, e, exc_info=True,
                 )
         return result
 

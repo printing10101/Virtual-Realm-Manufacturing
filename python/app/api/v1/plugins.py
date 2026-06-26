@@ -64,7 +64,7 @@ def list_installed_plugins(
                 "total": len(plugins),
             }
         )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -99,7 +99,7 @@ def get_plugin_detail(plugin_id: str):
         return success(data=info)
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -114,7 +114,7 @@ def enable_plugin(plugin_id: str):
         return success(data={"message": f"Plugin '{plugin_id}' enabled"})
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -129,7 +129,7 @@ def disable_plugin(plugin_id: str):
         return success(data={"message": f"Plugin '{plugin_id}' disabled"})
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -144,7 +144,7 @@ def reload_plugin(plugin_id: str):
         return success(data={"message": f"Plugin '{plugin_id}' reloaded"})
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -159,7 +159,7 @@ def uninstall_plugin(plugin_id: str):
         return success(data={"message": f"Plugin '{plugin_id}' uninstalled"})
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -174,7 +174,7 @@ def update_plugin_config(plugin_id: str, config: Dict[str, Any]):
         return success(data={"message": f"Plugin '{plugin_id}' config updated"})
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -196,7 +196,7 @@ def get_plugin_dependencies(plugin_id: str):
         )
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -208,7 +208,7 @@ def get_plugin_logs(
     plugin_id: str,
     level: Optional[str] = Query(None, description="Filter by log level"),
     limit: int = Query(100, ge=1, le=1000),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=10000),
 ):
     return success(
         data={
@@ -229,7 +229,7 @@ def get_plugin_capabilities(plugin_id: str):
                 "capabilities": caps,
             }
         )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -254,7 +254,7 @@ def update_capability_grant(
             gpu_limits=gpu_limits,
         )
         return success(data={"message": f"Capability '{capability}' rules updated"})
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -267,7 +267,7 @@ def list_workers():
         worker_mgr = PluginWorkerManager.get_instance()
         workers = worker_mgr.list_workers()
         return success(data={"workers": workers})
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -290,7 +290,7 @@ def start_worker(plugin_id: str):
         return success(data={"message": f"Worker for '{plugin_id}' started"})
     except KeyError:
         return error(f"Plugin '{plugin_id}' not found", code=404)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -303,7 +303,7 @@ def stop_worker(plugin_id: str):
         worker_mgr = PluginWorkerManager.get_instance()
         worker_mgr.stop_worker(plugin_id)
         return success(data={"message": f"Worker for '{plugin_id}' stopped"})
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)
@@ -316,7 +316,7 @@ def health_check(plugin_id: Optional[str] = None):
         worker_mgr = PluginWorkerManager.get_instance()
         results = worker_mgr.health_check(plugin_id)
         return success(data={"health": results})
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
         logger.error("plugins API unexpected error: %s", e, exc_info=True)

@@ -131,7 +131,8 @@ def _hash_user_to_bucket(user_id: str) -> float:
     """把 user_id 哈希成 0.0-1.0 的桶位置。"""
     if not user_id:
         return 0.0
-    h = hashlib.md5(user_id.encode("utf-8")).hexdigest()
+    # 安全修复：使用 SHA256 替代 MD5，避免用户构造 user_id 预测分桶
+    h = hashlib.sha256(user_id.encode("utf-8")).hexdigest()
     return int(h[:8], 16) / 0xFFFFFFFF
 
 

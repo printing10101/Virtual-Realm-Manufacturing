@@ -203,7 +203,8 @@ class CollisionChecker:
         elif hasattr(geometry, "get_bbox"):
             try:
                 bbox = geometry.get_bbox()
-            except Exception:
+            except (AttributeError, TypeError, ValueError) as e:
+                logger.debug("get_bbox() 调用失败: %s", e)
                 pass
         elif isinstance(geometry, dict):
             bbox = geometry.get("bbox") or (

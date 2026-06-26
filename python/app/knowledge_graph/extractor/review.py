@@ -424,7 +424,7 @@ class ReviewManager:
                     data = json.load(f)
                 review = ExtractionReviewData(**data)
                 self.reviews[review.id] = review
-            except Exception as exc:
+            except (json.JSONDecodeError, OSError, ValueError, TypeError, KeyError) as exc:
                 logger.warning("加载审核记录失败 %s: %s", file_path, exc)
 
 

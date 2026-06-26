@@ -281,7 +281,7 @@ class WorkflowLNNOrchestrator:
 
             return workflow_result
 
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, KeyError, TimeoutError) as e:
             # 兜底捕获：工作流编排可能涉及多步执行、序列化、IO 等复杂逻辑，
             # 任何未预期异常都需记录到错误结果中以保持主流程可用
             from app.core.safe_errors import safe_error_message
@@ -299,6 +299,7 @@ class WorkflowLNNOrchestrator:
                 error_id=safe["error_id"],
                 timestamp=time.time(),
             )
+            logger.exception("工作流执行异常: %s", e, exc_info=True)
             self._workflow_history.append(error_result)
             self._log_workflow(error_result)
             return error_result
@@ -338,10 +339,11 @@ class WorkflowLNNOrchestrator:
 
             return result
 
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, KeyError, TimeoutError) as e:
             # 兜底捕获：LNN 不可用或推理失败时降级到规则引擎，记录原始错误以便排查
             from app.core.safe_errors import safe_error_message
 
+            logger.warning("LNN推理失败，降级到规则引擎: %s", e, exc_info=True)
             safe = safe_error_message(
                 e, context="lnn.workflow.fallback", fallback="LNN推理失败"
             )
@@ -578,7 +580,9 @@ class WorkflowLNNOrchestrator:
                     logger.warning(
                         f"Inference attempt {attempt + 1}/{max_retries} failed: {e}"
                     )
-                    time.sleep(0.1 * (attempt + 1))
+                    # 使用指数退避策略，避免阻塞：0.1s, 0.2s, 0.4s
+                    backoff_time = 0.1 * (2 ** attempt)
+                    time.sleep(backoff_time)
 
         raise RuntimeError(
             f"工作流推理失败：已连续尝试 {max_retries} 次但全部失败。最后错误: {last_error}。可能原因：1) 模型推理服务不可用；2) 输入数据不符合模型要求；3) 系统资源不足。请检查推理日志，确认模型和输入数据状态后重试。"  # noqa: E501
@@ -667,7 +671,7 @@ class WorkflowLNNOrchestrator:
                 timestamp=time.time(),
             )
 
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, KeyError, TimeoutError) as e:
             # 兜底捕获：降级路径仍可能因配置或上下文错误失败
             from app.core.safe_errors import safe_error_message
 
@@ -675,6 +679,7 @@ class WorkflowLNNOrchestrator:
             safe = safe_error_message(
                 e, context="lnn.workflow.fallback_path", fallback="降级路径执行失败"
             )
+            logger.exception("降级路径执行异常: %s", e, exc_info=True)
             return WorkflowResult(
                 workflow_id=workflow_id,
                 success=False,

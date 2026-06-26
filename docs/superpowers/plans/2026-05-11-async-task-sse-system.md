@@ -1206,7 +1206,7 @@ const trainingMetrics = ref<any>(null)
 const lossHistory = ref<number[]>([])
 
 const { events, isConnected, connect, close: closeSSE } = useEventSource(
-  computed(() => jobId.value ? `http://localhost:8000/api/v1/jobs/${jobId.value}/stream` : ''),
+  computed(() => jobId.value ? `http://localhost:8765/api/v1/jobs/${jobId.value}/stream` : ''),
   {
     autoReconnect: true,
     maxRetries: 3,

@@ -1,3 +1,4 @@
+import json
 import uuid
 import logging
 from fastapi import APIRouter
@@ -73,14 +74,71 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
                 input_data=request.input_data,
                 return_confidence=True,
             )
+        except ValueError as ve:
+            # 模型推理输入值无效
+            logger.error(
+                "User sovereignty inference value error | model=%s | err=%s",
+                request.model_name,
+                ve,
+                exc_info=True,
+            )
+            return error(
+                code=ErrorCode.INVALID_REQUEST,
+                message=f"模型推理输入值无效: {ve}",
+            )
+        except TypeError as te:
+            # 模型推理输入类型错误
+            logger.error(
+                "User sovereignty inference type error | model=%s | err=%s",
+                request.model_name,
+                te,
+                exc_info=True,
+            )
+            return error(
+                code=ErrorCode.INVALID_REQUEST,
+                message=f"模型推理输入类型错误: {te}",
+            )
+        except RuntimeError as rte:
+            # 模型推理运行时错误
+            safe = safe_error_message(
+                rte, context=f"user_sovereignty.predict_inference[{request.model_name}]"
+            )
+            logger.error(
+                "User sovereignty inference runtime error | model=%s | error_id=%s | exc=%s",
+                request.model_name,
+                safe.get("error_id"),
+                rte,
+                exc_info=True,
+            )
+            return error(
+                code=ErrorCode.INTERNAL_ERROR,
+                message=safe["message"],
+                detail=safe.get("detail"),
+            )
+        except (RuntimeError, ValueError, TypeError, AttributeError) as specific_err:
+            # 捕获模型推理相关的常见异常
+            safe = safe_error_message(
+                specific_err, context=f"user_sovereignty.predict_inference[{request.model_name}]"
+            )
+            logger.error(
+                "User sovereignty inference specific error | model=%s | error_id=%s | exc=%s",
+                request.model_name,
+                safe.get("error_id"),
+                specific_err,
+                exc_info=True,
+            )
+            return error(
+                code=ErrorCode.INTERNAL_ERROR,
+                message=safe["message"],
+                detail=safe.get("detail"),
+            )
         except Exception as model_err:
-            # 修复：避免直接 str(model_err) 暴露内部异常详情；
-            # 完整堆栈写入日志，前端仅看到错误类型 + error_id。
+            # 兜底：捕获未预期的异常
             safe = safe_error_message(
                 model_err, context=f"user_sovereignty.predict_inference[{request.model_name}]"
             )
             logger.error(
-                "User sovereignty inference error | model=%s | error_id=%s | exc=%s",
+                "User sovereignty inference unexpected error | model=%s | error_id=%s | exc=%s",
                 request.model_name,
                 safe.get("error_id"),
                 model_err,
@@ -147,14 +205,80 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
             code=ErrorCode.NOT_FOUND,
             message=f"Model '{request.model_name}' not found in registry",
         )
+    except ValueError as ve:
+        # 数据验证错误（如输入维度不匹配、数值转换失败）
+        logger.error(
+            "User sovereignty predict value error | model=%s | err=%s",
+            request.model_name,
+            ve,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"数据验证失败: {ve}",
+        )
+    except TypeError as te:
+        # 类型错误（如输入数据类型不匹配）
+        logger.error(
+            "User sovereignty predict type error | model=%s | err=%s",
+            request.model_name,
+            te,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"数据类型错误: {te}",
+        )
+    except AttributeError as ae:
+        # 属性错误（如模型对象缺少预期属性）
+        logger.error(
+            "User sovereignty predict attribute error | model=%s | err=%s",
+            request.model_name,
+            ae,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"模型属性错误: {ae}",
+        )
+    except OSError as oe:
+        # 系统/IO错误（如设备内存问题）
+        logger.error(
+            "User sovereignty predict OS error | model=%s | err=%s",
+            request.model_name,
+            oe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"系统错误: {oe}",
+        )
+    except (RuntimeError, ValueError, TypeError, AttributeError) as specific_err:
+        # 捕获模型预测相关的常见异常
+        safe = safe_error_message(
+            specific_err,
+            context=f"user_sovereignty.predict[{request.model_name}]",
+        )
+        logger.error(
+            "User sovereignty predict specific error | model=%s | error_id=%s | exc=%s",
+            request.model_name,
+            safe.get("error_id"),
+            specific_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        # 修复：不直接 str(e) 暴露内部异常，使用 safe_error_message 包装
+        # 兜底：捕获未预期的异常
         safe = safe_error_message(
             e,
             context=f"user_sovereignty.predict[{request.model_name}]",
         )
         logger.error(
-            "User sovereignty predict failed | model=%s | error_id=%s | exc=%s",
+            "User sovereignty predict unexpected error | model=%s | error_id=%s | exc=%s",
             request.model_name,
             safe.get("error_id"),
             e,
@@ -346,11 +470,69 @@ async def record_user_decision(
             message="Audit log entry recorded successfully",
         )
 
+    except ValueError as ve:
+        # 枚举映射失败或参数值无效
+        logger.error(
+            "Failed to record audit log - value error | err=%s",
+            ve,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"参数值无效: {ve}",
+        )
+    except TypeError as te:
+        # 参数类型错误
+        logger.error(
+            "Failed to record audit log - type error | err=%s",
+            te,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"参数类型错误: {te}",
+        )
+    except OSError as oe:
+        # 日志文件写入失败
+        logger.error(
+            "Failed to record audit log - OS error | err=%s",
+            oe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"日志写入失败: {oe}",
+        )
+    except (OSError, IOError, PermissionError) as file_err:
+        # 文件操作相关的异常
+        logger.error(
+            "Failed to record audit log - file error | err=%s",
+            file_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"日志写入失败: {file_err}",
+        )
+    except (ValueError, TypeError, KeyError) as data_err:
+        # 数据处理相关的异常
+        safe = safe_error_message(data_err, context="user_sovereignty.record_decision")
+        logger.error(
+            "Failed to record audit log - data error | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            data_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        # 修复：使用 safe_error_message 包装异常，避免泄露内部错误详情
+        # 兜底：捕获未预期的异常
         safe = safe_error_message(e, context="user_sovereignty.record_decision")
         logger.error(
-            "Failed to record audit log | error_id=%s | exc=%s",
+            "Failed to record audit log - unexpected error | error_id=%s | exc=%s",
             safe.get("error_id"),
             e,
             exc_info=True,
@@ -384,11 +566,69 @@ async def query_audit_logs(request: AuditLogQueryRequest):
             message="Audit logs retrieved successfully",
         )
 
+    except ValueError as ve:
+        # 查询参数无效（如时间范围错误）
+        logger.error(
+            "Failed to query audit logs - value error | err=%s",
+            ve,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"查询参数无效: {ve}",
+        )
+    except TypeError as te:
+        # 查询参数类型错误
+        logger.error(
+            "Failed to query audit logs - type error | err=%s",
+            te,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"查询参数类型错误: {te}",
+        )
+    except OSError as oe:
+        # 日志文件读取失败
+        logger.error(
+            "Failed to query audit logs - OS error | err=%s",
+            oe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"日志读取失败: {oe}",
+        )
+    except (OSError, IOError) as file_err:
+        # 文件操作相关的异常
+        logger.error(
+            "Failed to query audit logs - file error | err=%s",
+            file_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"日志读取失败: {file_err}",
+        )
+    except (ValueError, TypeError, json.JSONDecodeError) as data_err:
+        # 数据处理相关的异常
+        safe = safe_error_message(data_err, context="user_sovereignty.query_audit_logs")
+        logger.error(
+            "Failed to query audit logs - data error | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            data_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        # 修复：使用 safe_error_message 包装异常
+        # 兜底：捕获未预期的异常
         safe = safe_error_message(e, context="user_sovereignty.query_audit_logs")
         logger.error(
-            "Failed to query audit logs | error_id=%s | exc=%s",
+            "Failed to query audit logs - unexpected error | error_id=%s | exc=%s",
             safe.get("error_id"),
             e,
             exc_info=True,
@@ -417,11 +657,69 @@ async def search_audit_logs(request: AuditLogSearchRequest):
             message="Audit logs search completed",
         )
 
+    except ValueError as ve:
+        # 搜索参数无效（如关键字格式错误）
+        logger.error(
+            "Failed to search audit logs - value error | err=%s",
+            ve,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"搜索参数无效: {ve}",
+        )
+    except TypeError as te:
+        # 搜索参数类型错误
+        logger.error(
+            "Failed to search audit logs - type error | err=%s",
+            te,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"搜索参数类型错误: {te}",
+        )
+    except OSError as oe:
+        # 日志文件读取失败
+        logger.error(
+            "Failed to search audit logs - OS error | err=%s",
+            oe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"日志读取失败: {oe}",
+        )
+    except (OSError, IOError) as file_err:
+        # 文件操作相关的异常
+        logger.error(
+            "Failed to search audit logs - file error | err=%s",
+            file_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"日志读取失败: {file_err}",
+        )
+    except (ValueError, TypeError, json.JSONDecodeError) as data_err:
+        # 数据处理相关的异常
+        safe = safe_error_message(data_err, context="user_sovereignty.search_audit_logs")
+        logger.error(
+            "Failed to search audit logs - data error | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            data_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        # 修复：使用 safe_error_message 包装异常
+        # 兜底：捕获未预期的异常
         safe = safe_error_message(e, context="user_sovereignty.search_audit_logs")
         logger.error(
-            "Failed to search audit logs | error_id=%s | exc=%s",
+            "Failed to search audit logs - unexpected error | error_id=%s | exc=%s",
             safe.get("error_id"),
             e,
             exc_info=True,
@@ -452,11 +750,69 @@ async def export_audit_logs(request: AuditLogExportRequest):
             message="Audit logs exported successfully",
         )
 
+    except ValueError as ve:
+        # 导出参数无效（如不支持的格式）
+        logger.error(
+            "Failed to export audit logs - value error | err=%s",
+            ve,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"导出参数无效: {ve}",
+        )
+    except PermissionError as pe:
+        # 文件写入权限不足
+        logger.error(
+            "Failed to export audit logs - permission error | err=%s",
+            pe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.FORBIDDEN,
+            message=f"文件写入权限不足: {pe}",
+        )
+    except OSError as oe:
+        # 文件写入/IO错误
+        logger.error(
+            "Failed to export audit logs - OS error | err=%s",
+            oe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"文件写入失败: {oe}",
+        )
+    except (OSError, IOError, PermissionError) as file_err:
+        # 文件操作相关的异常
+        logger.error(
+            "Failed to export audit logs - file error | err=%s",
+            file_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"文件写入失败: {file_err}",
+        )
+    except (ValueError, TypeError) as data_err:
+        # 数据处理相关的异常
+        safe = safe_error_message(data_err, context="user_sovereignty.export_audit_logs")
+        logger.error(
+            "Failed to export audit logs - data error | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            data_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        # 修复：使用 safe_error_message 包装异常
+        # 兜底：捕获未预期的异常
         safe = safe_error_message(e, context="user_sovereignty.export_audit_logs")
         logger.error(
-            "Failed to export audit logs | error_id=%s | exc=%s",
+            "Failed to export audit logs - unexpected error | error_id=%s | exc=%s",
             safe.get("error_id"),
             e,
             exc_info=True,
@@ -478,11 +834,69 @@ async def get_audit_log_statistics():
             message="Audit log statistics retrieved successfully",
         )
 
+    except ValueError as ve:
+        # 统计数据计算时参数无效
+        logger.error(
+            "Failed to retrieve audit log statistics - value error | err=%s",
+            ve,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"统计参数无效: {ve}",
+        )
+    except TypeError as te:
+        # 统计数据计算时类型错误
+        logger.error(
+            "Failed to retrieve audit log statistics - type error | err=%s",
+            te,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"统计计算类型错误: {te}",
+        )
+    except OSError as oe:
+        # 日志文件读取失败
+        logger.error(
+            "Failed to retrieve audit log statistics - OS error | err=%s",
+            oe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"日志读取失败: {oe}",
+        )
+    except (OSError, IOError) as file_err:
+        # 文件操作相关的异常
+        logger.error(
+            "Failed to retrieve audit log statistics - file error | err=%s",
+            file_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"日志读取失败: {file_err}",
+        )
+    except (ValueError, TypeError, json.JSONDecodeError) as data_err:
+        # 数据处理相关的异常
+        safe = safe_error_message(data_err, context="user_sovereignty.get_audit_statistics")
+        logger.error(
+            "Failed to retrieve audit log statistics - data error | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            data_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        # 修复：使用 safe_error_message 包装异常
+        # 兜底：捕获未预期的异常
         safe = safe_error_message(e, context="user_sovereignty.get_audit_statistics")
         logger.error(
-            "Failed to retrieve audit log statistics | error_id=%s | exc=%s",
+            "Failed to retrieve audit log statistics - unexpected error | error_id=%s | exc=%s",
             safe.get("error_id"),
             e,
             exc_info=True,
@@ -504,11 +918,69 @@ async def clear_audit_logs():
             message=f"Audit log cleared: {count} entries removed",
         )
 
+    except PermissionError as pe:
+        # 无权限清除日志
+        logger.error(
+            "Failed to clear audit logs - permission error | err=%s",
+            pe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.FORBIDDEN,
+            message=f"无权限清除日志: {pe}",
+        )
+    except OSError as oe:
+        # 日志文件操作失败
+        logger.error(
+            "Failed to clear audit logs - OS error | err=%s",
+            oe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"日志文件操作失败: {oe}",
+        )
+    except ValueError as ve:
+        # 清除操作参数无效
+        logger.error(
+            "Failed to clear audit logs - value error | err=%s",
+            ve,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"清除参数无效: {ve}",
+        )
+    except (OSError, IOError, PermissionError) as file_err:
+        # 文件操作相关的异常
+        logger.error(
+            "Failed to clear audit logs - file error | err=%s",
+            file_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"文件操作失败: {file_err}",
+        )
+    except (ValueError, TypeError) as data_err:
+        # 数据处理相关的异常
+        safe = safe_error_message(data_err, context="user_sovereignty.clear_audit_logs")
+        logger.error(
+            "Failed to clear audit logs - data error | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            data_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        # 修复：使用 safe_error_message 包装异常
+        # 兜底：捕获未预期的异常
         safe = safe_error_message(e, context="user_sovereignty.clear_audit_logs")
         logger.error(
-            "Failed to clear audit logs | error_id=%s | exc=%s",
+            "Failed to clear audit logs - unexpected error | error_id=%s | exc=%s",
             safe.get("error_id"),
             e,
             exc_info=True,
@@ -530,11 +1002,69 @@ async def get_user_sovereignty_settings():
             message="User sovereignty settings retrieved",
         )
 
+    except ValueError as ve:
+        # 设置初始化时参数值无效
+        logger.error(
+            "Failed to retrieve settings - value error | err=%s",
+            ve,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"设置参数无效: {ve}",
+        )
+    except TypeError as te:
+        # 设置初始化时类型错误
+        logger.error(
+            "Failed to retrieve settings - type error | err=%s",
+            te,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"设置类型错误: {te}",
+        )
+    except OSError as oe:
+        # 读取配置文件失败
+        logger.error(
+            "Failed to retrieve settings - OS error | err=%s",
+            oe,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"配置文件读取失败: {oe}",
+        )
+    except (OSError, IOError) as file_err:
+        # 文件操作相关的异常
+        logger.error(
+            "Failed to retrieve settings - file error | err=%s",
+            file_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"配置文件读取失败: {file_err}",
+        )
+    except (ValueError, TypeError, json.JSONDecodeError) as data_err:
+        # 数据处理相关的异常
+        safe = safe_error_message(data_err, context="user_sovereignty.get_settings")
+        logger.error(
+            "Failed to retrieve settings - data error | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            data_err,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
     except Exception as e:
-        # 修复：使用 safe_error_message 包装异常
+        # 兜底：捕获未预期的异常
         safe = safe_error_message(e, context="user_sovereignty.get_settings")
         logger.error(
-            "Failed to retrieve settings | error_id=%s | exc=%s",
+            "Failed to retrieve settings - unexpected error | error_id=%s | exc=%s",
             safe.get("error_id"),
             e,
             exc_info=True,

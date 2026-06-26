@@ -25,7 +25,7 @@ from pathlib import Path
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Lingjing Backend Sidecar")
     p.add_argument("--host", default=os.environ.get("LNN_HOST", "127.0.0.1"))
-    p.add_argument("--port", type=int, default=int(os.environ.get("LNN_PORT", "8000")))
+    p.add_argument("--port", type=int, default=int(os.environ.get("LNN_PORT", "8765")))
     p.add_argument("--workers", type=int, default=1)
     p.add_argument("--log-level", default="info")
     p.add_argument(

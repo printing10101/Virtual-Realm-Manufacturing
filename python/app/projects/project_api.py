@@ -132,7 +132,7 @@ async def create_project(request: ProjectMetadataRequest) -> dict:
             },
             message=f'工程 "{request.name}" 创建成功',
         )
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, OSError, IOError) as e:
         # 修复：使用 safe_error_message 包装，避免将内部异常细节（堆栈/路径/库版本）暴露给前端
         safe = safe_error_message(e, context="projects.create", fallback="创建工程失败")
         return error(
@@ -193,18 +193,24 @@ async def open_project(
             message=f'工程 "{manifest.metadata.name if manifest.metadata else ""}" 打开成功',
         )
     except FileNotFoundError:
+        if tmp_path:
+            tmp_path.unlink(missing_ok=True)
         return error(
             code=ErrorCode.FILE_NOT_FOUND,
             message=f"工程文件未找到: {request.file_path}",
             recoverable=True,
         )
     except ValueError as e:
+        if tmp_path:
+            tmp_path.unlink(missing_ok=True)
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=str(e),
             recoverable=True,
         )
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, OSError, IOError) as e:
+        if tmp_path:
+            tmp_path.unlink(missing_ok=True)
         # 修复：避免 str(e) 直接进入响应，泄露内部异常细节
         safe = safe_error_message(e, context="projects.open", fallback="打开工程失败")
         return error(
@@ -262,7 +268,8 @@ async def save_project(request: SaveRequest) -> dict:
             },
             message="工程保存成功",
         )
-    except Exception as e:
+    except (OSError, ValueError, TypeError, KeyError) as e:
+        logger.error(f"保存工程失败: {e}", exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.save", fallback="保存工程失败")
         return error(
@@ -312,7 +319,8 @@ async def save_as_project(request: SaveRequest) -> dict:
             },
             message=f'工程另存为 "{Path(saved_path).name}" 成功',
         )
-    except Exception as e:
+    except (OSError, ValueError, TypeError, KeyError) as e:
+        logger.error(f"另存为工程失败: {e}", exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.save_as", fallback="另存为工程失败")
         return error(
@@ -338,7 +346,8 @@ async def list_projects() -> dict:
             },
             message="OK",
         )
-    except Exception as e:
+    except (OSError, ValueError, TypeError) as e:
+        logger.error(f"获取工程列表失败: {e}", exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.list", fallback="获取工程列表失败")
         return error(
@@ -372,7 +381,8 @@ async def delete_project(project_name: str) -> dict:
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except (OSError, ValueError, TypeError) as e:
+        logger.error(f"删除工程失败: {e}", exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.delete", fallback="删除工程失败")
         return error(
@@ -405,6 +415,11 @@ async def download_project(project_name: str) -> FileResponse:
     )
 
 
+# 文件上传限制
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100MB
+ALLOWED_UPLOAD_EXTENSIONS = {".step", ".stp", ".dxf", ".igs", ".iges", ".stl", ".obj"}
+
+
 @router.post("/upload-resource")
 async def upload_resource(
     file: UploadFile,
@@ -422,12 +437,34 @@ async def upload_resource(
         资源ID和临时路径
     """
     try:
+        # 验证文件名
+        if not file.filename:
+            return error(
+                code=ErrorCode.INVALID_REQUEST,
+                message="文件名不能为空",
+            )
+
+        # 验证文件扩展名
+        ext = Path(file.filename).suffix.lower()
+        if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+            return error(
+                code=ErrorCode.INVALID_REQUEST,
+                message=f"不支持的文件格式: {ext}。支持的格式: {', '.join(sorted(ALLOWED_UPLOAD_EXTENSIONS))}",
+            )
+
+        # 读取并验证文件大小
+        content = await file.read()
+        if len(content) > MAX_UPLOAD_SIZE:
+            return error(
+                code=ErrorCode.INVALID_REQUEST,
+                message=f"文件大小({len(content) / 1024 / 1024:.1f}MB)超过限制({MAX_UPLOAD_SIZE / 1024 / 1024:.0f}MB)",
+            )
+
+        # 生成安全的文件名（防止路径遍历）
         resource_id = f"res_{uuid.uuid4().hex[:12]}"
-        ext = Path(file.filename or "unknown").suffix
         tmp_name = f"{resource_id}{ext}"
         tmp_path = TEMP_UPLOAD_DIR / tmp_name
 
-        content = await file.read()
         tmp_path.write_bytes(content)
 
         return success(
@@ -440,7 +477,8 @@ async def upload_resource(
             },
             message="资源上传成功",
         )
-    except Exception as e:
+    except (OSError, ValueError, TypeError, KeyError) as e:
+        logger.error(f"资源上传失败: {e}", exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.upload_resource", fallback="资源上传失败")
         return error(

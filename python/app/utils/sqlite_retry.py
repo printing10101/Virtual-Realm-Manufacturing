@@ -67,8 +67,9 @@ def sqlite_retry(
                         e,
                     )
                     time.sleep(sleep_time)
-                except Exception:
-                    raise
+                except (OSError, RuntimeError) as sleep_err:
+                    # sleep 被中断或系统错误，直接抛出
+                    raise sleep_err
 
             logger.error(
                 "SQLite operation failed after %d retries: %s",

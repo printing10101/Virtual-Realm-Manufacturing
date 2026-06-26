@@ -94,12 +94,49 @@ class AssemblyBuilder:
         Returns:
             装配体对象
         """
-        # 装配体构建（待实现）
-        # - 应用约束到组件
-        # - 解决约束冲突
-        # - 计算最终位置
-        # - 返回装配体对象
-        raise NotImplementedError("Assembly building not yet implemented")
+        # 验证约束
+        is_valid, errors = self.validate_constraints()
+        if not is_valid:
+            raise ValueError(f"约束验证失败: {', '.join(errors)}")
+
+        try:
+            import cadquery as cq
+
+            # 创建 CadQuery Assembly
+            assembly = cq.Assembly()
+
+            # 添加所有组件到装配体
+            for name, component in self._components.items():
+                # 应用位置和旋转
+                location = cq.Location(
+                    cq.Vector(*component.position),
+                    cq.Vector(1, 0, 0),
+                    component.rotation[0],
+                )
+                assembly.add(
+                    component.geometry,
+                    name=name,
+                    loc=location,
+                )
+
+            logger.info("Assembly built with %d components", len(self._components))
+            return assembly
+
+        except ImportError:
+            logger.warning("CadQuery 未安装，返回简化装配表示")
+            # 返回简化的装配表示（用于测试或无 CadQuery 环境）
+            return {
+                "type": "assembly",
+                "components": [
+                    {
+                        "name": comp.name,
+                        "position": comp.position,
+                        "rotation": comp.rotation,
+                    }
+                    for comp in self._components.values()
+                ],
+                "constraints": self._constraints,
+            }
 
     def validate_constraints(self) -> tuple[bool, list[str]]:
         """验证约束有效性。

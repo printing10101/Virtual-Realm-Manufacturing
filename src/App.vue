@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <SplashScreen v-if="showSplash" @complete="showSplash = false" />
     <el-config-provider :locale="elLocale">
       <el-container class="app-container">
         <el-header class="app-header">
@@ -23,38 +24,20 @@
               <el-menu-item index="/workspace">
                 {{ $t('navigation.workspace') }}
               </el-menu-item>
-              <el-menu-item
-                v-permission="'system:config'"
-                index="/settings"
-              >
+              <el-menu-item index="/settings">
                 {{ $t('navigation.settings') }}
               </el-menu-item>
               <el-menu-item index="/about">
                 {{ $t('navigation.about') }}
               </el-menu-item>
-              <el-menu-item
-                v-permission="'rule:edit'"
-                index="/rule-editor"
-              >
+              <el-menu-item index="/rule-editor">
                 <el-icon><Setting /></el-icon>{{ $t('navigation.processRules') }}
               </el-menu-item>
-              <el-menu-item
-                v-permission="'toolpath:edit'"
-                index="/toolpath-editor"
-              >
+              <el-menu-item index="/toolpath-editor">
                 <el-icon><EditPen /></el-icon>{{ $t('navigation.toolpathEdit') }}
               </el-menu-item>
-              <el-menu-item
-                v-permission="'process:plan'"
-                index="/process-planning"
-              >
+              <el-menu-item index="/process-planning">
                 <el-icon><SetUp /></el-icon>{{ $t('navigation.processPlanning') }}
-              </el-menu-item>
-              <el-menu-item
-                v-permission="'user:manage'"
-                index="/admin/users"
-              >
-                <el-icon><UserFilled /></el-icon>{{ $t('navigation.userManagement') }}
               </el-menu-item>
             </el-menu>
           </div>
@@ -126,7 +109,11 @@
         </el-header>
 
         <el-main class="app-main">
-          <router-view />
+          <div v-if="!appReady" class="app-initializing">
+            <el-icon class="is-loading" :size="28"><loading /></el-icon>
+            <span>正在初始化...</span>
+          </div>
+          <router-view v-else />
         </el-main>
       </el-container>
 
@@ -379,6 +366,7 @@ import { computed, onMounted, inject, ref, reactive, watch, type Ref } from 'vue
 import { useRoute } from 'vue-router'
 import { useVersionStore } from '@/stores/version'
 import { useProjectStore } from '@/stores/project'
+import { useAuthStore } from '@/stores/auth'
 import { useStepImportStore } from '@/stores/stepImport'
 import { useDxfImportStore } from '@/stores/dxfImport'
 import StepImportDialog from '@/components/step_import/StepImportDialog.vue'
@@ -386,6 +374,7 @@ import DxfImportDialog from '@/components/dxf_import/DxfImportDialog.vue'
 import ErrorConflictDialog from '@/components/ErrorConflictDialog.vue'
 import BackendStatusIndicator from '@/components/BackendStatusIndicator.vue'
 import BackendStartupDialog from '@/components/BackendStartupDialog.vue'
+import SplashScreen from '@/components/SplashScreen.vue'
 import { useBackendStatus } from '@/composables/useBackendStatus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
@@ -393,6 +382,7 @@ import type { ProjectSummary } from '@/types'
 
 const route = useRoute()
 const activeRoute = computed(() => route.path)
+const authStore = useAuthStore()
 
 const elLocaleRef = inject<Ref<typeof zhCn>>('locale', ref(zhCn))
 const elLocale = computed(() => elLocaleRef.value)
@@ -402,6 +392,11 @@ const frontendVersion = computed(() => versionStore.frontendVersion)
 const projectStore = useProjectStore()
 const stepImportStore = useStepImportStore()
 const dxfImportStore = useDxfImportStore()
+
+// 启动动画
+const showSplash = ref(true)
+// 应用初始化完成标志（auto-login 完成后才渲染路由页面）
+const appReady = ref(false)
 
 // 后端进程状态监听
 const { state: backendState, tauriMode } = useBackendStatus()
@@ -442,6 +437,13 @@ const canOpen = computed(() => {
 })
 
 onMounted(async () => {
+  // 自动登录：桌面应用启动时自动获取 token（每次都重新登录确保 token 有效）
+  try {
+    await authStore.login('admin', 'admin123')
+  } catch {
+    // 登录失败不影响应用启动
+  }
+  appReady.value = true
   await versionStore.fetchVersionInfo()
   versionStore.checkConsistency()
 })
@@ -533,8 +535,8 @@ async function handleOpenFromList(row: ProjectSummary) {
   if (ok) showOpenDialog.value = false
 }
 
-function handleFileSelected(file: any) {
-  importFileList.value = [{ raw: file.raw }] as any
+function handleFileSelected(file: { raw?: File }) {
+  importFileList.value = [{ raw: file.raw }] as Array<{ raw?: File }>
 }
 
 async function handleOpen() {
@@ -675,5 +677,16 @@ function cancelProceed() {
 .app-main {
   padding: 24px;
   background-color: var(--bg-primary);
+}
+
+.app-initializing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 16px;
+  color: var(--text-tertiary);
+  font-size: 14px;
 }
 </style>

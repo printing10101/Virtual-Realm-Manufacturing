@@ -80,8 +80,8 @@ export const useToolpathEditorStore = defineStore('toolpathEditor', () => {
       selectedSegmentId.value = null
       hoveredSegmentId.value = null
       return { success: true, message: `Loaded ${parsed.length} segments` }
-    } catch (e: any) {
-      return { success: false, message: e.message || 'Failed to parse G-code' }
+    } catch (e: unknown) {
+      return { success: false, message: (e as Error).message || 'Failed to parse G-code' }
     }
   }
 

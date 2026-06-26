@@ -241,11 +241,11 @@ class TestModelConfig:
                 "batch_size": 32,
                 "epochs": 100,
             },
-            version="2.2.0",
+            version="2.3.0",
         )
         assert config.hyperparameters["learning_rate"] == 0.001
         assert config.hyperparameters["epochs"] == 100
-        assert config.version == "2.2.0"
+        assert config.version == "2.3.0"
 
 
 class TestPreprocessingResult:

@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main, master, develop ]
 
+# 安全修复：最小权限原则，默认仅授予只读权限
+permissions:
+  contents: read
+
 env:
   PYTHON_VERSION: '3.10'
   NODE_VERSION: '18'
@@ -826,6 +830,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [python-unit-tests]
+    # 安全修复：此 job 需要创建 Issue，覆盖默认只读权限
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Checkout code

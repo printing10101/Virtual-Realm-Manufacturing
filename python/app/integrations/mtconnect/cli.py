@@ -94,7 +94,12 @@ def build_tdengine_client(output_url: str):
     # environment variables.  Set them on the fly so the same client
     # can be reused for any URL passed via the CLI.
     import os
-    os.environ["TDENGINE_URL"] = f"taos://root:taosdata@{host}:{port}"
+    password = os.environ.get("TDENGINE_PASSWORD", "")
+    if not password:
+        logger.warning(
+            "TDENGINE_PASSWORD not set. Please configure it in .env file."
+        )
+    os.environ["TDENGINE_URL"] = f"taos://root:{password}@{host}:{port}"
     os.environ["TDENGINE_DB"] = database
 
     try:
@@ -132,7 +137,7 @@ async def ensure_table(database: str, table: str) -> bool:
             columns=list(build_table_ddl()),
             database=database,
         )
-    except Exception as exc:  # pragma: no cover - defensive
+    except (ConnectionError, TimeoutError, OSError, RuntimeError, ValueError) as exc:  # pragma: no cover - defensive
         logging.getLogger(__name__).warning(
             "ensure_table(%s.%s) failed: %s", database, table, exc
         )
@@ -268,7 +273,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             import asyncio
             try:
                 asyncio.run(ensure_table(database, config.table))
-            except Exception as exc:  # pragma: no cover
+            except (ConnectionError, TimeoutError, OSError, RuntimeError, ValueError) as exc:  # pragma: no cover
                 log.warning("ensure_table raised: %s", exc)
 
     adapter = MTConnectAdapter(config=config, tdengine_client=tdengine)
@@ -277,7 +282,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     try:
         identity = adapter.probe()
         log.info("Agent identity: %s", identity)
-    except Exception as exc:
+    except (ConnectionError, TimeoutError, OSError, RuntimeError, ValueError) as exc:
         # We deliberately route the human-readable failure message to
         # ``sys.stderr`` (and *not* to ``logging``) so that callers
         # using ``capsys`` / ``subprocess`` can reliably capture the
@@ -295,7 +300,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         log.info("Interrupted by user, flushing...")
         adapter.stop()
         ingested = adapter.flush()
-    except Exception as exc:  # pragma: no cover - defensive
+    except (ConnectionError, TimeoutError, OSError, RuntimeError, ValueError) as exc:  # pragma: no cover - defensive
         # We never want an unexpected runtime failure (e.g. a flaky
         # network that raises something we did not anticipate) to
         # leave the user staring at a stack trace with no summary.
@@ -305,7 +310,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         adapter.stop()
         try:
             ingested = adapter.flush()
-        except Exception:  # pragma: no cover - defensive
+        except (ConnectionError, TimeoutError, OSError, RuntimeError, ValueError):  # pragma: no cover - defensive
             pass
     finally:
         # Always print the final summary, even after errors.

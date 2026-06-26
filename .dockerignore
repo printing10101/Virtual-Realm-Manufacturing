@@ -33,6 +33,7 @@ logs/
 data/traces/
 
 # --- Test Files & Reports ---
+tests/
 python/tests/
 python/test_*.py
 python/debug_*.py
@@ -75,11 +76,8 @@ commitlint.config.js
 
 # --- Documentation ---
 docs/
-README.md
-README-en.md
 *.md
 !VERSION
-CHANGELOG.md
 LICENSE
 
 # --- Frontend Build Files ---
@@ -125,15 +123,9 @@ pip-log.txt
 pip-delete-this-directory.txt
 .eggs
 *.egg-info
-dist
 build
 .pytest_cache
 .mypy_cache
-
-# --- Git ---
-.git
-.gitignore
-.gitattributes
 
 # --- Misc ---
 *.bak

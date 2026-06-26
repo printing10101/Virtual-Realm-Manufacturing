@@ -247,8 +247,9 @@ async function runAllChecks() {
   try {
     const results = await invoke<HealthItem[]>('run_health_check')
     items.value = results
-  } catch (e: any) {
-    ElMessage.error(t('healthCheck.checkFailed', { message: e?.toString() || t('common.unknownError') }))
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
+    ElMessage.error(t('healthCheck.checkFailed', { message: errorMessage || t('common.unknownError') }))
   } finally {
     checking.value = false
   }
@@ -262,8 +263,9 @@ async function retrySingleCheck(id: string) {
     if (idx !== -1) {
       items.value[idx] = result
     }
-  } catch (e: any) {
-    ElMessage.error(t('healthCheck.singleCheckFailed', { message: e?.toString() || t('common.unknownError') }))
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
+    ElMessage.error(t('healthCheck.singleCheckFailed', { message: errorMessage || t('common.unknownError') }))
   } finally {
     singleCheckingId.value = null
   }
@@ -275,8 +277,9 @@ async function runAutoFix(id: string) {
     const result = await invoke<string>('auto_fix_health', { component: id })
     ElMessage.success(result)
     await retrySingleCheck(id)
-  } catch (e: any) {
-    ElMessage.error(t('healthCheck.autoFixFailed', { message: e?.toString() || t('common.unknownError') }))
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
+    ElMessage.error(t('healthCheck.autoFixFailed', { message: errorMessage || t('common.unknownError') }))
   } finally {
     fixingId.value = null
   }
@@ -287,8 +290,9 @@ async function copyDiagnostics() {
     const text = await invoke<string>('get_diagnostics_text')
     await navigator.clipboard.writeText(text)
     ElMessage.success(t('healthCheck.diagnosticsCopied'))
-  } catch (e: any) {
-    ElMessage.error(t('healthCheck.copyFailed', { message: e?.toString() || t('common.unknownError') }))
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
+    ElMessage.error(t('healthCheck.copyFailed', { message: errorMessage || t('common.unknownError') }))
   }
 }
 

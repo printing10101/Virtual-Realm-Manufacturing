@@ -517,6 +517,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { Refresh, Document } from '@element-plus/icons-vue'
 import http from '@/utils/http'
+import { triggerFileDownload } from '@/utils/download'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getPriorityTagType, getPriorityLabel, getApprovalStatusTagType, getApprovalStatusLabel } from '@/utils/statusHelpers'
 
@@ -526,11 +527,11 @@ interface ApprovalRequest {
   requester: string
   requested_at: number
   priority: string
-  context: Record<string, any>
+  context: Record<string, unknown>
   status: string
   assigned_approver: string | null
   approvers: string[]
-  decisions: any[]
+  decisions: Array<Record<string, unknown>>
   required_approvals: number
   risk_score: number
   risk_factors: string[]
@@ -593,8 +594,9 @@ async function loadDashboard() {
   try {
     const res = await http.get('/api/v1/governance/approval-dashboard')
     dashboard.value = res.data?.data || dashboard.value
-  } catch (e: any) {
-    ElMessage.error('加载审批看板失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('加载审批看板失败: ' + errorMsg)
   } finally {
     loading.value = false
   }
@@ -607,8 +609,9 @@ async function loadHistory() {
       params: { limit: 100 },
     })
     history.value = res.data?.data || []
-  } catch (e: any) {
-    ElMessage.error('加载审批历史失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('加载审批历史失败: ' + errorMsg)
   } finally {
     historyLoading.value = false
   }
@@ -630,8 +633,9 @@ async function quickApprove(request: ApprovalRequest, decision: string) {
     })
     ElMessage.success(`审批成功: ${decision}`)
     await loadDashboard()
-  } catch (e: any) {
-    ElMessage.error('审批失败: ' + (e.response?.data?.message || e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('审批失败: ' + errorMsg)
   }
 }
 
@@ -646,8 +650,9 @@ async function submitDecision(decision: string) {
     ElMessage.success(`审批决策已提交: ${decision}`)
     detailDialogVisible.value = false
     await loadDashboard()
-  } catch (e: any) {
-    ElMessage.error('提交决策失败: ' + (e.response?.data?.message || e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('提交决策失败: ' + errorMsg)
   }
 }
 
@@ -658,8 +663,9 @@ async function loadReport() {
       params: { days: 30 },
     })
     report.value = res.data?.data || null
-  } catch (e: any) {
-    ElMessage.error('加载治理报告失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('加载治理报告失败: ' + errorMsg)
   } finally {
     reportLoading.value = false
   }
@@ -671,15 +677,11 @@ async function exportAuditLog() {
       params: { format: 'csv' },
     })
     const blob = new Blob([res.data.data], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `audit_log_${Date.now()}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    triggerFileDownload(blob, `audit_log_${Date.now()}.csv`)
     ElMessage.success('审计日志导出成功')
-  } catch (e: any) {
-    ElMessage.error('导出失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('导出失败: ' + errorMsg)
   }
 }
 

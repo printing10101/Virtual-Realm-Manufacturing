@@ -4,9 +4,12 @@ LNN训练模块使用示例
 展示如何使用BoschCNCDataset、LNNTrainer和LNNEvaluator
 """
 
+import logging
 import torch
 from torch.utils.data import DataLoader
 from app.ai.lnn.training import BoschCNCDataset, LNNTrainer, LNNEvaluator
+
+logger = logging.getLogger(__name__)
 
 
 def example_training():
@@ -76,7 +79,7 @@ def example_training():
 
     # 10. 生成报告
     report = evaluator.generate_report(results)
-    print(report)
+    logger.info("\n%s", report)
     evaluator.save_report(results, "reports/evaluation_report.txt")
 
     # 11. 特征重要性分析
@@ -85,7 +88,7 @@ def example_training():
         method="permutation",
         n_permutations=10,
     )
-    print("Feature Ranking:", importance["feature_ranking"])
+    logger.info("Feature Ranking: %s", importance["feature_ranking"])
 
 
 def example_data_augmentation():

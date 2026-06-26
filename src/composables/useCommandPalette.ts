@@ -175,8 +175,8 @@ export function useCommandPalette(config: CommandPaletteConfig = {}) {
       await command.action()
       recordUsage(command.id)
       close()
-    } catch (error) {
-      console.error('命令执行失败:', error)
+    } catch {
+      // 静默处理
     }
   }
 
@@ -226,8 +226,8 @@ export function useCommandPalette(config: CommandPaletteConfig = {}) {
       
       const dataToSave = Object.fromEntries(sortedEntries)
       localStorage.setItem(mergedConfig.storageKey!, JSON.stringify(dataToSave))
-    } catch (error) {
-      console.warn('保存命令使用数据失败:', error)
+    } catch {
+      // 静默处理
     }
   }
 
@@ -237,8 +237,8 @@ export function useCommandPalette(config: CommandPaletteConfig = {}) {
       if (raw) {
         usageData.value = JSON.parse(raw)
       }
-    } catch (error) {
-      console.warn('加载命令使用数据失败:', error)
+    } catch {
+      // 静默处理
     }
   }
 

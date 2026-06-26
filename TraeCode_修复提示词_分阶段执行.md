@@ -31,10 +31,10 @@
    ```python
    import requests
    # 测试1: 正常文件请求应返回404（文件不存在）
-   r1 = requests.get('http://localhost:8000/api/model/download/test.stl')
+   r1 = requests.get('http://localhost:8765/api/model/download/test.stl')
    assert r1.status_code in [404, 400], f"正常请求异常: {r1.status_code}"
    # 测试2: 路径遍历请求应返回400
-   r2 = requests.get('http://localhost:8000/api/model/download/../etc/passwd')
+   r2 = requests.get('http://localhost:8765/api/model/download/../etc/passwd')
    assert r2.status_code == 400, f"路径遍历未被阻止: {r2.status_code}"
    print("路径遍历漏洞修复验证通过！")
    ```
@@ -155,11 +155,11 @@ LNN_PERMISSION_ENFORCED 默认值为 False，权限检查默认关闭。
    ```python
    import requests
    # 测试1: 无邀请码注册应返回403
-   r1 = requests.post('http://localhost:8000/api/v1/auth/register', 
+   r1 = requests.post('http://localhost:8765/api/v1/auth/register', 
                       json={"username": "test_hacker", "password": "test123"})
    assert r1.status_code == 403, f"开放注册未关闭: {r1.status_code}"
    # 测试2: 有邀请码注册应成功（假设邀请码为"INVITE2024"）
-   r2 = requests.post('http://localhost:8000/api/v1/auth/register',
+   r2 = requests.post('http://localhost:8765/api/v1/auth/register',
                       json={"username": "test_user", "password": "test123", "invite_code": "INVITE2024"})
    assert r2.status_code in [200, 409], f"邀请码注册失败: {r2.status_code}"
    print("注册安全修复验证通过！")
@@ -331,7 +331,7 @@ RATE_LIMIT_ENABLED 默认值为 False
    import requests, time
    # 快速发送6次登录请求
    for i in range(6):
-       r = requests.post('http://localhost:8000/api/v1/auth/login',
+       r = requests.post('http://localhost:8765/api/v1/auth/login',
                          json={"username": "test", "password": "wrong"})
        if i < 5:
            assert r.status_code == 401, f"第{i+1}次请求异常: {r.status_code}"
@@ -393,10 +393,10 @@ stock_stl_path 和 source_file_path 直接从用户请求获取，可指向服�
    ```python
    import requests
    # 测试1: 正常路径（相对路径）
-   r1 = requests.post('http://localhost:8000/api/simulation/run',
+   r1 = requests.post('http://localhost:8765/api/simulation/run',
                       json={"stock_stl_path": "uploads/test.stl", ...})
    # 测试2: 恶意路径
-   r2 = requests.post('http://localhost:8000/api/simulation/run',
+   r2 = requests.post('http://localhost:8765/api/simulation/run',
                       json={"stock_stl_path": "/etc/passwd", ...})
    assert r2.status_code == 400, f"任意路径未被阻止: {r2.status_code}"
    print("PASS: 仿真API路径验证已生效")
@@ -449,7 +449,7 @@ pip-audit 发现 39 个已知 CVE，包括 cryptography、python-jose、python-m
 
 当前问题：
 - /health 返回格式: status=healthy
-- /api/health 返回格式: status=ok, version=2.2.0
+- /api/health 返回格式: status=ok, version=2.3.0
 - /api/health/ping 返回格式: ping=True
 - Dockerfile HEALTHCHECK 使用 /api/v1/health（不存在）
 
@@ -461,9 +461,9 @@ pip-audit 发现 39 个已知 CVE，包括 cryptography、python-jose、python-m
 5. 统一响应格式为 {"status": "ok", "version": "x.x.x", "timestamp": "..."}
 
 检测方法：
-1. 运行：curl http://localhost:8000/api/health
+1. 运行：curl http://localhost:8765/api/health
    预期：返回统一格式JSON
-2. 运行：curl http://localhost:8000/api/health/ping
+2. 运行：curl http://localhost:8765/api/health/ping
    预期：返回 {"ping": true}
 3. 确认 Dockerfile 中 HEALTHCHECK 路径正确
 ```
@@ -636,7 +636,7 @@ import os
 import subprocess
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8765"
 ERRORS = []
 
 def check(condition, message):

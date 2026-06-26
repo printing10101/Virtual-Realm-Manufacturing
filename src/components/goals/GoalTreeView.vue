@@ -45,8 +45,16 @@
 import { Refresh } from '@element-plus/icons-vue'
 import { getGoalLevelLabel, getGoalLevelTagType, getGoalStatusLabel, getGoalStatusTagType } from '@/utils/statusHelpers'
 
+interface GoalTreeNode {
+  id: string
+  name: string
+  level: string
+  status: string
+  children?: GoalTreeNode[]
+}
+
 defineProps<{
-  treeData: any[]
+  treeData: GoalTreeNode[]
   loading: boolean
 }>()
 
@@ -60,7 +68,7 @@ const treeProps = {
   label: 'name',
 }
 
-const handleNodeClick = (data: any) => {
+const handleNodeClick = (data: GoalTreeNode) => {
   emit('select', data.id)
 }
 </script>

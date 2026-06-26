@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 from app.models.budget import BudgetLevel, BudgetStatus, ResourceType
+from app.utils.utils import get_output_dir
+from app.utils.sqlite_pool import get_sqlite_manager
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +113,8 @@ class ResourceTracker:
                 self._memory_peak_mb = max(
                     self._memory_peak_mb, mem_info.rss / (1024 * 1024)
                 )
-        except Exception as e:
-            logger.warning("Failed to update memory metrics: %s", e)
+        except (RuntimeError, OSError, AttributeError) as e:
+            logger.warning("Failed to update memory metrics", exc_info=True)
 
     def get_gpu_memory_available(self) -> float:
         try:
@@ -124,6 +126,7 @@ class ResourceTracker:
                 return total - allocated
             return 0.0
         except ImportError:
+            logger.debug("PyTorch 未安装，无法获取 GPU 可用内存信息")
             return 0.0
 
     def get_gpu_memory_total(self) -> float:
@@ -134,6 +137,7 @@ class ResourceTracker:
                 return torch.cuda.get_device_properties(0).total_memory / (1024**2)
             return 0.0
         except ImportError:
+            logger.debug("PyTorch 未安装，无法获取 GPU 总内存信息")
             return 0.0
 
     def increment_inference_count(self) -> None:
@@ -188,15 +192,17 @@ class BudgetManager:
             db_path: SQLite数据库路径
         """
         if db_path is None:
-            db_path = str(Path(__file__).parent.parent.parent / "data" / "budget.db")
+            db_path = str(get_output_dir("data") / "budget.db")
 
         db_dir = Path(db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
 
         self.db_path = db_path
         self.tracker = ResourceTracker()
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("budget")
+        self._conn = self._pool.get_connection()
         self._lock = threading.RLock()
         self._init_schema()
         self._load_default_budgets()
@@ -476,8 +482,8 @@ class BudgetManager:
                     (agent_id, resource_type.value, usage, limit, ratio, status.value),
                 )
                 self._conn.commit()
-        except Exception as e:
-            logger.warning("Failed to log budget usage: %s", e)
+        except (OSError, IOError, sqlite3.Error) as e:
+            logger.warning("Failed to log budget usage", exc_info=True)
 
     def _record_notification(
         self,
@@ -497,8 +503,8 @@ class BudgetManager:
                     (agent_id, notification_type, message, resource_type, usage_ratio),
                 )
                 self._conn.commit()
-        except Exception as e:
-            logger.warning("Failed to record budget notification: %s", e)
+        except (OSError, IOError, sqlite3.Error) as e:
+            logger.warning("Failed to record budget notification", exc_info=True)
 
     def get_agent_budget_status(self, agent_id: str) -> Dict[str, Any]:
         """获取代理预算状态概览"""
@@ -529,8 +535,8 @@ class BudgetManager:
                     )
 
             self._record_notification(agent_id, "suspended", reason)
-        except Exception as e:
-            logger.error("Failed to suspend agent tasks: %s", e)
+        except (RuntimeError, ValueError, TypeError, AttributeError, OSError) as e:
+            logger.error("Failed to suspend agent tasks", exc_info=True)
 
     def get_notifications(
         self, agent_id: Optional[str] = None, limit: int = 50
@@ -553,10 +559,11 @@ class BudgetManager:
         return [dict(row) for row in rows]
 
     def close(self) -> None:
-        """关闭数据库连接"""
-        if self._conn:
-            self._conn.close()
+        """关闭数据库连接，归还连接到连接池"""
+        if hasattr(self, "_conn") and self._conn:
+            self._pool.return_connection(self._conn)
             self._conn = None
+            logger.info("BudgetManager closed")
 
     def __del__(self) -> None:
         try:

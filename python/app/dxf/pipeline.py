@@ -201,8 +201,8 @@ class DxfProcessPipeline:
                 errors=parse_result.errors,
                 warnings=parse_result.warnings,
             )
-        except Exception as e:
-            # 修复：避免 str(e) 直接进入 result.stages 并被 API 端点暴露给前端。
+        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:
+            # DXF解析涉及文件I/O和数据解析
             err_msg, error_id = _record_stage_error(
                 e,
                 context="dxf.pipeline.parse",
@@ -248,8 +248,8 @@ class DxfProcessPipeline:
                 errors=feature_result.errors,
                 warnings=feature_result.warnings,
             )
-        except Exception as e:
-            # 修复：避免 str(e) 直接进入 result.stages 并被 API 端点暴露给前端。
+        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:
+            # 特征提取涉及几何计算和数据解析
             err_msg, error_id = _record_stage_error(
                 e,
                 context="dxf.pipeline.features",
@@ -294,10 +294,8 @@ class DxfProcessPipeline:
                 errors=model_result.errors,
                 warnings=model_result.warnings,
             )
-        except Exception as e:
-            # 修复：与文档约定保持一致——3D模型转换失败仅降级继续，
-            # 而非直接终止流水线。工艺规划不依赖3D模型存在。
-            # 错误信息存储在 result.error_id 关联，不直接 str(e) 暴露。
+        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError, OverflowError) as e:
+            # 3D模型转换涉及几何计算，与文档约定保持一致——失败仅降级继续
             err_msg, error_id = _record_stage_error(
                 e,
                 context="dxf.pipeline.model_convert",
@@ -330,8 +328,8 @@ class DxfProcessPipeline:
                     f"材料: {material}, 类型: {part_type}"
                 ),
             )
-        except Exception as e:
-            # 修复：避免 str(e) 直接进入 result.stages 并被 API 端点暴露给前端。
+        except (ValueError, TypeError, KeyError, AttributeError) as e:
+            # 数据组装涉及字典访问和字符串格式化
             err_msg, error_id = _record_stage_error(
                 e,
                 context="dxf.pipeline.build_part_description",
@@ -392,8 +390,8 @@ class DxfProcessPipeline:
                     for w in s.warnings
                 ],
             )
-        except Exception as e:
-            # 修复：避免 str(e) 直接进入 result.stages 并被 API 端点暴露给前端。
+        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError, TimeoutError) as e:
+            # 工艺规划涉及流程控制和文件I/O
             err_msg, error_id = _record_stage_error(
                 e,
                 context="dxf.pipeline.process_planning",

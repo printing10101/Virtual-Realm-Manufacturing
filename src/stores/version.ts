@@ -57,24 +57,9 @@ export const useVersionStore = defineStore('version', () => {
         pythonVersion.value = result.python_version
         pythonCommit.value = result.python_commit
         isConsistent.value = result.is_consistent
-      } else {
-        // 浏览器环境：尝试通过 HTTP API 获取版本信息
-        try {
-          const resp = await fetch('/api/v1/version')
-          if (resp.ok) {
-            const result = await resp.json()
-            rustVersion.value = result?.rust_version ?? ''
-            rustCommit.value = result?.rust_commit ?? ''
-            pythonVersion.value = result?.python_version ?? null
-            pythonCommit.value = result?.python_commit ?? null
-            isConsistent.value = result?.is_consistent ?? true
-          }
-        } catch {
-          // API 不可用时保持默认值
-        }
       }
-    } catch (e) {
-      console.error('Failed to fetch version info:', e)
+      // 非 Tauri 环境（浏览器开发模式）：保持默认值，不请求后端
+    } catch {
       isConsistent.value = false
     } finally {
       isLoading.value = false

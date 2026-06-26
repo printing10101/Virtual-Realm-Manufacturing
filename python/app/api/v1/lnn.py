@@ -4,10 +4,10 @@ import asyncio
 import uuid
 import logging
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Callable
-from fastapi import APIRouter, Header, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Header, Request, Response
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
@@ -57,6 +57,102 @@ from torch.utils.data import DataLoader, TensorDataset
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/lnn", tags=["LNN Models"])
+
+
+def _create_deprecated_response(
+    data: dict,
+    sunset_date: datetime,
+    migration_url: str = "/api/v2/lnn",
+    status_code: int = 200
+) -> JSONResponse:
+    """创建带有标准HTTP废弃头的响应
+    
+    Args:
+        data: 响应数据
+        sunset_date: 端点完全移除的日期
+        migration_url: 迁移目标URL
+        status_code: HTTP状态码
+    
+    Returns:
+        带有Deprecation、Sunset和Link头的JSONResponse
+    """
+    response = JSONResponse(content=data, status_code=status_code)
+    
+    # RFC 8594: Deprecation头 - 标记资源已废弃
+    response.headers["Deprecation"] = "true"
+    
+    # RFC 8594: Sunset头 - 指定资源移除日期（HTTP-date格式）
+    response.headers["Sunset"] = sunset_date.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    
+    # RFC 8288: Link头 - 提供迁移指南
+    response.headers["Link"] = f'<{migration_url}>; rel="successor-version"'
+    
+    return response
+
+
+def deprecated_endpoint(
+    sunset_date: datetime,
+    migration_url: str = "/api/v2/lnn",
+    message: str = "This endpoint is deprecated."
+):
+    """装饰器：标记端点为废弃，自动添加Deprecation/Sunset头
+    
+    Args:
+        sunset_date: 端点完全移除的日期
+        migration_url: 迁移目标URL
+        message: 废弃提示信息
+    
+    Usage:
+        @router.post("/old-endpoint")
+        @deprecated_endpoint(
+            sunset_date=datetime(2025, 12, 31),
+            migration_url="/api/v2/lnn/new-endpoint",
+            message="请使用 v2 版本的新端点"
+        )
+        async def old_endpoint(...):
+            ...
+    """
+    def decorator(func: Callable):
+        async def wrapper(*args, **kwargs):
+            # 记录废弃警告日志
+            logger.warning(
+                f"Deprecated endpoint invoked: {func.__name__} | "
+                f"Sunset: {sunset_date.isoformat()} | "
+                f"Migration: {migration_url}"
+            )
+            
+            # 调用原始函数
+            result = await func(*args, **kwargs)
+            
+            # 如果返回的是dict，转换为带废弃头的Response
+            if isinstance(result, dict):
+                response = JSONResponse(content=result)
+            elif isinstance(result, Response):
+                response = result
+            else:
+                # 对于其他类型，尝试转换为JSON
+                response = JSONResponse(content={"data": result})
+            
+            # 添加废弃头
+            response.headers["Deprecation"] = "true"
+            response.headers["Sunset"] = sunset_date.strftime("%a, %d %b %Y %H:%M:%S GMT")
+            response.headers["Link"] = f'<{migration_url}>; rel="successor-version"'
+            
+            return response
+        
+        # 保留原函数的元数据
+        wrapper.__name__ = func.__name__
+        wrapper.__doc__ = func.__doc__
+        
+        # 在文档中添加废弃说明
+        if func.__doc__:
+            wrapper.__doc__ = f"**⚠️ DEPRECATED**: {message}\n\n{func.__doc__}"
+        else:
+            wrapper.__doc__ = f"**⚠️ DEPRECATED**: {message}"
+        
+        return wrapper
+    return decorator
+
 
 # Use the unified service layer — do NOT instantiate LNNModelRegistry directly
 registry_service = get_model_registry_service()
@@ -138,7 +234,7 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
                 input_data=body.input_data,
                 return_confidence=body.return_confidence,
             )
-        except Exception as model_err:
+        except (ValueError, KeyError, TypeError, AttributeError, RuntimeError, OSError) as model_err:
             # 修复：避免直接 str(model_err) 暴露内部异常详情；
             # 通过 safe_error_message 包装，仅透出错误类型 + error_id，
             # 完整堆栈仍写入日志供排查。
@@ -260,7 +356,7 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
             code=ErrorCode.NOT_FOUND,
             message=f"Model '{body.model_name}' not found in registry",
         )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 修复：不直接 str(e) 暴露内部异常，使用 safe_error_message 包装
         get_ring_log_buffer().append(
             "ai_inference",
@@ -454,8 +550,14 @@ async def dry_run_training(request: LNNTrainDryRunRequest):
             message="Dry run completed: training plan generated for review",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(e, context="lnn.dry_run_training")
+        logger.warning(
+            "Dry run training failed | error_id=%s | exc=%s: %s",
+            safe.get("error_id"),
+            type(e).__name__,
+            e,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],
@@ -556,7 +658,7 @@ async def _run_training_task_async(
                 },
             )
         )
-    except Exception as e:
+    except (RuntimeError, ValueError, KeyError, OSError, TypeError, AttributeError) as e:
         # 修复：原代码直接 str(e) 暴露内部异常到 SSE 事件，
         # 而 SSE 事件会进入前端日志/告警，存在信息泄露风险。
         # 这里只透出错误类型 + error_id 供前端关联服务端日志。
@@ -731,7 +833,7 @@ async def train_lnn(
             message="Training job queued",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         safe = safe_error_message(e, context=f"lnn.train_init[{body.model_name}]")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -830,7 +932,7 @@ async def validate_model(model_name: str):
             data=info_data, message="Model validation completed successfully"
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         safe = safe_error_message(e, context=f"lnn.validate_model[{model_name}]")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -1236,7 +1338,7 @@ async def _run_quantization_task_v2(
                     [calibration_data, calibration_data]
                 )
             calibration_data = calibration_data[:, :-1]
-        except Exception as e:
+        except (ValueError, KeyError, TypeError, OSError, RuntimeError, UnicodeDecodeError) as e:
             # 校准数据加载失败属于用户数据问题，使用更具体的错误类型便于上层归类
             raise ValueError(f"Failed to load calibration data: {e}") from e
 
@@ -1393,7 +1495,7 @@ async def quantize_model(request: Request, model_name: str, body: LNNQuantizeReq
             message="Quantization job queued",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         safe = safe_error_message(e, context=f"lnn.quantize[{model_name}]")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -1503,7 +1605,7 @@ async def get_model_size(model_name: str):
             data=response.model_dump(), message="Model size retrieved successfully"
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         safe = safe_error_message(e, context=f"lnn.get_model_size[{model_name}]")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -1835,7 +1937,7 @@ async def batch_inference(
             message="Batch inference job queued",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         safe = safe_error_message(
             e, context=f"lnn.batch_inference_init[{request.model_name}]"
         )

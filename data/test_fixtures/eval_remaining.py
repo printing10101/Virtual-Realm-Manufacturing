@@ -1,11 +1,13 @@
 """3 个慢端点独立验证（每个端点写到单独文件）"""
 import os
+import secrets
 import sys
 import time
 import json
 from pathlib import Path
 
-os.environ.setdefault("LNN_JWT_SECRET", "eval_secret_2026_32chars_min_xxxxxxxxxx")
+# 安全修复：使用随机密钥替代硬编码密钥
+os.environ.setdefault("LNN_JWT_SECRET", secrets.token_urlsafe(48))
 os.environ.setdefault("LNN_BANNED_TOKENS_FILE", ".lnn_banned_tokens.json")
 os.environ.setdefault("APP_ENV", "development")
 

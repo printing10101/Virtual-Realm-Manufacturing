@@ -96,7 +96,7 @@ class HealthChecker:
 
         checker = HealthChecker(graph_store)
         result = checker.run_all_checks()
-        print(f"发现 {result.issue_count} 个问题")
+        # 发现 {result.issue_count} 个问题
 
     也可单独运行某项检查::
 

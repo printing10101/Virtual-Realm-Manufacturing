@@ -1,0 +1,208 @@
+{
+  "data": [
+    {
+      "id": "page-dashboard",
+      "type": "page",
+      "title": "工作台总览",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dashboard.html"
+      }
+    },
+    {
+      "id": "page-process-planning",
+      "type": "page",
+      "title": "工艺规划",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 620,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/process-planning.html"
+      }
+    },
+    {
+      "id": "page-task-board",
+      "type": "page",
+      "title": "任务看板",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 1240,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/task-board.html"
+      }
+    },
+    {
+      "id": "page-agent-dashboard",
+      "type": "page",
+      "title": "智能体管理",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 1860,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/agent-dashboard.html"
+      }
+    },
+    {
+      "id": "page-knowledge-base",
+      "type": "page",
+      "title": "知识库",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 2480,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/knowledge-base.html"
+      }
+    },
+    {
+      "id": "page-material-management",
+      "type": "page",
+      "title": "物料管理",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 3100,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/material-management.html"
+      }
+    },
+    {
+      "id": "page-quality-inspection",
+      "type": "page",
+      "title": "质量检测",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 3720,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/quality-inspection.html"
+      }
+    },
+    {
+      "id": "page-equipment-monitor",
+      "type": "page",
+      "title": "设备监控",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 4340,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/equipment-monitor.html"
+      }
+    },
+    {
+      "id": "page-production-report",
+      "type": "page",
+      "title": "生产报表",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 4960,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/production-report.html"
+      }
+    },
+    {
+      "id": "page-settings",
+      "type": "page",
+      "title": "系统设置",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 5580,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/settings.html"
+      }
+    },
+    {
+      "id": "image-001",
+      "type": "image",
+      "title": "智能制造背景",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 0,
+        "y": 600
+      },
+      "devMetadata": {
+        "imageSrc": "assets/hero-manufacturing.jpg"
+      }
+    },
+    {
+      "id": "image-002",
+      "type": "image",
+      "title": "AI智能体背景",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 620,
+        "y": 600
+      },
+      "devMetadata": {
+        "imageSrc": "assets/hero-ai-agent.jpg"
+      }
+    },
+    {
+      "id": "image-003",
+      "type": "image",
+      "title": "质量检测背景",
+      "version": 1,
+      "createdAt": 1719129600000,
+      "canvasData": {
+        "x": 1240,
+        "y": 600
+      },
+      "devMetadata": {
+        "imageSrc": "assets/hero-quality.jpg"
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "designLibrary": {
+      "name": "苹果",
+      "id": "dl_builtin_apple",
+      "version": "1.0.0",
+      "versionSource": null,
+      "scope": "reference",
+      "path": "c:\\Users\\Lenovo\\.trae-cn\\design_libraries\\dl_builtin_apple"
+    }
+  }
+}

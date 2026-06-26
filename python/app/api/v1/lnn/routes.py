@@ -76,6 +76,18 @@ router = APIRouter(prefix="/api/v1/lnn", tags=["LNN Models"])
 _TRAINING_QUEUES: dict = {}
 
 
+def _log_task_exception(task: asyncio.Task, context: str) -> None:
+    """记录后台任务未捕获异常，避免静默失败。"""
+    if task.cancelled():
+        logger.debug("Task %s cancelled", context)
+    elif task.exception():
+        logger.error(
+            "Task %s failed: %s",
+            context,
+            task.exception(),
+        )
+
+
 @router.post("/predict")
 @limiter.limit("60/minute")
 async def predict_lnn(request: Request, body: LNNPredictRequest):
@@ -127,7 +139,7 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
                 input_data=body.input_data,
                 return_confidence=body.return_confidence,
             )
-        except Exception as model_err:
+        except (ValueError, KeyError, TypeError, AttributeError, RuntimeError, OSError) as model_err:
             safe = safe_error_message(
                 model_err,
                 context=f"lnn.predict_inference[{body.model_name}]",
@@ -246,7 +258,7 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
             code=ErrorCode.NOT_FOUND,
             message=f"Model '{body.model_name}' not found in registry",
         )
-    except Exception as e:
+    except (ValueError, TypeError, OSError, RuntimeError, AttributeError) as e:
         get_ring_log_buffer().append(
             "ai_inference",
             level="ERROR",
@@ -406,8 +418,9 @@ async def dry_run_training(request: LNNTrainDryRunRequest):
             message="Dry run completed: training plan generated for review",
         )
 
-    except Exception as e:
+    except (ValueError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(e, context="lnn.dry_run_training")
+        logger.warning("Dry run training failed: %s", e)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],
@@ -464,7 +477,8 @@ async def train_lnn(
 
         task_manager.register_cancel_hook(task_id, cancel_training_hook)
 
-        asyncio.create_task(
+        # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
+        training_task = asyncio.create_task(
             _run_training_task_async(
                 task_id,
                 body.model_name,
@@ -473,15 +487,22 @@ async def train_lnn(
                 body.device,
             )
         )
-        asyncio.create_task(_broadcast_training_events(task_id))
+        training_task.add_done_callback(
+            lambda t: _log_task_exception(t, f"training-{task_id}")
+        )
+        broadcast_task = asyncio.create_task(_broadcast_training_events(task_id))
+        broadcast_task.add_done_callback(
+            lambda t: _log_task_exception(t, f"broadcast-{task_id}")
+        )
 
         return success(
             data={"job_id": task_id, "status": "queued"},
             message="Training job queued",
         )
 
-    except Exception as e:
+    except (ValueError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(e, context=f"lnn.train_init[{body.model_name}]")
+        logger.warning("Training init failed: %s", e)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],
@@ -579,8 +600,9 @@ async def validate_model(model_name: str):
             data=info_data, message="Model validation completed successfully"
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(e, context=f"lnn.validate_model[{model_name}]")
+        logger.warning("Model validation failed: %s", e)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],
@@ -910,8 +932,12 @@ async def quantize_model(request: Request, model_name: str, body: LNNQuantizeReq
                 progress_updater,
             )
 
-        asyncio.create_task(
+        # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
+        quantize_task = asyncio.create_task(
             task_manager.execute_task(task_id, quantization_executor)
+        )
+        quantize_task.add_done_callback(
+            lambda t: _log_task_exception(t, f"quantize-{task_id}")
         )
 
         return success(
@@ -919,8 +945,9 @@ async def quantize_model(request: Request, model_name: str, body: LNNQuantizeReq
             message="Quantization job queued",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(e, context=f"lnn.quantize[{model_name}]")
+        logger.warning("Quantization init failed: %s", e)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],
@@ -1029,8 +1056,9 @@ async def get_model_size(model_name: str):
             data=response.model_dump(), message="Model size retrieved successfully"
         )
 
-    except Exception as e:
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError) as e:
         safe = safe_error_message(e, context=f"lnn.get_model_size[{model_name}]")
+        logger.warning("Get model size failed: %s", e)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],
@@ -1065,17 +1093,24 @@ async def batch_inference(
                 progress_updater,
             )
 
-        asyncio.create_task(task_manager.execute_task(record.job_id, batch_executor))
+        # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
+        batch_task = asyncio.create_task(
+            task_manager.execute_task(record.job_id, batch_executor)
+        )
+        batch_task.add_done_callback(
+            lambda t: _log_task_exception(t, f"batch-{record.job_id}")
+        )
 
         return success(
             data={"job_id": record.job_id, "status": "queued"},
             message="Batch inference job queued",
         )
 
-    except Exception as e:
+    except (ValueError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(
             e, context=f"lnn.batch_inference_init[{request.model_name}]"
         )
+        logger.warning("Batch inference init failed: %s", e)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],

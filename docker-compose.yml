@@ -17,7 +17,7 @@
 # 安全说明：
 #   - 所有密码、密钥均通过 ${VAR_NAME} 形式从 .env 注入，不在本文件中硬编码
 #   - Redis（6379）与 PostgreSQL（5432）不再对外暴露端口，仅容器网络内部通信
-#   - 仅有 API（8000）、Grafana（3000）、Prometheus（9090）对外提供访问
+#   - 仅有 API（8765）、Grafana（3000）、Prometheus（9090）对外提供访问
 # ============================================================
 
 name: lnn-manufacturing
@@ -30,15 +30,25 @@ services:
       target: production
     container_name: lnn-api
     ports:
-      - "8000:8000"
+      - "8765:8765"
     environment:
       - APP_ENV=${APP_ENV:-production}
-      - PORT=${PORT:-8000}
+      - PORT=${PORT:-8765}
       - REDIS_URL=${REDIS_URL}
       - DB_URL=${DB_URL}
+      - TDENGINE_HOST=lnn-tdengine
+      - TDENGINE_PORT=6041
+      - TDENGINE_USER=${TDENGINE_USER:-root}
+      - TDENGINE_PASSWORD=${TDENGINE_PASSWORD:?TDENGINE_PASSWORD must be set in .env file}
+      - HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
+      # OPC UA 配置（工厂环境）
+      - OPCUA_ENDPOINT=${OPCUA_ENDPOINT:-opc.tcp://localhost:4840}
+      - OPCUA_TIMEOUT=${OPCUA_TIMEOUT:-10.0}
+      - OPCUA_INTERVAL=${OPCUA_INTERVAL:-1.0}
     volumes:
       - ./models/lnn:/app/models/lnn
       - ./logs:/app/logs
+      - ./config:/app/config:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -51,7 +61,7 @@ services:
     restart: unless-stopped
     profiles: ["full", "api"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health/ping || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8765/api/health/ping || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -66,24 +76,33 @@ services:
           memory: 1G
 
   redis:
-    image: redis:7-alpine
+    image: registry.cn-hangzhou.aliyuncs.com/library/redis:7-alpine
     container_name: lnn-redis
     # Redis 仅通过容器网络 lnn-network 内部通信，不对外暴露端口
+    # 安全修复：强制启用 requirepass，密码从 .env 注入，禁止无密码访问
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
       - redis-data:/data
     networks:
       - lnn-network
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: >
+      sh -c "redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass \"$${REDIS_PASSWORD}\""
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # 健康检查需携带密码，否则 AUTH 失败
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 3
       start_period: 10s
 
   postgres:
-    image: postgres:15-alpine
+    image: registry.cn-hangzhou.aliyuncs.com/library/postgres:15-alpine
     container_name: lnn-postgres
     # PostgreSQL 仅通过容器网络 lnn-network 内部通信，不对外暴露端口
     environment:
@@ -104,8 +123,8 @@ services:
 
   lnn-tdengine:
     # TDengine 时序数据库 - 用于机床高频传感器数据存储
-    # 官方镜像文档: https://hub.docker.com/r/tdengine/tdengine
-    image: tdengine/tdengine:3.0.7.5
+    # 使用阿里云镜像源加速国内访问
+    image: registry.cn-hangzhou.aliyuncs.com/tdengine/tdengine:3.0.7.5
     container_name: lnn-tdengine
     hostname: lnn-tdengine
     # 仅通过容器网络 lnn-network 内部通信，不对外暴露端口
@@ -117,9 +136,11 @@ services:
       - TAOS_FQDN=lnn-tdengine
       # 首次启动自动创建 root 用户密码（生产环境请通过 .env 覆盖）
       - TAOS_FIRST_EP=lnn-tdengine
+      - HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
     volumes:
       - lnn-tdengine-data:/var/lib/taos
       - lnn-tdengine-cfg:/etc/taos
+      - ./deploy/tdengine/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - lnn-network
     restart: unless-stopped
@@ -133,10 +154,13 @@ services:
       start_period: 30s
 
   prometheus:
-    image: prom/prometheus:latest
+    # 使用阿里云镜像源加速国内访问
+    image: registry.cn-hangzhou.aliyuncs.com/prom/prometheus:latest
     container_name: lnn-prometheus
     ports:
       - "9090:9090"
+    environment:
+      - HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
     volumes:
       - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
@@ -152,13 +176,15 @@ services:
       start_period: 10s
 
   grafana:
-    image: grafana/grafana:latest
+    # 使用阿里云镜像源加速国内访问
+    image: registry.cn-hangzhou.aliyuncs.com/grafana/grafana:latest
     container_name: lnn-grafana
     ports:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
     volumes:
       - grafana-data:/var/lib/grafana
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning
@@ -176,9 +202,58 @@ services:
       retries: 3
       start_period: 30s
 
+  nginx:
+    image: registry.cn-hangzhou.aliyuncs.com/library/nginx:alpine
+    container_name: lnn-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      lnn-api:
+        condition: service_healthy
+    networks:
+      - lnn-network
+    restart: unless-stopped
+    profiles: ["full", "api"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  postgres-backup:
+    image: registry.cn-hangzhou.aliyuncs.com/library/postgres:15-alpine
+    container_name: lnn-postgres-backup
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./scripts/backup_postgres.sh:/backup_postgres.sh:ro
+      - postgres-backups:/backups
+    networks:
+      - lnn-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # 每天凌晨 2 点执行备份
+    entrypoint: >
+      sh -c "echo '0 2 * * * /backup_postgres.sh >> /var/log/backup.log 2>&1' > /etc/crontabs/root &&
+             crond -f -l 8"
+    restart: unless-stopped
+    profiles: ["full"]
+
 volumes:
   redis-data:
   postgres-data:
+  postgres-backups:
   lnn-tdengine-data:
   lnn-tdengine-cfg:
   prometheus-data:

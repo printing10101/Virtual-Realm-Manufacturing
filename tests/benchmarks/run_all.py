@@ -143,6 +143,9 @@ def run_all(settings: BenchmarkSettings | None = None) -> int:
             if results:
                 all_results[runner.benchmark_type] = results
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Benchmark '{name}' 执行失败: {e}", exc_info=True)
             print(f"  [错误] {name} 执行异常: {e}")
             all_results[runner.benchmark_type] = {
                 "error": {"value": 0, "status": "ERROR", "message": str(e)},
@@ -194,7 +197,9 @@ def run_all(settings: BenchmarkSettings | None = None) -> int:
             capture_output=True, text=True, timeout=5,
         ).stdout.strip()
         git_info = f"{branch}@{commit}"
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("无法获取 git 信息: %s", e)
         git_info = "N/A"
 
     html_path = os.path.join(settings.output_dir, f"benchmark_report_{timestamp}.html")
@@ -213,6 +218,8 @@ def run_all(settings: BenchmarkSettings | None = None) -> int:
         for metric in list(current_flat.keys())[:10]:
             visualizer.generate_metric_trend_chart(metric, limit=20)
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("生成趋势可视化图表失败: %s", e)
         print(f"  [可视化] 生成趋势图时出错: {e}")
 
     critical_count = sum(1 for r in regression_entries if r["status"] == "CRITICAL")

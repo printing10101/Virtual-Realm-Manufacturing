@@ -9,6 +9,7 @@ CadQuery 自动化特征提取模块
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
@@ -136,11 +137,11 @@ class CadQueryFeatureExtractor:
                 five_axis_features=five_axis_count,
             )
             
-        except Exception as e:
-            logger.error("特征提取失败: %s", e)
+        except (ValueError, TypeError, OSError, RuntimeError, AttributeError) as e:
+            logger.error("特征提取失败: %s", e, exc_info=True)
             return FeatureExtractionResult(
                 success=False,
-                error_message=str(e),
+                error_message="特征提取过程中发生错误",
                 extraction_time_ms=int((time.perf_counter() - t0) * 1000),
             )
     
@@ -197,8 +198,8 @@ class CadQueryFeatureExtractor:
                             "type": "cylindrical",
                         },
                     ))
-        except Exception as e:
-            logger.debug("CadQuery 孔特征提取降级: %s", e)
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            logger.debug("CadQuery 孔特征提取降级: %s", e, exc_info=True)
         return features
 
     def _extract_pockets(self, model) -> list[MachiningFeature]:
@@ -249,8 +250,8 @@ class CadQueryFeatureExtractor:
                                 "width": width,
                             },
                         ))
-        except Exception as e:
-            logger.debug("CadQuery 型腔特征提取降级: %s", e)
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            logger.debug("CadQuery 型腔特征提取降级: %s", e, exc_info=True)
         return features
 
     def _extract_bosses(self, model) -> list[MachiningFeature]:
@@ -294,8 +295,8 @@ class CadQueryFeatureExtractor:
                                     "height": height,
                                 },
                             ))
-        except Exception as e:
-            logger.debug("CadQuery 凸台特征提取降级: %s", e)
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            logger.debug("CadQuery 凸台特征提取降级: %s", e, exc_info=True)
         return features
 
     def _extract_chamfers(self, model) -> list[MachiningFeature]:
@@ -313,7 +314,7 @@ class CadQueryFeatureExtractor:
                 if adaptor.GetType() == GeomAbs_Cone:
                     cone = adaptor.Cone()
                     semi_angle = cone.SemiAngle()
-                    angle_deg = abs(semi_angle) * 180.0 / 3.14159265
+                    angle_deg = abs(semi_angle) * 180.0 / math.pi
 
                     # 典型倒角角度在 15°-75° 范围
                     if 10 < angle_deg < 80:
@@ -336,8 +337,8 @@ class CadQueryFeatureExtractor:
                                 "width": width,
                             },
                         ))
-        except Exception as e:
-            logger.debug("CadQuery 倒角特征提取降级: %s", e)
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            logger.debug("CadQuery 倒角特征提取降级: %s", e, exc_info=True)
         return features
 
     def _extract_fillets(self, model) -> list[MachiningFeature]:
@@ -370,8 +371,8 @@ class CadQueryFeatureExtractor:
                             "fillet_radius": minor_radius,
                         },
                     ))
-        except Exception as e:
-            logger.debug("CadQuery 圆角特征提取降级: %s", e)
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            logger.debug("CadQuery 圆角特征提取降级: %s", e, exc_info=True)
         return features
     
     def _requires_five_axis(self, feature: MachiningFeature) -> bool:

@@ -423,7 +423,7 @@ class VoxelCutter(_PyVoxelCutter):
                     form_profile=form_profile,
                 )
                 return np.asarray(mask_array, dtype=bool)
-            except Exception as exc:  # pylint: disable=broad-except
+            except (RuntimeError, ValueError, TypeError, OSError) as exc:
                 logger.warning(
                     "[VoxelCutter] Rust build_tool_mask failed (%s); "
                     "falling back to Python voxel_mask for this call.",
@@ -484,7 +484,7 @@ class VoxelCutter(_PyVoxelCutter):
                     stats.elapsed_ms,
                 )
                 return stats.removed
-            except Exception as exc:  # pylint: disable=broad-except
+            except (RuntimeError, ValueError, TypeError, OSError) as exc:
                 stats.fallback_reason = f"rust_apply_failed: {exc}"
                 logger.warning(
                     "[VoxelCutter] Rust apply_tool_mask failed (%s); "

@@ -99,28 +99,44 @@ class TestGenerator:
         lines.extend([
             f'    def test_{func.name}_normal(self):',
             f'        """正常路径测试"""',
-            f'        # TODO: 根据实际函数签名填入参数',
         ])
 
-        if func.args:
-            args_str = ', '.join(f'{a}=None' for a in func.args)
-            lines.append(f'        # result = {func.name}({args_str})')
-            lines.append(f'        # assert result is not None')
+        # 生成测试数据
+        test_args = self._generate_test_args(func)
+        if test_args:
+            args_str = ', '.join(f'{k}={v}' for k, v in test_args.items())
+            lines.append(f'        result = {func.name}({args_str})')
+            lines.append(f'        assert result is not None')
+            lines.append(f'        # TODO: 添加更具体的断言')
         else:
-            lines.append(f'        # result = {func.name}()')
-            lines.append(f'        # assert result is not None')
+            lines.append(f'        result = {func.name}()')
+            lines.append(f'        assert result is not None')
+            lines.append(f'        # TODO: 添加更具体的断言')
 
-        lines.append(f'        pytest.skip("TODO: implement test")')
         lines.append(f'')
 
         # 生成边界测试
         lines.extend([
             f'    def test_{func.name}_edge_cases(self):',
             f'        """边界条件测试"""',
-            f'        # TODO: 测试空值、极值等边界情况',
-            f'        pytest.skip("TODO: implement edge case tests")',
-            f'',
         ])
+
+        # 为每个参数生成边界测试
+        for arg in func.args:
+            if arg != 'self':
+                lines.extend([
+                    f'        # 测试 {arg} 为 None',
+                    f'        # TODO: 根据实际类型调整',
+                    f'        # result = {func.name}({arg}=None)',
+                    f'        # assert result is not None',
+                    f'',
+                    f'        # 测试 {arg} 为空值',
+                    f'        # TODO: 根据实际类型调整',
+                    f'        # result = {func.name}({arg}="")',
+                    f'        # assert result is not None',
+                    f'',
+                ])
+                break  # 只为第一个参数生成示例
 
         # 如果是异步函数，添加异步测试
         if func.is_async:
@@ -128,12 +144,56 @@ class TestGenerator:
                 f'    @pytest.mark.asyncio',
                 f'    async def test_{func.name}_async(self):',
                 f'        """异步调用测试"""',
-                f'        # TODO: 使用 pytest-asyncio 测试异步行为',
-                f'        pytest.skip("TODO: implement async test")',
-                f'',
             ])
+            if test_args:
+                args_str = ', '.join(f'{k}={v}' for k, v in test_args.items())
+                lines.append(f'        result = await {func.name}({args_str})')
+            else:
+                lines.append(f'        result = await {func.name}()')
+            lines.append(f'        assert result is not None')
+            lines.append(f'')
 
         return lines
+
+    def _generate_test_args(self, func: FunctionInfo) -> dict[str, str]:
+        """为函数参数生成测试数据"""
+        test_args = {}
+
+        for arg in func.args:
+            if arg == 'self':
+                continue
+
+            # 检查是否有默认值
+            if arg in func.defaults:
+                default = func.defaults[arg]
+                if isinstance(default, str):
+                    test_args[arg] = f'"{default}"'
+                elif isinstance(default, (int, float)):
+                    test_args[arg] = str(default)
+                elif isinstance(default, bool):
+                    test_args[arg] = str(default)
+                elif default is None:
+                    test_args[arg] = 'None'
+                else:
+                    test_args[arg] = repr(default)
+            else:
+                # 根据参数名猜测类型
+                arg_lower = arg.lower()
+                if 'name' in arg_lower or 'title' in arg_lower or 'path' in arg_lower:
+                    test_args[arg] = '"test_value"'
+                elif 'count' in arg_lower or 'num' in arg_lower or 'size' in arg_lower or 'length' in arg_lower:
+                    test_args[arg] = '10'
+                elif 'flag' in arg_lower or 'is_' in arg_lower or 'has_' in arg_lower:
+                    test_args[arg] = 'True'
+                elif 'data' in arg_lower or 'content' in arg_lower or 'text' in arg_lower:
+                    test_args[arg] = '"test data"'
+                elif 'index' in arg_lower or 'id' in arg_lower:
+                    test_args[arg] = '0'
+                else:
+                    # 默认使用字符串
+                    test_args[arg] = '"test"'
+
+        return test_args
 
     def _generate_class_test(self, cls: ClassInfo, module_import: str) -> list[str]:
         """为类生成测试代码"""
@@ -142,14 +202,35 @@ class TestGenerator:
             f'class Test_{cls.name}:',
             f'    """测试 {cls.name} 类"""',
             f'',
+        ]
+
+        # 查找 __init__ 方法
+        init_method = None
+        for method in cls.methods:
+            if method.name == '__init__':
+                init_method = method
+                break
+
+        # 生成 fixture
+        lines.extend([
             f'    @pytest.fixture',
             f'    def instance(self):',
             f'        """创建测试实例"""',
-            f'        # TODO: 根据实际构造函数填入参数',
-            f'        # return {cls.name}()',
-            f'        pytest.skip("TODO: create instance")',
-            f'',
-        ]
+        ])
+
+        if init_method and init_method.args:
+            # 生成构造函数参数
+            init_args = self._generate_test_args(init_method)
+            if init_args:
+                args_str = ', '.join(f'{k}={v}' for k, v in init_args.items())
+                lines.append(f'        instance = {cls.name}({args_str})')
+            else:
+                lines.append(f'        instance = {cls.name}()')
+        else:
+            lines.append(f'        instance = {cls.name}()')
+
+        lines.append(f'        return instance')
+        lines.append(f'')
 
         # 为每个公开方法生成测试
         for method in cls.methods:
@@ -161,11 +242,18 @@ class TestGenerator:
             lines.extend([
                 f'    def test_{method.name}(self, instance):',
                 f'        """测试 {method.name} 方法"""',
-                f'        # TODO: 调用方法并验证结果',
-                f'        # result = instance.{method.name}()',
-                f'        # assert result is not None',
-                f'        pytest.skip("TODO: implement test")',
-                f'',
             ])
+
+            # 生成方法调用参数
+            method_args = self._generate_test_args(method)
+            if method_args:
+                args_str = ', '.join(f'{k}={v}' for k, v in method_args.items())
+                lines.append(f'        result = instance.{method.name}({args_str})')
+            else:
+                lines.append(f'        result = instance.{method.name}()')
+
+            lines.append(f'        assert result is not None')
+            lines.append(f'        # TODO: 添加更具体的断言')
+            lines.append(f'')
 
         return lines

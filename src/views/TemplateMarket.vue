@@ -2,11 +2,32 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '@/utils/http'
+import { API_CONFIG } from '@/config/api'
 
 const router = useRouter()
 
-const trending = ref<any[]>([])
-const templates = ref<any[]>([])
+// 类型定义
+interface TrendingTemplate {
+  template_id: string
+  name: string
+  category: string
+  downloads: number
+  rating: number
+}
+
+interface Template {
+  branch_id: string
+  name: string
+  category: string
+  description: string
+  version: string
+  author: string
+  created_at: number
+  updated_at: number
+}
+
+const trending = ref<TrendingTemplate[]>([])
+const templates = ref<Template[]>([])
 const subscriptions = ref<string[]>([])
 const activeTab = ref('market')
 const loading = ref(false)
@@ -18,14 +39,14 @@ const publishForm = ref({
   description: ''
 })
 
-const API_BASE = '/api/v1'
+const API_BASE = API_CONFIG.V1
 
 async function fetchTrending() {
   try {
     const res = await http.get(`${API_BASE}/template_market/trending`)
     if (res.data.code === 'SUCCESS') trending.value = res.data.data
-  } catch (e: unknown) {
-    console.warn('Failed to fetch trending:', e)
+  } catch {
+    // 静默处理
   }
 }
 
@@ -34,8 +55,8 @@ async function fetchTemplates() {
   try {
     const res = await http.get(`${API_BASE}/templates/branches`)
     if (res.data.code === 'SUCCESS') templates.value = res.data.data
-  } catch (e: unknown) {
-    console.warn('Failed to fetch templates:', e)
+  } catch {
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -49,8 +70,8 @@ async function subscribe() {
     })
     subscriptions.value.push(subscribeCategory.value)
     subscribeCategory.value = ''
-  } catch (e: unknown) {
-    console.warn('Failed to subscribe:', e)
+  } catch {
+    // 静默处理
   }
 }
 
@@ -60,27 +81,14 @@ async function publishTemplate() {
     await http.post(`${API_BASE}/template_market/publish`, publishForm.value)
     publishForm.value = { branch_id: '', name: '', category: 'general', description: '' }
     fetchTrending()
-  } catch (e: unknown) {
-    console.warn('Failed to publish template:', e)
+  } catch {
+    // 静默处理
   }
 }
 
 function viewDetail(branchId: string) {
   router.push(`/templates/${branchId}`)
 }
-
-function viewUpdates() {
-  router.push('/template-updates')
-}
-
-function viewBranches() {
-  router.push('/template-branches')
-}
-
-onMounted(() => {
-  fetchTrending()
-  fetchTemplates()
-})
 </script>
 
 <template>

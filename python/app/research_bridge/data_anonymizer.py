@@ -83,12 +83,14 @@ class DataAnonymizer:
         if isinstance(ts, str):
             try:
                 dt = datetime.fromisoformat(ts)
-            except ValueError:
+            except ValueError as e:
+                logger.warning(f"时间戳字符串格式无效 '{ts}'，使用默认日期: {e}")
                 return "1970-01-01"
         elif isinstance(ts, (int, float)):
             try:
                 dt = datetime.fromtimestamp(ts)
-            except (ValueError, OSError):
+            except (ValueError, OSError) as e:
+                logger.warning(f"时间戳数值格式无效 '{ts}'，使用默认日期: {e}")
                 return "1970-01-01"
         elif isinstance(ts, datetime):
             dt = ts

@@ -55,5 +55,7 @@ class SVMBaseline:
             from app.benchmarks.metrics import measure_model_size_mb
 
             return measure_model_size_mb(self.model)
-        except Exception:
+        except (ImportError, OSError, AttributeError) as e:
+            import logging
+            logging.getLogger(__name__).debug("SVM model size measurement failed: %s", e)
             return 0.0

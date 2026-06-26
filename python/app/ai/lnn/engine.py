@@ -50,6 +50,9 @@ class EngineConfig:
         max_retry: 最大重试次数 (默认 2)
         config_path: YAML配置文件路径 (可选)
         config: 已有的配置管理器实例 (可选)
+        llm_api_key: LLM API 密钥 (可选，不设置则使用 mock 实现)
+        llm_base_url: LLM API 基础 URL (可选)
+        llm_model: LLM 模型名称 (可选)
     """
 
     rule_weight: float = 0.4
@@ -61,6 +64,9 @@ class EngineConfig:
     max_retry: int = 2
     config_path: Optional[str] = None
     config: Optional[YAMLConfigManager] = None
+    llm_api_key: Optional[str] = None
+    llm_base_url: Optional[str] = None
+    llm_model: Optional[str] = None
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "EngineConfig":
@@ -527,7 +533,7 @@ class HybridInferenceEngine:
             return _build_error_result(
                 e, {"retry_count": retry_count, "max_retry": self.max_retry}
             )
-        except Exception as e:
+        except (ValueError, TypeError, RuntimeError, ZeroDivisionError) as e:
             # 兜底捕获：模型推理过程中可能抛出未预期的非运行时异常（如网络、数据格式问题）
             # 此处保留宽泛捕获以避免推理任务崩溃，全部信息已通过 exc_info 记录到日志
             logger.error(
@@ -540,24 +546,49 @@ class HybridInferenceEngine:
         task: TaskInput,
         decision: RoutingDecision,
     ) -> Optional[InferenceResult]:
-        logger.warning(
-            "LLM引擎使用mock实现，返回硬编码预测值。生产环境需接入真实LLM API。"
-        )
-
+        """LLM推理引擎
+        
+        支持两种模式：
+        1. 真实API模式：当配置了 llm_api_key 时，调用真实的LLM API
+        2. Mock模式：未配置API密钥时，返回硬编码预测值（仅用于开发测试）
+        """
         start_time = time.perf_counter()
 
         try:
-            mock_prediction = np.array([0.8, 0.15, 0.05])
+            # 检查是否配置了真实LLM API
+            llm_api_key = getattr(self, '_llm_api_key', None)
+            llm_base_url = getattr(self, '_llm_base_url', 'https://api.openai.com/v1')
+            llm_model = getattr(self, '_llm_model', 'gpt-3.5-turbo')
+            
+            if llm_api_key:
+                # 真实LLM API调用
+                prediction = self._call_llm_api(
+                    task=task,
+                    api_key=llm_api_key,
+                    base_url=llm_base_url,
+                    model=llm_model
+                )
+                model_name = llm_model
+                is_mock = False
+            else:
+                # Mock模式（向后兼容）
+                logger.warning(
+                    "LLM引擎使用mock实现，返回硬编码预测值。"
+                    "生产环境请配置 LLM_API_KEY 环境变量接入真实LLM API。"
+                )
+                prediction = np.array([0.8, 0.15, 0.05])
+                model_name = "LLM-GPT-Mock"
+                is_mock = True
 
             processing_time = (time.perf_counter() - start_time) * 1000
             result = self.postprocessor.process_result(
-                predictions=mock_prediction,
+                predictions=prediction,
                 engine=EngineType.LLM,
-                model_name="LLM-GPT",
+                model_name=model_name,
                 processing_time_ms=processing_time,
                 metadata={
-                    "mock": True,
-                    "note": "LLM engine is a stub — hardcoded prediction",
+                    "mock": is_mock,
+                    "model": model_name,
                 },
             )
 
@@ -576,6 +607,144 @@ class HybridInferenceEngine:
                 engine_used=EngineType.LLM,
                 metadata={"error": safe["message"], "error_id": safe["error_id"]},
             )
+    
+    def _call_llm_api(
+        self,
+        task: TaskInput,
+        api_key: str,
+        base_url: str,
+        model: str
+    ) -> np.ndarray:
+        """调用真实LLM API进行推理
+        
+        Args:
+            task: 任务输入
+            api_key: API密钥
+            base_url: API基础URL
+            model: 模型名称
+            
+        Returns:
+            np.ndarray: 预测结果数组
+            
+        Raises:
+            RuntimeError: API调用失败时抛出
+        """
+        try:
+            import requests
+            
+            # 构建提示词
+            prompt = self._build_llm_prompt(task)
+            
+            # 调用API - 使用Session确保连接资源正确释放
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "你是一个专业的制造领域AI助手，负责分析加工任务并给出决策建议。"},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 500
+            }
+            
+            with requests.Session() as session:
+                response = session.post(
+                    f"{base_url}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=30
+                )
+                
+                if response.status_code != 200:
+                    raise RuntimeError(f"LLM API返回错误状态码: {response.status_code}, 响应: {response.text}")
+                
+                result = response.json()
+                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                
+                if not content:
+                    raise RuntimeError("LLM API返回空响应")
+                
+                # 解析LLM输出为预测数组
+                prediction = self._parse_llm_response(content)
+                
+                logger.info(f"LLM API调用成功，模型: {model}, 响应长度: {len(content)}")
+                return prediction
+            
+        except ImportError as e:
+            raise RuntimeError("缺少requests库，请运行: pip install requests") from e
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"LLM API网络请求失败: {e}") from e
+        except Exception as e:
+            raise RuntimeError(f"LLM API调用异常: {e}") from e
+    
+    def _build_llm_prompt(self, task: TaskInput) -> str:
+        """构建LLM提示词
+        
+        Args:
+            task: 任务输入
+            
+        Returns:
+            str: 格式化的提示词
+        """
+        prompt_parts = [
+            "请分析以下制造加工任务并给出决策建议：",
+            f"\n任务描述: {task.task_description}",
+        ]
+        
+        if task.input_data is not None:
+            if isinstance(task.input_data, np.ndarray):
+                prompt_parts.append(f"输入数据形状: {task.input_data.shape}")
+            else:
+                prompt_parts.append(f"输入数据: {str(task.input_data)[:200]}")
+        
+        if task.context:
+            prompt_parts.append(f"上下文信息: {task.context}")
+        
+        prompt_parts.extend([
+            "\n请以JSON格式返回你的分析结果，包含以下字段：",
+            "- confidence: 置信度(0-1)",
+            "- recommendation: 推荐操作",
+            "- risk_level: 风险等级(low/medium/high)",
+            "- parameters: 建议的加工参数（如适用）"
+        ])
+        
+        return "\n".join(prompt_parts)
+    
+    def _parse_llm_response(self, content: str) -> np.ndarray:
+        """解析LLM响应为预测数组
+        
+        Args:
+            content: LLM返回的文本内容
+            
+        Returns:
+            np.ndarray: 预测结果数组
+        """
+        import json
+        import re
+        
+        # 尝试提取JSON
+        json_match = re.search(r'\{[^}]+\}', content, re.DOTALL)
+        if json_match:
+            try:
+                data = json.loads(json_match.group())
+                confidence = float(data.get("confidence", 0.8))
+                # 转换为三分类概率分布 [正常, 预警, 异常]
+                if confidence > 0.7:
+                    return np.array([confidence, 1 - confidence, 0.0])
+                elif confidence > 0.4:
+                    return np.array([0.3, confidence, 0.7 - confidence])
+                else:
+                    return np.array([0.0, 0.3, 0.7])
+            except (json.JSONDecodeError, ValueError, TypeError):
+                pass
+        
+        # 默认回退
+        logger.warning("无法解析LLM响应，使用默认预测")
+        return np.array([0.8, 0.15, 0.05])
 
     def _rule_inference(
         self,

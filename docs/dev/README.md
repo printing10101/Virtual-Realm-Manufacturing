@@ -58,8 +58,8 @@ pnpm dev
 
 访问：
 - 前端：http://localhost:3000
-- 后端 API：http://localhost:8000
-- API 文档：http://localhost:8000/docs
+- 后端 API：http://localhost:8765
+- API 文档：http://localhost:8765/docs
 
 ---
 
@@ -282,7 +282,7 @@ def get_user_by_id(user_id: int) -> User:
 
 # 常量：UPPER_SNAKE_CASE
 MAX_RETRY_COUNT = 3
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = "http://localhost:8765"
 
 # 私有成员：前缀下划线
 class MyClass:
@@ -1198,7 +1198,7 @@ app = FastAPI(
 
 ### 内部资源
 
-- [API 文档](http://localhost:8000/docs)
+- [API 文档](http://localhost:8765/docs)
 - [架构概述](./架构概述.md)
 - [测试指南](./测试指南.md)
 - [贡献指南](./贡献指南.md)

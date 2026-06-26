@@ -19,21 +19,39 @@ spec:
       labels:
         app: lnn-api
     spec:
+      # 安全修复：Pod 级 securityContext，强制非 root 运行
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: lnn-api
-          image: lnn-api:latest
+          # 安全修复：使用固定版本标签替代 latest，确保可追溯与可复现
+          image: lnn-api:1.0.0
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8000
+            - containerPort: 8765
               name: http
+          # 安全修复：容器级 securityContext，禁止特权与能力提升
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: APP_ENV
               value: "production"
             - name: PORT
-              value: "8000"
+              value: "8765"
             - name: REDIS_URL
               valueFrom:
-                configMapKeyRef:
-                  name: lnn-config
+                secretKeyRef:
+                  name: lnn-secrets
                   key: redis-url
             - name: DB_URL
               valueFrom:
@@ -50,7 +68,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /api/v1/health
-              port: 8000
+              port: 8765
             initialDelaySeconds: 60
             periodSeconds: 30
             timeoutSeconds: 10
@@ -58,7 +76,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /api/v1/health
-              port: 8000
+              port: 8765
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
@@ -86,7 +104,7 @@ spec:
     app: lnn-api
   ports:
     - port: 80
-      targetPort: 8000
+      targetPort: 8765
       protocol: TCP
       name: http
 ---
@@ -95,7 +113,8 @@ kind: ConfigMap
 metadata:
   name: lnn-config
 data:
-  redis-url: "redis://redis-service:6379/0"
+  # 仅放非敏感配置；敏感信息（redis-url、db-url）改由 Secret 注入
+  app-env: "production"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

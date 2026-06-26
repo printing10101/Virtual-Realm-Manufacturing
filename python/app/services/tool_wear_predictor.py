@@ -1072,7 +1072,7 @@ class ToolWearPredictor:
                     rmse,
                     r2,
                 )
-            except Exception as e:
+            except (ValueError, TypeError, RuntimeError, OSError) as e:
                 self._logger.error("Uniwear training failed for %s: %s", ds.value, e, exc_info=True)
                 from app.core.safe_errors import safe_error_message
 

@@ -97,12 +97,24 @@ export default {
   home: {
     welcome: "欢迎使用灵境制造 V4",
     welcomeDesc: "AI驱动的智能制造平台，提供工具磨损预测、工艺参数优化与3D可视化功能",
+    quickAccess: "快捷功能",
+    recentProjects: "最近项目",
+    noRecentProject: "暂无最近项目",
+    frontendVersion: "前端版本",
     systemStatus: "系统状态",
     aiService: "AI服务",
     running: "运行中",
     stopped: "已停止",
     registeredModels: "模型注册数",
     fetchFailed: "状态获取失败",
+    featureItems: {
+      workspace: { label: "3D 工作区", desc: "建模与装配" },
+      ruleEditor: { label: "工艺规则", desc: "规则编辑器" },
+      toolpathEditor: { label: "刀路编辑", desc: "刀轨生成与优化" },
+      processPlanning: { label: "工艺规划", desc: "工序排程" },
+      templateMarket: { label: "模板市场", desc: "浏览与下载" },
+      taskBoard: { label: "任务看板", desc: "项目进度管理" },
+    },
   },
   workspace: {
     header: "工作区 - LNN模型推理",
@@ -583,7 +595,7 @@ export default {
   about: {
     pageTitle: "关于灵境制造",
     productName: "灵境制造 V4",
-    version: "版本：2.2.0",
+    version: "版本：2.3.0",
     description: "基于神经逻辑网络(LNN)的智能制造AI推理与训练API服务",
     coreTech: "核心技术",
     techLnn: "LNN (Logical Neural Network) - 逻辑神经网络推理引擎",

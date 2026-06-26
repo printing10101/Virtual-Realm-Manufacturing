@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from dataclasses import dataclass, field
@@ -170,8 +171,8 @@ class PredictionExplainer:
                 temperature=0.3,
             )
             content = response.get("content", "").strip()
-        except Exception as e:
-            logger.error("LLM解释生成失败: %s", e)
+        except (RuntimeError, OSError, ValueError, TypeError, ImportError, AttributeError, KeyError) as e:
+            logger.error("LLM解释生成失败: %s", e, exc_info=True)
             return self._create_fallback_explanation(prediction)
 
         explanation = self._parse_explanation(content)
@@ -214,8 +215,8 @@ class PredictionExplainer:
                 attention_points=data.get("attention_points", []),
                 risk_level=data.get("risk_level", "normal"),
             )
-        except Exception as e:
-            logger.warning("解释解析失败: %s", e)
+        except (ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
+            logger.warning("解释解析失败: %s", e, exc_info=True)
             return PredictionExplanation(
                 summary="模型预测结果解析中，请查看原始数据。",
                 sections=[

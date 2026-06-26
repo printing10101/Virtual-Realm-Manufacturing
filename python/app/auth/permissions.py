@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import time
 import logging
+import threading
 from enum import Enum
 from functools import wraps
 from typing import Dict, Callable, Optional, List, Set
@@ -147,32 +148,42 @@ permission_checker = PermissionChecker()
 
 class RBACPermissionCache:
     _instance: Optional[RBACPermissionCache] = None
+    _instance_lock = threading.Lock()
     _cache: Dict[str, tuple[Set[str], float]] = {}
     _ttl: float = 60.0
 
     def __new__(cls):
+        # 安全修复：双重检查锁，防止并发创建多个实例
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._instance_lock:
+                if cls._instance is None:
+                    instance = super().__new__(cls)
+                    instance._cache_lock = threading.Lock()
+                    cls._instance = instance
         return cls._instance
 
     def get(self, role_code: str) -> Optional[Set[str]]:
-        entry = self._cache.get(role_code)
-        if entry is None:
-            return None
-        perms, expiry = entry
-        if time.time() > expiry:
-            del self._cache[role_code]
-            return None
-        return perms
+        # 安全修复：缓存读取加锁，防止与 set/invalidate 并发修改导致字典状态不一致
+        with self._cache_lock:
+            entry = self._cache.get(role_code)
+            if entry is None:
+                return None
+            perms, expiry = entry
+            if time.time() > expiry:
+                self._cache.pop(role_code, None)
+                return None
+            return perms
 
     def set(self, role_code: str, permissions: Set[str]):
-        self._cache[role_code] = (permissions, time.time() + self._ttl)
+        with self._cache_lock:
+            self._cache[role_code] = (permissions, time.time() + self._ttl)
 
     def invalidate(self, role_code: Optional[str] = None):
-        if role_code:
-            self._cache.pop(role_code, None)
-        else:
-            self._cache.clear()
+        with self._cache_lock:
+            if role_code:
+                self._cache.pop(role_code, None)
+            else:
+                self._cache.clear()
 
 
 rbac_cache = RBACPermissionCache()

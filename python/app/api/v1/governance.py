@@ -29,7 +29,7 @@ async def list_approval_requests(
     ),
     requester: Optional[str] = Query(None, description="请求人"),
     limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=10000),
 ):
     engine = get_approval_engine()
 
@@ -167,7 +167,7 @@ async def handle_approval_timeout():
 async def get_my_approval_requests(
     approver_id: str = Query(..., description="审批人ID"),
     limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=10000),
 ):
     engine = get_approval_engine()
     requests = engine.get_requests_by_approver(approver_id, limit, offset)

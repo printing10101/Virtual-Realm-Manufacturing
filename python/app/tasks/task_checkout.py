@@ -18,6 +18,9 @@ from app.tasks.execution_lock import (
     DEFAULT_LOCK_TIMEOUT_HOURS,
 )
 
+from app.utils.utils import get_output_dir
+from app.utils.sqlite_pool import get_sqlite_manager
+
 logger = logging.getLogger(__name__)
 
 MAX_RETRY_COUNT = 5
@@ -156,13 +159,18 @@ class TaskRecord:
 
 class TaskCheckoutManager:
     def __init__(
-        self, lock_store: ExecutionLockStore, db_path: str = "task_checkout.db"
+        self, lock_store: ExecutionLockStore, db_path: Optional[str] = None
     ):
         self._lock_store = lock_store
+        if db_path is None:
+            db_path = str(get_output_dir("data") / "task_checkout.db")
         self._db_path = db_path
         self._queue_lock = threading.Lock()
         self._checkout_lock = threading.Lock()
-        self._conn: Optional[sqlite3.Connection] = None
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("task_checkout")
+        self._conn = self._pool.get_connection()
         self._budget_checker: Optional[Callable[[str, Optional[str]], bool]] = None
         self._gpu_checker: Optional[Callable[[float], bool]] = None
         self._ensure_tables()
@@ -174,11 +182,7 @@ class TaskCheckoutManager:
         self._gpu_checker = checker
 
     def _get_conn(self) -> sqlite3.Connection:
-        if self._conn is None:
-            self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            self._conn.row_factory = sqlite3.Row
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA busy_timeout=5000")
+        """获取数据库连接（从连接池）"""
         return self._conn
 
     def _ensure_tables(self):

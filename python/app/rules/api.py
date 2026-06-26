@@ -167,8 +167,8 @@ def _run_conflict_check(rules_to_check: List[ProcessRule]) -> Optional[List[dict
         conflicts = detect_conflicts(rules_to_check)
         if conflicts:
             return [_conflict_report_to_dict(c) for c in conflicts]
-    except Exception as e:
-        logger.warning(f"冲突检测失败: {e}")
+    except (ValueError, TypeError, KeyError) as e:
+        logger.warning(f"冲突检测失败: {e}", exc_info=True)
     return None
 
 
@@ -427,6 +427,17 @@ async def import_rules(file: UploadFile = File(...)):
         return error(ErrorCode.INVALID_REQUEST, message="请上传JSON格式的规则文件")
 
     content = await file.read()
+
+    # 文件大小校验（20MB）
+    max_size = 20 * 1024 * 1024
+    if len(content) > max_size:
+        return error(
+            ErrorCode.INVALID_REQUEST,
+            message=f"文件大小({len(content) / 1024 / 1024:.1f}MB)超过限制({max_size / 1024 / 1024:.0f}MB)",
+        )
+    if len(content) == 0:
+        return error(ErrorCode.INVALID_REQUEST, message="文件内容为空")
+
     try:
         json.loads(content)
     except json.JSONDecodeError:
@@ -451,8 +462,8 @@ async def import_rules(file: UploadFile = File(...)):
             data=result,
             message=message,
         )
-    except Exception as e:
-        logger.error(f"规则导入失败: {e}")
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        logger.error(f"规则导入失败: {e}", exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="rules.import", fallback="规则导入失败")
         return error(
@@ -475,8 +486,8 @@ async def export_rules():
             filename=export_path.name,
             media_type="application/json",
         )
-    except Exception as e:
-        logger.error(f"规则导出失败: {e}")
+    except (OSError, ValueError, TypeError) as e:
+        logger.error(f"规则导出失败: {e}", exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="rules.export", fallback="规则导出失败")
         return error(
@@ -492,8 +503,8 @@ async def backup_database():
     try:
         backup_path = db.backup_database()
         return success(data={"backup_path": backup_path}, message="数据库备份成功")
-    except Exception as e:
-        logger.error(f"数据库备份失败: {e}")
+    except (OSError, RuntimeError, ValueError) as e:
+        logger.error(f"数据库备份失败: {e}", exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="rules.backup", fallback="数据库备份失败")
         return error(

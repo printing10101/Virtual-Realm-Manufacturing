@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import time
 import threading
 from copy import deepcopy
@@ -329,12 +330,18 @@ class SkillLoader:
         return self._extract_callable(restricted_globals, skill_id)
 
     def _compile_code_in_process(self, code: str, skill_id: str) -> Optional[Callable]:
+        """备用编译方法：当 RestrictedPython 不可用时使用受限 builtins。
+        
+        注意：此方法不提供与 compile_restricted 相同级别的安全保护，
+        仅通过限制 __builtins__ 来降低风险。生产环境应优先使用 RestrictedPython。
+        """
         try:
             compiled = compile(code, f"<skill:{skill_id}>", "exec")
         except SyntaxError as e:
             logger.error("Skill '%s' syntax error: %s", skill_id, e)
             return None
 
+        # 安全修复：使用受限的 builtins，移除危险函数
         namespace: Dict[str, Any] = {"__builtins__": self._SAFE_BUILTINS}
         try:
             exec(compiled, namespace)
@@ -794,7 +801,7 @@ SAFE_BUILTINS = {
 try:
     raw = sys.stdin.buffer.read()
     data = json.loads(raw.decode("utf-8"))
-except Exception:
+except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
     sys.stdout.write(
         json.dumps({"status": "error", "error": "input parse failed"})
     )
@@ -827,7 +834,7 @@ try:
 
     result = entry(**args)
     sys.stdout.write(json.dumps({"status": "ok", "result": result}, default=str))
-except Exception as e:
+except (RuntimeError, ValueError, TypeError, OSError, NameError, AttributeError, KeyError) as e:
     sys.stdout.write(json.dumps({
         "status": "error",
         "error": str(e),
@@ -848,8 +855,15 @@ except Exception as e:
         import tempfile
         tmp_dir = tempfile.mkdtemp(prefix="skill_worker_")
         self._worker_path = os.path.join(tmp_dir, "worker.py")
-        with open(self._worker_path, "w", encoding="utf-8") as f:
-            f.write(self._WORKER_SCRIPT)
+        try:
+            with open(self._worker_path, "w", encoding="utf-8") as f:
+                f.write(self._WORKER_SCRIPT)
+        except Exception as e:
+            # 写入失败时清理临时目录，避免泄漏
+            logger.error("Failed to write skill worker script to %s: %s", self._worker_path, e, exc_info=True)
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            self._worker_path = None
+            raise
         return self._worker_path
 
     def __call__(self, *args, **kwargs):

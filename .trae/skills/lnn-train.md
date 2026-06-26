@@ -388,7 +388,7 @@ if self.use_amp and self.scaler is not None:
 ### 6.1 发起训练请求
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/lnn/train \
+curl -X POST http://localhost:8765/api/v1/lnn/train \
   -H "Content-Type: application/json" \
   -d '{
     "model_name": "cutting_force",
@@ -476,7 +476,7 @@ summary = trainer.get_training_summary()
 ### 7.2 设备信息
 
 ```bash
-curl http://localhost:8000/api/v1/lnn/device/info
+curl http://localhost:8765/api/v1/lnn/device/info
 ```
 
 ```json

@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html style="background-color:#faf8f5!important;color:#1d1b18!important;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工艺规划</title>
+    <link rel="stylesheet" href="tailwind-fallback.css">
+<style id="theme-vars">
+/*
+ * Lingjing Manufacturing design tokens
+ * Brand: Lingjing Manufacturing
+ * Domain: Intelligent manufacturing platform
+ * Style: Restrained, elegant, warm cream/off-white palette
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #faf8f5;
+  --background-100: #f5f2ed;
+  --background-200: #ede9e3;
+  --background-300: #e0dbd4;
+  --background-400: #cec8bf;
+  --background-500: #a8a199;
+  --background-600: #8a847c;
+  --background-700: #3a3632;
+  --background-800: #1c1a18;
+  --background-900: #0e0d0c;
+
+  /* text */
+  --text-50: #f5f2ed;
+  --text-100: #e3dfd8;
+  --text-200: #c7c2b8;
+  --text-300: #aea99f;
+  --text-400: #8e897f;
+  --text-500: #6e6960;
+  --text-600: #48443e;
+  --text-700: #3c3832;
+  --text-800: #1d1b18;
+  --text-900: #0e0d0c;
+
+  /* icon */
+  --icon-50: #f5f2ed;
+  --icon-100: #e0dbd4;
+  --icon-200: #cec8bf;
+  --icon-300: #c7c2b8;
+  --icon-400: #aea99f;
+  --icon-500: #8e897f;
+  --icon-600: #6e6960;
+  --icon-700: #48443e;
+  --icon-800: #2c2926;
+  --icon-900: #1d1b18;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f5ec;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #fdecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+  /* ===== COLOR ALIAS LAYER (--color-*) ===== */
+  --color-bg-50: var(--background-50);
+  --color-bg-100: var(--background-100);
+  --color-bg-200: var(--background-200);
+  --color-bg-300: var(--background-300);
+  --color-text-primary: var(--text-800);
+  --color-text-secondary: var(--text-500);
+  --color-text-tertiary: var(--text-400);
+  --color-text-muted: var(--text-400);
+  --color-text-placeholder: var(--text-300);
+  --color-text-inverse: var(--background-50);
+  --color-border-subtle: var(--background-300);
+  --color-border-default: var(--background-300);
+  --color-border-strong: var(--background-500);
+  --color-border-focus: var(--brand-500);
+  --color-primary-50: var(--brand-50);
+  --color-primary-100: var(--brand-100);
+  --color-primary-200: var(--brand-200);
+  --color-primary-300: var(--brand-300);
+  --color-primary-400: var(--brand-400);
+  --color-primary-500: var(--brand-500);
+  --color-primary-600: var(--brand-600);
+  --color-primary-700: var(--brand-700);
+  --color-primary-800: var(--brand-800);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-800: var(--brand-800);
+  /* ===== LAYOUT VARIABLES ===== */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --page-padding: 24px;
+  --content-max-width: 1200px;
+  /* ===== STATE COLORS ===== */
+  --state-warning: #ff9500;
+  --state-warning-bg: #fff4e5;
+  --state-warning-surface: #fff4e5;
+  --state-info: #007aff;
+  --state-info-bg: #e8f2ff;
+  --state-success-bg: #e9f5ec;
+  --state-error-bg: #fdecea;
+  --card-background: var(--background-50);
+
+
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+/* ===== FORCE LIGHT MODE (override .dark class in sandbox) ===== */
+html.dark, html.dark body, html.dark * {
+  --background: #faf8f5 !important;
+  --foreground: #1d1b18 !important;
+  --card: #faf8f5 !important;
+  --card-foreground: #1d1b18 !important;
+  --card-background: #faf8f5 !important;
+  --popover: #f5f2ed !important;
+  --popover-foreground: #1d1b18 !important;
+  --primary: #007aff !important;
+  --primary-foreground: #ffffff !important;
+  --secondary: #f5f2ed !important;
+  --secondary-foreground: #1d1b18 !important;
+  --muted: #f5f2ed !important;
+  --muted-foreground: #6b6560 !important;
+  --accent: #ede9e3 !important;
+  --accent-foreground: #1d1b18 !important;
+  --border: #e0dbd4 !important;
+  --input: #e0dbd4 !important;
+  --icon: #1d1b18 !important;
+  --icon-muted: #8e897f !important;
+  --sidebar: #ede9e3 !important;
+  --sidebar-foreground: #1d1b18 !important;
+  --sidebar-primary: #007aff !important;
+  --sidebar-primary-foreground: #faf8f5 !important;
+  --sidebar-accent: #e0dbd4 !important;
+  --sidebar-accent-foreground: #1d1b18 !important;
+  --sidebar-border: #e0dbd4 !important;
+  --sidebar-ring: #007aff !important;
+  color: inherit !important;
+}
+
+    </style>
+            
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="background-color:#faf8f5!important; color:#1d1b18!important;">
+    <main class="flex min-h-screen" style="background: var(--color-bg-100);">
+
+      <!-- Sidebar -->
+          <aside class="fixed left-0 top-0 bottom-0 z-30 flex flex-col border-r" style="width: var(--sidebar-width); background: var(--color-bg-50); border-color: var(--color-border-subtle);">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-5 h-14 border-b" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--color-primary-500);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-inverse);flex-shrink:0;"><path d="M6 16.5V7.5a1.5 1.5 0 0 1 1.5-1.5h9a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 16.5z"/><path d="M9 12h6"/><path d="M9 9h.01"/><path d="M15 9h.01"/><path d="M9 15h.01"/><path d="M15 15h.01"/><path d="M4 12h2"/><path d="M18 12h2"/><path d="M12 4v2"/><path d="M12 18v2"/></svg>
+            </div>
+            <span class="text-headline truncate" style="color: var(--color-text-primary);">灵境制造</span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 overflow-y-auto py-4 px-3 no-scrollbar">
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">核心功能</p>
+                <a href="dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                    <span class="truncate">生产总览</span>
+                </a>
+                <a href="process-planning.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 3v12"/><circle cx="6" cy="21" r="3"/><circle cx="18" cy="21" r="3"/><path d="M6 18V9a3 3 0 0 1 3-3h6"/><path d="M18 18V9a3 3 0 0 0-3-3h-3"/></svg>
+                    <span class="truncate font-medium">工艺规划</span>
+                </a>
+                <a href="equipment-monitor.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+                    <span class="truncate">设备监控</span>
+                </a>
+                <a href="quality-inspection.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+                    <span class="truncate">质量检测</span>
+                </a>
+                <a href="agent-dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    <span class="truncate">智能体管理</span>
+                </a>
+            </div>
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">资源管理</p>
+                <a href="material-management.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                    <span class="truncate">物料管理</span>
+                </a>
+                <a href="task-board.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M6 3h12"/><rect width="4" height="9" x="6" y="7" rx="1"/><rect width="4" height="5" x="14" y="7" rx="1"/><rect width="4" height="3" x="10" y="15" rx="1"/></svg>
+                    <span class="truncate">任务看板</span>
+                </a>
+                <a href="production-report.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    <span class="truncate">生产报表</span>
+                </a>
+                <a href="knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <span class="truncate">知识库</span>
+                </a>
+            </div>
+            <div>
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">系统</p>
+                <a href="settings.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span class="truncate">系统设置</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- User -->
+        <div class="border-t px-4 py-3 flex items-center gap-3" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-caption shrink-0" style="background: var(--color-primary-100); color: var(--color-primary-600);">管</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-body-sm truncate" style="color: var(--color-text-primary);">管理员</p>
+                <p class="text-caption truncate" style="color: var(--color-text-muted);">admin@lingjing.com</p>
+            </div>
+        </div>
+    </aside>
+
+      <!-- Main Content Area -->
+      <div class="flex-1 flex flex-col min-w-0">
+
+        <!-- Top Header -->
+        <header class="flex items-center justify-between h-[56px] px-6 border-b shrink-0" style="background: var(--color-bg-50); border-color: var(--color-border-subtle);">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg flex-1 max-w-[360px]" style="background: var(--color-bg-200);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" placeholder="搜索工艺路线..." class="bg-transparent border-none outline-none text-body-sm flex-1 min-w-0" style="color: var(--color-text-primary);">
+            </div>
+          </div>
+          <div class="flex items-center gap-4 shrink-0">
+            <button class="relative p-2 rounded-lg transition-colors duration-150 hover:bg-[var(--color-bg-200)]" aria-label="通知">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-tertiary);flex-shrink:0;"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background: var(--state-error);"></span>
+            </button>
+            <div class="flex items-center gap-2.5 pl-3 border-l" style="border-color: var(--color-border-subtle);">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-caption" style="background: var(--color-primary-100); color: var(--color-primary-600);">张</div>
+              <span class="text-body-sm truncate hidden sm:inline" style="color: var(--color-text-secondary);">张工程师</span>
+            </div>
+          </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="flex-1 overflow-y-auto p-6">
+
+          <!-- Page Header -->
+          <div class="flex items-start justify-between gap-4 mb-6">
+            <div class="min-w-0">
+              <h1 class="text-title-2 truncate" style="color: var(--color-text-primary);">工艺规划</h1>
+              <p class="text-body-sm mt-1" style="color: var(--color-text-tertiary);">管理产品工艺路线与工序定义</p>
+            </div>
+            <button class="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-lg text-body-sm font-medium transition-all duration-150 hover:opacity-90" style="background: var(--color-primary-500); color: var(--color-bg-50);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <span>新建工艺路线</span>
+            </button>
+          </div>
+
+          <!-- Filter Bar -->
+          <div class="flex items-center gap-3 mb-6 flex-wrap">
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg border" style="background: var(--color-bg-50); border-color: var(--color-border-default);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-muted);flex-shrink:0;"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22.54 12.42-8.58 3.9a2 2 0 0 1-1.66 0l-8.58-3.9"/><path d="m22.54 16.42-8.58 3.9a2 2 0 0 1-1.66 0l-8.58-3.9"/></svg>
+              <select class="bg-transparent border-none outline-none text-body-sm appearance-none cursor-pointer pr-1" style="color: var(--color-text-secondary);">
+                <option>全部类型</option>
+                <option>精密零件</option>
+                <option>注塑件</option>
+                <option>钣金件</option>
+                <option>电子组件</option>
+              </select>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-muted);flex-shrink:0;"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg border" style="background: var(--color-bg-50); border-color: var(--color-border-default);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-muted);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></svg>
+              <select class="bg-transparent border-none outline-none text-body-sm appearance-none cursor-pointer pr-1" style="color: var(--color-text-secondary);">
+                <option>全部状态</option>
+                <option>草稿</option>
+                <option>已发布</option>
+                <option>已归档</option>
+              </select>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-muted);flex-shrink:0;"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg border flex-1 min-w-[200px] max-w-[320px]" style="background: var(--color-bg-50); border-color: var(--color-border-default);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" placeholder="搜索工艺路线名称..." class="bg-transparent border-none outline-none text-body-sm flex-1 min-w-0" style="color: var(--color-text-primary);">
+            </div>
+          </div>
+
+          <!-- Content Grid: Cards + Detail Panel -->
+          <div class="flex gap-6">
+
+            <!-- Cards Grid (2 columns) -->
+            <div id="route-cards-grid" class="flex-1 min-w-0 grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+              <!-- Card 1 - Selected -->
+              <div class="rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-md" style="background: var(--color-bg-50); border: 3px solid var(--color-primary-500); box-shadow: var(--shadow-sm);">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="min-w-0">
+                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">CNC精密加工工艺路线</h3>
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">精密零件</span>
+                      <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-muted);">12 道工序</span>
+                    </div>
+                  </div>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-caption whitespace-nowrap shrink-0" style="background: var(--state-success-bg); color: var(--state-success);">已发布</span>
+                </div>
+                <!-- Mini flow visualization -->
+                <div class="flex items-center gap-1 mt-4 overflow-x-auto no-scrollbar pb-1">
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-500); color: var(--color-bg-50);">下料</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-400); color: var(--color-bg-50);">粗车</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-300); color: var(--color-bg-50);">精车</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-200); color: var(--color-primary-800);">铣削</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-100); color: var(--color-primary-700);">检验</div>
+                </div>
+                <div class="mt-3 text-caption" style="color: var(--color-text-muted);">更新于 2026-06-20</div>
+              </div>
+
+              <!-- Card 2 -->
+              <div class="rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-md border" style="background: var(--color-bg-50); border-color: var(--color-border-default); box-shadow: var(--shadow-xs);">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="min-w-0">
+                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">注塑成型标准工艺</h3>
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">注塑件</span>
+                      <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-muted);">8 道工序</span>
+                    </div>
+                  </div>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-caption whitespace-nowrap shrink-0" style="background: var(--state-success-bg); color: var(--state-success);">已发布</span>
+                </div>
+                <div class="flex items-center gap-1 mt-4 overflow-x-auto no-scrollbar pb-1">
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-500); color: var(--color-bg-50);">原料干燥</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-400); color: var(--color-bg-50);">注塑成型</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-300); color: var(--color-bg-50);">冷却定型</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-200); color: var(--color-primary-800);">去毛刺</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-100); color: var(--color-primary-700);">包装</div>
+                </div>
+                <div class="mt-3 text-caption" style="color: var(--color-text-muted);">更新于 2026-06-18</div>
+              </div>
+
+              <!-- Card 3 -->
+              <div class="rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-md border" style="background: var(--color-bg-50); border-color: var(--color-border-default); box-shadow: var(--shadow-xs);">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="min-w-0">
+                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">钣金折弯工艺路线</h3>
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">钣金件</span>
+                      <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-muted);">10 道工序</span>
+                    </div>
+                  </div>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-caption whitespace-nowrap shrink-0" style="background: var(--state-warning-bg); color: var(--state-warning);">草稿</span>
+                </div>
+                <div class="flex items-center gap-1 mt-4 overflow-x-auto no-scrollbar pb-1">
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-500); color: var(--color-bg-50);">剪板</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-400); color: var(--color-bg-50);">冲孔</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-300); color: var(--color-bg-50);">折弯</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-200); color: var(--color-primary-800);">焊接</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-100); color: var(--color-primary-700);">喷涂</div>
+                </div>
+                <div class="mt-3 text-caption" style="color: var(--color-text-muted);">更新于 2026-06-15</div>
+              </div>
+
+              <!-- Card 4 -->
+              <div class="rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-md border" style="background: var(--color-bg-50); border-color: var(--color-border-default); box-shadow: var(--shadow-xs);">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="min-w-0">
+                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">PCB贴片焊接工艺</h3>
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">电子组件</span>
+                      <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-muted);">15 道工序</span>
+                    </div>
+                  </div>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-caption whitespace-nowrap shrink-0" style="background: var(--state-success-bg); color: var(--state-success);">已发布</span>
+                </div>
+                <div class="flex items-center gap-1 mt-4 overflow-x-auto no-scrollbar pb-1">
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-500); color: var(--color-bg-50);">锡膏印刷</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-400); color: var(--color-bg-50);">SPI检测</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-300); color: var(--color-bg-50);">贴片</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-200); color: var(--color-primary-800);">回流焊</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-100); color: var(--color-primary-700);">AOI</div>
+                </div>
+                <div class="mt-3 text-caption" style="color: var(--color-text-muted);">更新于 2026-06-12</div>
+              </div>
+
+              <!-- Card 5 -->
+              <div class="rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-md border" style="background: var(--color-bg-50); border-color: var(--color-border-default); box-shadow: var(--shadow-xs);">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="min-w-0">
+                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">铝合金压铸工艺</h3>
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">精密零件</span>
+                      <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-muted);">9 道工序</span>
+                    </div>
+                  </div>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-caption whitespace-nowrap shrink-0" style="background: var(--state-warning-bg); color: var(--state-warning);">草稿</span>
+                </div>
+                <div class="flex items-center gap-1 mt-4 overflow-x-auto no-scrollbar pb-1">
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-500); color: var(--color-bg-50);">熔炼</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-400); color: var(--color-bg-50);">压铸</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-300); color: var(--color-bg-50);">去浇口</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-200); color: var(--color-primary-800);">CNC精加工</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-100); color: var(--color-primary-700);">表面处理</div>
+                </div>
+                <div class="mt-3 text-caption" style="color: var(--color-text-muted);">更新于 2026-06-10</div>
+              </div>
+
+              <!-- Card 6 -->
+              <div class="rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-md border" style="background: var(--color-bg-50); border-color: var(--color-border-default); box-shadow: var(--shadow-xs);">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="min-w-0">
+                    <h3 class="text-headline truncate" style="color: var(--color-text-primary);">齿轮热处理工艺</h3>
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">精密零件</span>
+                      <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-muted);">7 道工序</span>
+                    </div>
+                  </div>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-caption whitespace-nowrap shrink-0" style="background: var(--color-bg-200); color: var(--color-text-muted);">已归档</span>
+                </div>
+                <div class="flex items-center gap-1 mt-4 overflow-x-auto no-scrollbar pb-1">
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-500); color: var(--color-bg-50);">锻坯</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-400); color: var(--color-bg-50);">正火</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-300); color: var(--color-bg-50);">粗车</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-200); color: var(--color-primary-800);">渗碳淬火</div>
+                  <div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>
+                  <div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-100); color: var(--color-primary-700);">磨齿</div>
+                </div>
+                <div class="mt-3 text-caption" style="color: var(--color-text-muted);">更新于 2026-05-28</div>
+              </div>
+
+            </div>
+
+            <!-- Detail Panel -->
+            <div class="hidden xl:block w-[420px] shrink-0">
+              <div class="rounded-xl p-5 sticky top-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-sm);">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-headline truncate" style="color: var(--color-text-primary);">CNC精密加工工艺路线</h3>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-caption whitespace-nowrap shrink-0" style="background: var(--state-success-bg); color: var(--state-success);">已发布</span>
+                </div>
+                <p class="text-body-sm mb-5" style="color: var(--color-text-tertiary);">适用于高精度轴类、盘类零件的完整CNC加工流程，涵盖从原材料下料到最终成品检验的全部工序。</p>
+
+                <!-- Process Steps Table -->
+                <div class="overflow-x-auto rounded-lg border" style="border-color: var(--color-border-default);">
+                  <table class="w-full text-body-sm">
+                    <thead>
+                      <tr style="background: var(--color-bg-200);">
+                        <th class="px-3 py-2 text-left text-caption font-medium whitespace-nowrap" style="color: var(--color-text-tertiary);">序号</th>
+                        <th class="px-3 py-2 text-left text-caption font-medium whitespace-nowrap" style="color: var(--color-text-tertiary);">工序名称</th>
+                        <th class="px-3 py-2 text-left text-caption font-medium whitespace-nowrap" style="color: var(--color-text-tertiary);">工作中心</th>
+                        <th class="px-3 py-2 text-right text-caption font-medium whitespace-nowrap" style="color: var(--color-text-tertiary);">工时</th>
+                        <th class="px-3 py-2 text-left text-caption font-medium whitespace-nowrap" style="color: var(--color-text-tertiary);">设备</th>
+                        <th class="px-3 py-2 text-left text-caption font-medium whitespace-nowrap" style="color: var(--color-text-tertiary);">工具/夹具</th>
+                        <th class="px-1 py-2 text-center text-caption font-medium whitespace-nowrap" style="color: var(--color-text-tertiary);width:32px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style="background: var(--color-bg-50);">
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-muted);">1</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color: var(--color-text-primary);">原材料下料</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-secondary);">下料车间</td>
+                        <td class="px-3 py-2.5 text-right whitespace-nowrap" style="color: var(--color-text-secondary);">15</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">带锯床</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">标准夹具</td>
+                      </tr>
+                      <tr style="background: var(--color-bg-100);">
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-muted);">2</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color: var(--color-text-primary);">粗车外圆</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-secondary);">CNC车间A</td>
+                        <td class="px-3 py-2.5 text-right whitespace-nowrap" style="color: var(--color-text-secondary);">45</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">CK6150</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">三爪卡盘</td>
+                      </tr>
+                      <tr style="background: var(--color-bg-50);">
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-muted);">3</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color: var(--color-text-primary);">精车外圆</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-secondary);">CNC车间A</td>
+                        <td class="px-3 py-2.5 text-right whitespace-nowrap" style="color: var(--color-text-secondary);">60</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">CK6150</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">液压顶尖</td>
+                      </tr>
+                      <tr style="background: var(--color-bg-100);">
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-muted);">4</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color: var(--color-text-primary);">铣削键槽</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-secondary);">CNC车间B</td>
+                        <td class="px-3 py-2.5 text-right whitespace-nowrap" style="color: var(--color-text-secondary);">35</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">VMC850</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">V型块</td>
+                      </tr>
+                      <tr style="background: var(--color-bg-50);">
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-muted);">5</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color: var(--color-text-primary);">钻孔攻丝</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-secondary);">CNC车间B</td>
+                        <td class="px-3 py-2.5 text-right whitespace-nowrap" style="color: var(--color-text-secondary);">25</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">VMC850</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">丝锥M6</td>
+                      </tr>
+                      <tr style="background: var(--color-bg-100);">
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-muted);">6</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color: var(--color-text-primary);">热处理淬火</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-secondary);">热处理车间</td>
+                        <td class="px-3 py-2.5 text-right whitespace-nowrap" style="color: var(--color-text-secondary);">120</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">真空炉</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">专用料筐</td>
+                      </tr>
+                      <tr style="background: var(--color-bg-50);">
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-muted);">7</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color: var(--color-text-primary);">外圆磨削</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-secondary);">精加工车间</td>
+                        <td class="px-3 py-2.5 text-right whitespace-nowrap" style="color: var(--color-text-secondary);">50</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">M1432B</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">三爪卡盘</td>
+                      </tr>
+                      <tr style="background: var(--color-bg-100);">
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-muted);">8</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color: var(--color-text-primary);">成品检验</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap" style="color: var(--color-text-secondary);">质检中心</td>
+                        <td class="px-3 py-2.5 text-right whitespace-nowrap" style="color: var(--color-text-secondary);">30</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">三坐标</td>
+                        <td class="px-3 py-2.5 whitespace-nowrap truncate" style="color: var(--color-text-secondary); max-width: 80px;">专用检具</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Panel Actions -->
+                <div class="flex items-center gap-3 mt-5 pt-4 border-t" style="border-color: var(--color-border-subtle);">
+                  <button class="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-body-sm font-medium transition-all duration-150 hover:opacity-90" style="background: var(--color-primary-500); color: var(--color-bg-50);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                    <span>编辑工艺</span>
+                  </button>
+                  <button class="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-body-sm border transition-colors duration-150 hover:bg-[var(--color-bg-200)]" style="color: var(--color-text-secondary); border-color: var(--color-border-default);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    <span>复制</span>
+                  </button>
+                  <button class="flex items-center justify-center px-2.5 py-2 rounded-lg transition-colors duration-150 hover:bg-[var(--color-bg-200)]" style="color: var(--color-text-muted);" aria-label="更多操作">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </main>
+        <!-- ========== Toast Container ========== -->
+    <div id="toast-container" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
+
+    <!-- ========== New Process Route Modal ========== -->
+    <div id="modal-overlay" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;">
+      <div id="modal-content" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-2xl);width:100%;max-width:600px;max-height:85vh;overflow-y:auto;margin:16px;padding:28px;position:relative;">
+        <!-- Close X -->
+        <button id="modal-close-x" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;color:var(--muted-foreground);padding:4px;" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+        <h2 style="color:var(--card-foreground);font-size:1.15rem;font-weight:600;margin-bottom:20px;">新建工艺路线</h2>
+        <form id="modal-form" autocomplete="off">
+          <!-- 工艺路线名称 -->
+          <div style="margin-bottom:16px;">
+            <label style="display:block;font-size:0.8125rem;font-weight:500;color:var(--card-foreground);margin-bottom:6px;">工艺路线名称</label>
+            <input type="text" id="modal-name" required placeholder="请输入工艺路线名称" style="width:100%;padding:8px 12px;border:1px solid var(--input);border-radius:8px;background:var(--popover);color:var(--popover-foreground);font-size:0.875rem;outline:none;">
+          </div>
+          <!-- 产品类型 -->
+          <div style="margin-bottom:16px;">
+            <label style="display:block;font-size:0.8125rem;font-weight:500;color:var(--card-foreground);margin-bottom:6px;">产品类型</label>
+            <select id="modal-type" style="width:100%;padding:8px 12px;border:1px solid var(--input);border-radius:8px;background:var(--popover);color:var(--popover-foreground);font-size:0.875rem;outline:none;">
+              <option value="精密零件">精密零件</option>
+              <option value="注塑件">注塑件</option>
+              <option value="钣金件">钣金件</option>
+              <option value="电子组件">电子组件</option>
+            </select>
+          </div>
+          <!-- 描述 -->
+          <div style="margin-bottom:16px;">
+            <label style="display:block;font-size:0.8125rem;font-weight:500;color:var(--card-foreground);margin-bottom:6px;">描述</label>
+            <textarea id="modal-desc" rows="3" placeholder="请输入描述..." style="width:100%;padding:8px 12px;border:1px solid var(--input);border-radius:8px;background:var(--popover);color:var(--popover-foreground);font-size:0.875rem;outline:none;resize:vertical;"></textarea>
+          </div>
+          <!-- 工序步骤 -->
+          <div style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <label style="font-size:0.8125rem;font-weight:500;color:var(--card-foreground);">工序步骤</label>
+              <button type="button" id="modal-add-step" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;border:1px solid var(--input);background:var(--popover);color:var(--primary);font-size:0.8125rem;cursor:pointer;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> 添加步骤
+              </button>
+            </div>
+            <div id="modal-steps-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+          <!-- Buttons -->
+          <div style="display:flex;justify-content:flex-end;gap:10px;">
+            <button type="button" id="modal-cancel" style="padding:8px 20px;border-radius:8px;border:1px solid var(--input);background:var(--popover);color:var(--popover-foreground);font-size:0.875rem;cursor:pointer;">取消</button>
+            <button type="submit" style="padding:8px 20px;border-radius:8px;border:none;background:var(--primary);color:var(--primary-foreground);font-size:0.875rem;font-weight:500;cursor:pointer;">创建</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ========== Interactive Script ========== -->
+    <script>
+    (function() {
+      'use strict';
+
+      /* ===== DATA ===== */
+      const cardData = [
+        { name:'CNC精密加工工艺路线', type:'精密零件', status:'已发布', steps:'12 道工序', date:'2026-06-20', desc:'适用于高精度轴类、盘类零件的完整CNC加工流程，涵盖从原材料下料到最终成品检验的全部工序。', tableRows:[{n:1,s:'原材料下料',wc:'下料车间',t:'15',eq:'带锯床',tl:'标准夹具'},{n:2,s:'粗车外圆',wc:'CNC车间A',t:'45',eq:'CK6150',tl:'三爪卡盘'},{n:3,s:'精车外圆',wc:'CNC车间A',t:'60',eq:'CK6150',tl:'液压顶尖'},{n:4,s:'铣削键槽',wc:'CNC车间B',t:'35',eq:'VMC850',tl:'V型块'},{n:5,s:'钻孔攻丝',wc:'CNC车间B',t:'25',eq:'VMC850',tl:'丝锥M6'},{n:6,s:'热处理淬火',wc:'热处理车间',t:'120',eq:'真空炉',tl:'专用料筐'},{n:7,s:'外圆磨削',wc:'精加工车间',t:'50',eq:'M1432B',tl:'三爪卡盘'},{n:8,s:'成品检验',wc:'质检中心',t:'30',eq:'三坐标',tl:'专用检具'}]},
+        { name:'注塑成型标准工艺', type:'注塑件', status:'已发布', steps:'8 道工序', date:'2026-06-18', desc:'标准注塑成型工艺流程，适用于常见塑料零件的大批量生产。', tableRows:[{n:1,s:'原料干燥',wc:'备料车间',t:'60',eq:'干燥箱',tl:'标准料盘'},{n:2,s:'注塑成型',wc:'注塑车间',t:'30',eq:'海天MA1200',tl:'标准模具'},{n:3,s:'冷却定型',wc:'注塑车间',t:'20',eq:'冷却水槽',tl:'专用托盘'},{n:4,s:'去毛刺',wc:'后处理车间',t:'15',eq:'修边机',tl:'气动工具'},{n:5,s:'表面处理',wc:'喷涂车间',t:'45',eq:'喷涂线',tl:'喷枪夹具'},{n:6,s:'组装',wc:'装配车间',t:'25',eq:'组装台',tl:'电动螺丝刀'},{n:7,s:'功能测试',wc:'测试中心',t:'20',eq:'综合测试仪',tl:'测试夹具'},{n:8,s:'包装入库',wc:'包装车间',t:'10',eq:'自动包装线',tl:'标准包装箱'}]},
+        { name:'钣金折弯工艺路线', type:'钣金件', status:'草稿', steps:'10 道工序', date:'2026-06-15', desc:'钣金件折弯成型工艺，涵盖剪板、冲孔、折弯、焊接、喷涂等核心工序。', tableRows:[{n:1,s:'剪板下料',wc:'下料车间',t:'20',eq:'数控剪板机',tl:'磁力吸盘'},{n:2,s:'冲孔加工',wc:'冲压车间',t:'25',eq:'数控冲床',tl:'冲孔模具'},{n:3,s:'折弯成型',wc:'折弯车间',t:'35',eq:'数控折弯机',tl:'折弯模具'},{n:4,s:'焊接组装',wc:'焊接车间',t:'40',eq:'焊接机器人',tl:'焊接夹具'},{n:5,s:'打磨抛光',wc:'打磨车间',t:'30',eq:'砂带机',tl:'抛光轮'},{n:6,s:'前处理',wc:'前处理车间',t:'20',eq:'磷化线',tl:'挂具'},{n:7,s:'喷涂',wc:'喷涂车间',t:'45',eq:'静电喷涂线',tl:'喷枪'},{n:8,s:'烘干固化',wc:'烘干车间',t:'60',eq:'烘干炉',tl:'烘烤架'},{n:9,s:'贴膜保护',wc:'包装车间',t:'10',eq:'贴膜机',tl:'保护膜'},{n:10,s:'检验入库',wc:'质检中心',t:'15',eq:'检测平台',tl:'检具'}]},
+        { name:'PCB贴片焊接工艺', type:'电子组件', status:'已发布', steps:'15 道工序', date:'2026-06-12', desc:'PCB表面贴装(SMT)完整工艺流程，包含锡膏印刷、贴片、回流焊、AOI检测等关键工序。', tableRows:[{n:1,s:'锡膏印刷',wc:'SMT车间',t:'15',eq:'锡膏印刷机',tl:'钢网'},{n:2,s:'SPI检测',wc:'SMT车间',t:'10',eq:'SPI检测仪',tl:'检测载具'},{n:3,s:'贴片',wc:'SMT车间',t:'25',eq:'高速贴片机',tl:'供料器'},{n:4,s:'回流焊',wc:'SMT车间',t:'20',eq:'回流焊炉',tl:'过炉治具'},{n:5,s:'AOI检测',wc:'检测车间',t:'15',eq:'AOI设备',tl:'检测夹具'},{n:6,s:'X-Ray检测',wc:'检测车间',t:'20',eq:'X-Ray仪',tl:'检测载具'},{n:7,s:'手工焊接',wc:'焊接车间',t:'30',eq:'焊接台',tl:'烙铁/焊锡丝'},{n:8,s:'功能测试',wc:'测试中心',t:'25',eq:'FCT测试架',tl:'测试夹具'}]},
+        { name:'铝合金压铸工艺', type:'精密零件', status:'草稿', steps:'9 道工序', date:'2026-06-10', desc:'铝合金高压压铸工艺，适用于汽车零部件、通信设备壳体等精密压铸件生产。', tableRows:[{n:1,s:'熔炼',wc:'熔炼车间',t:'90',eq:'熔化炉',tl:'浇包'},{n:2,s:'压铸',wc:'压铸车间',t:'30',eq:'压铸机280T',tl:'压铸模具'},{n:3,s:'去浇口',wc:'后处理车间',t:'10',eq:'冲边机',tl:'冲切模具'},{n:4,s:'CNC精加工',wc:'CNC车间A',t:'60',eq:'VMC850',tl:'专用夹具'},{n:5,s:'去毛刺',wc:'打磨车间',t:'15',eq:'打磨机',tl:'气动工具'},{n:6,s:'表面处理',wc:'表面处理车间',t:'45',eq:'氧化线',tl:'挂具'},{n:7,s:'喷涂',wc:'喷涂车间',t:'40',eq:'喷涂线',tl:'喷枪'},{n:8,s:'检验',wc:'质检中心',t:'20',eq:'三坐标',tl:'检具'},{n:9,s:'包装入库',wc:'包装车间',t:'10',eq:'包装线',tl:'标准箱'}]},
+        { name:'齿轮热处理工艺', type:'精密零件', status:'已归档', steps:'7 道工序', date:'2026-05-28', desc:'齿轮零件热处理工艺，包含锻坯、正火、车削、渗碳淬火、磨齿等工序。', tableRows:[{n:1,s:'锻坯',wc:'锻造车间',t:'60',eq:'锻锤',tl:'锻模'},{n:2,s:'正火',wc:'热处理车间',t:'120',eq:'箱式炉',tl:'料筐'},{n:3,s:'粗车',wc:'CNC车间A',t:'45',eq:'CK6150',tl:'三爪卡盘'},{n:4,s:'渗碳淬火',wc:'热处理车间',t:'180',eq:'渗碳炉',tl:'专用料筐'},{n:5,s:'磨齿',wc:'精加工车间',t:'60',eq:'齿轮磨床',tl:'心轴'},{n:6,s:'成品检验',wc:'质检中心',t:'25',eq:'齿轮测量仪',tl:'检具'},{n:7,s:'防锈包装',wc:'包装车间',t:'10',eq:'包装线',tl:'防锈袋'}]}
+      ];
+
+      /* ===== TOAST SYSTEM ===== */
+      function showToast(message, type) {
+        type = type || 'info';
+        var container = document.getElementById('toast-container');
+        var toast = document.createElement('div');
+        var bgColor = type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--destructive)' : 'var(--primary)';
+        toast.style.cssText = 'pointer-events:auto;display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:10px;background:'+bgColor+';color:#fff;font-size:0.875rem;box-shadow:var(--shadow-lg);transform:translateX(120%);transition:transform 0.35s cubic-bezier(0.22,1,0.36,1),opacity 0.35s ease;opacity:0;';
+        toast.textContent = message;
+        container.appendChild(toast);
+        requestAnimationFrame(function() {
+          toast.style.transform = 'translateX(0)';
+          toast.style.opacity = '1';
+        });
+        setTimeout(function() {
+          toast.style.transform = 'translateX(120%)';
+          toast.style.opacity = '0';
+          setTimeout(function() { toast.remove(); }, 350);
+        }, 3000);
+      }
+
+      /* ===== MODAL ===== */
+      var overlay = document.getElementById('modal-overlay');
+      var modalForm = document.getElementById('modal-form');
+      var modalStepsList = document.getElementById('modal-steps-list');
+      var modalStepCount = 0;
+
+      function openModal() {
+        overlay.style.display = 'flex';
+        modalStepCount = 0;
+        modalStepsList.innerHTML = '';
+        addModalStep();
+        document.getElementById('modal-name').value = '';
+        document.getElementById('modal-desc').value = '';
+        document.getElementById('modal-type').value = '精密零件';
+        
+      }
+      function closeModal() {
+        overlay.style.display = 'none';
+      }
+
+      function addModalStep() {
+        modalStepCount++;
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;';
+        row.innerHTML = '<span style="font-size:0.8125rem;color:var(--muted-foreground);min-width:20px;">'+modalStepCount+'</span>'
+          + '<input type="text" placeholder="工序名称" style="flex:1;padding:6px 10px;border:1px solid var(--input);border-radius:6px;background:var(--popover);color:var(--popover-foreground);font-size:0.8125rem;outline:none;">'
+          + '<input type="text" placeholder="工作中心" style="flex:1;padding:6px 10px;border:1px solid var(--input);border-radius:6px;background:var(--popover);color:var(--popover-foreground);font-size:0.8125rem;outline:none;">'
+          + '<input type="text" placeholder="工时" style="width:60px;padding:6px 10px;border:1px solid var(--input);border-radius:6px;background:var(--popover);color:var(--popover-foreground);font-size:0.8125rem;outline:none;">'
+          + '<button type="button" class="modal-remove-step" style="background:none;border:none;cursor:pointer;color:var(--destructive);padding:4px;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg></button>';
+        modalStepsList.appendChild(row);
+        row.querySelector('.modal-remove-step').addEventListener('click', function() {
+          row.remove();
+          renumberModalSteps();
+        });
+        
+      }
+      function renumberModalSteps() {
+        var items = modalStepsList.children;
+        for (var i = 0; i < items.length; i++) {
+          items[i].querySelector('span').textContent = i + 1;
+        }
+        modalStepCount = items.length;
+      }
+
+      document.getElementById('modal-add-step').addEventListener('click', addModalStep);
+      document.getElementById('modal-close-x').addEventListener('click', closeModal);
+      document.getElementById('modal-cancel').addEventListener('click', closeModal);
+      overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+      modalForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        closeModal();
+        showToast('工艺路线创建成功', 'success');
+      });
+
+      /* ===== "新建工艺路线" BUTTON ===== */
+      var newBtn = document.querySelector('button');
+      var allButtons = document.querySelectorAll('button');
+      for (var i = 0; i < allButtons.length; i++) {
+        if (allButtons[i].textContent.indexOf('新建工艺路线') !== -1) {
+          newBtn = allButtons[i];
+          break;
+        }
+      }
+      newBtn.addEventListener('click', openModal);
+
+      /* ===== FILTER BAR ===== */
+      var filterType = document.querySelectorAll('select')[0];
+      var filterStatus = document.querySelectorAll('select')[1];
+      var filterSearch = document.querySelectorAll('input[type="text"]')[1]; // second text input is filter bar search
+      var cards = document.querySelectorAll('.rounded-xl.p-5.cursor-pointer');
+      var resetBtn = document.createElement('button');
+      resetBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> 重置';
+      resetBtn.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--muted-foreground);font-size:0.8125rem;cursor:pointer;transition:color 0.15s;';
+      resetBtn.addEventListener('mouseenter', function() { this.style.color = 'var(--foreground)'; });
+      resetBtn.addEventListener('mouseleave', function() { this.style.color = 'var(--muted-foreground)'; });
+
+      var filterBar = document.querySelector('.flex.items-center.gap-3.mb-6.flex-wrap');
+      filterBar.appendChild(resetBtn);
+      
+
+      function applyFilters() {
+        var typeVal = filterType.value;
+        var statusVal = filterStatus.value;
+        var searchVal = filterSearch.value.trim().toLowerCase();
+        for (var i = 0; i < cards.length; i++) {
+          var card = cards[i];
+          var cardType = cardData[i] ? cardData[i].type : '';
+          var cardStatus = cardData[i] ? cardData[i].status : '';
+          var cardName = cardData[i] ? cardData[i].name : '';
+          var show = true;
+          if (typeVal !== '全部类型' && cardType !== typeVal) show = false;
+          if (statusVal !== '全部状态' && cardStatus !== statusVal) show = false;
+          if (searchVal && cardName.toLowerCase().indexOf(searchVal) === -1) show = false;
+          card.style.display = show ? '' : 'none';
+        }
+      }
+      filterType.addEventListener('change', applyFilters);
+      filterStatus.addEventListener('change', applyFilters);
+      filterSearch.addEventListener('input', applyFilters);
+      resetBtn.addEventListener('click', function() {
+        filterType.value = '全部类型';
+        filterStatus.value = '全部状态';
+        filterSearch.value = '';
+        applyFilters();
+      });
+
+      /* ===== CARD SELECTION ===== */
+      var selectedCardIndex = 0;
+      var detailPanel = document.querySelector('.hidden.xl\\:block .rounded-xl.p-5.sticky');
+
+      function selectCard(index) {
+        selectedCardIndex = index;
+        for (var i = 0; i < cards.length; i++) {
+          if (i === index) {
+            cards[i].style.border = '3px solid var(--color-primary-500)';
+            cards[i].style.boxShadow = 'var(--shadow-sm)';
+          } else {
+            cards[i].style.border = '1px solid var(--color-border-default)';
+            cards[i].style.boxShadow = 'var(--shadow-xs)';
+          }
+        }
+        updateDetailPanel(index);
+      }
+
+      for (var i = 0; i < cards.length; i++) {
+        (function(idx) {
+          cards[idx].addEventListener('click', function() { selectCard(idx); });
+        })(i);
+      }
+
+      /* ===== DETAIL PANEL UPDATE ===== */
+      function updateDetailPanel(index) {
+        var data = cardData[index];
+        if (!data || !detailPanel) return;
+        var header = detailPanel.querySelector('h3');
+        header.textContent = data.name;
+        var statusBadge = detailPanel.querySelector('h3').nextElementSibling;
+        if (data.status === '已发布') {
+          statusBadge.style.background = 'var(--state-success-bg)';
+          statusBadge.style.color = 'var(--state-success)';
+        } else if (data.status === '草稿') {
+          statusBadge.style.background = 'var(--state-warning-bg)';
+          statusBadge.style.color = 'var(--state-warning)';
+        } else {
+          statusBadge.style.background = 'var(--color-bg-200)';
+          statusBadge.style.color = 'var(--color-text-muted)';
+        }
+        statusBadge.textContent = data.status;
+
+        var descP = detailPanel.querySelector('p');
+        descP.textContent = data.desc;
+
+        // Rebuild table
+        var tableWrap = detailPanel.querySelector('.overflow-x-auto');
+        var bgColor50 = 'var(--color-bg-50)';
+        var bgColor100 = 'var(--color-bg-100)';
+        var tbody = tableWrap.querySelector('tbody');
+        tbody.innerHTML = '';
+        for (var r = 0; r < data.tableRows.length; r++) {
+          var row = data.tableRows[r];
+          var bg = r % 2 === 0 ? bgColor50 : bgColor100;
+          var tr = document.createElement('tr');
+          tr.style.background = bg;
+          tr.innerHTML = '<td class="px-3 py-2.5 whitespace-nowrap" style="color:var(--color-text-muted);">'+row.n+'</td>'
+            + '<td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color:var(--color-text-primary);">'+row.s+'</td>'
+            + '<td class="px-3 py-2.5 whitespace-nowrap" style="color:var(--color-text-secondary);">'+row.wc+'</td>'
+            + '<td class="px-3 py-2.5 text-right whitespace-nowrap" style="color:var(--color-text-secondary);">'+row.t+'</td>'
+            + '<td class="px-3 py-2.5 whitespace-nowrap truncate" style="color:var(--color-text-secondary);max-width:80px;">'+row.eq+'</td>'
+            + '<td class="px-3 py-2.5 whitespace-nowrap truncate" style="color:var(--color-text-secondary);max-width:80px;">'+row.tl+'</td>'
+            + '<td class="px-2 py-2.5 whitespace-nowrap"><button class="step-del-btn" style="background:none;border:none;cursor:pointer;color:var(--destructive);padding:2px;display:flex;align-items:center;" aria-label="删除行"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button></td>';
+          tbody.appendChild(tr);
+        }
+        // Add row button
+        var addRowTr = document.createElement('tr');
+        addRowTr.style.background = bgColor50;
+        addRowTr.innerHTML = '<td colspan="7" class="px-3 py-2 text-center"><button id="add-table-row-btn" style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--primary);font-size:0.8125rem;cursor:pointer;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5v14"/></svg> 添加工序</button></td>';
+        tbody.appendChild(addRowTr);
+
+        // Bind delete buttons
+        var delBtns = tbody.querySelectorAll('.step-del-btn');
+        for (var d = 0; d < delBtns.length; d++) {
+          delBtns[d].addEventListener('click', function() {
+            this.closest('tr').remove();
+            renumberTableRows();
+            showToast('工序已删除', 'info');
+          });
+        }
+        // Bind add row button
+        var addBtn = document.getElementById('add-table-row-btn');
+        if (addBtn) {
+          addBtn.addEventListener('click', function() {
+            var lastRow = data.tableRows[data.tableRows.length - 1];
+            var newNum = tbody.querySelectorAll('tr').length;
+            var bg2 = newNum % 2 === 0 ? bgColor50 : bgColor100;
+            var newTr = document.createElement('tr');
+            newTr.style.background = bg2;
+            newTr.innerHTML = '<td class="px-3 py-2.5 whitespace-nowrap" style="color:var(--color-text-muted);">'+newNum+'</td>'
+              + '<td class="px-3 py-2.5 whitespace-nowrap font-medium" style="color:var(--color-text-primary);">新工序</td>'
+              + '<td class="px-3 py-2.5 whitespace-nowrap" style="color:var(--color-text-secondary);">-</td>'
+              + '<td class="px-3 py-2.5 text-right whitespace-nowrap" style="color:var(--color-text-secondary);">0</td>'
+              + '<td class="px-3 py-2.5 whitespace-nowrap truncate" style="color:var(--color-text-secondary);max-width:80px;">-</td>'
+              + '<td class="px-3 py-2.5 whitespace-nowrap truncate" style="color:var(--color-text-secondary);max-width:80px;">-</td>'
+              + '<td class="px-2 py-2.5 whitespace-nowrap"><button class="step-del-btn" style="background:none;border:none;cursor:pointer;color:var(--destructive);padding:2px;display:flex;align-items:center;" aria-label="删除行"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button></td>';
+            tbody.insertBefore(newTr, addRowTr.parentElement);
+            newTr.querySelector('.step-del-btn').addEventListener('click', function() {
+              this.closest('tr').remove();
+              renumberTableRows();
+              showToast('工序已删除', 'info');
+            });
+            
+            showToast('已添加新工序', 'success');
+          });
+        }
+        
+        // Reset edit mode
+        isEditing = false;
+        restoreEditButtons();
+      }
+
+      function renumberTableRows() {
+        if (!detailPanel) return;
+        var tbody = detailPanel.querySelector('tbody');
+        var rows = tbody.querySelectorAll('tr');
+        for (var i = 0; i < rows.length - 1; i++) {
+          rows[i].querySelector('td').textContent = i + 1;
+        }
+      }
+
+      // Initialize first card selection
+      selectCard(0);
+
+      /* ===== DETAIL PANEL - EDIT ===== */
+      var isEditing = false;
+      var editBtn = detailPanel.querySelector('button');
+      var copyBtn = detailPanel.querySelectorAll('button')[1];
+
+      function restoreEditButtons() {
+        var actionsDiv = detailPanel.querySelector('.flex.items-center.gap-3.mt-5');
+        if (!actionsDiv) return;
+        actionsDiv.innerHTML = '<button id="edit-btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;border:none;background:var(--color-primary-500);color:var(--color-bg-50);font-size:0.875rem;font-weight:500;cursor:pointer;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg><span>编辑工艺</span></button>'
+          + '<button id="copy-btn" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid var(--color-border-default);background:transparent;color:var(--color-text-secondary);font-size:0.875rem;cursor:pointer;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>复制</span></button>'
+          + '<button style="display:flex;align-items:center;justify-content:center;padding:10px;border-radius:8px;border:none;background:transparent;color:var(--color-text-muted);cursor:pointer;" aria-label="更多操作"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>';
+        
+        document.getElementById('edit-btn').addEventListener('click', startEdit);
+        document.getElementById('copy-btn').addEventListener('click', function() {
+          showToast('工艺路线已复制到剪贴板', 'success');
+        });
+      }
+
+      function startEdit() {
+        isEditing = true;
+        var header = detailPanel.querySelector('h3');
+        var descP = detailPanel.querySelector('p');
+        // Make header editable
+        var nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = header.textContent;
+        nameInput.style.cssText = 'width:100%;padding:6px 10px;border:1px solid var(--input);border-radius:6px;background:var(--popover);color:var(--popover-foreground);font-size:0.95rem;font-weight:600;outline:none;';
+        header.textContent = '';
+        header.appendChild(nameInput);
+        // Make description editable
+        var descInput = document.createElement('textarea');
+        descInput.value = descP.textContent;
+        descInput.rows = 2;
+        descInput.style.cssText = 'width:100%;padding:6px 10px;border:1px solid var(--input);border-radius:6px;background:var(--popover);color:var(--popover-foreground);font-size:0.875rem;outline:none;resize:vertical;';
+        descP.textContent = '';
+        descP.appendChild(descInput);
+        // Make table cells editable
+        var tbody = detailPanel.querySelector('tbody');
+        var rows = tbody.querySelectorAll('tr');
+        for (var i = 0; i < rows.length - 1; i++) {
+          var cells = rows[i].querySelectorAll('td');
+          for (var c = 1; c < cells.length - 1; c++) {
+            var val = cells[c].textContent.trim();
+            var inp = document.createElement('input');
+            inp.type = 'text';
+            inp.value = val;
+            inp.style.cssText = 'width:100%;padding:4px 6px;border:1px solid var(--input);border-radius:4px;background:var(--popover);color:var(--popover-foreground);font-size:0.8125rem;outline:none;';
+            cells[c].textContent = '';
+            cells[c].appendChild(inp);
+          }
+        }
+        // Replace action buttons
+        var actionsDiv = detailPanel.querySelector('.flex.items-center.gap-3.mt-5');
+        actionsDiv.innerHTML = '<button id="save-btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;border:none;background:var(--success);color:var(--success-foreground);font-size:0.875rem;font-weight:500;cursor:pointer;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg><span>保存</span></button>'
+          + '<button id="cancel-edit-btn" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid var(--color-border-default);background:transparent;color:var(--color-text-secondary);font-size:0.875rem;cursor:pointer;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span>取消</span></button>';
+        
+        document.getElementById('save-btn').addEventListener('click', function() {
+          isEditing = false;
+          // Read values back
+          header.textContent = nameInput.value;
+          descP.textContent = descInput.value;
+          for (var i = 0; i < rows.length - 1; i++) {
+            var cells = rows[i].querySelectorAll('td');
+            for (var c = 1; c < cells.length - 1; c++) {
+              cells[c].textContent = cells[c].querySelector('input').value;
+            }
+          }
+          restoreEditButtons();
+          showToast('工艺路线已保存', 'success');
+        });
+        document.getElementById('cancel-edit-btn').addEventListener('click', function() {
+          isEditing = false;
+          updateDetailPanel(selectedCardIndex);
+        });
+      }
+
+    })();
+    </script>
+    <script src="api-config.js"></script>
+    <script>
+    (function() {
+        'use strict';
+        var grid = document.getElementById('route-cards-grid');
+        if (!grid) return;
+
+        function showLoading(container, text) {
+            var overlay = container.querySelector('.api-loading-overlay');
+            if (overlay) overlay.remove();
+            var el = document.createElement('div');
+            el.className = 'api-loading-overlay';
+            el.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(250,248,245,0.7);z-index:5;border-radius:inherit;font-size:0.875rem;color:var(--color-text-muted);';
+            el.textContent = text || '加载中...';
+            container.style.position = 'relative';
+            container.appendChild(el);
+        }
+        function hideLoading(container) {
+            var overlay = container.querySelector('.api-loading-overlay');
+            if (overlay) overlay.remove();
+        }
+
+        showLoading(grid, '加载工艺路线...');
+        apiGet('/api/v1/process-routes/').then(function(data) {
+            if (!data || !data.routes) return;
+            var routes = data.routes;
+            var html = '';
+            routes.forEach(function(route, idx) {
+                var statusMap = {'已发布':'success','草稿':'warning','已归档':'default'};
+                var sKey = statusMap[route.status] || 'default';
+                var sBg = sKey === 'default' ? 'var(--color-bg-200)' : 'var(--state-' + sKey + '-bg)';
+                var sColor = sKey === 'default' ? 'var(--color-text-muted)' : 'var(--state-' + sKey + ')';
+                var isSelected = idx === 0;
+                var borderStyle = isSelected ? 'border: 3px solid var(--color-primary-500); box-shadow: var(--shadow-sm);' : 'border-color: var(--color-border-default); box-shadow: var(--shadow-xs);';
+                var borderClass = isSelected ? '' : ' border';
+                var stepCount = route.steps_count || 0;
+                var stepText = stepCount + ' 道工序';
+                var updatedAt = route.updated_at || route.created_at || '--';
+                var flowSteps = ['工序1','工序2','工序3','工序4','工序5'];
+                var flowHtml = '<div class="flex items-center gap-1 mt-4 overflow-x-auto no-scrollbar pb-1">';
+                var colors = ['var(--color-primary-500)','var(--color-primary-400)','var(--color-primary-300)','var(--color-primary-200)','var(--color-primary-100)'];
+                var textColors = ['var(--color-bg-50)','var(--color-bg-50)','var(--color-bg-50)','var(--color-primary-800)','var(--color-primary-700)'];
+                var showCount = Math.min(flowSteps.length, 5);
+                for (var i = 0; i < showCount; i++) {
+                    if (i > 0) {
+                        flowHtml += '<div class="shrink-0 w-4 h-[2px]" style="background: var(--color-primary-200);"></div>';
+                    }
+                    flowHtml += '<div class="shrink-0 px-2.5 py-1.5 rounded-md text-caption whitespace-nowrap" style="background:' + colors[i] + ';color:' + textColors[i] + ';">' + flowSteps[i] + '</div>';
+                }
+                flowHtml += '</div>';
+                html += '<div class="rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-md' + borderClass + '" style="background: var(--color-bg-50); ' + borderStyle + '" data-route-id="' + (route.id || '') + '" data-route-name="' + (route.name || '') + '">'
+                    + '<div class="flex items-start justify-between gap-3 mb-3"><div class="min-w-0">'
+                    + '<h3 class="text-headline truncate" style="color: var(--color-text-primary);">' + (route.name || '--') + '</h3>'
+                    + '<div class="flex items-center gap-2 mt-1.5">'
+                    + '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">' + (route.part_type || '--') + '</span>'
+                    + '<span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-muted);">' + stepText + '</span>'
+                    + '</div></div>'
+                    + '<span class="inline-flex items-center px-2.5 py-1 rounded-md text-caption whitespace-nowrap shrink-0" style="background:' + sBg + ';color:' + sColor + ';">' + (route.status || '--') + '</span>'
+                    + '</div>'
+                    + flowHtml
+                    + '<div class="mt-3 text-caption" style="color: var(--color-text-muted);">更新于 ' + updatedAt + '</div>'
+                    + '</div>';
+            });
+            grid.innerHTML = html;
+        }).catch(function() {}).finally(function() { hideLoading(grid); });
+
+    })();
+    </script>
+    <script>
+    (function(){
+        var h=document.documentElement,b=document.body;
+        h.classList.remove('dark');
+        h.style.backgroundColor='#faf8f5';
+        h.style.color='#1d1b18';
+        b.style.backgroundColor='#faf8f5';
+        b.style.color='#1d1b18';
+        var mo=new MutationObserver(function(){
+            if(h.classList.contains('dark'))h.classList.remove('dark');
+            if(h.style.backgroundColor!=='#faf8f5')h.style.backgroundColor='#faf8f5';
+            if(h.style.color!=='#1d1b18')h.style.color='#1d1b18';
+            if(b.style.backgroundColor!=='#faf8f5')b.style.backgroundColor='#faf8f5';
+            if(b.style.color!=='#1d1b18')b.style.color='#1d1b18';
+        });
+        mo.observe(h,{attributes:true,attributeFilter:['class','style']});
+        mo.observe(b,{attributes:true,attributeFilter:['style']});
+    })();
+    </script>
+</body>
+</html>

@@ -14,11 +14,14 @@ Tests for INT8 quantization functionality including:
 import os
 import sys
 import json
+import logging
 import tempfile
 import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
+
+logger = logging.getLogger(__name__)
 
 try:
     import torch

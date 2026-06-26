@@ -140,9 +140,9 @@ class ExtractionValidator:
         validator = ExtractionValidator()
         report = validator.validate(extraction_result)
         if report.overall_valid:
-            print("验证通过")
+            logger.info("验证通过")
         else:
-            print(f"准确率: {report.accuracy_score}%")
+            logger.info(f"准确率: {report.accuracy_score}%")
     """
 
     def validate(self, extraction_result: dict[str, Any]) -> ValidationReport:
@@ -218,7 +218,7 @@ class ExtractionValidator:
                 model_data.update(properties)
 
             model_class(**model_data)
-        except Exception as exc:
+        except (ValueError, TypeError, KeyError) as exc:
             result.is_valid = False
             result.errors.append(f"Pydantic 验证失败: {exc}")
 
@@ -295,7 +295,7 @@ class ExtractionValidator:
                     rel_data["confidence"] = float(confidence) / 100.0
 
                 model_class(**rel_data)
-            except Exception as exc:
+            except (ValueError, TypeError, KeyError) as exc:
                 result.warnings.append(f"Pydantic 关系验证提示: {exc}")
 
         return result

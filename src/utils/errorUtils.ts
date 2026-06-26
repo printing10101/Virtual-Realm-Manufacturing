@@ -9,7 +9,7 @@
  * @param fallback - 当无法提取时的回退消息
  * @returns 错误消息字符串
  */
-export function extractErrorMessage(error: any, fallback = '操作失败'): string {
+export function extractErrorMessage(error: unknown, fallback = '操作失败'): string {
   if (!error) return fallback
 
   // Axios response errors
@@ -32,21 +32,25 @@ export function extractErrorMessage(error: any, fallback = '操作失败'): stri
 /**
  * 判断是否为网络错误
  */
-export function isNetworkError(error: any): boolean {
+export function isNetworkError(error: unknown): boolean {
+  if (!error) return false
+  const err = error as Record<string, unknown>
   return (
-    error?.code === 'ERR_NETWORK' ||
-    error?.code === 'ECONNABORTED' ||
-    error?.message === 'Network Error' ||
-    error?.message?.includes('timeout') ||
-    error?.message?.includes('Network Error')
+    err.code === 'ERR_NETWORK' ||
+    err.code === 'ECONNABORTED' ||
+    err.message === 'Network Error' ||
+    (typeof err.message === 'string' && err.message.includes('timeout')) ||
+    (typeof err.message === 'string' && err.message.includes('Network Error'))
   )
 }
 
 /**
  * 格式化网络错误消息（带HTTP状态码）
  */
-export function formatNetworkError(error: any): string {
-  const status = error.response?.status
+export function formatNetworkError(error: unknown): string {
+  const err = error as Record<string, unknown>
+  const response = err.response as Record<string, unknown> | undefined
+  const status = response?.status as number | undefined
   if (status) {
     return `请求失败 (${status}): ${extractErrorMessage(error)}`
   }

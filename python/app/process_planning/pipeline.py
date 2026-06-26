@@ -22,8 +22,11 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 from app.process_planning.hole_recognizer import (
     HoleFeatureRecognizer,
@@ -407,7 +410,7 @@ class ProcessPlanningPipeline:
                 errors=gcode_result.errors,
                 warnings=gcode_result.warnings,
             )
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, RuntimeError) as e:
             stage5 = PipelineStage(
                 name="G代码生成",
                 status="failed",
@@ -417,6 +420,7 @@ class ProcessPlanningPipeline:
             stages.append(stage5)
             result.stages = stages
             result.summary = f"流水线在G代码生成阶段失败: {type(e).__name__}"
+            logger.error("G代码生成阶段失败: %s", e, exc_info=True)
             return result
 
         stages.append(stage5)
@@ -727,8 +731,9 @@ class ProcessPlanningPipeline:
 
             return sim_result.to_dict()
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError) as e:
             # 仿真失败时返回降级结果，不阻断主流程
+            logger.error("仿真服务调用失败: %s", e, exc_info=True)
             return {
                 "status": "failed",
                 "score": 0.0,

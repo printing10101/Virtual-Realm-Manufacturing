@@ -60,15 +60,32 @@ from app.api.v1 import (
     knowledge_graph as knowledge_graph_routes,
     status as status_routes,
     dxf_pipeline as dxf_pipeline_routes,
+    materials,
+    equipment,
+    quality,
+    production,
+    process_routes,
+    documents,
+    collision_check,
+    tools,
+    dnc as dnc_routes,
+    plugins,
+    template_market,
 )
+from app.integrations.mes import api as mes_api
 
 # torch 相关模块：桌面版可能没有 torch，条件导入
 _TORCH_AVAILABLE = False
 try:
     from app.api.v1 import lnn
     _TORCH_AVAILABLE = True
-except ImportError:
-    pass
+except ImportError as e:
+    import logging
+    logging.warning(
+        f"torch 模块导入失败: {e}。"
+        "影响: LNN 神经网络相关功能将不可用。"
+        "修复: 请安装 PyTorch，运行 'pip install torch torchvision torchaudio'"
+    )
 from app.rag import routes as rag_routes
 from app.ai.process_understanding import routes as process_understanding_routes
 
@@ -77,8 +94,13 @@ _OLLAMA_AVAILABLE = False
 try:
     from app.ai import ollama_routes
     _OLLAMA_AVAILABLE = True
-except ImportError:
-    pass
+except ImportError as e:
+    import logging
+    logging.warning(
+        f"ollama 模块导入失败: {e}。"
+        "影响: Ollama AI 模型集成功能将不可用。"
+        "修复: 请安装 ollama Python 包，运行 'pip install ollama'"
+    )
 
 from app.simulation import api as simulation_api
 from app.projects import project_api as project_routes
@@ -110,7 +132,7 @@ def get_state_file_path() -> str:
 
 app = FastAPI(
     title="灵境制造 API",
-    version="2.2.0",
+    version="2.3.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -157,28 +179,31 @@ async def startup_event():
     from app.database.models import init_db
     from app.tasks.task_system import AsyncTaskManager
     from app.services.redis_client import get_redis
-    from alembic.config import Config
-    from alembic import command
-    import os
+    import os as _os
 
-    # Run Alembic auto-migration on startup
-    try:
-        alembic_cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
-        # Override DB_URL from environment if set
-        db_url = os.environ.get("DB_URL")
-        if db_url:
-            alembic_cfg.set_main_option("sqlalchemy.url", db_url)
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Database migration completed successfully")
-    except Exception as e:
-        logger.error("Database migration failed: %s", e)
-        raise
+    # --- Step 1: Set DB_URL for async SQLAlchemy ---
+    if not _os.environ.get("DB_URL"):
+        db_path = Path(__file__).parent.parent / "data" / "app.db"
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        _os.environ["DB_URL"] = f"sqlite+aiosqlite:///{db_path}"
+        logger.info("[startup] DB_URL not set, using default: %s", _os.environ["DB_URL"])
 
+    # --- Step 2: Initialize async DB tables + seed RBAC ---
+    # (init_db uses Base.metadata.create_all, which handles fresh DB creation)
+    logger.info("[startup] Calling init_db() ...")
     await init_db()
-    await get_redis()
+    logger.info("[startup] init_db() done")
 
+    # --- Step 3: Redis (optional, returns None if not configured) ---
+    logger.info("[startup] Calling get_redis() ...")
+    await get_redis()
+    logger.info("[startup] get_redis() done")
+
+    # --- Step 4: Task manager ---
+    logger.info("[startup] Initializing AsyncTaskManager ...")
     task_mgr = AsyncTaskManager()
     await task_mgr.initialize(max_concurrent=config.tasks.max_concurrent)
+    logger.info("[startup] AsyncTaskManager initialized")
 
     ring_log.append(
         "system_event",
@@ -382,10 +407,28 @@ app.include_router(flywheel.router)
 app.include_router(knowledge_graph_routes.router)
 app.include_router(status_routes.router)
 app.include_router(dxf_pipeline_routes.router)
+# Manufacturing UI APIs
+app.include_router(materials.router)
+app.include_router(equipment.router)
+app.include_router(quality.router)
+app.include_router(production.router)
+app.include_router(process_routes.router)
+app.include_router(documents.router)
+# CAM APIs
+app.include_router(collision_check.router)
+app.include_router(tools.router)
+# DNC 机床通信
+app.include_router(dnc_routes.router)
+# MES/ERP 集成
+app.include_router(mes_api.router)
+# 插件系统
+app.include_router(plugins.router)
+# 模板市场
+app.include_router(template_market.router)
 
 register_exception_handlers(app)
 
 logger.info("Application initialized with %d routes", len(app.routes))
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=config.server.port, reload=True)

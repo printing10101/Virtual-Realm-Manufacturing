@@ -381,7 +381,7 @@
  * 提供"特征选择 → 工序规划 → G代码生成 → 仿真"的全流程可视化操作。
  * 通过调用后端 /api/process_planning/plan 接口获取工序与G代码。
  */
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue'
 import { ElMessage, ElNotification } from 'element-plus'
 import type { CheckboxValueType } from 'element-plus'
 import {
@@ -418,7 +418,7 @@ interface MachiningFeature {
   nameKey?: string
   type: FeatureType
   count: number
-  icon: any
+  icon: Component
 }
 
 /** 工序树节点 */
@@ -443,14 +443,14 @@ interface PlanResponse {
       name?: string
       operation_type?: string
       tool?: string
-      parameters?: Record<string, any>
+      parameters?: Record<string, unknown>
       estimated_time_min?: number
       children?: Array<{
         id?: string | number
         name?: string
         operation_type?: string
         tool?: string
-        parameters?: Record<string, any>
+        parameters?: Record<string, unknown>
         estimated_time_min?: number
       }>
     }>
@@ -553,7 +553,7 @@ let simulationTimeoutId: number | null = null
 const modelUrl = computed(() => {
   // 优先取工程中导入的模型资源
   const resources = projectStore.manifest?.resources || []
-  const modelResource = resources.find((r: any) => r.type === 'model') as { path?: string } | undefined
+  const modelResource = resources.find((r: { type: string }) => r.type === 'model') as { path?: string } | undefined
   if (!modelResource?.path) return ''
   // 资源路径通常是相对路径，需要拼接静态访问前缀
   const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api'
@@ -667,13 +667,10 @@ async function replanProcess() {
       title: t('processPlanning.messages.replanSuccess'),
       message: data.summary || t('processPlanning.status.success'),
     })
-  } catch (err: any) {
+  } catch {
     requestState.value = 'error'
     // 错误已被 http 拦截器处理（弹 ElMessage / ErrorConflictDialog）
-    // 此处仅记录日志，避免重复弹窗
-    if (import.meta.env.DEV) {
-      console.warn('[ProcessPlanning] replan failed:', err)
-    }
+    // 静默处理，避免重复弹窗
   }
 }
 
@@ -734,14 +731,14 @@ function handlePlanResponse(data: PlanResponse) {
 function expandAll() {
   if (!operationTreeRef.value) return
   const allNodes = operationTreeRef.value.store.nodesMap || {}
-  Object.values(allNodes).forEach((node: any) => {
+  Object.values(allNodes).forEach((node: { expand: () => void }) => {
     node.expand()
   })
 }
 function collapseAll() {
   if (!operationTreeRef.value) return
   const allNodes = operationTreeRef.value.store.nodesMap || {}
-  Object.values(allNodes).forEach((node: any) => {
+  Object.values(allNodes).forEach((node: { collapse: () => void }) => {
     node.collapse()
   })
 }
@@ -796,10 +793,8 @@ function runSimulation() {
 /**
  * ThreeViewer 模型加载回调
  */
-function onViewerModelLoaded(_model: any) {
-  if (import.meta.env.DEV) {
-    console.info('[ProcessPlanning] viewer model loaded')
-  }
+function onViewerModelLoaded(_model: unknown) {
+  // 模型加载完成，静默处理
 }
 
 // 监听工序树数据变化：自动展开第一层

@@ -294,8 +294,8 @@ async function loadModel(url: string) {
     centerCameraOnModel(model)
 
     emit('model-loaded', model)
-  } catch (error) {
-    console.error('Failed to load model:', error)
+  } catch {
+    // 模型加载失败，静默处理
   } finally {
     loading.value = false
   }

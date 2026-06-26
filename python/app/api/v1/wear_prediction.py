@@ -72,9 +72,8 @@ async def predict_wear(request: WearPredictRequest):
         return success(
             data=curve.to_dict(), message="Wear curve predicted successfully"
         )
-    except Exception as e:
-        # 兜底捕获：API 端点必须捕获所有异常以避免 5xx 抛给客户端
-        # 业务层异常族多源（数值/模型/数据 I/O），统一收口并通过 safe_error_message 脱敏
+    except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
+        # 数值计算异常：磨损曲线预测涉及大量数学运算（math.exp、除法等）
         safe = safe_error_message(e, context="wear_prediction.predict")
         logger.error(
             "Wear prediction failed | error_id=%s | exc=%s",
@@ -109,7 +108,8 @@ async def predict_remaining_life(request: RemainingLifeRequest):
             },
             message="Remaining life predicted successfully",
         )
-    except Exception as e:
+    except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
+        # 数值计算异常：剩余寿命预测涉及磨损曲线迭代计算
         safe = safe_error_message(e, context="wear_prediction.remaining_life")
         logger.error(
             "Remaining life prediction failed | error_id=%s | exc=%s",
@@ -141,8 +141,8 @@ async def suggest_adjustment(request: SuggestRequest):
         return success(
             data=suggestion.to_dict(), message="Adjustment suggestions generated"
         )
-    except Exception as e:
-        # 兜底捕获：API 端点统一收口所有异常
+    except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
+        # 数值计算异常：参数建议涉及Taylor公式计算与磨损率评估
         safe = safe_error_message(e, context="wear_prediction.suggest")
         logger.error(
             "Wear suggestion failed | error_id=%s | exc=%s",
@@ -179,7 +179,7 @@ async def get_supported_models():
             },
             message="Supported models retrieved successfully",
         )
-    except Exception as e:
+    except (AttributeError, KeyError) as e:
         safe = safe_error_message(e, context="wear_prediction.get_models")
         logger.error(
             "Failed to get supported models | error_id=%s | exc=%s",
@@ -202,7 +202,7 @@ async def get_threshold(material_type: str = "default"):
             data={"material_type": material_type, "threshold": threshold},
             message="Replacement threshold retrieved",
         )
-    except Exception as e:
+    except (KeyError, AttributeError) as e:
         safe = safe_error_message(e, context="wear_prediction.get_threshold")
         logger.error(
             "Failed to get replacement threshold | error_id=%s | exc=%s",
@@ -231,8 +231,8 @@ async def calibrate_prediction(request: CalibrateRequest):
             request.measured_wear, request.elapsed_time, params
         )
         return success(data=result, message="Prediction calibrated successfully")
-    except Exception as e:
-        # 兜底捕获：标定涉及数值计算 + 模型预测，异常族多源
+    except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
+        # 数值计算异常：标定涉及磨损曲线预测与偏差计算
         safe = safe_error_message(e, context="wear_prediction.calibrate")
         logger.error(
             "Wear calibration failed | error_id=%s | exc=%s",
@@ -257,7 +257,8 @@ async def train_uniwear_model(
             data_dir=data_dir, model_type=model_type
         )
         return success(data=result, message="Uniwear model training completed")
-    except Exception as e:
+    except (OSError, ImportError, ValueError, RuntimeError) as e:
+        # 文件 I/O 或依赖导入异常：Uniwear 训练涉及数据加载与模型训练
         safe = safe_error_message(e, context="wear_prediction.train_uniwear")
         logger.error(
             "Uniwear training failed | error_id=%s | exc=%s",
@@ -282,8 +283,8 @@ async def predict_wear_from_signal_features(
             signal_features=features, material=material
         )
         return success(data=result, message="Wear predicted from signal features")
-    except Exception as e:
-        # 兜底捕获：信号特征预测涉及特征工程 + 模型推理
+    except (ValueError, TypeError, RuntimeError) as e:
+        # 数值计算或模型推理异常：信号特征预测涉及 numpy 运算与模型推理
         safe = safe_error_message(e, context="wear_prediction.predict_signals")
         logger.error(
             "Signal prediction failed | error_id=%s | exc=%s",
@@ -303,7 +304,7 @@ async def get_cross_dataset_analysis():
     try:
         analysis = predictor.cross_dataset_analysis()
         return success(data=analysis, message="Cross-dataset analysis completed")
-    except Exception as e:
+    except (KeyError, AttributeError) as e:
         safe = safe_error_message(e, context="wear_prediction.cross_dataset")
         logger.error(
             "Cross-dataset analysis failed | error_id=%s | exc=%s",
@@ -323,7 +324,7 @@ async def get_uniwear_materials():
     try:
         materials = predictor.get_uniwear_material_params()
         return success(data=materials, message="Uniwear material parameters retrieved")
-    except Exception as e:
+    except (KeyError, AttributeError) as e:
         safe = safe_error_message(e, context="wear_prediction.uniwear_materials")
         logger.error(
             "Failed to get uniwear materials | error_id=%s | exc=%s",

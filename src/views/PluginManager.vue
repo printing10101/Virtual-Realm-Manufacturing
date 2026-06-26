@@ -432,6 +432,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { usePluginStore } from '../stores/plugin'
+import type { PluginDetail } from '../stores/plugin'
 import { Refresh, Search } from '@element-plus/icons-vue'
 import DependencyTree from '../components/plugin/DependencyTree.vue'
 
@@ -439,7 +440,7 @@ const pluginStore = usePluginStore()
 const searchQuery = ref('')
 const activeTab = ref('all')
 const detailDialogVisible = ref(false)
-const currentPlugin = ref<any>(null)
+const currentPlugin = ref<PluginDetail | null>(null)
 const configJson = ref('{}')
 
 const plugins = computed(() => pluginStore.plugins)

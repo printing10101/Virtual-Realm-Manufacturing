@@ -212,7 +212,7 @@ describe('CommandHistory', () => {
       const warnHistory = new CommandHistory(10)
       const localSegments: EditableToolpathSegment[] = []
       let warningCount = 0
-      let warningDetail: any = null
+      let warningDetail: { current: number; max: number; percentage: number } | null = null
 
       warnHistory.on('memory-warning', (detail) => {
         warningCount++

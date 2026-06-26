@@ -77,7 +77,7 @@ docker-compose up -d
 
 # 4. 验证服务
 docker-compose ps
-curl http://localhost:8000/health
+curl http://localhost:8765/health
 ```
 
 #### 方式二：直接部署
@@ -125,12 +125,12 @@ kubectl logs -f deployment/lingjing-api
 
 ```bash
 # 健康检查
-curl http://localhost:8000/health
+curl http://localhost:8765/health
 
 # 预期响应
 {
   "status": "healthy",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "database": "connected",
   "lnn_engine": "ready"
 }
@@ -179,7 +179,7 @@ lnn:
 # config/settings.yaml
 server:
   host: 0.0.0.0
-  port: 8000
+  port: 8765
   workers: 4
   log_level: info
   
@@ -247,7 +247,7 @@ global:
 scrape_configs:
   - job_name: 'lingjing-api'
     static_configs:
-      - targets: ['localhost:8000']
+      - targets: ['localhost:8765']
     metrics_path: '/metrics'
 ```
 
@@ -374,7 +374,7 @@ cp backup/lingjing_20240120_020000.db data/lingjing.db
 docker-compose start
 
 # 5. 验证恢复
-curl http://localhost:8000/health
+curl http://localhost:8765/health
 ```
 
 ### 备份验证
@@ -412,7 +412,7 @@ docker-compose up 失败
 **诊断**：
 ```bash
 # 检查端口占用
-netstat -tlnp | grep 8000
+netstat -tlnp | grep 8765
 
 # 检查进程
 ps aux | grep uvicorn
@@ -474,10 +474,10 @@ Error: LNN inference timeout
 **诊断**：
 ```bash
 # 检查 LNN 引擎状态
-curl http://localhost:8000/health/lnn
+curl http://localhost:8765/health/lnn
 
 # 检查模型加载情况
-curl http://localhost:8000/api/v1/lnn/models
+curl http://localhost:8765/api/v1/lnn/models
 
 # 查看 LNN 日志
 tail -f logs/lnn.log
@@ -489,7 +489,7 @@ tail -f logs/lnn.log
 docker-compose restart lnn-engine
 
 # 清理模型缓存
-curl -X POST http://localhost:8000/api/v1/lnn/cache/clear
+curl -X POST http://localhost:8765/api/v1/lnn/cache/clear
 
 # 调整超时配置
 vim config/lnn_workflow.yaml
@@ -665,10 +665,10 @@ lnn:
 
 ```bash
 # 查看性能指标
-curl http://localhost:8000/metrics
+curl http://localhost:8765/metrics
 
 # 使用 Apache Bench 压测
-ab -n 1000 -c 10 http://localhost:8000/health
+ab -n 1000 -c 10 http://localhost:8765/health
 ```
 
 ---
@@ -739,7 +739,7 @@ find backup/ -name "*.db.gpg" -mtime +90 -delete
 ### Q1: 如何查看系统版本？
 
 ```bash
-curl http://localhost:8000/version
+curl http://localhost:8765/version
 ```
 
 ### Q2: 如何重置管理员密码？

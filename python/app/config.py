@@ -74,6 +74,15 @@ def _float_env(key: str, default: float) -> float:
 
 
 @dataclass
+class MESConfig:
+    """MES/ERP 系统集成配置。"""
+    base_url: str = field(default_factory=lambda: _env("MES_BASE_URL", ""))
+    api_key: str = field(default_factory=lambda: _env("MES_API_KEY", ""))
+    timeout: float = field(default_factory=lambda: _float_env("MES_TIMEOUT", 30.0))
+    enabled: bool = field(default_factory=lambda: _bool_env("MES_ENABLED", False))
+
+
+@dataclass
 class TokenConfig:
     _TOKEN_FILE_NAME = ".lnn_token"
     _TOKEN_META_FILE_NAME = ".lnn_token_meta.json"
@@ -95,19 +104,18 @@ class TokenConfig:
                 if token:
                     logger.info("Loaded token from %s", token_file)
                     return token
-            except Exception as e:
-                logger.warning("Failed to read token file %s: %s", token_file, e)
+            except (OSError, IOError, PermissionError) as e:
+                logger.warning("Failed to read token file", exc_info=True)
 
         new_token = str(uuid.uuid4())
         try:
             token_file.parent.mkdir(parents=True, exist_ok=True)
             token_file.write_text(new_token)
             logger.info("Generated and saved new token to %s", token_file)
-        except Exception as e:
+        except (OSError, IOError, PermissionError) as e:
             logger.warning(
-                "Could not persist token to %s: %s. Token is ephemeral for this session.",
-                token_file,
-                e,
+                "Could not persist token. Token is ephemeral for this session.",
+                exc_info=True,
             )
 
         self._print_setup_guidance(token_file, new_token)
@@ -152,8 +160,8 @@ class TokenConfig:
             token_file.parent.mkdir(parents=True, exist_ok=True)
             token_file.write_text(new_token)
             logger.info("Token rotated and saved to %s", token_file)
-        except Exception as e:
-            logger.warning("Could not persist rotated token: %s", e)
+        except (OSError, IOError, PermissionError) as e:
+            logger.warning("Could not persist rotated token", exc_info=True)
         return new_token
 
 
@@ -310,10 +318,12 @@ class DatabaseConfig:
 
 @dataclass
 class SecurityConfig:
+    # 安全修复：CORS 默认改为空列表，强制部署时显式配置允许的来源。
+    # 通配符 "*" 配合 allow_credentials=True 会导致 CSRF 型凭证泄露。
     cors_origins: list[str] = field(
         default_factory=lambda: [
             origin.strip()
-            for origin in _env("CORS_ORIGINS", "*").split(",")
+            for origin in _env("CORS_ORIGINS", "").split(",")
             if origin.strip()
         ]
     )
@@ -489,7 +499,7 @@ class ProcessPlanningConfig:
 @dataclass
 class AppConfig:
     app_name: str = field(default_factory=lambda: _env("APP_NAME", "灵境制造"))
-    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "2.2.0"))
+    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "2.3.0"))
     offline_mode: bool = field(
         default_factory=lambda: _bool_env("OFFLINE_MODE", False)
     )
@@ -509,6 +519,7 @@ class AppConfig:
     process_planning: ProcessPlanningConfig = field(
         default_factory=ProcessPlanningConfig
     )
+    mes: MESConfig = field(default_factory=MESConfig)
 
 
 config = AppConfig()

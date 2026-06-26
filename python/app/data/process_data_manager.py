@@ -7,9 +7,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -152,9 +155,10 @@ class ProcessPlanningDataManager:
                 raise DataValidationError(f"数据文件格式错误: {filename} 应为数组格式")
             return data
         except json.JSONDecodeError as e:
-            raise DataLoadError(f"JSON解析失败: {filename}, 错误: {e}")
-        except Exception as e:
-            raise DataLoadError(f"加载数据文件失败: {filename}, 错误: {e}")
+            raise DataLoadError(f"JSON解析失败: {filename}, 错误: {e}") from e
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            logger.error(f"加载数据文件失败: {filename}, 错误: {e}")
+            raise DataLoadError(f"加载数据文件失败: {filename}, 错误: {e}") from e
 
     def _load_all(self) -> None:
         self._load_materials()

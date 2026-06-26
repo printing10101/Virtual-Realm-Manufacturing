@@ -226,7 +226,7 @@ if input_len != expected_dim and input_len % expected_dim != 0:
 
 ```bash
 # 基础预测请求
-curl -X POST http://localhost:8000/api/v1/lnn/predict \
+curl -X POST http://localhost:8765/api/v1/lnn/predict \
   -H "Content-Type: application/json" \
   -d '{
     "input_data": [120.0, 0.2, 1.5, 800.0],
@@ -235,7 +235,7 @@ curl -X POST http://localhost:8000/api/v1/lnn/predict \
   }'
 
 # 批量预测（多行数据拼接为单维度数组）
-curl -X POST http://localhost:8000/api/v1/lnn/predict \
+curl -X POST http://localhost:8765/api/v1/lnn/predict \
   -H "Content-Type: application/json" \
   -d '{
     "input_data": [120.0, 0.2, 1.5, 800.0, 150.0, 0.3, 2.0, 1000.0],

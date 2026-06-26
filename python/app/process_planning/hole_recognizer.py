@@ -248,7 +248,7 @@ class HoleFeatureRecognizer:
         recognizer = HoleFeatureRecognizer()
         result = recognizer.recognize(geometry_data)
         for hole in result.holes:
-            print(f"{hole.hole_id}: {hole.type} φ{hole.diameter}mm")
+            logger.info(f"{hole.hole_id}: {hole.type} φ{hole.diameter}mm")
     """
 
     # 标准孔底角：麻花钻118°，用于盲孔底部建模

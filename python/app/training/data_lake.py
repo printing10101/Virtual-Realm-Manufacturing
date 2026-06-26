@@ -86,8 +86,8 @@ class TrainingDataLake:
                             record_ids.add(record_id)
                     except json.JSONDecodeError as e:
                         logger.warning(f"Failed to parse line in {file_path}: {e}")
-        except Exception as e:
-            logger.error(f"Failed to load record IDs from {file_path}: {e}")
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            logger.error(f"Failed to load record IDs from {file_path}: {e}", exc_info=True)
         
         return record_ids
     
@@ -121,8 +121,8 @@ class TrainingDataLake:
                 f.write(json.dumps(sample, ensure_ascii=False) + "\n")
             logger.info(f"Training sample {record_id} written to {file_path}")
             return True
-        except Exception as e:
-            logger.error(f"Failed to write training sample {record_id}: {e}")
+        except (OSError, TypeError, ValueError) as e:
+            logger.error(f"Failed to write training sample {record_id}: {e}", exc_info=True)
             raise
     
     def write_training_samples(self, samples: list[dict[str, Any]]) -> dict[str, int]:
@@ -143,8 +143,8 @@ class TrainingDataLake:
                     written += 1
                 else:
                     skipped += 1
-            except Exception as e:
-                logger.error(f"Failed to write sample: {e}")
+            except (OSError, TypeError, ValueError) as e:
+                logger.error(f"Failed to write sample: {e}", exc_info=True)
                 raise
         
         logger.info(f"Batch write completed: {written} written, {skipped} skipped")
@@ -203,8 +203,8 @@ class TrainingDataLake:
                         samples.append(sample)
                     except json.JSONDecodeError as e:
                         logger.warning(f"Failed to parse line in {file_path}: {e}")
-        except Exception as e:
-            logger.error(f"Failed to load samples from {file_path}: {e}")
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            logger.error(f"Failed to load samples from {file_path}: {e}", exc_info=True)
         
         return samples
     

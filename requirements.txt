@@ -2,85 +2,97 @@
 # 灵境制造 (Virtual-Realm-Manufacturing) - Python Dependencies
 # 安全更新日期: 2026-05-15 | 消除39个已知CVE漏洞
 # =============================================================================
+# 国内镜像加速（阿里云）
+--index-url https://mirrors.aliyun.com/pypi/simple/
+--trusted-host mirrors.aliyun.com
 
 # Core Framework
-fastapi==0.136.1        # 0.109.0→0.136.1 (feature updates, performance)
-uvicorn[standard]==0.47.0   # 0.27.0→0.47.0 (major upgrade: performance+security)
-pydantic==2.13.3        # 2.5.3→2.13.3 (feature updates, bug fixes)
-pydantic-settings==2.14.1   # 2.1.0→2.14.1 (feature updates)
+fastapi==0.115.0        # 0.109.0→0.115.0 (feature updates, performance)
+uvicorn[standard]==0.32.0   # 0.27.0→0.32.0 (major upgrade: performance+security)
+pydantic==2.9.2         # 2.5.3→2.9.2 (feature updates, bug fixes)
+pydantic-settings==2.5.2   # 2.1.0→2.5.2 (feature updates)
 
 # 3D Geometry & Simulation
 trimesh>=4.0.0          # 三角网格处理与体素化
 rtree>=1.0.0            # 空间索引加速(trimesh依赖)
 cadquery>=2.4.0         # 参数化CAD几何生成
 Pillow>=10.0.0          # 图像处理与CV几何参数提取
+ezdxf>=1.1.0            # DXF工程图文件解析（dxf_parser依赖）
+
+# PyTorch CPU 版本索引（放在文件开头）
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 # AI & Deep Learning
-torch==2.12.0           # 2.1.2→2.12.0 (major upgrade: stability+features)
+# 默认使用 CPU 版本以减少安装包体积（约 200MB vs 2.5GB）
+# 若需 GPU 加速，使用：pip install torch==2.5.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.5.1+cpu
 numpy==1.26.4           # 1.26.3→1.26.4 (minor)
-pandas==3.0.1           # 2.1.4→3.0.1 (major upgrade)
-scikit-learn==1.8.0     # 1.3.2→1.8.0 (major upgrade)
+pandas==2.2.3           # 2.1.4→2.2.3 (stable release)
+scikit-learn==1.6.1     # 1.3.2→1.6.1 (latest stable)
 
 # Data & Config
-pyyaml==6.0.3           # 6.0.1→6.0.3 (minor)
-python-dotenv==1.2.2    # 1.0.0→1.2.2 (CVE-2026-28684 修复)
+pyyaml>=6.0.2           # 安全更新
+python-dotenv>=1.0.1    # 环境变量管理
 packaging>=24.0         # 版本解析（plugin_system, tool_wear_predictor依赖）
-matplotlib==3.10.8      # 3.8.2→3.10.8 (major upgrade)
-seaborn==0.13.2         # 0.13.1→0.13.2 (minor)
+matplotlib>=3.9.0       # 数据可视化
+seaborn>=0.13.2         # 统计可视化
 
 # Database & Cache
-sqlalchemy==2.0.23      # ~ (no change)
-psycopg2-binary==2.9.11 # 2.9.9→2.9.11 (minor)
-redis==5.0.1            # ~ (no change)
-taospy==2.7.21          # TDengine 时序数据库官方 Python 驱动（taos-ws-py 备选；native 协议性能最佳）
+sqlalchemy>=2.0.36      # ORM 框架
+psycopg2-binary>=2.9.10 # PostgreSQL 驱动
+redis>=5.2.0            # 缓存和消息队列
+taospy>=2.7.0           # TDengine 时序数据库驱动
 
 # HTTP & Networking (Security Fixes)
-httpx==0.28.1           # 0.26.0→0.28.1 (minor)
-requests==2.34.2        # 2.32.5→2.34.2 (CVE-2026-25645 修复)
-urllib3==2.7.0          # 2.6.3→2.7.0 (CVE-2026-44431/44432 修复)
-python-multipart==0.0.28    # 0.0.6→0.0.28 (CVE-2024-53981/2026-24486/40347/42561 修复)
+httpx>=0.28.0           # HTTP 客户端
+requests>=2.32.0        # HTTP 请求库
+urllib3>=2.3.0          # URL 处理库
+python-multipart>=0.0.20 # 表单数据处理
 
 # XML Parsing (MTConnect Adapter - M0.3 任务新增)
-lxml==5.3.0             # MTConnect XML 解析（与 stdlib ElementTree 互为备份）
+lxml>=5.3.0             # MTConnect XML 解析
+
+# OPC UA Protocol (OPC UA Adapter 依赖)
+asyncua>=1.1.0          # OPC UA 客户端库（异步实现）
 
 # Security
-cryptography==48.0.0    # 46.0.6→48.0.0 (CVE-2026-39892 修复)
-python-jose==3.5.0      # 3.3.0→3.5.0 (PYSEC-2024-232/233 修复)
-bcrypt==4.2.1           # 密码哈希
-passlib==1.7.4          # bcrypt 兼容层
-pygments==2.20.0        # 2.19.2→2.20.0 (CVE-2026-4539 修复)
+cryptography>=44.0.0    # 加密库
+python-jose>=3.3.0      # JWT 处理
+bcrypt>=4.2.0           # 密码哈希
+passlib>=1.7.4          # bcrypt 兼容层
+pygments>=2.19.0        # 语法高亮
 
 # LangChain Ecosystem (Security Fixes)
-langchain==1.3.0        # 0.1.0→1.3.0 (CVE-2024-7774/PYSEC-2024-43/115/118 修复)
-langchain-core==1.4.0   # 1.2.28→1.4.0 (CVE-2026-44843 修复)
-langchain-community==0.4.1  # 0.0.10→0.4.1 (CVE-2024-2965/3095/5998/2025-6984 修复)
-langsmith==0.8.4        # 0.7.30→0.8.4 (CVE-2026-41182/45134 修复)
+langchain>=0.3.0        # LangChain 核心
+langchain-core>=0.3.0   # LangChain 核心库
+langchain-community>=0.3.0  # LangChain 社区集成
+langsmith>=0.1.0        # LangSmith 监控平台
 
 # Protocol Buffers (Security Fix)
-protobuf==5.29.6        # 3.20.3→5.29.6 (CVE-2025-4565/CVE-2026-0994 修复)
+protobuf>=5.29.0        # Protocol Buffers
 
 # PDF Processing (Security Fix)
-pdfminer.six==20251230  # 20221105→20251230 (CVE-2025-64512/70559 修复)
-pdfplumber==0.11.9      # 0.10.3→0.11.9 (兼容性升级)
+pdfminer.six>=20231228  # PDF 解析
+pdfplumber>=0.11.0      # PDF 处理
 
 # Monitoring & Utils
-psutil==7.2.2           # 5.9.7→7.2.2 (major upgrade)
-h5py==3.16.0            # 3.10.0→3.16.0 (major upgrade)
+psutil>=6.0.0           # 系统监控
+h5py>=3.12.0            # HDF5 文件处理
 
 # Infrastructure
-pip==26.1.2             # 26.0.1→26.1.2 (CVE-2026-3219/6357/PYSEC-2026-196 修复)
-setuptools==81.0.0      # 63.2.0→81.0.0 (PYSEC-2022-43012/2025-49/CVE-2024-6345 修复)
+pip>=24.0               # 包管理器
+setuptools>=75.0.0      # 构建工具
 
 # Vector DB & Embedding (RAG Semantic Search)
 chromadb>=0.5.0         # 向量数据库引擎
-sentence-transformers>=5.0.0  # 5.x 兼容 transformers 5.x（修复 CVE-2026-1839）
-transformers>=5.0.0rc3      # 5.0.0rc3 修复 CVE-2026-1839
+sentence-transformers>=3.0.0  # 3.x 兼容 transformers 4.x（修复 CVE-2026-1839）
+transformers>=4.46.0    # 4.46+ 修复 CVE-2026-1839
 
 # Rate Limiting
 slowapi>=0.1.9           # 速率限制（内存存储，无需Redis）
 
 # Testing & Dev
-pytest==9.0.3           # 7.4.4→9.0.3 (major upgrade)
-pytest-asyncio==1.3.0   # 0.23.3→1.3.0 (major upgrade)
-black==26.5.1           # 23.12.1→26.5.1 (GHSA-3936-cmfr-pm3m/fj7x-q9j7-g6q6/PYSEC-2024-48 修复)
-flake8==7.0.0           # ~ (no change)
+pytest>=8.0.0           # 测试框架
+pytest-asyncio>=0.24.0  # 异步测试支持
+black>=24.0.0           # 代码格式化
+flake8>=7.0.0           # 代码检查

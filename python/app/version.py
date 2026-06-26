@@ -5,9 +5,12 @@ Loads version from root VERSION file and provides runtime version info.
 Version is sourced from project root VERSION file (single source of truth).
 """
 
+import logging
 import subprocess
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 def _get_project_root() -> Path:

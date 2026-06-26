@@ -562,7 +562,8 @@ class TestSourceHasNoWildcardOrigin:
     def test_no_bare_star_origin_in_module(self):
         from app.middleware import cors_config
 
-        source = open(cors_config.__file__, encoding="utf-8").read()
+        with open(cors_config.__file__, encoding="utf-8") as f:
+            source = f.read()
         # Strip comments to avoid false positives.
         non_comment_lines = []
         for line in source.splitlines():

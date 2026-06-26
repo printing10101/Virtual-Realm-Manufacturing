@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html style="background-color:#faf8f5!important;color:#1d1b18!important;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统设置</title>
+    <link rel="stylesheet" href="tailwind-fallback.css">
+<style id="theme-vars">
+/*
+ * Lingjing Manufacturing design tokens
+ * Brand: Lingjing Manufacturing
+ * Domain: Intelligent manufacturing platform
+ * Style: Restrained, elegant, warm cream/off-white palette
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #faf8f5;
+  --background-100: #f5f2ed;
+  --background-200: #ede9e3;
+  --background-300: #e0dbd4;
+  --background-400: #cec8bf;
+  --background-500: #a8a199;
+  --background-600: #8a847c;
+  --background-700: #3a3632;
+  --background-800: #1c1a18;
+  --background-900: #0e0d0c;
+
+  /* text */
+  --text-50: #f5f2ed;
+  --text-100: #e3dfd8;
+  --text-200: #c7c2b8;
+  --text-300: #aea99f;
+  --text-400: #8e897f;
+  --text-500: #6e6960;
+  --text-600: #48443e;
+  --text-700: #3c3832;
+  --text-800: #1d1b18;
+  --text-900: #0e0d0c;
+
+  /* icon */
+  --icon-50: #f5f2ed;
+  --icon-100: #e0dbd4;
+  --icon-200: #cec8bf;
+  --icon-300: #c7c2b8;
+  --icon-400: #aea99f;
+  --icon-500: #8e897f;
+  --icon-600: #6e6960;
+  --icon-700: #48443e;
+  --icon-800: #2c2926;
+  --icon-900: #1d1b18;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f5ec;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #fdecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+  /* ===== COLOR ALIAS LAYER (--color-*) ===== */
+  --color-bg-50: var(--background-50);
+  --color-bg-100: var(--background-100);
+  --color-bg-200: var(--background-200);
+  --color-bg-300: var(--background-300);
+  --color-text-primary: var(--text-800);
+  --color-text-secondary: var(--text-500);
+  --color-text-tertiary: var(--text-400);
+  --color-text-muted: var(--text-400);
+  --color-text-placeholder: var(--text-300);
+  --color-text-inverse: var(--background-50);
+  --color-border-subtle: var(--background-300);
+  --color-border-default: var(--background-300);
+  --color-border-strong: var(--background-500);
+  --color-border-focus: var(--brand-500);
+  --color-primary-50: var(--brand-50);
+  --color-primary-100: var(--brand-100);
+  --color-primary-200: var(--brand-200);
+  --color-primary-300: var(--brand-300);
+  --color-primary-400: var(--brand-400);
+  --color-primary-500: var(--brand-500);
+  --color-primary-600: var(--brand-600);
+  --color-primary-700: var(--brand-700);
+  --color-primary-800: var(--brand-800);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-800: var(--brand-800);
+  /* ===== LAYOUT VARIABLES ===== */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --page-padding: 24px;
+  --content-max-width: 1200px;
+  /* ===== STATE COLORS ===== */
+  --state-warning: #ff9500;
+  --state-warning-bg: #fff4e5;
+  --state-warning-surface: #fff4e5;
+  --state-info: #007aff;
+  --state-info-bg: #e8f2ff;
+  --state-success-bg: #e9f5ec;
+  --state-error-bg: #fdecea;
+  --card-background: var(--background-50);
+
+
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+html.dark, html.dark body, html.dark * {
+  --background: #faf8f5 !important; --foreground: #1d1b18 !important; --card: #faf8f5 !important; --card-foreground: #1d1b18 !important; --card-background: #faf8f5 !important; --popover: #f5f2ed !important; --popover-foreground: #1d1b18 !important; --primary: #007aff !important; --primary-foreground: #ffffff !important; --secondary: #f5f2ed !important; --secondary-foreground: #1d1b18 !important; --muted: #f5f2ed !important; --muted-foreground: #6b6560 !important; --accent: #ede9e3 !important; --accent-foreground: #1d1b18 !important; --border: #e0dbd4 !important; --input: #e0dbd4 !important; --icon: #1d1b18 !important; --icon-muted: #8e897f !important; --sidebar: #ede9e3 !important; --sidebar-foreground: #1d1b18 !important; --sidebar-primary: #007aff !important; --sidebar-primary-foreground: #faf8f5 !important; --sidebar-accent: #e0dbd4 !important; --sidebar-accent-foreground: #1d1b18 !important; --sidebar-border: #e0dbd4 !important; --sidebar-ring: #007aff !important; color: inherit !important;
+}
+</style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+      @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="font-family: var(--font-sans); background-color:#faf8f5!important; color:#1d1b18!important;">
+
+    <!-- Sidebar Navigation -->
+        <aside class="fixed left-0 top-0 bottom-0 z-30 flex flex-col border-r" style="width: var(--sidebar-width); background: var(--color-bg-50); border-color: var(--color-border-subtle);">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-5 h-14 border-b" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--color-primary-500);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-text-inverse);flex-shrink:0;"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+            </div>
+            <span class="text-headline truncate" style="color: var(--color-text-primary);">灵境制造</span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 overflow-y-auto py-4 px-3 no-scrollbar">
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">核心功能</p>
+                <a href="dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                    <span class="truncate">生产总览</span>
+                </a>
+                <a href="process-planning.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="2"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+                    <span class="truncate">工艺规划</span>
+                </a>
+                <a href="equipment-monitor.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+                    <span class="truncate">设备监控</span>
+                </a>
+                <a href="quality-inspection.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+                    <span class="truncate">质量检测</span>
+                </a>
+                <a href="agent-dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    <span class="truncate">智能体管理</span>
+                </a>
+            </div>
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">资源管理</p>
+                <a href="material-management.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                    <span class="truncate">物料管理</span>
+                </a>
+                <a href="task-board.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M6 4h12"/><rect width="4" height="8" x="4" y="6" rx="1"/><rect width="4" height="12" x="10" y="6" rx="1"/><rect width="4" height="6" x="16" y="6" rx="1"/></svg>
+                    <span class="truncate">任务看板</span>
+                </a>
+                <a href="production-report.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    <span class="truncate">生产报表</span>
+                </a>
+                <a href="knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <span class="truncate">知识库</span>
+                </a>
+            </div>
+            <div>
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">系统</p>
+                <a href="settings.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span class="truncate font-medium">系统设置</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- User -->
+        <div class="border-t px-4 py-3 flex items-center gap-3" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-caption shrink-0" style="background: var(--color-primary-100); color: var(--color-primary-600);">管</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-body-sm truncate" id="sidebarUserName" style="color: var(--color-text-primary);">管理员</p>
+                <p class="text-caption truncate" id="sidebarUserEmail" style="color: var(--color-text-muted);">admin@lingjing.com</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex flex-col min-h-screen" style="margin-left: var(--sidebar-width);">
+
+        <!-- Top Header Bar -->
+        <header class="sticky top-0 z-20 flex items-center justify-between px-6 shrink-0" style="height: var(--header-height); background: rgba(250,248,245,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--color-border-subtle);">
+            <!-- Search -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg flex-1 max-w-md" style="background: var(--color-bg-200); border: 1px solid var(--color-border-subtle);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-text-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" placeholder="搜索工单、设备、物料..." class="bg-transparent border-none outline-none text-body-sm flex-1 min-w-0 placeholder:font-body" style="color: var(--color-text-primary); font-family: var(--font-sans);">
+            </div>
+
+            <!-- Right Actions -->
+            <div class="flex items-center gap-4 shrink-0">
+                <!-- Notifications -->
+                <button class="relative w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-150 hover:bg-black/5" style="color: var(--color-text-tertiary);" aria-label="通知">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background: var(--state-error);"></span>
+                </button>
+
+                <!-- User Avatar -->
+                <div class="flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-black/5">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-caption shrink-0" style="background: var(--color-primary-500); color: var(--color-bg-50);">张</div>
+                    <span class="text-body-sm" style="color: var(--color-text-secondary);">张工</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-text-muted);flex-shrink:0;"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="flex-1 overflow-y-auto" style="padding: var(--page-padding);">
+
+            <!-- Page Header -->
+            <div class="mb-6">
+                <h1 class="text-title-2" style="color: var(--color-text-primary); text-wrap: balance; word-break: keep-all; overflow-wrap: break-word;">系统设置</h1>
+                <p class="text-body-sm mt-1" style="color: var(--color-text-muted);">管理您的账户信息、系统配置和通知偏好</p>
+            </div>
+
+            <!-- Settings Layout: Left Tabs + Right Content -->
+            <div class="flex gap-6" style="min-height: calc(100vh - 200px);">
+
+                <!-- Left Settings Tabs -->
+                <nav class="shrink-0 hidden md:block" style="width: 200px;">
+                    <div class="rounded-xl overflow-hidden" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <ul class="flex flex-col">
+                            <li>
+                                <button class="settings-tab w-full flex items-center gap-3 px-4 py-3 text-body-sm text-left transition-colors duration-150" data-tab="profile" style="background: var(--color-primary-50); color: var(--color-primary-600); border-left: 3px solid var(--color-primary-500);">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    <span class="truncate">个人设置</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="settings-tab w-full flex items-center gap-3 px-4 py-3 text-body-sm text-left transition-colors duration-150 hover:bg-black/[0.02]" data-tab="system" style="color: var(--color-text-muted); border-left: 3px solid transparent;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="2" x2="22" y1="4" y2="4"/><line x1="2" x2="22" y1="12" y2="12"/><line x1="2" x2="22" y1="20" y2="20"/><line x1="16" x2="16" y1="4" y2="4"/><line x1="8" x2="8" y1="12" y2="12"/><line x1="16" x2="16" y1="20" y2="20"/></svg>
+                                    <span class="truncate">系统配置</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="settings-tab w-full flex items-center gap-3 px-4 py-3 text-body-sm text-left transition-colors duration-150 hover:bg-black/[0.02]" data-tab="notification" style="color: var(--color-text-muted); border-left: 3px solid transparent;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M18.2 3.2 19 4"/><path d="M22 8h-2"/><path d="M4 8H2"/><path d="M16.2 3.2 15 4"/></svg>
+                                    <span class="truncate">通知管理</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="settings-tab w-full flex items-center gap-3 px-4 py-3 text-body-sm text-left transition-colors duration-150 hover:bg-black/[0.02]" data-tab="api" style="color: var(--color-text-muted); border-left: 3px solid transparent;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a6 6 0 0 1-6 6v0a6 6 0 0 1-6-6V8"/><path d="M11 2h2"/></svg>
+                                    <span class="truncate">API集成</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="settings-tab w-full flex items-center gap-3 px-4 py-3 text-body-sm text-left transition-colors duration-150 hover:bg-black/[0.02]" data-tab="backup" style="color: var(--color-text-muted); border-left: 3px solid transparent;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>
+                                    <span class="truncate">数据备份</span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+
+                <!-- Right Content Panel -->
+                <div class="flex-1 min-w-0">
+
+                    <!-- Tab Panel: 个人设置 -->
+                    <div class="settings-panel" data-panel="profile">
+
+                    <!-- Profile Section -->
+                    <section class="rounded-xl p-6 mb-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <h2 class="text-headline mb-5" style="color: var(--color-text-primary);">个人资料</h2>
+
+                        <div class="flex flex-col sm:flex-row items-start gap-6 mb-6" style="border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 24px;">
+                            <!-- Avatar -->
+                            <div class="shrink-0 relative" id="avatarWrapper">
+                                <div class="w-16 h-16 rounded-full flex items-center justify-center text-title-2" id="profileAvatar" style="background: var(--color-primary-500); color: var(--color-bg-50);">张</div>
+                                <input type="file" id="avatarInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" style="display:none;">
+                            </div>
+                            <!-- Name & Role -->
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-title-3 truncate" id="profileName" style="color: var(--color-text-primary);">张明远</h3>
+                                <p class="text-body-sm mt-0.5" id="profileRole" style="color: var(--color-text-muted);">生产主管</p>
+                                <p class="text-caption mt-1" style="color: var(--color-text-muted);">上次登录：2026年6月23日 09:15</p>
+                            </div>
+                            <button id="avatarBtn" class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="background: var(--color-bg-200); color: var(--color-text-secondary); border: 1px solid var(--color-border-default);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                                更换头像
+                            </button>
+                        </div>
+
+                        <!-- Form Fields -->
+                        <div class="flex flex-col gap-5">
+                            <!-- Email -->
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-label" style="color: var(--color-text-secondary);">邮箱地址</label>
+                                <input type="email" id="emailInput" value="zhangmingyuan@lingjing.com" class="w-full rounded-lg px-4 text-body-sm outline-none transition-colors duration-150" style="height: 44px; background: var(--color-bg-100); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-family: var(--font-sans);">
+                                <p class="text-caption hidden" id="emailError" style="color: var(--state-error);"></p>
+                            </div>
+
+                            <!-- Phone -->
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-label" style="color: var(--color-text-secondary);">手机号码</label>
+                                <input type="tel" id="phoneInput" value="138-0013-8000" class="w-full rounded-lg px-4 text-body-sm outline-none transition-colors duration-150" style="height: 44px; background: var(--color-bg-100); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-family: var(--font-sans);">
+                                <p class="text-caption hidden" id="phoneError" style="color: var(--state-error);"></p>
+                            </div>
+
+                            <!-- Save Button -->
+                            <div class="flex justify-end pt-2">
+                                <button id="saveProfileBtn" class="flex items-center gap-2 px-6 py-2.5 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-90" style="background: var(--color-primary-500); color: var(--color-bg-50);">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>
+                                    保存修改
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Preferences Section -->
+                    <section class="rounded-xl p-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <h2 class="text-headline mb-5" style="color: var(--color-text-primary);">偏好设置</h2>
+
+                        <div class="flex flex-col gap-6">
+
+                            <!-- Language Selector -->
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3" style="border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 20px;">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-body" style="color: var(--color-text-primary);">语言</p>
+                                    <p class="text-body-sm mt-0.5" style="color: var(--color-text-muted);">选择系统界面显示语言</p>
+                                </div>
+                                <div class="shrink-0">
+                                    <select class="rounded-lg px-4 text-body-sm outline-none cursor-pointer transition-colors duration-150" style="height: 44px; min-width: 140px; background: var(--color-bg-100); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-family: var(--font-sans); appearance: auto;">
+                                        <option value="zh" selected>中文</option>
+                                        <option value="en">English</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Theme Toggle -->
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3" style="border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 20px;">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-body" style="color: var(--color-text-primary);">主题</p>
+                                    <p class="text-body-sm mt-0.5" style="color: var(--color-text-muted);">切换浅色或深色界面主题</p>
+                                </div>
+                                <div class="shrink-0 flex items-center gap-1 rounded-lg p-1" id="themeSwitcher" style="background: var(--color-bg-200); border: 1px solid var(--color-border-subtle);">
+                                    <button class="theme-btn flex items-center gap-1.5 px-3 py-1.5 rounded-md text-body-sm transition-colors duration-150 active-theme" data-theme="light" style="background: var(--color-bg-50); color: var(--color-text-primary); box-shadow: var(--shadow-xs);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                                        浅色
+                                    </button>
+                                    <button class="theme-btn flex items-center gap-1.5 px-3 py-1.5 rounded-md text-body-sm transition-colors duration-150" data-theme="dark" style="color: var(--color-text-muted);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                                        深色
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Items Per Page -->
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3" style="border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 20px;">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-body" style="color: var(--color-text-primary);">每页显示条数</p>
+                                    <p class="text-body-sm mt-0.5" style="color: var(--color-text-muted);">设置列表页默认显示的数据条数</p>
+                                </div>
+                                <div class="shrink-0">
+                                    <select class="rounded-lg px-4 text-body-sm outline-none cursor-pointer transition-colors duration-150" style="height: 44px; min-width: 100px; background: var(--color-bg-100); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-family: var(--font-sans); appearance: auto;">
+                                        <option value="10" selected>10 条</option>
+                                        <option value="20">20 条</option>
+                                        <option value="50">50 条</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Notification Preferences -->
+                            <div>
+                                <p class="text-body mb-4" style="color: var(--color-text-primary);">通知偏好</p>
+                                <div class="flex flex-col gap-4">
+
+                                    <!-- Email Notifications -->
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                                            <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background: var(--color-primary-50);">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-primary-500);flex-shrink:0;"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-body-sm truncate" style="color: var(--color-text-primary);">邮件通知</p>
+                                                <p class="text-caption truncate" style="color: var(--color-text-muted);">接收工单状态变更邮件</p>
+                                            </div>
+                                        </div>
+                                        <label class="toggle-switch shrink-0 ml-4 relative inline-block cursor-pointer" style="width: 51px; height: 31px;">
+                                            <input type="checkbox" checked class="sr-only">
+                                            <span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--state-success);"></span>
+                                            <span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 22px; width: 27px; height: 27px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span>
+                                        </label>
+                                    </div>
+
+                                    <!-- In-App Notifications -->
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                                            <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background: var(--color-primary-50);">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-primary-500);flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-body-sm truncate" style="color: var(--color-text-primary);">站内通知</p>
+                                                <p class="text-caption truncate" style="color: var(--color-text-muted);">系统消息与任务提醒</p>
+                                            </div>
+                                        </div>
+                                        <label class="toggle-switch shrink-0 ml-4 relative inline-block cursor-pointer" style="width: 51px; height: 31px;">
+                                            <input type="checkbox" checked class="sr-only">
+                                            <span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--state-success);"></span>
+                                            <span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 22px; width: 27px; height: 27px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Device Alert Push -->
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                                            <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background: var(--color-primary-50);">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-primary-500);flex-shrink:0;"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-body-sm truncate" style="color: var(--color-text-primary);">设备告警推送</p>
+                                                <p class="text-caption truncate" style="color: var(--color-text-muted);">设备异常实时推送通知</p>
+                                            </div>
+                                        </div>
+                                        <label class="toggle-switch shrink-0 ml-4 relative inline-block cursor-pointer" style="width: 51px; height: 31px;">
+                                            <input type="checkbox" class="sr-only">
+                                            <span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--color-border-strong);"></span>
+                                            <span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 2px; width: 27px; height: 27px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span>
+                                        </label>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    </div><!-- end profile panel -->
+
+                    <!-- Tab Panel: 系统配置 -->
+                    <div class="settings-panel hidden" data-panel="system">
+                    <section class="rounded-xl p-6 mb-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <h2 class="text-headline mb-5" style="color: var(--color-text-primary);">基本配置</h2>
+                        <div class="flex flex-col gap-5">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-label" style="color: var(--color-text-secondary);">系统名称</label>
+                                <input type="text" value="灵境制造" class="w-full rounded-lg px-4 text-body-sm outline-none transition-colors duration-150" style="height: 44px; background: var(--color-bg-100); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-family: var(--font-sans);">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-label" style="color: var(--color-text-secondary);">系统版本</label>
+                                <input type="text" value="v2.1.0" readonly class="w-full rounded-lg px-4 text-body-sm outline-none" style="height: 44px; background: var(--color-bg-200); border: 1px solid var(--color-border-default); color: var(--color-text-muted); font-family: var(--font-sans); cursor: not-allowed;">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-label" style="color: var(--color-text-secondary);">数据保留期限</label>
+                                <select class="rounded-lg px-4 text-body-sm outline-none cursor-pointer transition-colors duration-150" style="height: 44px; min-width: 140px; background: var(--color-bg-100); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-family: var(--font-sans); appearance: auto;">
+                                    <option value="30">30 天</option>
+                                    <option value="90" selected>90 天</option>
+                                    <option value="180">180 天</option>
+                                    <option value="365">365 天</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="rounded-xl p-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <h2 class="text-headline mb-5" style="color: var(--color-text-primary);">高级设置</h2>
+                        <div class="flex flex-col gap-5">
+                            <div class="flex items-center justify-between" style="border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 20px;">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-body" style="color: var(--color-text-primary);">自动备份</p>
+                                    <p class="text-body-sm mt-0.5" style="color: var(--color-text-muted);">开启后系统将按计划自动执行数据备份</p>
+                                </div>
+                                <label class="toggle-switch shrink-0 ml-4 relative inline-block cursor-pointer" style="width: 51px; height: 31px;">
+                                    <input type="checkbox" checked class="sr-only">
+                                    <span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--state-success);"></span>
+                                    <span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 22px; width: 27px; height: 27px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between" style="padding-bottom: 8px;">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-body" style="color: var(--color-text-primary);">维护模式</p>
+                                    <p class="text-body-sm mt-0.5" style="color: var(--state-error);">开启后仅管理员可访问系统，普通用户将看到维护提示页</p>
+                                </div>
+                                <label class="toggle-switch shrink-0 ml-4 relative inline-block cursor-pointer" style="width: 51px; height: 31px;">
+                                    <input type="checkbox" class="sr-only">
+                                    <span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--color-border-strong);"></span>
+                                    <span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 2px; width: 27px; height: 27px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="flex justify-end pt-5">
+                            <button id="saveSystemBtn" class="flex items-center gap-2 px-6 py-2.5 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-90" style="background: var(--color-primary-500); color: var(--color-bg-50);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>
+                                保存配置
+                            </button>
+                        </div>
+                    </section>
+                    </div><!-- end system panel -->
+
+                    <!-- Tab Panel: 通知管理 -->
+                    <div class="settings-panel hidden" data-panel="notification">
+                    <section class="rounded-xl p-6 mb-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <div class="flex items-center justify-between mb-5">
+                            <h2 class="text-headline" style="color: var(--color-text-primary);">通知规则</h2>
+                            <button id="addNotifRuleBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="background: var(--color-primary-500); color: var(--color-bg-50);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                添加通知规则
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-body-sm" style="border-collapse: separate; border-spacing: 0;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid var(--color-border-default);">
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">通知类型</th>
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">触发条件</th>
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">通知方式</th>
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">状态</th>
+                                        <th class="text-right px-4 py-3 text-label" style="color: var(--color-text-muted);">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">工单状态变更</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary);">工单状态发生变化时</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-primary-50); color: var(--color-primary-600);">邮件</span> <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-secondary);">站内</span></td>
+                                        <td class="px-4 py-3"><label class="toggle-switch relative inline-block cursor-pointer" style="width: 40px; height: 24px;"><input type="checkbox" checked class="sr-only"><span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--state-success);"></span><span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 17px; width: 20px; height: 20px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span></label></td>
+                                        <td class="px-4 py-3 text-right"><button class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">编辑</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--state-error);">删除</button></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">设备异常告警</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary);">设备参数超出阈值</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-primary-50); color: var(--color-primary-600);">邮件</span> <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-secondary);">推送</span></td>
+                                        <td class="px-4 py-3"><label class="toggle-switch relative inline-block cursor-pointer" style="width: 40px; height: 24px;"><input type="checkbox" checked class="sr-only"><span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--state-success);"></span><span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 17px; width: 20px; height: 20px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span></label></td>
+                                        <td class="px-4 py-3 text-right"><button class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">编辑</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--state-error);">删除</button></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">质量检测异常</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary);">质检不合格率达到5%</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-secondary);">站内</span> <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-secondary);">推送</span></td>
+                                        <td class="px-4 py-3"><label class="toggle-switch relative inline-block cursor-pointer" style="width: 40px; height: 24px;"><input type="checkbox" checked class="sr-only"><span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--state-success);"></span><span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 17px; width: 20px; height: 20px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span></label></td>
+                                        <td class="px-4 py-3 text-right"><button class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">编辑</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--state-error);">删除</button></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">库存预警</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary);">物料库存低于安全值</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-primary-50); color: var(--color-primary-600);">邮件</span></td>
+                                        <td class="px-4 py-3"><label class="toggle-switch relative inline-block cursor-pointer" style="width: 40px; height: 24px;"><input type="checkbox" class="sr-only"><span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--color-border-strong);"></span><span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 2px; width: 20px; height: 20px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span></label></td>
+                                        <td class="px-4 py-3 text-right"><button class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">编辑</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--state-error);">删除</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">系统维护通知</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary);">计划维护前24小时</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-primary-50); color: var(--color-primary-600);">邮件</span> <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-secondary);">站内</span> <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-secondary);">推送</span></td>
+                                        <td class="px-4 py-3"><label class="toggle-switch relative inline-block cursor-pointer" style="width: 40px; height: 24px;"><input type="checkbox" checked class="sr-only"><span class="toggle-track block w-full h-full rounded-full transition-colors duration-200" style="background: var(--state-success);"></span><span class="toggle-thumb absolute top-[2px] transition-all duration-200" style="left: 17px; width: 20px; height: 20px; background: var(--color-bg-50); border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span></label></td>
+                                        <td class="px-4 py-3 text-right"><button class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">编辑</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--state-error);">删除</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    </div><!-- end notification panel -->
+
+                    <!-- Tab Panel: API集成 -->
+                    <div class="settings-panel hidden" data-panel="api">
+                    <section class="rounded-xl p-6 mb-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <div class="flex items-center justify-between mb-5">
+                            <h2 class="text-headline" style="color: var(--color-text-primary);">API 密钥</h2>
+                            <button id="genApiKeyBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="background: var(--color-primary-500); color: var(--color-bg-50);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                                生成新密钥
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-body-sm" style="border-collapse: separate; border-spacing: 0;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid var(--color-border-default);">
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">名称</th>
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">Key</th>
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">创建时间</th>
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">状态</th>
+                                        <th class="text-right px-4 py-3 text-label" style="color: var(--color-text-muted);">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">生产系统接口</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 12px;">lj_prod_****7a3f</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-muted);">2026-05-10</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--state-success-surface); color: var(--state-success);">活跃</span></td>
+                                        <td class="px-4 py-3 text-right"><button class="copy-key-btn text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">复制</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--state-error);">撤销</button></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">数据导出接口</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 12px;">lj_export_****b2e1</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-muted);">2026-04-22</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--state-success-surface); color: var(--state-success);">活跃</span></td>
+                                        <td class="px-4 py-3 text-right"><button class="copy-key-btn text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">复制</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--state-error);">撤销</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">测试环境密钥</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 12px;">lj_test_****9c4d</td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-muted);">2026-03-15</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-muted);">已禁用</span></td>
+                                        <td class="px-4 py-3 text-right"><button class="copy-key-btn text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">复制</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--state-error);">撤销</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="rounded-xl p-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <h2 class="text-headline mb-5" style="color: var(--color-text-primary);">Webhook 配置</h2>
+                        <div class="flex flex-col gap-5">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-label" style="color: var(--color-text-secondary);">回调 URL</label>
+                                <input type="url" placeholder="https://your-server.com/webhook" class="w-full rounded-lg px-4 text-body-sm outline-none transition-colors duration-150" style="height: 44px; background: var(--color-bg-100); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-family: var(--font-sans);">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-label" style="color: var(--color-text-secondary);">订阅事件</label>
+                                <div class="flex flex-wrap gap-3 mt-1">
+                                    <label class="flex items-center gap-2 cursor-pointer text-body-sm" style="color: var(--color-text-primary);"><input type="checkbox" checked class="w-4 h-4 rounded" style="accent-color: var(--color-primary-500);">工单创建</label>
+                                    <label class="flex items-center gap-2 cursor-pointer text-body-sm" style="color: var(--color-text-primary);"><input type="checkbox" checked class="w-4 h-4 rounded" style="accent-color: var(--color-primary-500);">工单完成</label>
+                                    <label class="flex items-center gap-2 cursor-pointer text-body-sm" style="color: var(--color-text-primary);"><input type="checkbox" class="w-4 h-4 rounded" style="accent-color: var(--color-primary-500);">设备告警</label>
+                                    <label class="flex items-center gap-2 cursor-pointer text-body-sm" style="color: var(--color-text-primary);"><input type="checkbox" class="w-4 h-4 rounded" style="accent-color: var(--color-primary-500);">质检异常</label>
+                                    <label class="flex items-center gap-2 cursor-pointer text-body-sm" style="color: var(--color-text-primary);"><input type="checkbox" class="w-4 h-4 rounded" style="accent-color: var(--color-primary-500);">库存预警</label>
+                                </div>
+                            </div>
+                            <div class="flex justify-end">
+                                <button id="testWebhookBtn" class="flex items-center gap-2 px-5 py-2.5 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="background: var(--color-bg-200); color: var(--color-text-secondary); border: 1px solid var(--color-border-default);">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
+                                    测试连接
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                    </div><!-- end api panel -->
+
+                    <!-- Tab Panel: 数据备份 -->
+                    <div class="settings-panel hidden" data-panel="backup">
+                    <section class="rounded-xl p-6 mb-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <div class="flex items-center justify-between mb-5">
+                            <h2 class="text-headline" style="color: var(--color-text-primary);">备份历史</h2>
+                            <button id="backupNowBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="background: var(--color-primary-500); color: var(--color-bg-50);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                立即备份
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-body-sm" style="border-collapse: separate; border-spacing: 0;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid var(--color-border-default);">
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">备份时间</th>
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">类型</th>
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">大小</th>
+                                        <th class="text-left px-4 py-3 text-label" style="color: var(--color-text-muted);">状态</th>
+                                        <th class="text-right px-4 py-3 text-label" style="color: var(--color-text-muted);">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">2026-06-23 03:00</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-secondary);">自动</span></td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary);">586 MB</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--state-success-surface); color: var(--state-success);">成功</span></td>
+                                        <td class="px-4 py-3 text-right"><button class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">恢复</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">下载</button></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">2026-06-22 03:00</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-secondary);">自动</span></td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary);">584 MB</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--state-success-surface); color: var(--state-success);">成功</span></td>
+                                        <td class="px-4 py-3 text-right"><button class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">恢复</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">下载</button></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">2026-06-20 15:32</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-primary-50); color: var(--color-primary-600);">手动</span></td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary);">581 MB</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--state-success-surface); color: var(--state-success);">成功</span></td>
+                                        <td class="px-4 py-3 text-right"><button class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">恢复</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">下载</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3" style="color: var(--color-text-primary);">2026-06-19 03:00</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--color-bg-200); color: var(--color-text-secondary);">自动</span></td>
+                                        <td class="px-4 py-3" style="color: var(--color-text-secondary);">579 MB</td>
+                                        <td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption" style="background: var(--state-error-surface); color: var(--state-error);">失败</span></td>
+                                        <td class="px-4 py-3 text-right"><button class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">恢复</button> <button class="text-body-sm ml-3 transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">下载</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="rounded-xl p-6 mb-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <h2 class="text-headline mb-4" style="color: var(--color-text-primary);">存储空间</h2>
+                        <div class="mb-2 flex items-center justify-between">
+                            <span class="text-body-sm" style="color: var(--color-text-secondary);">已使用 2.3 GB / 10 GB</span>
+                            <span class="text-body-sm" style="color: var(--color-text-muted);">23%</span>
+                        </div>
+                        <div class="w-full h-3 rounded-full overflow-hidden" style="background: var(--color-bg-200);">
+                            <div class="h-full rounded-full transition-all duration-500" style="width: 23%; background: var(--color-primary-500);"></div>
+                        </div>
+                    </section>
+                    <section class="rounded-xl p-6" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default);">
+                        <h2 class="text-headline mb-5" style="color: var(--color-text-primary);">自动备份设置</h2>
+                        <div class="flex flex-col gap-5">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-body" style="color: var(--color-text-primary);">备份频率</p>
+                                    <p class="text-body-sm mt-0.5" style="color: var(--color-text-muted);">设置自动备份的执行频率</p>
+                                </div>
+                                <select class="rounded-lg px-4 text-body-sm outline-none cursor-pointer transition-colors duration-150" style="height: 44px; min-width: 140px; background: var(--color-bg-100); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-family: var(--font-sans); appearance: auto;">
+                                    <option value="daily" selected>每日</option>
+                                    <option value="weekly">每周</option>
+                                    <option value="monthly">每月</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-body" style="color: var(--color-text-primary);">保留份数</p>
+                                    <p class="text-body-sm mt-0.5" style="color: var(--color-text-muted);">自动备份保留的最大数量</p>
+                                </div>
+                                <input type="number" value="30" min="1" max="365" class="rounded-lg px-4 text-body-sm outline-none transition-colors duration-150" style="height: 44px; width: 100px; background: var(--color-bg-100); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-family: var(--font-sans);">
+                            </div>
+                        </div>
+                    </section>
+                    </div><!-- end backup panel -->
+
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="shrink-0 px-6 py-4 flex items-center justify-between" style="border-top: 1px solid var(--color-border-subtle);">
+            <p class="text-caption" style="color: var(--color-text-muted);">灵境制造 v2.1.0</p>
+            <p class="text-caption" style="color: var(--color-text-muted);">2026 灵境科技有限公司</p>
+        </footer>
+
+    </div>
+
+    
+    <!-- Modal: Add Notification Rule -->
+    <div id="notifRuleModal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background: rgba(0,0,0,0.4);">
+        <div class="rounded-xl p-6 w-full max-w-md mx-4" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-2xl);">
+            <h3 class="text-headline mb-5" style="color: var(--card-foreground);">添加通知规则</h3>
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-label" style="color: var(--muted-foreground);">通知类型</label>
+                    <input type="text" placeholder="例如：库存预警" class="w-full rounded-lg px-4 text-body-sm outline-none" style="height: 44px; background: var(--muted); border: 1px solid var(--border); color: var(--card-foreground); font-family: var(--font-sans);">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-label" style="color: var(--muted-foreground);">触发条件</label>
+                    <input type="text" placeholder="例如：库存低于安全值" class="w-full rounded-lg px-4 text-body-sm outline-none" style="height: 44px; background: var(--muted); border: 1px solid var(--border); color: var(--card-foreground); font-family: var(--font-sans);">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-label" style="color: var(--muted-foreground);">通知方式</label>
+                    <div class="flex flex-wrap gap-3 mt-1">
+                        <label class="flex items-center gap-2 cursor-pointer text-body-sm" style="color: var(--card-foreground);"><input type="checkbox" checked class="w-4 h-4 rounded" style="accent-color: var(--primary);">邮件</label>
+                        <label class="flex items-center gap-2 cursor-pointer text-body-sm" style="color: var(--card-foreground);"><input type="checkbox" class="w-4 h-4 rounded" style="accent-color: var(--primary);">站内</label>
+                        <label class="flex items-center gap-2 cursor-pointer text-body-sm" style="color: var(--card-foreground);"><input type="checkbox" class="w-4 h-4 rounded" style="accent-color: var(--primary);">推送</label>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button class="modal-cancel-btn px-4 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="background: var(--muted); color: var(--secondary-foreground); border: 1px solid var(--border);">取消</button>
+                <button class="modal-confirm-btn px-4 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-90" style="background: var(--primary); color: var(--primary-foreground);">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Generate API Key Confirmation -->
+    <div id="apiKeyModal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background: rgba(0,0,0,0.4);">
+        <div class="rounded-xl p-6 w-full max-w-sm mx-4" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-2xl);">
+            <h3 class="text-headline mb-3" style="color: var(--card-foreground);">生成新密钥</h3>
+            <p class="text-body-sm mb-6" style="color: var(--muted-foreground);">确定要生成新的 API 密钥吗？生成后请妥善保存，密钥仅显示一次。</p>
+            <div class="flex justify-end gap-3">
+                <button class="modal-cancel-btn px-4 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="background: var(--muted); color: var(--secondary-foreground); border: 1px solid var(--border);">取消</button>
+                <button class="modal-confirm-btn px-4 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-90" style="background: var(--primary); color: var(--primary-foreground);">确认生成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2" style="pointer-events: none;"></div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // ========== Toast Notification System ==========
+        function showToast(message, type) {
+            type = type || 'success';
+            var container = document.getElementById('toastContainer');
+            var toast = document.createElement('div');
+            var bgColor = type === 'success' ? 'var(--state-success)' : type === 'error' ? 'var(--state-error)' : 'var(--primary)';
+            
+            toast.style.cssText = 'pointer-events:auto;display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:12px;font-size:14px;color:#fff;background:' + bgColor + ';box-shadow:var(--shadow-lg);transform:translateX(120%);transition:transform 0.3s ease;font-family:var(--font-sans);';
+            toast.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;flex-shrink:0;"></svg><span>' + message + '</span>';
+            container.appendChild(toast);
+            
+            requestAnimationFrame(function() {
+                toast.style.transform = 'translateX(0)';
+            });
+            setTimeout(function() {
+                toast.style.transform = 'translateX(120%)';
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 3000);
+        }
+
+        // ========== Tab Switching ==========
+        var tabs = document.querySelectorAll('.settings-tab');
+        var panels = document.querySelectorAll('.settings-panel');
+
+        tabs.forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                var target = this.getAttribute('data-tab');
+                tabs.forEach(function(t) {
+                    t.style.background = 'transparent';
+                    t.style.color = 'var(--color-text-muted)';
+                    t.style.borderLeftColor = 'transparent';
+                    t.style.fontWeight = 'normal';
+                });
+                this.style.background = 'var(--color-primary-50)';
+                this.style.color = 'var(--color-primary-600)';
+                this.style.borderLeftColor = 'var(--color-primary-500)';
+                this.style.fontWeight = '600';
+                panels.forEach(function(p) {
+                    if (p.getAttribute('data-panel') === target) {
+                        p.classList.remove('hidden');
+                    } else {
+                        p.classList.add('hidden');
+                    }
+                });
+            });
+        });
+
+        // ========== Toggle Switches ==========
+        document.addEventListener('change', function(e) {
+            if (e.target.type === 'checkbox' && e.target.closest('.toggle-switch')) {
+                var label = e.target.closest('.toggle-switch');
+                var track = label.querySelector('.toggle-track');
+                var thumb = label.querySelector('.toggle-thumb');
+                if (e.target.checked) {
+                    track.style.background = 'var(--state-success)';
+                    var labelW = label.offsetWidth;
+                    var thumbW = thumb.offsetWidth;
+                    thumb.style.left = (labelW - thumbW - 2) + 'px';
+                } else {
+                    track.style.background = 'var(--color-border-strong)';
+                    thumb.style.left = '2px';
+                }
+            }
+        });
+
+        // ========== Theme Switch ==========
+        var themeBtns = document.querySelectorAll('.theme-btn');
+        themeBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var theme = this.getAttribute('data-theme');
+                themeBtns.forEach(function(b) {
+                    b.style.background = 'transparent';
+                    b.style.color = 'var(--color-text-muted)';
+                    b.style.boxShadow = 'none';
+                    b.classList.remove('active-theme');
+                });
+                this.style.background = 'var(--color-bg-50)';
+                this.style.color = 'var(--color-text-primary)';
+                this.style.boxShadow = 'var(--shadow-xs)';
+                this.classList.add('active-theme');
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.add('light');
+                }
+            });
+        });
+
+        // ========== Avatar Upload ==========
+        var avatarBtn = document.getElementById('avatarBtn');
+        var avatarInput = document.getElementById('avatarInput');
+        avatarBtn.addEventListener('click', function() {
+            avatarInput.style.display = 'block';
+            avatarInput.click();
+        });
+        avatarInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                showToast('头像已更新: ' + this.files[0].name, 'success');
+                this.style.display = 'none';
+            }
+        });
+
+        // ========== Save Profile - Form Validation ==========
+        var saveProfileBtn = document.getElementById('saveProfileBtn');
+        var emailInput = document.getElementById('emailInput');
+        var phoneInput = document.getElementById('phoneInput');
+        var emailError = document.getElementById('emailError');
+        var phoneError = document.getElementById('phoneError');
+
+        saveProfileBtn.addEventListener('click', function() {
+            var valid = true;
+            var emailVal = emailInput.value.trim();
+            var phoneVal = phoneInput.value.trim();
+            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            var phoneRegex = /^1[3-9]\d{1}-?\d{4}-?\d{4}$|^1[3-9]\d{9}$/;
+
+            emailError.classList.add('hidden');
+            phoneError.classList.add('hidden');
+            emailInput.style.borderColor = 'var(--color-border-default)';
+            phoneInput.style.borderColor = 'var(--color-border-default)';
+
+            if (!emailRegex.test(emailVal)) {
+                emailError.textContent = '请输入有效的邮箱地址';
+                emailError.classList.remove('hidden');
+                emailInput.style.borderColor = 'var(--state-error)';
+                valid = false;
+            }
+            if (!phoneRegex.test(phoneVal.replace(/-/g, '')) && !phoneRegex.test(phoneVal)) {
+                phoneError.textContent = '请输入有效的手机号码';
+                phoneError.classList.remove('hidden');
+                phoneInput.style.borderColor = 'var(--state-error)';
+                valid = false;
+            }
+            if (valid) {
+                showToast('设置已保存', 'success');
+            }
+        });
+
+        // ========== Save System Config ==========
+        var saveSystemBtn = document.getElementById('saveSystemBtn');
+        if (saveSystemBtn) {
+            saveSystemBtn.addEventListener('click', function() {
+                showToast('系统配置已保存', 'success');
+            });
+        }
+
+        // ========== Notification Rule Modal ==========
+        var addNotifRuleBtn = document.getElementById('addNotifRuleBtn');
+        var notifRuleModal = document.getElementById('notifRuleModal');
+        if (addNotifRuleBtn && notifRuleModal) {
+            addNotifRuleBtn.addEventListener('click', function() {
+                notifRuleModal.style.display = 'flex';
+            });
+            notifRuleModal.querySelector('.modal-cancel-btn').addEventListener('click', function() {
+                notifRuleModal.style.display = 'none';
+            });
+            notifRuleModal.querySelector('.modal-confirm-btn').addEventListener('click', function() {
+                notifRuleModal.style.display = 'none';
+                showToast('通知规则已添加', 'success');
+            });
+            notifRuleModal.addEventListener('click', function(e) {
+                if (e.target === notifRuleModal) notifRuleModal.style.display = 'none';
+            });
+        }
+
+        // ========== API Key Modal ==========
+        var genApiKeyBtn = document.getElementById('genApiKeyBtn');
+        var apiKeyModal = document.getElementById('apiKeyModal');
+        if (genApiKeyBtn && apiKeyModal) {
+            genApiKeyBtn.addEventListener('click', function() {
+                apiKeyModal.style.display = 'flex';
+            });
+            apiKeyModal.querySelector('.modal-cancel-btn').addEventListener('click', function() {
+                apiKeyModal.style.display = 'none';
+            });
+            apiKeyModal.querySelector('.modal-confirm-btn').addEventListener('click', function() {
+                apiKeyModal.style.display = 'none';
+                showToast('新密钥已生成', 'success');
+            });
+            apiKeyModal.addEventListener('click', function(e) {
+                if (e.target === apiKeyModal) apiKeyModal.style.display = 'none';
+            });
+        }
+
+        // ========== Copy API Key ==========
+        document.querySelectorAll('.copy-key-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                showToast('密钥已复制到剪贴板', 'success');
+            });
+        });
+
+        // ========== Test Webhook ==========
+        var testWebhookBtn = document.getElementById('testWebhookBtn');
+        if (testWebhookBtn) {
+            testWebhookBtn.addEventListener('click', function() {
+                var orig = this.innerHTML;
+                this.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg> 测试中...';
+                this.disabled = true;
+                this.style.opacity = '0.6';
+var self = this;
+                setTimeout(function() {
+                    self.innerHTML = orig;
+                    self.disabled = false;
+                    self.style.opacity = '1';
+showToast('连接测试成功', 'success');
+                }, 1500);
+            });
+        }
+
+        // ========== Backup Now ==========
+        var backupNowBtn = document.getElementById('backupNowBtn');
+        if (backupNowBtn) {
+            backupNowBtn.addEventListener('click', function() {
+                var orig = this.innerHTML;
+                this.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg> 备份中...';
+                this.disabled = true;
+                this.style.opacity = '0.6';
+var self = this;
+                setTimeout(function() {
+                    self.innerHTML = orig;
+                    self.disabled = false;
+                    self.style.opacity = '1';
+showToast('备份完成', 'success');
+                }, 2000);
+            });
+        }
+
+    })();
+    </script>
+    <script>
+    (function(){
+        var h=document.documentElement,b=document.body;
+        h.classList.remove('dark');
+        h.style.backgroundColor='#faf8f5';
+        h.style.color='#1d1b18';
+        b.style.backgroundColor='#faf8f5';
+        b.style.color='#1d1b18';
+        var mo=new MutationObserver(function(){
+            if(h.classList.contains('dark'))h.classList.remove('dark');
+            if(h.style.backgroundColor!=='#faf8f5')h.style.backgroundColor='#faf8f5';
+            if(h.style.color!=='#1d1b18')h.style.color='#1d1b18';
+            if(b.style.backgroundColor!=='#faf8f5')b.style.backgroundColor='#faf8f5';
+            if(b.style.color!=='#1d1b18')b.style.color='#1d1b18';
+        });
+        mo.observe(h,{attributes:true,attributeFilter:['class','style']});
+        mo.observe(b,{attributes:true,attributeFilter:['style']});
+    })();
+    </script>
+    <script src="api-config.js"></script>
+    <script>
+    (function(){
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function(){
+            // Try fetching current user info
+            apiGet('/api/v1/auth/me').then(function(user){
+                if(!user) return;
+                // Update profile section
+                var nameEl = document.getElementById('profileName');
+                if(nameEl && user.username) nameEl.textContent = user.username;
+                var roleEl = document.getElementById('profileRole');
+                if(roleEl && user.role) roleEl.textContent = user.role;
+                var avatarEl = document.getElementById('profileAvatar');
+                if(avatarEl && user.username) avatarEl.textContent = user.username.charAt(0);
+                var sidebarName = document.getElementById('sidebarUserName');
+                if(sidebarName && user.username) sidebarName.textContent = user.username;
+                var sidebarEmail = document.getElementById('sidebarUserEmail');
+                if(sidebarEmail && user.email) sidebarEmail.textContent = user.email;
+                var emailInput = document.getElementById('emailInput');
+                if(emailInput && user.email) emailInput.value = user.email;
+            }).catch(function(){
+                // Auth endpoint failed (likely 401), keep existing data
+            });
+        });
+    })();
+    </script>
+</body>
+</html>
