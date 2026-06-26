@@ -443,8 +443,8 @@ interface BoardData {
 
 interface TaskDetail {
   task: TaskItem
-  lock_history: any[]
-  failure_history: any[]
+  lock_history: Array<Record<string, unknown>>
+  failure_history: Array<Record<string, unknown>>
 }
 
 interface LockEntry {
@@ -501,8 +501,9 @@ async function loadBoard() {
       failed: [],
       cancelled: [],
     }
-  } catch (e: any) {
-    ElMessage.error('加载看板失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('加载看板失败: ' + errorMsg)
   } finally {
     loading.value = false
   }
@@ -518,8 +519,9 @@ async function viewTaskDetail(task: TaskItem) {
   try {
     const res = await http.get(`/api/v1/task-checkout/tasks/${task.id}/history`)
     taskDetail.value = res.data?.data
-  } catch (e: any) {
-    ElMessage.error('加载任务详情失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('加载任务详情失败: ' + errorMsg)
   } finally {
     detailLoading.value = false
   }
@@ -530,8 +532,9 @@ async function loadLocks() {
   try {
     const res = await http.get('/api/v1/task-checkout/locks')
     locks.value = res.data?.data || []
-  } catch (e: any) {
-    ElMessage.error('加载锁列表失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('加载锁列表失败: ' + errorMsg)
   } finally {
     locksLoading.value = false
   }
@@ -548,9 +551,10 @@ async function forceReleaseLock(taskId: string) {
     ElMessage.success(`任务 ${taskId} 的锁已释放`)
     await loadLocks()
     await loadBoard()
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e !== 'cancel' && e !== 'close') {
-      ElMessage.error('释放锁失败: ' + (e.response?.data?.message || e.message || '未知错误'))
+      const errorMsg = e instanceof Error ? e.message : String(e)
+      ElMessage.error('释放锁失败: ' + errorMsg)
     }
   }
 }
@@ -569,8 +573,9 @@ async function cleanupExpired() {
     const data = res.data?.data
     ElMessage.success(`清理完成，释放了 ${data?.count || 0} 个过期的锁`)
     await loadBoard()
-  } catch (e: any) {
-    ElMessage.error('清理过期锁失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error('清理过期锁失败: ' + errorMsg)
   } finally {
     cleaningUp.value = false
   }

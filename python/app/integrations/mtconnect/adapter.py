@@ -143,6 +143,20 @@ class MTConnectAdapter:
         self._ingested_count = 0
         self._error_count = 0
 
+    def close(self) -> None:
+        """Close the HTTP session and release connection pool resources."""
+        if self._session is not None:
+            self._session.close()
+            logger.debug("MTConnect adapter session closed")
+
+    def __enter__(self) -> "MTConnectAdapter":
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Context manager exit."""
+        self.close()
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -269,7 +283,7 @@ class MTConnectAdapter:
             if on_sample is not None:
                 try:
                     on_sample(sample)
-                except Exception:  # pragma: no cover - defensive
+                except (RuntimeError, ValueError, TypeError, OSError):  # pragma: no cover - defensive
                     logger.exception("on_sample callback raised")
 
             # 2) Buffer it for batched storage.
@@ -451,19 +465,33 @@ class MTConnectAdapter:
 
         import asyncio  # local import – keeps top-level cost low
 
+        # Check if we're in an async context (FastAPI) or sync context (CLI)
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # We're inside an event loop – schedule and wait.
-                return loop.run_until_complete(
-                    self._insert_async(client, insert, rows)
-                )
-            return loop.run_until_complete(
-                self._insert_async(client, insert, rows)
-            )
+            loop = asyncio.get_running_loop()
         except RuntimeError:
-            # No event loop in this thread (typical CLI scenario).
-            return asyncio.run(self._insert_async(client, insert, rows))
+            loop = None
+
+        if loop is not None and loop.is_running():
+            # We're inside a running event loop (e.g., FastAPI async context).
+            # Cannot use run_until_complete() or asyncio.run() here.
+            # Use run_coroutine_threadsafe() to schedule on the loop from this thread.
+            try:
+                future = asyncio.run_coroutine_threadsafe(
+                    self._insert_async(client, insert, rows),
+                    loop
+                )
+                return future.result(timeout=10.0)
+            except (RuntimeError, TimeoutError, Exception) as exc:
+                logger.error("Failed to persist rows in async context: %s", exc, exc_info=True)
+                return 0
+        else:
+            # No running loop - typical CLI scenario or sync context.
+            # Use asyncio.run() to create a new event loop.
+            try:
+                return asyncio.run(self._insert_async(client, insert, rows))
+            except Exception as exc:
+                logger.error("Failed to persist rows in sync context: %s", exc, exc_info=True)
+                return 0
 
     async def _insert_async(self, client: Any, insert: Callable, rows: List[Any]) -> int:
         result = await insert(

@@ -180,14 +180,18 @@ import { formatTimestamp } from '@/utils/formatters'
 
 interface AlternativePlan {
   plan_id: string
-  parameters: Record<string, any>
+  parameters: Record<string, unknown>
   expected_outcome: string
   confidence: number
   reasoning: string
 }
 
+interface AIRecommendation {
+  [key: string]: unknown
+}
+
 interface Props {
-  aiRecommendation?: Record<string, any>
+  aiRecommendation?: AIRecommendation
   confidence?: number | null
   reasoning?: string
   alternatives?: AlternativePlan[]
@@ -210,18 +214,18 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  accept: [recommendation: Record<string, any>]
-  modify: [modifiedParams: Record<string, any>]
-  reject: [recommendation: Record<string, any>]
+  accept: [recommendation: AIRecommendation]
+  modify: [modifiedParams: AIRecommendation]
+  reject: [recommendation: AIRecommendation]
 }>()
 
 const { t } = useI18n()
 
 const selectedAlternative = ref<string | undefined>(undefined)
 const modifyDrawerVisible = ref(false)
-const modifiedParams = ref<Record<string, any>>({})
+const modifiedParams = ref<AIRecommendation>({})
 
-function formatRecommendation(rec: Record<string, any>): string {
+function formatRecommendation(rec: AIRecommendation): string {
   return JSON.stringify(rec, null, 2)
 }
 

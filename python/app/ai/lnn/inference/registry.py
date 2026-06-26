@@ -7,7 +7,9 @@ Provides a centralized registry for all LNN models with predefined model support
 
 import os
 import json
+import logging
 import time
+import threading
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type
 from dataclasses import dataclass
@@ -17,6 +19,8 @@ from app.ai.lnn.models.base_lnn import BaseLNNModel
 from app.ai.lnn.models.cfc_model import CFCModel
 from app.ai.lnn.models.ltc_model import LTCModel
 from app.ai.lnn.models.hybrid_lnn import HybridLNNModel
+
+logger = logging.getLogger(__name__)
 
 
 class BaseModelRegistry(ABC):
@@ -196,6 +200,7 @@ class LNNModelRegistry(BaseModelRegistry):
         self.registry: Dict[str, ModelEntry] = {}
         self.cache_hits = 0
         self.cache_misses = 0
+        self._lock = threading.Lock()  # 保护 registry 字典的线程安全
         self._register_predefined_models()
 
     def _register_predefined_models(self) -> None:
@@ -214,28 +219,31 @@ class LNNModelRegistry(BaseModelRegistry):
         model_name: str,
         fuzzy_match: bool = False,
     ) -> Optional[ModelInfo]:
-        if not fuzzy_match:
-            entry = self.registry.get(model_name)
-            return entry.info if entry else None
+        with self._lock:
+            if not fuzzy_match:
+                entry = self.registry.get(model_name)
+                return entry.info if entry else None
 
-        matches = [
-            name for name in self.registry.keys() if model_name.lower() in name.lower()
-        ]
-        if matches:
-            return self.registry[matches[0]].info
-        return None
+            matches = [
+                name for name in self.registry.keys() if model_name.lower() in name.lower()
+            ]
+            if matches:
+                return self.registry[matches[0]].info
+            return None
 
     def list_models(self, return_objects: bool = False) -> List[Any]:
-        if return_objects:
-            return [entry.info for entry in self.registry.values()]
-        return list(self.registry.keys())
+        with self._lock:
+            if return_objects:
+                return [entry.info for entry in self.registry.values()]
+            return list(self.registry.keys())
 
     def register_model(self, model_info: ModelInfo) -> bool:
-        if model_info.name in self.registry:
-            return False
-        entry = ModelEntry(info=model_info)
-        self.registry[model_info.name] = entry
-        return True
+        with self._lock:
+            if model_info.name in self.registry:
+                return False
+            entry = ModelEntry(info=model_info)
+            self.registry[model_info.name] = entry
+            return True
 
     def register_quantized_model(
         self,
@@ -244,97 +252,100 @@ class LNNModelRegistry(BaseModelRegistry):
         quantization_type: str = "dynamic",
         metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
-        quantized_name = (
-            f"{base_model_name}_int8"
-            if not base_model_name.endswith("_int8")
-            else base_model_name
-        )
+        with self._lock:
+            quantized_name = (
+                f"{base_model_name}_int8"
+                if not base_model_name.endswith("_int8")
+                else base_model_name
+            )
 
-        if quantized_name in self.registry:
-            return False
+            if quantized_name in self.registry:
+                return False
 
-        base_entry = self.registry.get(base_model_name)
-        if base_entry:
-            model_type = base_entry.info.model_type
-            input_features = base_entry.info.input_features
-            output_features = base_entry.info.output_features
-        else:
-            model_type = "CFC"
-            input_features = []
-            output_features = []
+            base_entry = self.registry.get(base_model_name)
+            if base_entry:
+                model_type = base_entry.info.model_type
+                input_features = base_entry.info.input_features
+                output_features = base_entry.info.output_features
+            else:
+                model_type = "CFC"
+                input_features = []
+                output_features = []
 
-        quantized_info = ModelInfo(
-            name=quantized_name,
-            model_type=model_type,
-            model_path=quantized_model_path,
-            input_features=input_features,
-            output_features=output_features,
-            version="1.0.0-int8",
-        )
+            quantized_info = ModelInfo(
+                name=quantized_name,
+                model_type=model_type,
+                model_path=quantized_model_path,
+                input_features=input_features,
+                output_features=output_features,
+                version="1.0.0-int8",
+            )
 
-        quant_meta = metadata or {}
-        quant_meta.update(
-            {
-                "is_quantized": True,
-                "quantization_type": quantization_type,
-                "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "base_model": base_model_name,
-            }
-        )
+            quant_meta = metadata or {}
+            quant_meta.update(
+                {
+                    "is_quantized": True,
+                    "quantization_type": quantization_type,
+                    "quantization_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "base_model": base_model_name,
+                }
+            )
 
-        entry = ModelEntry(info=quantized_info, metadata=quant_meta)
-        self.registry[quantized_name] = entry
-        return True
+            entry = ModelEntry(info=quantized_info, metadata=quant_meta)
+            self.registry[quantized_name] = entry
+            return True
 
     def get(self, model_name: str) -> ModelEntry:
         """Get a model entry by name."""
-        entry = self.registry.get(model_name)
-        if entry is None:
-            raise KeyError(f"Model '{model_name}' not found in registry")
-        return entry
+        with self._lock:
+            entry = self.registry.get(model_name)
+            if entry is None:
+                raise KeyError(f"Model '{model_name}' not found in registry")
+            return entry
 
     def validate_model(
         self, model_name: str, model_path: Optional[str] = None
     ) -> Dict[str, Any]:
-        entry = self.registry.get(model_name)
-        if not entry:
+        with self._lock:
+            entry = self.registry.get(model_name)
+            if not entry:
+                return {
+                    "valid": False,
+                    "reason": f"Model '{model_name}' not found in registry",
+                    "details": {},
+                }
+
+            path = model_path or entry.info.model_path
+            file_exists = os.path.exists(path)
+            structure_valid = True
+            load_test_passed = False
+
+            if file_exists:
+                try:
+                    model_class = self.MODEL_CLASS_MAP.get(entry.info.model_type)
+                    if model_class:
+                        model = model_class(
+                            model_name=entry.info.name,
+                            input_dim=len(entry.info.input_features),
+                            output_dim=len(entry.info.output_features),
+                        )
+                        model.load(path)
+                        model.build()
+                        load_test_passed = True
+                except (ImportError, AttributeError, RuntimeError, ValueError, TypeError, OSError):
+                    # 模型加载测试可能因模块导入、属性访问、文件 IO 等环节失败，
+                    # 此处无需详细错误信息（仅作有效性标记）
+                    structure_valid = False
+                    load_test_passed = False
+
             return {
-                "valid": False,
-                "reason": f"Model '{model_name}' not found in registry",
-                "details": {},
+                "valid": file_exists and structure_valid and load_test_passed,
+                "file_exists": file_exists,
+                "structure_valid": structure_valid,
+                "load_test_passed": load_test_passed,
+                "model_name": model_name,
+                "model_path": path,
             }
-
-        path = model_path or entry.info.model_path
-        file_exists = os.path.exists(path)
-        structure_valid = True
-        load_test_passed = False
-
-        if file_exists:
-            try:
-                model_class = self.MODEL_CLASS_MAP.get(entry.info.model_type)
-                if model_class:
-                    model = model_class(
-                        model_name=entry.info.name,
-                        input_dim=len(entry.info.input_features),
-                        output_dim=len(entry.info.output_features),
-                    )
-                    model.load(path)
-                    model.build()
-                    load_test_passed = True
-            except (ImportError, AttributeError, RuntimeError, ValueError, TypeError, OSError):
-                # 模型加载测试可能因模块导入、属性访问、文件 IO 等环节失败，
-                # 此处无需详细错误信息（仅作有效性标记）
-                structure_valid = False
-                load_test_passed = False
-
-        return {
-            "valid": file_exists and structure_valid and load_test_passed,
-            "file_exists": file_exists,
-            "structure_valid": structure_valid,
-            "load_test_passed": load_test_passed,
-            "model_name": model_name,
-            "model_path": path,
-        }
 
 
 class ModelRegistry(BaseModelRegistry):
@@ -547,7 +558,7 @@ class ModelRegistry(BaseModelRegistry):
             for name, entry in self.registry.items()
         }
 
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(export_data, f, indent=2)
 
     def import_registry(self, path: str) -> None:

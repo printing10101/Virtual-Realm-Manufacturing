@@ -181,17 +181,17 @@ class SimulationIntegration:
                 result.recommendation = "not_recommended"
                 logger.warning(f"仿真超时: material={material}, tool={tool}")
                 
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, OSError, KeyError) as e:
                 result.status = "failed"
                 result.error_message = f"仿真执行失败: {type(e).__name__}"
                 result.recommendation = "not_recommended"
-                logger.error(f"仿真执行失败: {e}")
+                logger.error("仿真执行失败: %s", e, exc_info=True)
         
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, OSError, KeyError) as e:
             result.status = "failed"
             result.error_message = f"仿真服务调用失败: {type(e).__name__}"
             result.recommendation = "not_recommended"
-            logger.error(f"仿真服务调用失败: {e}")
+            logger.error("仿真服务调用失败: %s", e, exc_info=True)
         
         result.duration_ms = (time.time() - start_time) * 1000
         return result

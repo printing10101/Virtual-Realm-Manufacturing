@@ -2,7 +2,7 @@
 
 These tests require a running TDengine instance reachable through the URL
 configured in the ``TDENGINE_URL`` environment variable (default
-``taos://root:taosdata@localhost:6030``).  They are designed to run
+``taos://root:@localhost:6030``).  They are designed to run
 independently of the rest of the project: no FastAPI app, no LNN models,
 no DXF / RAG dependencies are loaded.
 
@@ -94,7 +94,7 @@ pytestmark = pytest.mark.skipif(
 def tdengine_url() -> str:
     """测试用 TDengine URL（可通过环境变量覆盖）。"""
     return os.environ.get(
-        "TDENGINE_URL", "taos://root:taosdata@localhost:6030"
+        "TDENGINE_URL", "taos://root:@localhost:6030"
     )
 
 

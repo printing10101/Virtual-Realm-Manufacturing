@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -29,7 +30,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from app.ai.lnn.training.trainer import LNNTrainer
 from app.services.model_registry_service import get_model_registry_service
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ class ModelEvaluator:
                 baseline_metrics=baseline_metrics,
             )
             
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError, TypeError, OSError) as e:
             logger.error("Model evaluation failed: %s", e, exc_info=True)
             return EvaluationResult(
                 passed=False,
@@ -371,7 +371,7 @@ class ModelEvaluator:
                     "reason": "模型注册失败",
                 }
                 
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError, OSError) as e:
             logger.error("Model registration failed: %s", e, exc_info=True)
             return {
                 "success": False,
@@ -385,11 +385,22 @@ class ModelEvaluator:
 
 # 全局实例
 _evaluator_instance: Optional[ModelEvaluator] = None
+_evaluator_instance_lock = threading.Lock()
 
 
 def get_model_evaluator(config: Optional[EvaluationConfig] = None) -> ModelEvaluator:
     """获取全局评估器实例"""
+    # 安全修复：双重检查锁，防止并发创建多个实例
     global _evaluator_instance
     if _evaluator_instance is None:
-        _evaluator_instance = ModelEvaluator(config)
+        with _evaluator_instance_lock:
+            if _evaluator_instance is None:
+                _evaluator_instance = ModelEvaluator(config)
     return _evaluator_instance
+
+
+def reset_model_evaluator() -> None:
+    """重置全局评估器实例（主要用于测试）。"""
+    global _evaluator_instance
+    with _evaluator_instance_lock:
+        _evaluator_instance = None

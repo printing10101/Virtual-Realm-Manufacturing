@@ -55,7 +55,7 @@ export function useLocalStorage<T>(
     try {
       localStorage.setItem(key, JSON.stringify(value.value))
     } catch {
-      console.warn(`Failed to save to localStorage: ${key}`)
+      // 静默处理
     }
   }
 

@@ -174,7 +174,7 @@ class FeatureExtractor:
         extractor = FeatureExtractor()
         features = extractor.extract(parse_result)
         for hole in features.holes:
-            print(f"孔: {hole.hole_id}, 直径={hole.diameter}mm")
+            logger.info("孔: %s, 直径=%.2fmm", hole.hole_id, hole.diameter)
     """
 
     DEFAULT_DEPTH_RATIO = 3.0
@@ -217,9 +217,8 @@ class FeatureExtractor:
             self._extract_overall_dimensions(parse_result, result)
             self._extract_plane_features(parse_result, result)
             self._extract_hole_features(parse_result, result)
-        except Exception as e:
-            # 兜底捕获：特征提取涉及几何运算/属性访问，异常类型多源
-            # (AttributeError/ValueError/TypeError/cadquery 异常等)
+        except (AttributeError, TypeError, ValueError, IndexError, KeyError) as e:
+            # 防御性兜底：特征提取涉及几何运算/属性访问，异常类型多源
             # 任何阶段失败都通过 errors 字段暴露给上层，特征提取整体标记为失败
             result.errors.append(f"特征提取过程中发生异常: {e}")
             logger.error("特征提取异常: %s", e, exc_info=True)

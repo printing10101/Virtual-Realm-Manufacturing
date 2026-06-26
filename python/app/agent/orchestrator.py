@@ -21,8 +21,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from app.core.safe_errors import safe_error_message
 
@@ -137,7 +136,7 @@ class AgentOrchestrator:
         if missing:
             logger.warning(
                 "Some pipeline dependencies are not available: %s. "
-                "Pipeline steps using these modules will use stub implementations.",
+                "Pipeline steps using these modules will use fallback implementations or simplified logic.",
                 ", ".join(f"{desc} ({mod})" for mod, desc in missing)
             )
 
@@ -210,10 +209,12 @@ class AgentOrchestrator:
             )
             result.final_output = self._extract_final_output(context, result.steps)
 
-        except Exception as exc:
+        except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
             logger.exception("Pipeline execution failed: %s", exc)
             result.fallback_triggered = True
             result.fallback_reason = f"Pipeline error: {exc}"
+            # 记录异常但继续执行，不 re-raise，因为需要返回 PipelineResult
+            # 这是设计决策：允许上层代码通过 result.success 和 result.fallback_triggered 判断状态
 
         result.total_duration_ms = (time.perf_counter() - start_time) * 1000
         self._pipeline_history.append(result)
@@ -271,9 +272,11 @@ class AgentOrchestrator:
             output = await handler(step_input, context)
             step_result.output = output if isinstance(output, dict) else {"result": output}
             step_result.status = StepStatus.COMPLETED
-        except Exception as exc:
+        except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
             step_result.status = StepStatus.FAILED
-            step_result.error = safe_error_message(exc)
+            # safe_error_message returns a dict with 'message' field
+            error_info = safe_error_message(exc)
+            step_result.error = error_info.get("message", str(exc))
             logger.warning("Step '%s' failed: %s", step_name, exc)
 
         step_result.completed_at = time.perf_counter()
@@ -297,20 +300,33 @@ class AgentOrchestrator:
 
             svc = DxfProcessService()
             parse_result = svc.process_dxf(dxf_path)
+            
+            # parse_result 是 DxfProcessResult 对象，需要转换为 dict
+            if hasattr(parse_result, 'features'):
+                features = parse_result.features
+            elif isinstance(parse_result, dict):
+                features = parse_result.get("features", [])
+            else:
+                features = []
+            
+            if hasattr(parse_result, 'metadata'):
+                metadata = parse_result.metadata
+            elif isinstance(parse_result, dict):
+                metadata = parse_result.get("metadata", {})
+            else:
+                metadata = {}
+            
             return {
                 "status": "success",
-                "features": parse_result.get("features", []),
-                "metadata": parse_result.get("metadata", {}),
+                "features": features,
+                "metadata": metadata,
                 "dxf_path": dxf_path,
             }
-        except ImportError:
-            logger.warning("DXF module not available, using stub")
-            return {
-                "status": "stub",
-                "features": [],
-                "metadata": {"dxf_path": dxf_path},
-                "dxf_path": dxf_path,
-            }
+        except ImportError as e:
+            logger.error("DXF module not available: %s", e)
+            raise RuntimeError(
+                f"DXF解析模块不可用，请确保已安装依赖: {e}"
+            ) from e
 
     async def _step_process_understanding(
         self, input_data: Any, context: dict[str, Any]
@@ -329,15 +345,11 @@ class AgentOrchestrator:
                 "entities": result.entities if hasattr(result, "entities") else {},
                 "confidence": result.confidence if hasattr(result, "confidence") else 0.0,
             }
-        except ImportError:
-            logger.warning("Process understanding module not available, using stub")
-            return {
-                "status": "stub",
-                "task_type": "unknown",
-                "intent": "process_plan",
-                "entities": {},
-                "confidence": 0.5,
-            }
+        except ImportError as e:
+            logger.error("Process understanding module not available: %s", e)
+            raise RuntimeError(
+                f"过程理解模块不可用，请确保已安装依赖: {e}"
+            ) from e
 
     async def _step_parameter_recommend(
         self, input_data: Any, context: dict[str, Any]
@@ -349,20 +361,40 @@ class AgentOrchestrator:
             pipeline = ProcessPlanningPipeline()
             part_desc = input_data if isinstance(input_data, dict) else {"description": str(input_data)}
             plan_result = pipeline.run(part_desc)
+            
+            # plan_result 是 PipelineResult 对象，需要提取属性
+            if hasattr(plan_result, 'parameters'):
+                parameters = plan_result.parameters
+            elif isinstance(plan_result, dict):
+                parameters = plan_result.get("parameters", {})
+            else:
+                parameters = {}
+            
+            if hasattr(plan_result, 'operations'):
+                operations = plan_result.operations
+            elif isinstance(plan_result, dict):
+                operations = plan_result.get("operations", [])
+            else:
+                operations = []
+            
+            if hasattr(plan_result, 'confidence'):
+                confidence = plan_result.confidence
+            elif isinstance(plan_result, dict):
+                confidence = plan_result.get("confidence", 0.0)
+            else:
+                confidence = 0.0
+            
             return {
                 "status": "success",
-                "parameters": plan_result.get("parameters", {}),
-                "operations": plan_result.get("operations", []),
-                "confidence": plan_result.get("confidence", 0.0),
+                "parameters": parameters,
+                "operations": operations,
+                "confidence": confidence,
             }
-        except ImportError:
-            logger.warning("Parameter recommendation module not available, using stub")
-            return {
-                "status": "stub",
-                "parameters": {"cutting_speed": 100, "feed_rate": 0.1, "depth_of_cut": 1.0},
-                "operations": [],
-                "confidence": 0.3,
-            }
+        except ImportError as e:
+            logger.error("Parameter recommendation module not available: %s", e)
+            raise RuntimeError(
+                f"参数推荐模块不可用，请确保已安装依赖: {e}"
+            ) from e
 
     async def _step_gcode_generate(
         self, input_data: Any, context: dict[str, Any]
@@ -370,22 +402,103 @@ class AgentOrchestrator:
         """Generate G-code from process plan and parameters."""
         try:
             from app.process_planning.gcode_generator import GCodeGenerator
+            from app.process_planning.operation_sequencer import OperationPlan, Operation
+            from app.process_planning.feature_dependency import Setup
 
             generator = GCodeGenerator()
-            plan_data = input_data if isinstance(input_data, dict) else {}
-            gcode_result = generator.generate(plan_data)
+
+            # 将 dict 转换为 OperationPlan 对象
+            if isinstance(input_data, dict):
+                # 从 dict 构建 OperationPlan
+                operations_data = input_data.get("operations", [])
+                operations = []
+                for op_data in operations_data:
+                    if isinstance(op_data, Operation):
+                        operations.append(op_data)
+                    elif isinstance(op_data, dict):
+                        operations.append(Operation(
+                            seq=op_data.get("seq", 0),
+                            name=op_data.get("name", ""),
+                            feature_name=op_data.get("feature_name", ""),
+                            machining_method=op_data.get("machining_method", ""),
+                            surface=op_data.get("surface", ""),
+                            tolerance_grade=op_data.get("tolerance_grade", ""),
+                            tool_type=op_data.get("tool_type", ""),
+                            cutting_params=op_data.get("cutting_params", {}),
+                            estimated_time_min=op_data.get("estimated_time_min", 0.0),
+                            notes=op_data.get("notes", ""),
+                        ))
+
+                setups_data = input_data.get("setups", [])
+                setups = []
+                for setup_data in setups_data:
+                    if isinstance(setup_data, Setup):
+                        setups.append(setup_data)
+                    elif isinstance(setup_data, dict):
+                        setups.append(Setup(
+                            name=setup_data.get("name", ""),
+                            surface=setup_data.get("surface", "A"),
+                            datum_features=setup_data.get("datum_features", []),
+                            fixture_type=setup_data.get("fixture_type", ""),
+                            clamped_features=setup_data.get("clamped_features", []),
+                        ))
+
+                operation_plan = OperationPlan(
+                    operations=operations,
+                    setups=setups,
+                    estimated_time_min=input_data.get("estimated_time_min", 0.0),
+                    face_change_count=input_data.get("face_change_count", 0),
+                )
+            elif isinstance(input_data, OperationPlan):
+                operation_plan = input_data
+            else:
+                raise TypeError(
+                    f"input_data 必须是 dict 或 OperationPlan，实际类型: {type(input_data).__name__}"
+                )
+
+            # 从 context 中提取额外参数
+            controller_type = input_data.get("controller_type", "fanuc_0i") if isinstance(input_data, dict) else "fanuc_0i"
+            material_name = input_data.get("material_name", "45#钢") if isinstance(input_data, dict) else "45#钢"
+            program_number = input_data.get("program_number", 1000) if isinstance(input_data, dict) else 1000
+            safe_z = input_data.get("safe_z", 50.0) if isinstance(input_data, dict) else 50.0
+
+            gcode_result = generator.generate(
+                operation_plan=operation_plan,
+                controller_type=controller_type,
+                material_name=material_name,
+                program_number=program_number,
+                safe_z=safe_z,
+            )
             return {
                 "status": "success",
-                "gcode": gcode_result.get("gcode", "") if isinstance(gcode_result, dict) else str(gcode_result),
-                "metadata": gcode_result.get("metadata", {}) if isinstance(gcode_result, dict) else {},
+                "gcode": gcode_result.program_text,
+                "metadata": gcode_result.metadata,
+                "warnings": gcode_result.warnings,
+                "errors": gcode_result.errors,
             }
-        except ImportError:
-            logger.warning("G-code generator not available, using stub")
-            return {
-                "status": "stub",
-                "gcode": "; G-code stub output\n; No generator available",
-                "metadata": {"stub": True},
-            }
+        except ImportError as e:
+            logger.error("G-code generator not available: %s", e)
+            raise RuntimeError(
+                f"G-code生成器不可用，请确保已安装依赖: {e}"
+            ) from e
+
+    def _extract_final_output(self, context: dict[str, Any], steps: list[StepResult]) -> dict[str, Any]:
+        """Extract the final output from pipeline context.
+        
+        Args:
+            context: Pipeline execution context
+            steps: List of step results
+            
+        Returns:
+            Final output dictionary
+        """
+        # Return the last successful step's output as final output
+        for step in reversed(steps):
+            if step.status in (StepStatus.COMPLETED, StepStatus.SKIPPED):
+                return step.output
+        
+        # Fallback to context if no successful steps
+        return context.get("input", {})
 
     # -----------------------------------------------------------------------
     # Trace and history
@@ -455,11 +568,14 @@ class AgentOrchestrator:
 
 # Singleton instance
 _orchestrator: Optional[AgentOrchestrator] = None
+_orchestrator_lock = threading.Lock()
 
 
 def get_orchestrator() -> AgentOrchestrator:
     """Get the global orchestrator instance."""
     global _orchestrator
     if _orchestrator is None:
-        _orchestrator = AgentOrchestrator()
+        with _orchestrator_lock:
+            if _orchestrator is None:
+                _orchestrator = AgentOrchestrator()
     return _orchestrator

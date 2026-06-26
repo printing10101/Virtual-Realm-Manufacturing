@@ -101,6 +101,7 @@ class PipelineMonitor:
             process = psutil.Process()
             return process.memory_info().rss / (1024 * 1024)
         except ImportError:
+            logger.debug("psutil 未安装，无法获取内存使用信息")
             return 0.0
 
     def _check_alerts(self, metrics: PerformanceMetrics, data_type: str):
@@ -140,7 +141,7 @@ class PipelineMonitor:
         for callback in self._alert_callbacks:
             try:
                 callback(alert_type, details)
-            except Exception as e:
+            except (ValueError, TypeError, KeyError, OSError, RuntimeError) as e:
                 logger.error("报警回调执行失败: %s", e)
 
     def get_stats(self) -> Dict[str, Any]:

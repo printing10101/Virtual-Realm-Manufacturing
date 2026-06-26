@@ -55,7 +55,7 @@ class SkillFileWatcher:
         while not self._stop_event.is_set():
             try:
                 self._scan_changes()
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.warning(
                     "SkillFileWatcher scan error: %s", e, exc_info=True,
                 )
@@ -108,7 +108,7 @@ class SkillFileWatcher:
                 skill = self.loader._load_skill_from_file(file_path, level)
                 if skill:
                     self.loader.registry.register(skill)
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, ImportError) as e:
             logger.error(
                 "Failed to handle file event %s for %s: %s", event, file_path, e
             )

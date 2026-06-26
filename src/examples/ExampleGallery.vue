@@ -425,8 +425,21 @@ function formatDate(dateString: string) {
 }
 
 function renderMarkdown(content: string) {
-  // 简单的 Markdown 渲染（实际项目中可以使用 markdown-it 等库）
-  return content
+  // 安全修复：先对原始内容进行 HTML 实体转义，防止 XSS 攻击
+  // （原始实现直接将用户内容拼接到 HTML，存在 XSS 风险）
+  const escapeHtml = (text: string): string =>
+    text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+
+  // 1. 先转义全部 HTML 实体，确保任何 <script>、onerror 等均被中和
+  const escaped = escapeHtml(content)
+
+  // 2. 再在已转义的文本上做 Markdown 语法替换（替换后的标签均为受控白名单）
+  return escaped
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/^## (.*$)/gim, '<h2>$1</h2>')
     .replace(/^# (.*$)/gim, '<h1>$1</h1>')

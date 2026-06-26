@@ -32,8 +32,8 @@ def generate_secure_jwt_secret(length: int = 64) -> str:
 
     用法:
         from app.auth.security import generate_secure_jwt_secret
-        print(generate_secure_jwt_secret())  # 输出类似: 'a3F8kLm2...'
-        # 将输出的密钥设置为环境变量 LNN_JWT_SECRET
+        secret = generate_secure_jwt_secret()  # 输出类似: 'a3F8kLm2...'
+        # 将生成的密钥设置为环境变量 LNN_JWT_SECRET
 
     Args:
         length: 密钥长度，默认 64，最小 32。
@@ -135,7 +135,11 @@ def _reset_secret_for_testing(secret: Optional[str] = None) -> str:
     """
     global SECRET_KEY
     if secret is None:
-        os.environ.setdefault("LNN_JWT_SECRET", "a" * 64)
+        # 安全修复：避免使用可预测的弱密钥 "a"*64。
+        # 测试场景下生成随机密钥，防止密钥泄露后被伪造 JWT。
+        import secrets as _secrets
+
+        os.environ.setdefault("LNN_JWT_SECRET", _secrets.token_urlsafe(48))
         secret = _validate_and_get_secret()
     SECRET_KEY = secret
     return SECRET_KEY
@@ -166,7 +170,8 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
 def decode_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
+    except JWTError as e:
+        logger.debug(f"JWT token 解码失败: {e}")
         return None
     # 修复：对载荷做严格类型校验，避免 None/非字符串 sub 通过验证
     # 导致下游用户标识处理出现 AttributeError 或 SQL 注入风险。
@@ -210,8 +215,8 @@ class TokenBanList:
                 data = json.loads(self._file_path.read_text())
                 self._banned = set(data.get("tokens", []))
                 self._cleanup_expired(data.get("expiry", {}))
-            except Exception as e:
-                logger.warning("加载 token 黑名单文件失败，使用空黑名单: %s", e)
+            except (json.JSONDecodeError, KeyError, ValueError, OSError) as e:
+                logger.warning("加载 token 黑名单文件失败，使用空黑名单: %s", e, exc_info=True)
                 self._banned = set()
 
     def _save(self):

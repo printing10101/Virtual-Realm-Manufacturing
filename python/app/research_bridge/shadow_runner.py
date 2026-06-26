@@ -80,7 +80,7 @@ class ShadowRunner:
             try:
                 research_output = research_fn()
                 match = baseline_output == research_output
-            except Exception as e:  # noqa: BLE001
+            except (ValueError, TypeError, KeyError, RuntimeError, OSError) as e:
                 research_failed = True
                 logger.warning(
                     "shadow_research_failed feature=%s err=%s", feature.value, e

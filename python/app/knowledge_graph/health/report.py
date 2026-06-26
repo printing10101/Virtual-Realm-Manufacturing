@@ -41,7 +41,7 @@ class HealthReportGenerator:
 
         generator = HealthReportGenerator()
         report = generator.generate(result)
-        print(report)
+        # report 为 Markdown 格式字符串
 
         # 或写入文件
         with open("health-report.md", "w", encoding="utf-8") as f:

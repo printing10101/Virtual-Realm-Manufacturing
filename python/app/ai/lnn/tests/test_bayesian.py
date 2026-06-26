@@ -11,6 +11,7 @@ Tests cover:
 
 import os
 import time
+import logging
 import pytest
 import numpy as np
 
@@ -20,6 +21,8 @@ try:
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
+
+logger = logging.getLogger(__name__)
 
 from app.ai.lnn.models.torch_base_lnn import LNNConfig
 from app.ai.lnn.models.torch_cfc_model import CFCModel
@@ -275,7 +278,7 @@ class TestPerformance:
         ratio = bayesian_time / original_time
         assert ratio <= 5.0, f"Bayesian inference is {ratio:.2f}x slower than original (limit: 5x)"
         
-        print(f"\nPerformance: Original={original_time:.2f}ms, Bayesian={bayesian_time:.2f}ms, Ratio={ratio:.2f}x")
+        logger.info(f"\nPerformance: Original={original_time:.2f}ms, Bayesian={bayesian_time:.2f}ms, Ratio={ratio:.2f}x")
 
 
 class TestIntegration:

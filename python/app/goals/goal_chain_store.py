@@ -21,6 +21,7 @@ from app.models.goals import (
     GoalProgress,
     DEFAULT_GOALS,
 )
+from app.utils.sqlite_pool import get_sqlite_manager
 
 logger = logging.getLogger(__name__)
 
@@ -28,13 +29,22 @@ logger = logging.getLogger(__name__)
 class GoalChainStore:
     """Persistent goal chain storage with SQLite backend"""
 
+    # 允许的列名白名单，防止 SQL 注入
+    _ALLOWED_COLUMNS = {
+        "name", "description", "level", "parent_id", "status", 
+        "created_at", "completed_at", "version"
+    }
+
     def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
             db_path = str(Path(".lingjing/.gstack") / "goal_chain.db")
         self._db_path = db_path
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        # 使用统一的连接池管理器
+        from app.utils.sqlite_pool import get_sqlite_manager
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("goal_chain")
+        self._conn = self._pool.get_connection()
         # 即使 check_same_thread=False 允许多线程访问连接，sqlite3 本身对单连接的
         # 写操作不是线程安全的；通过统一的写锁保护 _conn 上的所有写入，避免
         # "OperationalError: database is locked" 与数据竞争。
@@ -136,6 +146,10 @@ class GoalChainStore:
 
         changes = []
         for key, value in kwargs.items():
+            # 验证列名是否在白名单中，防止 SQL 注入
+            if key not in self._ALLOWED_COLUMNS:
+                logger.warning(f"Attempted to update disallowed column: {key}")
+                continue
             if hasattr(goal, key) and value != getattr(goal, key):
                 old = str(getattr(goal, key))
                 new = str(value)

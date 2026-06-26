@@ -314,13 +314,16 @@ def save_report_to_file(report: dict[str, Any], output_dir: str | Path) -> Path:
 
 # 全局采集器实例
 _collector: FlywheelMetricsCollector | None = None
+_collector_lock = threading.Lock()
 
 
 def get_flywheel_collector() -> FlywheelMetricsCollector:
     """获取全局飞轮指标采集器实例。"""
     global _collector
     if _collector is None:
-        _collector = FlywheelMetricsCollector()
+        with _collector_lock:
+            if _collector is None:
+                _collector = FlywheelMetricsCollector()
     return _collector
 
 
@@ -349,4 +352,4 @@ if __name__ == "__main__":
     if args.report == "weekly":
         report = collector.generate_weekly_report()
         filepath = save_report_to_file(report, args.output_dir)
-        print(f"Weekly report generated: {filepath}")
+        logger.info(f"Weekly report generated: {filepath}")

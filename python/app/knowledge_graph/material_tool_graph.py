@@ -80,7 +80,7 @@ class MaterialToolGraph:
             )
             return True
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, KeyError) as e:
             logger.error("知识图谱构建失败: %s", e)
             return False
 

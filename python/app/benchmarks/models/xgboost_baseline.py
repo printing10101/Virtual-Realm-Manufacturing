@@ -66,7 +66,9 @@ class XGBoostBaseline:
                 d.count("leaf=") + d.count("yes=") + d.count("no=") for d in dump
             )
             return total_nodes
-        except Exception:
+        except (AttributeError, ValueError) as e:
+            import logging
+            logging.getLogger(__name__).debug("XGBoost params count fallback: %s", e)
             return len(self.model.get_booster().get_dump()) * 10
 
     def get_model_size_mb(self) -> float:
@@ -76,5 +78,7 @@ class XGBoostBaseline:
             from app.benchmarks.metrics import measure_model_size_mb
 
             return measure_model_size_mb(self.model)
-        except Exception:
+        except (ImportError, OSError, AttributeError) as e:
+            import logging
+            logging.getLogger(__name__).debug("XGBoost model size measurement failed: %s", e)
             return 0.0

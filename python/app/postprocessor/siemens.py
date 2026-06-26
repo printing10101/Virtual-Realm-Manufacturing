@@ -282,6 +282,98 @@ class SiemensPostProcessor(BasePostProcessor):
         ]
         return "\n".join(lines)
 
+    def format_cycle_groove(
+        self,
+        x: float,
+        z: float,
+        depth: float,
+        width: float = 3.0,
+        retract: float = 0.5,
+        finish_allowance: float = 0.1,
+    ) -> str:
+        """生成切槽循环 (CYCLE93)。
+
+        Siemens 840D使用CYCLE93进行切槽加工。
+
+        Args:
+            x: 切槽直径 (X轴坐标)
+            z: 切槽Z向位置
+            depth: 切槽深度 (半径值)
+            width: 切槽宽度 (mm)
+            retract: 每次切削后退量 (mm)
+            finish_allowance: 精加工余量 (mm)
+
+        Returns:
+            CYCLE93切槽循环NC代码
+        """
+        cfg = self.get_cycle_config("grooving", "CYCLE93")
+        retract_val = cfg.get("retract_amount", retract)
+        finish_allow = cfg.get("finish_allowance", finish_allowance)
+
+        r_plane = self.safe_z_height
+        groove_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.1))
+
+        # CYCLE93 切槽循环格式
+        # CYCLE93(TPA, RTP, RFP, SDIS, DP, DTB, FDB, DTS, DAM, VRT, DIX, DIN, DIB, LOD, FFX, FFZ, FFZ1)
+        lines = [
+            f"N{self._next_block():05d} G00 X{self._fmt(x)} Z{self._fmt(z)}",
+            f"N{self._next_block():05d} CYCLE93({self._fmt(r_plane)}, {self._fmt(0.0)}, "
+            f"{self._fmt(0.0)}, {self._fmt(2.0)}, {self._fmt(-abs(depth))}, "
+            f"0, 0, 0, {self._fmt(retract_val)}, {self._fmt(width)}, "
+            f"{self._fmt(x - 2 * depth)}, {self._fmt(width)}, {self._fmt(width)}, "
+            f"1, {groove_feed}, {groove_feed}, 0)",
+            f"N{self._next_block():05d} G00 X{self._fmt(x)} Z{self._fmt(z)}",
+            f"N{self._next_block():05d} CYCLE93",
+        ]
+        return "\n".join(lines)
+
+    def format_cycle_thread_turning(
+        self,
+        x: float,
+        z: float,
+        depth: float,
+        pitch: float = 1.0,
+        passes: int = 5,
+        first_depth: float = 0.2,
+        last_depth: float = 0.05,
+        finishing_passes: int = 2,
+        tool_angle: float = 60.0,
+    ) -> str:
+        """生成车削螺纹循环 (CYCLE97)。
+
+        Siemens 840D使用CYCLE97进行螺纹车削加工。
+
+        Args:
+            x: 螺纹小径 (X轴坐标)
+            z: 螺纹终点Z坐标
+            depth: 螺纹深度 (半径值)
+            pitch: 螺距 (mm)
+            passes: 切削次数
+            first_depth: 第一次切深 (mm)
+            last_depth: 最后一次切深 (mm)
+            finishing_passes: 精加工次数
+            tool_angle: 刀具角度 (度)
+
+        Returns:
+            CYCLE97螺纹循环NC代码
+        """
+        cfg = self.get_cycle_config("threading", "CYCLE97")
+        r_plane = self.safe_z_height
+
+        # CYCLE97 螺纹车削循环格式
+        # CYCLE97(IDLEP, ITHREAD, SDIS, EP, PITCH, IAD, GAP, TOL, TOLL, PROG, VARI, NUM)
+        lines = [
+            f"N{self._next_block():05d} G00 X{self._fmt(x + 2.0)} Z{self._fmt(z + 5.0)}",
+            f"N{self._next_block():05d} S{int(self.get_spindle_rpm())} M03",
+            f"N{self._next_block():05d} CYCLE97({self._fmt(x + 2.0 * depth)}, "
+            f"{self._fmt(z)}, {self._fmt(2.0)}, {self._fmt(z)}, "
+            f"{self._fmt(pitch)}, 0, 0, 0, 0, 0, "
+            f"{1 if tool_angle > 55 else 0}, {passes})",
+            f"N{self._next_block():05d} G00 X{self._fmt(x)} Z{self._fmt(z)}",
+            f"N{self._next_block():05d} CYCLE97",
+        ]
+        return "\n".join(lines)
+
     def format_subprogram_call(
         self,
         program_number: int,
@@ -319,3 +411,42 @@ class SiemensPostProcessor(BasePostProcessor):
             f"N{self._next_block():05d} M30",
         ]
         return "\n".join(lines)
+
+    def format_five_axis_mode(self, enable: bool = True) -> str:
+        """生成五轴联动模式指令（TRAORI）。
+
+        TRAORI 是 Siemens 840D 的五轴刀具中心点控制指令，
+        用于实现五轴联动加工，自动计算旋转轴角度。
+
+        Args:
+            enable: True 开启五轴联动，False 关闭
+
+        Returns:
+            五轴模式 NC 代码字符串
+        """
+        if enable:
+            return f"N{self._next_block():05d} TRAORI"
+        else:
+            return f"N{self._next_block():05d} TRAFOOF"
+
+    def format_surface_normal_compensation(
+        self,
+        enable: bool = True,
+        tool_axis: str = "Z",
+    ) -> str:
+        """生成表面法向补偿指令（COMPCAD）。
+
+        COMPCAD 用于五轴加工中的刀具姿态控制，
+        保持刀具与加工表面法向一致，提升曲面加工质量。
+
+        Args:
+            enable: True 开启法向补偿，False 关闭
+            tool_axis: 刀具轴方向，"Z"（默认）或 "X"
+
+        Returns:
+            法向补偿 NC 代码字符串
+        """
+        if enable:
+            return f"N{self._next_block():05d} COMPCAD"
+        else:
+            return f"N{self._next_block():05d} COMP0F"

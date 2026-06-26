@@ -18,6 +18,7 @@ from typing import Any, Callable, Dict, List, Optional
 from sqlalchemy import select
 
 from app.tasks.task_manager import TaskStatus, TaskType
+from app.core.safe_errors import safe_error_message
 from app.database.models import TrainingTask, TaskStatusEnum
 from app.database.connection import get_sessionmaker
 from app.services.redis_client import (
@@ -37,6 +38,9 @@ VALID_STATUS_TRANSITIONS = {
     TaskStatus.FAILED: set(),
     TaskStatus.CANCELLED: set(),
 }
+
+# 可重试的异常类型
+RETRYABLE_EXCEPTIONS = (TimeoutError, ConnectionError, OSError)
 
 
 @dataclass
@@ -124,6 +128,10 @@ class AsyncTaskManager:
         self._max_concurrent = 3
         self._semaphore = asyncio.Semaphore(self._max_concurrent)
         self._started = False
+        
+        # 任务超时和重试配置
+        self._task_timeout = 3600  # 默认1小时超时
+        self._max_retries = 3
 
     async def initialize(self, max_concurrent: int = 3):
         self._max_concurrent = max_concurrent
@@ -169,7 +177,7 @@ class AsyncTaskManager:
                     task.progress = task.progress or 0
                 await session.commit()
 
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error("Task recovery failed: %s", e)
 
     async def requeue_orphan_tasks(
@@ -220,7 +228,7 @@ class AsyncTaskManager:
                         cutoff.isoformat(),
                     )
                 return requeued
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error("requeue_orphan_tasks failed: %s", e)
             return 0
 
@@ -273,7 +281,7 @@ class AsyncTaskManager:
                     )
                     session.add(task_model)
                 await session.commit()
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error("Failed to persist task %s to DB: %s", record.job_id, e)
 
     async def create_task(
@@ -303,7 +311,7 @@ class AsyncTaskManager:
                                 self._tasks[record.job_id] = record
                                 self._idempotency_map[idempotency_key] = record.job_id
                                 return record
-                    except Exception as e:
+                    except (RuntimeError, OSError) as e:
                         logger.warning("Idempotency check failed: %s", e)
 
             job_id = f"{task_type.value}-{uuid.uuid4().hex[:12]}"
@@ -364,96 +372,161 @@ class AsyncTaskManager:
                 },
             )
 
-            try:
-                cancel_evt = self._cancel_events.get(job_id)
-                result = await executor(
-                    cancel_evt, self._create_progress_updater(job_id)
-                )
+            retry_count = 0
+            for attempt in range(self._max_retries + 1):
+                try:
+                    timeout = self._task_timeout
+                    cancel_evt = self._cancel_events.get(job_id)
 
-                async with self._task_lock:
-                    record = self._tasks[job_id]
-                    record.status = TaskStatus.COMPLETED
-                    record.progress = 100.0
-                    record.result = result
-                    record.completed_at = time.time()
-                    record.metrics = result.get("metrics") if result else None
+                    # 使用 wait_for 添加超时控制
+                    try:
+                        result = await asyncio.wait_for(
+                            executor(
+                                cancel_evt, self._create_progress_updater(job_id)
+                            ),
+                            timeout=timeout,
+                        )
+                    except asyncio.TimeoutError:
+                        raise TimeoutError(
+                            f"Task {job_id} exceeded timeout of {timeout}s"
+                        )
 
-                await self._persist_task_to_db(record)
-                await save_task_progress(
-                    job_id,
-                    {"progress": 100.0, "status": "completed", "message": "Done"},
-                )
+                    # 成功执行，跳出重试循环
+                    async with self._task_lock:
+                        record = self._tasks[job_id]
+                        record.status = TaskStatus.COMPLETED
+                        record.progress = 100.0
+                        record.result = result
+                        record.completed_at = time.time()
+                        metrics = result.get("metrics") if result else None
+                        if retry_count > 0:
+                            if metrics is None:
+                                metrics = {}
+                            metrics["retry_count"] = retry_count
+                        record.metrics = metrics
 
-                await self._broadcast_event(
-                    job_id,
-                    "complete",
-                    {
-                        "job_id": job_id,
-                        "result": result,
-                        "completed_at": datetime.now().isoformat(),
-                    },
-                )
+                    await self._persist_task_to_db(record)
+                    await save_task_progress(
+                        job_id,
+                        {"progress": 100.0, "status": "completed", "message": "Done"},
+                    )
 
-                await self._cleanup_task(job_id)
+                    await self._broadcast_event(
+                        job_id,
+                        "complete",
+                        {
+                            "job_id": job_id,
+                            "result": result,
+                            "completed_at": datetime.now().isoformat(),
+                        },
+                    )
 
-            except asyncio.CancelledError:
-                async with self._task_lock:
-                    record = self._tasks[job_id]
-                    record.status = TaskStatus.CANCELLED
-                    record.completed_at = time.time()
+                    await self._cleanup_task(job_id)
+                    return
 
-                await self._persist_task_to_db(record)
-                await save_task_progress(
-                    job_id,
-                    {"progress": record.progress, "status": "cancelled"},
-                )
+                except asyncio.CancelledError:
+                    async with self._task_lock:
+                        record = self._tasks[job_id]
+                        record.status = TaskStatus.CANCELLED
+                        record.completed_at = time.time()
 
-                await self._broadcast_event(
-                    job_id,
-                    "cancelled",
-                    {
-                        "job_id": job_id,
-                        "cancelled_at": datetime.now().isoformat(),
-                        "progress": record.progress,
-                    },
-                )
+                    await self._persist_task_to_db(record)
+                    await save_task_progress(
+                        job_id,
+                        {"progress": record.progress, "status": "cancelled"},
+                    )
 
-                await self._cleanup_task(job_id)
+                    await self._broadcast_event(
+                        job_id,
+                        "cancelled",
+                        {
+                            "job_id": job_id,
+                            "cancelled_at": datetime.now().isoformat(),
+                            "progress": record.progress,
+                        },
+                    )
 
-            except Exception as e:
-                # 修复：原代码直接 str(e) 暴露内部异常详情到 record/SSE 事件，
-                # 借助 safe_error_message 仅透出 error_id 给前端，原始异常留在服务端日志。
-                safe = safe_error_message(e, context=f"task_system.run_task[{job_id}]")
-                async with self._task_lock:
-                    record = self._tasks[job_id]
-                    record.status = TaskStatus.FAILED
-                    record.error = safe["message"]
-                    record.completed_at = time.time()
+                    await self._cleanup_task(job_id)
+                    return
 
-                await self._persist_task_to_db(record)
-                await save_task_progress(
-                    job_id,
-                    {
-                        "progress": record.progress,
-                        "status": "failed",
-                        "error": safe["message"],
-                        "error_id": safe.get("error_id"),
-                    },
-                )
+                except RETRYABLE_EXCEPTIONS as e:
+                    retry_count += 1
+                    if attempt < self._max_retries:
+                        logger.warning(
+                            "Task %s failed (attempt %d/%d), retrying: %s",
+                            job_id, attempt + 1, self._max_retries, e,
+                        )
+                        # 重试时重置进度
+                        async with self._task_lock:
+                            if job_id in self._tasks:
+                                self._tasks[job_id].progress = 0.0
+                        await save_task_progress(
+                            job_id,
+                            {
+                                "progress": 0.0,
+                                "status": "running",
+                                "message": f"Retrying (attempt {attempt + 1}/{self._max_retries})",
+                            },
+                        )
+                        await self._broadcast_event(
+                            job_id,
+                            "progress",
+                            {
+                                "job_id": job_id,
+                                "percent": 0.0,
+                                "message": f"Retrying (attempt {attempt + 1}/{self._max_retries})",
+                                "retry_count": retry_count,
+                            },
+                        )
+                        # 指数退避
+                        await asyncio.sleep(2 ** attempt)
+                        continue
+                    raise  # 最后一次重试失败，抛出异常
 
-                await self._broadcast_event(
-                    job_id,
-                    "failed",
-                    {
-                        "job_id": job_id,
-                        "error": safe["message"],
-                        "error_id": safe.get("error_id"),
-                        "suggestion": self._get_error_suggestion(e),
-                        "failed_at": datetime.now().isoformat(),
-                    },
-                )
+                except (RuntimeError, ValueError, TypeError) as e:
+                    # 不可重试的异常，直接失败
+                    safe = safe_error_message(
+                        e, context=f"task_system.run_task[{job_id}]"
+                    )
+                    async with self._task_lock:
+                        record = self._tasks[job_id]
+                        record.status = TaskStatus.FAILED
+                        record.error = safe["message"]
+                        record.completed_at = time.time()
+                        if retry_count > 0:
+                            if record.metrics is None:
+                                record.metrics = {}
+                            record.metrics["retry_count"] = retry_count
 
-                await self._cleanup_task(job_id)
+                    await self._persist_task_to_db(record)
+                    await save_task_progress(
+                        job_id,
+                        {
+                            "progress": record.progress,
+                            "status": "failed",
+                            "error": safe["message"],
+                            "error_id": safe.get("error_id"),
+                        },
+                    )
+
+                    await self._broadcast_event(
+                        job_id,
+                        "failed",
+                        {
+                            "job_id": job_id,
+                            "error": safe["message"],
+                            "error_id": safe.get("error_id"),
+                            "suggestion": self._get_error_suggestion(e),
+                            "failed_at": datetime.now().isoformat(),
+                        },
+                    )
+
+                    await self._cleanup_task(job_id)
+                    return
+
+            # 所有重试耗尽后仍然失败（RETRYABLE_EXCEPTIONS 最后一次 raise 后不会到这里，
+            # 但为安全起见保留此兜底）
+            logger.error("Task %s exhausted all %d retries", job_id, self._max_retries)
 
     async def cancel_task(self, job_id: str) -> bool:
         async with self._task_lock:
@@ -480,7 +553,7 @@ class AsyncTaskManager:
                 hook = self._cancel_hooks.pop(job_id)
                 if callable(hook):
                     hook()
-            except Exception as e:
+            except (RuntimeError, ValueError) as e:
                 logger.warning("Cancel hook for task %s failed: %s", job_id, e)
 
         await self._persist_task_to_db(record)
@@ -533,10 +606,50 @@ class AsyncTaskManager:
                     async with self._task_lock:
                         self._tasks[job_id] = record
                     return record
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error("Failed to load task %s from DB: %s", job_id, e)
 
         return None
+
+    async def count_tasks(
+        self,
+        owner_id: Optional[str] = None,
+        task_type: Optional[TaskType] = None,
+        status: Optional[TaskStatus] = None,
+    ) -> int:
+        """统计符合条件的任务总数（用于分页）"""
+        sessionmaker = get_sessionmaker()
+        if sessionmaker is None:
+            async with self._task_lock:
+                tasks = list(self._tasks.values())
+            filtered = self._filter_tasks(tasks, owner_id, task_type, status, limit=len(tasks), offset=0)
+            return len(filtered)
+
+        try:
+            async with sessionmaker() as session:
+                from sqlalchemy import func
+                query = select(func.count(TrainingTask.id))
+
+                filters = []
+                if owner_id:
+                    filters.append(TrainingTask.owner_id == owner_id)
+                if task_type:
+                    filters.append(TrainingTask.task_type == task_type.value)
+                if status:
+                    filters.append(TrainingTask.status == status.value)
+
+                if filters:
+                    from sqlalchemy import and_
+                    query = query.where(and_(*filters))
+
+                result = await session.execute(query)
+                return result.scalar() or 0
+        except (RuntimeError, OSError) as e:
+            logger.error("Failed to count tasks from DB: %s", e)
+            async with self._task_lock:
+                tasks = list(self._tasks.values())
+            filtered = self._filter_tasks(tasks, owner_id, task_type, status, limit=len(tasks), offset=0)
+            return len(filtered)
 
     async def list_tasks(
         self,
@@ -583,7 +696,7 @@ class AsyncTaskManager:
                             self._tasks[record.job_id] = record
 
                 return records
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error("Failed to list tasks from DB: %s", e)
             async with self._task_lock:
                 tasks = list(self._tasks.values())
@@ -639,7 +752,7 @@ class AsyncTaskManager:
             for q in self._subscribers[job_id]:
                 try:
                     await q.put(event)
-                except Exception:
+                except (RuntimeError, OSError):
                     dead_queues.append(q)
             for q in dead_queues:
                 self._subscribers[job_id].remove(q)

@@ -90,18 +90,8 @@ export const useDxfImportStore = defineStore('dxfImport', () => {
 
       const xhr = new XMLHttpRequest()
       // 通过相对路径，让项目封装的 Vite proxy / 反向代理处理
+      // 鉴权由后端会话/Cookie 或反向代理层统一处理，前端不持有 token
       xhr.open('POST', '/api/dxf/upload', true)
-
-      // 尝试注入鉴权头（与 http 客户端保持一致）
-      try {
-        const authRaw = localStorage.getItem('app_auth_token')
-        if (authRaw) {
-          const token = JSON.parse(authRaw)?.access_token
-          if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-        }
-      } catch {
-        // 忽略本地存储解析错误
-      }
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable && event.total > 0) {

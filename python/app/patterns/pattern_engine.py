@@ -10,6 +10,9 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from app.utils.utils import get_output_dir
+from app.utils.sqlite_pool import get_sqlite_manager
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,12 +94,16 @@ class PatternEngine:
         self._db: Optional[sqlite3.Connection] = None
         self._executions: List[ExecutionRecord] = []
         self._patterns: List[Pattern] = []
+        # 自动初始化数据库
+        self.initialize()
 
     def initialize(self) -> None:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
-        self._db = sqlite3.connect(self.db_path, check_same_thread=False)
-        self._db.row_factory = sqlite3.Row
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("patterns")
+        self._db = self._pool.get_connection()
         self._db.execute("""
             CREATE TABLE IF NOT EXISTS pattern_executions (
                 task_id TEXT PRIMARY KEY,
@@ -421,8 +428,11 @@ class PatternEngine:
             }
 
     def close(self) -> None:
-        if self._db:
-            self._db.close()
+        """关闭数据库连接，归还连接到连接池"""
+        if hasattr(self, "_db") and self._db:
+            self._pool.return_connection(self._db)
+            self._db = None
+            logger.info("PatternEngine closed")
 
 
 class _PatternEngineHolder:

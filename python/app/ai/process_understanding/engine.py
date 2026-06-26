@@ -332,8 +332,8 @@ class ProcessUnderstandingEngine:
                 temperature=0.3,
             )
             content = response.get("content", "")
-        except Exception as e:
-            logger.error("故障诊断LLM调用失败: %s", e)
+        except (RuntimeError, OSError, ValueError, TypeError, ImportError, AttributeError, KeyError) as e:
+            logger.error("故障诊断LLM调用失败: %s", e, exc_info=True)
             content = "故障诊断服务暂时不可用，请联系技术人员。建议检查：1)刀具状态 2)切削参数 3)设备运行状态。"
 
         # 提取操作建议
@@ -381,8 +381,8 @@ class ProcessUnderstandingEngine:
                 temperature=0.3,
             )
             content = response.get("content", "")
-        except Exception as e:
-            logger.error("工艺咨询LLM调用失败: %s", e)
+        except (RuntimeError, OSError, ValueError, TypeError, ImportError, AttributeError, KeyError) as e:
+            logger.error("工艺咨询LLM调用失败: %s", e, exc_info=True)
             content = "工艺咨询服务暂时不可用，请稍后重试。建议参考相关工艺手册或联系工艺工程师。"
 
         actions = self._extract_actions_from_text(content)
@@ -428,8 +428,8 @@ class ProcessUnderstandingEngine:
                 temperature=0.3,
             )
             content = response.get("content", "")
-        except Exception as e:
-            logger.error("知识查询LLM调用失败: %s", e)
+        except (RuntimeError, OSError, ValueError, TypeError, ImportError, AttributeError, KeyError) as e:
+            logger.error("知识查询LLM调用失败: %s", e, exc_info=True)
             content = "知识查询服务暂时不可用，请稍后重试。"
 
         return ProcessUnderstandingOutput(
@@ -523,8 +523,8 @@ class ProcessUnderstandingEngine:
             )
             content = response.get("content", "").strip()
             return self._parse_entity_json(content)
-        except Exception as e:
-            logger.warning("实体提取失败: %s", e)
+        except (RuntimeError, OSError, ValueError, TypeError, ImportError, AttributeError, KeyError) as e:
+            logger.warning("实体提取失败: %s", e, exc_info=True)
             return {}
 
     @staticmethod
@@ -533,7 +533,9 @@ class ProcessUnderstandingEngine:
         from app.utils.utils import extract_json_from_markdown
         try:
             return extract_json_from_markdown(content)
-        except Exception:
+        except (ValueError, KeyError, TypeError) as e:
+            # JSON解析失败时回退到正则提取，记录警告以便调试
+            logger.warning(f"Entity JSON parsing failed, falling back to regex: {e}")
             # 基于正则的简化提取
             entities = {}
             fields = ["材料", "精度", "批量", "设备", "刀具", "特征"]

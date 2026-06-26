@@ -42,8 +42,16 @@
 import { ref } from 'vue'
 import { ArrowRight, ArrowDown } from '@element-plus/icons-vue'
 
+interface DependencyNode {
+  id: string
+  name: string
+  version: string
+  status?: string
+  dependencies?: DependencyNode[]
+}
+
 defineProps<{
-  node: any
+  node: DependencyNode
 }>()
 
 const expanded = ref(false)

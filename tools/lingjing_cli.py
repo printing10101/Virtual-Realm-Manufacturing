@@ -30,23 +30,23 @@ MANUFACTURING_ERRORS = {}
 DATA_ERRORS = {}
 
 try:
-    from app.core.error_taxonomy import ManufacturingError  # noqa: F401
+    from app.core.error_taxonomy import ManufacturingError
     MANUFACTURING_ERRORS["ManufacturingError"] = ManufacturingError
-except ImportError:
-    pass
+except ImportError as e:
+    print(f"警告: 无法导入 ManufacturingError: {e}", file=sys.stderr)
 
 try:
-    from app.data.process_data_manager import DataLoadError, QueryError  # noqa: F401
+    from app.data.process_data_manager import DataLoadError, QueryError
     DATA_ERRORS["DataLoadError"] = DataLoadError
     DATA_ERRORS["QueryError"] = QueryError
-except ImportError:
-    pass
+except ImportError as e:
+    print(f"警告: 无法导入数据错误类型: {e}", file=sys.stderr)
 
 try:
-    from app.dxf.exceptions import DxfPipelineError  # noqa: F401
+    from app.dxf.exceptions import DxfPipelineError
     MANUFACTURING_ERRORS["DxfPipelineError"] = DxfPipelineError
-except ImportError:
-    pass
+except ImportError as e:
+    print(f"警告: 无法导入 DxfPipelineError: {e}", file=sys.stderr)
 
 
 class Colors:

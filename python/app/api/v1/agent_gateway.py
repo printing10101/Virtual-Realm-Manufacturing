@@ -8,7 +8,7 @@ import os
 import time
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
@@ -18,7 +18,7 @@ from app.agent.auth import agent_token_store
 from app.agent.middleware import (
     agent_audit_log,
 )
-from app.agent.orchestrator import AgentOrchestrator, OrchestratorMode
+from app.agent.orchestrator import AgentOrchestrator
 from app.models.schemas import (
     AgentTokenCreateRequest,
     AgentTokenResponse,
@@ -36,7 +36,7 @@ except ImportError:
     LNNPredictor = None  # type: ignore
     PredictionResult = None  # type: ignore
 
-from app.services.model.registry_service import get_model_registry_service
+from app.services.model_registry_service import get_model_registry_service
 from app.api.v1.sse import sse_manager, create_progress_callback
 
 logger = logging.getLogger(__name__)
@@ -52,6 +52,19 @@ training_tasks = registry_service.get_training_tasks()
 MAX_CONCURRENT_TRAINING = 3
 _active_training: set[str] = set()
 _training_sem = asyncio.Semaphore(MAX_CONCURRENT_TRAINING)
+
+
+def _handle_training_done(task: asyncio.Task, task_id: str) -> None:
+    """Callback to handle training task completion and log exceptions."""
+    if task.cancelled():
+        logger.info("Training task cancelled: %s", task_id)
+    elif task.exception():
+        logger.error(
+            "Training task failed: %s - %s",
+            task_id,
+            task.exception(),
+        )
+
 
 # Agent Orchestrator for workflow pipeline execution
 orchestrator = AgentOrchestrator()
@@ -176,11 +189,18 @@ async def agent_predict(request: AgentPredictRequest):
 
         return success(data=resp, message="Prediction completed")
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, AttributeError, RuntimeError, OSError) as e:
         # 修复：使用 safe_error_message 包装异常，避免 str(e) 泄露
         # 内部错误详情到前端用户/调用方。
         safe = safe_error_message(
             e, context=f"agent.predict[{request.model_name}]"
+        )
+        logger.warning(
+            "Prediction failed | model=%s | error_id=%s | exc=%s: %s",
+            request.model_name,
+            safe.get("error_id"),
+            type(e).__name__,
+            e,
         )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -303,7 +323,7 @@ async def _run_agent_training(
             except asyncio.CancelledError:
                 training_tasks[task_id]["status"] = "cancelled"
                 training_tasks[task_id]["message"] = "Training cancelled"
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError, OSError, TypeError, AttributeError) as e:
                 # 修复：使用 safe_error_message 包装异常，避免直接
                 # 将 str(e) 写入 training_tasks.message 暴露内部错误详情。
                 safe = safe_error_message(
@@ -342,7 +362,8 @@ async def agent_train(request: AgentTrainRequest):
             "optimizer": request.hyperparameters.optimizer,
         }
 
-        asyncio.create_task(
+        # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
+        task = asyncio.create_task(
             _run_agent_training(
                 task_id,
                 request.model_name,
@@ -351,6 +372,7 @@ async def agent_train(request: AgentTrainRequest):
                 request.device,
             )
         )
+        task.add_done_callback(lambda t: _handle_training_done(t, task_id))
 
         return success(
             data={
@@ -361,11 +383,18 @@ async def agent_train(request: AgentTrainRequest):
             message="Training task started",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         # 修复：使用 safe_error_message 包装异常，避免直接
         # 将 str(e) 暴露到 HTTP 错误响应中。
         safe = safe_error_message(
             e, context=f"agent.train_init[{request.model_name}]"
+        )
+        logger.warning(
+            "Training initiation failed | model=%s | error_id=%s | exc=%s: %s",
+            request.model_name,
+            safe.get("error_id"),
+            type(e).__name__,
+            e,
         )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -457,10 +486,17 @@ async def agent_execute(request: AgentExecuteRequest):
             message="Operation executed successfully",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         # 修复：使用 safe_error_message 包装异常，避免直接
         # 将 str(e) 暴露到 HTTP 错误响应中。
         safe = safe_error_message(e, context="agent.execute")
+        logger.warning(
+            "Execute operation failed | machine_id=%s | error_id=%s | exc=%s: %s",
+            request.machine_id,
+            safe.get("error_id"),
+            type(e).__name__,
+            e,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],
@@ -472,8 +508,8 @@ async def agent_execute(request: AgentExecuteRequest):
 async def get_audit_log(
     agent_id: str | None = None,
     permission_class: str | None = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0, le=10000),
 ):
     """审计日志查询（C类，仅管理员）"""
     entries = agent_audit_log.get_entries(
@@ -522,10 +558,16 @@ async def create_agent_token(req: AgentTokenCreateRequest):
             message="Agent token created successfully. Save the token now, it will not be shown again.",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         # 修复：使用 safe_error_message 包装异常，避免直接
         # 将 str(e) 暴露到 HTTP 错误响应中。
         safe = safe_error_message(e, context="agent.create_token")
+        logger.warning(
+            "Token creation failed | error_id=%s | exc=%s: %s",
+            safe.get("error_id"),
+            type(e).__name__,
+            e,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],
@@ -644,7 +686,7 @@ async def execute_pipeline(request: AgentPipelineRequest):
                 message=f"Pipeline '{request.pipeline_type}' completed with fallback",
             )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(
             e, context=f"agent.pipeline[{request.pipeline_type}]"
         )
@@ -663,7 +705,10 @@ async def execute_pipeline(request: AgentPipelineRequest):
 
 
 @router.get("/pipeline/history")
-async def get_pipeline_history(limit: int = 50, offset: int = 0):
+async def get_pipeline_history(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0, le=10000),
+):
     """
     查询管线执行历史（R类，需要认证）
     
@@ -693,8 +738,14 @@ async def get_pipeline_history(limit: int = 50, offset: int = 0):
             message="Pipeline history retrieved",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(e, context="agent.pipeline_history")
+        logger.warning(
+            "Pipeline history query failed | error_id=%s | exc=%s: %s",
+            safe.get("error_id"),
+            type(e).__name__,
+            e,
+        )
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],
@@ -723,9 +774,16 @@ async def get_pipeline_trace(pipeline_id: str):
             message="Pipeline trace retrieved",
         )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(
             e, context=f"agent.pipeline_trace[{pipeline_id}]"
+        )
+        logger.warning(
+            "Pipeline trace retrieval failed | pipeline_id=%s | error_id=%s | exc=%s: %s",
+            pipeline_id,
+            safe.get("error_id"),
+            type(e).__name__,
+            e,
         )
         return error(
             code=ErrorCode.INTERNAL_ERROR,

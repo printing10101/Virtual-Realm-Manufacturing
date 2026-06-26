@@ -60,6 +60,10 @@ def success(data: Any = None, message: str = "Success") -> dict[str, Any]:
     }
 
 
+# Alias for backward compatibility
+api_response = success
+
+
 def error(
     code: ErrorCode,
     message: str = "Error",

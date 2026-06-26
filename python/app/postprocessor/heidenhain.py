@@ -286,6 +286,130 @@ class HeidenhainPostProcessor(BasePostProcessor):
         ]
         return "\n".join(lines)
 
+    def format_cycle_groove(
+        self,
+        x: float,
+        z: float,
+        depth: float,
+        width: float = 3.0,
+        retract: float = 0.5,
+        finish_allowance: float = 0.1,
+    ) -> str:
+        """生成切槽循环 (CYCL DEF 266)。
+
+        Heidenhain TNC使用CYCL DEF 266进行切槽加工。
+
+        Args:
+            x: 切槽直径 (X轴坐标)
+            z: 切槽Z向位置
+            depth: 切槽深度 (半径值)
+            width: 切槽宽度 (mm)
+            retract: 每次切削后退量 (mm)
+            finish_allowance: 精加工余量 (mm)
+
+        Returns:
+            CYCL DEF 266切槽循环NC代码
+        """
+        cfg = self.get_cycle_config("grooving", "CYCL DEF 266")
+        retract_val = cfg.get("retract_amount", retract)
+        finish_allow = cfg.get("finish_allowance", finish_allowance)
+
+        r_plane = self.safe_z_height
+        groove_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.1))
+
+        # CYCL DEF 266 切槽循环格式
+        # CYCL DEF 266 GROOVING
+        #    Q200=SET-UP CLEARANCE
+        #    Q201=DEPTH
+        #    Q202=PLUNGING DEPTH
+        #    Q203=SURFACE COORDINATE
+        #    Q204=2ND SET-UP CLEARANCE
+        #    Q206=FEED RATE
+        #    Q210=DWELL TIME AT TOP
+        #    Q211=DWELL TIME AT DEPTH
+        #    Q214=SET-UP CLEARANCE IN TOOL AXIS
+        #    Q226=RETRACT AMOUNT
+        #    Q227=FINISHING ALLOWANCE
+        lines = [
+            f"{self._next_block()}  CYCL DEF 266 GROOVING",
+            f"{self._next_block()}     Q200={self._fmt(r_plane)}  ;SET-UP CLEARANCE",
+            f"{self._next_block()}     Q201={self._fmt(-abs(depth))}  ;DEPTH",
+            f"{self._next_block()}     Q202={self._fmt(retract_val)}  ;PLUNGING DEPTH",
+            f"{self._next_block()}     Q203={self._fmt(0.0)}  ;SURFACE COORDINATE",
+            f"{self._next_block()}     Q204={self._fmt(r_plane)}  ;2ND SET-UP CLEARANCE",
+            f"{self._next_block()}     Q206={groove_feed}  ;FEED RATE",
+            f"{self._next_block()}     Q210={self._fmt(0.0)}  ;DWELL TIME AT TOP",
+            f"{self._next_block()}     Q211={self._fmt(0.0)}  ;DWELL TIME AT DEPTH",
+            f"{self._next_block()}     Q214={self._fmt(2.0)}  ;SET-UP CLEARANCE IN TOOL AXIS",
+            f"{self._next_block()}     Q226={self._fmt(retract_val)}  ;RETRACT AMOUNT",
+            f"{self._next_block()}     Q227={self._fmt(finish_allow)}  ;FINISHING ALLOWANCE",
+            f"{self._next_block()}  L  X+{self._fmt(x)} Z+{self._fmt(z)} R0 FMAX",
+            f"{self._next_block()}  CYCL CALL",
+        ]
+        return "\n".join(lines)
+
+    def format_cycle_thread_turning(
+        self,
+        x: float,
+        z: float,
+        depth: float,
+        pitch: float = 1.0,
+        passes: int = 5,
+        first_depth: float = 0.2,
+        last_depth: float = 0.05,
+        finishing_passes: int = 2,
+        tool_angle: float = 60.0,
+    ) -> str:
+        """生成车削螺纹循环 (CYCL DEF 263/264)。
+
+        Heidenhain TNC使用CYCL DEF 263进行外螺纹车削。
+
+        Args:
+            x: 螺纹小径 (X轴坐标)
+            z: 螺纹终点Z坐标
+            depth: 螺纹深度 (半径值)
+            pitch: 螺距 (mm)
+            passes: 切削次数
+            first_depth: 第一次切深 (mm)
+            last_depth: 最后一次切深 (mm)
+            finishing_passes: 精加工次数
+            tool_angle: 刀具角度 (度)
+
+        Returns:
+            CYCL DEF 263螺纹循环NC代码
+        """
+        cfg = self.get_cycle_config("threading", "CYCL DEF 263")
+        r_plane = self.safe_z_height
+
+        # CYCL DEF 263 外螺纹车削循环格式
+        # CYCL DEF 263 THREAD
+        #    Q200=SET-UP CLEARANCE
+        #    Q201=DEPTH
+        #    Q202=PLUNGING DEPTH
+        #    Q203=SURFACE COORDINATE
+        #    Q204=2ND SET-UP CLEARANCE
+        #    Q206=FEED RATE
+        #    Q239=PITCH
+        #    Q243=NUMBER OF PASSES
+        #    Q244=THREAD ANGLE
+        lines = [
+            f"{self._next_block()}  L  X+{self._fmt(x + 2.0)} Z+{self._fmt(z + 5.0)} R0 FMAX",
+            f"{self._next_block()}  S{int(self.get_spindle_rpm())} M03",
+            f"{self._next_block()}  CYCL DEF 263 THREAD",
+            f"{self._next_block()}     Q200={self._fmt(r_plane)}  ;SET-UP CLEARANCE",
+            f"{self._next_block()}     Q201={self._fmt(-abs(depth))}  ;DEPTH",
+            f"{self._next_block()}     Q202={self._fmt(first_depth)}  ;PLUNGING DEPTH",
+            f"{self._next_block()}     Q203={self._fmt(0.0)}  ;SURFACE COORDINATE",
+            f"{self._next_block()}     Q204={self._fmt(r_plane)}  ;2ND SET-UP CLEARANCE",
+            f"{self._next_block()}     Q206={self._fmt(self.get_feed_rate(self.rapid_feed * 0.05))}  ;FEED RATE",
+            f"{self._next_block()}     Q239={self._fmt(pitch)}  ;PITCH",
+            f"{self._next_block()}     Q243={passes}  ;NUMBER OF PASSES",
+            f"{self._next_block()}     Q244={self._fmt(tool_angle)}  ;THREAD ANGLE",
+            f"{self._next_block()}  L  X+{self._fmt(x)} Z+{self._fmt(z)} R0 FMAX",
+            f"{self._next_block()}  CYCL CALL",
+        ]
+        return "\n".join(lines)
+
     def format_subprogram_call(
         self,
         program_number: int,
@@ -330,5 +454,62 @@ class HeidenhainPostProcessor(BasePostProcessor):
             f"{self._next_block()}  L  X+0 Y+0 R0 FMAX",
             f"{self._next_block()}  M30",
             f"{self._next_block()}  END PGM {self._last_program_number:04d} MM",
+        ]
+        return "\n".join(lines)
+
+    def format_high_precision_mode(self, enable: bool = True) -> str:
+        """生成高精度加工模式指令（M128）。
+
+        M128 是 Heidenhain TNC 控制器的高精度模式，
+        用于提升曲面加工精度和表面质量，特别是在高速加工时。
+
+        Args:
+            enable: True 开启高精度模式，False 关闭
+
+        Returns:
+            高精度模式 NC 代码字符串
+        """
+        if enable:
+            return f"{self._next_block()}  M128"
+        else:
+            return f"{self._next_block()}  M129"
+
+    def format_probe_cycle(
+        self,
+        probe_number: int = 1,
+        x_pos: float = 0.0,
+        y_pos: float = 0.0,
+        z_depth: float = -10.0,
+        feed_rate: Optional[float] = None,
+    ) -> str:
+        """生成测头测量循环（CYCL DEF 19）。
+
+        CYCL DEF 19 是 Heidenhain 的测头测量固定循环，
+        用于工件找正、尺寸检测和自适应加工。
+
+        Args:
+            probe_number: 测头编号（1-4）
+            x_pos: 测量点 X 坐标
+            y_pos: 测量点 Y 坐标
+            z_depth: 测量深度 Z 坐标（负值）
+            feed_rate: 测量进给速度，None 使用默认值
+
+        Returns:
+            测头循环 NC 代码字符串
+        """
+        if feed_rate is None:
+            feed_rate = self._fmt(self.get_feed_rate(self.rapid_feed * 0.1))
+        else:
+            feed_rate = self._fmt(feed_rate)
+
+        lines = [
+            f"{self._next_block()}  CYCL DEF 19 PROBE",
+            f"{self._next_block()}     Q260={self._fmt(self.safe_z_height)}  ;CLEARANCE HEIGHT",
+            f"{self._next_block()}     Q261={self._fmt(z_depth)}  ;MEASURING DEPTH",
+            f"{self._next_block()}     Q264={self._fmt(x_pos)}  ;FIRST AXIS COORDINATE",
+            f"{self._next_block()}     Q265={self._fmt(y_pos)}  ;SECOND AXIS COORDINATE",
+            f"{self._next_block()}     Q272={probe_number}  ;PROBE NUMBER",
+            f"{self._next_block()}     Q273={feed_rate}  ;FEED RATE",
+            f"{self._next_block()}  CYCL CALL",
         ]
         return "\n".join(lines)

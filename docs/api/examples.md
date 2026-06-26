@@ -33,7 +33,7 @@
 
 ```http
 POST /api/v1/auth/login HTTP/1.1
-Host: localhost:8000
+Host: localhost:8765
 Content-Type: application/json
 X-Request-ID: 7f3a1b2e-9c4d-4e5f-8a6b-1c2d3e4f5a6b
 
@@ -74,7 +74,7 @@ Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict
 
 ```http
 POST /api/v1/auth/login HTTP/1.1
-Host: localhost:8000
+Host: localhost:8765
 Content-Type: application/json
 
 {
@@ -134,7 +134,7 @@ Content-Type: application/json
 
 ```http
 POST /api/v1/auth/register HTTP/1.1
-Host: localhost:8000
+Host: localhost:8765
 Content-Type: application/json
 
 {
@@ -208,7 +208,7 @@ HTTP/1.1 400 Bad Request
 
 ```http
 GET /api/v1/users/me HTTP/1.1
-Host: localhost:8000
+Host: localhost:8765
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
@@ -276,7 +276,7 @@ WWW-Authenticate: Bearer error="invalid_token", error_description="Token expired
 
 ```http
 POST /api/v1/lnn/predict HTTP/1.1
-Host: localhost:8000
+Host: localhost:8765
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Content-Type: application/json
 X-Request-ID: predict-2024-05-12-001
@@ -414,7 +414,7 @@ HTTP/1.1 400 Bad Request
 
 ```http
 POST /api/v1/lnn/train HTTP/1.1
-Host: localhost:8000
+Host: localhost:8765
 Authorization: Bearer ...
 
 {
@@ -485,7 +485,7 @@ HTTP/1.1 404 Not Found
 
 ```http
 GET /api/v1/lnn/models HTTP/1.1
-Host: localhost:8000
+Host: localhost:8765
 Authorization: Bearer ...
 ```
 

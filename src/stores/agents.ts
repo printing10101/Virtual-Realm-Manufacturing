@@ -63,7 +63,7 @@ export interface AgentDetail {
   metadata: Record<string, unknown>
 }
 
-const API_BASE = '/api/v1/agents'
+const API_BASE = API_CONFIG.AGENTS
 
 export const useAgentStore = defineStore('agents', () => {
   const agents = ref<AgentSummary[]>([])

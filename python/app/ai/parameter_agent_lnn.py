@@ -6,6 +6,7 @@ LNN增强的切削参数智能决策Agent
 from __future__ import annotations
 
 import logging
+import math
 from enum import Enum
 from typing import Any, Dict, List
 
@@ -132,8 +133,8 @@ class ParameterAgentLNN(BaseAgent):
             try:
                 final_params = await self._llm_inference(requirements)
                 validation = self._validate_parameters(final_params, requirements)
-            except Exception as e:
-                logger.warning("LLM推理失败，降级到规则引擎: %s", e)
+            except (RuntimeError, OSError, ValueError, TypeError, ImportError, AttributeError, KeyError) as e:
+                logger.warning("LLM推理失败，降级到规则引擎: %s", e, exc_info=True)
                 final_params = self._fallback_to_rules(requirements)
                 validation = self._validate_parameters(final_params, requirements)
 
@@ -167,8 +168,8 @@ class ParameterAgentLNN(BaseAgent):
                 else:
                     logger.warning("无可用LNN模型，使用规则引擎")
                     return self._fallback_to_rules_result(requirements)
-            except Exception as e:
-                logger.warning("LNN模型加载失败: %s，使用规则引擎", e)
+            except (RuntimeError, OSError, ValueError, TypeError, ImportError, AttributeError, KeyError) as e:
+                logger.warning("LNN模型加载失败: %s，使用规则引擎", e, exc_info=True)
                 return self._fallback_to_rules_result(requirements)
 
         try:
@@ -190,8 +191,8 @@ class ParameterAgentLNN(BaseAgent):
             params.source = ParameterSource.LNN
 
             return LNNResult(parameters=params, confidence=confidence)
-        except Exception as e:
-            logger.error("LNN预测失败: %s", e)
+        except (ValueError, TypeError, RuntimeError, ZeroDivisionError) as e:
+            logger.error("LNN预测失败: %s", e, exc_info=True)
             return self._fallback_to_rules_result(requirements)
 
     async def _hybrid_inference(
@@ -296,7 +297,7 @@ class ParameterAgentLNN(BaseAgent):
             cutting_speed = rule["cutting_speed"]
             feed_rate = rule["feed_rate"]
             depth_of_cut = rule["depth_of_cut"]
-            spindle_speed = int(cutting_speed * 1000 / (3.14159 * 50))
+            spindle_speed = int(cutting_speed * 1000 / (math.pi * 50))
         else:
             cutting_speed = 150
             feed_rate = 0.2

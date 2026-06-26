@@ -535,7 +535,7 @@ async def run_simulation(
             detail={"task_id": task_id},
             recoverable=True,
         )
-    except Exception as exc:
+    except (ValueError, TypeError, KeyError, OSError) as exc:
         # 兜底捕获：仿真任务涉及网格运算、IO、序列化等多环节，
         # 任何未预期异常都需包装为统一错误响应以便上层处理；
         # 此处位于 API handler 入口，必须捕获所有异常以避免 5xx 直接抛给客户端。
@@ -599,7 +599,7 @@ async def run_simulation_async(
                 _completed_at_map.pop(task_id, None)
             logger.info("Async simulation %s cancelled", task_id)
             raise
-        except Exception as exc:
+        except (ValueError, TypeError, KeyError, OSError) as exc:
             # 修复 [状态同步]：异常时仍记录完成时间戳但保持 duration_seconds == 0
             # 以便轮询端点将 status 识别为 failed；同时记录 error_id 供排障。
             async with _get_store_lock():
@@ -613,7 +613,7 @@ async def run_simulation_async(
             # 触发异步清理（在事件循环内执行）。
             try:
                 await _post_insert_cleanup()
-            except Exception:  # noqa: BLE001
+            except (OSError, RuntimeError):  # noqa: BLE001
                 logger.exception("Background cleanup failed for %s", task_id)
 
     # 修复：原实现 background_tasks.add_task(asyncio.create_task, _async_wrapper())

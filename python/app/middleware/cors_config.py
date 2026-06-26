@@ -652,13 +652,19 @@ def is_production() -> bool:
 # not act as a wildcard.  This is a defence-in-depth check that runs once
 # at import time — if it ever fires, the package is unrecoverable and
 # should be patched.
-assert PRODUCTION_ORIGIN_REGEX == r"http://localhost(:\d+)?", (
-    "PRODUCTION_ORIGIN_REGEX drifted from its narrow localhost-only "
-    "contract.  This is a CORS security regression and must not ship."
-)
-assert all(not _is_wildcard_origin(o) for o in DEVELOPMENT_ORIGINS), (
-    "DEVELOPMENT_ORIGINS contains a wildcard — CORS security regression."
-)
-assert all(not _is_wildcard_origin(o) for o in PRODUCTION_ORIGINS), (
-    "PRODUCTION_ORIGINS contains a wildcard — CORS security regression."
-)
+#
+# 安全修复：使用显式 raise 替代 assert，因为 python -O 会跳过 assert，
+# 导致安全校验失效。安全检查绝不能依赖 assert。
+if PRODUCTION_ORIGIN_REGEX != r"http://localhost(:\d+)?":
+    raise CorsConfigError(
+        "PRODUCTION_ORIGIN_REGEX drifted from its narrow localhost-only "
+        "contract.  This is a CORS security regression and must not ship."
+    )
+if any(_is_wildcard_origin(o) for o in DEVELOPMENT_ORIGINS):
+    raise CorsConfigError(
+        "DEVELOPMENT_ORIGINS contains a wildcard — CORS security regression."
+    )
+if any(_is_wildcard_origin(o) for o in PRODUCTION_ORIGINS):
+    raise CorsConfigError(
+        "PRODUCTION_ORIGINS contains a wildcard — CORS security regression."
+    )

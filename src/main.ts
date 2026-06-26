@@ -26,7 +26,7 @@ function setLocaleWithEl(locale: SupportedLocale) {
   originalSetLocale(locale)
   syncElLocale(locale)
 }
-(window as any).__setLocale = setLocaleWithEl
+(window as Window & { __setLocale?: typeof setLocaleWithEl }).__setLocale = setLocaleWithEl
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -36,22 +36,5 @@ app.provide('locale', elLocale)
 app.use(router)
 
 app.config.globalProperties.$setLocale = setLocaleWithEl
-
-app.directive('permission', {
-  async mounted(el: HTMLElement, binding: any) {
-    const permCode = binding.value as string
-    if (!permCode) return
-
-    const permStore = (await import('@/stores/permissions')).usePermissionsStore()
-
-    if (!permStore.loaded) {
-      await permStore.fetchPermissions()
-    }
-
-    if (!permStore.hasPermission(permCode)) {
-      el.remove()
-    }
-  },
-})
 
 app.mount('#app')

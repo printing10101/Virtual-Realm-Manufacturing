@@ -74,9 +74,9 @@ docker-compose up 失败
 **诊断步骤**：
 ```bash
 # 1. 检查端口占用
-netstat -tlnp | grep 8000
+netstat -tlnp | grep 8765
 # 或
-lsof -i :8000
+lsof -i :8765
 
 # 2. 检查进程
 ps aux | grep uvicorn
@@ -94,7 +94,7 @@ cat config/settings.yaml | grep port
 **方案 A：停止占用端口的进程**
 ```bash
 # 找到占用端口的进程 ID
-PID=$(lsof -ti :8000)
+PID=$(lsof -ti :8765)
 
 # 停止进程
 kill -15 $PID
@@ -125,7 +125,7 @@ docker-compose restart
 docker-compose ps
 
 # 健康检查
-curl http://localhost:8000/health
+curl http://localhost:8765/health
 ```
 
 ---
@@ -221,7 +221,7 @@ sqlite3 data/lingjing.db "PRAGMA integrity_check;"
 **验证**：
 ```bash
 # 测试数据库连接
-curl http://localhost:8000/health
+curl http://localhost:8765/health
 
 # 检查数据库状态
 sqlite3 data/lingjing.db "SELECT COUNT(*) FROM tasks;"
@@ -241,10 +241,10 @@ Error: Model loading failed
 **诊断步骤**：
 ```bash
 # 1. 检查 LNN 引擎状态
-curl http://localhost:8000/health/lnn
+curl http://localhost:8765/health/lnn
 
 # 2. 检查模型加载情况
-curl http://localhost:8000/api/v1/lnn/models
+curl http://localhost:8765/api/v1/lnn/models
 
 # 3. 查看 LNN 日志
 tail -f logs/lnn.log
@@ -273,16 +273,16 @@ systemctl restart lingjing-lnn
 sleep 10
 
 # 验证
-curl http://localhost:8000/health/lnn
+curl http://localhost:8765/health/lnn
 ```
 
 **方案 B：清理模型缓存**
 ```bash
 # 清理缓存
-curl -X POST http://localhost:8000/api/v1/lnn/cache/clear
+curl -X POST http://localhost:8765/api/v1/lnn/cache/clear
 
 # 重新加载模型
-curl -X POST http://localhost:8000/api/v1/lnn/models/reload
+curl -X POST http://localhost:8765/api/v1/lnn/models/reload
 ```
 
 **方案 C：调整超时配置**
@@ -314,12 +314,12 @@ python scripts/train_lnn_model.py --config config/lnn_workflow.yaml
 **验证**：
 ```bash
 # 测试推理
-curl -X POST http://localhost:8000/api/v1/lnn/predict \
+curl -X POST http://localhost:8765/api/v1/lnn/predict \
   -H "Content-Type: application/json" \
   -d '{"features": [1.0, 2.0, 3.0]}'
 
 # 检查响应时间
-time curl http://localhost:8000/api/v1/lnn/models
+time curl http://localhost:8765/api/v1/lnn/models
 ```
 
 ---
@@ -425,7 +425,7 @@ watch -n 1 free -h
 docker-compose ps
 
 # 压力测试
-ab -n 100 -c 10 http://localhost:8000/health
+ab -n 100 -c 10 http://localhost:8765/health
 ```
 
 ---
@@ -453,10 +453,10 @@ uptime
 
 # 4. 检查网络延迟
 ping localhost
-curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8000/health
+curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8765/health
 
 # 5. 检查 API 响应时间
-curl -o /dev/null -s -w "Time: %{time_total}s\n" http://localhost:8000/api/v1/users
+curl -o /dev/null -s -w "Time: %{time_total}s\n" http://localhost:8765/api/v1/users
 ```
 
 **解决方案**：
@@ -532,11 +532,11 @@ docker-compose up -d --scale api=3
 ```bash
 # 测试响应时间
 for i in {1..10}; do
-  curl -o /dev/null -s -w "%{time_total}\n" http://localhost:8000/health
+  curl -o /dev/null -s -w "%{time_total}\n" http://localhost:8765/health
 done
 
 # 压力测试
-ab -n 1000 -c 50 http://localhost:8000/health
+ab -n 1000 -c 50 http://localhost:8765/health
 ```
 
 ---
@@ -609,13 +609,13 @@ EOF
 **验证**：
 ```bash
 # 测试登录
-curl -X POST http://localhost:8000/api/v1/auth/login \
+curl -X POST http://localhost:8765/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "password"}'
 
 # 使用 token 访问受保护资源
 TOKEN="your-token-here"
-curl http://localhost:8000/api/v1/users/me \
+curl http://localhost:8765/api/v1/users/me \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -743,8 +743,8 @@ iostat -x 1            # 磁盘 IO
 
 ```bash
 # API 测试
-curl -v http://localhost:8000/health
-ab -n 100 -c 10 http://localhost:8000/health
+curl -v http://localhost:8765/health
+ab -n 100 -c 10 http://localhost:8765/health
 
 # 数据库诊断
 sqlite3 data/lingjing.db "PRAGMA integrity_check;"

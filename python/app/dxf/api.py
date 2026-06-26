@@ -171,8 +171,8 @@ async def parse_dxf(file: UploadFile = File(...)):
             "dimensions": dims_data[:100],
             "warnings": result.warnings,
         })
-    except Exception as e:
-        # 修复：避免 str(e) 直接泄露内部异常详情给前端。
+    except (ValueError, TypeError, AttributeError, OSError, OverflowError) as e:
+        # DXF解析涉及文件I/O + 几何数据转换，异常类型有限
         logger.error("DXF 解析失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.parse")
         return error(
@@ -207,9 +207,8 @@ async def extract_features(file: UploadFile = File(...)):
         parse_result = _dxf_parser.parse(temp_path)
         feature_result = _feature_extractor.extract(parse_result)
         return success(data=feature_result.to_dict())
-    except Exception as e:
-        # 兜底捕获：特征提取涉及几何计算 + ezdxf 实体遍历，异常类型无法穷举
-        # 修复：使用 safe_error_message 包装异常，避免 str(e) 直接暴露内部详情。
+    except (ValueError, TypeError, KeyError, AttributeError, IndexError, OSError, RuntimeError) as e:
+        # 特征提取涉及几何计算 + ezdxf 实体遍历，异常类型有限
         logger.error("DXF 特征提取失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.features")
         return error(
@@ -255,8 +254,8 @@ async def run_dxf_pipeline(
             safe_z=safe_z,
         )
         return success(data=result.to_dict())
-    except Exception as e:
-        # 修复：避免 str(e) 直接泄露内部异常详情给前端。
+    except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError, TimeoutError) as e:
+        # 管道处理涉及多阶段流程控制
         logger.error("DXF 管道处理失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.pipeline")
         return error(
@@ -307,9 +306,8 @@ async def convert_to_stl(
             "file_size": output_path.stat().st_size,
             "download_url": f"/api/dxf/model/download/{output_path.name}",
         })
-    except Exception as e:
-        # 兜底捕获：STL 转换依赖 cadquery + OCCT 绑定，OCCT 错误以多种异常抛出
-        # 修复：使用 safe_error_message 包装异常，避免 str(e) 直接暴露内部详情。
+    except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError, OverflowError) as e:
+        # STL 转换依赖 cadquery + OCCT，涉及几何计算和文件 I/O
         logger.error("DXF 转 STL 模型失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.model.stl")
         return error(
@@ -428,10 +426,8 @@ async def validate_dxf(file: UploadFile = File(...)):
             "total_entities": result.total_entities,
             "issues": issues,
         })
-    except Exception as e:
-        # 兜底捕获：校验端点对任何解析/几何异常均返回统一的"无效"响应
-        # 修复：避免 str(e) 直接暴露给调用方，统一以 valid=False 形式表达，
-        # 错误信息使用通用描述，仅 error_id 可关联服务端日志排查。
+    except (ValueError, TypeError, KeyError, AttributeError, OSError) as e:
+        # 校验端点对任何解析/几何异常均返回统一的"无效"响应
         logger.warning("DXF 校验失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.validate")
         return success(data={
@@ -514,7 +510,8 @@ async def generate_xm100_gcode(
             "estimated_time_min": gcode_result.estimated_cycle_time_min,
             "download_url": f"/api/dxf/model/download/{output_path.name}",
         })
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:
+        # G代码生成涉及数据解析和流程控制
         logger.error("XM-100 G代码生成失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.xm100.generate")
         return error(
@@ -553,7 +550,19 @@ async def upload_to_xmaker(
             detail=f"不支持的文件格式: {ext}。请上传 .gcode/.nc/.tap 格式文件。",
         )
 
-    temp_path = _save_upload(file)
+    # 文件大小校验（50MB）
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"文件大小({len(content) / 1024 / 1024:.1f}MB)超过限制({MAX_FILE_SIZE / 1024 / 1024:.0f}MB)。",
+        )
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="文件内容为空")
+
+    # 写入临时文件
+    temp_path = TEMP_DIR / f"{uuid.uuid4().hex}_{file.filename}"
+    temp_path.write_bytes(content)
 
     try:
         upload_result = _xmaker_client.upload_gcode(
@@ -572,7 +581,8 @@ async def upload_to_xmaker(
             "file_url": upload_result.file_url,
             "upload_time_ms": upload_result.upload_time_ms,
         })
-    except Exception as e:
+    except (OSError, RuntimeError, TimeoutError, ValueError, TypeError) as e:
+        # 上传涉及文件 I/O 和网络请求
         logger.error("XM-100 上传失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.xm100.upload")
         return error(
@@ -613,7 +623,8 @@ async def get_xm100_status(machine_id: str = "default"):
             "error_code": status_info.error_code,
             "error_message": status_info.error_message,
         })
-    except Exception as e:
+    except (OSError, RuntimeError, TimeoutError, ValueError, TypeError, KeyError, AttributeError) as e:
+        # 获取机床状态涉及网络请求和数据解析
         logger.error("获取 XM-100 机床状态失败: %s", e, exc_info=True)
         safe = safe_error_message(e, context="dxf.xm100.status")
         return error(

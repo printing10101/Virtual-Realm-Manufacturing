@@ -103,9 +103,8 @@ export async function getReasoningTrace(traceId: string): Promise<ReasoningTrace
       `/reasoning/trace/${traceId}`
     )
     return response.data.data
-  } catch (error) {
-    console.error('获取推理轨迹失败:', error)
-    throw error
+  } catch {
+    throw new Error('获取推理轨迹失败')
   }
 }
 
@@ -119,9 +118,8 @@ export async function listReasoningTraces(taskId: string): Promise<ReasoningTrac
       `/reasoning/traces/${taskId}`
     )
     return response.data.data
-  } catch (error) {
-    console.error('获取推理轨迹列表失败:', error)
-    throw error
+  } catch {
+    throw new Error('获取推理轨迹列表失败')
   }
 }
 

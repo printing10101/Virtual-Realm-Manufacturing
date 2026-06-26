@@ -232,6 +232,12 @@ class ErrorCategory(Enum):
         "error",
         "无法连接到刀具/材料数据库。请检查数据库文件路径和读写权限。",
     )
+    INTERNAL_ERROR = (
+        "E5006",
+        "系统内部错误",
+        "critical",
+        "系统发生未预期的内部错误。请联系技术支持并提供错误码以便排查。",
+    )
 
     def __init__(
         self,
@@ -366,11 +372,7 @@ class ManufacturingError(Exception):
         """通过错误码字符串快速创建异常。"""
         category = ErrorCategory.from_code(code)
         if category is None:
-            category = (
-                ErrorCategory.INTERNAL_ERROR
-                if hasattr(ErrorCategory, "INTERNAL_ERROR")
-                else ErrorCategory.SERVICE_UNAVAILABLE_CAT
-            )
+            category = ErrorCategory.INTERNAL_ERROR
         return cls(
             category=category,
             detail=detail,
@@ -419,6 +421,7 @@ CATEGORY_TO_NUMERIC: dict[str, int] = {
     "E5003": 5003,
     "E5004": 5004,
     "E5005": 5005,
+    "E5006": 5006,
 }
 
 

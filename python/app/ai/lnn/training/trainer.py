@@ -22,7 +22,7 @@ Example:
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 import time
 import os
 import asyncio

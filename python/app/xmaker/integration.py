@@ -111,6 +111,21 @@ class XmakerIntegration:
         self._session = session
         return session
 
+    def close(self) -> None:
+        """关闭 HTTP Session，释放连接池资源"""
+        if self._session is not None:
+            self._session.close()
+            self._session = None
+            logger.debug("Xmaker HTTP session 已关闭")
+
+    def __enter__(self):
+        """上下文管理器入口"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """上下文管理器出口"""
+        self.close()
+
     def _request(
         self,
         method: str,
@@ -247,7 +262,7 @@ class XmakerIntegration:
                 error_message=f"HTTP {status}: {e}",
                 upload_time_ms=latency_ms,
             )
-        except Exception as e:
+        except (requests.exceptions.RequestException, IOError, json.JSONDecodeError, OSError) as e:
             latency_ms = int((time.perf_counter() - t0) * 1000)
             logger.error("G-code 上传失败: %s", e, exc_info=True)
             return UploadResult(
@@ -318,7 +333,7 @@ class XmakerIntegration:
                 status=MachineStatus.OFFLINE,
                 error_message=f"HTTP {status_code}: {e}",
             )
-        except Exception as e:
+        except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError, OSError) as e:
             logger.error("获取机床状态失败: machine_id=%s, error=%s", machine_id, e, exc_info=True)
             return MachineStatusInfo(
                 status=MachineStatus.OFFLINE,
@@ -378,7 +393,7 @@ class XmakerIntegration:
             status_code = e.response.status_code if e.response is not None else "N/A"
             logger.error("启动加工任务 HTTP 错误: file_id=%s, status=%s", file_id, status_code)
             return False
-        except Exception as e:
+        except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
             logger.error("启动加工任务失败: file_id=%s, error=%s", file_id, e, exc_info=True)
             return False
     
@@ -420,7 +435,7 @@ class XmakerIntegration:
             status_code = e.response.status_code if e.response is not None else "N/A"
             logger.error("暂停加工任务 HTTP 错误: machine_id=%s, status=%s", machine_id, status_code)
             return False
-        except Exception as e:
+        except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
             logger.error("暂停加工任务失败: machine_id=%s, error=%s", machine_id, e, exc_info=True)
             return False
     
@@ -462,7 +477,7 @@ class XmakerIntegration:
             status_code = e.response.status_code if e.response is not None else "N/A"
             logger.error("恢复加工任务 HTTP 错误: machine_id=%s, status=%s", machine_id, status_code)
             return False
-        except Exception as e:
+        except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
             logger.error("恢复加工任务失败: machine_id=%s, error=%s", machine_id, e, exc_info=True)
             return False
     
@@ -504,7 +519,7 @@ class XmakerIntegration:
             status_code = e.response.status_code if e.response is not None else "N/A"
             logger.error("停止加工任务 HTTP 错误: machine_id=%s, status=%s", machine_id, status_code)
             return False
-        except Exception as e:
+        except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
             logger.error("停止加工任务失败: machine_id=%s, error=%s", machine_id, e, exc_info=True)
             return False
     
@@ -557,7 +572,7 @@ class XmakerIntegration:
         except IOError as e:
             logger.error("下载 G-code 写入文件失败: file_id=%s, path=%s, error=%s", file_id, output_path, e)
             return False
-        except Exception as e:
+        except (requests.exceptions.RequestException, OSError) as e:
             logger.error("下载 G-code 失败: file_id=%s, error=%s", file_id, e, exc_info=True)
             return False
 

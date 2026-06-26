@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import http from '@/utils/http'
+import { triggerFileDownload } from '@/utils/download'
 import { ref, computed } from 'vue'
 import type {
   ProcessRule,
@@ -87,8 +88,8 @@ export const useRuleStore = defineStore('rules', () => {
     try {
       const response = await http.get('/api/rules/stats')
       stats.value = response.data.data
-    } catch (e: unknown) {
-      console.error('获取规则统计失败:', e)
+    } catch {
+      // 静默处理
     }
   }
 
@@ -183,20 +184,13 @@ export const useRuleStore = defineStore('rules', () => {
       const response = await http.get('/api/rules/export', {
         responseType: 'blob',
       })
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement('a')
-      link.href = url
       const disposition = response.headers['content-disposition']
       let filename = 'rules_export.json'
       if (disposition) {
         const match = disposition.match(/filename="?([^"]+)"?/)
         if (match) filename = match[1]
       }
-      link.setAttribute('download', filename)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
+      triggerFileDownload(new Blob([response.data]), filename)
       ElMessage.success('规则导出成功')
     } catch (e: unknown) {
       ElMessage.error(extractErrorMessage(e, '规则导出失败'))

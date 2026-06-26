@@ -87,6 +87,17 @@ benchmarks/performance/history/
 # 测试生成的临时目录
 python/test_chroma_db/
 python/test_chroma_db_e2e/
+python/tests/_test_output/
+python/_test_output/
+python/_test_output*.txt
+
+# 运行时生成的输出目录（模型/项目/规则/仿真/演示等）
+python/output/
+output/simulation/
+output/models/
+
+# 测试追踪与日志
+test_traces/
 
 # ============================================================
 # 日志
@@ -187,6 +198,34 @@ Thumbs.db
 /python/run_via_*.py
 /python/verify_and_test*.py
 /python/debug_train*.py
+/python/_check.py
+/python/_refresh_files.py
+/python/_smoke_import.py
+/python/_tiny_test.py
+/python/check_cov.py
+/python/check_coverage.py
+/python/detail_except_pass.py
+/python/e2e_run.py
+/python/fix_step_parser.py
+/python/minimal_flush*.py
+/python/minimal_load.py
+/python/scan_exceptions.py
+/python/scan_leaks_round2.py
+/python/scan_unused_full.py
+/python/scan_unused_imports.py
+/python/update_imports.ps1
+/python/verify_security_fix.py
+/python/test_output.txt
+/python/test_train_request.json
+/python/test_env.ps1
+/python/test_powershell.ps1
+/python/test_sse.ps1
+
+# 项目根目录的一次性测试/诊断脚本
+/quick_test.bat
+/run_agent_tests.bat
+/run_pytest_prog.py
+/run_test_runner.bat
 
 # ============================================================
 # IDE

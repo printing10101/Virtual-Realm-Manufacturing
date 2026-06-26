@@ -15,7 +15,7 @@ class TestSidecarLifecycleIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_file = os.path.join(tmpdir, "sidecar.json")
             with open(state_file, "w") as f:
-                json.dump({"pid": 99999, "port": 8000, "token": "test-token", "startedAt": "2024-01-01T00:00:00", "version": "1.0.0", "status": "running"}, f)
+                json.dump({"pid": 99999, "port": 8765, "token": "test-token", "startedAt": "2024-01-01T00:00:00", "version": "1.0.0", "status": "running"}, f)
 
             mock_app = MagicMock()
             handler = GracefulShutdownHandler(app=mock_app, state_file_path=state_file)
@@ -39,7 +39,7 @@ class TestSidecarLifecycleIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_file = os.path.join(tmpdir, "sidecar.json")
             with open(state_file, "w") as f:
-                json.dump({"pid": 12345, "status": "running", "port": 8000, "token": "test", "startedAt": "2024-01-01T00:00:00", "version": "1.0.0"}, f)
+                json.dump({"pid": 12345, "status": "running", "port": 8765, "token": "test", "startedAt": "2024-01-01T00:00:00", "version": "1.0.0"}, f)
 
             handler = GracefulShutdownHandler(app=MagicMock(), state_file_path=state_file)
 

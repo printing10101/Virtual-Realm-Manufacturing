@@ -311,7 +311,7 @@ class Quantizer:
 
         if metadata:
             meta_path = save_path + ".meta.json"
-            with open(meta_path, "w") as f:
+            with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, indent=2, default=str)
             self.logger.info(f"Metadata saved to {meta_path}")
 

@@ -134,7 +134,7 @@ class ValidationCalibrator:
                     result["sample_count"],
                     result["confidence"],
                 )
-            except Exception as e:
+            except (ValueError, TypeError, ZeroDivisionError, KeyError, AttributeError) as e:
                 logger.warning("Failed to calibrate %s: %s", process, e)
 
         return calibrated
@@ -287,7 +287,7 @@ class ValidationCalibrator:
             return self._calibration_cache
         try:
             return self.calibrate_all_processes()
-        except Exception as e:
+        except (ValueError, TypeError, ZeroDivisionError, KeyError, AttributeError) as e:
             logger.error("Auto-calibration failed: %s", e)
             return {}
 
@@ -299,7 +299,7 @@ class ValidationCalibrator:
         bosch_thresholds = {}
         try:
             bosch_thresholds = self.calibrate_all_processes()
-        except Exception as e:
+        except (ValueError, TypeError, ZeroDivisionError, KeyError, AttributeError) as e:
             logger.warning("Bosch calibration failed: %s", e)
 
         uniwear_result = {}
@@ -307,7 +307,7 @@ class ValidationCalibrator:
             uniwear_result = self.calibrate_with_uniwear(
                 uniwear_data_dir=uniwear_data_dir,
             )
-        except Exception as e:
+        except (ValueError, TypeError, ZeroDivisionError, KeyError, AttributeError) as e:
             logger.warning("Uniwear calibration failed: %s", e)
 
         alignment: dict = {"bosch_uniwear_alignment": {}}
@@ -361,13 +361,13 @@ class ValidationCalibrator:
     def merge_calibration_rules(self) -> dict:
         try:
             bosch_calibrated = self._load_or_calibrate()
-        except Exception as e:
+        except (ValueError, TypeError, ZeroDivisionError, KeyError, AttributeError) as e:
             logger.warning("加载 Bosch 校准规则失败: %s", e)
             bosch_calibrated = {}
 
         try:
             uniwear_calibrated = self.calibrate_with_uniwear()
-        except Exception as e:
+        except (ValueError, TypeError, ZeroDivisionError, KeyError, AttributeError) as e:
             logger.warning("加载 Uniwear 校准规则失败: %s", e)
             uniwear_calibrated = {}
 
@@ -445,7 +445,7 @@ class ValidationCalibrator:
                     "mean_wear_rate": wear_stats.get("mean_wear_rate", 0),
                     "sample_count": wear_stats.get("sample_count", 0),
                 }
-            except Exception as e:
+            except (ValueError, TypeError, ZeroDivisionError, KeyError, AttributeError) as e:
                 logger.warning("Uniwear calibration failed for %s: %s", ds.value, e, exc_info=True)
                 from app.core.safe_errors import safe_error_message
 
@@ -507,7 +507,7 @@ class ValidationCalibrator:
                 )
 
             result["cross_validation"] = cross_validation
-        except Exception as e:
+        except (ValueError, TypeError, ZeroDivisionError, KeyError, AttributeError) as e:
             logger.warning("Cross-source calibration failed: %s", e, exc_info=True)
             from app.core.safe_errors import safe_error_message
 
@@ -529,7 +529,7 @@ class ValidationCalibrator:
 
         unified: dict = {
             "metadata": {
-                "version": "2.2.0",
+                "version": "2.3.0",
                 "description": "Unified validation rules calibrated with Bosch CNC + Uniwear",
                 "last_updated": self._get_timestamp_str(),
             },

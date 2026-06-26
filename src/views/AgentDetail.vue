@@ -506,7 +506,7 @@ function importanceColor(imp: number): string {
 
 async function handleSaveCheckpoint() {
   try {
-    const data: Record<string, any> = {
+    const data: Record<string, unknown> = {
       epoch: checkpointForm.value.epoch,
       step: checkpointForm.value.step,
       best_metric_name: checkpointForm.value.best_metric_name,
@@ -519,8 +519,8 @@ async function handleSaveCheckpoint() {
     ElMessage.success('检查点保存成功')
     showCheckpointDialog.value = false
     refreshDetail()
-  } catch (e: any) {
-    ElMessage.error(`保存失败: ${e.message}`)
+  } catch (e: unknown) {
+    ElMessage.error(`保存失败: ${(e as Error).message}`)
   }
 }
 
@@ -529,8 +529,8 @@ async function handleRollback(checkpointId: string) {
     await agentStore.rollbackCheckpoint(agentId.value, checkpointId)
     ElMessage.success('回滚成功')
     refreshDetail()
-  } catch (e: any) {
-    ElMessage.error(`回滚失败: ${e.message}`)
+  } catch (e: unknown) {
+    ElMessage.error(`回滚失败: ${(e as Error).message}`)
   }
 }
 
@@ -544,8 +544,8 @@ async function handleClone() {
     ElMessage.success(`已克隆到 ${cloneTargetId.value}`)
     showCloneDialog.value = false
     cloneTargetId.value = ''
-  } catch (e: any) {
-    ElMessage.error(`克隆失败: ${e.message}`)
+  } catch (e: unknown) {
+    ElMessage.error(`克隆失败: ${(e as Error).message}`)
   }
 }
 </script>

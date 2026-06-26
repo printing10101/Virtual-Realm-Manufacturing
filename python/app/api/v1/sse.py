@@ -82,7 +82,9 @@ class SSEConnectionManager:
                 try:
                     await client.queue.put(event)
                     client.last_activity = time.time()
-                except Exception:
+                except (asyncio.QueueFull, RuntimeError, AttributeError) as e:
+                    # 队列满或客户端异常时标记为待移除，记录日志以便排查
+                    logger.warning(f"Failed to send SSE event to client {client_id}: {e}")
                     clients_to_remove.append(client_id)
 
             for cid in clients_to_remove:
@@ -175,7 +177,22 @@ class TrainingProgressCallback:
             "timestamp": datetime.now().isoformat(),
         }
 
-        asyncio.create_task(self._manager.broadcast(self._task_id, "progress", data))
+        # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
+        broadcast_task = asyncio.create_task(
+            self._manager.broadcast(self._task_id, "progress", data)
+        )
+        broadcast_task.add_done_callback(self._handle_broadcast_done)
+
+    def _handle_broadcast_done(self, task: asyncio.Task) -> None:
+        """记录广播任务完成状态"""
+        if task.cancelled():
+            logger.debug("Broadcast task cancelled for %s", self._task_id)
+        elif task.exception():
+            logger.error(
+                "Broadcast task failed for %s: %s",
+                self._task_id,
+                task.exception(),
+            )
 
     async def send_complete(
         self, status: str, final_loss: float, training_time: Optional[float] = None

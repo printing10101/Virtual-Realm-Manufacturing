@@ -163,7 +163,7 @@ Trigger result: {
 ### 2. 查询任务状态
 
 ```bash
-curl http://localhost:8000/api/v1/jobs | grep "auto_retrain"
+curl http://localhost:8765/api/v1/jobs | grep "auto_retrain"
 ```
 
 期望结果：能够在任务列表中找到状态为"已提交"或"运行中"的auto_retrain任务。

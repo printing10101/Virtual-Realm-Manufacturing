@@ -112,7 +112,8 @@ class GraphStore:
             from app.knowledge_graph.repository import (
                 get_sync_sessionmaker,
             )
-        except Exception:  # pragma: no cover - 防御性兜底
+        except (ImportError, OSError) as exc:  # pragma: no cover - 防御性兜底
+            logger.debug("auto_load import failed: %s", exc)
             return
         if get_sync_sessionmaker() is None:
             return
@@ -121,7 +122,7 @@ class GraphStore:
 
             persistence = GraphPersistence()
             persistence.load_from_repository(self, replace=False)
-        except Exception as exc:  # pragma: no cover - 防御性兜底
+        except (OSError, RuntimeError, ImportError) as exc:  # pragma: no cover - 防御性兜底
             logger.debug("auto_load from repository skipped: %s", exc)
 
     # ============================================================== 节点操作

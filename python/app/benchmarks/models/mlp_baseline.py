@@ -68,5 +68,7 @@ class MLPBaseline:
             from app.benchmarks.metrics import measure_model_size_mb
 
             return measure_model_size_mb(self.model)
-        except Exception:
+        except (ImportError, OSError, AttributeError) as e:
+            import logging
+            logging.getLogger(__name__).debug("MLP model size measurement failed: %s", e)
             return 0.0

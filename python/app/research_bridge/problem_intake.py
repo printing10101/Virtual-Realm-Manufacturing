@@ -75,7 +75,7 @@ class ProblemIntake:
             with open(path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False))
                 f.write("\n")
-        except Exception as e:  # noqa: BLE001
+        except (OSError, IOError, ValueError, TypeError) as e:
             logger.warning("intake_append_failed path=%s err=%s", path, e)
 
 

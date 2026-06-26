@@ -5,7 +5,6 @@ supporting MC Dropout-based uncertainty estimation.
 """
 
 import os
-import time
 import logging
 from typing import Tuple, Union, Optional
 

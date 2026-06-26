@@ -311,10 +311,10 @@ def main() -> None:
     history = trainer.train(train_ds, val_ds)
     elapsed = time.time() - start
 
-    print(f"\n训练耗时: {elapsed:.2f}s")
-    print(f"最终训练损失: {history['train_loss'][-1]:.4f}")
-    print(f"最终验证损失: {history['val_loss'][-1]:.4f}")
-    print(f"模型参数量: {model.count_parameters():,}")
+    logger.info(f"\n训练耗时: {elapsed:.2f}s")
+    logger.info(f"最终训练损失: {history['train_loss'][-1]:.4f}")
+    logger.info(f"最终验证损失: {history['val_loss'][-1]:.4f}")
+    logger.info(f"模型参数量: {model.count_parameters():,}")
 
 
 if __name__ == "__main__":

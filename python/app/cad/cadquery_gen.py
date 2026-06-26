@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import json
 import logging
@@ -19,6 +20,38 @@ from PIL import Image, ImageFilter, ImageOps
 from app.cad.advanced_features import AdvancedFeatureBuilder
 
 logger = logging.getLogger(__name__)
+
+
+# 安全修复：禁止访问的危险 dunder 属性，防止沙箱逃逸
+_DANGEROUS_ATTRS = frozenset({
+    "__class__", "__mro__", "__subclasses__", "__globals__",
+    "__builtins__", "__bases__", "__base__", "__code__",
+    "__func__", "__self__", "__dict__", "__module__",
+    "__import__", "__loader__", "__spec__",
+})
+
+
+class _CadQueryScriptValidator(ast.NodeVisitor):
+    """AST 审计器：拒绝危险属性访问，防止沙箱逃逸。"""
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        if node.attr in _DANGEROUS_ATTRS:
+            raise CadQueryScriptError(
+                f"Access to dangerous attribute '{node.attr}' is forbidden "
+                f"in CadQuery scripts (line {node.lineno})"
+            )
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import) -> None:
+        # 禁止 import 语句，仅允许已注入的 cq/cadquery
+        raise CadQueryScriptError(
+            f"Import statements are forbidden in CadQuery scripts (line {node.lineno})"
+        )
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        raise CadQueryScriptError(
+            f"Import statements are forbidden in CadQuery scripts (line {node.lineno})"
+        )
 
 
 class CadQueryError(Exception):
@@ -91,7 +124,7 @@ class CadQueryGenerator:
                         cv_out["confidence"],
                         cv_out["bbox_size"],
                     )
-            except Exception as e:  # noqa: BLE001
+            except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:  # noqa: BLE001
                 logger.warning(
                     "CV extraction failed for view %s (%s): %s",
                     view_name,
@@ -238,10 +271,10 @@ class CadQueryGenerator:
             cq.exporters.export(result, str(output_path))
             logger.info("3D model exported to %s", output_path)
             return str(output_path)
-        except Exception as e:
-            logger.error("CAD 模型生成失败: %s", e)
+        except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
+            logger.error("CAD 模型生成失败: %s", e, exc_info=True)
             raise CadQueryScriptError(
-                f"CAD 模型生成失败：执行 CadQuery 脚本时出现异常。错误详情: {e}。"
+                f"CAD 模型生成失败：执行 CadQuery 脚本时出现异常。错误类型: {type(e).__name__}。"
                 "可能原因：1) 脚本语法错误；2) 几何参数无效；"
                 "3) CadQuery 版本不兼容。"
                 "请检查脚本内容和几何参数，或查看日志获取详细错误信息。"
@@ -384,14 +417,35 @@ cq.exporters.{export_method}(result, {json.dumps(output_path)})
 
 def _run_cadquery_script(script: str, task_id: str) -> None:
     """在受控环境中执行 CadQuery 脚本。
-    
+
     使用 exec() 替代 subprocess.run()，避免创建临时文件带来的注入风险。
     在隔离的命名空间中执行脚本，限制可用的模块和函数。
+    
+    安全措施：
+    1. AST 审计：使用 _CadQueryScriptValidator 拒绝危险属性访问（如 __class__, __globals__ 等）
+    2. 禁止 import：脚本无法动态导入模块，只能使用预注入的 cq/cadquery
+    3. 受限内置函数：移除 __import__, eval, exec 等危险内置函数
+    4. 白名单机制：仅允许访问安全的内置函数和 cadquery 模块
+    
+    注意：虽然采取了多层安全防护，但 exec() 本质上仍存在一定风险。
+    建议在生产环境中：
+    - 仅允许受信任的用户提交脚本
+    - 对脚本内容进行预审查
+    - 在资源受限的容器中执行
     """
+    # 安全修复：先进行 AST 审计，拒绝危险属性访问和 import 语句
+    try:
+        tree = ast.parse(script)
+        _CadQueryScriptValidator().visit(tree)
+    except SyntaxError as e:
+        error_msg = f"Script syntax error (task {task_id}): {e}"
+        logger.error(error_msg, exc_info=True)
+        raise CadQueryScriptError(error_msg) from e
+
     # 创建受控的执行环境
     safe_globals = {
         "__builtins__": {
-            "__import__": __import__,
+            # 安全修复：移除 __import__，禁止脚本动态导入模块
             "print": print,
             "len": len,
             "range": range,
@@ -439,8 +493,8 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
         # 在受控命名空间中执行脚本
         exec(script, safe_globals)
         logger.debug("Script for task %s completed successfully", task_id)
-    except Exception as e:
-        # 捕获所有异常并转换为 CadQueryScriptError
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, SyntaxError, NameError) as e:
+        # 捕获特定异常并转换为 CadQueryScriptError
         error_msg = f"Script execution failed (task {task_id}): {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise CadQueryScriptError(error_msg) from e

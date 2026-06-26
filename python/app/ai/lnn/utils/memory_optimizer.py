@@ -285,4 +285,6 @@ class LNNMemoryOptimizer:
                     f"High memory usage detected: {stats.process_mb:.0f}MB, auto-optimization triggered"
                 )
 
-            time.sleep(self.gc_check_interval)
+            # 使用事件等待代替 sleep，支持提前停止
+            if self._stop_event.wait(timeout=self.gc_check_interval):
+                break

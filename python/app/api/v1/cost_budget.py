@@ -257,7 +257,7 @@ async def get_budget_alerts(
     status: Optional[str] = Query(None, description="筛选状态: warning/exceeded"),
     unread_only: bool = Query(False, description="仅未读"),
     limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=10000),
 ):
     enforcer = get_budget_enforcer()
     alerts = enforcer.get_alerts(status, unread_only, limit, offset)

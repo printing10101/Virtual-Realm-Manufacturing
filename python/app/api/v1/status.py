@@ -35,7 +35,8 @@ def get_status() -> dict[str, Any]:
         from app.research_bridge import UsageDataCollector
 
         out["components"]["research_bridge"] = UsageDataCollector.get_instance().health_check()
-    except Exception as e:  # noqa: BLE001
+    except (ImportError, AttributeError, RuntimeError) as e:
+        logger.warning("research_bridge health check failed: %s", e)
         out["components"]["research_bridge"] = {"error": repr(e)}
 
     # 2. feature flags
@@ -58,7 +59,8 @@ def get_status() -> dict[str, Any]:
                 for name, cfg in ROLLOUT_CONFIG.items()
             },
         }
-    except Exception as e:  # noqa: BLE001
+    except (ImportError, AttributeError, KeyError) as e:
+        logger.warning("feature_flags check failed: %s", e)
         out["components"]["feature_flags"] = {"error": repr(e)}
 
     # 3. postprocessors
@@ -69,7 +71,8 @@ def get_status() -> dict[str, Any]:
         out["components"]["postprocessors"] = {
             "registered": regs.list_controllers(),
         }
-    except Exception as e:  # noqa: BLE001
+    except (ImportError, AttributeError, RuntimeError) as e:
+        logger.warning("postprocessors check failed: %s", e)
         out["components"]["postprocessors"] = {"error": repr(e)}
 
     # 4. knowledge graph
@@ -78,7 +81,8 @@ def get_status() -> dict[str, Any]:
 
         api = KnowledgeGraphQueryAPI(GraphStore(auto_load=False))
         out["components"]["knowledge_graph"] = api.stats()
-    except Exception as e:  # noqa: BLE001
+    except (ImportError, AttributeError, RuntimeError, OSError) as e:
+        logger.warning("knowledge_graph check failed: %s", e)
         out["components"]["knowledge_graph"] = {"error": repr(e)}
 
     # 5. environment flags
@@ -100,7 +104,8 @@ def get_postprocessors() -> dict[str, Any]:
             "count": len(regs.list_controllers()),
             "controllers": regs.list_controllers(),
         }
-    except Exception as e:  # noqa: BLE001
+    except (ImportError, AttributeError, RuntimeError) as e:
+        logger.warning("get_postprocessors failed: %s", e)
         return {"error": repr(e)}
 
 
@@ -112,7 +117,8 @@ def get_bridge() -> dict[str, Any]:
 
         c = UsageDataCollector.get_instance()
         return {"health": c.health_check(), "summary": c.summary()}
-    except Exception as e:  # noqa: BLE001
+    except (ImportError, AttributeError, RuntimeError) as e:
+        logger.warning("get_bridge failed: %s", e)
         return {"error": repr(e)}
 
 

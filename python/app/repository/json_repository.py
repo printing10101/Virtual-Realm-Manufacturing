@@ -184,7 +184,10 @@ class JsonRepository(Repository):
                 return dict(record)
         except (ValueError, ValidationError, StorageError):
             raise
-        except Exception as e:
+        except (OSError, TypeError, KeyError) as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error("记录创建失败: %s", e, exc_info=True)
             raise StorageError(str(e), repository_type="json", detail=str(e))
 
     def read(self, id: str) -> dict[str, Any] | None:
@@ -210,7 +213,10 @@ class JsonRepository(Repository):
                 return dict(record)
         except (RecordNotFoundError, StorageError):
             raise
-        except Exception as e:
+        except (OSError, TypeError, KeyError, RuntimeError, AttributeError) as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error("记录更新失败: %s", e, exc_info=True)
             raise StorageError(str(e), repository_type="json", detail=str(e))
 
     def delete(self, id: str) -> bool:
@@ -226,7 +232,10 @@ class JsonRepository(Repository):
                 return True
         except StorageError:
             raise
-        except Exception as e:
+        except (OSError, TypeError, KeyError, RuntimeError, AttributeError) as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error("记录删除失败: %s", e, exc_info=True)
             raise StorageError(str(e), repository_type="json", detail=str(e))
 
     def list(self, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:

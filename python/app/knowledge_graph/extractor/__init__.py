@@ -32,7 +32,7 @@
     # 3. 验证结果
     validator = ExtractionValidator()
     report = validator.validate(result.to_dict())
-    print(f"准确率: {report.accuracy_score}%")
+    # 准确率: {report.accuracy_score}%
 
     # 4. 人工审核
     # 启动审核界面: python -m app.knowledge_graph.extractor.review

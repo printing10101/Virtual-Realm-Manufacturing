@@ -1,11 +1,10 @@
 import json
 import logging
+import numpy as np
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
-
-import numpy as np
+from typing import Optional, Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +14,11 @@ class Experience:
     experience_id: str
     task_id: str
     process: str
-    parameters: dict
-    metrics: dict
-    validation_result: dict
-    ground_truth_validation: dict = field(default_factory=dict)
-    metadata: dict = field(default_factory=dict)
+    parameters: dict[str, Any]
+    metrics: dict[str, Any]
+    validation_result: dict[str, Any]
+    ground_truth_validation: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
@@ -164,7 +163,7 @@ class ExperienceStore:
                 }
             except ImportError:
                 logger.warning("ground_truth_adapter 模块不可用，跳过地面真实验证")
-            except Exception as e:
+            except (OSError, ValueError, KeyError, TypeError) as e:
                 logger.warning("地面真实验证失败: %s", e)
 
         return {
@@ -330,7 +329,7 @@ class ExperienceStore:
 
             self._validation_history = data.get("validation_history", {})
             logger.info("Loaded %d experiences from disk", len(self._experiences))
-        except Exception as e:
+        except (json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as e:
             logger.warning("Failed to load experiences: %s", e)
             backup_path = file_path.with_suffix(".json.bak")
             try:
@@ -338,7 +337,7 @@ class ExperienceStore:
                 logger.warning(
                     "Corrupted experiences file backed up to %s", backup_path
                 )
-            except Exception as be:
+            except (OSError, ValueError) as be:
                 logger.error("Failed to backup corrupted experiences file: %s", be)
 
     def import_from_uniwear(
@@ -436,7 +435,7 @@ class ExperienceStore:
                         exp,
                         material,
                     )
-                except Exception as e:
+                except (OSError, ValueError, KeyError, TypeError) as e:
                     logger.warning(
                         "Failed to import uniwear experience %s/%s: %s",
                         ds_key,

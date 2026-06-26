@@ -508,7 +508,7 @@ interface PredictResponse {
   inference_time: number
   alternatives?: Array<{
     plan_id: string
-    parameters: Record<string, any>
+    parameters: Record<string, unknown>
     expected_outcome: string
     confidence: number
     reasoning: string
@@ -528,6 +528,29 @@ interface DryRunResult {
   }
   confidence: number
   reasoning: string
+}
+
+interface TrainResult {
+  job_id: string
+  status: string
+  message?: string
+}
+
+interface ModelInfo {
+  name: string
+  model_type: string
+  version: string
+  input_features?: string[]
+}
+
+interface AuditLogData {
+  ai_module: string
+  ai_recommendation: Record<string, unknown>
+  user_decision: string
+  operation_status: string
+  final_execution?: Record<string, unknown>
+  confidence?: number | null
+  reasoning?: string | null
 }
 
 const predictForm = reactive({
@@ -550,9 +573,9 @@ const trainForm = reactive({
 
 const predictResponse = ref<PredictResponse | null>(null)
 const dryRunResult = ref<DryRunResult | null>(null)
-const trainResult = ref<any>(null)
-const modelList = ref<any[]>([])
-const modifiedPrediction = ref<Record<string, any>>({})
+const trainResult = ref<TrainResult | null>(null)
+const modelList = ref<ModelInfo[]>([])
+const modifiedPrediction = ref<Record<string, unknown>>({})
 const showAdjustedResult = ref(false)
 
 const currentJobId = ref<string | null>(null)
@@ -672,15 +695,43 @@ async function handlePredict() {
   predicting.value = true
   predictResponse.value = null
   try {
+    // 输入验证
+    if (!predictForm.modelName || predictForm.modelName.trim() === '') {
+      ElMessage.error('请选择模型')
+      predicting.value = false
+      return
+    }
+
+    if (!predictForm.inputData || predictForm.inputData.trim() === '') {
+      ElMessage.error('请输入推理数据')
+      predicting.value = false
+      return
+    }
+
     const inputArray = predictForm.inputData
       .split(',')
       .map(val => val.trim())
       .filter(val => val !== '')
       .map(Number)
-      .filter(num => !isNaN(num))
+
+    // 检查是否有无效数字
+    const hasInvalidNumbers = inputArray.some(num => isNaN(num))
+    if (hasInvalidNumbers) {
+      ElMessage.error('输入数据包含无效数字，请检查输入格式')
+      predicting.value = false
+      return
+    }
 
     if (inputArray.length === 0) {
-      ElMessage.error(t('common.inputPlaceholder'))
+      ElMessage.error('输入数据不能为空')
+      predicting.value = false
+      return
+    }
+
+    // 验证数值范围（可选，根据业务需求调整）
+    const hasOutOfRangeValues = inputArray.some(num => !isFinite(num) || Math.abs(num) > 1e10)
+    if (hasOutOfRangeValues) {
+      ElMessage.error('输入数值超出有效范围')
       predicting.value = false
       return
     }
@@ -691,19 +742,35 @@ async function handlePredict() {
       return_confidence: predictForm.returnConfidence,
     })
 
-    predictResponse.value = res.data.data as PredictResponse
+    // 响应结构验证
+    if (!res.data || !res.data.data) {
+      throw new Error('响应数据格式错误')
+    }
+
+    const responseData = res.data.data as PredictResponse
+
+    // 验证必要字段
+    if (responseData.value === undefined || responseData.value === null) {
+      throw new Error('响应缺少预测结果')
+    }
+
+    if (responseData.inference_time === undefined || responseData.inference_time === null) {
+      // 推理时间字段可选，不记录警告
+    }
+
+    predictResponse.value = responseData
     ElMessage.success(t('workspace.inferenceResult'))
 
     await recordAuditLog('lnn_predict', predictResponse.value, 'auto_executed', 'success')
-  } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || t('common.unknownError')
-    ElMessage.error(errorMsg)
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error(errorMsg || '推理失败，请稍后重试')
   } finally {
     predicting.value = false
   }
 }
 
-function getAIRecommendation(): Record<string, any> {
+function getAIRecommendation(): Record<string, unknown> {
   if (!predictResponse.value) return {}
   return {
     value: predictResponse.value.value,
@@ -719,19 +786,19 @@ function formatPredictionValue(value: number | number[]): string {
   return value.toFixed(4)
 }
 
-async function handleAcceptPrediction(recommendation: Record<string, any>) {
+async function handleAcceptPrediction(recommendation: Record<string, unknown>) {
   await recordAuditLog('lnn_predict', predictResponse.value, 'accept', 'success', recommendation)
   ElMessage.success(t('settings.accept'))
 }
 
-async function handleModifyPrediction(modifiedParams: Record<string, any>) {
+async function handleModifyPrediction(modifiedParams: Record<string, unknown>) {
   modifiedPrediction.value = { ...modifiedParams }
   showAdjustedResult.value = true
   await recordAuditLog('lnn_predict', predictResponse.value, 'modify', 'success', modifiedParams)
   ElMessage.info(t('settings.modify'))
 }
 
-async function handleRejectPrediction(recommendation: Record<string, any>) {
+async function handleRejectPrediction(recommendation: Record<string, unknown>) {
   await recordAuditLog('lnn_predict', predictResponse.value, 'reject', 'cancelled', recommendation)
   predictResponse.value = null
 }
@@ -756,9 +823,9 @@ async function handleDryRun() {
 
     dryRunResult.value = res.data.data as DryRunResult
     ElMessage.success(t('workspace.trainingPlanSummary'))
-  } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || t('common.unknownError')
-    ElMessage.error(errorMsg)
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error(errorMsg || t('common.unknownError'))
   } finally {
     dryRunning.value = false
   }
@@ -794,9 +861,9 @@ async function handleTrain() {
     ElMessage.success(t('workspace.trainingMonitor'))
 
     await recordAuditLog('lnn_train', dryRunResult.value, 'accept', 'success', trainForm)
-  } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || t('common.unknownError')
-    ElMessage.error(errorMsg)
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error(errorMsg || t('common.unknownError'))
     await recordAuditLog('lnn_train', dryRunResult.value, 'reject', 'failed', trainForm)
   } finally {
     training.value = false
@@ -816,7 +883,7 @@ async function handleCancelTraining() {
     cancelling.value = true
     await http.post(`/api/v1/jobs/${currentJobId.value}/cancel`)
     ElMessage.info(t('workspace.trainingCancelled'))
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e !== 'cancel') {
       ElMessage.error(t('common.failed'))
     }
@@ -827,10 +894,10 @@ async function handleCancelTraining() {
 
 async function recordAuditLog(
   aiModule: string,
-  aiRecommendation: any,
+  aiRecommendation: Record<string, unknown> | null,
   userDecision: string,
   operationStatus: string,
-  finalExecution?: any,
+  finalExecution?: Record<string, unknown>,
 ) {
   try {
     await http.post('/api/v1/user-sovereignty/audit-log/record', null, {
@@ -844,8 +911,8 @@ async function recordAuditLog(
         reasoning: predictResponse.value?.reasoning || dryRunResult.value?.reasoning || null,
       },
     })
-  } catch (e) {
-    console.warn('Failed to record audit log:', e)
+  } catch {
+    // 静默处理
   }
 }
 
@@ -859,8 +926,7 @@ onMounted(async () => {
   try {
     const res = await http.get('/api/v1/lnn/models')
     modelList.value = res.data?.data?.models || []
-  } catch (e) {
-    console.error('Failed to load model list:', e)
+  } catch {
     modelList.value = []
   }
 })

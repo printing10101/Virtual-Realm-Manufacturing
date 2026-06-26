@@ -1,4 +1,4 @@
-﻿"""
+"""
 Heartbeat Scheduling API Routes
 
 Provides RESTful interfaces for task scheduling, budget management,
@@ -8,7 +8,7 @@ and execution monitoring.
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -226,7 +226,7 @@ async def delete_task(task_id: str):
 
 
 @router.get("/tasks/{task_id}/history")
-async def get_task_history(task_id: str, limit: int = 50):
+async def get_task_history(task_id: str, limit: int = Query(50, ge=1, le=200)):
     """获取任务执行历史"""
     from app.heartbeat.heartbeat import get_scheduler
 
@@ -258,7 +258,7 @@ async def check_budget(agent_id: str):
 
 
 @router.get("/budget/notifications")
-async def get_budget_notifications(agent_id: Optional[str] = None, limit: int = 50):
+async def get_budget_notifications(agent_id: Optional[str] = None, limit: int = Query(50, ge=1, le=200)):
     """获取预算通知"""
     from app.budget.budget import get_budget_manager
 

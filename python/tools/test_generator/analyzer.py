@@ -136,7 +136,7 @@ class CodeAnalyzer:
                 try:
                     default_value = ast.literal_eval(default_node)
                     defaults[arg_name] = default_value
-                except:
+                except (ValueError, SyntaxError, TypeError):
                     defaults[arg_name] = '<complex>'
         
         # 提取返回类型
@@ -144,7 +144,7 @@ class CodeAnalyzer:
         if node.returns:
             try:
                 returns = ast.unparse(node.returns)
-            except:
+            except (ValueError, SyntaxError, TypeError):
                 returns = 'Any'
         
         # 提取装饰器
@@ -152,7 +152,7 @@ class CodeAnalyzer:
         for dec in node.decorator_list:
             try:
                 decorators.append(ast.unparse(dec))
-            except:
+            except (ValueError, SyntaxError, TypeError):
                 decorators.append('<complex>')
         
         # 提取docstring
@@ -176,7 +176,7 @@ class CodeAnalyzer:
         for base in node.bases:
             try:
                 bases.append(ast.unparse(base))
-            except:
+            except (ValueError, SyntaxError, TypeError):
                 bases.append('object')
         
         docstring = ast.get_docstring(node)

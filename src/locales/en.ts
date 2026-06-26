@@ -583,7 +583,7 @@ export default {
   about: {
     pageTitle: "About Lingjing Manufacturing",
     productName: "Lingjing Manufacturing V4",
-    version: "Version: 2.2.0",
+    version: "Version: 2.3.0",
     description: "Intelligent manufacturing AI inference and training API service based on Logical Neural Network (LNN)",
     coreTech: "Core Technologies",
     techLnn: "LNN (Logical Neural Network) - Logic neural network inference engine",

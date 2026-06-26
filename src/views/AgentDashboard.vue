@@ -235,6 +235,7 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Refresh } from '@element-plus/icons-vue'
 import { useAgentStore } from '@/stores/agents'
+import type { AgentSummary } from '@/stores/agents'
 
 const agentStore = useAgentStore()
 const router = useRouter()
@@ -252,12 +253,13 @@ async function handleResume(agentId: string) {
     const result = await agentStore.resumeAgent(agentId) as { action: string }
     ElMessage.success(`代理 ${agentId} 恢复成功 (${result.action})`)
     agentStore.fetchAgents()
-  } catch (e: any) {
-    ElMessage.error(`恢复失败: ${e.message}`)
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : '未知错误'
+    ElMessage.error(`恢复失败: ${message}`)
   }
 }
 
-async function toggleHeartbeat(row: any) {
+async function toggleHeartbeat(row: AgentSummary) {
   try {
     if (row.status === 'busy') {
       await agentStore.stopHeartbeat(row.agent_id)
@@ -267,8 +269,9 @@ async function toggleHeartbeat(row: any) {
       ElMessage.success(`已启动 ${row.agent_id} 心跳`)
     }
     agentStore.fetchAgents()
-  } catch (e: any) {
-    ElMessage.error(`操作失败: ${e.message}`)
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : '未知错误'
+    ElMessage.error(`操作失败: ${message}`)
   }
 }
 
@@ -276,8 +279,9 @@ async function handleDelete(agentId: string) {
   try {
     await agentStore.deleteAgent(agentId)
     ElMessage.success(`已删除代理 ${agentId}`)
-  } catch (e: any) {
-    ElMessage.error(`删除失败: ${e.message}`)
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : '未知错误'
+    ElMessage.error(`删除失败: ${message}`)
   }
 }
 </script>

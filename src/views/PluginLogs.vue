@@ -49,6 +49,7 @@
           <el-button
             type="primary"
             style="margin-left: 10px"
+            :loading="loading"
             @click="refreshLogs"
           >
             <el-icon><Refresh /></el-icon> 刷新
@@ -56,6 +57,7 @@
           <el-button
             type="success"
             style="margin-left: 10px"
+            :disabled="filteredLogs.length === 0"
             @click="exportLogs"
           >
             <el-icon><Download /></el-icon> 导出
@@ -68,10 +70,13 @@
       class="logs-card"
       style="margin-top: 20px"
     >
-      <div class="log-container">
+      <div
+        v-loading="loading"
+        class="log-container"
+      >
         <div
           v-for="log in filteredLogs"
-          :key="log.timestamp"
+          :key="`${log.timestamp}-${log.plugin}-${log.message}`"
           class="log-entry"
           :class="log.level"
         >
@@ -87,7 +92,7 @@
           <span class="log-message">{{ log.message }}</span>
         </div>
         <el-empty
-          v-if="filteredLogs.length === 0"
+          v-if="!loading && filteredLogs.length === 0"
           description="暂无日志"
         />
       </div>
@@ -96,22 +101,45 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Refresh, Download } from '@element-plus/icons-vue'
+import http from '@/utils/http'
+import { triggerFileDownload } from '@/utils/download'
 import { usePluginStore } from '../stores/plugin'
+
+/** 日志条目接口 */
+interface LogEntry {
+  timestamp: number
+  level: 'debug' | 'info' | 'warning' | 'error'
+  plugin: string
+  message: string
+}
+
+/** 后端日志响应 */
+interface PluginLogsResponse {
+  code: number
+  data: {
+    logs: Array<{
+      timestamp?: string | number
+      time?: string | number
+      level?: string
+      plugin?: string
+      message?: string
+      msg?: string
+    }>
+    total?: number
+  }
+  message?: string
+}
 
 const pluginStore = usePluginStore()
 const selectedPlugin = ref('')
 const logLevel = ref('')
+const loading = ref(false)
+const logs = ref<LogEntry[]>([])
 
 const plugins = computed(() => pluginStore.plugins)
-
-const logs = ref([
-  { timestamp: Date.now() - 60000, level: 'info', plugin: 'fanuc-adapter', message: 'Plugin initialized successfully' },
-  { timestamp: Date.now() - 30000, level: 'info', plugin: 'fanuc-adapter', message: 'Connected to machine at 192.168.1.100' },
-  { timestamp: Date.now() - 15000, level: 'warning', plugin: 'opcua-source', message: 'Connection timeout, retrying...' },
-  { timestamp: Date.now() - 5000, level: 'error', plugin: 'vibration-analyzer', message: 'Failed to process data: invalid format' },
-])
 
 const filteredLogs = computed(() => {
   let result = logs.value
@@ -124,16 +152,133 @@ const filteredLogs = computed(() => {
   return result.sort((a, b) => b.timestamp - a.timestamp)
 })
 
-onMounted(() => {
-  pluginStore.fetchPlugins()
-})
+/**
+ * 将后端返回的日志条目规范化为前端统一格式
+ */
+function normalizeLogEntry(
+  raw: PluginLogsResponse['data']['logs'][number],
+  fallbackPlugin: string
+): LogEntry | null {
+  const rawLevel = (raw.level || 'info').toLowerCase()
+  // 白名单校验日志级别，防止注入未知级别
+  const level: LogEntry['level'] = (
+    ['debug', 'info', 'warning', 'error'].includes(rawLevel)
+      ? rawLevel
+      : 'info'
+  ) as LogEntry['level']
 
-const refreshLogs = () => {
-  ElMessage.success('日志已刷新')
+  const rawTime = raw.timestamp ?? raw.time
+  let timestamp: number
+  if (typeof rawTime === 'number') {
+    timestamp = rawTime
+  } else if (typeof rawTime === 'string') {
+    const parsed = Date.parse(rawTime)
+    timestamp = Number.isNaN(parsed) ? Date.now() : parsed
+  } else {
+    timestamp = Date.now()
+  }
+
+  const message = raw.message ?? raw.msg ?? ''
+  if (!message) return null
+
+  return {
+    timestamp,
+    level,
+    plugin: raw.plugin || fallbackPlugin,
+    message,
+  }
 }
 
-const exportLogs = () => {
-  ElMessage.success('日志导出成功')
+/**
+ * 拉取指定插件的日志
+ * 后端端点：GET /api/v1/plugins/{plugin_id}/logs
+ */
+async function fetchLogsForPlugin(pluginId: string): Promise<LogEntry[]> {
+  const params: Record<string, string | number> = { limit: 500 }
+  if (logLevel.value) params.level = logLevel.value
+
+  const response = await http.get<PluginLogsResponse>(
+    `/api/v1/plugins/${encodeURIComponent(pluginId)}/logs`,
+    { params }
+  )
+  const rawLogs = response.data?.data?.logs ?? []
+  return rawLogs
+    .map((r) => normalizeLogEntry(r, pluginId))
+    .filter((v): v is LogEntry => v !== null)
+}
+
+/**
+ * 刷新日志：
+ * - 若选中具体插件，仅拉取该插件日志
+ * - 若选择"全部插件"，并行拉取所有已启用插件日志后合并
+ */
+async function refreshLogs() {
+  if (loading.value) return
+  loading.value = true
+  try {
+    if (selectedPlugin.value) {
+      logs.value = await fetchLogsForPlugin(selectedPlugin.value)
+    } else {
+      const targets = pluginStore.plugins
+      if (targets.length === 0) {
+        logs.value = []
+      } else {
+        // 并行拉取所有插件日志，任一失败不影响其他
+        const results = await Promise.allSettled(
+          targets.map((p) => fetchLogsForPlugin(p.id))
+        )
+        const merged: LogEntry[] = []
+        for (const r of results) {
+          if (r.status === 'fulfilled') merged.push(...r.value)
+        }
+        logs.value = merged
+      }
+    }
+    ElMessage.success(`已加载 ${logs.value.length} 条日志`)
+  } catch (err) {
+    // http 拦截器已统一提示错误，此处仅兜底
+    logs.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * 导出当前过滤后的日志为 CSV 文件
+ */
+function exportLogs() {
+  const data = filteredLogs.value
+  if (data.length === 0) {
+    ElMessage.warning('暂无日志可导出')
+    return
+  }
+
+  const header = 'timestamp,level,plugin,message\n'
+  const escapeCsv = (s: string | number) => {
+    const str = String(s)
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`
+    }
+    return str
+  }
+  const rows = data
+    .map((l) =>
+      [
+        new Date(l.timestamp).toISOString(),
+        l.level,
+        l.plugin,
+        l.message,
+      ]
+        .map(escapeCsv)
+        .join(',')
+    )
+    .join('\n')
+
+  const csv = header + rows + '\n'
+  // 添加 BOM 以便 Excel 正确识别 UTF-8 编码
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  triggerFileDownload(blob, `plugin-logs-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`)
+  ElMessage.success(`已导出 ${data.length} 条日志`)
 }
 
 const formatTime = (timestamp: number) => {
@@ -154,6 +299,16 @@ const getLevelType = (level: string) => {
       return 'info'
   }
 }
+
+onMounted(async () => {
+  await pluginStore.fetchPlugins()
+  await refreshLogs()
+})
+
+// 切换插件或日志级别时自动刷新
+watch([selectedPlugin, logLevel], () => {
+  refreshLogs()
+})
 </script>
 
 <style scoped>

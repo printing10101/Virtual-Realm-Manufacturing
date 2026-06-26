@@ -6,7 +6,7 @@ import time
 import requests
 from pathlib import Path
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8765"
 
 # ============================================================
 # STEP 1: Agent Token创建与验证测试

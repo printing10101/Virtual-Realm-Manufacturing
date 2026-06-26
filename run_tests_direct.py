@@ -1,7 +1,7 @@
 import requests, json, sys, time, subprocess
 from pathlib import Path
 
-BASE = "http://localhost:8000"
+BASE = "http://localhost:8765"
 
 def step(n, title):
     print(f"\n{'='*60}\nSTEP {n}: {title}\n{'='*60}")

@@ -419,12 +419,69 @@ import * as echarts from 'echarts'
 import { Refresh } from '@element-plus/icons-vue'
 import http from '@/utils/http'
 import { formatSecondsTimestamp } from '@/utils/formatters'
+import { API_CONFIG } from '@/config/api'
 
-const API_BASE = '/api/v1/cost-budget'
+const API_BASE = API_CONFIG.COST_BUDGET
 
-const budgetProgresses = ref<any[]>([])
-const alerts = ref<any[]>([])
-const suggestions = ref<any[]>([])
+// 类型定义
+interface BudgetProgress {
+  key: string
+  label: string
+  percentage: number
+  progressStatus?: 'success' | 'warning' | 'exception'
+  used: number
+  limit: number
+  usedStr: string
+  limitStr: string
+  status: string
+  tagType: 'success' | 'warning' | 'danger' | 'info'
+  statusLabel: string
+}
+
+interface CostAlert {
+  id: number
+  created_at: number
+  level: string
+  scope_id: string
+  resource_type: string
+  usage_ratio: number
+  status: 'warning' | 'exceeded'
+  message: string
+  is_read: 0 | 1
+}
+
+interface CostSuggestion {
+  suggestion_id: string
+  priority: 'high' | 'medium'
+  category: string
+  title: string
+  description: string
+  current_cost: number
+  estimated_savings: number
+  savings_percentage: number
+  recommendation: string
+}
+
+interface CostSummaryItem {
+  scope_id: string
+  total_cost: number
+  gpu_time_cost: number
+  gpu_memory_cost: number
+  api_calls_cost: number
+  data_transfer_cost: number
+}
+
+interface CostTrendItem {
+  timestamp: number
+  total_cost: number
+  gpu_time_cost: number
+  gpu_memory_cost: number
+  api_calls_cost: number
+}
+
+const budgetProgresses = ref<BudgetProgress[]>([])
+const alerts = ref<CostAlert[]>([])
+const suggestions = ref<CostSuggestion[]>([])
 const alertFilter = ref('')
 const costDimension = ref('agent')
 const trendDays = ref(7)
@@ -444,8 +501,8 @@ const loading = ref({
   suggestions: false,
 })
 
-const budgetExceeded = computed(() => alerts.value.some((a: any) => a.status === 'exceeded' && !a.is_read))
-const hasUnread = computed(() => alerts.value.some((a: any) => !a.is_read))
+const budgetExceeded = computed(() => alerts.value.some((a) => a.status === 'exceeded' && !a.is_read))
+const hasUnread = computed(() => alerts.value.some((a) => !a.is_read))
 
 function formatCost(value: number): string {
   if (value >= 1) return `$${value.toFixed(2)}`
@@ -496,7 +553,15 @@ async function loadBudgetProgress() {
     if (!res.data?.ok) return
     const policies = res.data.data || []
 
-    budgetProgresses.value = policies.map((p: any) => ({
+    budgetProgresses.value = policies.map((p: {
+      level: string
+      scope_id: string
+      resource_type: string
+      usage_ratio: number
+      status: string
+      current_usage: number
+      limit: number
+    }) => ({
       key: `${p.level}:${p.scope_id}:${p.resource_type}`,
       label: `${budgetLevelLabel(p.level)} · ${p.resource_type}`,
       percentage: Math.min(Math.round((p.usage_ratio || 0) * 100), 100),
@@ -509,8 +574,8 @@ async function loadBudgetProgress() {
       tagType: statusTagType(p.status),
       statusLabel: formatStatusLabel(p.status),
     }))
-  } catch (e) {
-    console.error('Failed to load budget progress:', e)
+  } catch {
+    // 静默处理，用户界面已有 loading 状态
   }
 }
 
@@ -521,16 +586,16 @@ async function loadCostDistribution() {
       params: { dimension: costDimension.value }
     })
     if (!res.data?.ok) return
-    const data = res.data.data || []
+    const data: CostSummaryItem[] = res.data.data || []
 
-    const names = data.map((d: any) => d.scope_id || '(unknown)')
-    const values = data.map((d: any) => d.total_cost || 0)
+    const names = data.map((d) => d.scope_id || '(unknown)')
+    const values = data.map((d) => d.total_cost || 0)
 
     if (pieChart) {
       pieChart.setOption({
         tooltip: {
           trigger: 'item',
-          formatter: (params: any) =>
+          formatter: (params: { name: string; value: number; percent: number }) =>
             `${params.name}: $${params.value.toFixed(4)} (${params.percent}%)`,
         },
         series: [{
@@ -544,8 +609,8 @@ async function loadCostDistribution() {
         }],
       })
     }
-  } catch (e) {
-    console.error('Failed to load cost distribution:', e)
+  } catch {
+    // 静默处理
   } finally {
     loading.value.pie = false
   }
@@ -558,13 +623,13 @@ async function loadCostByType() {
       params: { dimension: 'agent' }
     })
     if (!res.data?.ok) return
-    const data = res.data.data || []
+    const data: CostSummaryItem[] = res.data.data || []
 
-    const gpuTimeVals = data.map((d: any) => d.gpu_time_cost || 0)
-    const gpuMemVals = data.map((d: any) => d.gpu_memory_cost || 0)
-    const apiCallVals = data.map((d: any) => d.api_calls_cost || 0)
-    const dataTransferVals = data.map((d: any) => d.data_transfer_cost || 0)
-    const labels = data.map((d: any) => d.scope_id || '(unknown)')
+    const gpuTimeVals = data.map((d) => d.gpu_time_cost || 0)
+    const gpuMemVals = data.map((d) => d.gpu_memory_cost || 0)
+    const apiCallVals = data.map((d) => d.api_calls_cost || 0)
+    const dataTransferVals = data.map((d) => d.data_transfer_cost || 0)
+    const labels = data.map((d) => d.scope_id || '(unknown)')
 
     if (barChart) {
       barChart.setOption({
@@ -584,8 +649,8 @@ async function loadCostByType() {
         ],
       })
     }
-  } catch (e) {
-    console.error('Failed to load cost by type:', e)
+  } catch {
+    // 静默处理
   } finally {
     loading.value.bar = false
   }
@@ -598,16 +663,16 @@ async function loadCostTrend() {
       params: { days: trendDays.value, interval_hours: 24 }
     })
     if (!res.data?.ok) return
-    const data = res.data.data || []
+    const data: CostTrendItem[] = res.data.data || []
 
-    const times = data.map((d: any) => {
+    const times = data.map((d) => {
       const dt = new Date(d.timestamp * 1000)
       return `${dt.getMonth() + 1}/${dt.getDate()}`
     })
-    const totalCosts = data.map((d: any) => d.total_cost || 0)
-    const gpuTimeCosts = data.map((d: any) => d.gpu_time_cost || 0)
-    const gpuMemCosts = data.map((d: any) => d.gpu_memory_cost || 0)
-    const apiCallCosts = data.map((d: any) => d.api_calls_cost || 0)
+    const totalCosts = data.map((d) => d.total_cost || 0)
+    const gpuTimeCosts = data.map((d) => d.gpu_time_cost || 0)
+    const gpuMemCosts = data.map((d) => d.gpu_memory_cost || 0)
+    const apiCallCosts = data.map((d) => d.api_calls_cost || 0)
 
     if (trendChart) {
       trendChart.setOption({
@@ -631,8 +696,8 @@ async function loadCostTrend() {
         ],
       })
     }
-  } catch (e) {
-    console.error('Failed to load cost trend:', e)
+  } catch {
+    // 静默处理
   } finally {
     loading.value.trend = false
   }
@@ -641,13 +706,13 @@ async function loadCostTrend() {
 async function loadAlerts() {
   loading.value.alerts = true
   try {
-    const params: any = { limit: 100 }
+    const params: Record<string, string | number> = { limit: 100 }
     if (alertFilter.value) params.status = alertFilter.value
     const res = await http.get(`${API_BASE}/alerts`, { params })
     if (!res.data?.ok) return
     alerts.value = res.data.data || []
-  } catch (e) {
-    console.error('Failed to load alerts:', e)
+  } catch {
+    // 静默处理
   } finally {
     loading.value.alerts = false
   }
@@ -659,8 +724,8 @@ async function loadSuggestions() {
     const res = await http.get(`${API_BASE}/suggestions`)
     if (!res.data?.ok) return
     suggestions.value = res.data.data || []
-  } catch (e) {
-    console.error('Failed to load suggestions:', e)
+  } catch {
+    // 静默处理
   } finally {
     loading.value.suggestions = false
   }
@@ -669,28 +734,28 @@ async function loadSuggestions() {
 async function markRead(id: number) {
   try {
     await http.post(`${API_BASE}/alerts/${id}/read`)
-    const alert = alerts.value.find((a: any) => a.id === id)
+    const alert = alerts.value.find((a) => a.id === id)
     if (alert) alert.is_read = 1
-  } catch (e) {
-    console.error('Failed to mark read:', e)
+  } catch {
+    // 静默处理
   }
 }
 
 async function markAllRead() {
   try {
     await http.post(`${API_BASE}/alerts/read-all`)
-    alerts.value.forEach((a: any) => (a.is_read = 1))
-  } catch (e) {
-    console.error('Failed to mark all read:', e)
+    alerts.value.forEach((a) => (a.is_read = 1))
+  } catch {
+    // 静默处理
   }
 }
 
 async function deleteAlert(id: number) {
   try {
     await http.delete(`${API_BASE}/alerts/${id}`)
-    alerts.value = alerts.value.filter((a: any) => a.id !== id)
-  } catch (e) {
-    console.error('Failed to delete alert:', e)
+    alerts.value = alerts.value.filter((a) => a.id !== id)
+  } catch {
+    // 静默处理
   }
 }
 

@@ -13,9 +13,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 import time
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Callable
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 from app.tasks.task_system import AsyncTaskManager, TaskType
 from app.training.data_lake import TrainingDataLake
@@ -146,7 +147,7 @@ class AutoRetrainScheduler:
                 await asyncio.sleep(check_interval)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except (RuntimeError, ValueError, OSError) as e:
                 logger.error("Scheduler loop error: %s", e, exc_info=True)
                 await asyncio.sleep(60)  # 出错后等待1分钟重试
     
@@ -213,8 +214,8 @@ class AutoRetrainScheduler:
             # 计算新增样本数（相对于上次触发）
             new_samples = total_samples - self._last_samples_count
             return max(0, new_samples)
-        except Exception as e:
-            logger.error("Failed to count new samples: %s", e)
+        except (AttributeError, TypeError, ValueError, OSError) as e:
+            logger.warning("Failed to count new samples: %s", e, exc_info=True)
             return 0
     
     def _should_trigger_by_time(self) -> bool:
@@ -291,7 +292,7 @@ class AutoRetrainScheduler:
                 "new_samples": new_samples,
             }
             
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError, OSError) as e:
             logger.error("Failed to submit training task: %s", e, exc_info=True)
             return {
                 "success": False,
@@ -315,14 +316,25 @@ class AutoRetrainScheduler:
 
 # 全局实例
 _scheduler_instance: Optional[AutoRetrainScheduler] = None
+_scheduler_instance_lock = threading.Lock()
 
 
 def get_scheduler(config: Optional[AutoRetrainConfig] = None) -> AutoRetrainScheduler:
     """获取全局调度器实例"""
+    # 安全修复：双重检查锁，防止并发创建多个实例
     global _scheduler_instance
     if _scheduler_instance is None:
-        _scheduler_instance = AutoRetrainScheduler(config)
+        with _scheduler_instance_lock:
+            if _scheduler_instance is None:
+                _scheduler_instance = AutoRetrainScheduler(config)
     return _scheduler_instance
+
+
+def reset_scheduler() -> None:
+    """重置全局调度器实例（主要用于测试）。"""
+    global _scheduler_instance
+    with _scheduler_instance_lock:
+        _scheduler_instance = None
 
 
 async def trigger_now() -> Dict[str, Any]:
@@ -334,9 +346,9 @@ async def trigger_now() -> Dict[str, Any]:
 if __name__ == "__main__":
     """命令行入口：python -m app.ai.auto_retrain.scheduler --trigger-now"""
     import sys
-    
+
     if "--trigger-now" in sys.argv:
         result = asyncio.run(trigger_now())
-        print(f"Trigger result: {result}")
+        logger.info("Trigger result: %s", result)
     else:
-        print("Usage: python -m app.ai.auto_retrain.scheduler --trigger-now")
+        logger.info("Usage: python -m app.ai.auto_retrain.scheduler --trigger-now")

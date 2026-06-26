@@ -264,6 +264,122 @@ class FanucPostProcessor(BasePostProcessor):
         ]
         return "\n".join(lines)
 
+    def format_cycle_groove(
+        self,
+        x: float,
+        z: float,
+        depth: float,
+        width: float = 3.0,
+        retract: float = 0.5,
+        finish_allowance: float = 0.1,
+    ) -> str:
+        """生成切槽循环 (G75)。
+
+        用于外径切槽、端面切槽等加工。
+
+        Args:
+            x: 切槽直径 (X轴坐标)
+            z: 切槽Z向位置
+            depth: 切槽深度 (半径值)
+            width: 切槽宽度 (mm)
+            retract: 每次切削后退量 (mm)
+            finish_allowance: 精加工余量 (mm)
+
+        Returns:
+            G75切槽循环NC代码
+        """
+        cfg = self.get_cycle_config("grooving", "G75")
+        retract_val = cfg.get("retract_amount", retract)
+        finish_allow = cfg.get("finish_allowance", finish_allowance)
+
+        r_plane = self.safe_z_height
+        groove_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.1))
+
+        # G75 外径切槽循环格式
+        # G75 R(e)
+        # G75 X(U) Z(W) P(Δi) Q(Δk) R(Δd) F_
+        lines = [
+            f"G00 X{self._fmt(x)} Z{self._fmt(z)}",
+            f"G75 R{self._fmt(retract_val)}",
+            f"G75 X{self._fmt(x - 2 * depth)} Z{self._fmt(z - width)} "
+            f"P{int(depth * 1000)} Q{int(retract_val * 1000)} "
+            f"R{self._fmt(finish_allow)} F{groove_feed}",
+            "G80",
+        ]
+        return "\n".join(lines)
+
+    def format_cycle_thread_turning(
+        self,
+        x: float,
+        z: float,
+        depth: float,
+        pitch: float = 1.0,
+        passes: int = 5,
+        first_depth: float = 0.2,
+        last_depth: float = 0.05,
+        finishing_passes: int = 2,
+        tool_angle: float = 60.0,
+    ) -> str:
+        """生成车削螺纹循环 (G92)。
+
+        用于公制/英制螺纹加工。
+
+        Args:
+            x: 螺纹小径 (X轴坐标)
+            z: 螺纹终点Z坐标
+            depth: 螺纹深度 (半径值)
+            pitch: 螺距 (mm)
+            passes: 切削次数
+            first_depth: 第一次切深 (mm)
+            last_depth: 最后一次切深 (mm)
+            finishing_passes: 精加工次数
+            tool_angle: 刀具角度 (度)
+
+        Returns:
+            G92螺纹循环NC代码
+        """
+        cfg = self.get_cycle_config("threading", "G92")
+        r_plane = self.safe_z_height
+
+        # G92 螺纹切削循环格式
+        # G92 X(U) Z(W) F_
+        # 多次切削需要多行G92指令
+        lines = [
+            f"G00 X{self._fmt(x + 2.0)} Z{self._fmt(z + 5.0)}",  # 快速定位到起始点上方
+            f"S{int(self.get_spindle_rpm())} M03",
+        ]
+
+        # 计算每次切深
+        current_depth = first_depth
+        current_x = x + 2.0 * depth  # 从外径开始
+
+        for i in range(passes):
+            if i < passes - 1:
+                # 递减切深
+                if i == 0:
+                    cut_depth = first_depth
+                else:
+                    # 逐渐递减
+                    cut_depth = first_depth * (1.0 - 0.15 * i)
+                    cut_depth = max(cut_depth, last_depth)
+                current_x = x + 2.0 * (depth - cut_depth)
+            else:
+                # 最后一次切削到目标深度
+                current_x = x
+
+            lines.append(
+                f"G92 X{self._fmt(current_x)} Z{self._fmt(z)} F{self._fmt(pitch)}"
+            )
+
+        # 精加工
+        for _ in range(finishing_passes):
+            lines.append(
+                f"G92 X{self._fmt(x)} Z{self._fmt(z)} F{self._fmt(pitch)}"
+            )
+
+        lines.append("G80")
+        return "\n".join(lines)
+
     def format_subprogram_call(
         self,
         program_number: int,
@@ -315,3 +431,21 @@ class FanucPostProcessor(BasePostProcessor):
             "%",
         ]
         return "\n".join(lines)
+
+    def format_high_precision_mode(self, enable: bool = True, mode: int = 1) -> str:
+        """生成高精度加工模式指令（G05.1 Q1）。
+
+        Fanuc 0i/18i/31i 系列控制器的 AI 轮廓控制功能，
+        用于提升曲面加工精度和表面质量。
+
+        Args:
+            enable: True 开启高精度模式，False 关闭
+            mode: 模式选择，1=标准 AI 轮廓控制，2=AI 轮廓控制+预读
+
+        Returns:
+            高精度模式 NC 代码字符串
+        """
+        if enable:
+            return f"G05.1 Q{mode}"
+        else:
+            return "G05.1 Q0"

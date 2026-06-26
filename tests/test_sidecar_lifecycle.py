@@ -70,7 +70,7 @@ class TestIdleAutoShutdownMiddleware:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_file = os.path.join(tmpdir, "sidecar.json")
             with open(state_file, "w") as f:
-                json.dump({"pid": 12345, "port": 8000, "token": "test", "startedAt": "2024-01-01T00:00:00", "version": "1.0.0"}, f)
+                json.dump({"pid": 12345, "port": 8765, "token": "test", "startedAt": "2024-01-01T00:00:00", "version": "1.0.0"}, f)
 
             middleware = IdleAutoShutdownMiddleware(
                 app=mock_app,

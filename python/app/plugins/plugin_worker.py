@@ -119,7 +119,7 @@ class PluginWorkerManager:
                 if info.process.is_alive():
                     info.process.kill()
                     info.process.join(timeout=2.0)
-            except Exception as e:
+            except (OSError, RuntimeError, TimeoutError) as e:
                 # 进程 terminate/kill 可能抛出未预期异常（OSError/PermissionError 等）
                 logger.error(
                     f"Error stopping worker '{plugin_id}': {e}", exc_info=True,
@@ -221,7 +221,7 @@ class PluginWorkerManager:
         for plugin_id in list(self._workers.keys()):
             try:
                 self.stop_worker(plugin_id, timeout)
-            except Exception as e:
+            except (OSError, RuntimeError, TimeoutError) as e:
                 # 批量停止时单个 worker 失败不应阻塞其他 worker
                 logger.error(
                     f"Error stopping worker '{plugin_id}': {e}", exc_info=True,
@@ -263,7 +263,7 @@ class PluginWorkerManager:
             else:
                 self._run_worker_inline(config, port)
 
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError, RuntimeError, ValueError, TimeoutError) as e:
             # 兜底捕获：worker 进程启动涉及 subprocess + 环境变量 + 端口绑定
             # 异常族多源（OSError/ValueError 等），统一记录后抛出
             logger.error(

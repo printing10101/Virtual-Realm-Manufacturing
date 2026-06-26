@@ -21,10 +21,13 @@ import time
 import json
 from datetime import datetime
 import os
+import logging
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 
 class LNNEvaluator:
@@ -611,11 +614,11 @@ class LNNEvaluator:
             os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
         )
 
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(self.generate_report(results))
 
         results_json = path.replace(".txt", ".json")
-        with open(results_json, "w") as f:
+        with open(results_json, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, default=str)
 
     def get_evaluation_history(self) -> List[Dict[str, Any]]:
@@ -639,7 +642,7 @@ class LNNEvaluator:
         plot_paths = {}
 
         if not self.evaluation_history:
-            print("No evaluation history to plot.")
+            logger.info("No evaluation history to plot.")
             return plot_paths
 
         latest = self.evaluation_history[-1]
@@ -703,5 +706,5 @@ class LNNEvaluator:
         plt.close()
         plot_paths["performance"] = perf_path
 
-        print(f"Evaluation plots saved to {output_dir}")
+        logger.info(f"Evaluation plots saved to {output_dir}")
         return plot_paths

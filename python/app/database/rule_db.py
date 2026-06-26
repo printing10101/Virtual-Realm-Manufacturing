@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
 from pathlib import Path
 
+from app.utils.sqlite_pool import get_sqlite_manager
+
 logger = logging.getLogger(__name__)
 
 # 数据格式版本（用于区分导出数据结构的版本）
@@ -27,9 +29,9 @@ def get_project_version() -> str:
     """从项目根目录的VERSION文件动态读取版本号"""
     try:
         return VERSION_FILE.read_text(encoding="utf-8").strip()
-    except Exception as e:
-        logger.warning(f"无法读取VERSION文件: {e}，使用默认版本 0.0.0")
-        return "0.0.0"
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as e:
+            logger.warning(f"无法读取VERSION文件: {e}，使用默认版本 0.0.0")
+            return "0.0.0"
 
 
 def parse_version(version_str: str) -> Tuple[int, int, int]:
@@ -238,15 +240,15 @@ class RuleDatabase:
 
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or str(DB_PATH)
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("process_rules")
         self._conn: Optional[sqlite3.Connection] = None
         self._init_db()
 
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
-            self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
-            self._conn.row_factory = sqlite3.Row
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA foreign_keys=ON")
+            self._conn = self._pool.get_connection()
         return self._conn
 
     def _init_db(self):
@@ -294,9 +296,11 @@ class RuleDatabase:
         logger.info(f"工艺规则数据库初始化完成: {self.db_path}")
 
     def close(self):
+        """关闭数据库连接，归还连接到连接池"""
         if self._conn:
-            self._conn.close()
+            self._pool.return_connection(self._conn)
             self._conn = None
+            logger.info("RuleDatabase closed")
 
     def __del__(self):
         self.close()

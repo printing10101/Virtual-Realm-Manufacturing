@@ -210,7 +210,7 @@ const registeredCommands = computed<Command[]>(() => [
 
 // 组件引用
 const tourRef = ref<InstanceType<typeof Tour> | null>(null)
-const commandPaletteRef = ref<any>(null)
+const commandPaletteRef = ref<{ open: () => void } | null>(null)
 
 // 统计数据
 const exampleCount = computed(() => exampleProjects.length)

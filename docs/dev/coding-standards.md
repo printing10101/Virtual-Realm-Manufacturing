@@ -116,12 +116,12 @@ isActive = True
 ```python
 # ✅ 正确
 MAX_RETRY_COUNT = 3
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = "http://localhost:8765"
 DEFAULT_TIMEOUT = 30
 
 # ❌ 错误
 maxRetryCount = 3
-apiBaseUrl = "http://localhost:8000"
+apiBaseUrl = "http://localhost:8765"
 ```
 
 ### 类型提示

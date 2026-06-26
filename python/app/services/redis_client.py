@@ -59,7 +59,7 @@ class _RedisHolder:
             try:
                 await client.ping()
                 return client
-            except Exception as e:
+            except (ConnectionError, OSError, TimeoutError) as e:
                 # 客户端已损坏，置空后走重连分支
                 logger.warning("Redis ping 失败，重新建立连接: %s", e)
                 with self._init_lock:
@@ -94,7 +94,8 @@ class _RedisHolder:
             except ImportError:
                 logger.warning("redis library not installed, Redis caching disabled")
                 return None
-            except Exception as e:
+            except (ConnectionError, OSError, ValueError, TimeoutError) as e:
+                # Redis 连接失败时记录错误并返回 None，允许系统降级运行
                 logger.error("Failed to connect to Redis: %s", e)
                 return None
 
@@ -153,7 +154,7 @@ async def save_task_progress(task_id: str, data: Dict[str, Any]) -> bool:
         await r.hset(key, mapping={k: str(v) for k, v in data.items()})
         await r.expire(key, TASK_PROGRESS_TTL)
         return True
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.warning("Failed to save task progress to Redis: %s", e)
         return False
 
@@ -172,7 +173,7 @@ async def get_task_progress(task_id: str) -> Dict[str, Any]:
             except (ValueError, TypeError):
                 result[k] = v
         return result
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.warning("Failed to get task progress from Redis: %s", e)
         return {}
 
@@ -185,7 +186,7 @@ async def delete_task_progress(task_id: str) -> bool:
         key = _progress_key(task_id)
         await r.delete(key)
         return True
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.warning("Failed to delete task progress from Redis: %s", e)
         return False
 
@@ -198,7 +199,7 @@ async def set_cancel_flag(task_id: str) -> bool:
         key = f"{TASK_PROGRESS_PREFIX}:{task_id}:cancel"
         await r.set(key, "1", ex=3600)
         return True
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.warning("Failed to set cancel flag in Redis: %s", e)
         return False
 
@@ -211,7 +212,7 @@ async def check_cancel_flag(task_id: str) -> bool:
         key = f"{TASK_PROGRESS_PREFIX}:{task_id}:cancel"
         val = await r.get(key)
         return val == "1"
-    except Exception:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError):
         return False
 
 
@@ -223,7 +224,7 @@ async def clear_cancel_flag(task_id: str) -> bool:
         key = f"{TASK_PROGRESS_PREFIX}:{task_id}:cancel"
         await r.delete(key)
         return True
-    except Exception:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError):
         return False
 
 
@@ -239,6 +240,6 @@ async def check_redis_health() -> dict:
             "used_memory_human": info.get("used_memory_human", "N/A"),
             "connected_clients": info.get("connected_clients", "N/A"),
         }
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.warning("Redis健康检查失败: %s", e, exc_info=True)
         return {"status": "unhealthy", "error": f"redis: {type(e).__name__}"}

@@ -375,7 +375,7 @@ vim .env.local
 
 ```bash
 # .env.local 文件内容
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=http://localhost:8765
 VITE_APP_TITLE=灵境制造系统
 ```
 
@@ -450,7 +450,7 @@ source venv/bin/activate
 python start_server.py
 
 # 或使用 uvicorn 直接启动
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8765
 ```
 
 #### 启动前端服务
@@ -494,12 +494,12 @@ docker-compose logs -f
 
 ```bash
 # 健康检查
-curl http://localhost:8000/health
+curl http://localhost:8765/health
 
 # 预期响应
 {
   "status": "healthy",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "database": "connected",
   "lnn_engine": "ready"
 }
@@ -520,10 +520,10 @@ curl http://localhost:3000
 
 ```bash
 # 访问 Swagger UI
-# 在浏览器中打开: http://localhost:8000/docs
+# 在浏览器中打开: http://localhost:8765/docs
 
 # 访问 ReDoc
-# 在浏览器中打开: http://localhost:8000/redoc
+# 在浏览器中打开: http://localhost:8765/redoc
 ```
 
 ### 4. 运行测试
@@ -592,18 +592,18 @@ pnpm install
 
 ### Q3: 端口被占用
 
-**问题**：启动服务时提示端口 8000 或 3000 被占用
+**问题**：启动服务时提示端口 8765 或 3000 被占用
 
 **解决方案**：
 
 ```bash
 # Windows - 查找占用端口的进程
-netstat -ano | findstr :8000
+netstat -ano | findstr :8765
 # 杀死进程
 taskkill /PID <进程ID> /F
 
 # macOS/Linux - 查找占用端口的进程
-lsof -ti:8000 | xargs kill -9
+lsof -ti:8765 | xargs kill -9
 
 # 或修改配置使用其他端口
 # 后端: 修改 config/settings.yaml 中的 port
@@ -653,7 +653,7 @@ alembic upgrade head
 # F12 打开开发者工具，查看 Console 标签
 
 # 检查后端 API 是否启动
-curl http://localhost:8000/health
+curl http://localhost:8765/health
 
 # 检查环境变量配置
 cat frontend/.env.local

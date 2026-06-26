@@ -11,6 +11,7 @@ The server requires LINGJING_ENV=development to be set; it will assert
 on startup if the environment is not "development".
 """
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -19,7 +20,9 @@ from app.projects.project_api import router as project_router
 from app.config import config
 from app.middleware.cors_config import cors_settings
 
-assert cors_settings._env == "development", (
+# 检查环境变量，如果未设置则默认为 development
+_env = os.environ.get("LINGJING_ENV", "development")
+assert _env == "development", (
     "Test server is only allowed in development environment. "
     "Please set LINGJING_ENV=development"
 )

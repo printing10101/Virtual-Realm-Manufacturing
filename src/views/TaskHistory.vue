@@ -244,20 +244,29 @@ import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 const { t } = useI18n()
 const router = useRouter()
 
+interface TaskItem {
+  id: string
+  task_type: string
+  status: string
+  created_at: string
+  params?: Record<string, unknown>
+  [key: string]: unknown
+}
+
 const loading = ref(false)
-const tasks = ref<any[]>([])
+const tasks = ref<TaskItem[]>([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = 20
 const filterStatus = ref('')
 
 const detailDialogVisible = ref(false)
-const selectedTask = ref<any>(null)
+const selectedTask = ref<TaskItem | null>(null)
 
 async function loadTasks() {
   loading.value = true
   try {
-    const params: any = {
+    const params: Record<string, unknown> = {
       limit: pageSize,
       offset: (currentPage.value - 1) * pageSize,
     }
@@ -268,9 +277,9 @@ async function loadTasks() {
     const res = await http.get('/api/v1/jobs', { params })
     tasks.value = res.data.data.jobs || []
     total.value = res.data.data.total || 0
-  } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || t('taskHistory.loadFailed')
-    ElMessage.error(errorMsg)
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error(errorMsg || t('taskHistory.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -281,12 +290,12 @@ function handlePageChange(page: number) {
   loadTasks()
 }
 
-function viewTaskDetail(task: any) {
+function viewTaskDetail(task: TaskItem) {
   selectedTask.value = task
   detailDialogVisible.value = true
 }
 
-async function rerunTask(task: any) {
+async function rerunTask(task: TaskItem) {
   if (!task.params) {
     ElMessage.warning(t('taskHistory.cannotRerun'))
     return
@@ -318,9 +327,9 @@ async function rerunTask(task: any) {
     ElMessage.success(t('taskHistory.newJobStarted', { jobId: newJobId }))
 
     router.push({ name: 'workspace', query: { tab: 'train', jobId: newJobId } })
-  } catch (e: any) {
-    const errorMsg = e?.response?.data?.message || e?.message || t('taskHistory.rerunFailed')
-    ElMessage.error(errorMsg)
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    ElMessage.error(errorMsg || t('taskHistory.rerunFailed'))
   }
 }
 

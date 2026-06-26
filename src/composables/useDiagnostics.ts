@@ -79,15 +79,15 @@ export interface UseDiagnosticsReturn {
   /** 是否有诊断信息 */
   hasDiagnostic: ComputedRef<boolean>
   /** 收集错误信息 */
-  collectError: (error: any, extra?: Record<string, any>) => string
+  collectError: (error: unknown, extra?: Record<string, unknown>) => string
   /** 从 API 响应收集错误 */
-  collectFromResponse: (response: any, extra?: Record<string, any>) => string
+  collectFromResponse: (response: unknown, extra?: Record<string, unknown>) => string
   /** 从 Axios 错误收集 */
-  collectFromAxiosError: (error: any, extra?: Record<string, any>) => string
+  collectFromAxiosError: (error: unknown, extra?: Record<string, unknown>) => string
   /** 从普通 Error 收集 */
-  collectFromError: (error: Error, code?: number, message?: string, extra?: Record<string, any>) => string
+  collectFromError: (error: Error, code?: number, message?: string, extra?: Record<string, unknown>) => string
   /** 复制当前诊断信息 */
-  copyDiagnostic: (extra?: Record<string, any>) => Promise<boolean>
+  copyDiagnostic: (extra?: Record<string, unknown>) => Promise<boolean>
   /** 复制指定的历史诊断信息 */
   copyHistoryEntry: (id: string) => Promise<boolean>
   /** 清空当前诊断信息 */
@@ -95,7 +95,7 @@ export interface UseDiagnosticsReturn {
   /** 清空所有历史记录 */
   clearHistory: () => void
   /** 生成当前诊断文本 */
-  generateText: (extra?: Record<string, any>) => string
+  generateText: (extra?: Record<string, unknown>) => string
 }
 
 // ============================================================
@@ -148,7 +148,7 @@ export function useDiagnostics(options: UseDiagnosticsOptions = {}): UseDiagnost
   /**
    * 收集标准化错误
    */
-  function collectStandardError(error: StandardError, extra?: Record<string, any>): string {
+  function collectStandardError(error: StandardError, extra?: Record<string, unknown>): string {
     const context = collectDiagnosticContext(error, extra)
     currentContext.value = context
     const id = addToHistory(context)
@@ -158,13 +158,13 @@ export function useDiagnostics(options: UseDiagnosticsOptions = {}): UseDiagnost
   /**
    * 收集任意错误
    */
-  function collectError(error: any, extra?: Record<string, any>): string {
+  function collectError(error: unknown, extra?: Record<string, unknown>): string {
     let standardError: StandardError
     
     if (error && typeof error === 'object' && 'code' in error && 'errorCode' in error) {
       // 已经是 StandardError
       standardError = error as StandardError
-    } else if (error?.response) {
+    } else if ((error as Record<string, unknown>)?.response) {
       // Axios 错误
       standardError = buildErrorFromAxiosError(error)
     } else if (error instanceof Error) {
@@ -181,15 +181,15 @@ export function useDiagnostics(options: UseDiagnosticsOptions = {}): UseDiagnost
   /**
    * 从 API 响应收集错误
    */
-  function collectFromResponse(response: any, extra?: Record<string, any>): string {
-    const standardError = buildErrorFromResponse(response)
+  function collectFromResponse(response: unknown, extra?: Record<string, unknown>): string {
+    const standardError = buildErrorFromResponse(response as { data?: Record<string, unknown>; status?: number })
     return collectStandardError(standardError, extra)
   }
 
   /**
    * 从 Axios 错误收集
    */
-  function collectFromAxiosError(error: any, extra?: Record<string, any>): string {
+  function collectFromAxiosError(error: unknown, extra?: Record<string, unknown>): string {
     const standardError = buildErrorFromAxiosError(error)
     return collectStandardError(standardError, extra)
   }
@@ -201,7 +201,7 @@ export function useDiagnostics(options: UseDiagnosticsOptions = {}): UseDiagnost
     error: Error, 
     code?: number, 
     message?: string, 
-    extra?: Record<string, any>
+    extra?: Record<string, unknown>
   ): string {
     const standardError = buildErrorFromError(error, code, message)
     return collectStandardError(standardError, extra)
@@ -210,7 +210,7 @@ export function useDiagnostics(options: UseDiagnosticsOptions = {}): UseDiagnost
   /**
    * 复制当前诊断信息
    */
-  async function copyDiagnostic(extra?: Record<string, any>): Promise<boolean> {
+  async function copyDiagnostic(extra?: Record<string, unknown>): Promise<boolean> {
     if (!currentContext.value) {
       return false
     }
@@ -255,7 +255,7 @@ export function useDiagnostics(options: UseDiagnosticsOptions = {}): UseDiagnost
   /**
    * 生成当前诊断文本
    */
-  function generateText(extra?: Record<string, any>): string {
+  function generateText(extra?: Record<string, unknown>): string {
     if (!currentContext.value) {
       return ''
     }

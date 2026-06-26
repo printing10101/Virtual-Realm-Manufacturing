@@ -7,6 +7,7 @@ for the LNN workflow system with environment adaptation and runtime updates.
 
 import os
 import copy
+import json
 import yaml
 import logging
 from typing import Any, Dict, List, Optional
@@ -267,12 +268,13 @@ class YAMLConfigManager:
 
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f"Failed to parse YAML config: {e}")
-        except Exception as e:
+        except (OSError, FileNotFoundError, json.JSONDecodeError, ValueError) as e:
+            logger.error("配置加载失败: %s", e, exc_info=True)
             if isinstance(e, (ValueError, FileNotFoundError)):
                 raise
             raise RuntimeError(
                 f"配置加载失败：解析配置文件时出现异常。错误详情: {e}。可能原因：1) 配置文件格式不正确（非 JSON/YAML 格式）；2) 配置文件内容有误；3) 文件编码不匹配。请检查配置文件语法、内容格式和文件编码。"  # noqa: E501
-            )
+            ) from e
 
     def validate(self, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -355,12 +357,18 @@ class YAMLConfigManager:
             key: 配置键（支持点分隔的嵌套键，如 "thresholds.quick"）
             value: 新值
 
+        Raises:
+            ValueError: 配置值验证失败
+
         Examples:
             >>> config.set("lnn", "enabled", False)
             >>> config.set("lnn", "thresholds.quick", 0.90)
         """
         if section not in self._raw_config:
             self._raw_config[section] = {}
+
+        # 验证配置值
+        self._validate_config_value(section, key, value)
 
         if "." in key:
             keys = key.split(".")
@@ -376,6 +384,35 @@ class YAMLConfigManager:
         self._is_dirty = True
         self._build_config_object()
         logger.debug(f"Config updated: {section}.{key} = {value}")
+
+    def _validate_config_value(self, section: str, key: str, value: Any) -> None:
+        """验证单个配置值的合法性"""
+        # 验证阈值范围
+        if key == "quick" or key.endswith(".quick"):
+            if not isinstance(value, (int, float)) or not (0.0 <= value <= 1.0):
+                raise ValueError(f"阈值 'quick' 必须在 0.0-1.0 范围内，实际值: {value}")
+        elif key == "hybrid" or key.endswith(".hybrid"):
+            if not isinstance(value, (int, float)) or not (0.0 <= value <= 1.0):
+                raise ValueError(f"阈值 'hybrid' 必须在 0.0-1.0 范围内，实际值: {value}")
+        elif key == "complexity" or key.endswith(".complexity"):
+            if not isinstance(value, int) or value < 1:
+                raise ValueError(f"复杂度 'complexity' 必须是正整数，实际值: {value}")
+        
+        # 验证设备类型
+        elif key == "default_device":
+            valid_devices = ["cpu", "cuda", "mps"]
+            if not isinstance(value, str) or value not in valid_devices:
+                raise ValueError(f"设备类型必须是 {valid_devices} 之一，实际值: {value}")
+        
+        # 验证环境名称
+        elif key == "name" and section == "environment":
+            if not isinstance(value, str) or value not in self.VALID_ENVIRONMENTS:
+                raise ValueError(f"环境名称必须是 {self.VALID_ENVIRONMENTS} 之一，实际值: {value}")
+        
+        # 验证模型类型
+        elif key == "type" and "models" in section:
+            if not isinstance(value, str) or value not in self.VALID_MODEL_TYPES:
+                raise ValueError(f"模型类型必须是 {self.VALID_MODEL_TYPES} 之一，实际值: {value}")
 
     def save(self, output_path: Optional[str] = None) -> None:
         """
@@ -415,7 +452,7 @@ class YAMLConfigManager:
         except IOError as e:
             raise IOError(
                 f"配置保存失败：无法将配置写入文件。错误详情: {e}。可能原因：1) 磁盘空间不足；2) 目标目录无写入权限；3) 文件被其他进程占用。请检查磁盘状态和目录权限。"
-            )
+            ) from e
 
     def to_dict(self) -> Dict[str, Any]:
         """将配置转换为字典格式"""

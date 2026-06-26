@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html style="background-color:#faf8f5!important;color:#1d1b18!important;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备监控</title>
+    <link rel="stylesheet" href="tailwind-fallback.css">
+<style id="theme-vars">
+/*
+ * Lingjing Manufacturing design tokens
+ * Brand: Lingjing Manufacturing
+ * Domain: Intelligent manufacturing platform
+ * Style: Restrained, elegant, warm cream/off-white palette
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #faf8f5;
+  --background-100: #f5f2ed;
+  --background-200: #ede9e3;
+  --background-300: #e0dbd4;
+  --background-400: #cec8bf;
+  --background-500: #a8a199;
+  --background-600: #8a847c;
+  --background-700: #3a3632;
+  --background-800: #1c1a18;
+  --background-900: #0e0d0c;
+
+  /* text */
+  --text-50: #f5f2ed;
+  --text-100: #e3dfd8;
+  --text-200: #c7c2b8;
+  --text-300: #aea99f;
+  --text-400: #8e897f;
+  --text-500: #6e6960;
+  --text-600: #48443e;
+  --text-700: #3c3832;
+  --text-800: #1d1b18;
+  --text-900: #0e0d0c;
+
+  /* icon */
+  --icon-50: #f5f2ed;
+  --icon-100: #e0dbd4;
+  --icon-200: #cec8bf;
+  --icon-300: #c7c2b8;
+  --icon-400: #aea99f;
+  --icon-500: #8e897f;
+  --icon-600: #6e6960;
+  --icon-700: #48443e;
+  --icon-800: #2c2926;
+  --icon-900: #1d1b18;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f5ec;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #fdecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+  /* ===== COLOR ALIAS LAYER (--color-*) ===== */
+  --color-bg-50: var(--background-50);
+  --color-bg-100: var(--background-100);
+  --color-bg-200: var(--background-200);
+  --color-bg-300: var(--background-300);
+  --color-text-primary: var(--text-800);
+  --color-text-secondary: var(--text-500);
+  --color-text-tertiary: var(--text-400);
+  --color-text-muted: var(--text-400);
+  --color-text-placeholder: var(--text-300);
+  --color-text-inverse: var(--background-50);
+  --color-border-subtle: var(--background-300);
+  --color-border-default: var(--background-300);
+  --color-border-strong: var(--background-500);
+  --color-border-focus: var(--brand-500);
+  --color-primary-50: var(--brand-50);
+  --color-primary-100: var(--brand-100);
+  --color-primary-200: var(--brand-200);
+  --color-primary-300: var(--brand-300);
+  --color-primary-400: var(--brand-400);
+  --color-primary-500: var(--brand-500);
+  --color-primary-600: var(--brand-600);
+  --color-primary-700: var(--brand-700);
+  --color-primary-800: var(--brand-800);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-800: var(--brand-800);
+  /* ===== LAYOUT VARIABLES ===== */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --page-padding: 24px;
+  --content-max-width: 1200px;
+  /* ===== STATE COLORS ===== */
+  --state-warning: #ff9500;
+  --state-warning-bg: #fff4e5;
+  --state-warning-surface: #fff4e5;
+  --state-info: #007aff;
+  --state-info-bg: #e8f2ff;
+  --state-success-bg: #e9f5ec;
+  --state-error-bg: #fdecea;
+  --card-background: var(--background-50);
+
+
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+html.dark, html.dark body, html.dark * {
+  --background: #faf8f5 !important; --foreground: #1d1b18 !important; --card: #faf8f5 !important; --card-foreground: #1d1b18 !important; --card-background: #faf8f5 !important; --popover: #f5f2ed !important; --popover-foreground: #1d1b18 !important; --primary: #007aff !important; --primary-foreground: #ffffff !important; --secondary: #f5f2ed !important; --secondary-foreground: #1d1b18 !important; --muted: #f5f2ed !important; --muted-foreground: #6b6560 !important; --accent: #ede9e3 !important; --accent-foreground: #1d1b18 !important; --border: #e0dbd4 !important; --input: #e0dbd4 !important; --icon: #1d1b18 !important; --icon-muted: #8e897f !important; --sidebar: #ede9e3 !important; --sidebar-foreground: #1d1b18 !important; --sidebar-primary: #007aff !important; --sidebar-primary-foreground: #faf8f5 !important; --sidebar-accent: #e0dbd4 !important; --sidebar-accent-foreground: #1d1b18 !important; --sidebar-border: #e0dbd4 !important; --sidebar-ring: #007aff !important; color: inherit !important;
+}
+
+    </style>
+<style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="font-family: var(--font-sans); background-color:#faf8f5!important; color:#1d1b18!important;">
+
+    <!-- Sidebar Navigation -->
+        <aside class="fixed left-0 top-0 bottom-0 z-30 flex flex-col border-r" style="width: var(--sidebar-width); background: var(--color-bg-50); border-color: var(--color-border-subtle);">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-5 h-14 border-b" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--color-primary-500);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-inverse);flex-shrink:0;"><path d="M6 16v-8"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M10 6V2"/><path d="M14 6V2"/><path d="M6 18v2"/><path d="M18 18v2"/><path d="M6 6V2"/><path d="M18 6V2"/><path d="M2 12a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M6 18a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/></svg>
+            </div>
+            <span class="text-headline truncate" style="color: var(--color-text-primary);">灵境制造</span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 overflow-y-auto py-4 px-3 no-scrollbar">
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">核心功能</p>
+                <a href="dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <span class="truncate">生产总览</span>
+                </a>
+                <a href="process-planning.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="3"/><path d="M12 1v6"/><path d="M12 17v6"/><path d="M4.22 4.22l4.24 4.24"/><path d="M15.54 15.54l4.24 4.24"/><path d="M1 12h6"/><path d="M17 12h6"/><path d="M4.22 19.78l4.24-4.24"/><path d="M15.54 8.46l4.24-4.24"/></svg>
+                    <span class="truncate">工艺规划</span>
+                </a>
+                <a href="equipment-monitor.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+                    <span class="truncate font-medium">设备监控</span>
+                </a>
+                <a href="quality-inspection.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+                    <span class="truncate">质量检测</span>
+                </a>
+                <a href="agent-dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    <span class="truncate">智能体管理</span>
+                </a>
+            </div>
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">资源管理</p>
+                <a href="material-management.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>
+                    <span class="truncate">物料管理</span>
+                </a>
+                <a href="task-board.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                    <span class="truncate">任务看板</span>
+                </a>
+                <a href="production-report.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    <span class="truncate">生产报表</span>
+                </a>
+                <a href="knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <span class="truncate">知识库</span>
+                </a>
+            </div>
+            <div>
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">系统</p>
+                <a href="settings.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span class="truncate">系统设置</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- User -->
+        <div class="border-t px-4 py-3 flex items-center gap-3" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-caption shrink-0" style="background: var(--color-primary-100); color: var(--color-primary-600);">管</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-body-sm truncate" style="color: var(--color-text-primary);">管理员</p>
+                <p class="text-caption truncate" style="color: var(--color-text-muted);">admin@lingjing.com</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex flex-col min-h-screen" style="margin-left: var(--sidebar-width);">
+
+        <!-- Top Header Bar -->
+        <header class="sticky top-0 z-20 flex items-center justify-between px-6 shrink-0" style="height: var(--header-height); background: rgba(250,248,245,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--color-border-subtle);">
+            <!-- Search -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg flex-1 max-w-md" style="background: var(--color-bg-200); border: 1px solid var(--color-border-subtle);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" placeholder="搜索设备、工单..." class="bg-transparent border-none outline-none text-body-sm flex-1 min-w-0 placeholder:font-body" style="color: var(--color-text-primary); font-family: var(--font-sans);">
+            </div>
+
+            <!-- Right Actions -->
+            <div class="flex items-center gap-4 shrink-0">
+                <button class="relative w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-150 hover:bg-black/5" style="color: var(--color-text-tertiary);" aria-label="通知">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background: var(--state-error);"></span>
+                </button>
+                <div class="flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-black/5">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-caption shrink-0" style="background: var(--color-primary-500); color: var(--color-bg-50);">张</div>
+                    <span class="text-body-sm" style="color: var(--color-text-secondary);">张工</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-text-muted);flex-shrink:0;"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="flex-1 overflow-y-auto" style="padding: var(--page-padding);">
+
+            <!-- Page Header: Title + Tabs + Action -->
+            <section class="flex flex-col gap-4 mb-6">
+                <div class="flex items-center justify-between gap-4">
+                    <h1 class="text-title-2 shrink-0" style="color: var(--color-text-primary); text-wrap: balance; word-break: keep-all; overflow-wrap: break-word;">设备监控</h1>
+                    <button id="inspection-open-btn" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-body-sm transition-all duration-150 hover:opacity-90 active:scale-[0.98] shrink-0" style="background: var(--color-primary-500); color: var(--color-bg-50);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 12h8"/></svg>
+                        <span>设备巡检</span>
+                    </button>
+                </div>
+                <!-- Tab Switcher -->
+                <div class="flex items-center gap-1 p-1 rounded-lg self-start" style="background: var(--color-bg-200); width: fit-content;">
+                    <button class="tab-btn px-4 py-1.5 rounded-md text-body-sm transition-colors duration-150" data-tab="overview" style="background: var(--color-bg-50); color: var(--color-text-primary); box-shadow: var(--shadow-xs);">设备总览</button>
+                    <button class="tab-btn px-4 py-1.5 rounded-md text-body-sm transition-colors duration-150 hover:bg-white/50" data-tab="alarm" style="color: var(--color-text-tertiary);">报警管理</button>
+                    <button class="tab-btn px-4 py-1.5 rounded-md text-body-sm transition-colors duration-150 hover:bg-white/50" data-tab="maintenance" style="color: var(--color-text-tertiary);">维护计划</button>
+                </div>
+            </section>
+
+            <!-- Tab Panel: 设备总览 -->
+            <div id="tab-overview" class="tab-panel">
+
+            <!-- Equipment Status Overview (4 Stat Cards) -->
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- 设备总数 -->
+                <div class="stat-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-filter="all" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-caption" style="color: var(--color-text-muted);">设备总数</span>
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--color-primary-50);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-primary-500);flex-shrink:0;"><path d="M6 16v-8"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M10 6V2"/><path d="M14 6V2"/><path d="M6 18v2"/><path d="M18 18v2"/><path d="M6 6V2"/><path d="M18 6V2"/><path d="M2 12a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M6 18a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/></svg>
+                        </div>
+                    </div>
+                    <p class="text-title-1 whitespace-nowrap" style="color: var(--color-text-primary);">48 <span class="text-body-sm font-normal" style="color: var(--color-text-muted);">台</span></p>
+                </div>
+
+                <!-- 运行中 -->
+                <div class="stat-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-filter="running" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-caption" style="color: var(--color-text-muted);">运行中</span>
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--state-success-bg);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--state-success);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <p class="text-title-1 whitespace-nowrap" style="color: var(--color-text-primary);">42 <span class="text-body-sm font-normal" style="color: var(--color-text-muted);">台</span></p>
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background: var(--state-success); animation: pulse-green 2s ease-in-out infinite;"></span>
+                    </div>
+                </div>
+
+                <!-- 待机 -->
+                <div class="stat-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-filter="standby" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-caption" style="color: var(--color-text-muted);">待机</span>
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--state-warning-bg);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--state-warning);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="10" x2="10" y1="15" y2="9"/><line x1="14" x2="14" y1="15" y2="9"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <p class="text-title-1 whitespace-nowrap" style="color: var(--color-text-primary);">4 <span class="text-body-sm font-normal" style="color: var(--color-text-muted);">台</span></p>
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background: var(--state-warning);"></span>
+                    </div>
+                </div>
+
+                <!-- 故障 -->
+                <div class="stat-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-filter="fault" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-caption" style="color: var(--color-text-muted);">故障</span>
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--state-error-bg);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--state-error);flex-shrink:0;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <p class="text-title-1 whitespace-nowrap" style="color: var(--state-error);">2 <span class="text-body-sm font-normal" style="color: var(--color-text-muted);">台</span></p>
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background: var(--state-error); animation: pulse-red 1.5s ease-in-out infinite;"></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Equipment Grid (3 columns) -->
+            <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+
+                <!-- Card 1: CNC加工中心 #01 - Running -->
+                <div class="equipment-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-status="running" data-name="CNC加工中心 #01" data-id="CNC-01" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-headline truncate" style="color: var(--color-text-primary);">CNC加工中心 #01</h3>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap mt-1" style="background: var(--color-primary-50); color: var(--color-primary-600);">CNC</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0 ml-3">
+                            <span class="w-3 h-3 rounded-full shrink-0" style="background: var(--state-success); animation: pulse-green 2s ease-in-out infinite;"></span>
+                            <span class="text-body-sm whitespace-nowrap" style="color: var(--state-success);">运行中</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">运行时长</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">8h 32m</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">当前转速</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">12,000 rpm</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">今日产量</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">156 件</p>
+                        </div>
+                    </div>
+                    <!-- Utilization Bar -->
+                    <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color: var(--color-text-muted);">稼动率</span>
+                            <span class="text-caption" style="color: var(--state-success);">92%</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background: var(--color-bg-200);">
+                            <div class="h-full rounded-full" style="width: 92%; background: var(--state-success);"></div>
+                        </div>
+                    </div>
+                    <p class="text-caption" style="color: var(--color-text-placeholder);">上次维护: 2026-06-20</p>
+                </div>
+
+                <!-- Card 2: 注塑机 #03 - Running -->
+                <div class="equipment-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-status="running" data-name="注塑机 #03" data-id="CNC-03" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-headline truncate" style="color: var(--color-text-primary);">注塑机 #03</h3>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap mt-1" style="background: var(--color-primary-50); color: var(--color-primary-600);">注塑</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0 ml-3">
+                            <span class="w-3 h-3 rounded-full shrink-0" style="background: var(--state-success); animation: pulse-green 2s ease-in-out infinite;"></span>
+                            <span class="text-body-sm whitespace-nowrap" style="color: var(--state-success);">运行中</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">运行时长</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">6h 15m</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">当前温度</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">245°C</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">今日产量</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">2,340 件</p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color: var(--color-text-muted);">稼动率</span>
+                            <span class="text-caption" style="color: var(--state-success);">88%</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background: var(--color-bg-200);">
+                            <div class="h-full rounded-full" style="width: 88%; background: var(--state-success);"></div>
+                        </div>
+                    </div>
+                    <p class="text-caption" style="color: var(--color-text-placeholder);">上次维护: 2026-06-18</p>
+                </div>
+
+                <!-- Card 3: 三坐标测量仪 - Standby -->
+                <div class="equipment-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-status="standby" data-name="三坐标测量仪" data-id="CNC-04" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-headline truncate" style="color: var(--color-text-primary);">三坐标测量仪</h3>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap mt-1" style="background: var(--color-primary-50); color: var(--color-primary-600);">检测</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0 ml-3">
+                            <span class="w-3 h-3 rounded-full shrink-0" style="background: var(--state-warning);"></span>
+                            <span class="text-body-sm whitespace-nowrap" style="color: var(--state-warning);">待机</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">运行时长</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">--</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">精度状态</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">正常</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">今日检测</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">0 件</p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color: var(--color-text-muted);">稼动率</span>
+                            <span class="text-caption" style="color: var(--state-warning);">0%</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background: var(--color-bg-200);">
+                            <div class="h-full rounded-full" style="width: 0%; background: var(--state-warning);"></div>
+                        </div>
+                    </div>
+                    <p class="text-caption" style="color: var(--color-text-placeholder);">上次维护: 2026-06-15</p>
+                </div>
+
+                <!-- Card 4: 激光切割机 #02 - Running -->
+                <div class="equipment-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-status="running" data-name="激光切割机 #02" data-id="CNC-02" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-headline truncate" style="color: var(--color-text-primary);">激光切割机 #02</h3>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap mt-1" style="background: var(--color-primary-50); color: var(--color-primary-600);">切割</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0 ml-3">
+                            <span class="w-3 h-3 rounded-full shrink-0" style="background: var(--state-success); animation: pulse-green 2s ease-in-out infinite;"></span>
+                            <span class="text-body-sm whitespace-nowrap" style="color: var(--state-success);">运行中</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">运行时长</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">4h 48m</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">激光功率</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">3.2 kW</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">今日产量</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">89 件</p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color: var(--color-text-muted);">稼动率</span>
+                            <span class="text-caption" style="color: var(--state-success);">85%</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background: var(--color-bg-200);">
+                            <div class="h-full rounded-full" style="width: 85%; background: var(--state-success);"></div>
+                        </div>
+                    </div>
+                    <p class="text-caption" style="color: var(--color-text-placeholder);">上次维护: 2026-06-19</p>
+                </div>
+
+                <!-- Card 5: 数控车床 #05 - Fault -->
+                <div class="equipment-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-status="fault" data-name="数控车床 #05" data-id="CNC-05" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-headline truncate" style="color: var(--color-text-primary);">数控车床 #05</h3>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap mt-1" style="background: var(--color-primary-50); color: var(--color-primary-600);">车削</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0 ml-3">
+                            <span class="w-3 h-3 rounded-full shrink-0" style="background: var(--state-error); animation: pulse-red 1.5s ease-in-out infinite;"></span>
+                            <span class="text-body-sm whitespace-nowrap" style="color: var(--state-error);">故障</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">运行时长</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">0h 0m</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">故障代码</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--state-error);">E-0421</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">停机时长</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">2h 15m</p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color: var(--color-text-muted);">稼动率</span>
+                            <span class="text-caption" style="color: var(--state-error);">12%</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background: var(--color-bg-200);">
+                            <div class="h-full rounded-full" style="width: 12%; background: var(--state-error);"></div>
+                        </div>
+                    </div>
+                    <p class="text-caption" style="color: var(--color-text-placeholder);">上次维护: 2026-06-22</p>
+                </div>
+
+                <!-- Card 6: 焊接机器人 #01 - Running -->
+                <div class="equipment-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-status="running" data-name="焊接机器人 #01" data-id="CNC-06" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-headline truncate" style="color: var(--color-text-primary);">焊接机器人 #01</h3>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap mt-1" style="background: var(--color-primary-50); color: var(--color-primary-600);">焊接</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0 ml-3">
+                            <span class="w-3 h-3 rounded-full shrink-0" style="background: var(--state-success); animation: pulse-green 2s ease-in-out infinite;"></span>
+                            <span class="text-body-sm whitespace-nowrap" style="color: var(--state-success);">运行中</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">运行时长</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">7h 05m</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">焊接电流</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">180A</p>
+                        </div>
+                        <div>
+                            <p class="text-caption mb-0.5" style="color: var(--color-text-muted);">今日产量</p>
+                            <p class="text-body-sm whitespace-nowrap" style="color: var(--color-text-primary);">420 件</p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color: var(--color-text-muted);">稼动率</span>
+                            <span class="text-caption" style="color: var(--state-success);">95%</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background: var(--color-bg-200);">
+                            <div class="h-full rounded-full" style="width: 95%; background: var(--state-success);"></div>
+                        </div>
+                    </div>
+                    <p class="text-caption" style="color: var(--color-text-placeholder);">上次维护: 2026-06-21</p>
+                </div>
+
+            </section>
+
+            <!-- Maintenance Plan Table -->
+            <section class="rounded-xl" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                <div class="flex items-center justify-between px-5 py-4" style="border-bottom: 1px solid var(--color-border-subtle);">
+                    <h2 class="text-headline" style="color: var(--color-text-primary);">维护计划</h2>
+                    <button id="view-all-maintenance-btn" class="text-body-sm transition-colors duration-150 hover:opacity-70" style="color: var(--color-primary-500);">查看全部</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left" style="min-width: 600px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">设备名称</th>
+                                <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">维护类型</th>
+                                <th class="px-5 py-3 text-caption whitespace-nowrap" style="color: var(--color-text-muted);">计划日期</th>
+                                <th class="px-5 py-3 text-caption whitespace-nowrap" style="color: var(--color-text-muted);">负责人</th>
+                                <th class="px-5 py-3 text-caption whitespace-nowrap" style="color: var(--color-text-muted);">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Row 1 -->
+                            <tr class="transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);">
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm truncate" style="color: var(--color-text-primary);">CNC加工中心 #01</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-info-bg); color: var(--state-info);">保养</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-25</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">李工</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-warning-bg); color: var(--state-warning);">待执行</span>
+                                </td>
+                            </tr>
+                            <!-- Row 2 -->
+                            <tr class="transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);">
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm truncate" style="color: var(--color-text-primary);">注塑机 #03</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-error-bg); color: var(--state-error);">维修</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-24</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">王工</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-info-bg); color: var(--state-info);">进行中</span>
+                                </td>
+                            </tr>
+                            <!-- Row 3 -->
+                            <tr class="transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);">
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm truncate" style="color: var(--color-text-primary);">三坐标测量仪</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-success-bg); color: var(--state-success);">校准</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-26</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">赵工</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-warning-bg); color: var(--state-warning);">待执行</span>
+                                </td>
+                            </tr>
+                            <!-- Row 4 -->
+                            <tr class="transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);">
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm truncate" style="color: var(--color-text-primary);">激光切割机 #02</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-info-bg); color: var(--state-info);">保养</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">陈工</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-success-bg); color: var(--state-success);">已完成</span>
+                                </td>
+                            </tr>
+                            <!-- Row 5 -->
+                            <tr class="transition-colors duration-100 hover:bg-black/[0.02]">
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm truncate" style="color: var(--color-text-primary);">数控车床 #05</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-error-bg); color: var(--state-error);">维修</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">王工</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-info-bg); color: var(--state-info);">进行中</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            </div><!-- end tab-overview -->
+
+            <!-- Tab Panel: 报警管理 -->
+            <div id="tab-alarm" class="tab-panel" style="display:none;">
+                <section class="rounded-xl" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between px-5 py-4" style="border-bottom: 1px solid var(--color-border-subtle);">
+                        <h2 class="text-headline" style="color: var(--color-text-primary);">报警列表</h2>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption" style="background: var(--state-error-bg); color: var(--state-error);">
+                                <span class="w-1.5 h-1.5 rounded-full" style="background: var(--state-error);"></span> 严重 2
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption" style="background: var(--state-warning-bg); color: var(--state-warning);">
+                                <span class="w-1.5 h-1.5 rounded-full" style="background: var(--state-warning);"></span> 警告 2
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">
+                                <span class="w-1.5 h-1.5 rounded-full" style="background: var(--state-info);"></span> 提示 2
+                            </span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left" style="min-width: 700px;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">设备名称</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">报警类型</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">等级</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">时间</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">状态</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alarm-table-body">
+                                <tr class="alarm-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);" data-alarm-id="1">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">数控车床 #05</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-secondary);">主轴过热</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-error-bg); color: var(--state-error);">严重</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23 09:15</span></td>
+                                    <td class="px-5 py-3.5"><span class="alarm-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-error-bg); color: var(--state-error);">待处理</span></td>
+                                    <td class="px-5 py-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <button class="alarm-confirm-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-primary-50); color: var(--color-primary-600);">确认</button>
+                                            <button class="alarm-view-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-secondary);">查看</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="alarm-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);" data-alarm-id="2">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">CNC加工中心 #01</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-secondary);">振动异常</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-error-bg); color: var(--state-error);">严重</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23 08:42</span></td>
+                                    <td class="px-5 py-3.5"><span class="alarm-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-warning-bg); color: var(--state-warning);">已确认</span></td>
+                                    <td class="px-5 py-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <button class="alarm-confirm-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-muted);" disabled>确认</button>
+                                            <button class="alarm-view-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-secondary);">查看</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="alarm-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);" data-alarm-id="3">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">注塑机 #03</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-secondary);">冷却液温度偏高</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-warning-bg); color: var(--state-warning);">警告</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23 10:08</span></td>
+                                    <td class="px-5 py-3.5"><span class="alarm-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-error-bg); color: var(--state-error);">待处理</span></td>
+                                    <td class="px-5 py-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <button class="alarm-confirm-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-primary-50); color: var(--color-primary-600);">确认</button>
+                                            <button class="alarm-view-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-secondary);">查看</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="alarm-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);" data-alarm-id="4">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">激光切割机 #02</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-secondary);">激光功率衰减</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-warning-bg); color: var(--state-warning);">警告</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23 07:30</span></td>
+                                    <td class="px-5 py-3.5"><span class="alarm-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-success-bg); color: var(--state-success);">已解决</span></td>
+                                    <td class="px-5 py-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <button class="alarm-confirm-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-muted);" disabled>确认</button>
+                                            <button class="alarm-view-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-secondary);">查看</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="alarm-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);" data-alarm-id="5">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">焊接机器人 #01</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-secondary);">焊枪温度提示</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">提示</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23 11:20</span></td>
+                                    <td class="px-5 py-3.5"><span class="alarm-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-error-bg); color: var(--state-error);">待处理</span></td>
+                                    <td class="px-5 py-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <button class="alarm-confirm-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-primary-50); color: var(--color-primary-600);">确认</button>
+                                            <button class="alarm-view-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-secondary);">查看</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="alarm-row transition-colors duration-100 hover:bg-black/[0.02]" data-alarm-id="6">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">三坐标测量仪</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-secondary);">校准周期提醒</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">提示</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23 06:00</span></td>
+                                    <td class="px-5 py-3.5"><span class="alarm-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-warning-bg); color: var(--state-warning);">已确认</span></td>
+                                    <td class="px-5 py-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <button class="alarm-confirm-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-muted);" disabled>确认</button>
+                                            <button class="alarm-view-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-secondary);">查看</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div><!-- end tab-alarm -->
+
+            <!-- Tab Panel: 维护计划 -->
+            <div id="tab-maintenance" class="tab-panel" style="display:none;">
+                <section class="rounded-xl" style="background: var(--color-bg-50); border: 1px solid var(--color-border-default); box-shadow: var(--shadow-xs);">
+                    <div class="flex items-center justify-between px-5 py-4" style="border-bottom: 1px solid var(--color-border-subtle);">
+                        <h2 class="text-headline" style="color: var(--color-text-primary);">维护计划</h2>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption" style="background: var(--state-warning-bg); color: var(--state-warning);">待执行 3</span>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">进行中 2</span>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption" style="background: var(--state-success-bg); color: var(--state-success);">已完成 1</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left" style="min-width: 700px;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">设备名称</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">维护类型</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">计划日期</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">负责人</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">状态</th>
+                                    <th class="px-5 py-3 text-caption" style="color: var(--color-text-muted);">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="maintenance-table-body">
+                                <tr class="maint-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">CNC加工中心 #01</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">定期</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-25</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">李工</span></td>
+                                    <td class="px-5 py-3.5"><span class="maint-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-warning-bg); color: var(--state-warning);">待执行</span></td>
+                                    <td class="px-5 py-3.5"><button class="maint-action-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-primary-50); color: var(--color-primary-600);">开始</button></td>
+                                </tr>
+                                <tr class="maint-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">注塑机 #03</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-error-bg); color: var(--state-error);">紧急</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-24</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">王工</span></td>
+                                    <td class="px-5 py-3.5"><span class="maint-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">进行中</span></td>
+                                    <td class="px-5 py-3.5"><button class="maint-action-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--state-success-bg); color: var(--state-success);">完成</button></td>
+                                </tr>
+                                <tr class="maint-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">三坐标测量仪</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">预测</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-26</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">赵工</span></td>
+                                    <td class="px-5 py-3.5"><span class="maint-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-warning-bg); color: var(--state-warning);">待执行</span></td>
+                                    <td class="px-5 py-3.5"><button class="maint-action-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-primary-50); color: var(--color-primary-600);">开始</button></td>
+                                </tr>
+                                <tr class="maint-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">激光切割机 #02</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">定期</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">陈工</span></td>
+                                    <td class="px-5 py-3.5"><span class="maint-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-success-bg); color: var(--state-success);">已完成</span></td>
+                                    <td class="px-5 py-3.5"><button class="maint-action-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-bg-200); color: var(--color-text-muted);" disabled>完成</button></td>
+                                </tr>
+                                <tr class="maint-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom: 1px solid var(--color-border-subtle);">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">数控车床 #05</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-error-bg); color: var(--state-error);">紧急</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-23</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">王工</span></td>
+                                    <td class="px-5 py-3.5"><span class="maint-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">进行中</span></td>
+                                    <td class="px-5 py-3.5"><button class="maint-action-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--state-success-bg); color: var(--state-success);">完成</button></td>
+                                </tr>
+                                <tr class="maint-row transition-colors duration-100 hover:bg-black/[0.02]">
+                                    <td class="px-5 py-3.5"><span class="text-body-sm" style="color: var(--color-text-primary);">焊接机器人 #01</span></td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background: var(--state-info-bg); color: var(--state-info);">预测</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-tertiary);">2026-06-28</span></td>
+                                    <td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color: var(--color-text-secondary);">张工</span></td>
+                                    <td class="px-5 py-3.5"><span class="maint-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background: var(--state-warning-bg); color: var(--state-warning);">待执行</span></td>
+                                    <td class="px-5 py-3.5"><button class="maint-action-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background: var(--color-primary-50); color: var(--color-primary-600);">开始</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div><!-- end tab-maintenance -->
+
+        </main>
+    </div>
+
+    <!-- Pulse Animations -->
+    <style>
+        @keyframes pulse-green {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(58, 138, 92, 0.4); }
+            50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(58, 138, 92, 0); }
+        }
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(196, 64, 64, 0.5); }
+            50% { opacity: 0.6; box-shadow: 0 0 0 8px rgba(196, 64, 64, 0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            @keyframes pulse-green {
+                0%, 100% { opacity: 1; box-shadow: none; }
+            }
+            @keyframes pulse-red {
+                0%, 100% { opacity: 1; box-shadow: none; }
+            }
+        }
+    </style>
+<!-- ===== Inspection Modal ===== -->
+    <div id="inspection-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; z-index:50; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+        <div class="modal-content" style="max-width:520px; width:90%; background:var(--color-bg-50); border-radius:var(--radius); box-shadow:var(--shadow-2xl); border:1px solid var(--color-border-default); max-height:90vh; overflow-y:auto;">
+            <div class="flex items-center justify-between px-6 py-4" style="border-bottom:1px solid var(--color-border-subtle);">
+                <h3 class="text-headline" style="color:var(--color-text-primary);">设备巡检</h3>
+                <button id="inspection-modal-close" class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 hover:bg-black/5" style="color:var(--color-text-muted);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-6 py-5 flex flex-col gap-5">
+                <div>
+                    <label class="block text-caption mb-1.5" style="color:var(--color-text-muted);">设备选择</label>
+                    <select id="inspection-equipment" class="w-full px-3 py-2 rounded-lg text-body-sm outline-none" style="background:var(--color-bg-200); border:1px solid var(--color-border-default); color:var(--color-text-primary);">
+                        <option value="CNC-01">CNC加工中心 #01</option>
+                        <option value="CNC-02">激光切割机 #02</option>
+                        <option value="CNC-03">注塑机 #03</option>
+                        <option value="CNC-04">三坐标测量仪</option>
+                        <option value="CNC-05">数控车床 #05</option>
+                        <option value="CNC-06">焊接机器人 #01</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-caption mb-2" style="color:var(--color-text-muted);">巡检项目</label>
+                    <div class="flex flex-col gap-2.5">
+                        <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="inspection-check w-4 h-4 rounded accent-[var(--color-primary-500)]" value="运行声音正常"><span class="text-body-sm" style="color:var(--color-text-secondary);">运行声音正常</span></label>
+                        <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="inspection-check w-4 h-4 rounded accent-[var(--color-primary-500)]" value="润滑油位正常"><span class="text-body-sm" style="color:var(--color-text-secondary);">润滑油位正常</span></label>
+                        <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="inspection-check w-4 h-4 rounded accent-[var(--color-primary-500)]" value="冷却系统正常"><span class="text-body-sm" style="color:var(--color-text-secondary);">冷却系统正常</span></label>
+                        <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="inspection-check w-4 h-4 rounded accent-[var(--color-primary-500)]" value="安全防护装置完好"><span class="text-body-sm" style="color:var(--color-text-secondary);">安全防护装置完好</span></label>
+                        <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="inspection-check w-4 h-4 rounded accent-[var(--color-primary-500)]" value="电气连接无异常"><span class="text-body-sm" style="color:var(--color-text-secondary);">电气连接无异常</span></label>
+                        <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="inspection-check w-4 h-4 rounded accent-[var(--color-primary-500)]" value="加工精度合格"><span class="text-body-sm" style="color:var(--color-text-secondary);">加工精度合格</span></label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-caption mb-1.5" style="color:var(--color-text-muted);">备注</label>
+                    <textarea id="inspection-notes" rows="3" placeholder="请输入巡检备注..." class="w-full px-3 py-2 rounded-lg text-body-sm outline-none resize-none" style="background:var(--color-bg-200); border:1px solid var(--color-border-default); color:var(--color-text-primary); font-family:var(--font-sans);"></textarea>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 px-6 py-4" style="border-top:1px solid var(--color-border-subtle);">
+                <button id="inspection-cancel-btn" class="px-4 py-2 rounded-lg text-body-sm transition-colors duration-150" style="background:var(--color-bg-200); color:var(--color-text-secondary);">取消</button>
+                <button id="inspection-submit-btn" class="px-4 py-2 rounded-lg text-body-sm transition-all duration-150 hover:opacity-90 active:scale-[0.98]" style="background:var(--color-primary-500); color:var(--color-bg-50);">提交巡检</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Equipment Detail Panel ===== -->
+    <div id="detail-panel-backdrop" style="display:none; position:fixed; inset:0; z-index:40; background:rgba(0,0,0,0.2);"></div>
+    <div id="detail-panel" style="display:none; position:fixed; top:0; right:0; bottom:0; width:380px; z-index:45; background:var(--color-bg-50); border-left:1px solid var(--color-border-default); box-shadow:var(--shadow-xl); overflow-y:auto; transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.16,1,0.3,1);">
+        <div class="flex items-center justify-between px-5 py-4 sticky top-0" style="background:var(--color-bg-50); border-bottom:1px solid var(--color-border-subtle); z-index:1;">
+            <h3 class="text-headline" style="color:var(--color-text-primary);">设备详情</h3>
+            <button id="detail-panel-close" class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 hover:bg-black/5" style="color:var(--color-text-muted);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div class="px-5 py-5 flex flex-col gap-5">
+            <div>
+                <h4 id="detail-name" class="text-headline mb-1" style="color:var(--color-text-primary);">--</h4>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span id="detail-model" class="text-caption" style="color:var(--color-text-muted);">型号: --</span>
+                    <span id="detail-location" class="text-caption" style="color:var(--color-text-muted);">位置: --</span>
+                </div>
+                <div class="mt-2">
+                    <span id="detail-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-caption">--</span>
+                </div>
+            </div>
+            <div>
+                <p class="text-caption mb-3" style="color:var(--color-text-muted);">实时指标</p>
+                <div class="flex flex-col gap-3">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color:var(--color-text-secondary);">温度</span>
+                            <span id="detail-temp-val" class="text-caption" style="color:var(--color-text-primary);">--</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background:var(--color-bg-200);"><div id="detail-temp-bar" class="h-full rounded-full transition-all duration-500" style="width:0%; background:var(--state-success);"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color:var(--color-text-secondary);">振动</span>
+                            <span id="detail-vib-val" class="text-caption" style="color:var(--color-text-primary);">--</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background:var(--color-bg-200);"><div id="detail-vib-bar" class="h-full rounded-full transition-all duration-500" style="width:0%; background:var(--state-success);"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color:var(--color-text-secondary);">主轴转速</span>
+                            <span id="detail-rpm-val" class="text-caption" style="color:var(--color-text-primary);">--</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background:var(--color-bg-200);"><div id="detail-rpm-bar" class="h-full rounded-full transition-all duration-500" style="width:0%; background:var(--color-primary-500);"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-caption" style="color:var(--color-text-secondary);">功率消耗</span>
+                            <span id="detail-power-val" class="text-caption" style="color:var(--color-text-primary);">--</span>
+                        </div>
+                        <div class="h-2 rounded-full overflow-hidden" style="background:var(--color-bg-200);"><div id="detail-power-bar" class="h-full rounded-full transition-all duration-500" style="width:0%; background:var(--chart-3);"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <p class="text-caption mb-3" style="color:var(--color-text-muted);">状态历史</p>
+                <div id="detail-history" class="flex flex-col gap-2"></div>
+            </div>
+            <div>
+                <p class="text-caption mb-3" style="color:var(--color-text-muted);">快捷操作</p>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button class="detail-action-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption transition-colors duration-150" style="background:var(--state-success-bg); color:var(--state-success);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><polygon points="6 3 20 12 6 21 6 3"/></svg> 启动
+                    </button>
+                    <button class="detail-action-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption transition-colors duration-150" style="background:var(--state-error-bg); color:var(--state-error);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><rect width="18" height="18" x="3" y="3" rx="2"/></svg> 停止
+                    </button>
+                    <button class="detail-action-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption transition-colors duration-150" style="background:var(--color-primary-50); color:var(--color-primary-600);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> 维护登记
+                    </button>
+                    <button class="detail-action-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption transition-colors duration-150" style="background:var(--color-bg-200); color:var(--color-text-secondary);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg> 查看日志
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Alarm Detail Popover ===== -->
+    <div id="alarm-popover" style="display:none; position:fixed; z-index:55; width:320px; background:var(--color-bg-50); border:1px solid var(--color-border-default); border-radius:var(--radius); box-shadow:var(--shadow-xl); padding:16px;">
+        <div class="flex items-center justify-between mb-3">
+            <span class="text-caption" style="color:var(--color-text-muted);">报警详情</span>
+            <button id="alarm-popover-close" class="w-6 h-6 rounded flex items-center justify-center hover:bg-black/5" style="color:var(--color-text-muted);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between"><span class="text-caption" style="color:var(--color-text-muted);">设备</span><span id="alarm-pop-device" class="text-body-sm" style="color:var(--color-text-primary);">--</span></div>
+            <div class="flex items-center justify-between"><span class="text-caption" style="color:var(--color-text-muted);">类型</span><span id="alarm-pop-type" class="text-body-sm" style="color:var(--color-text-secondary);">--</span></div>
+            <div class="flex items-center justify-between"><span class="text-caption" style="color:var(--color-text-muted);">等级</span><span id="alarm-pop-level" class="text-body-sm">--</span></div>
+            <div class="flex items-center justify-between"><span class="text-caption" style="color:var(--color-text-muted);">时间</span><span id="alarm-pop-time" class="text-body-sm" style="color:var(--color-text-tertiary);">--</span></div>
+            <div class="flex items-center justify-between"><span class="text-caption" style="color:var(--color-text-muted);">描述</span><span id="alarm-pop-desc" class="text-body-sm" style="color:var(--color-text-secondary);">--</span></div>
+        </div>
+    </div>
+
+    <!-- ===== Toast Container ===== -->
+    <div id="toast-container" style="position:fixed; bottom:24px; right:24px; z-index:60; display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none;"></div>
+
+    <!-- ===== Interactive Script ===== -->
+    <script>
+    (function() {
+        // --- Toast System ---
+        function showToast(message, type) {
+            type = type || 'success';
+            var container = document.getElementById('toast-container');
+            var toast = document.createElement('div');
+            var bgColor = type === 'success' ? 'var(--state-success)' : type === 'error' ? 'var(--state-error)' : 'var(--color-primary-500)';
+            var iconName = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info';
+            toast.style.cssText = 'pointer-events:auto; display:flex; align-items:center; gap:10px; padding:12px 18px; border-radius:12px; background:var(--color-bg-50); border:1px solid var(--color-border-default); box-shadow:var(--shadow-lg); color:var(--color-text-primary); font-size:14px; font-family:var(--font-sans); transform:translateY(20px); opacity:0; transition:all 0.3s cubic-bezier(0.16,1,0.3,1);';
+            var iconSvg = '';
+            if (iconName === 'check-circle') { iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:' + bgColor + ';flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>'; }
+            else if (iconName === 'alert-circle') { iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:' + bgColor + ';flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>'; }
+            else { iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:' + bgColor + ';flex-shrink:0;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>'; }
+            toast.innerHTML = iconSvg + '<span>' + message + '</span>';
+            container.appendChild(toast);
+            requestAnimationFrame(function() {
+                toast.style.transform = 'translateY(0)';
+                toast.style.opacity = '1';
+            });
+            setTimeout(function() {
+                toast.style.transform = 'translateY(20px)';
+                toast.style.opacity = '0';
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 3000);
+        }
+
+        // --- Tab Switching ---
+        var tabBtns = document.querySelectorAll('.tab-btn');
+        var tabPanels = document.querySelectorAll('.tab-panel');
+        function switchTab(tabName) {
+            tabBtns.forEach(function(btn) {
+                if (btn.getAttribute('data-tab') === tabName) {
+                    btn.style.background = 'var(--color-bg-50)';
+                    btn.style.color = 'var(--color-text-primary)';
+                    btn.style.boxShadow = 'var(--shadow-xs)';
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'var(--color-text-tertiary)';
+                    btn.style.boxShadow = 'none';
+                }
+            });
+            tabPanels.forEach(function(panel) {
+                panel.style.display = panel.id === 'tab-' + tabName ? 'block' : 'none';
+            });
+        }
+        tabBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                switchTab(btn.getAttribute('data-tab'));
+            });
+        });
+
+        // --- Stat Card Filter ---
+        var statCards = document.querySelectorAll('.stat-card');
+        var equipmentCards = document.querySelectorAll('.equipment-card');
+        statCards.forEach(function(card) {
+            card.addEventListener('click', function() {
+                var filter = card.getAttribute('data-filter');
+                statCards.forEach(function(c) { c.style.borderColor = 'var(--color-border-default)'; });
+                card.style.borderColor = 'var(--color-primary-500)';
+                equipmentCards.forEach(function(eq) {
+                    if (filter === 'all') {
+                        eq.style.display = '';
+                    } else {
+                        eq.style.display = eq.getAttribute('data-status') === filter ? '' : 'none';
+                    }
+                });
+            });
+        });
+
+        // --- Equipment Detail Panel ---
+        var detailPanel = document.getElementById('detail-panel');
+        var detailBackdrop = document.getElementById('detail-panel-backdrop');
+        var detailPanelClose = document.getElementById('detail-panel-close');
+
+        var equipmentData = {
+            'CNC-01': { name:'CNC加工中心 #01', model:'DMG MORI NHX 5000', location:'A区-01', status:'运行中', temp:42, vib:1.2, rpm:12000, power:18.5, history:[{t:'06:00',s:'启动'},{t:'08:30',s:'运行中'},{t:'10:15',s:'运行中'},{t:'12:00',s:'运行中'},{t:'14:00',s:'运行中'}] },
+            'CNC-02': { name:'激光切割机 #02', model:'TRUMPF TruLaser 3030', location:'B区-03', status:'运行中', temp:38, vib:0.8, rpm:0, power:3.2, history:[{t:'07:00',s:'启动'},{t:'09:00',s:'运行中'},{t:'11:00',s:'运行中'},{t:'13:00',s:'运行中'},{t:'14:30',s:'运行中'}] },
+            'CNC-03': { name:'注塑机 #03', model:'ENGEL e-mac', location:'C区-02', status:'运行中', temp:245, vib:2.1, rpm:0, power:45, history:[{t:'06:30',s:'启动'},{t:'08:00',s:'运行中'},{t:'10:00',s:'运行中'},{t:'12:00',s:'运行中'},{t:'14:00',s:'运行中'}] },
+            'CNC-04': { name:'三坐标测量仪', model:'ZEISS CONTURA', location:'D区-01', status:'待机', temp:22, vib:0.1, rpm:0, power:0.5, history:[{t:'08:00',s:'待机'},{t:'09:00',s:'待机'},{t:'10:00',s:'待机'},{t:'11:00',s:'待机'},{t:'14:00',s:'待机'}] },
+            'CNC-05': { name:'数控车床 #05', model:'MAZAK QT-250', location:'A区-03', status:'故障', temp:68, vib:5.6, rpm:0, power:0, history:[{t:'06:00',s:'启动'},{t:'07:00',s:'运行中'},{t:'08:45',s:'故障'},{t:'09:00',s:'故障'},{t:'14:00',s:'故障'}] },
+            'CNC-06': { name:'焊接机器人 #01', model:'FANUC R-2000iC', location:'E区-01', status:'运行中', temp:55, vib:1.8, rpm:0, power:12, history:[{t:'06:00',s:'启动'},{t:'08:00',s:'运行中'},{t:'10:00',s:'运行中'},{t:'12:00',s:'运行中'},{t:'14:00',s:'运行中'}] }
+        };
+
+        function openDetailPanel(id) {
+            var d = equipmentData[id];
+            if (!d) return;
+            document.getElementById('detail-name').textContent = d.name;
+            document.getElementById('detail-model').textContent = '型号: ' + d.model;
+            document.getElementById('detail-location').textContent = '位置: ' + d.location;
+            var badge = document.getElementById('detail-status-badge');
+            var statusColor = d.status === '运行中' ? 'var(--state-success)' : d.status === '待机' ? 'var(--state-warning)' : 'var(--state-error)';
+            var statusBg = d.status === '运行中' ? 'var(--state-success-bg)' : d.status === '待机' ? 'var(--state-warning-bg)' : 'var(--state-error-bg)';
+            badge.style.background = statusBg;
+            badge.style.color = statusColor;
+            badge.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:' + statusColor + ';"></span> ' + d.status;
+
+            // Metrics
+            var tempPct = Math.min(100, (d.temp / 80) * 100);
+            var vibPct = Math.min(100, (d.vib / 8) * 100);
+            var rpmPct = d.rpm > 0 ? Math.min(100, (d.rpm / 15000) * 100) : 0;
+            var powerPct = Math.min(100, (d.power / 50) * 100);
+            document.getElementById('detail-temp-val').textContent = d.temp + '°C';
+            document.getElementById('detail-temp-bar').style.width = tempPct + '%';
+            document.getElementById('detail-temp-bar').style.background = tempPct > 70 ? 'var(--state-error)' : tempPct > 50 ? 'var(--chart-3)' : 'var(--state-success)';
+            document.getElementById('detail-vib-val').textContent = d.vib + ' mm/s';
+            document.getElementById('detail-vib-bar').style.width = vibPct + '%';
+            document.getElementById('detail-vib-bar').style.background = vibPct > 70 ? 'var(--state-error)' : vibPct > 50 ? 'var(--chart-3)' : 'var(--state-success)';
+            document.getElementById('detail-rpm-val').textContent = d.rpm > 0 ? d.rpm.toLocaleString() + ' rpm' : '--';
+            document.getElementById('detail-rpm-bar').style.width = rpmPct + '%';
+            document.getElementById('detail-power-val').textContent = d.power + ' kW';
+            document.getElementById('detail-power-bar').style.width = powerPct + '%';
+
+            // History
+            var historyEl = document.getElementById('detail-history');
+            historyEl.innerHTML = '';
+            d.history.forEach(function(h) {
+                var sColor = h.s === '运行中' ? 'var(--state-success)' : h.s === '故障' ? 'var(--state-error)' : 'var(--state-warning)';
+                historyEl.innerHTML += '<div class="flex items-center gap-3 py-1.5" style="border-bottom:1px solid var(--color-border-subtle);"><span class="text-caption whitespace-nowrap" style="color:var(--color-text-tertiary);">' + h.t + '</span><span class="w-2 h-2 rounded-full shrink-0" style="background:' + sColor + ';"></span><span class="text-body-sm" style="color:var(--color-text-secondary);">' + h.s + '</span></div>';
+            });
+
+            detailBackdrop.style.display = 'block';
+            detailPanel.style.display = 'block';
+            requestAnimationFrame(function() {
+                detailPanel.style.transform = 'translateX(0)';
+            });
+        }
+        function closeDetailPanel() {
+            detailPanel.style.transform = 'translateX(100%)';
+            setTimeout(function() {
+                detailPanel.style.display = 'none';
+                detailBackdrop.style.display = 'none';
+            }, 300);
+        }
+        detailPanelClose.addEventListener('click', closeDetailPanel);
+        detailBackdrop.addEventListener('click', closeDetailPanel);
+
+        equipmentCards.forEach(function(card) {
+            card.addEventListener('click', function() {
+                openDetailPanel(card.getAttribute('data-id'));
+            });
+        });
+
+        // Detail panel quick actions
+        document.querySelectorAll('.detail-action-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var action = btn.textContent.trim();
+                showToast('已执行: ' + action, 'success');
+            });
+        });
+
+        // --- Inspection Modal ---
+        var inspectionModal = document.getElementById('inspection-modal');
+        var inspectionOpenBtn = document.getElementById('inspection-open-btn');
+        var inspectionCloseBtn = document.getElementById('inspection-modal-close');
+        var inspectionCancelBtn = document.getElementById('inspection-cancel-btn');
+        var inspectionSubmitBtn = document.getElementById('inspection-submit-btn');
+
+        function openInspectionModal() {
+            inspectionModal.style.display = 'flex';
+        }
+        function closeInspectionModal() {
+            inspectionModal.style.display = 'none';
+            document.querySelectorAll('.inspection-check').forEach(function(cb) { cb.checked = false; });
+            document.getElementById('inspection-notes').value = '';
+        }
+        if (inspectionOpenBtn) inspectionOpenBtn.addEventListener('click', openInspectionModal);
+        inspectionCloseBtn.addEventListener('click', closeInspectionModal);
+        inspectionCancelBtn.addEventListener('click', closeInspectionModal);
+        inspectionModal.addEventListener('click', function(e) {
+            if (e.target === inspectionModal) closeInspectionModal();
+        });
+        inspectionSubmitBtn.addEventListener('click', function() {
+            closeInspectionModal();
+            showToast('巡检记录已提交', 'success');
+        });
+
+        // --- View All Maintenance Link ---
+        var viewAllBtn = document.getElementById('view-all-maintenance-btn');
+        if (viewAllBtn) {
+            viewAllBtn.addEventListener('click', function() {
+                switchTab('maintenance');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+
+        // --- Alarm Acknowledgment ---
+        document.querySelectorAll('.alarm-confirm-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var row = btn.closest('.alarm-row');
+                var statusEl = row.querySelector('.alarm-status');
+                if (statusEl && statusEl.textContent.trim() === '待处理') {
+                    statusEl.textContent = '已确认';
+                    statusEl.style.background = 'var(--state-warning-bg)';
+                    statusEl.style.color = 'var(--state-warning)';
+                    btn.textContent = '确认';
+                    btn.style.background = 'var(--color-bg-200)';
+                    btn.style.color = 'var(--color-text-muted)';
+                    btn.disabled = true;
+                    showToast('报警已确认', 'success');
+                }
+            });
+        });
+
+        // --- Alarm View Popover ---
+        var alarmPopover = document.getElementById('alarm-popover');
+        var alarmPopoverClose = document.getElementById('alarm-popover-close');
+        var alarmDescriptions = {
+            '1': '主轴温度超过安全阈值85°C，已自动停机。建议检查冷却系统及主轴轴承状态。',
+            '2': 'Z轴方向振动值超过预警阈值2.5mm/s，可能存在刀具磨损或主轴不平衡。',
+            '3': '注塑机冷却液出口温度达到42°C，超出正常范围。建议检查冷却水循环系统。',
+            '4': '激光器输出功率下降至额定值的85%，可能需要更换激光气体或清洁光学镜片。',
+            '5': '焊枪喷嘴温度接近上限，建议检查冷却水流量及焊枪接触状态。',
+            '6': '三坐标测量仪已超过90天未进行校准，建议安排校准作业以确保测量精度。'
+        };
+
+        document.querySelectorAll('.alarm-view-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var row = btn.closest('.alarm-row');
+                var id = row.getAttribute('data-alarm-id');
+                var device = row.querySelectorAll('td')[0].textContent.trim();
+                var type = row.querySelectorAll('td')[1].textContent.trim();
+                var level = row.querySelectorAll('td')[2].textContent.trim();
+                var time = row.querySelectorAll('td')[3].textContent.trim();
+                document.getElementById('alarm-pop-device').textContent = device;
+                document.getElementById('alarm-pop-type').textContent = type;
+                document.getElementById('alarm-pop-level').textContent = level;
+                document.getElementById('alarm-pop-time').textContent = time;
+                document.getElementById('alarm-pop-desc').textContent = alarmDescriptions[id] || '--';
+                var rect = btn.getBoundingClientRect();
+                alarmPopover.style.display = 'block';
+                alarmPopover.style.top = (rect.bottom + 8) + 'px';
+                alarmPopover.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 336)) + 'px';
+            });
+        });
+        function closeAlarmPopover() { alarmPopover.style.display = 'none'; }
+        alarmPopoverClose.addEventListener('click', closeAlarmPopover);
+        document.addEventListener('click', function(e) {
+            if (!alarmPopover.contains(e.target) && !e.target.classList.contains('alarm-view-btn')) {
+                closeAlarmPopover();
+            }
+        });
+
+        // --- Maintenance Action Buttons ---
+        document.querySelectorAll('.maint-action-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var row = btn.closest('.maint-row');
+                var statusEl = row.querySelector('.maint-status');
+                if (btn.textContent.trim() === '开始') {
+                    statusEl.textContent = '进行中';
+                    statusEl.style.background = 'var(--state-info-bg)';
+                    statusEl.style.color = 'var(--state-info)';
+                    btn.textContent = '完成';
+                    btn.style.background = 'var(--state-success-bg)';
+                    btn.style.color = 'var(--state-success)';
+                    showToast('维护任务已开始', 'success');
+                } else if (btn.textContent.trim() === '完成') {
+                    statusEl.textContent = '已完成';
+                    statusEl.style.background = 'var(--state-success-bg)';
+                    statusEl.style.color = 'var(--state-success)';
+                    btn.textContent = '完成';
+                    btn.style.background = 'var(--color-bg-200)';
+                    btn.style.color = 'var(--color-text-muted)';
+                    btn.disabled = true;
+                    showToast('维护任务已完成', 'success');
+                }
+            });
+        });
+
+    })();
+    </script>
+    <script src="api-config.js"></script>
+    <script>
+    (function() {
+        'use strict';
+        function showLoading(container, text) {
+            if (!container) return;
+            var overlay = container.querySelector('.api-loading-overlay');
+            if (overlay) overlay.remove();
+            var el = document.createElement('div');
+            el.className = 'api-loading-overlay';
+            el.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(250,248,245,0.7);z-index:5;border-radius:inherit;font-size:0.875rem;color:var(--color-text-muted);';
+            el.textContent = text || '加载中...';
+            container.style.position = 'relative';
+            container.appendChild(el);
+        }
+        function hideLoading(container) {
+            if (!container) return;
+            var overlay = container.querySelector('.api-loading-overlay');
+            if (overlay) overlay.remove();
+        }
+
+        // --- Fetch Stats ---
+        var statsSection = document.querySelector('#tab-overview .grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4');
+        if (statsSection) showLoading(statsSection, '加载统计数据...');
+        apiGet('/api/v1/equipment/stats/').then(function(stats) {
+            if (!stats) return;
+            var cards = statsSection.querySelectorAll('.stat-card');
+            if (cards[0]) cards[0].querySelector('.text-title-1').innerHTML = (stats.total || 0) + ' <span class="text-body-sm font-normal" style="color:var(--color-text-muted);">台</span>';
+            if (cards[1]) cards[1].querySelector('.text-title-1').innerHTML = (stats.running || 0) + ' <span class="text-body-sm font-normal" style="color:var(--color-text-muted);">台</span>';
+            if (cards[2]) cards[2].querySelector('.text-title-1').innerHTML = ((stats.stopped || 0) + (stats.maintenance || 0)) + ' <span class="text-body-sm font-normal" style="color:var(--color-text-muted);">台</span>';
+            if (cards[3]) cards[3].querySelector('.text-title-1').innerHTML = (stats.fault || 0) + ' <span class="text-body-sm font-normal" style="color:var(--color-text-muted);">台</span>';
+        }).catch(function() {}).finally(function() { hideLoading(statsSection); });
+
+        // --- Fetch Equipment List ---
+        var equipGrid = document.querySelector('#tab-overview .grid.grid-cols-1.md\\:grid-cols-2.xl\\:grid-cols-3');
+        if (equipGrid) showLoading(equipGrid, '加载设备数据...');
+        apiGet('/api/v1/equipment/').then(function(data) {
+            if (!data || !data.equipment) return;
+            var eqList = data.equipment;
+            var html = '';
+            eqList.forEach(function(eq) {
+                var statusMap = {'运行中':'running','停机':'standby','维护中':'standby','故障':'fault'};
+                var statusClass = statusMap[eq.status] || 'standby';
+                var statusColor = eq.status === '运行中' ? 'var(--state-success)' : eq.status === '故障' ? 'var(--state-error)' : 'var(--state-warning)';
+                var statusAnim = eq.status === '运行中' ? 'animation:pulse-green 2s ease-in-out infinite;' : eq.status === '故障' ? 'animation:pulse-red 1.5s ease-in-out infinite;' : '';
+                var utilRate = eq.utilization_rate || 0;
+                var utilColor = utilRate > 70 ? 'var(--state-success)' : utilRate > 30 ? 'var(--state-warning)' : 'var(--state-error)';
+                html += '<div class="equipment-card rounded-xl p-5 transition-shadow duration-200 hover:shadow-md cursor-pointer" data-status="' + statusClass + '" data-name="' + (eq.name || '') + '" data-id="' + (eq.id || '') + '" style="background:var(--color-bg-50);border:1px solid var(--color-border-default);box-shadow:var(--shadow-xs);">'
+                    + '<div class="flex items-center justify-between mb-4"><div class="flex-1 min-w-0"><h3 class="text-headline truncate" style="color:var(--color-text-primary);">' + (eq.name || '--') + '</h3>'
+                    + '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap mt-1" style="background:var(--color-primary-50);color:var(--color-primary-600);">' + (eq.model || '--') + '</span></div>'
+                    + '<div class="flex items-center gap-2 shrink-0 ml-3"><span class="w-3 h-3 rounded-full shrink-0" style="background:' + statusColor + ';' + statusAnim + '"></span>'
+                    + '<span class="text-body-sm whitespace-nowrap" style="color:' + statusColor + ';">' + (eq.status || '--') + '</span></div></div>'
+                    + '<div class="grid grid-cols-3 gap-3 mb-4"><div><p class="text-caption mb-0.5" style="color:var(--color-text-muted);">位置</p><p class="text-body-sm whitespace-nowrap" style="color:var(--color-text-primary);">' + (eq.location || '--') + '</p></div>'
+                    + '<div><p class="text-caption mb-0.5" style="color:var(--color-text-muted);">当前任务</p><p class="text-body-sm whitespace-nowrap" style="color:var(--color-text-primary);">' + (eq.current_task || '--') + '</p></div>'
+                    + '<div><p class="text-caption mb-0.5" style="color:var(--color-text-muted);">利用率</p><p class="text-body-sm whitespace-nowrap" style="color:var(--color-text-primary);">' + utilRate + '%</p></div></div>'
+                    + '<div class="mb-3"><div class="flex items-center justify-between mb-1"><span class="text-caption" style="color:var(--color-text-muted);">稼动率</span><span class="text-caption" style="color:' + utilColor + ';">' + utilRate + '%</span></div>'
+                    + '<div class="h-2 rounded-full overflow-hidden" style="background:var(--color-bg-200);"><div class="h-full rounded-full" style="width:' + utilRate + '%;background:' + utilColor + ';"></div></div></div>'
+                    + '</div>';
+            });
+            equipGrid.innerHTML = html;
+            // Re-bind equipment card click events
+            var newCards = equipGrid.querySelectorAll('.equipment-card');
+            newCards.forEach(function(card) {
+                card.addEventListener('click', function() {
+                    if (typeof openDetailPanel === 'function') openDetailPanel(card.getAttribute('data-id'));
+                });
+            });
+        }).catch(function() {}).finally(function() { hideLoading(equipGrid); });
+
+        // --- Fetch Alarms ---
+        var alarmTbody = document.getElementById('alarm-table-body');
+        if (alarmTbody) showLoading(alarmTbody.closest('section'), '加载报警数据...');
+        apiGet('/api/v1/equipment/alarms/').then(function(data) {
+            if (!data || !data.alarms) return;
+            var alarms = data.alarms;
+            var html = '';
+            alarms.forEach(function(alarm) {
+                var sevMap = {'高':'error','中':'warning','低':'info'};
+                var sevKey = sevMap[alarm.severity] || 'info';
+                var sevBg = 'var(--state-' + sevKey + '-bg)';
+                var sevColor = 'var(--state-' + sevKey + ')';
+                var sevText = alarm.severity === '高' ? '严重' : alarm.severity === '中' ? '警告' : '提示';
+                var isPending = alarm.status === '未处理';
+                var statusBg = isPending ? 'var(--state-error-bg)' : 'var(--state-success-bg)';
+                var statusColor = isPending ? 'var(--state-error)' : 'var(--state-success)';
+                var statusText = isPending ? '待处理' : '已处理';
+                var confirmDisabled = isPending ? '' : ' disabled';
+                var confirmStyle = isPending ? 'background:var(--color-primary-50);color:var(--color-primary-600);' : 'background:var(--color-bg-200);color:var(--color-text-muted);';
+                html += '<tr class="alarm-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom:1px solid var(--color-border-subtle);" data-alarm-id="' + alarm.id + '">'
+                    + '<td class="px-5 py-3.5"><span class="text-body-sm" style="color:var(--color-text-primary);">' + (alarm.equipment_name || '--') + '</span></td>'
+                    + '<td class="px-5 py-3.5"><span class="text-body-sm" style="color:var(--color-text-secondary);">' + (alarm.alarm_type || '--') + '</span></td>'
+                    + '<td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background:' + sevBg + ';color:' + sevColor + ';">' + sevText + '</span></td>'
+                    + '<td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color:var(--color-text-tertiary);">' + (alarm.created_at || '--') + '</span></td>'
+                    + '<td class="px-5 py-3.5"><span class="alarm-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background:' + statusBg + ';color:' + statusColor + ';">' + statusText + '</span></td>'
+                    + '<td class="px-5 py-3.5"><div class="flex items-center gap-2">'
+                    + '<button class="alarm-confirm-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="' + confirmStyle + '"' + confirmDisabled + '>确认</button>'
+                    + '<button class="alarm-view-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="background:var(--color-bg-200);color:var(--color-text-secondary);">查看</button>'
+                    + '</div></td></tr>';
+            });
+            alarmTbody.innerHTML = html;
+        }).catch(function() {}).finally(function() { hideLoading(alarmTbody ? alarmTbody.closest('section') : null); });
+
+        // --- Fetch Maintenance Plans ---
+        var maintTbody = document.getElementById('maintenance-table-body');
+        if (maintTbody) showLoading(maintTbody.closest('section'), '加载维护计划...');
+        apiGet('/api/v1/equipment/maintenance/').then(function(data) {
+            if (!data || !data.plans) return;
+            var plans = data.plans;
+            var html = '';
+            plans.forEach(function(plan) {
+                var statusMap = {'待执行':'warning','执行中':'info','已完成':'success'};
+                var sKey = statusMap[plan.status] || 'info';
+                var sBg = 'var(--state-' + sKey + '-bg)';
+                var sColor = 'var(--state-' + sKey + ')';
+                var actionText = plan.status === '待执行' ? '开始' : plan.status === '执行中' ? '完成' : '完成';
+                var actionDisabled = plan.status === '已完成' ? ' disabled' : '';
+                var actionStyle = plan.status === '待执行' ? 'background:var(--color-primary-50);color:var(--color-primary-600);' : plan.status === '执行中' ? 'background:var(--state-success-bg);color:var(--state-success);' : 'background:var(--color-bg-200);color:var(--color-text-muted);';
+                html += '<tr class="maint-row transition-colors duration-100 hover:bg-black/[0.02]" style="border-bottom:1px solid var(--color-border-subtle);">'
+                    + '<td class="px-5 py-3.5"><span class="text-body-sm" style="color:var(--color-text-primary);">' + (plan.equipment_name || '--') + '</span></td>'
+                    + '<td class="px-5 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption" style="background:var(--state-info-bg);color:var(--state-info);">' + (plan.maintenance_type || '--') + '</span></td>'
+                    + '<td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color:var(--color-text-tertiary);">' + (plan.scheduled_date || '--') + '</span></td>'
+                    + '<td class="px-5 py-3.5"><span class="text-body-sm whitespace-nowrap" style="color:var(--color-text-secondary);">' + (plan.engineer || '--') + '</span></td>'
+                    + '<td class="px-5 py-3.5"><span class="maint-status inline-flex items-center px-2.5 py-0.5 rounded-md text-caption" style="background:' + sBg + ';color:' + sColor + ';">' + (plan.status || '--') + '</span></td>'
+                    + '<td class="px-5 py-3.5"><button class="maint-action-btn px-2.5 py-1 rounded-md text-caption transition-colors duration-150" style="' + actionStyle + '"' + actionDisabled + '>' + actionText + '</button></td>'
+                    + '</tr>';
+            });
+            maintTbody.innerHTML = html;
+        }).catch(function() {}).finally(function() { hideLoading(maintTbody ? maintTbody.closest('section') : null); });
+
+    })();
+    </script>
+    <script>
+    (function(){
+        var h=document.documentElement,b=document.body;
+        h.classList.remove('dark');
+        h.style.backgroundColor='#faf8f5';
+        h.style.color='#1d1b18';
+        b.style.backgroundColor='#faf8f5';
+        b.style.color='#1d1b18';
+        var mo=new MutationObserver(function(){
+            if(h.classList.contains('dark'))h.classList.remove('dark');
+            if(h.style.backgroundColor!=='#faf8f5')h.style.backgroundColor='#faf8f5';
+            if(h.style.color!=='#1d1b18')h.style.color='#1d1b18';
+            if(b.style.backgroundColor!=='#faf8f5')b.style.backgroundColor='#faf8f5';
+            if(b.style.color!=='#1d1b18')b.style.color='#1d1b18';
+        });
+        mo.observe(h,{attributes:true,attributeFilter:['class','style']});
+        mo.observe(b,{attributes:true,attributeFilter:['style']});
+    })();
+    </script>
+</body>
+</html>

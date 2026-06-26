@@ -186,7 +186,7 @@ class DataPipeline:
                 feat = self.extract_features(processed)
                 if feat is not None:
                     features[name] = feat
-            except Exception as e:
+            except (ValueError, TypeError, KeyError, OSError, RuntimeError) as e:
                 logger.error("处理失败 %s: %s", name, e, exc_info=True)
                 error_log.append(
                     f"{name} (preprocess/extract): {type(e).__name__}"

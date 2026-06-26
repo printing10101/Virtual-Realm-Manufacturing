@@ -77,7 +77,10 @@ class GCodePostProcessor:
         """将刀具路径转换为 G-code。
 
         Args:
-            toolpath: 刀具路径数据
+            toolpath: 刀具路径数据，支持以下格式：
+                - dict: 包含 'moves' 列表，每个 move 包含 type/params
+                - list: 直接包含移动指令的列表
+                - object: 具有 to_gcode() 方法的对象
             include_rapid: 是否包含快速移动
 
         Returns:
@@ -88,16 +91,106 @@ class GCodePostProcessor:
         # Generate header
         self._gcode_lines.append(self.generate_header())
 
-        # 刀具路径转换（待实现）
-        # - 将直线移动转换为 G1
-        # - 将圆弧移动转换为 G2/G3
-        # - 将快速移动转换为 G0
-        # - 添加主轴和冷却液命令
+        # 处理不同类型的刀具路径数据
+        if isinstance(toolpath, dict):
+            moves = toolpath.get("moves", [])
+            self._convert_moves(moves, include_rapid)
+        elif isinstance(toolpath, list):
+            self._convert_moves(toolpath, include_rapid)
+        elif hasattr(toolpath, "to_gcode"):
+            # 对象提供了 to_gcode 方法
+            gcode_content = toolpath.to_gcode()
+            if gcode_content:
+                self._gcode_lines.append(gcode_content)
+        elif hasattr(toolpath, "moves"):
+            # 对象有 moves 属性
+            moves = toolpath.moves
+            if callable(moves):
+                moves = moves()
+            self._convert_moves(moves, include_rapid)
+        else:
+            logger.warning("无法识别的刀具路径格式: %s", type(toolpath).__name__)
 
         # Generate footer
         self._gcode_lines.append(self.generate_footer())
 
         return "\n".join(self._gcode_lines)
+
+    def _convert_moves(self, moves: list, include_rapid: bool) -> None:
+        """将移动指令列表转换为 G-code。
+
+        Args:
+            moves: 移动指令列表
+            include_rapid: 是否包含快速移动
+        """
+        for move in moves:
+            if not isinstance(move, dict):
+                continue
+
+            move_type = move.get("type", "").lower()
+            params = move.get("params", {})
+
+            if move_type == "rapid" and include_rapid:
+                # 快速移动 G00
+                x = params.get("x", 0)
+                y = params.get("y", 0)
+                z = params.get("z", 0)
+                self._gcode_lines.append(f"G00 X{x:.3f} Y{y:.3f} Z{z:.3f}")
+
+            elif move_type == "linear":
+                # 直线插补 G01
+                x = params.get("x", 0)
+                y = params.get("y", 0)
+                z = params.get("z", 0)
+                feed = params.get("feed", 100)
+                self._gcode_lines.append(f"G01 X{x:.3f} Y{y:.3f} Z{z:.3f} F{feed}")
+
+            elif move_type == "arc_cw":
+                # 顺时针圆弧 G02
+                x = params.get("x", 0)
+                y = params.get("y", 0)
+                z = params.get("z", 0)
+                i = params.get("i", 0)
+                j = params.get("j", 0)
+                feed = params.get("feed", 100)
+                self._gcode_lines.append(f"G02 X{x:.3f} Y{y:.3f} Z{z:.3f} I{i:.3f} J{j:.3f} F{feed}")
+
+            elif move_type == "arc_ccw":
+                # 逆时针圆弧 G03
+                x = params.get("x", 0)
+                y = params.get("y", 0)
+                z = params.get("z", 0)
+                i = params.get("i", 0)
+                j = params.get("j", 0)
+                feed = params.get("feed", 100)
+                self._gcode_lines.append(f"G03 X{x:.3f} Y{y:.3f} Z{z:.3f} I{i:.3f} J{j:.3f} F{feed}")
+
+            elif move_type == "spindle_on":
+                # 主轴开启
+                speed = params.get("speed", 1000)
+                self._gcode_lines.append(f"S{speed} M03")
+
+            elif move_type == "spindle_off":
+                # 主轴关闭
+                self._gcode_lines.append("M05")
+
+            elif move_type == "coolant_on":
+                # 冷却液开启
+                self._gcode_lines.append("M08")
+
+            elif move_type == "coolant_off":
+                # 冷却液关闭
+                self._gcode_lines.append("M09")
+
+            elif move_type == "tool_change":
+                # 换刀
+                tool_num = params.get("tool", 1)
+                self._gcode_lines.append(f"T{tool_num:02d} M06")
+
+            elif move_type == "comment":
+                # 注释
+                text = params.get("text", "")
+                self._gcode_lines.append(f"({text})")
 
     def save_to_file(self, gcode: str, output_path: str) -> bool:
         """保存 G-code 到文件。
@@ -114,6 +207,6 @@ class GCodePostProcessor:
                 f.write(gcode)
             logger.info("G-code saved to: %s", output_path)
             return True
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             logger.error("Failed to save G-code: %s", e, exc_info=True)
             return False

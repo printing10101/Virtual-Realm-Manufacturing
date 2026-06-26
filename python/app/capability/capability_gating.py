@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -62,20 +63,27 @@ class CapabilityGrant:
 
 class CapabilityGatekeeper:
     _instance: Optional["CapabilityGatekeeper"] = None
+    _instance_lock = threading.Lock()
 
     def __init__(self):
         self._grants: Dict[str, Dict[str, CapabilityGrant]] = {}
         self._default_grants: Dict[str, CapabilityGrant] = self._create_default_grants()
+        # 安全修复：保护 _grants 字典的并发读写
+        self._lock = threading.Lock()
 
     @classmethod
     def get_instance(cls) -> "CapabilityGatekeeper":
+        # 安全修复：双重检查锁，防止并发创建多个实例
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._instance_lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod
     def reset(cls):
-        cls._instance = None
+        with cls._instance_lock:
+            cls._instance = None
 
     def _create_default_grants(self) -> Dict[str, CapabilityGrant]:
         return {
@@ -120,37 +128,45 @@ class CapabilityGatekeeper:
     def grant_capabilities(
         self, plugin_id: str, capabilities: List[str]
     ) -> List[CapabilityGrant]:
-        if plugin_id not in self._grants:
-            self._grants[plugin_id] = {}
+        # 安全修复：保护 _grants 字典的并发读写
+        with self._lock:
+            if plugin_id not in self._grants:
+                self._grants[plugin_id] = {}
 
-        granted = []
-        for cap in capabilities:
-            if cap in self._default_grants:
-                grant = self._default_grants[cap]
-                self._grants[plugin_id][cap] = grant
-                granted.append(grant)
-            else:
-                logger.warning(f"Unknown capability '{cap}' for plugin '{plugin_id}'")
+            granted = []
+            for cap in capabilities:
+                if cap in self._default_grants:
+                    grant = self._default_grants[cap]
+                    self._grants[plugin_id][cap] = grant
+                    granted.append(grant)
+                else:
+                    logger.warning(f"Unknown capability '{cap}' for plugin '{plugin_id}'")
 
         logger.info(f"Granted {len(granted)} capabilities to plugin '{plugin_id}'")
         return granted
 
     def revoke_capabilities(self, plugin_id: str, capabilities: List[str]) -> None:
-        if plugin_id in self._grants:
-            for cap in capabilities:
-                self._grants[plugin_id].pop(cap, None)
+        # 安全修复：保护 _grants 字典的并发读写
+        with self._lock:
+            if plugin_id in self._grants:
+                for cap in capabilities:
+                    self._grants[plugin_id].pop(cap, None)
 
-            if not self._grants[plugin_id]:
-                del self._grants[plugin_id]
+                if not self._grants[plugin_id]:
+                    self._grants.pop(plugin_id, None)
 
         logger.info(f"Revoked capabilities from plugin '{plugin_id}'")
 
     def has_capability(self, plugin_id: str, capability: str) -> bool:
-        return plugin_id in self._grants and capability in self._grants[plugin_id]
+        # 安全修复：保护 _grants 字典的并发读
+        with self._lock:
+            return plugin_id in self._grants and capability in self._grants[plugin_id]
 
     def get_grant(self, plugin_id: str, capability: str) -> Optional[CapabilityGrant]:
-        if plugin_id in self._grants:
-            return self._grants[plugin_id].get(capability)
+        # 安全修复：保护 _grants 字典的并发读
+        with self._lock:
+            if plugin_id in self._grants:
+                return self._grants[plugin_id].get(capability)
         return None
 
     def check_file_access(
@@ -197,35 +213,39 @@ class CapabilityGatekeeper:
         return grant.gpu_limits
 
     def get_plugin_capabilities(self, plugin_id: str) -> List[str]:
-        if plugin_id in self._grants:
-            return list(self._grants[plugin_id].keys())
+        # 安全修复：保护 _grants 字典的并发读
+        with self._lock:
+            if plugin_id in self._grants:
+                return list(self._grants[plugin_id].keys())
         return []
 
     def get_all_grants(self) -> Dict[str, List[Dict[str, Any]]]:
-        result = {}
-        for plugin_id, caps in self._grants.items():
-            result[plugin_id] = []
-            for cap_name, grant in caps.items():
-                result[plugin_id].append(
-                    {
-                        "capability": cap_name,
-                        "level": grant.level.value,
-                        "file_rules": [
-                            {"pattern": r.path_pattern, "level": r.level.value}
-                            for r in grant.file_rules
-                        ],
-                        "network_rules": [
-                            {"host": r.host_pattern, "port_range": r.port_range}
-                            for r in grant.network_rules
-                        ],
-                        "gpu_limits": {
-                            "max_memory_mb": grant.gpu_limits.max_memory_mb,
-                            "max_utilization_percent": grant.gpu_limits.max_utilization_percent,
+        # 安全修复：保护 _grants 字典的并发读，构建快照避免迭代时被修改
+        with self._lock:
+            result = {}
+            for plugin_id, caps in self._grants.items():
+                result[plugin_id] = []
+                for cap_name, grant in caps.items():
+                    result[plugin_id].append(
+                        {
+                            "capability": cap_name,
+                            "level": grant.level.value,
+                            "file_rules": [
+                                {"pattern": r.path_pattern, "level": r.level.value}
+                                for r in grant.file_rules
+                            ],
+                            "network_rules": [
+                                {"host": r.host_pattern, "port_range": r.port_range}
+                                for r in grant.network_rules
+                            ],
+                            "gpu_limits": {
+                                "max_memory_mb": grant.gpu_limits.max_memory_mb,
+                                "max_utilization_percent": grant.gpu_limits.max_utilization_percent,
+                            }
+                            if grant.gpu_limits
+                            else None,
                         }
-                        if grant.gpu_limits
-                        else None,
-                    }
-                )
+                    )
         return result
 
     def update_grant_rules(
@@ -236,37 +256,39 @@ class CapabilityGatekeeper:
         network_rules: Optional[List[Dict]] = None,
         gpu_limits: Optional[Dict] = None,
     ) -> None:
-        grant = self.get_grant(plugin_id, capability)
-        if grant is None:
-            raise ValueError(
-                f"No grant found for plugin '{plugin_id}' capability '{capability}'"
-            )
-
-        if file_rules is not None:
-            grant.file_rules = [
-                FileAccessRule(
-                    path_pattern=r.get("path_pattern", "*"),
-                    level=CapabilityLevel(r.get("level", "read_only")),
+        # 安全修复：保护 _grants 字典的并发读写
+        with self._lock:
+            grant = self._grants.get(plugin_id, {}).get(capability)
+            if grant is None:
+                raise ValueError(
+                    f"No grant found for plugin '{plugin_id}' capability '{capability}'"
                 )
-                for r in file_rules
-            ]
 
-        if network_rules is not None:
-            grant.network_rules = [
-                NetworkAccessRule(
-                    host_pattern=r.get("host_pattern", "*"),
-                    port_range=tuple(r.get("port_range", (1, 65535)))
-                    if r.get("port_range")
-                    else None,
+            if file_rules is not None:
+                grant.file_rules = [
+                    FileAccessRule(
+                        path_pattern=r.get("path_pattern", "*"),
+                        level=CapabilityLevel(r.get("level", "read_only")),
+                    )
+                    for r in file_rules
+                ]
+
+            if network_rules is not None:
+                grant.network_rules = [
+                    NetworkAccessRule(
+                        host_pattern=r.get("host_pattern", "*"),
+                        port_range=tuple(r.get("port_range", (1, 65535)))
+                        if r.get("port_range")
+                        else None,
+                    )
+                    for r in network_rules
+                ]
+
+            if gpu_limits is not None:
+                grant.gpu_limits = GpuResourceLimit(
+                    max_memory_mb=gpu_limits.get("max_memory_mb", 1024.0),
+                    max_utilization_percent=gpu_limits.get("max_utilization_percent", 50.0),
                 )
-                for r in network_rules
-            ]
-
-        if gpu_limits is not None:
-            grant.gpu_limits = GpuResourceLimit(
-                max_memory_mb=gpu_limits.get("max_memory_mb", 1024.0),
-                max_utilization_percent=gpu_limits.get("max_utilization_percent", 50.0),
-            )
 
         logger.info(
             f"Updated grant rules for plugin '{plugin_id}' capability '{capability}'"

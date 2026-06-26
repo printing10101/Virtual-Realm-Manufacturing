@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html style="background-color:#faf8f5!important;color:#1d1b18!important;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务看板</title>
+    <link rel="stylesheet" href="tailwind-fallback.css">
+<style id="theme-vars">
+/*
+ * Lingjing Manufacturing design tokens
+ * Brand: Lingjing Manufacturing
+ * Domain: Intelligent manufacturing platform
+ * Style: Restrained, elegant, warm cream/off-white palette
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #faf8f5;
+  --background-100: #f5f2ed;
+  --background-200: #ede9e3;
+  --background-300: #e0dbd4;
+  --background-400: #cec8bf;
+  --background-500: #a8a199;
+  --background-600: #8a847c;
+  --background-700: #3a3632;
+  --background-800: #1c1a18;
+  --background-900: #0e0d0c;
+
+  /* text */
+  --text-50: #f5f2ed;
+  --text-100: #e3dfd8;
+  --text-200: #c7c2b8;
+  --text-300: #aea99f;
+  --text-400: #8e897f;
+  --text-500: #6e6960;
+  --text-600: #48443e;
+  --text-700: #3c3832;
+  --text-800: #1d1b18;
+  --text-900: #0e0d0c;
+
+  /* icon */
+  --icon-50: #f5f2ed;
+  --icon-100: #e0dbd4;
+  --icon-200: #cec8bf;
+  --icon-300: #c7c2b8;
+  --icon-400: #aea99f;
+  --icon-500: #8e897f;
+  --icon-600: #6e6960;
+  --icon-700: #48443e;
+  --icon-800: #2c2926;
+  --icon-900: #1d1b18;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f5ec;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #fdecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+  /* ===== COLOR ALIAS LAYER (--color-*) ===== */
+  --color-bg-50: var(--background-50);
+  --color-bg-100: var(--background-100);
+  --color-bg-200: var(--background-200);
+  --color-bg-300: var(--background-300);
+  --color-text-primary: var(--text-800);
+  --color-text-secondary: var(--text-500);
+  --color-text-tertiary: var(--text-400);
+  --color-text-muted: var(--text-400);
+  --color-text-placeholder: var(--text-300);
+  --color-text-inverse: var(--background-50);
+  --color-border-subtle: var(--background-300);
+  --color-border-default: var(--background-300);
+  --color-border-strong: var(--background-500);
+  --color-border-focus: var(--brand-500);
+  --color-primary-50: var(--brand-50);
+  --color-primary-100: var(--brand-100);
+  --color-primary-200: var(--brand-200);
+  --color-primary-300: var(--brand-300);
+  --color-primary-400: var(--brand-400);
+  --color-primary-500: var(--brand-500);
+  --color-primary-600: var(--brand-600);
+  --color-primary-700: var(--brand-700);
+  --color-primary-800: var(--brand-800);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-800: var(--brand-800);
+  /* ===== LAYOUT VARIABLES ===== */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --page-padding: 24px;
+  --content-max-width: 1200px;
+  /* ===== STATE COLORS ===== */
+  --state-warning: #ff9500;
+  --state-warning-bg: #fff4e5;
+  --state-warning-surface: #fff4e5;
+  --state-info: #007aff;
+  --state-info-bg: #e8f2ff;
+  --state-success-bg: #e9f5ec;
+  --state-error-bg: #fdecea;
+  --card-background: var(--background-50);
+
+
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+html.dark, html.dark body, html.dark * {
+  --background: #faf8f5 !important; --foreground: #1d1b18 !important; --card: #faf8f5 !important; --card-foreground: #1d1b18 !important; --card-background: #faf8f5 !important; --popover: #f5f2ed !important; --popover-foreground: #1d1b18 !important; --primary: #007aff !important; --primary-foreground: #ffffff !important; --secondary: #f5f2ed !important; --secondary-foreground: #1d1b18 !important; --muted: #f5f2ed !important; --muted-foreground: #6b6560 !important; --accent: #ede9e3 !important; --accent-foreground: #1d1b18 !important; --border: #e0dbd4 !important; --input: #e0dbd4 !important; --icon: #1d1b18 !important; --icon-muted: #8e897f !important; --sidebar: #ede9e3 !important; --sidebar-foreground: #1d1b18 !important; --sidebar-primary: #007aff !important; --sidebar-primary-foreground: #faf8f5 !important; --sidebar-accent: #e0dbd4 !important; --sidebar-accent-foreground: #1d1b18 !important; --sidebar-border: #e0dbd4 !important; --sidebar-ring: #007aff !important; color: inherit !important;
+}
+
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="background-color:#faf8f5!important; color:#1d1b18!important;">
+    <main class="flex h-screen overflow-hidden" style="background: var(--color-bg-100);">
+
+      <!-- ── Sidebar ── -->
+          <aside class="fixed left-0 top-0 bottom-0 z-30 flex flex-col border-r" style="width: var(--sidebar-width); background: var(--color-bg-50); border-color: var(--color-border-subtle);">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-5 h-14 border-b" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--color-primary-500);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-text-inverse); flex-shrink:0;"><path d="M6 16.5V7.5a1.5 1.5 0 0 1 1.5-1.5h9a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 16.5z"/><path d="M9 12h6"/><path d="M9 9h.01"/><path d="M15 9h.01"/><path d="M9 15h.01"/><path d="M15 15h.01"/><path d="M4 12h2"/><path d="M18 12h2"/><path d="M12 4v2"/><path d="M12 18v2"/></svg>
+            </div>
+            <span class="text-headline truncate" style="color: var(--color-text-primary);">灵境制造</span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 overflow-y-auto py-4 px-3 no-scrollbar">
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">核心功能</p>
+                <a href="dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                    <span class="truncate">生产总览</span>
+                </a>
+                <a href="process-planning.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><path d="M12 3v12"/><circle cx="6" cy="21" r="3"/><circle cx="18" cy="21" r="3"/><path d="M6 18V9a3 3 0 0 1 3-3h6"/><path d="M18 18V9a3 3 0 0 0-3-3h-3"/></svg>
+                    <span class="truncate">工艺规划</span>
+                </a>
+                <a href="equipment-monitor.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+                    <span class="truncate">设备监控</span>
+                </a>
+                <a href="quality-inspection.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+                    <span class="truncate">质量检测</span>
+                </a>
+                <a href="agent-dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    <span class="truncate">智能体管理</span>
+                </a>
+            </div>
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">资源管理</p>
+                <a href="material-management.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                    <span class="truncate">物料管理</span>
+                </a>
+                <a href="task-board.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><path d="M6 3h12"/><rect width="4" height="9" x="6" y="7" rx="1"/><rect width="4" height="5" x="14" y="7" rx="1"/><rect width="4" height="3" x="10" y="15" rx="1"/></svg>
+                    <span class="truncate font-medium">任务看板</span>
+                </a>
+                <a href="production-report.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    <span class="truncate">生产报表</span>
+                </a>
+                <a href="knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <span class="truncate">知识库</span>
+                </a>
+            </div>
+            <div>
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">系统</p>
+                <a href="settings.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=""><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span class="truncate">系统设置</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- User -->
+        <div class="border-t px-4 py-3 flex items-center gap-3" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-caption shrink-0" style="background: var(--color-primary-100); color: var(--color-primary-600);">管</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-body-sm truncate" style="color: var(--color-text-primary);">管理员</p>
+                <p class="text-caption truncate" style="color: var(--color-text-muted);">admin@lingjing.com</p>
+            </div>
+        </div>
+    </aside>
+
+      <!-- ── Main Content ── -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Top Header -->
+        <header class="shrink-0 flex items-center justify-between px-6 border-b" style="height: var(--header-height); background: var(--color-bg-50); border-color: var(--color-border-subtle);">
+          <div class="flex items-center gap-3 min-w-0">
+            <h1 class="text-title-3 truncate" style="text-wrap: balance; word-break: keep-all; overflow-wrap: break-word;">任务看板</h1>
+          </div>
+          <div class="flex items-center gap-4 shrink-0">
+            <!-- Search -->
+            <div class="relative">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-text-muted); flex-shrink:0;" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" placeholder="搜索任务..." class="pl-9 pr-4 py-1.5 rounded-lg text-body-sm outline-none" style="background: var(--color-bg-200); color: var(--color-text-primary); border: 1px solid var(--color-border-subtle); width: 200px;" onfocus="this.style.borderColor='var(--color-border-focus)'" onblur="this.style.borderColor='var(--color-border-subtle)'">
+            </div>
+            <!-- Notifications -->
+            <button class="relative p-2 rounded-lg transition-colors duration-150" style="color: var(--color-text-tertiary);" onmouseover="this.style.background='var(--color-bg-200)'" onmouseout="this.style.background='transparent'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background: var(--state-error);"></span>
+            </button>
+            <!-- Avatar -->
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium" style="background: var(--color-primary-100); color: var(--color-primary-600);">张</div>
+          </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="flex-1 overflow-hidden flex flex-col">
+
+          <!-- Toolbar -->
+          <div class="shrink-0 flex items-center justify-between px-6 py-4">
+            <div class="flex items-center gap-2">
+              <!-- View Toggle -->
+              <div class="flex rounded-lg p-0.5" style="background: var(--color-bg-200);">
+                <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-body-sm font-medium transition-colors duration-150" style="background: var(--color-bg-50); color: var(--color-text-primary); box-shadow: var(--shadow-xs);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+                  <span>看板视图</span>
+                </button>
+                <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-body-sm transition-colors duration-150" style="color: var(--color-text-tertiary);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+                  <span>列表视图</span>
+                </button>
+              </div>
+              <!-- Filter -->
+              <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-body-sm transition-colors duration-150" style="color: var(--color-text-tertiary); border: 1px solid var(--color-border-default);" onmouseover="this.style.background='var(--color-bg-200)'" onmouseout="this.style.background='transparent'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <span>筛选</span>
+              </button>
+            </div>
+            <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-body-sm font-medium transition-all duration-150" style="background: var(--color-primary-500); color: var(--color-text-inverse);" onmouseover="this.style.background='var(--color-primary-600)'" onmouseout="this.style.background='var(--color-primary-500)'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <span>新建任务</span>
+            </button>
+          </div>
+
+          <!-- Kanban Board -->
+          <div class="flex-1 overflow-x-auto overflow-y-hidden px-6 pb-6">
+            <div class="flex gap-4 h-full" style="min-width: max-content;">
+
+              <!-- Column 1: 待处理 -->
+              <div class="flex flex-col rounded-xl" style="width: 280px; background: var(--color-bg-200); min-width: 280px;">
+                <!-- Column Header -->
+                <div class="flex items-center justify-between px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full" style="background: var(--color-text-muted);"></span>
+                    <span class="text-headline" style="color: var(--color-text-primary);">待处理</span>
+                    <span class="flex items-center justify-center w-5 h-5 rounded-full text-caption" style="background: var(--color-bg-300); color: var(--color-text-tertiary);">3</span>
+                  </div>
+                  <button class="p-1 rounded-md transition-colors duration-150" style="color: var(--color-text-muted);" onmouseover="this.style.background='var(--color-bg-300)'" onmouseout="this.style.background='transparent'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                  </button>
+                </div>
+                <!-- Cards -->
+                <div class="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-3 no-scrollbar">
+                  <!-- Card 1 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-error); box-shadow: var(--shadow-sm);" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow-sm)'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-error-bg); color: var(--state-error);">紧急</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">CNC加工 - 轴承座 #A1024</h3>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-bg-200); color: var(--color-text-tertiary);">轴承座</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: #e8d5b7; color: var(--color-brand-800);">王</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-24 截止</span>
+                    </div>
+                  </div>
+                  <!-- Card 2 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-warning); box-shadow: var(--shadow-sm);" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow-sm)'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-warning-bg); color: var(--state-warning);">高</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">注塑成型 - 外壳组件 #B2056</h3>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-success-bg); color: var(--state-success);">注塑</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: var(--color-primary-100); color: var(--color-primary-700);">李</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-26 截止</span>
+                    </div>
+                  </div>
+                  <!-- Card 3 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-info); box-shadow: var(--shadow-sm);" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow-sm)'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-info-bg); color: var(--state-info);">中</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">线束装配 - 控制面板 #C3018</h3>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-bg-200); color: var(--color-text-tertiary);">装配</span>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-bg-200); color: var(--color-text-tertiary);">线束</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: #d5c4e8; color: var(--color-brand-800);">赵</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-28 截止</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Column 2: 进行中 -->
+              <div class="flex flex-col rounded-xl" style="width: 280px; background: var(--color-bg-200); min-width: 280px;">
+                <div class="flex items-center justify-between px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full" style="background: var(--color-primary-500);"></span>
+                    <span class="text-headline" style="color: var(--color-text-primary);">进行中</span>
+                    <span class="flex items-center justify-center w-5 h-5 rounded-full text-caption" style="background: var(--color-bg-300); color: var(--color-text-tertiary);">4</span>
+                  </div>
+                  <button class="p-1 rounded-md transition-colors duration-150" style="color: var(--color-text-muted);" onmouseover="this.style.background='var(--color-bg-300)'" onmouseout="this.style.background='transparent'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                  </button>
+                </div>
+                <div class="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-3 no-scrollbar">
+                  <!-- Card 1 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-error); box-shadow: var(--shadow-sm);" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow-sm)'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-error-bg); color: var(--state-error);">紧急</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">CNC精加工 - 模具芯 #A1031</h3>
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">CNC</span>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-bg-200); color: var(--color-text-tertiary);">模具</span>
+                    </div>
+                    <!-- Progress Bar -->
+                    <div class="mb-3">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="text-caption" style="color: var(--color-text-muted);">进度</span>
+                        <span class="text-caption" style="color: var(--color-text-tertiary);">65%</span>
+                      </div>
+                      <div class="w-full h-1.5 rounded-full" style="background: var(--color-bg-200);">
+                        <div class="h-full rounded-full" style="width: 65%; background: var(--color-primary-500);"></div>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: #f0c4c4; color: var(--color-brand-800);">陈</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-23 截止</span>
+                    </div>
+                  </div>
+                  <!-- Card 2 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-warning); box-shadow: var(--shadow-sm);" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow-sm)'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-warning-bg); color: var(--state-warning);">高</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">注塑 - 连接器外壳 #B2073</h3>
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-success-bg); color: var(--state-success);">注塑</span>
+                    </div>
+                    <div class="mb-3">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="text-caption" style="color: var(--color-text-muted);">进度</span>
+                        <span class="text-caption" style="color: var(--color-text-tertiary);">40%</span>
+                      </div>
+                      <div class="w-full h-1.5 rounded-full" style="background: var(--color-bg-200);">
+                        <div class="h-full rounded-full" style="width: 40%; background: var(--color-primary-500);"></div>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: #c4dce8; color: var(--color-brand-800);">周</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-25 截止</span>
+                    </div>
+                  </div>
+                  <!-- Card 3 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-info); box-shadow: var(--shadow-sm);" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow-sm)'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-info-bg); color: var(--state-info);">中</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">钣金折弯 - 支架 #D4012</h3>
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-bg-200); color: var(--color-text-tertiary);">钣金</span>
+                    </div>
+                    <div class="mb-3">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="text-caption" style="color: var(--color-text-muted);">进度</span>
+                        <span class="text-caption" style="color: var(--color-text-tertiary);">80%</span>
+                      </div>
+                      <div class="w-full h-1.5 rounded-full" style="background: var(--color-bg-200);">
+                        <div class="h-full rounded-full" style="width: 80%; background: var(--color-primary-500);"></div>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: #e8d5b7; color: var(--color-brand-800);">王</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-24 截止</span>
+                    </div>
+                  </div>
+                  <!-- Card 4 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--color-text-muted); box-shadow: var(--shadow-sm);" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow-sm)'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--color-bg-200); color: var(--color-text-muted);">低</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">表面处理 - 喷涂 #E5008</h3>
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-bg-200); color: var(--color-text-tertiary);">喷涂</span>
+                    </div>
+                    <div class="mb-3">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="text-caption" style="color: var(--color-text-muted);">进度</span>
+                        <span class="text-caption" style="color: var(--color-text-tertiary);">20%</span>
+                      </div>
+                      <div class="w-full h-1.5 rounded-full" style="background: var(--color-bg-200);">
+                        <div class="h-full rounded-full" style="width: 20%; background: var(--color-primary-500);"></div>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: var(--color-primary-100); color: var(--color-primary-700);">李</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">07-02 截止</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Column 3: 待检验 -->
+              <div class="flex flex-col rounded-xl" style="width: 280px; background: var(--color-bg-200); min-width: 280px;">
+                <div class="flex items-center justify-between px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full" style="background: var(--state-warning);"></span>
+                    <span class="text-headline" style="color: var(--color-text-primary);">待检验</span>
+                    <span class="flex items-center justify-center w-5 h-5 rounded-full text-caption" style="background: var(--color-bg-300); color: var(--color-text-tertiary);">2</span>
+                  </div>
+                  <button class="p-1 rounded-md transition-colors duration-150" style="color: var(--color-text-muted);" onmouseover="this.style.background='var(--color-bg-300)'" onmouseout="this.style.background='transparent'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                  </button>
+                </div>
+                <div class="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-3 no-scrollbar">
+                  <!-- Card 1 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-warning); box-shadow: var(--shadow-sm);" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow-sm)'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-warning-bg); color: var(--state-warning);">高</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">质检 - 传动轴 #A1019</h3>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">CNC</span>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: #fdf0e6; color: #b87333;">质检</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: #c4e8d5; color: var(--color-brand-800);">孙</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-23 截止</span>
+                    </div>
+                  </div>
+                  <!-- Card 2 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-info); box-shadow: var(--shadow-sm);" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow-sm)'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-info-bg); color: var(--state-info);">中</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">质检 - 电路板组件 #F6003</h3>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-bg-200); color: var(--color-text-tertiary);">电路板</span>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: #fdf0e6; color: #b87333;">质检</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: #d5c4e8; color: var(--color-brand-800);">赵</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-25 截止</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Column 4: 已完成 -->
+              <div class="flex flex-col rounded-xl" style="width: 280px; background: var(--color-bg-200); min-width: 280px;">
+                <div class="flex items-center justify-between px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full" style="background: var(--state-success);"></span>
+                    <span class="text-headline" style="color: var(--color-text-primary);">已完成</span>
+                    <span class="flex items-center justify-center w-5 h-5 rounded-full text-caption" style="background: var(--color-bg-300); color: var(--color-text-tertiary);">3</span>
+                  </div>
+                  <button class="p-1 rounded-md transition-colors duration-150" style="color: var(--color-text-muted);" onmouseover="this.style.background='var(--color-bg-300)'" onmouseout="this.style.background='transparent'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                  </button>
+                </div>
+                <div class="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-3 no-scrollbar">
+                  <!-- Card 1 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-success); box-shadow: var(--shadow-sm); opacity: 0.75;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.opacity='1'" onmouseout="this.style.boxShadow='var(--shadow-sm)'; this.style.opacity='0.75'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-success-bg); color: var(--state-success);">完成</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">CNC粗加工 - 底座 #A1015</h3>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-primary-50); color: var(--color-primary-600);">CNC</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: #e8d5b7; color: var(--color-brand-800);">王</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-20 完成</span>
+                    </div>
+                  </div>
+                  <!-- Card 2 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-success); box-shadow: var(--shadow-sm); opacity: 0.75;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.opacity='1'" onmouseout="this.style.boxShadow='var(--shadow-sm)'; this.style.opacity='0.75'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-success-bg); color: var(--state-success);">完成</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">注塑 - 密封圈 #B2041</h3>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--state-success-bg); color: var(--state-success);">注塑</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: var(--color-primary-100); color: var(--color-primary-700);">李</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-19 完成</span>
+                    </div>
+                  </div>
+                  <!-- Card 3 -->
+                  <div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer" style="background: var(--color-bg-50); border-left: 3px solid var(--state-success); box-shadow: var(--shadow-sm); opacity: 0.75;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.opacity='1'" onmouseout="this.style.boxShadow='var(--shadow-sm)'; this.style.opacity='0.75'">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      </div>
+                      <span class="text-caption px-1.5 py-0.5 rounded" style="background: var(--state-success-bg); color: var(--state-success);">完成</span>
+                    </div>
+                    <h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">焊接 - 框架组件 #D4005</h3>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background: var(--color-bg-200); color: var(--color-text-tertiary);">焊接</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: #c4dce8; color: var(--color-brand-800);">周</div>
+                      <span class="text-caption" style="color: var(--color-text-muted);">06-18 完成</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+
+<!-- ===== ENHANCEMENT STYLES ===== -->
+<style>
+  /* Drag feedback */
+  .task-card.dragging { opacity: 0.5 !important; }
+  .kanban-column.drag-over .column-drop-zone { background: var(--color-primary-50); border-radius: 0.75rem; min-height: 60px; transition: background 0.15s; }
+  .kanban-column.drag-over { box-shadow: inset 0 0 0 2px var(--color-primary-500); }
+
+  /* Modal overlay */
+  .modal-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.active { opacity: 1; pointer-events: auto; }
+  .modal-overlay .modal-box { max-width: 500px; width: 90%; background: var(--color-bg-50); border-radius: var(--radius); box-shadow: var(--shadow-2xl); padding: 1.5rem; transform: translateY(12px); transition: transform 0.2s; }
+  .modal-overlay.active .modal-box { transform: translateY(0); }
+  .modal-box label { display: block; font-size: 0.8125rem; font-weight: 500; margin-bottom: 0.375rem; color: var(--color-text-primary); }
+  .modal-box input, .modal-box select, .modal-box textarea { width: 100%; padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--color-border-subtle); background: var(--color-bg-100); color: var(--color-text-primary); font-size: 0.8125rem; outline: none; transition: border-color 0.15s; box-sizing: border-box; }
+  .modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus { border-color: var(--color-primary-500); }
+  .modal-box textarea { resize: vertical; min-height: 72px; }
+
+  /* Detail panel */
+  .detail-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 360px; z-index: 45; background: var(--color-bg-50); box-shadow: var(--shadow-xl); transform: translateX(100%); transition: transform 0.25s ease; overflow-y: auto; }
+  .detail-panel.active { transform: translateX(0); }
+  .detail-panel .detail-field { margin-bottom: 1rem; }
+  .detail-panel .detail-label { font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 0.25rem; }
+  .detail-panel .detail-value { font-size: 0.875rem; color: var(--color-text-primary); }
+  .detail-panel .detail-value[contenteditable="true"] { outline: none; border: 1px solid var(--color-primary-500); border-radius: 0.375rem; padding: 0.25rem 0.5rem; background: var(--color-bg-100); }
+
+  /* Filter panel */
+  .filter-panel { max-height: 0; overflow: hidden; transition: max-height 0.25s ease, padding 0.25s ease; padding: 0 1.5rem; }
+  .filter-panel.active { max-height: 200px; padding: 0.75rem 1.5rem; }
+
+  /* List view table */
+  .list-view-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+  .list-view-table th { text-align: left; padding: 0.625rem 1rem; font-weight: 500; color: var(--color-text-muted); border-bottom: 1px solid var(--color-border-subtle); background: var(--color-bg-100); }
+  .list-view-table td { padding: 0.625rem 1rem; color: var(--color-text-primary); border-bottom: 1px solid var(--color-border-subtle); }
+  .list-view-table tr:hover td { background: var(--color-bg-100); }
+
+  /* Progress click popup */
+  .progress-popup { position: absolute; z-index: 20; background: var(--color-bg-50); border: 1px solid var(--color-border-subtle); border-radius: 0.5rem; padding: 0.75rem; box-shadow: var(--shadow-lg); display: none; }
+  .progress-popup.active { display: block; }
+  .progress-popup input { width: 80px; padding: 0.375rem 0.5rem; border: 1px solid var(--color-border-subtle); border-radius: 0.375rem; background: var(--color-bg-100); color: var(--color-text-primary); font-size: 0.8125rem; outline: none; text-align: center; }
+  .progress-popup input:focus { border-color: var(--color-primary-500); }
+
+  /* View toggle active */
+  .view-btn.active { background: var(--color-bg-50) !important; color: var(--color-text-primary) !important; box-shadow: var(--shadow-xs) !important; }
+
+  /* Card hidden by filter */
+  .task-card.filtered-out { display: none !important; }
+</style>
+
+<!-- ===== ENHANCEMENT HTML ===== -->
+<!-- Task Creation Modal -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal-box">
+    <h3 style="font-size:1rem;font-weight:600;color:var(--color-text-primary);margin-bottom:1.25rem;">新建任务</h3>
+    <div style="display:flex;flex-direction:column;gap:0.875rem;">
+      <div><label>任务名称 *</label><input type="text" id="modalTaskName" placeholder="输入任务名称" required></div>
+      <div style="display:flex;gap:0.75rem;">
+        <div style="flex:1;"><label>优先级</label><select id="modalPriority"><option value="紧急">紧急</option><option value="高" selected>高</option><option value="中">中</option><option value="低">低</option></select></div>
+        <div style="flex:1;"><label>负责人</label><input type="text" id="modalAssignee" placeholder="负责人姓名"></div>
+      </div>
+      <div style="display:flex;gap:0.75rem;">
+        <div style="flex:1;"><label>截止日期</label><input type="date" id="modalDeadline"></div>
+        <div style="flex:1;"><label>目标列</label><select id="modalColumn"><option value="待处理">待处理</option><option value="进行中">进行中</option><option value="待检验">待检验</option><option value="已完成">已完成</option></select></div>
+      </div>
+      <div><label>描述</label><textarea id="modalDesc" placeholder="任务描述（可选）"></textarea></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1.25rem;">
+      <button onclick="closeModal()" style="padding:0.5rem 1rem;border-radius:0.5rem;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-text-secondary);font-size:0.8125rem;cursor:pointer;">取消</button>
+      <button onclick="createTask()" style="padding:0.5rem 1rem;border-radius:0.5rem;border:none;background:var(--color-primary-500);color:#fff;font-size:0.8125rem;font-weight:500;cursor:pointer;">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div class="detail-panel" id="detailPanel">
+  <div style="padding:1.25rem;border-bottom:1px solid var(--color-border-subtle);display:flex;align-items:center;justify-content:space-between;">
+    <h3 style="font-size:1rem;font-weight:600;color:var(--color-text-primary);">任务详情</h3>
+    <button onclick="closeDetailPanel()" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);padding:0.25rem;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  </div>
+  <div style="padding:1.25rem;" id="detailContent">
+    <!-- filled by JS -->
+  </div>
+</div>
+
+<!-- Filter Panel -->
+<div class="filter-panel" id="filterPanel" style="background:var(--color-bg-100);border-bottom:1px solid var(--color-border-subtle);">
+  <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <span style="font-size:0.8125rem;color:var(--color-text-muted);white-space:nowrap;">优先级:</span>
+      <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.8125rem;color:var(--color-text-secondary);cursor:pointer;"><input type="checkbox" class="filter-priority" value="紧急" checked> 紧急</label>
+      <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.8125rem;color:var(--color-text-secondary);cursor:pointer;"><input type="checkbox" class="filter-priority" value="高" checked> 高</label>
+      <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.8125rem;color:var(--color-text-secondary);cursor:pointer;"><input type="checkbox" class="filter-priority" value="中" checked> 中</label>
+      <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.8125rem;color:var(--color-text-secondary);cursor:pointer;"><input type="checkbox" class="filter-priority" value="低" checked> 低</label>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <span style="font-size:0.8125rem;color:var(--color-text-muted);white-space:nowrap;">负责人:</span>
+      <input type="text" id="filterAssignee" placeholder="搜索负责人" style="padding:0.375rem 0.5rem;border-radius:0.375rem;border:1px solid var(--color-border-subtle);background:var(--color-bg-50);color:var(--color-text-primary);font-size:0.8125rem;width:140px;outline:none;">
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-left:auto;">
+      <button onclick="applyFilter()" style="padding:0.375rem 0.875rem;border-radius:0.375rem;border:none;background:var(--color-primary-500);color:#fff;font-size:0.8125rem;cursor:pointer;">应用</button>
+      <button onclick="resetFilter()" style="padding:0.375rem 0.875rem;border-radius:0.375rem;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-text-secondary);font-size:0.8125rem;cursor:pointer;">重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- List View Container (hidden by default) -->
+<div id="listViewContainer" style="display:none;flex:1;overflow:auto;padding:0 1.5rem 1.5rem;">
+  <table class="list-view-table" id="listViewTable">
+    <thead><tr><th>任务名称</th><th>优先级</th><th>状态</th><th>负责人</th><th>截止日期</th><th>进度</th></tr></thead>
+    <tbody id="listViewBody"></tbody>
+  </table>
+</div>
+
+<!-- Progress Popup -->
+<div class="progress-popup" id="progressPopup">
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <input type="number" id="progressInput" min="0" max="100" placeholder="0-100">
+    <span style="font-size:0.75rem;color:var(--color-text-muted);">%</span>
+    <button onclick="saveProgress()" style="padding:0.25rem 0.5rem;border-radius:0.25rem;border:none;background:var(--color-primary-500);color:#fff;font-size:0.75rem;cursor:pointer;">确定</button>
+  </div>
+</div>
+
+<!-- ===== ENHANCEMENT SCRIPT ===== -->
+<script>
+(function() {
+  // ── Utility: priority config ──
+  const PRIORITY_CONFIG = {
+    '紧急': { color: 'var(--state-error)', bg: 'var(--state-error-bg)', border: 'var(--state-error)' },
+    '高':   { color: 'var(--state-warning)', bg: 'var(--state-warning-bg)', border: 'var(--state-warning)' },
+    '中':   { color: 'var(--state-info)', bg: 'var(--state-info-bg)', border: 'var(--state-info)' },
+    '低':   { color: 'var(--color-text-muted)', bg: 'var(--color-bg-200)', border: 'var(--color-text-muted)' },
+    '完成': { color: 'var(--state-success)', bg: 'var(--state-success-bg)', border: 'var(--state-success)' }
+  };
+
+  // ── 1. Make cards draggable and add task-card class ──
+  document.querySelectorAll('.kanban-column').forEach(function(col) {
+    col.classList.add('kanban-column');
+    var cardsContainer = col.querySelector('.flex-1.overflow-y-auto');
+    if (cardsContainer) cardsContainer.classList.add('column-drop-zone');
+  });
+
+  document.querySelectorAll('[style*="border-left: 3px solid"]').forEach(function(card) {
+    card.classList.add('task-card');
+    card.setAttribute('draggable', 'true');
+  });
+
+  // ── Drag & Drop ──
+  var draggedCard = null;
+
+  document.addEventListener('dragstart', function(e) {
+    var card = e.target.closest('.task-card');
+    if (!card) return;
+    draggedCard = card;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+  });
+
+  document.addEventListener('dragend', function(e) {
+    var card = e.target.closest('.task-card');
+    if (card) card.classList.remove('dragging');
+    draggedCard = null;
+    document.querySelectorAll('.kanban-column').forEach(function(c) { c.classList.remove('drag-over'); });
+  });
+
+  document.addEventListener('dragover', function(e) {
+    var col = e.target.closest('.kanban-column');
+    if (!col) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.kanban-column').forEach(function(c) { c.classList.remove('drag-over'); });
+    col.classList.add('drag-over');
+  });
+
+  document.addEventListener('dragleave', function(e) {
+    var col = e.target.closest('.kanban-column');
+    if (col && !col.contains(e.relatedTarget)) {
+      col.classList.remove('drag-over');
+    }
+  });
+
+  document.addEventListener('drop', function(e) {
+    e.preventDefault();
+    var col = e.target.closest('.kanban-column');
+    if (!col || !draggedCard) return;
+    col.classList.remove('drag-over');
+    var dropZone = col.querySelector('.column-drop-zone');
+    if (dropZone && !dropZone.contains(draggedCard)) {
+      dropZone.appendChild(draggedCard);
+    }
+    updateColumnCounts();
+    draggedCard = null;
+  });
+
+  function updateColumnCounts() {
+    document.querySelectorAll('.kanban-column').forEach(function(col) {
+      var count = col.querySelectorAll('.task-card').length;
+      var badge = col.querySelector('.rounded-full');
+      if (badge) badge.textContent = count;
+    });
+  }
+
+  // ── 2. Modal: New Task ──
+  var modal = document.getElementById('taskModal');
+
+  window.openModal = function(preColumn) {
+    modal.classList.add('active');
+    document.getElementById('modalTaskName').value = '';
+    document.getElementById('modalAssignee').value = '';
+    document.getElementById('modalDeadline').value = '';
+    document.getElementById('modalDesc').value = '';
+    document.getElementById('modalPriority').value = '高';
+    if (preColumn) document.getElementById('modalColumn').value = preColumn;
+    else document.getElementById('modalColumn').value = '待处理';
+    setTimeout(function() { document.getElementById('modalTaskName').focus(); }, 100);
+  };
+
+  window.closeModal = function() {
+    modal.classList.remove('active');
+  };
+
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) closeModal();
+  });
+
+  window.createTask = function() {
+    var name = document.getElementById('modalTaskName').value.trim();
+    if (!name) { document.getElementById('modalTaskName').style.borderColor = 'var(--state-error)'; return; }
+    document.getElementById('modalTaskName').style.borderColor = '';
+
+    var priority = document.getElementById('modalPriority').value;
+    var assignee = document.getElementById('modalAssignee').value.trim() || '未分配';
+    var deadline = document.getElementById('modalDeadline').value;
+    var desc = document.getElementById('modalDesc').value.trim();
+    var targetCol = document.getElementById('modalColumn').value;
+
+    var pc = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG['中'];
+    var assigneeChar = assignee.charAt(0);
+    var deadlineText = deadline ? deadline.replace(/(\d{4})-(\d{2})-(\d{2})/, '$2-$3') + ' 截止' : '无截止日期';
+    var progress = targetCol === '已完成' ? 100 : (targetCol === '进行中' ? 0 : null);
+
+    var card = document.createElement('div');
+    card.className = 'task-card rounded-xl p-4 transition-shadow duration-150 cursor-pointer';
+    card.setAttribute('draggable', 'true');
+    card.style.cssText = 'background:var(--color-bg-50);border-left:3px solid ' + pc.border + ';box-shadow:var(--shadow-sm);';
+    card.setAttribute('onmouseover', "this.style.boxShadow='var(--shadow-md)'");
+    card.setAttribute('onmouseout', "this.style.boxShadow='var(--shadow-sm)'");
+    card.dataset.priority = priority;
+    card.dataset.assignee = assigneeChar === '未' ? '' : assignee;
+    card.dataset.name = name;
+    card.dataset.deadline = deadlineText;
+    card.dataset.desc = desc;
+    card.dataset.progress = progress !== null ? progress : '';
+
+    var progressHTML = '';
+    if (progress !== null) {
+      progressHTML = '<div class="mb-3"><div class="flex items-center justify-between mb-1"><span class="text-caption" style="color:var(--color-text-muted);">进度</span><span class="text-caption" style="color:var(--color-text-tertiary);">' + progress + '%</span></div><div class="w-full h-1.5 rounded-full" style="background:var(--color-bg-200);"><div class="h-full rounded-full progress-fill" style="width:' + progress + '%;background:var(--color-primary-500);"></div></div></div>';
+    }
+
+    card.innerHTML =
+      '<div class="flex items-start justify-between mb-2">' +
+        '<div class="flex items-center gap-1 opacity-40" style="color:var(--color-text-muted);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></div>' +
+        '<span class="text-caption px-1.5 py-0.5 rounded" style="background:' + pc.bg + ';color:' + pc.color + ';">' + priority + '</span>' +
+      '</div>' +
+      '<h3 class="text-body-sm font-medium mb-2 truncate" style="color:var(--color-text-primary);">' + name + '</h3>' +
+      (desc ? '<div class="flex items-center gap-2 mb-2"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-caption whitespace-nowrap" style="background:var(--color-bg-200);color:var(--color-text-tertiary);">备注</span></div>' : '') +
+      progressHTML +
+      '<div class="flex items-center justify-between">' +
+        '<div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background:var(--color-primary-100);color:var(--color-primary-700);">' + assigneeChar + '</div>' +
+        '<span class="text-caption" style="color:var(--color-text-muted);">' + deadlineText + '</span>' +
+      '</div>';
+
+    // Find target column and append
+    var columns = document.querySelectorAll('.kanban-column');
+    columns.forEach(function(col) {
+      var header = col.querySelector('.text-headline');
+      if (header && header.textContent.trim() === targetCol) {
+        var dropZone = col.querySelector('.column-drop-zone');
+        if (dropZone) dropZone.appendChild(card);
+      }
+    });
+
+    updateColumnCounts();
+    closeModal();
+  };
+
+  // Wire "新建任务" button
+  document.querySelector('button[style*="background: var(--color-primary-500); color: var(--color-text-inverse)"]').addEventListener('click', function() { openModal(); });
+
+  // ── 3. Column "+" quick add ──
+  document.querySelectorAll('.kanban-column button').forEach(function(btn) {
+    var icon = btn.querySelector('svg');
+    if (icon && btn.closest('.kanban-column')) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var col = btn.closest('.kanban-column');
+        var header = col.querySelector('.text-headline');
+        if (header) openModal(header.textContent.trim());
+      });
+    }
+  });
+
+  // ── 4. View Toggle ──
+  var viewBtns = document.querySelectorAll('.view-btn, [style*="background: var(--color-bg-50); color: var(--color-text-primary); box-shadow: var(--shadow-xs)"]');
+  var kanbanBtn = null, listBtn = null;
+  var toggleContainer = document.querySelector('.flex.rounded-lg.p-0\\.5');
+  if (toggleContainer) {
+    kanbanBtn = toggleContainer.children[0];
+    listBtn = toggleContainer.children[1];
+    kanbanBtn.classList.add('view-btn', 'active');
+    listBtn.classList.add('view-btn');
+  }
+
+  var kanbanBoard = document.querySelector('.flex-1.overflow-x-auto');
+  var listViewContainer = document.getElementById('listViewContainer');
+
+  function switchToKanban() {
+    kanbanBoard.style.display = '';
+    listViewContainer.style.display = 'none';
+    if (kanbanBtn) kanbanBtn.classList.add('active');
+    if (listBtn) listBtn.classList.remove('active');
+  }
+
+  function switchToList() {
+    kanbanBoard.style.display = 'none';
+    listViewContainer.style.display = '';
+    if (listBtn) listBtn.classList.add('active');
+    if (kanbanBtn) kanbanBtn.classList.remove('active');
+    renderListView();
+  }
+
+  if (kanbanBtn) kanbanBtn.addEventListener('click', switchToKanban);
+  if (listBtn) listBtn.addEventListener('click', switchToList);
+
+  function renderListView() {
+    var tbody = document.getElementById('listViewBody');
+    tbody.innerHTML = '';
+    document.querySelectorAll('.kanban-column').forEach(function(col) {
+      var status = col.querySelector('.text-headline').textContent.trim();
+      col.querySelectorAll('.task-card').forEach(function(card) {
+        var name = card.querySelector('h3') ? card.querySelector('h3').textContent.trim() : '';
+        var priority = card.dataset.priority || '中';
+        var assignee = card.dataset.assignee || '';
+        var deadline = card.dataset.deadline || '';
+        var progress = card.dataset.progress !== undefined && card.dataset.progress !== '' ? card.dataset.progress + '%' : '-';
+        var pc = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG['中'];
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td style="font-weight:500;">' + name + '</td>' +
+          '<td><span style="font-size:0.75rem;padding:0.125rem 0.5rem;border-radius:0.25rem;background:' + pc.bg + ';color:' + pc.color + ';">' + priority + '</span></td>' +
+          '<td>' + status + '</td>' +
+          '<td>' + assignee + '</td>' +
+          '<td>' + deadline + '</td>' +
+          '<td>' + progress + '</td>';
+        tbody.appendChild(tr);
+      });
+    });
+  }
+
+  // ── 5. Detail Panel ──
+  var detailPanel = document.getElementById('detailPanel');
+  var detailContent = document.getElementById('detailContent');
+  var currentDetailCard = null;
+
+  document.addEventListener('click', function(e) {
+    var card = e.target.closest('.task-card');
+    if (!card || e.target.closest('.progress-popup') || e.target.closest('svg')) return;
+    e.stopPropagation();
+    openDetailPanel(card);
+  });
+
+  function openDetailPanel(card) {
+    currentDetailCard = card;
+    var name = card.querySelector('h3') ? card.querySelector('h3').textContent.trim() : '';
+    var priority = card.dataset.priority || '中';
+    var assignee = card.dataset.assignee || '未分配';
+    var deadline = card.dataset.deadline || '无';
+    var desc = card.dataset.desc || '无描述';
+    var progress = card.dataset.progress !== undefined && card.dataset.progress !== '' ? card.dataset.progress : '';
+    var pc = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG['中'];
+
+    // Determine column status
+    var status = '未知';
+    var col = card.closest('.kanban-column');
+    if (col) { var h = col.querySelector('.text-headline'); if (h) status = h.textContent.trim(); }
+
+    detailContent.innerHTML =
+      '<div class="detail-field"><div class="detail-label">任务名称</div><div class="detail-value" data-field="name">' + name + '</div></div>' +
+      '<div class="detail-field"><div class="detail-label">优先级</div><div><span style="font-size:0.75rem;padding:0.125rem 0.5rem;border-radius:0.25rem;background:' + pc.bg + ';color:' + pc.color + ';">' + priority + '</span></div></div>' +
+      '<div class="detail-field"><div class="detail-label">状态</div><div class="detail-value">' + status + '</div></div>' +
+      '<div class="detail-field"><div class="detail-label">负责人</div><div class="detail-value" data-field="assignee">' + assignee + '</div></div>' +
+      '<div class="detail-field"><div class="detail-label">截止日期</div><div class="detail-value" data-field="deadline">' + deadline + '</div></div>' +
+      (progress !== '' ? '<div class="detail-field"><div class="detail-label">进度</div><div class="detail-value">' + progress + '%</div></div>' : '') +
+      '<div class="detail-field"><div class="detail-label">描述</div><div class="detail-value" data-field="desc" style="white-space:pre-wrap;">' + desc + '</div></div>' +
+      '<div style="display:flex;gap:0.5rem;margin-top:1.5rem;">' +
+        '<button id="detailEditBtn" style="flex:1;padding:0.5rem;border-radius:0.5rem;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-text-secondary);font-size:0.8125rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.375rem;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg> 编辑</button>' +
+        '<button id="detailDeleteBtn" style="flex:1;padding:0.5rem;border-radius:0.5rem;border:1px solid var(--state-error);background:transparent;color:var(--state-error);font-size:0.8125rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.375rem;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg> 删除</button>' +
+      '</div>';
+
+    document.getElementById('detailEditBtn').addEventListener('click', function() {
+      var fields = detailContent.querySelectorAll('[data-field]');
+      var isEditing = fields[0].getAttribute('contenteditable') === 'true';
+      fields.forEach(function(f) {
+        if (isEditing) {
+          f.removeAttribute('contenteditable');
+          f.style.border = '';
+          f.style.background = '';
+          f.style.padding = '';
+          f.style.borderRadius = '';
+        } else {
+          f.setAttribute('contenteditable', 'true');
+        }
+      });
+      this.innerHTML = isEditing ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg> 编辑' : '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg> 保存';
+
+      // Save changes back to card dataset
+      if (isEditing && currentDetailCard) {
+        var nameVal = detailContent.querySelector('[data-field="name"]').textContent.trim();
+        var assigneeVal = detailContent.querySelector('[data-field="assignee"]').textContent.trim();
+        var deadlineVal = detailContent.querySelector('[data-field="deadline"]').textContent.trim();
+        var descVal = detailContent.querySelector('[data-field="desc"]').textContent.trim();
+        currentDetailCard.dataset.name = nameVal;
+        currentDetailCard.dataset.assignee = assigneeVal;
+        currentDetailCard.dataset.deadline = deadlineVal;
+        currentDetailCard.dataset.desc = descVal;
+        if (currentDetailCard.querySelector('h3')) currentDetailCard.querySelector('h3').textContent = nameVal;
+        renderListView();
+      }
+    });
+
+    document.getElementById('detailDeleteBtn').addEventListener('click', function() {
+      if (confirm('确定要删除这个任务吗？')) {
+        if (currentDetailCard) {
+          currentDetailCard.remove();
+          updateColumnCounts();
+          renderListView();
+        }
+        closeDetailPanel();
+      }
+    });
+
+    detailPanel.classList.add('active');
+  }
+
+  window.closeDetailPanel = function() {
+    detailPanel.classList.remove('active');
+    currentDetailCard = null;
+  };
+
+  // Close detail panel on outside click
+  document.addEventListener('click', function(e) {
+    if (detailPanel.classList.contains('active') && !detailPanel.contains(e.target) && !e.target.closest('.task-card')) {
+      closeDetailPanel();
+    }
+  });
+
+  // ── 6. Filter Panel ──
+  var filterBtn = document.querySelector('button[style*="border: 1px solid var(--color-border-default)"]');
+  var filterPanel = document.getElementById('filterPanel');
+
+  if (filterBtn) {
+    filterBtn.addEventListener('click', function() {
+      filterPanel.classList.toggle('active');
+    });
+  }
+
+  window.applyFilter = function() {
+    var checkedPriorities = [];
+    document.querySelectorAll('.filter-priority:checked').forEach(function(cb) { checkedPriorities.push(cb.value); });
+    var assigneeFilter = document.getElementById('filterAssignee').value.trim().toLowerCase();
+
+    document.querySelectorAll('.task-card').forEach(function(card) {
+      var show = true;
+      if (checkedPriorities.length > 0 && checkedPriorities.indexOf(card.dataset.priority) === -1) show = false;
+      if (assigneeFilter && card.dataset.assignee && card.dataset.assignee.toLowerCase().indexOf(assigneeFilter) === -1) show = false;
+      if (show) card.classList.remove('filtered-out');
+      else card.classList.add('filtered-out');
+    });
+    updateColumnCounts();
+  };
+
+  window.resetFilter = function() {
+    document.querySelectorAll('.filter-priority').forEach(function(cb) { cb.checked = true; });
+    document.getElementById('filterAssignee').value = '';
+    document.querySelectorAll('.task-card').forEach(function(card) { card.classList.remove('filtered-out'); });
+    updateColumnCounts();
+  };
+
+  // ── 7. Progress Bar Click ──
+  var progressPopup = document.getElementById('progressPopup');
+  var progressInput = document.getElementById('progressInput');
+  var currentProgressCard = null;
+
+  document.addEventListener('click', function(e) {
+    // Check if click is on a progress bar area within "进行中" column
+    var progressBar = e.target.closest('.progress-fill');
+    if (!progressBar) {
+      var progressArea = e.target.closest('.mb-3');
+      if (progressArea) {
+        var fill = progressArea.querySelector('.progress-fill');
+        if (fill) progressBar = fill;
+      }
+    }
+    if (!progressBar) {
+      progressPopup.classList.remove('active');
+      return;
+    }
+    e.stopPropagation();
+    var card = progressBar.closest('.task-card');
+    if (!card) return;
+    currentProgressCard = card;
+
+    var rect = progressBar.getBoundingClientRect();
+    progressPopup.style.left = rect.left + 'px';
+    progressPopup.style.top = (rect.top - 50) + 'px';
+    progressPopup.classList.add('active');
+    progressInput.value = card.dataset.progress || 0;
+    progressInput.focus();
+    progressInput.select();
+  });
+
+  window.saveProgress = function() {
+    var val = parseInt(progressInput.value, 10);
+    if (isNaN(val)) val = 0;
+    val = Math.max(0, Math.min(100, val));
+    if (currentProgressCard) {
+      currentProgressCard.dataset.progress = val;
+      var fill = currentProgressCard.querySelector('.progress-fill');
+      if (fill) fill.style.width = val + '%';
+      var label = currentProgressCard.querySelector('.mb-3 .text-caption:last-child');
+      if (label) label.textContent = val + '%';
+      // Also update the second label (the percentage one)
+      var labels = currentProgressCard.querySelectorAll('.mb-3 .text-caption');
+      if (labels.length >= 2) labels[1].textContent = val + '%';
+    }
+    progressPopup.classList.remove('active');
+    currentProgressCard = null;
+  };
+
+  // Close progress popup on outside click
+  document.addEventListener('click', function(e) {
+    if (!progressPopup.contains(e.target) && !e.target.closest('.progress-fill') && !e.target.closest('.mb-3')) {
+      progressPopup.classList.remove('active');
+    }
+  });
+
+  // ── 8. Extract data from existing cards ──
+  document.querySelectorAll('.task-card').forEach(function(card) {
+    var h3 = card.querySelector('h3');
+    var priorityBadge = card.querySelector('.rounded');
+    var assigneeEl = card.querySelector('.rounded-full.w-7');
+    var dateEl = card.querySelector('.text-caption:last-child');
+
+    card.dataset.name = h3 ? h3.textContent.trim() : '';
+    card.dataset.priority = priorityBadge ? priorityBadge.textContent.trim() : '中';
+    card.dataset.assignee = assigneeEl ? assigneeEl.textContent.trim() : '';
+    card.dataset.deadline = dateEl ? dateEl.textContent.trim() : '';
+    card.dataset.desc = '';
+    card.dataset.progress = '';
+
+    // Extract progress from "进行中" cards
+    var progressLabel = card.querySelector('.mb-3 .text-caption:last-child');
+    if (progressLabel && progressLabel.textContent.indexOf('%') !== -1) {
+      card.dataset.progress = parseInt(progressLabel.textContent, 10) || 0;
+    }
+  });
+
+  // ── 9. Keyboard: Escape closes modals/panels ──
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeModal();
+      closeDetailPanel();
+      progressPopup.classList.remove('active');
+      filterPanel.classList.remove('active');
+    }
+  });
+
+})();
+</script>
+    <script src="api-config.js"></script>
+    <script>
+    (function(){
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function(){
+            // Try fetching task board data from API
+            var boardFetched = false;
+            apiGet('/api/v1/task-checkout/board').then(function(data){
+                if(data && boardFetched) return;
+                boardFetched = true;
+                if(!data) return;
+                // If data has tasks array, map them to kanban columns
+                var tasks = data.tasks || data.data || data;
+                if(!Array.isArray(tasks)) return;
+                // Status mapping: API status -> column name
+                var statusMap = {
+                    'pending': '待处理', 'todo': '待处理', 'backlog': '待处理',
+                    'in_progress': '进行中', 'doing': '进行中', 'active': '进行中',
+                    'review': '待检验', 'testing': '待检验', 'inspection': '待检验',
+                    'done': '已完成', 'completed': '已完成', 'finished': '已完成'
+                };
+                var priorityColors = {
+                    '紧急': {border: 'var(--state-error)', bg: 'var(--state-error-bg)', color: 'var(--state-error)'},
+                    '高': {border: 'var(--state-warning)', bg: 'var(--state-warning-bg)', color: 'var(--state-warning)'},
+                    '中': {border: 'var(--state-info)', bg: 'var(--state-info-bg)', color: 'var(--state-info)'},
+                    '低': {border: 'var(--color-text-muted)', bg: 'var(--color-bg-200)', color: 'var(--color-text-muted)'}
+                };
+                var avatarColors = ['#e8d5b7','#c4dce8','#f0c4c4','#c4e8d5','#d5c4e8'];
+                // Group tasks by column
+                var columns = {'待处理':[],'进行中':[],'待检验':[],'已完成':[]};
+                tasks.forEach(function(t){
+                    var name = t.task_name || t.name || t.title || '';
+                    var status = t.status || 'pending';
+                    var colName = statusMap[status] || '待处理';
+                    if(columns[colName]) columns[colName].push(t);
+                });
+                // Find column containers by header text
+                var allColumns = document.querySelectorAll('.flex.gap-4.h-full > div');
+                allColumns.forEach(function(col){
+                    var header = col.querySelector('.text-headline');
+                    if(!header) return;
+                    var colName = header.textContent.trim();
+                    var colTasks = columns[colName];
+                    if(!colTasks || !colTasks.length) return;
+                    var cardContainer = col.querySelector('.flex-1.overflow-y-auto');
+                    if(!cardContainer) return;
+                    var html = '';
+                    colTasks.forEach(function(t, i){
+                        var name = t.task_name || t.name || t.title || '未命名任务';
+                        var priority = t.priority || '中';
+                        var pc = priorityColors[priority] || priorityColors['中'];
+                        var assignee = t.assignee || t.owner || '';
+                        var deadline = t.deadline || t.due_date || '';
+                        var ac = avatarColors[i % avatarColors.length];
+                        var assigneeChar = assignee ? assignee.charAt(0) : '?';
+                        var deadlineStr = '';
+                        if(deadline){
+                            var d = new Date(deadline);
+                            deadlineStr = (d.getMonth()+1) + '-' + String(d.getDate()).padStart(2,'0') + ' 截止';
+                        }
+                        html += '<div class="rounded-xl p-4 transition-shadow duration-150 cursor-pointer task-card" style="background: var(--color-bg-50); border-left: 3px solid '+pc.border+'; box-shadow: var(--shadow-sm);" data-name="'+name+'" data-priority="'+priority+'" data-assignee="'+assignee+'" data-deadline="'+deadlineStr+'">' +
+                            '<div class="flex items-start justify-between mb-2"><div class="flex items-center gap-1 opacity-40" style="color: var(--color-text-muted);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></div>' +
+                            '<span class="text-caption px-1.5 py-0.5 rounded" style="background: '+pc.bg+'; color: '+pc.color+';">'+priority+'</span></div>' +
+                            '<h3 class="text-body-sm font-medium mb-2 truncate" style="color: var(--color-text-primary);">'+name+'</h3>' +
+                            '<div class="flex items-center justify-between">' +
+                            '<div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style="background: '+ac+'; color: var(--color-brand-800);">'+assigneeChar+'</div>' +
+                            '<span class="text-caption" style="color: var(--color-text-muted);">'+deadlineStr+'</span></div></div>';
+                    });
+                    cardContainer.innerHTML = html;
+                });
+            }).catch(function(){
+                // Board endpoint failed, try fallback
+                apiGet('/api/v1/tasks/').then(function(data){
+                    if(!data) return;
+                    // Same mapping logic
+                }).catch(function(){
+                    // Both failed, keep existing hardcoded data
+                });
+            });
+        });
+    })();
+    </script>
+    <script>
+    (function(){
+        var h=document.documentElement,b=document.body;
+        h.classList.remove('dark');
+        h.style.backgroundColor='#faf8f5';
+        h.style.color='#1d1b18';
+        b.style.backgroundColor='#faf8f5';
+        b.style.color='#1d1b18';
+        var mo=new MutationObserver(function(){
+            if(h.classList.contains('dark'))h.classList.remove('dark');
+            if(h.style.backgroundColor!=='#faf8f5')h.style.backgroundColor='#faf8f5';
+            if(h.style.color!=='#1d1b18')h.style.color='#1d1b18';
+            if(b.style.backgroundColor!=='#faf8f5')b.style.backgroundColor='#faf8f5';
+            if(b.style.color!=='#1d1b18')b.style.color='#1d1b18';
+        });
+        mo.observe(h,{attributes:true,attributeFilter:['class','style']});
+        mo.observe(b,{attributes:true,attributeFilter:['style']});
+    })();
+    </script>
+</body>
+</html>

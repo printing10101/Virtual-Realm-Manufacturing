@@ -42,7 +42,7 @@ def 对接知识图谱(tables: list[dict[str, Any]]) -> str:
         
         return kg_status
         
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, OSError, RuntimeError) as e:
         logger.exception(f"知识图谱对接失败: {e}")
         return "error"
 
@@ -150,7 +150,7 @@ def _store_to_knowledge_graph(
         # 模拟成功返回
         return "success"
         
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, OSError, RuntimeError) as e:
         logger.exception(f"知识图谱存储失败: {e}")
         return "error"
 
@@ -207,4 +207,4 @@ if __name__ == "__main__":
     ]
     
     status = 对接知识图谱(test_tables)
-    print(f"知识图谱对接状态: {status}")
+    logger.info(f"知识图谱对接状态: {status}")

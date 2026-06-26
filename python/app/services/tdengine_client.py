@@ -15,9 +15,9 @@ insert, time-range query).  The implementation follows the same patterns as
 Configuration is read from environment variables (with sensible defaults
 suitable for local docker compose deployments):
 
-- ``TDENGINE_URL``  - native-protocol URL, e.g. ``taos://root:taosdata@tdengine:6030``
+- ``TDENGINE_URL``  - native-protocol URL, e.g. ``taos://root:<password>@tdengine:6030``
 - ``TDENGINE_USER``  - user name (default ``root``)
-- ``TDENGINE_PASSWORD`` - password (default ``taosdata``)
+- ``TDENGINE_PASSWORD`` - password (must be set via environment variable)
 - ``TDENGINE_DB`` - default database name (default ``lnn_tsdb``)
 - ``TDENGINE_CONNECT_TIMEOUT`` - connection timeout in seconds (default 10)
 - ``TDENGINE_HEALTH_URL`` - REST health endpoint URL (optional)
@@ -52,13 +52,13 @@ class TDengineConfig:
     """TDengine 连接配置，从环境变量惰性加载。"""
 
     url: str = field(
-        default_factory=lambda: os.environ.get("TDENGINE_URL", "taos://root:taosdata@localhost:6030")
+        default_factory=lambda: os.environ.get("TDENGINE_URL", "")
     )
     user: str = field(
         default_factory=lambda: os.environ.get("TDENGINE_USER", "root")
     )
     password: str = field(
-        default_factory=lambda: os.environ.get("TDENGINE_PASSWORD", "taosdata")
+        default_factory=lambda: os.environ.get("TDENGINE_PASSWORD", "")
     )
     database: str = field(
         default_factory=lambda: os.environ.get("TDENGINE_DB", "lnn_tsdb")
@@ -144,7 +144,7 @@ class _TdengineHolder:
                 # 缺失原生库视为永久性错误：拉长冷却时间
                 self._last_failure_ts = time.monotonic()
                 return None
-            except Exception as e:
+            except (ConnectionError, OSError, RuntimeError, TimeoutError, ValueError) as e:
                 logger.error("Failed to connect to TDengine: %s", e)
                 self._last_failure_ts = time.monotonic()
                 return None
@@ -231,7 +231,7 @@ async def check_tdengine_health() -> dict:
             "server_status": rows[0][0] if rows else "unknown",
             "database": TDengineConfig().database,
         }
-    except Exception as e:
+    except (ConnectionError, OSError, RuntimeError, TimeoutError, ValueError) as e:
         logger.warning("TDengine健康检查失败: %s", e, exc_info=True)
         return {"status": "unhealthy", "error": f"tdengine: {type(e).__name__}"}
 
@@ -239,6 +239,28 @@ async def check_tdengine_health() -> dict:
 # ---------------------------------------------------------------------------
 # 业务级辅助函数（高层 API）
 # ---------------------------------------------------------------------------
+
+import re as _re
+
+# 标识符白名单：仅允许字母/下划线开头，后接字母/数字/下划线，长度 1-63
+_IDENTIFIER_RE = _re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$")
+
+
+def _validate_identifier(name: str, kind: str = "identifier") -> None:
+    """校验 TDengine 标识符（库名/表名/列名），防止 SQL 注入。
+
+    Args:
+        name: 待校验的标识符。
+        kind: 标识符类型（用于错误信息），如 "database" / "table"。
+
+    Raises:
+        ValueError: 当标识符不符合白名单规则时。
+    """
+    if not isinstance(name, str) or not _IDENTIFIER_RE.match(name):
+        raise ValueError(
+            f"Invalid {kind} identifier: {name!r}. "
+            "Must match ^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+        )
 
 
 async def ensure_database(database: Optional[str] = None) -> bool:
@@ -254,15 +276,20 @@ async def ensure_database(database: Optional[str] = None) -> bool:
     if client is None:
         return False
     db_name = database or TDengineConfig().database
+    try:
+        _validate_identifier(db_name, "database")
+    except ValueError as e:
+        logger.error("Database name validation failed: %s", e)
+        return False
 
     def _ensure() -> None:
-        # IF NOT EXISTS 由 TDengine 支持
+        # IF NOT EXISTS 由 TDengine 支持；db_name 已通过白名单校验
         client.execute(f"CREATE DATABASE IF NOT EXISTS {db_name}")
 
     try:
         await _run_sync(_ensure)
         return True
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.error("Failed to ensure database %s: %s", db_name, e)
         return False
 
@@ -274,9 +301,14 @@ async def use_database(database: Optional[str] = None) -> bool:
         return False
     db_name = database or TDengineConfig().database
     try:
+        _validate_identifier(db_name, "database")
+    except ValueError as e:
+        logger.error("Database name validation failed: %s", e)
+        return False
+    try:
         await _run_sync(client.execute, f"USE {db_name}")
         return True
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.error("Failed to use database %s: %s", db_name, e)
         return False
 
@@ -295,12 +327,18 @@ async def create_table_if_not_exists(
     if client is None:
         return False
     db_name = database or TDengineConfig().database
+    try:
+        _validate_identifier(db_name, "database")
+        _validate_identifier(table_name, "table")
+    except ValueError as e:
+        logger.error("Identifier validation failed: %s", e)
+        return False
     cols = " ".join(columns).strip()
     sql = f"CREATE TABLE IF NOT EXISTS {db_name}.{table_name} {cols}"
     try:
         await _run_sync(client.execute, sql)
         return True
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.error("Failed to create table %s.%s: %s", db_name, table_name, e)
         return False
 
@@ -326,6 +364,12 @@ async def insert_rows(
     if client is None:
         return -1
     db_name = database or TDengineConfig().database
+    try:
+        _validate_identifier(db_name, "database")
+        _validate_identifier(table_name, "table")
+    except ValueError as e:
+        logger.error("Identifier validation failed: %s", e)
+        return -1
     sql = f"INSERT INTO {db_name}.{table_name} VALUES"
     try:
         def _insert() -> int:
@@ -337,7 +381,7 @@ async def insert_rows(
             affected = client.execute(sql + " " + values)
             return int(affected) if affected is not None else len(rows)
         return await _run_sync(_insert)
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.error("Failed to insert rows into %s.%s: %s", db_name, table_name, e)
         return -1
 
@@ -368,8 +412,19 @@ async def query_time_range(
     if client is None:
         return []
     db_name = database or TDengineConfig().database
+    try:
+        _validate_identifier(db_name, "database")
+        _validate_identifier(table_name, "table")
+    except ValueError as e:
+        logger.error("Identifier validation failed: %s", e)
+        return []
     start = _format_value(start_ts)
     end = _format_value(end_ts)
+    # columns 参数允许传入 "*" 或列名列表，但需限制为白名单字符
+    # 防止通过 columns 参数注入
+    if not _re.match(r"^[A-Za-z_*][A-Za-z0-9_*,\s]*$", columns):
+        logger.error("Invalid columns expression: %r", columns)
+        return []
     sql = (
         f"SELECT {columns} FROM {db_name}.{table_name} "
         f"WHERE ts >= {start} AND ts <= {end} "
@@ -385,7 +440,7 @@ async def query_time_range(
                 rows.append([_coerce(v) for v in row])
             return rows
         return await _run_sync(_query)
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.error(
             "Failed to query time range on %s.%s: %s", db_name, table_name, e
         )
@@ -399,7 +454,7 @@ async def execute(sql: str) -> Any:
         return None
     try:
         return await _run_sync(client.execute, sql)
-    except Exception as e:
+    except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.error("TDengine execute failed: %s | sql=%s", e, sql)
         return None
 
@@ -440,7 +495,7 @@ def _format_value(value: Any) -> str:
     if isinstance(value, (bytes, bytearray)):
         try:
             return "'" + value.decode("utf-8").replace("'", "''") + "'"
-        except Exception as e:
+        except (UnicodeDecodeError, ValueError) as e:
             logger.debug("字节数据 UTF-8 解码失败，使用十六进制表示: %s", e)
             return "'" + value.hex() + "'"
     if isinstance(value, str):

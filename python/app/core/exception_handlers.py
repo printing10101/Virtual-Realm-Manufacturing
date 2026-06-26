@@ -71,13 +71,23 @@ async def http_exception_handler(
     _request: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
     code = _STARLETTE_HTTP_TO_CODE.get(exc.status_code, 2001)
-    message = str(exc.detail) if exc.detail else "请求处理异常"
-    logger.warning(
-        "HTTPException: status=%d message=%s path=%s",
-        exc.status_code,
-        message,
-        _request.url.path,
-    )
+    # 对 5xx 错误进行脱敏处理，避免泄露敏感信息
+    if exc.status_code >= 500:
+        message = "系统内部错误，请联系管理员"
+        logger.error(
+            "HTTPException (5xx): status=%d detail=%s path=%s",
+            exc.status_code,
+            exc.detail,
+            _request.url.path,
+        )
+    else:
+        message = str(exc.detail) if exc.detail else "请求处理异常"
+        logger.warning(
+            "HTTPException: status=%d message=%s path=%s",
+            exc.status_code,
+            message,
+            _request.url.path,
+        )
     return _build_json_response(code=code, message=message, http_status=exc.status_code)
 
 
@@ -139,10 +149,16 @@ async def record_not_found_handler(
 async def repository_error_handler(
     _request: Request, exc: RepositoryError
 ) -> JSONResponse:
-    logger.error("RepositoryError: %s path=%s", exc, _request.url.path)
+    # 对数据库错误进行脱敏处理，避免泄露数据库结构信息
+    logger.error(
+        "RepositoryError: type=%s message=%s path=%s",
+        type(exc).__name__,
+        str(exc),
+        _request.url.path,
+    )
     return _build_json_response(
         code=3001,
-        message=str(exc),
+        message="数据访问异常，请联系管理员",
         http_status=500,
     )
 

@@ -204,8 +204,7 @@ impl SidecarManager {
         let app_clone = app.clone();
         let state_clone = self.state.clone();
         tokio::spawn(async move {
-            use futures_util::StreamExt;
-            while let Some(event) = rx.next().await {
+            while let Some(event) = rx.recv().await {
                 match event {
                     CommandEvent::Stdout(line_bytes) => {
                         let line = String::from_utf8_lossy(&line_bytes).to_string();

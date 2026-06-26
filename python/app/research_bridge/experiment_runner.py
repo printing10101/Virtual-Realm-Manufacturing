@@ -58,7 +58,7 @@ class ExperimentRunner:
             baseline_output = baseline_fn()
             baseline_ok = True
             baseline_err = None
-        except Exception as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, RuntimeError, OSError) as e:
             baseline_output = None
             baseline_ok = False
             baseline_err = repr(e)
@@ -75,7 +75,7 @@ class ExperimentRunner:
             try:
                 research_output = research_fn()
                 match = baseline_output == research_output
-            except Exception as e:  # noqa: BLE001
+            except (ValueError, TypeError, KeyError, RuntimeError, OSError) as e:
                 research_output = None
                 match = None
                 logger.warning(
@@ -118,7 +118,7 @@ class ExperimentRunner:
             with open(self._log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False, default=str))
                 f.write("\n")
-        except Exception as e:  # noqa: BLE001
+        except (OSError, IOError, ValueError, TypeError) as e:
             logger.warning("ab_test_log_failed err=%s", e)
 
 

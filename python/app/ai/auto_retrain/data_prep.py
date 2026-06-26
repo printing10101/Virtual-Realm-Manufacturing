@@ -15,12 +15,10 @@
 from __future__ import annotations
 
 import logging
-import random
+import threading
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 from torch.utils.data import Dataset, DataLoader, random_split
 
 from app.training.data_lake import TrainingDataLake
@@ -235,7 +233,7 @@ class DataPreparator:
                 },
             }
             
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError, TypeError, OSError) as e:
             logger.error("Data preparation failed: %s", e, exc_info=True)
             return {
                 "success": False,
@@ -335,6 +333,7 @@ class DataPreparator:
 
 # 全局实例
 _preparator_instance: Optional[DataPreparator] = None
+_preparator_instance_lock = threading.Lock()
 
 
 def get_data_preparator(
@@ -342,10 +341,20 @@ def get_data_preparator(
     random_seed: int = 42,
 ) -> DataPreparator:
     """获取全局数据准备器实例"""
+    # 安全修复：双重检查锁，防止并发创建多个实例
     global _preparator_instance
     if _preparator_instance is None:
-        _preparator_instance = DataPreparator(val_split_ratio, random_seed)
+        with _preparator_instance_lock:
+            if _preparator_instance is None:
+                _preparator_instance = DataPreparator(val_split_ratio, random_seed)
     return _preparator_instance
+
+
+def reset_data_preparator() -> None:
+    """重置全局数据准备器实例（主要用于测试）。"""
+    global _preparator_instance
+    with _preparator_instance_lock:
+        _preparator_instance = None
 
 
 # 导入torch用于random_split

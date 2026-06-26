@@ -12,9 +12,11 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
 import logging
 import os
+import secrets
 from typing import Any
 
 import httpx
@@ -22,10 +24,42 @@ import httpx
 logger = logging.getLogger("lingjing-mcp")
 
 AGENT_TOKEN: str = os.environ.get("LINGJING_AGENT_TOKEN", "")
-BASE_URL: str = os.environ.get("LINGJING_API_URL", "http://localhost:8000")
+BASE_URL: str = os.environ.get("LINGJING_API_URL", "http://localhost:8765")
 
 _DEFAULT_TIMEOUT = 30.0
 _USER_AGENT = "lingjing-mcp/1.0"
+
+# 安全修复：启动时校验 AGENT_TOKEN 强度，避免空 token 导致认证失效。
+# 开发环境（LINGJING_MCP_DEV=1）可跳过校验，但会打印警告。
+_DEV_MODE = os.environ.get("LINGJING_MCP_DEV", "").lower() in ("1", "true", "yes")
+if not AGENT_TOKEN:
+    if _DEV_MODE:
+        logger.warning(
+            "LINGJING_AGENT_TOKEN is empty. Running in dev mode with a random "
+            "ephemeral token. This MUST NOT be used in production."
+        )
+        AGENT_TOKEN = secrets.token_urlsafe(32)
+    else:
+        raise RuntimeError(
+            "LINGJING_AGENT_TOKEN environment variable is required "
+            "(must be >= 32 chars). Set LINGJING_MCP_DEV=1 only for local development."
+        )
+elif len(AGENT_TOKEN) < 32 and not _DEV_MODE:
+    raise RuntimeError(
+        f"LINGJING_AGENT_TOKEN too short ({len(AGENT_TOKEN)} chars, need >= 32). "
+        "Set LINGJING_MCP_DEV=1 only for local development."
+    )
+
+# 强制 BASE_URL 使用 HTTPS，除非是 localhost 开发环境
+if not BASE_URL.startswith("https://"):
+    if "localhost" not in BASE_URL and "127.0.0.1" not in BASE_URL:
+        if not _DEV_MODE:
+            raise RuntimeError(
+                f"LINGJING_API_URL must use HTTPS in production: {BASE_URL}"
+            )
+    else:
+        logger.debug("Using non-HTTPS BASE_URL for localhost development: %s", BASE_URL)
+
 
 _PARAM_CONSTRAINTS = {
     "learning_rate": (1e-6, 0.1),
@@ -41,8 +75,15 @@ def _headers() -> dict[str, str]:
         "User-Agent": _USER_AGENT,
     }
     if AGENT_TOKEN:
+        # 使用 hmac.compare_digest 进行 token 比较时序攻击防护
+        # （此处仅设置头，实际比较在后端）
         h["Authorization"] = f"Bearer {AGENT_TOKEN}"
     return h
+
+
+def _constant_time_eq(a: str, b: str) -> bool:
+    """常数时间字符串比较，防止时序攻击。"""
+    return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
 
 
 def _generate_idempotency_key() -> str:

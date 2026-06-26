@@ -16,6 +16,8 @@ from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 from app.utils.sqlite_retry import sqlite_retry
+from app.utils.utils import get_output_dir
+from app.utils.sqlite_pool import get_sqlite_manager, SQLiteConnectionManager
 
 logger = logging.getLogger(__name__)
 
@@ -182,20 +184,27 @@ class MultiDimensionCostTracker:
 
     def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
-            from app.config import PROJECT_ROOT
-
-            db_path = str(Path(PROJECT_ROOT) / "data" / "cost_tracking.db")
+            db_path = str(get_output_dir("data") / "cost_tracking.db")
 
         db_dir = Path(db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
 
         self.db_path = db_path
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("cost_tracking")
+        self._conn = self._pool.get_connection()
         self._unit_prices = CostUnitPrice()
         self._init_schema()
 
         logger.info("MultiDimensionCostTracker initialized at %s", db_path)
+
+    def close(self) -> None:
+        """关闭追踪器，归还连接到连接池"""
+        if hasattr(self, "_conn") and self._conn:
+            self._pool.return_connection(self._conn)
+            self._conn = None
+            logger.info("MultiDimensionCostTracker closed")
 
     def _init_schema(self) -> None:
         self._conn.executescript("""

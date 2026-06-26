@@ -33,9 +33,12 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +117,7 @@ class RuleParser:
         parser = RuleParser()
         rules = parser.parse_rules_file(Path("process_rules.json"))
         for rule in rules:
-            print(rule.process_name, "->", [f.name for f in rule.features])
+            # rule.process_name -> [f.name for f in rule.features]
     """
 
     def __init__(
@@ -169,8 +172,9 @@ class RuleParser:
         for raw in rules:
             try:
                 parsed = self.parse_single_rule(raw)
-            except Exception:  # noqa: BLE001 - 单条规则异常不影响其他
+            except (ValueError, TypeError, KeyError) as exc:  # noqa: BLE001 - 单条规则异常不影响其他
                 # 跳过异常规则，保持容错
+                logger.warning("rule parse error: %s", exc)
                 continue
             results.append(parsed)
         return results

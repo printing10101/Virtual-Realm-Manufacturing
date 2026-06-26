@@ -190,8 +190,9 @@ class GraphPersistence:
                     edges_written += 1
 
                 session.commit()
-            except Exception:
+            except (OSError, RuntimeError, ValueError, TypeError) as exc:
                 session.rollback()
+                logger.error("flush_to_repository failed: %s", exc)
                 raise
 
         logger.info(

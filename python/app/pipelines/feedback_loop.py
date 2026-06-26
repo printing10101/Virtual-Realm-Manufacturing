@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 import uuid
 from collections import deque
 from datetime import datetime
@@ -193,7 +194,7 @@ class FeedbackLoopPipeline:
                 }
             }
             
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, RuntimeError) as e:
             task.retry_count += 1
             task.error_message = str(e)
             
@@ -276,7 +277,7 @@ class FeedbackLoopPipeline:
                 try:
                     await self._process_task(task)
                     processed += 1
-                except Exception as e:
+                except (OSError, ValueError, TypeError, KeyError, RuntimeError) as e:
                     logger.error(f"Task {task.task_id} failed: {e}")
                     failed += 1
         finally:
@@ -305,14 +306,25 @@ class FeedbackLoopPipeline:
 
 # 全局实例（单例模式）
 _pipeline_instance: Optional[FeedbackLoopPipeline] = None
+_pipeline_instance_lock = threading.Lock()
 
 
 def get_pipeline() -> FeedbackLoopPipeline:
     """获取全局回灌管线实例"""
+    # 安全修复：双重检查锁，防止并发创建多个实例
     global _pipeline_instance
     if _pipeline_instance is None:
-        _pipeline_instance = FeedbackLoopPipeline()
+        with _pipeline_instance_lock:
+            if _pipeline_instance is None:
+                _pipeline_instance = FeedbackLoopPipeline()
     return _pipeline_instance
+
+
+def reset_pipeline() -> None:
+    """重置全局回灌管线实例（主要用于测试）。"""
+    global _pipeline_instance
+    with _pipeline_instance_lock:
+        _pipeline_instance = None
 
 
 async def ingest_machining_record(record: dict[str, Any]) -> dict[str, Any]:

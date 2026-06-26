@@ -101,7 +101,7 @@ def parse_excel(file_path: str | Path) -> dict[str, Any]:
         error_msg = "openpyxl库未安装，请运行: pip install openpyxl"
         logger.error(error_msg)
         result["error"] = error_msg
-    except Exception as e:
+    except (OSError, ValueError, TypeError, KeyError) as e:
         error_msg = f"Excel解析失败: {str(e)}"
         logger.exception(error_msg)
         result["error"] = error_msg
@@ -154,7 +154,7 @@ def _extract_table_from_sheet(
         
         return table_info
         
-    except Exception as e:
+    except (OSError, ValueError, TypeError, KeyError) as e:
         logger.warning(f"提取工作表'{sheet_name}'失败: {e}")
         return None
 
@@ -229,7 +229,7 @@ def parse_csv(file_path: str | Path) -> dict[str, Any]:
             f"耗时{parse_time:.0f}ms"
         )
         
-    except Exception as e:
+    except (OSError, UnicodeDecodeError, ValueError) as e:
         error_msg = f"CSV解析失败: {str(e)}"
         logger.exception(error_msg)
         result["error"] = error_msg
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     )
     
     if len(sys.argv) < 2:
-        print("用法: python excel_parser.py <excel_file>")
+        logger.info("用法: python excel_parser.py <excel_file>")
         sys.exit(1)
     
     excel_file = sys.argv[1]
@@ -257,22 +257,22 @@ if __name__ == "__main__":
     else:
         result = parse_excel(excel_file)
     
-    print(f"\n解析状态: {result['status']}")
-    print(f"文件名: {result['file_name']}")
-    print(f"文件大小: {result['file_size']} bytes")
-    print(f"工作表数量: {result['sheet_count']}")
-    print(f"表格数量: {len(result['tables'])}")
-    print(f"数据行数: {len(result['rows'])}")
-    print(f"解析耗时: {result['parse_time_ms']:.2f}ms")
+    logger.info(f"\n解析状态: {result['status']}")
+    logger.info(f"文件名: {result['file_name']}")
+    logger.info(f"文件大小: {result['file_size']} bytes")
+    logger.info(f"工作表数量: {result['sheet_count']}")
+    logger.info(f"表格数量: {len(result['tables'])}")
+    logger.info(f"数据行数: {len(result['rows'])}")
+    logger.info(f"解析耗时: {result['parse_time_ms']:.2f}ms")
     
     if result['error']:
-        print(f"错误: {result['error']}")
+        logger.error(f"错误: {result['error']}")
     
     if result['tables']:
-        print("\n提取的表格:")
+        logger.info("\n提取的表格:")
         for i, table in enumerate(result['tables'], 1):
-            print(f"\n表格 {i} ({table['sheet_name']}):")
-            print(f"  表头: {table['headers']}")
-            print(f"  行数: {table['row_count']}")
+            logger.info(f"\n表格 {i} ({table['sheet_name']}):")
+            logger.info(f"  表头: {table['headers']}")
+            logger.info(f"  行数: {table['row_count']}")
             if table['rows']:
-                print(f"  首行数据: {table['rows'][0]}")
+                logger.info(f"  首行数据: {table['rows'][0]}")

@@ -1,5 +1,0 @@
-[21:30:25.233] ============================================================
-[21:30:25.234] LingJing 8-Step System Test (Server must be running)
-[21:30:25.234] ============================================================
-[21:30:25.234] Waiting for server...
-[21:30:55.377] ERROR: Server not running. Start it first: python -m app.main

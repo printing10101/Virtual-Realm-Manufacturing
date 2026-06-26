@@ -39,7 +39,7 @@ const DEFAULT_STATE: BackendState = {
   last_error: null,
   started_at: null,
   restart_count: 0,
-  port: 8000,
+  port: 8765,
 }
 
 /**
@@ -87,8 +87,8 @@ export function useBackendStatus() {
     try {
       const next = await tauriInvoke<BackendState>('get_backend_state')
       Object.assign(_state!, next)
-    } catch (e) {
-      console.warn('[useBackendStatus] refresh failed', e)
+    } catch {
+      // 静默处理
     }
   }
 
@@ -99,7 +99,6 @@ export function useBackendStatus() {
       const next = await tauriInvoke<BackendState>('start_backend')
       Object.assign(_state!, next)
     } catch (e) {
-      console.error('[useBackendStatus] start failed', e)
       if (_state) {
         _state.last_error = String(e)
         _state.status = 'failed'
@@ -115,8 +114,8 @@ export function useBackendStatus() {
     try {
       const next = await tauriInvoke<BackendState>('stop_backend')
       Object.assign(_state!, next)
-    } catch (e) {
-      console.error('[useBackendStatus] stop failed', e)
+    } catch {
+      // 静默处理
     } finally {
       loading.value = false
     }
@@ -129,7 +128,6 @@ export function useBackendStatus() {
       const next = await tauriInvoke<BackendState>('restart_backend')
       Object.assign(_state!, next)
     } catch (e) {
-      console.error('[useBackendStatus] restart failed', e)
       if (_state) {
         _state.last_error = String(e)
         _state.status = 'failed'
@@ -171,8 +169,8 @@ export function useBackendStatus() {
           if (_state) _state.last_error = msg
         })
         _unlisten.push(offState, offTerm, offError)
-      } catch (e) {
-        console.warn('[useBackendStatus] listen failed', e)
+      } catch {
+        // 静默处理
       }
     })
 

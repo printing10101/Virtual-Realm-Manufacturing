@@ -1,0 +1,7 @@
+﻿cargo :    Compiling proc-macro2 v1.0.106
+At line:15 char:5015
++ ... tauri' ; $env:CARGO_TERM_COLOR='never' ; cargo check -j1 2>&1 | Out-F ...
++                                              ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling proc-macro2 v1.0.106:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

@@ -573,16 +573,14 @@ class BoschCNCDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[np.ndarray, np.ndarray]:
         """获取单个样本"""
         if self._data is None:
-            # 实时读取
+            # 实时读取模式
             with h5py.File(self.hdf5_path, "r") as f:
                 if self.operation:
                     signal = f[self.operation]["signals"][idx]
                     label = f[self.operation]["labels"][idx]
                 else:
-                    # 需要更复杂的索引映射
-                    raise NotImplementedError(
-                        "数据集索引映射失败：在非缓存模式下无法直接通过索引获取数据。当前未实现动态索引映射逻辑。建议解决方案：1) 启用数据缓存模式（设置 cache=True）；2) 或实现自定义的索引映射方法以支持按需加载。"  # noqa: E501
-                    )
+                    # 跨工序索引映射：将全局索引映射到具体工序和局部索引
+                    signal, label = self._map_global_index_to_operation(f, idx)
         else:
             signal = self._data[idx]
             label = self._labels[idx]
@@ -598,6 +596,27 @@ class BoschCNCDataset(Dataset):
             signal = self._feature_extractor.extract_all_features(signal, self.fs)[0]
 
         return signal.astype(np.float32), label.astype(np.float32)
+
+    def _map_global_index_to_operation(self, f: h5py.File, global_idx: int) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        将全局索引映射到具体工序和局部索引
+
+        Args:
+            f: HDF5 文件对象
+            global_idx: 全局索引
+
+        Returns:
+            (signal, label) 元组
+        """
+        cumulative = 0
+        for key in sorted(f.keys()):
+            if key.startswith("OP") and "signals" in f[key]:
+                op_size = f[key]["signals"].shape[0]
+                if global_idx < cumulative + op_size:
+                    local_idx = global_idx - cumulative
+                    return f[key]["signals"][local_idx], f[key]["labels"][local_idx]
+                cumulative += op_size
+        raise IndexError(f"索引 {global_idx} 超出数据集范围 (总样本数: {cumulative})")
 
     def get_signals(self) -> np.ndarray:
         """获取原始振动信号数据"""

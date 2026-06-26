@@ -16,8 +16,10 @@ Features:
 
 import os
 import time
+import json
 import pickle
 import hashlib
+import hmac
 import logging
 import threading
 from typing import Any, Dict, Optional, Tuple
@@ -25,6 +27,14 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
+
+
+# 安全修复：缓存文件 HMAC 签名密钥（每次进程启动随机生成）。
+# 防止攻击者篡改 .pkl 文件触发 pickle 反序列化 RCE。
+# 注意：这会导致跨进程缓存失效，但安全性优先于性能。
+_CACHE_HMAC_KEY = hashlib.sha256(
+    f"dataset_cache:{os.getpid()}:{time.time()}".encode()
+).digest()
 
 
 @dataclass
@@ -189,7 +199,8 @@ class DatasetCache:
         file_size = file_stat.st_size
 
         combined_key = f"{abs_path}:{file_mtime}:{file_size}"
-        cache_key = hashlib.md5(combined_key.encode("utf-8")).hexdigest()
+        # 安全修复：使用 SHA256 替代 MD5，避免碰撞导致缓存投毒
+        cache_key = hashlib.sha256(combined_key.encode("utf-8")).hexdigest()
 
         return cache_key, file_mtime, file_size
 
@@ -350,7 +361,25 @@ class DatasetCache:
 
         try:
             with open(cache_file, "rb") as f:
-                entry_data = pickle.load(f)
+                raw = f.read()
+            # 安全修复：先验证 HMAC 签名，再反序列化 pickle，防止被篡改的 .pkl 触发 RCE
+            if len(raw) < 32:
+                logger.warning("Cache file too small, possibly corrupted: %s", cache_file)
+                return None
+            signature = raw[:32]
+            payload = raw[32:]
+            expected_sig = hmac.new(_CACHE_HMAC_KEY, payload, hashlib.sha256).digest()
+            if not hmac.compare_digest(signature, expected_sig):
+                logger.warning(
+                    "Cache file HMAC signature mismatch, possible tampering: %s",
+                    cache_file,
+                )
+                try:
+                    os.remove(cache_file)
+                except OSError:
+                    pass
+                return None
+            entry_data = pickle.loads(payload)
 
             entry = CacheEntry(
                 cache_key=cache_key,
@@ -516,8 +545,12 @@ class DatasetCache:
                 "memory_size_bytes": entry.memory_size_bytes,
             }
 
+            # 安全修复：写入时附加 HMAC 签名，读取时验证，防止篡改触发 RCE
+            payload = pickle.dumps(disk_data, protocol=pickle.HIGHEST_PROTOCOL)
+            signature = hmac.new(_CACHE_HMAC_KEY, payload, hashlib.sha256).digest()
             with open(cache_file, "wb") as f:
-                pickle.dump(disk_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+                f.write(signature)
+                f.write(payload)
 
             file_size = os.path.getsize(cache_file)
 

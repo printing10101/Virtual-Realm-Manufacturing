@@ -238,7 +238,7 @@ class UniwearDataLoader:
                 summary["datasets"][ds.value] = ds_summary
                 summary["total_experiments"] += ds_summary["experiment_count"]
                 summary["total_samples"] += ds_summary["rows"]
-            except Exception as e:
+            except (OSError, ValueError, TypeError, KeyError) as e:
                 logger.warning("Failed to load %s: %s", ds.value, e)
                 from app.core.safe_errors import safe_error_message
 
@@ -359,7 +359,7 @@ class UniwearDataLoader:
                     "wear_rate": round(wear_rate, 8),
                     "sample_count": len(wear_df),
                 }
-            except Exception as e:
+            except (OSError, ValueError, TypeError, KeyError) as e:
                 from app.core.safe_errors import safe_error_message
 
                 safe = safe_error_message(

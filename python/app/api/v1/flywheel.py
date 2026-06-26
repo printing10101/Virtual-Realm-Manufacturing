@@ -98,7 +98,7 @@ async def get_flywheel_status() -> FlywheelStatusResponse:
             health_score=health_score,
             timestamp=metrics.timestamp,
         )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.error("Failed to collect flywheel status: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
@@ -128,7 +128,7 @@ async def get_flywheel_metrics(
             "historical": [m.to_dict() for m in historical],
             "period_days": days,
         }
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.error("Failed to get flywheel metrics: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
@@ -159,7 +159,7 @@ async def generate_weekly_report(
             report["saved_to"] = str(filepath)
 
         return report
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         logger.error("Failed to generate weekly report: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,

@@ -440,7 +440,7 @@ class FeedbackUpdater:
             result = self.graph_store.flush_to_repository()
             logger.info(f"Graph flushed to repository: {result}")
             return result
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Failed to flush graph to repository: {e}")
             raise
 

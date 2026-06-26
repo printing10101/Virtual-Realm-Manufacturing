@@ -8,6 +8,10 @@ on:
       - develop
     types: [opened, synchronize, reopened]
 
+# 安全修复：最小权限原则，默认仅授予只读权限
+permissions:
+  contents: read
+
 env:
   PYTHON_VERSION: '3.10'
   NODE_VERSION: '18'

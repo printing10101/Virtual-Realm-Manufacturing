@@ -107,8 +107,8 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
           }
           events.value.push(sseEvent)
           handleEvent(sseEvent)
-        } catch (e: unknown) {
-          console.error(`[SSE] Failed to parse ${eventType} event:`, e)
+        } catch {
+          // 静默处理
         }
       })
     })

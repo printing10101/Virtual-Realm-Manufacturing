@@ -56,9 +56,9 @@ ollama pull qwen2.5-coder:7b
 # 终端 1：启动前端开发服务器（默认 http://localhost:1420）
 pnpm dev
 
-# 终端 2：启动 Python 后端服务（默认 http://localhost:8000）
+# 终端 2：启动 Python 后端服务（默认 http://localhost:8765）
 cd python
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8765
 
 # 终端 3：启动 Tauri 桌面应用（需先启动上述两个服务）
 pnpm tauri dev
@@ -227,12 +227,12 @@ headers = {
     "Content-Type": "application/json",
 }
 
-response = requests.get("http://localhost:8000/api/v1/lnn/status", headers=headers)
+response = requests.get("http://localhost:8765/api/v1/lnn/status", headers=headers)
 ```
 
 ```bash
 # cURL 示例
-curl -H "Authorization: Bearer 你的令牌值" http://localhost:8000/api/v1/lnn/status
+curl -H "Authorization: Bearer 你的令牌值" http://localhost:8765/api/v1/lnn/status
 ```
 
 ### 令牌轮换

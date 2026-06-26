@@ -2,15 +2,33 @@
 import { ref, onMounted, computed } from 'vue'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import http from '@/utils/http'
+import { API_CONFIG } from '@/config/api'
 
-const notifications = ref<any[]>([])
+const notifications = ref<NotificationItem[]>([])
 const loading = ref(false)
 const statusFilter = ref('pending')
 const previewDialog = ref(false)
-const previewData = ref<any>(null)
+const previewData = ref<NotificationPreview | null>(null)
 const projectId = 'default'
 
-const API_BASE = '/api/v1'
+const API_BASE = API_CONFIG.V1
+
+interface NotificationItem {
+  notification_id: string
+  title: string
+  description: string
+  priority: string
+  status: string
+  expected_impact?: Record<string, number | string>
+  created_at: number
+}
+
+interface NotificationPreview {
+  title: string
+  description: string
+  change_preview: unknown
+  expected_impact: unknown
+}
 
 const filteredNotifications = computed(() => {
   if (statusFilter.value === 'all') return notifications.value
@@ -44,8 +62,8 @@ async function fetchNotifications() {
       params: { status: statusFilter.value === 'all' ? undefined : statusFilter.value }
     })
     if (res.data.code === 'SUCCESS') notifications.value = res.data.data
-  } catch (e: unknown) {
-    console.warn('Failed to fetch notifications:', e)
+  } catch {
+    // 静默处理，loading 状态会在 finally 中重置
   } finally {
     loading.value = false
   }
@@ -55,8 +73,8 @@ async function applyUpdate(id: string) {
   try {
     await http.post(`${API_BASE}/templates/updates/apply/${id}`)
     fetchNotifications()
-  } catch (e: unknown) {
-    console.warn('Failed to apply update:', e)
+  } catch {
+    // 静默处理
   }
 }
 
@@ -64,8 +82,8 @@ async function dismissUpdate(id: string) {
   try {
     await http.post(`${API_BASE}/templates/updates/dismiss/${id}`)
     fetchNotifications()
-  } catch (e: unknown) {
-    console.warn('Failed to dismiss update:', e)
+  } catch {
+    // 静默处理
   }
 }
 
@@ -76,8 +94,8 @@ async function showPreview(id: string) {
       previewData.value = res.data.data
       previewDialog.value = true
     }
-  } catch (e: unknown) {
-    console.warn('Failed to show preview:', e)
+  } catch {
+    // 静默处理
   }
 }
 

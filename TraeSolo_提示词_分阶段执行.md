@@ -33,11 +33,11 @@
    预期：无匹配（注释除外）
 
 3. 启动服务后测试：
-   curl -I "http://localhost:8000/api/model/download/../etc/passwd"
+   curl -I "http://localhost:8765/api/model/download/../etc/passwd"
    预期返回 HTTP 400
 
 4. 正常文件请求测试：
-   curl -I "http://localhost:8000/api/model/download/test.stl"
+   curl -I "http://localhost:8765/api/model/download/test.stl"
    预期返回 HTTP 404（文件不存在）或 200（文件存在）
 ```
 
@@ -526,10 +526,10 @@ python/app/main.py、python/app/api/v1/health.py、Dockerfile
 
 【验收检测】
 1. API测试：
-   curl http://localhost:8000/api/health
+   curl http://localhost:8765/api/health
    预期：返回包含 status、version、timestamp 的 JSON
 
-   curl http://localhost:8000/api/health/ping
+   curl http://localhost:8765/api/health/ping
    预期：返回 {"ping": true}
 
 2. 运行以下命令确认 Dockerfile 路径正确：
@@ -909,7 +909,7 @@ docs/ 目录下新增/更新文档
    预期：包含 user-guide/、api/、development/ 等目录
 
 2. 验证 OpenAPI 文档：
-   访问 http://localhost:8000/api/docs
+   访问 http://localhost:8765/api/docs
    预期：所有端点有描述、参数说明、响应示例
 
 3. 文档与代码一致性检查：
@@ -925,7 +925,7 @@ docs/ 目录下新增/更新文档
 
 ```
 【验证脚本使用说明】
-1. 确保后端服务运行在 localhost:8000
+1. 确保后端服务运行在 localhost:8765
 2. 确保前端构建完成并可访问
 3. 运行：python verify_release.py
 4. 所有检查项通过后方可标记为 Release Ready

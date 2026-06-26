@@ -548,7 +548,7 @@ class ProjectStore:
                         "file_size": f.stat().st_size,
                     }
                 )
-            except Exception:
+            except (OSError, ValueError, TypeError, KeyError, RuntimeError):
                 projects.append(
                     {
                         "path": str(f),

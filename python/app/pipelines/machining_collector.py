@@ -187,7 +187,8 @@ async def postgres_sink(
             try:
                 repo.create(rec)
                 ok += 1
-            except Exception as exc:  # IntegrityError 等
+            except (ValueError, KeyError, OSError) as exc:
+                # 数据库写入失败（完整性错误、连接问题等），记录后继续处理下一条
                 logger.warning(
                     "PostgreSQL write MachiningRecord failed (%s): %s",
                     type(exc).__name__,
@@ -307,7 +308,7 @@ class MachiningCollector:
             try:
                 identity = await asyncio.to_thread(self._adapter.probe)
                 logger.info("Collector[%s] probe ok: %s", self._job_id, identity)
-            except Exception as exc:  # pragma: no cover - depends on env
+            except (ConnectionError, OSError, TimeoutError) as exc:  # pragma: no cover - depends on env
                 logger.warning(
                     "Collector[%s] probe failed (continuing in offline mode): %s",
                     self._job_id,
@@ -339,8 +340,9 @@ class MachiningCollector:
             # MTConnect 适配器也设置 stop，让同步 polling 退出
             try:
                 self._adapter.stop()
-            except Exception:  # pragma: no cover
-                logger.exception("adapter.stop raised; ignoring")
+            except (RuntimeError, OSError, AttributeError) as e:  # pragma: no cover
+                # 适配器停止失败不应阻塞整体关闭流程
+                logger.warning("adapter.stop raised: %s; ignoring", e)
 
             task = self._run_task
             assert task is not None
@@ -353,14 +355,19 @@ class MachiningCollector:
                 task.cancel()
                 try:
                     await task
-                except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                except asyncio.CancelledError:
+                    # 任务取消是预期行为
                     pass
+                except (RuntimeError, OSError) as e:
+                    # 任务取消后可能产生的清理异常，记录但不阻塞关闭
+                    logger.warning("Task cleanup after cancel raised: %s", e)
 
             # 最后一次 flush
             try:
                 await self._flush_once()
-            except Exception:  # pragma: no cover
-                logger.exception("Final flush failed")
+            except (RuntimeError, OSError, ValueError) as e:  # pragma: no cover
+                # 最终 flush 失败不应阻塞关闭流程，但需记录以便排查
+                logger.warning("Final flush failed: %s", e, exc_info=True)
 
             self._stats.stopped_at = time.time()
             logger.info(
@@ -376,7 +383,7 @@ class MachiningCollector:
             while not self._stop_event.is_set():
                 try:
                     sample = await asyncio.to_thread(self._fetch_one_sample)
-                except Exception as exc:  # 适配器级异常隔离
+                except (ConnectionError, TimeoutError, OSError) as exc:  # 适配器级异常隔离
                     self._stats.poll_errors += 1
                     logger.warning(
                         "Collector[%s] poll error: %s; sleeping %.2fs",
@@ -408,10 +415,13 @@ class MachiningCollector:
                 if self._aggregator.should_flush():
                     try:
                         await self._flush_once()
-                    except Exception:  # noqa: BLE001
-                        logger.exception(
-                            "Collector[%s] flush failed; records queued for retry",
+                    except (RuntimeError, OSError, ValueError) as e:  # noqa: BLE001
+                        # flush 失败时记录错误，数据保留在队列中等待重试
+                        logger.warning(
+                            "Collector[%s] flush failed: %s; records queued for retry",
                             self._job_id,
+                            e,
+                            exc_info=True,
                         )
 
                 try:
@@ -423,7 +433,7 @@ class MachiningCollector:
         except asyncio.CancelledError:  # pragma: no cover
             logger.info("Collector[%s] run loop cancelled", self._job_id)
             raise
-        except Exception:  # pragma: no cover - 防御
+        except (RuntimeError, ValueError, TypeError, OSError):  # pragma: no cover - 防御
             logger.exception("Collector[%s] run loop crashed", self._job_id)
             raise
 
@@ -431,7 +441,7 @@ class MachiningCollector:
         """单次拉取（同步），由 ``asyncio.to_thread`` 调度。"""
         try:
             return self._adapter.fetch_sample()
-        except Exception as exc:
+        except (ConnectionError, TimeoutError, OSError) as exc:
             # 适配器内部已记录错误计数，这里仅传播以便上层选择重试策略
             logger.debug("fetch_sample raised: %s", exc)
             return None
@@ -505,7 +515,7 @@ class MachiningCollector:
             try:
                 written = await _attempt()
                 return int(written or 0)
-            except Exception as exc:  # noqa: BLE001
+            except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:  # noqa: BLE001
                 self._stats.write_retries += 1
                 if attempt >= self.config.max_write_retries:
                     logger.error(
@@ -556,7 +566,7 @@ class MachiningCollector:
                 if written is None or written < 0:
                     raise RuntimeError(f"TDengine sink returned {written!r}")
                 return int(written)
-            except Exception as exc:  # noqa: BLE001
+            except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:  # noqa: BLE001
                 self._stats.write_retries += 1
                 if attempt >= self.config.max_write_retries:
                     logger.error(
@@ -683,7 +693,6 @@ async def start_collector(
 
 async def stop_collector(*, timeout: float = 10.0) -> Dict[str, Any]:
     """停止当前全局采集器并返回统计信息。"""
-    global _collector_singleton
     async with _collector_lock:
         collector = _collector_singleton
         if collector is None:

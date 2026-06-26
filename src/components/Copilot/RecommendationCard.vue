@@ -97,11 +97,11 @@ interface AlternativePlan {
   label?: string
   description: string
   confidence: number
-  parameters?: Record<string, any>
+  parameters?: Record<string, unknown>
 }
 
 interface Props {
-  recommendation: Record<string, any>
+  recommendation: Record<string, unknown>
   confidence: number
   reasoning: string
   alternatives?: AlternativePlan[]
@@ -116,9 +116,9 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  accept: [recommendation: Record<string, any>]
-  modify: [recommendation: Record<string, any>]
-  reject: [recommendation: Record<string, any>]
+  accept: [recommendation: Record<string, unknown>]
+  modify: [recommendation: Record<string, unknown>]
+  reject: [recommendation: Record<string, unknown>]
 }>()
 
 const { t } = useI18n()
@@ -126,7 +126,7 @@ const { t } = useI18n()
 const isReasoningExpanded = ref(true)
 const actionsRef = ref<InstanceType<typeof DecisionActions> | null>(null)
 
-function formatRecommendation(rec: Record<string, any>): string {
+function formatRecommendation(rec: Record<string, unknown>): string {
   return JSON.stringify(rec, null, 2)
 }
 

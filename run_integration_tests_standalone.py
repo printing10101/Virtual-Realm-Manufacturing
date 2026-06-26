@@ -6,7 +6,7 @@ from pathlib import Path
 
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8765"
 
 passed = 0
 failed = 0

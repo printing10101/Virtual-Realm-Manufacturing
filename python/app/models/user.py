@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import json
 import threading
@@ -7,6 +8,8 @@ from datetime import datetime, timezone
 from typing import Optional
 from pathlib import Path
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 
 USER_STORE_FILE = os.environ.get("LNN_USER_STORE_FILE", ".lnn_users.json")
@@ -84,7 +87,9 @@ class UserStore:
                     u["username"]: UserRecord.from_dict(u)
                     for u in data.get("users", [])
                 }
-            except Exception:
+            except (json.JSONDecodeError, KeyError, ValueError, OSError) as e:
+                # 用户数据文件损坏时重置为空，记录错误以便排查
+                logger.error("Failed to load user data from %s: %s", self._file_path, e, exc_info=True)
                 self._users = {}
 
     def _save(self):

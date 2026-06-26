@@ -55,15 +55,15 @@ export interface StandardError {
   /** 请求路径 */
   path?: string
   /** 详细错误信息 */
-  detail?: any
+  detail?: unknown
   /** 修复建议 */
   suggestion?: string
   /** 是否可自动恢复 */
   recoverable?: boolean
   /** 自动调整后的参数值 */
-  adjustedValues?: Record<string, any>
+  adjustedValues?: Record<string, unknown>
   /** 原始错误对象 */
-  originalError?: any
+  originalError?: unknown
 }
 
 /**
@@ -83,7 +83,7 @@ export interface DiagnosticContext {
   /** 时间戳 */
   timestamp: string
   /** 额外信息 */
-  extra?: Record<string, any>
+  extra?: Record<string, unknown>
 }
 
 // ============================================================
@@ -204,8 +204,8 @@ export function getStringErrorCode(numericCode: number): string {
  * 从API响应构建标准化错误对象
  */
 export function buildErrorFromResponse(
-  response: any,
-  originalError?: any
+  response: { data?: Record<string, unknown>; status?: number },
+  originalError?: unknown
 ): StandardError {
   const data = response?.data || {}
   const status = response?.status
@@ -247,16 +247,17 @@ export function buildErrorFromResponse(
 /**
  * 从Axios错误构建标准化错误对象
  */
-export function buildErrorFromAxiosError(error: any): StandardError {
+export function buildErrorFromAxiosError(error: unknown): StandardError {
+  const err = error as Record<string, unknown>
   // 网络错误
-  if (!error.response) {
+  if (!err.response) {
     const isNetworkErr = isNetworkError(error)
     return {
       code: 0,
       errorCode: 'NETWORK_ERROR',
       message: isNetworkErr 
         ? '网络连接错误，请检查网络后重试' 
-        : error.message || '未知网络错误',
+        : (err.message as string) || '未知网络错误',
       errorType: 'network',
       severity: 'error',
       timestamp: new Date().toISOString(),
@@ -267,7 +268,7 @@ export function buildErrorFromAxiosError(error: any): StandardError {
   }
 
   // HTTP错误响应
-  return buildErrorFromResponse(error.response, error)
+  return buildErrorFromResponse(err.response as { data?: Record<string, unknown>; status?: number }, error)
 }
 
 /**
@@ -298,23 +299,25 @@ export function buildErrorFromError(
 /**
  * 判断是否为网络错误
  */
-export function isNetworkError(error: any): boolean {
+export function isNetworkError(error: unknown): boolean {
   if (!error) return false
+  const err = error as Record<string, unknown>
   return Boolean(
-    error?.code === 'ERR_NETWORK' ||
-    error?.code === 'ECONNABORTED' ||
-    error?.message === 'Network Error' ||
-    error?.message?.includes('timeout') ||
-    error?.message?.includes('Network Error')
+    err.code === 'ERR_NETWORK' ||
+    err.code === 'ECONNABORTED' ||
+    err.message === 'Network Error' ||
+    (typeof err.message === 'string' && err.message.includes('timeout')) ||
+    (typeof err.message === 'string' && err.message.includes('Network Error'))
   )
 }
 
 /**
  * 判断是否应该显示冲突对话框
  */
-export function shouldShowConflictDialog(data: any): boolean {
+export function shouldShowConflictDialog(data: unknown): boolean {
+  const d = data as Record<string, unknown>
   return Boolean(
-    data?.severity && data?.error_code && data?.suggestion
+    d?.severity && d?.error_code && d?.suggestion
   )
 }
 
@@ -439,8 +442,7 @@ export async function copyDiagnosticText(
       document.body.removeChild(textarea)
       return success
     }
-  } catch (err) {
-    console.error('[ErrorHandler] Failed to copy diagnostic text:', err)
+  } catch {
     return false
   }
 }
@@ -476,8 +478,8 @@ export function triggerGlobalErrorHandlers(error: StandardError): void {
   for (const handler of globalErrorHandlers) {
     try {
       handler(error)
-    } catch (err) {
-      console.error('[ErrorHandler] Global handler threw:', err)
+    } catch {
+      // 静默处理全局处理器异常
     }
   }
 }

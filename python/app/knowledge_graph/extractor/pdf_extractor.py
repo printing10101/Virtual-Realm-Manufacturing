@@ -126,7 +126,7 @@ class PDFExtractor:
                             source=str(file_path),
                         )
                     )
-        except Exception as exc:
+        except (OSError, ValueError, TypeError) as exc:
             logger.warning("pdfplumber 提取失败: %s", exc)
         return pages
 
@@ -165,7 +165,7 @@ class PDFExtractor:
                             source=str(file_path),
                         )
                     )
-        except Exception as exc:
+        except (OSError, ValueError, TypeError) as exc:
             logger.warning("pdfminer 提取失败: %s", exc)
         return pages
 
@@ -193,7 +193,7 @@ class PDFExtractor:
                         source=str(file_path),
                     )
                 )
-        except Exception as exc:
+        except (OSError, ValueError, TypeError) as exc:
             logger.warning("OCR 提取失败: %s", exc)
         return pages
 
@@ -269,7 +269,7 @@ class WordExtractor:
                     source=str(file_path),
                 )
             ]
-        except Exception as exc:
+        except (OSError, ValueError, TypeError) as exc:
             logger.warning("python-docx 提取失败: %s", exc)
             return []
 
@@ -293,7 +293,7 @@ class WordExtractor:
                     source=str(file_path),
                 )
             ]
-        except Exception as exc:
+        except (OSError, ValueError, TypeError) as exc:
             logger.warning("docx2txt 提取失败: %s", exc)
             return []
 
@@ -375,8 +375,9 @@ def main():  # pragma: no cover
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        print(f"已保存到 {args.output}")
+        logger.info(f"已保存到 {args.output}")
     else:
+        # CLI 输出到 stdout，使用 print 是合理的
         print(json.dumps(data, ensure_ascii=False, indent=2))
 
 

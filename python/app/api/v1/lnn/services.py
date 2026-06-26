@@ -457,7 +457,7 @@ async def _run_training_task_async(
                 },
             )
         )
-    except Exception as e:
+    except (ValueError, TypeError, RuntimeError, OSError) as e:
         safe = safe_error_message(
             e,
             context=f"lnn.training_worker[{task_id}]",
@@ -644,7 +644,8 @@ async def _run_quantization_task_v2(
                     [calibration_data, calibration_data]
                 )
             calibration_data = calibration_data[:, :-1]
-        except Exception as e:
+        except (ValueError, TypeError, OSError, FileNotFoundError) as e:
+            logger.exception(f"Failed to load calibration data: {e}")
             raise ValueError(f"Failed to load calibration data: {e}") from e
 
     quantized_model_name = get_quantized_model_name(model_name)

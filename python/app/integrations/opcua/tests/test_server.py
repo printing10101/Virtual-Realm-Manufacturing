@@ -16,6 +16,7 @@ from asyncua import Server, ua
 
 async def main():
     logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
     server = Server()
     await server.init()
     server.set_endpoint("opc.tcp://0.0.0.0:4840/freeopcua/server/")
@@ -36,8 +37,8 @@ async def main():
     exec_node = await myobj.add_variable(idx, "Execution", "IDLE")
 
     await server.start()
-    print("OPC UA test server running at opc.tcp://localhost:4840/freeopcua/server/")
-    print("Press Ctrl+C to stop")
+    logger.info("OPC UA test server running at opc.tcp://localhost:4840/freeopcua/server/")
+    logger.info("Press Ctrl+C to stop")
 
     try:
         # Simulate changing values every second
@@ -49,7 +50,7 @@ async def main():
             await load_node.write_value(random.uniform(10, 90))
             await feed_node.write_value(random.uniform(100, 2000))
             await exec_node.write_value(random.choice(["ACTIVE", "IDLE", "PROGRAM"]))
-            print(f"  cycle {cycle}: speed={await speed_node.read_value():.1f}, "
+            logger.info(f"  cycle {cycle}: speed={await speed_node.read_value():.1f}, "
                   f"load={await load_node.read_value():.1f}, "
                   f"feed={await feed_node.read_value():.1f}, "
                   f"exec={await exec_node.read_value()}")

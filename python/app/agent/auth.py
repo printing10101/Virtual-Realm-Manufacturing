@@ -55,8 +55,8 @@ class AgentTokenStore:
                 data = json.loads(self._storage_path.read_text())
                 for agent_id, t in data.items():
                     self._tokens[agent_id] = AgentToken(**t)
-            except Exception as e:
-                logger.warning("Failed to load agent token store: %s", e)
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError, OSError) as e:
+                logger.warning("Failed to load agent token store: %s", e, exc_info=True)
 
     def _save(self):
         import json

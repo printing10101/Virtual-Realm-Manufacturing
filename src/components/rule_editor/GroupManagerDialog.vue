@@ -156,8 +156,8 @@ async function handleCreate() {
     groupDesc.value = ''
     isEditing.value = false
     emit('saved')
-  } catch (e) {
-    console.error('分组保存失败:', e)
+  } catch {
+    // 静默处理
   }
 }
 

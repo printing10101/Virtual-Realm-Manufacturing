@@ -6,7 +6,7 @@ scrape_configs:
   - job_name: "lnn-api"
     metrics_path: "/metrics"
     static_configs:
-      - targets: ["lnn-api:8000"]
+      - targets: ["lnn-api:8765"]
         labels:
           service: "lnn-api"
           environment: "production"

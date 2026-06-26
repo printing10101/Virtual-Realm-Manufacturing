@@ -224,7 +224,7 @@ class DatasetMatcher:
                 config = json.load(f)
             logger.info("Loaded dataset config for machine %s", machine_id)
             return config
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, ValueError, TypeError) as e:
             logger.error("Failed to load dataset config: %s", e)
             return {}
 
@@ -257,7 +257,7 @@ class EnvironmentInjector:
                 config = json.load(f)
             logger.info("Loaded machine config for %s", machine_id)
             return config
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, ValueError, TypeError) as e:
             logger.error("Failed to load machine config: %s", e)
             return {}
 

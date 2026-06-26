@@ -1,6 +1,6 @@
 # 灵境制造 (Lingjing Manufacturing) API Documentation
 
-> Base URL: `http://localhost:8000`
+> Base URL: `http://localhost:8765`
 > Framework: FastAPI
 > Auto-generated docs available at:
 > - Swagger UI: `/docs`
@@ -47,7 +47,7 @@
 
 | Property | Value |
 |---|---|
-| **Base URL** | `http://localhost:8000` |
+| **Base URL** | `http://localhost:8765` |
 | **Protocol** | HTTP/1.1 + HTTPS (production) |
 | **Data Format** | JSON (request/response bodies) |
 | **CORS** | Configured via settings (`ALLOW_ORIGINS`) |

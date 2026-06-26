@@ -93,9 +93,9 @@ def measure_model_size_mb(model: Any) -> float:
         with open(tmp_path, "wb") as f:
             pickle.dump(model, f)
         size = os.path.getsize(tmp_path) / (1024 * 1024)
-    except Exception as e:
+    except (OSError, pickle.PickleError, AttributeError) as e:
         import logging
-        logging.getLogger(__name__).warning("模型大小计算失败: %s", e)
+        logging.getLogger(__name__).warning("模型大小计算失败: %s", e, exc_info=True)
         size = 0.0
     finally:
         if os.path.exists(tmp_path):

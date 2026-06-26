@@ -7,7 +7,7 @@ import requests
 from pathlib import Path
 
 os.chdir(r"c:\Users\Lenovo\Desktop\灵境制造（上线版）")
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8765"
 results = []
 passed = 0
 failed = 0

@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html style="background-color:#faf8f5!important;color:#1d1b18!important;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物料管理</title>
+    <link rel="stylesheet" href="tailwind-fallback.css">
+<style id="theme-vars">
+/*
+ * Lingjing Manufacturing design tokens
+ * Brand: Lingjing Manufacturing
+ * Domain: Intelligent manufacturing platform
+ * Style: Restrained, elegant, warm cream/off-white palette
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #faf8f5;
+  --background-100: #f5f2ed;
+  --background-200: #ede9e3;
+  --background-300: #e0dbd4;
+  --background-400: #cec8bf;
+  --background-500: #a8a199;
+  --background-600: #8a847c;
+  --background-700: #3a3632;
+  --background-800: #1c1a18;
+  --background-900: #0e0d0c;
+
+  /* text */
+  --text-50: #f5f2ed;
+  --text-100: #e3dfd8;
+  --text-200: #c7c2b8;
+  --text-300: #aea99f;
+  --text-400: #8e897f;
+  --text-500: #6e6960;
+  --text-600: #48443e;
+  --text-700: #3c3832;
+  --text-800: #1d1b18;
+  --text-900: #0e0d0c;
+
+  /* icon */
+  --icon-50: #f5f2ed;
+  --icon-100: #e0dbd4;
+  --icon-200: #cec8bf;
+  --icon-300: #c7c2b8;
+  --icon-400: #aea99f;
+  --icon-500: #8e897f;
+  --icon-600: #6e6960;
+  --icon-700: #48443e;
+  --icon-800: #2c2926;
+  --icon-900: #1d1b18;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f5ec;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #fdecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+  /* ===== COLOR ALIAS LAYER (--color-*) ===== */
+  --color-bg-50: var(--background-50);
+  --color-bg-100: var(--background-100);
+  --color-bg-200: var(--background-200);
+  --color-bg-300: var(--background-300);
+  --color-text-primary: var(--text-800);
+  --color-text-secondary: var(--text-500);
+  --color-text-tertiary: var(--text-400);
+  --color-text-muted: var(--text-400);
+  --color-text-placeholder: var(--text-300);
+  --color-text-inverse: var(--background-50);
+  --color-border-subtle: var(--background-300);
+  --color-border-default: var(--background-300);
+  --color-border-strong: var(--background-500);
+  --color-border-focus: var(--brand-500);
+  --color-primary-50: var(--brand-50);
+  --color-primary-100: var(--brand-100);
+  --color-primary-200: var(--brand-200);
+  --color-primary-300: var(--brand-300);
+  --color-primary-400: var(--brand-400);
+  --color-primary-500: var(--brand-500);
+  --color-primary-600: var(--brand-600);
+  --color-primary-700: var(--brand-700);
+  --color-primary-800: var(--brand-800);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-800: var(--brand-800);
+  /* ===== LAYOUT VARIABLES ===== */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --page-padding: 24px;
+  --content-max-width: 1200px;
+  /* ===== STATE COLORS ===== */
+  --state-warning: #ff9500;
+  --state-warning-bg: #fff4e5;
+  --state-warning-surface: #fff4e5;
+  --state-info: #007aff;
+  --state-info-bg: #e8f2ff;
+  --state-success-bg: #e9f5ec;
+  --state-error-bg: #fdecea;
+  --card-background: var(--background-50);
+
+
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+html.dark, html.dark body, html.dark * {
+  --background: #faf8f5 !important; --foreground: #1d1b18 !important; --card: #faf8f5 !important; --card-foreground: #1d1b18 !important; --card-background: #faf8f5 !important; --popover: #f5f2ed !important; --popover-foreground: #1d1b18 !important; --primary: #007aff !important; --primary-foreground: #ffffff !important; --secondary: #f5f2ed !important; --secondary-foreground: #1d1b18 !important; --muted: #f5f2ed !important; --muted-foreground: #6b6560 !important; --accent: #ede9e3 !important; --accent-foreground: #1d1b18 !important; --border: #e0dbd4 !important; --input: #e0dbd4 !important; --icon: #1d1b18 !important; --icon-muted: #8e897f !important; --sidebar: #ede9e3 !important; --sidebar-foreground: #1d1b18 !important; --sidebar-primary: #007aff !important; --sidebar-primary-foreground: #faf8f5 !important; --sidebar-accent: #e0dbd4 !important; --sidebar-accent-foreground: #1d1b18 !important; --sidebar-border: #e0dbd4 !important; --sidebar-ring: #007aff !important; color: inherit !important;
+}
+
+    </style>
+                <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="background-color:#faf8f5!important; color:#1d1b18!important;">
+    <main class="flex min-h-screen" style="background:var(--background);">
+
+      <!-- ===== Sidebar ===== -->
+          <aside class="fixed left-0 top-0 bottom-0 z-30 flex flex-col border-r" style="width: var(--sidebar-width); background: var(--color-bg-50); border-color: var(--color-border-subtle);">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-5 h-14 border-b" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--color-primary-500);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-text-inverse);flex-shrink:0;"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+            </div>
+            <span class="text-headline truncate" style="color: var(--color-text-primary);">灵境制造</span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 overflow-y-auto py-4 px-3 no-scrollbar">
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">核心功能</p>
+                <a href="dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                    <span class="truncate">生产总览</span>
+                </a>
+                <a href="process-planning.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="1"/><path d="M3 17.5c2 2.5 5 2.5 7 0s5-2.5 7 0"/><path d="M3 8.5c2 2.5 5 2.5 7 0s5-2.5 7 0"/><path d="M5 15l-2-2.5 2-2.5"/><path d="M19 15l2-2.5-2-2.5"/></svg>
+                    <span class="truncate">工艺规划</span>
+                </a>
+                <a href="equipment-monitor.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+                    <span class="truncate">设备监控</span>
+                </a>
+                <a href="quality-inspection.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+                    <span class="truncate">质量检测</span>
+                </a>
+                <a href="agent-dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    <span class="truncate">智能体管理</span>
+                </a>
+            </div>
+            <div class="mb-6">
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">资源管理</p>
+                <a href="material-management.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm" style="background: var(--color-primary-50); color: var(--color-primary-600);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                    <span class="truncate font-medium">物料管理</span>
+                </a>
+                <a href="task-board.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M6 3v18"/><path d="M18 3v18"/><path d="M6 8h12"/><path d="M6 16h12"/></svg>
+                    <span class="truncate">任务看板</span>
+                </a>
+                <a href="production-report.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    <span class="truncate">生产报表</span>
+                </a>
+                <a href="knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <span class="truncate">知识库</span>
+                </a>
+            </div>
+            <div>
+                <p class="text-caption px-2 mb-2" style="color: var(--color-text-muted);">系统</p>
+                <a href="settings.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-body-sm transition-colors duration-150 hover:opacity-80" style="color: var(--color-text-secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span class="truncate">系统设置</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- User -->
+        <div class="border-t px-4 py-3 flex items-center gap-3" style="border-color: var(--color-border-subtle);">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-caption shrink-0" style="background: var(--color-primary-100); color: var(--color-primary-600);">管</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-body-sm truncate" style="color: var(--color-text-primary);">管理员</p>
+                <p class="text-caption truncate" style="color: var(--color-text-muted);">admin@lingjing.com</p>
+            </div>
+        </div>
+    </aside>
+
+      <!-- ===== Main Area ===== -->
+      <div class="flex-1 flex flex-col min-w-0">
+
+        <!-- Top Header -->
+        <header class="flex items-center justify-between h-14 px-6 border-b shrink-0" style="border-color:var(--border);background:var(--card);">
+          <div class="flex items-center gap-3">
+            <!-- Mobile menu button -->
+            <button class="lg:hidden p-2 rounded-lg transition-colors" style="color:var(--muted-foreground);" aria-label="菜单">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+            <!-- Search -->
+            <div class="flex items-center gap-2 h-9 px-3 rounded-lg border" style="border-color:var(--input);background:var(--background);min-width:200px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--icon-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" placeholder="搜索物料、工单..." class="flex-1 bg-transparent border-none outline-none text-sm" style="color:var(--foreground);" aria-label="搜索">
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <!-- Notifications -->
+            <button class="relative p-2 rounded-lg transition-colors" style="color:var(--muted-foreground);" aria-label="通知">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:var(--state-error);"></span>
+            </button>
+            <!-- User -->
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style="background:var(--primary);color:var(--primary-foreground);">张</div>
+              <span class="text-sm hidden sm:inline" style="color:var(--foreground);">张明</span>
+            </div>
+          </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="flex-1 overflow-y-auto p-6">
+
+          <!-- Page Header -->
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div class="min-w-0">
+              <h1 class="text-2xl font-bold truncate" style="color:var(--foreground);text-wrap:balance;word-break:keep-all;overflow-wrap:break-word;">物料管理</h1>
+              <p class="text-sm mt-1 truncate" style="color:var(--muted-foreground);">原材料、半成品与成品库存管理</p>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <button id="btn-inbound" class="btn btn-primary text-sm" style="height:36px;padding:0 16px;border-radius:calc(var(--radius)*0.8);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
+                入库登记
+              </button>
+              <button id="btn-outbound" class="btn text-sm" style="height:36px;padding:0 16px;border-radius:calc(var(--radius)*0.8);border:1px solid var(--border);background:var(--card);color:var(--foreground);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                出库申请
+              </button>
+              <button id="btn-inventory" class="btn text-sm" style="height:36px;padding:0 16px;border-radius:calc(var(--radius)*0.8);border:1px solid var(--border);background:var(--card);color:var(--foreground);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+                物料盘点
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI Cards -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- 库存总量 -->
+            <div class="rounded-lg p-4 border-l-4" style="background:var(--card);border-color:var(--primary);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
+              <p class="text-xs font-medium truncate" style="color:var(--muted-foreground);">库存总量</p>
+              <p class="text-2xl font-bold mt-1 whitespace-nowrap" id="stat-total" style="color:var(--foreground);">12,458</p>
+              <p class="text-xs mt-1 truncate" style="color:var(--muted-foreground);">件</p>
+            </div>
+            <!-- 今日入库 -->
+            <div class="rounded-lg p-4 border-l-4" style="background:var(--card);border-color:var(--state-success);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
+              <p class="text-xs font-medium truncate" style="color:var(--muted-foreground);">今日入库</p>
+              <p class="text-2xl font-bold mt-1 whitespace-nowrap" style="color:var(--foreground);">320</p>
+              <p class="text-xs mt-1 truncate" style="color:var(--muted-foreground);">件</p>
+            </div>
+            <!-- 今日出库 -->
+            <div class="rounded-lg p-4 border-l-4" style="background:var(--card);border-color:var(--brand-300);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
+              <p class="text-xs font-medium truncate" style="color:var(--muted-foreground);">今日出库</p>
+              <p class="text-2xl font-bold mt-1 whitespace-nowrap" style="color:var(--foreground);">186</p>
+              <p class="text-xs mt-1 truncate" style="color:var(--muted-foreground);">件</p>
+            </div>
+            <!-- 低库存预警 -->
+            <div class="rounded-lg p-4 border-l-4" style="background:var(--card);border-color:var(--state-error);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
+              <p class="text-xs font-medium truncate" style="color:var(--muted-foreground);">低库存预警</p>
+              <p class="text-2xl font-bold mt-1 whitespace-nowrap" id="stat-low-stock" style="color:var(--state-error);">7</p>
+              <p class="text-xs mt-1 truncate" style="color:var(--muted-foreground);">项</p>
+            </div>
+          </div>
+
+          <!-- Data Table Card -->
+          <div class="rounded-lg border overflow-hidden" style="background:var(--card);border-color:var(--border);">
+            <!-- Table Toolbar -->
+            <div class="flex items-center justify-between px-5 py-3 border-b" style="border-color:var(--border);">
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 h-8 px-3 rounded-md border" style="border-color:var(--input);background:var(--background);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--icon-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input id="table-search" type="text" placeholder="搜索物料..." class="flex-1 bg-transparent border-none outline-none text-xs" style="color:var(--foreground);width:140px;" aria-label="搜索物料">
+                </div>
+                <select id="filter-category" class="h-8 px-3 rounded-md border text-xs bg-transparent outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);" aria-label="分类筛选">
+                  <option value="">全部分类</option>
+                  <option value="原材料">原材料</option>
+                  <option value="半成品">半成品</option>
+                  <option value="成品">成品</option>
+                </select>
+                <select id="filter-status" class="h-8 px-3 rounded-md border text-xs bg-transparent outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);" aria-label="状态筛选">
+                  <option value="">全部状态</option>
+                  <option value="正常">正常</option>
+                  <option value="低库存">低库存</option>
+                  <option value="缺货">缺货</option>
+                </select>
+              </div>
+              <div class="relative">
+                <button id="btn-export" class="flex items-center gap-1.5 text-xs px-3 h-8 rounded-md border transition-colors" style="border-color:var(--input);color:var(--muted-foreground);background:var(--background);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                  导出
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div id="export-dropdown" class="absolute right-0 top-full mt-1 rounded-lg border overflow-hidden z-50 hidden" style="background:var(--popover);border-color:var(--border);box-shadow:var(--shadow-lg);min-width:140px;">
+                  <button class="export-opt w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors" style="color:var(--popover-foreground);" data-format="Excel">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--state-success);flex-shrink:0;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>导出 Excel
+                  </button>
+                  <button class="export-opt w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors" style="color:var(--popover-foreground);" data-format="PDF">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--state-error);flex-shrink:0;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>导出 PDF
+                  </button>
+                  <button class="export-opt w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors" style="color:var(--popover-foreground);" data-format="CSV">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--brand-500);flex-shrink:0;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>导出 CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm" style="min-width:900px;">
+                <thead>
+                  <tr style="background:var(--background);">
+                    <th class="sort-header text-left px-5 py-3 font-medium text-xs whitespace-nowrap cursor-pointer select-none" style="color:var(--muted-foreground);" data-key="code">
+                      物料编码 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--icon-muted);flex-shrink:0;"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                    </th>
+                    <th class="sort-header text-left px-5 py-3 font-medium text-xs whitespace-nowrap cursor-pointer select-none" style="color:var(--muted-foreground);" data-key="name">
+                      物料名称 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--icon-muted);flex-shrink:0;"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                    </th>
+                    <th class="text-left px-5 py-3 font-medium text-xs whitespace-nowrap" style="color:var(--muted-foreground);">
+                      规格型号
+                    </th>
+                    <th class="sort-header text-left px-5 py-3 font-medium text-xs whitespace-nowrap cursor-pointer select-none" style="color:var(--muted-foreground);" data-key="category">
+                      分类 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--icon-muted);flex-shrink:0;"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                    </th>
+                    <th class="sort-header text-right px-5 py-3 font-medium text-xs whitespace-nowrap cursor-pointer select-none" style="color:var(--muted-foreground);" data-key="quantity">
+                      库存数量 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--icon-muted);flex-shrink:0;"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                    </th>
+                    <th class="text-right px-5 py-3 font-medium text-xs whitespace-nowrap" style="color:var(--muted-foreground);">
+                      安全库存
+                    </th>
+                    <th class="sort-header text-left px-5 py-3 font-medium text-xs whitespace-nowrap cursor-pointer select-none" style="color:var(--muted-foreground);" data-key="status">
+                      库存状态 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--icon-muted);flex-shrink:0;"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                    </th>
+                    <th class="text-left px-5 py-3 font-medium text-xs whitespace-nowrap" style="color:var(--muted-foreground);">
+                      仓库位置
+                    </th>
+                    <th class="text-center px-5 py-3 font-medium text-xs whitespace-nowrap" style="color:var(--muted-foreground);">
+                      操作
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="table-body">
+                </tbody>
+              </table>
+            </div>
+
+            <!-- No Results -->
+            <div id="no-results" class="hidden flex-col items-center justify-center py-16 gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--icon-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="m11 8-3 3"/><path d="m14 8-3 3"/></svg>
+              <p class="text-sm" style="color:var(--muted-foreground);">无匹配结果</p>
+              <p class="text-xs" style="color:var(--icon-muted);">请尝试调整搜索条件或筛选项</p>
+            </div>
+
+            <!-- Pagination -->
+            <div class="flex items-center justify-between px-5 py-3 border-t" style="border-color:var(--border);">
+              <div class="flex items-center gap-2 text-xs" style="color:var(--muted-foreground);">
+                <span id="total-count">共 0 条记录</span>
+                <span class="mx-1">|</span>
+                <label for="rows-per-page">每页</label>
+                <select id="rows-per-page" class="h-7 px-2 rounded-md border text-xs bg-transparent outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                </select>
+                <span>条</span>
+              </div>
+              <div id="pagination-nav" class="flex items-center gap-1">
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== Detail Slide Panel ===== -->
+    <div id="detail-overlay" class="fixed inset-0 z-50 hidden" style="background:rgba(0,0,0,0.3);">
+      <div id="detail-panel" class="absolute right-0 top-0 bottom-0 overflow-y-auto border-l transition-transform duration-300 translate-x-full" style="width:380px;background:var(--popover);border-color:var(--border);box-shadow:var(--shadow-2xl);">
+        <div class="flex items-center justify-between px-5 h-14 border-b shrink-0" style="border-color:var(--border);">
+          <h3 class="text-sm font-semibold" style="color:var(--popover-foreground);">物料详情</h3>
+          <button id="detail-close" class="p-1.5 rounded-lg transition-colors" style="color:var(--muted-foreground);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <div id="detail-content" class="p-5"></div>
+      </div>
+    </div>
+
+    <!-- ===== Modal: Inbound ===== -->
+    <div id="modal-inbound" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
+      <div class="rounded-xl border overflow-hidden w-full max-w-lg mx-4" style="background:var(--popover);border-color:var(--border);box-shadow:var(--shadow-2xl);">
+        <div class="flex items-center justify-between px-5 h-14 border-b" style="border-color:var(--border);">
+          <h3 class="text-sm font-semibold" style="color:var(--popover-foreground);">入库登记</h3>
+          <button class="modal-close p-1.5 rounded-lg transition-colors" style="color:var(--muted-foreground);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <form id="form-inbound" class="p-5 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">物料编码</label>
+              <input name="code" readonly class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--muted-foreground);background:var(--muted);">
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">物料名称 <span style="color:var(--state-error);">*</span></label>
+              <input name="name" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">分类 <span style="color:var(--state-error);">*</span></label>
+              <select name="category" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+                <option value="">请选择</option>
+                <option>原材料</option>
+                <option>半成品</option>
+                <option>成品</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">规格型号</label>
+              <input name="spec" class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">数量 <span style="color:var(--state-error);">*</span></label>
+              <input name="quantity" type="number" min="1" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">单位</label>
+              <select name="unit" class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+                <option>件</option>
+                <option>个</option>
+                <option>kg</option>
+                <option>m</option>
+                <option>箱</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">供应商</label>
+              <input name="supplier" class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">入库仓库 <span style="color:var(--state-error);">*</span></label>
+            <select name="warehouse" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+              <option value="">请选择</option>
+              <option>A区</option>
+              <option>B区</option>
+              <option>C区</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">备注</label>
+            <textarea name="remark" rows="2" class="w-full px-3 py-2 rounded-lg border text-xs outline-none resize-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);"></textarea>
+          </div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" class="modal-close btn text-xs px-4 h-9 rounded-lg" style="border:1px solid var(--border);background:var(--card);color:var(--foreground);">取消</button>
+            <button type="submit" class="btn btn-primary text-xs px-4 h-9 rounded-lg">确认入库</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== Modal: Outbound ===== -->
+    <div id="modal-outbound" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
+      <div class="rounded-xl border overflow-hidden w-full max-w-lg mx-4" style="background:var(--popover);border-color:var(--border);box-shadow:var(--shadow-2xl);">
+        <div class="flex items-center justify-between px-5 h-14 border-b" style="border-color:var(--border);">
+          <h3 class="text-sm font-semibold" style="color:var(--popover-foreground);">出库申请</h3>
+          <button class="modal-close p-1.5 rounded-lg transition-colors" style="color:var(--muted-foreground);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <form id="form-outbound" class="p-5 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">物料编码 <span style="color:var(--state-error);">*</span></label>
+              <input name="code" id="outbound-code" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);" placeholder="输入物料编码">
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">物料名称</label>
+              <input name="name" id="outbound-name" readonly class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--muted-foreground);background:var(--muted);" placeholder="自动填充">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">出库数量 <span style="color:var(--state-error);">*</span></label>
+              <input name="quantity" type="number" min="1" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">领用人 <span style="color:var(--state-error);">*</span></label>
+              <input name="receiver" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">用途 <span style="color:var(--state-error);">*</span></label>
+            <select name="purpose" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+              <option value="">请选择</option>
+              <option>生产领料</option>
+              <option>维修使用</option>
+              <option>研发测试</option>
+              <option>外协加工</option>
+              <option>其他</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">备注</label>
+            <textarea name="remark" rows="2" class="w-full px-3 py-2 rounded-lg border text-xs outline-none resize-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);"></textarea>
+          </div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" class="modal-close btn text-xs px-4 h-9 rounded-lg" style="border:1px solid var(--border);background:var(--card);color:var(--foreground);">取消</button>
+            <button type="submit" class="btn btn-primary text-xs px-4 h-9 rounded-lg">提交申请</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== Modal: Inventory Check ===== -->
+    <div id="modal-inventory" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
+      <div class="rounded-xl border overflow-hidden w-full max-w-lg mx-4" style="background:var(--popover);border-color:var(--border);box-shadow:var(--shadow-2xl);">
+        <div class="flex items-center justify-between px-5 h-14 border-b" style="border-color:var(--border);">
+          <h3 class="text-sm font-semibold" style="color:var(--popover-foreground);">物料盘点</h3>
+          <button class="modal-close p-1.5 rounded-lg transition-colors" style="color:var(--muted-foreground);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <form id="form-inventory" class="p-5 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">盘点类型 <span style="color:var(--state-error);">*</span></label>
+              <select name="checkType" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+                <option value="">请选择</option>
+                <option>全面盘点</option>
+                <option>抽盘</option>
+                <option>循环盘点</option>
+                <option>临时盘点</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">盘点范围 <span style="color:var(--state-error);">*</span></label>
+              <select name="checkScope" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+                <option value="">请选择</option>
+                <option>全部仓库</option>
+                <option>A区</option>
+                <option>B区</option>
+                <option>C区</option>
+                <option>指定物料</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">负责人 <span style="color:var(--state-error);">*</span></label>
+            <input name="manager" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">备注</label>
+            <textarea name="remark" rows="2" class="w-full px-3 py-2 rounded-lg border text-xs outline-none resize-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);"></textarea>
+          </div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" class="modal-close btn text-xs px-4 h-9 rounded-lg" style="border:1px solid var(--border);background:var(--card);color:var(--foreground);">取消</button>
+            <button type="submit" class="btn btn-primary text-xs px-4 h-9 rounded-lg">开始盘点</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== Modal: Edit (Adjust) ===== -->
+    <div id="modal-edit" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
+      <div class="rounded-xl border overflow-hidden w-full max-w-lg mx-4" style="background:var(--popover);border-color:var(--border);box-shadow:var(--shadow-2xl);">
+        <div class="flex items-center justify-between px-5 h-14 border-b" style="border-color:var(--border);">
+          <h3 class="text-sm font-semibold" style="color:var(--popover-foreground);">库存调整</h3>
+          <button class="modal-close p-1.5 rounded-lg transition-colors" style="color:var(--muted-foreground);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <form id="form-edit" class="p-5 space-y-4">
+          <input type="hidden" name="editIndex">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">物料编码</label>
+              <input name="code" readonly class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--muted-foreground);background:var(--muted);">
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">物料名称</label>
+              <input name="name" readonly class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--muted-foreground);background:var(--muted);">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">当前库存</label>
+              <input name="currentQty" readonly class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--muted-foreground);background:var(--muted);">
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">调整后数量 <span style="color:var(--state-error);">*</span></label>
+              <input name="newQty" type="number" min="0" required class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">安全库存</label>
+            <input name="safeQty" type="number" min="0" class="w-full h-9 px-3 rounded-lg border text-xs outline-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);">
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-foreground);">调整原因</label>
+            <textarea name="reason" rows="2" class="w-full px-3 py-2 rounded-lg border text-xs outline-none resize-none" style="border-color:var(--input);color:var(--foreground);background:var(--background);"></textarea>
+          </div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" class="modal-close btn text-xs px-4 h-9 rounded-lg" style="border:1px solid var(--border);background:var(--card);color:var(--foreground);">取消</button>
+            <button type="submit" class="btn btn-primary text-xs px-4 h-9 rounded-lg">确认调整</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== Toast Container ===== -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2" style="max-width:360px;"></div>
+
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+      /* Button base */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.15s, box-shadow 0.15s;
+        white-space: nowrap;
+      }
+      .btn:hover { opacity: 0.85; }
+      .btn-primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border: none;
+      }
+      /* Table row hover */
+      tbody tr:hover {
+        background: var(--background-100) !important;
+      }
+      /* Sidebar nav hover */
+      nav a:hover {
+        background: var(--sidebar-accent);
+        color: var(--sidebar-accent-foreground);
+      }
+      /* Modal show */
+      .modal-show { display: flex !important; }
+      /* Export dropdown hover */
+      .export-opt:hover { background: var(--accent); }
+      /* Sort header active */
+      .sort-active { color: var(--primary) !important; }
+      /* Toast animation */
+      @keyframes toast-in { from { transform: translateX(100%); opacity:0; } to { transform: translateX(0); opacity:1; } }
+      @keyframes toast-out { from { transform: translateX(0); opacity:1; } to { transform: translateX(100%); opacity:0; } }
+      .toast-enter { animation: toast-in 0.3s ease-out forwards; }
+      .toast-exit { animation: toast-out 0.3s ease-in forwards; }
+      /* Detail panel */
+      .detail-open { transform: translateX(0) !important; }
+      /* Page button active */
+      .page-active { background: var(--primary) !important; color: var(--primary-foreground) !important; }
+    </style>
+
+    <script src="api-config.js"></script>
+    <script>
+    (function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // === Fetch Materials List ===
+            try {
+                var matData = await apiGet('/api/v1/materials/');
+                if (matData && matData.materials && matData.materials.length > 0) {
+                    // The existing script uses a closure variable 'materials'.
+                    // We need to override the table body directly since materials is in closure.
+                    var tbody = document.getElementById('table-body');
+                    if (tbody) {
+                        var mapped = matData.materials.map(function(m) {
+                            return {
+                                code: m.code || '',
+                                name: m.name || '',
+                                spec: m.spec || '',
+                                category: m.category || '',
+                                quantity: m.quantity || 0,
+                                safeQty: m.safe_quantity || 0,
+                                status: m.status || '正常',
+                                location: m.location || '',
+                                unit: m.unit || '件',
+                                supplier: m.supplier || ''
+                            };
+                        });
+                        // Trigger a custom event that the existing script can listen to
+                        window.__apiMaterials = mapped;
+                        window.dispatchEvent(new CustomEvent('materials-loaded'));
+                    }
+                }
+            } catch(e) { console.warn('Materials fetch failed', e); }
+
+            // === Fetch Summary Stats ===
+            try {
+                var statsData = await apiGet('/api/v1/materials/stats/summary');
+                if (statsData) {
+                    var el;
+                    el = document.getElementById('stat-total');
+                    if (el) el.textContent = (statsData.total || 0).toLocaleString();
+                    el = document.getElementById('stat-low-stock');
+                    if (el) el.textContent = (statsData.low_stock || 0) + (statsData.out_of_stock || 0);
+                }
+            } catch(e) { console.warn('Material stats fetch failed', e); }
+        });
+    })();
+    </script>
+    <script>
+    (function() {
+      'use strict';
+
+      /* ===== ICON PATHS HELPER ===== */
+      var _iconPaths = {
+        'check-circle': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+        'alert-circle': '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+        'info': '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'
+      };
+      function getIconPaths(name) {
+        return _iconPaths[name] || _iconPaths['info'];
+      }
+
+
+      /* ===== DATA ===== */
+      var materials = [
+        { code:'MAT-2024-001', name:'304不锈钢板', spec:'2.0mm x 1220mm', category:'原材料', quantity:1240, safeQty:500, status:'正常', location:'A区-01-03', unit:'件', supplier:'宝钢集团' },
+        { code:'MAT-2024-002', name:'铝合金型材 6063', spec:'40x40x3mm', category:'原材料', quantity:856, safeQty:300, status:'正常', location:'A区-02-11', unit:'件', supplier:'中铝公司' },
+        { code:'MAT-2024-003', name:'精密齿轮组件', spec:'M2-Z20-A', category:'半成品', quantity:42, safeQty:50, status:'低库存', location:'B区-03-07', unit:'个', supplier:'内部加工' },
+        { code:'MAT-2024-004', name:'碳钢圆管 Q235', spec:'DN50 x 3.5mm', category:'原材料', quantity:2100, safeQty:800, status:'正常', location:'A区-01-15', unit:'件', supplier:'天津钢管' },
+        { code:'MAT-2024-005', name:'电机驱动模组', spec:'NEMA23-2.8A', category:'成品', quantity:18, safeQty:20, status:'低库存', location:'C区-01-02', unit:'个', supplier:'自产' },
+        { code:'MAT-2024-006', name:'密封O型圈', spec:'NBR-25x3.5', category:'原材料', quantity:5600, safeQty:1000, status:'正常', location:'A区-03-22', unit:'件', supplier:'密封科技' },
+        { code:'MAT-2024-007', name:'液压缸总成', spec:'HOB-63/35-200', category:'半成品', quantity:0, safeQty:30, status:'缺货', location:'B区-02-05', unit:'个', supplier:'液压股份' },
+        { code:'MAT-2024-008', name:'PLC控制板 V3', spec:'S7-1200-DC', category:'成品', quantity:75, safeQty:60, status:'正常', location:'C区-02-08', unit:'个', supplier:'自产' },
+        { code:'MAT-2024-009', name:'钛合金螺栓 M8', spec:'Ti-6Al-4V-M8x25', category:'原材料', quantity:3200, safeQty:1500, status:'正常', location:'A区-04-01', unit:'件', supplier:'钛业集团' },
+        { code:'MAT-2024-010', name:'传感器线束总成', spec:'4芯-PUR-5m', category:'半成品', quantity:8, safeQty:40, status:'缺货', location:'B区-01-12', unit:'件', supplier:'线束厂' }
+      ];
+
+      var autoCodeCounter = 11;
+      var currentPage = 1;
+      var perPage = 10;
+      var sortKey = '';
+      var sortDir = 'asc';
+      var filteredData = materials.slice();
+
+      /* ===== HELPERS ===== */
+      function getCategoryStyle(cat) {
+        if (cat === '原材料') return 'background:var(--brand-50);color:var(--brand-600);';
+        if (cat === '半成品') return 'background:#fff3cd;color:#856404;';
+        return 'background:#e8f5e9;color:#2e7d32;';
+      }
+      function getStatusDot(status) {
+        if (status === '正常') return 'background:var(--state-success);';
+        if (status === '低库存') return 'background:#ff9500;';
+        return 'background:var(--state-error);';
+      }
+      function computeStatus(qty, safe) {
+        if (qty <= 0) return '缺货';
+        if (qty <= safe) return '低库存';
+        return '正常';
+      }
+
+      /* ===== TOAST ===== */
+      function showToast(msg, type) {
+        type = type || 'success';
+        var container = document.getElementById('toast-container');
+        var toast = document.createElement('div');
+        var iconMap = { success:'check-circle', error:'alert-circle', info:'info' };
+        var colorMap = { success:'var(--state-success)', error:'var(--state-error)', info:'var(--primary)' };
+        toast.className = 'toast-enter flex items-center gap-3 px-4 py-3 rounded-lg border';
+        toast.style.cssText = 'background:var(--popover);border-color:var(--border);box-shadow:var(--shadow-lg);color:var(--popover-foreground);';
+        toast.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:' + (colorMap[type]||'var(--primary)') + ';flex-shrink:0;">' + getIconPaths(iconMap[type]||'info') + '</svg><span class="text-xs flex-1">' + msg + '</span><button class="p-0.5 rounded" style="color:var(--muted-foreground);"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>';
+        container.appendChild(toast);
+                toast.querySelector('button').onclick = function() { removeToast(toast); };
+        setTimeout(function() { removeToast(toast); }, 3000);
+      }
+      function removeToast(el) {
+        if (!el || !el.parentNode) return;
+        el.classList.remove('toast-enter');
+        el.classList.add('toast-exit');
+        setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
+      }
+
+      /* ===== MODAL HELPERS ===== */
+      function openModal(id) {
+        var m = document.getElementById(id);
+        m.classList.add('modal-show');
+        m.classList.remove('hidden');
+      }
+      function closeModal(id) {
+        var m = document.getElementById(id);
+        m.classList.remove('modal-show');
+        m.classList.add('hidden');
+      }
+      function closeAllModals() {
+        ['modal-inbound','modal-outbound','modal-inventory','modal-edit'].forEach(function(id) { closeModal(id); });
+      }
+      document.querySelectorAll('.modal-close').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var modal = btn.closest('[id^="modal-"]');
+          if (modal) closeModal(modal.id);
+        });
+      });
+      ['modal-inbound','modal-outbound','modal-inventory','modal-edit'].forEach(function(id) {
+        document.getElementById(id).addEventListener('click', function(e) {
+          if (e.target === this) closeModal(id);
+        });
+      });
+
+      /* ===== FILTER + SEARCH ===== */
+      function applyFilters() {
+        var search = document.getElementById('table-search').value.trim().toLowerCase();
+        var cat = document.getElementById('filter-category').value;
+        var stat = document.getElementById('filter-status').value;
+        filteredData = materials.filter(function(m) {
+          var matchSearch = !search || m.code.toLowerCase().indexOf(search) !== -1 || m.name.toLowerCase().indexOf(search) !== -1;
+          var matchCat = !cat || m.category === cat;
+          var matchStat = !stat || m.status === stat;
+          return matchSearch && matchCat && matchStat;
+        });
+        currentPage = 1;
+        applySorting();
+        renderTable();
+      }
+      document.getElementById('table-search').addEventListener('input', applyFilters);
+      document.getElementById('filter-category').addEventListener('change', applyFilters);
+      document.getElementById('filter-status').addEventListener('change', applyFilters);
+
+      /* ===== SORTING ===== */
+      function applySorting() {
+        if (!sortKey) return;
+        filteredData.sort(function(a, b) {
+          var va = a[sortKey], vb = b[sortKey];
+          if (typeof va === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+          va = String(va); vb = String(vb);
+          return sortDir === 'asc' ? va.localeCompare(vb, 'zh') : vb.localeCompare(va, 'zh');
+        });
+      }
+      document.querySelectorAll('.sort-header').forEach(function(th) {
+        th.addEventListener('click', function() {
+          var key = th.getAttribute('data-key');
+          if (sortKey === key) {
+            sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortKey = key;
+            sortDir = 'asc';
+          }
+          document.querySelectorAll('.sort-header').forEach(function(h) { h.classList.remove('sort-active'); });
+          th.classList.add('sort-active');
+          applyFilters();
+        });
+      });
+
+      /* ===== RENDER TABLE ===== */
+      function renderTable() {
+        var tbody = document.getElementById('table-body');
+        var noResults = document.getElementById('no-results');
+        var totalPages = Math.max(1, Math.ceil(filteredData.length / perPage));
+        if (currentPage > totalPages) currentPage = totalPages;
+        var start = (currentPage - 1) * perPage;
+        var pageData = filteredData.slice(start, start + perPage);
+
+        if (filteredData.length === 0) {
+          tbody.innerHTML = '';
+          noResults.classList.remove('hidden');
+          noResults.classList.add('flex');
+        } else {
+          noResults.classList.add('hidden');
+          noResults.classList.remove('flex');
+          var html = '';
+          pageData.forEach(function(m, i) {
+            var idx = materials.indexOf(m);
+            var bg = i % 2 === 1 ? 'background:var(--accent);' : '';
+            html += '<tr class="transition-colors" style="' + bg + 'border-bottom:1px solid var(--border);">' +
+              '<td class="px-5 py-3 whitespace-nowrap font-mono text-xs" style="color:var(--muted-foreground);">' + m.code + '</td>' +
+              '<td class="px-5 py-3 truncate" style="color:var(--foreground);min-width:120px;">' + m.name + '</td>' +
+              '<td class="px-5 py-3 truncate" style="color:var(--muted-foreground);min-width:100px;">' + m.spec + '</td>' +
+              '<td class="px-5 py-3 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap" style="' + getCategoryStyle(m.category) + '">' + m.category + '</span></td>' +
+              '<td class="px-5 py-3 text-right whitespace-nowrap font-mono" style="color:var(--foreground);">' + m.quantity.toLocaleString() + '</td>' +
+              '<td class="px-5 py-3 text-right whitespace-nowrap font-mono" style="color:var(--muted-foreground);">' + m.safeQty.toLocaleString() + '</td>' +
+              '<td class="px-5 py-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full shrink-0" style="' + getStatusDot(m.status) + '"></span>' + m.status + '</span></td>' +
+              '<td class="px-5 py-3 truncate" style="color:var(--muted-foreground);min-width:80px;">' + m.location + '</td>' +
+              '<td class="px-5 py-3 whitespace-nowrap text-center"><div class="flex items-center justify-center gap-2">' +
+                '<button class="text-xs transition-colors" style="color:var(--primary);" data-action="view" data-idx="' + idx + '">查看</button>' +
+                '<button class="text-xs transition-colors" style="color:var(--muted-foreground);" data-action="edit" data-idx="' + idx + '">调整</button>' +
+                '<button class="text-xs transition-colors" style="color:var(--muted-foreground);" data-action="outbound" data-idx="' + idx + '">出库</button>' +
+              '</div></td></tr>';
+          });
+          tbody.innerHTML = html;
+        }
+
+        document.getElementById('total-count').textContent = '共 ' + filteredData.length + ' 条记录';
+        renderPagination(totalPages);
+              }
+
+      /* ===== PAGINATION ===== */
+      function renderPagination(totalPages) {
+        var nav = document.getElementById('pagination-nav');
+        var html = '<button class="w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-colors" style="color:var(--muted-foreground);background:var(--background);" data-page="prev" ' + (currentPage <= 1 ? 'disabled' : '') + '><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m15 18-6-6 6-6"/></svg></button>';
+
+        var pages = [];
+        if (totalPages <= 7) {
+          for (var i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+          pages.push(1);
+          if (currentPage > 3) pages.push('...');
+          var s = Math.max(2, currentPage - 1);
+          var e = Math.min(totalPages - 1, currentPage + 1);
+          for (var j = s; j <= e; j++) pages.push(j);
+          if (currentPage < totalPages - 2) pages.push('...');
+          pages.push(totalPages);
+        }
+
+        pages.forEach(function(p) {
+          if (p === '...') {
+            html += '<span class="w-8 h-8 flex items-center justify-center text-xs" style="color:var(--muted-foreground);">...</span>';
+          } else {
+            var active = p === currentPage ? ' page-active' : '';
+            html += '<button class="w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-colors' + active + '" style="color:var(--foreground);background:var(--background);" data-page="' + p + '">' + p + '</button>';
+          }
+        });
+
+        html += '<button class="w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-colors" style="color:var(--muted-foreground);background:var(--background);" data-page="next" ' + (currentPage >= totalPages ? 'disabled' : '') + '><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m9 18 6-6-6-6"/></svg></button>';
+        nav.innerHTML = html;
+
+        nav.querySelectorAll('button[data-page]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var p = btn.getAttribute('data-page');
+            var tp = Math.max(1, Math.ceil(filteredData.length / perPage));
+            if (p === 'prev') { if (currentPage > 1) currentPage--; }
+            else if (p === 'next') { if (currentPage < tp) currentPage++; }
+            else { currentPage = parseInt(p); }
+            renderTable();
+          });
+        });
+      }
+
+      document.getElementById('rows-per-page').addEventListener('change', function() {
+        perPage = parseInt(this.value);
+        currentPage = 1;
+        renderTable();
+      });
+
+      /* ===== ROW ACTIONS ===== */
+      document.getElementById('table-body').addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        var action = btn.getAttribute('data-action');
+        var idx = parseInt(btn.getAttribute('data-idx'));
+        var m = materials[idx];
+        if (!m) return;
+
+        if (action === 'view') {
+          openDetailPanel(m);
+        } else if (action === 'edit') {
+          openEditModal(m, idx);
+        } else if (action === 'outbound') {
+          openOutboundPrefilled(m);
+        }
+      });
+
+      /* ===== DETAIL PANEL ===== */
+      function openDetailPanel(m) {
+        var overlay = document.getElementById('detail-overlay');
+        var panel = document.getElementById('detail-panel');
+        var content = document.getElementById('detail-content');
+        overlay.classList.remove('hidden');
+        setTimeout(function() { panel.classList.add('detail-open'); }, 10);
+
+        content.innerHTML =
+          '<div class="space-y-5">' +
+            '<div class="flex items-center gap-3 pb-4 border-b" style="border-color:var(--border);">' +
+              '<div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background:var(--brand-50);"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--brand-600);flex-shrink:0;"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div>' +
+              '<div><p class="text-sm font-semibold" style="color:var(--popover-foreground);">' + m.name + '</p><p class="text-xs font-mono" style="color:var(--muted-foreground);">' + m.code + '</p></div>' +
+            '</div>' +
+            '<div class="grid grid-cols-2 gap-4">' +
+              field('规格型号', m.spec) + field('分类', '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium" style="' + getCategoryStyle(m.category) + '">' + m.category + '</span>') +
+              field('库存数量', '<span class="font-mono font-semibold" style="color:var(--foreground);">' + m.quantity.toLocaleString() + '</span> <span class="text-xs" style="color:var(--muted-foreground);">' + (m.unit||'件') + '</span>') +
+              field('安全库存', '<span class="font-mono" style="color:var(--muted-foreground);">' + m.safeQty.toLocaleString() + '</span>') +
+              field('库存状态', '<span class="inline-flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full shrink-0" style="' + getStatusDot(m.status) + '"></span>' + m.status + '</span>') +
+              field('仓库位置', m.location) +
+              field('供应商', m.supplier || '-') +
+              field('单位', m.unit || '件') +
+            '</div>' +
+            '<div class="pt-4 border-t" style="border-color:var(--border);">' +
+              '<p class="text-xs font-medium mb-2" style="color:var(--muted-foreground);">库存占比</p>' +
+              '<div class="w-full h-2 rounded-full overflow-hidden" style="background:var(--muted);">' +
+                '<div class="h-full rounded-full transition-all" style="width:' + Math.min(100, Math.round(m.quantity / m.safeQty * 100)) + '%;background:' + (m.status==='正常'?'var(--state-success)':m.status==='低库存'?'#ff9500':'var(--state-error)') + ';"></div>' +
+              '</div>' +
+              '<p class="text-xs mt-1" style="color:var(--muted-foreground);">' + Math.round(m.quantity / m.safeQty * 100) + '% 安全库存</p>' +
+            '</div>' +
+          '</div>';
+              }
+      function field(label, value) {
+        return '<div><p class="text-xs mb-1" style="color:var(--muted-foreground);">' + label + '</p><p class="text-sm" style="color:var(--popover-foreground);">' + value + '</p></div>';
+      }
+      document.getElementById('detail-close').addEventListener('click', closeDetailPanel);
+      document.getElementById('detail-overlay').addEventListener('click', function(e) {
+        if (e.target === this) closeDetailPanel();
+      });
+      function closeDetailPanel() {
+        var panel = document.getElementById('detail-panel');
+        panel.classList.remove('detail-open');
+        setTimeout(function() { document.getElementById('detail-overlay').classList.add('hidden'); }, 300);
+      }
+
+      /* ===== EDIT MODAL ===== */
+      function openEditModal(m, idx) {
+        var form = document.getElementById('form-edit');
+        form.editIndex.value = idx;
+        form.code.value = m.code;
+        form.name.value = m.name;
+        form.currentQty.value = m.quantity.toLocaleString();
+        form.newQty.value = m.quantity;
+        form.safeQty.value = m.safeQty;
+        form.reason.value = '';
+        openModal('modal-edit');
+      }
+      document.getElementById('form-edit').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var idx = parseInt(this.editIndex.value);
+        var newQty = parseInt(this.newQty.value);
+        var newSafe = parseInt(this.safeQty.value);
+        if (isNaN(newQty) || newQty < 0) { showToast('请输入有效数量', 'error'); return; }
+        materials[idx].quantity = newQty;
+        if (!isNaN(newSafe) && newSafe >= 0) materials[idx].safeQty = newSafe;
+        materials[idx].status = computeStatus(materials[idx].quantity, materials[idx].safeQty);
+        closeModal('modal-edit');
+        applyFilters();
+        showToast('库存已调整: ' + materials[idx].code, 'success');
+      });
+
+      /* ===== OUTBOUND PREFILLED ===== */
+      function openOutboundPrefilled(m) {
+        var form = document.getElementById('form-outbound');
+        form.code.value = m.code;
+        document.getElementById('outbound-name').value = m.name;
+        form.quantity.value = '';
+        form.receiver.value = '';
+        form.purpose.value = '';
+        form.remark.value = '';
+        openModal('modal-outbound');
+      }
+
+      /* ===== OUTBOUND CODE AUTO-FILL ===== */
+      document.getElementById('outbound-code').addEventListener('input', function() {
+        var code = this.value.trim();
+        var found = materials.find(function(m) { return m.code === code; });
+        document.getElementById('outbound-name').value = found ? found.name : '';
+      });
+
+      /* ===== 1. INBOUND ===== */
+      document.getElementById('btn-inbound').addEventListener('click', function() {
+        var code = 'MAT-2024-' + String(autoCodeCounter).padStart(3, '0');
+        var form = document.getElementById('form-inbound');
+        form.code.value = code;
+        form.name.value = '';
+        form.category.value = '';
+        form.spec.value = '';
+        form.quantity.value = '';
+        form.unit.value = '件';
+        form.supplier.value = '';
+        form.warehouse.value = '';
+        form.remark.value = '';
+        openModal('modal-inbound');
+      });
+      document.getElementById('form-inbound').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var f = this;
+        var warehouse = f.warehouse.value;
+        var qty = parseInt(f.quantity.value);
+        var locMap = { 'A区':'A区-0' + (Math.floor(Math.random()*9)+1) + '-' + String(Math.floor(Math.random()*30)+1).padStart(2,'0'), 'B区':'B区-0' + (Math.floor(Math.random()*9)+1) + '-' + String(Math.floor(Math.random()*30)+1).padStart(2,'0'), 'C区':'C区-0' + (Math.floor(Math.random()*9)+1) + '-' + String(Math.floor(Math.random()*30)+1).padStart(2,'0') };
+        var newItem = {
+          code: f.code.value,
+          name: f.name.value,
+          spec: f.spec.value || '-',
+          category: f.category.value,
+          quantity: isNaN(qty) ? 0 : qty,
+          safeQty: Math.round(qty * 0.4),
+          status: '正常',
+          location: locMap[warehouse] || 'A区-01-01',
+          unit: f.unit.value,
+          supplier: f.supplier.value || '-'
+        };
+        newItem.status = computeStatus(newItem.quantity, newItem.safeQty);
+        materials.unshift(newItem);
+        autoCodeCounter++;
+        closeModal('modal-inbound');
+        applyFilters();
+        showToast('入库成功: ' + newItem.code + ' ' + newItem.name, 'success');
+      });
+
+      /* ===== 2. OUTBOUND ===== */
+      document.getElementById('btn-outbound').addEventListener('click', function() {
+        var form = document.getElementById('form-outbound');
+        form.code.value = '';
+        document.getElementById('outbound-name').value = '';
+        form.quantity.value = '';
+        form.receiver.value = '';
+        form.purpose.value = '';
+        form.remark.value = '';
+        openModal('modal-outbound');
+      });
+      document.getElementById('form-outbound').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var code = this.code.value.trim();
+        var qty = parseInt(this.quantity.value);
+        var found = materials.find(function(m) { return m.code === code; });
+        if (!found) { showToast('未找到物料: ' + code, 'error'); return; }
+        if (isNaN(qty) || qty <= 0) { showToast('请输入有效出库数量', 'error'); return; }
+        if (qty > found.quantity) { showToast('出库数量超出库存 (' + found.quantity + ')', 'error'); return; }
+        found.quantity -= qty;
+        found.status = computeStatus(found.quantity, found.safeQty);
+        closeModal('modal-outbound');
+        applyFilters();
+        showToast('出库申请已提交: ' + code + ' x' + qty, 'success');
+      });
+
+      /* ===== 3. INVENTORY CHECK ===== */
+      document.getElementById('btn-inventory').addEventListener('click', function() {
+        var form = document.getElementById('form-inventory');
+        form.checkType.value = '';
+        form.checkScope.value = '';
+        form.manager.value = '';
+        form.remark.value = '';
+        openModal('modal-inventory');
+      });
+      document.getElementById('form-inventory').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var type = this.checkType.value;
+        var scope = this.checkScope.value;
+        closeModal('modal-inventory');
+        showToast('盘点任务已创建: ' + type + ' - ' + scope, 'success');
+      });
+
+      /* ===== 4. EXPORT DROPDOWN ===== */
+      var exportBtn = document.getElementById('btn-export');
+      var exportDD = document.getElementById('export-dropdown');
+      exportBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        exportDD.classList.toggle('hidden');
+      });
+      document.addEventListener('click', function() { exportDD.classList.add('hidden'); });
+      document.querySelectorAll('.export-opt').forEach(function(opt) {
+        opt.addEventListener('click', function() {
+          var fmt = this.getAttribute('data-format');
+          exportDD.classList.add('hidden');
+          showToast('正在导出 ' + fmt + ' 文件...', 'info');
+        });
+      });
+
+      /* ===== INIT ===== */
+      applyFilters();
+      renderTable();
+
+      /* ===== API Data Integration ===== */
+      window.addEventListener('materials-loaded', function() {
+        if (window.__apiMaterials && window.__apiMaterials.length > 0) {
+          materials = window.__apiMaterials;
+          filteredData = materials.slice();
+          currentPage = 1;
+          autoCodeCounter = materials.length + 1;
+          applyFilters();
+          renderTable();
+        }
+      });
+
+    })();
+    </script>
+    <script>
+    (function(){
+        var h=document.documentElement,b=document.body;
+        h.classList.remove('dark');
+        h.style.backgroundColor='#faf8f5';
+        h.style.color='#1d1b18';
+        b.style.backgroundColor='#faf8f5';
+        b.style.color='#1d1b18';
+        var mo=new MutationObserver(function(){
+            if(h.classList.contains('dark'))h.classList.remove('dark');
+            if(h.style.backgroundColor!=='#faf8f5')h.style.backgroundColor='#faf8f5';
+            if(h.style.color!=='#1d1b18')h.style.color='#1d1b18';
+            if(b.style.backgroundColor!=='#faf8f5')b.style.backgroundColor='#faf8f5';
+            if(b.style.color!=='#1d1b18')b.style.color='#1d1b18';
+        });
+        mo.observe(h,{attributes:true,attributeFilter:['class','style']});
+        mo.observe(b,{attributes:true,attributeFilter:['style']});
+    })();
+    </script>
+</body>
+</html>

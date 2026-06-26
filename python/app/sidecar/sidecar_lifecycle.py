@@ -42,7 +42,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
         while not self._shutdown_initiated:
             try:
                 self.check_idle_and_shutdown()
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 logger.error(f"Error in idle checker: {e}")
             await asyncio.sleep(self._check_interval)
 
@@ -93,7 +93,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
             cache = ModelCache()
             cache.clear()
             logger.info("Model cache cleared")
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError) as e:
             logger.warning(f"Failed to clear model cache: {e}")
 
         try:
@@ -101,7 +101,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
 
             gc.collect()
             logger.info("Garbage collection completed")
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.warning(f"Garbage collection failed: {e}")
 
         logger.info("Resource cleanup completed")
@@ -115,7 +115,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
             if state_path.exists():
                 state_path.unlink()
                 logger.info(f"State file removed: {state_path}")
-        except Exception as e:
+        except (OSError, PermissionError) as e:
             logger.warning(f"Failed to remove state file: {e}")
 
     def _trigger_shutdown(self):
@@ -130,7 +130,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
 
                 t = threading.Thread(target=self._send_shutdown_signal, daemon=True)
                 t.start()
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 logger.error(f"Failed to trigger shutdown: {e}")
 
     def _send_shutdown_signal(self):
@@ -139,7 +139,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
                 os.kill(os.getpid(), signal.SIGTERM)
             else:
                 os.kill(os.getpid(), signal.SIGTERM)
-        except Exception as e:
+        except (OSError, ProcessLookupError, PermissionError) as e:
             logger.error(f"Failed to send shutdown signal: {e}")
 
 
@@ -168,10 +168,13 @@ class GracefulShutdownHandler:
 
         self._update_status_file("shutting_down")
 
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        # 修复：避免在已有事件循环的线程中调用 asyncio.run()
+        try:
+            loop = asyncio.get_running_loop()
+            # 已有事件循环运行，使用 create_task 调度异步任务
             loop.create_task(self._perform_graceful_shutdown())
-        else:
+        except RuntimeError:
+            # 没有运行中的事件循环，安全地使用 asyncio.run()
             asyncio.run(self._perform_graceful_shutdown())
 
     async def _perform_graceful_shutdown(self):
@@ -201,7 +204,7 @@ class GracefulShutdownHandler:
             cache = ModelCache()
             cache.clear()
             logger.info("Model cache cleared")
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError) as e:
             logger.warning(f"Failed to clear model cache: {e}")
 
         try:
@@ -209,7 +212,7 @@ class GracefulShutdownHandler:
 
             gc.collect()
             logger.info("Garbage collection completed")
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.warning(f"Garbage collection failed: {e}")
 
         logger.info("All resources cleaned up")
@@ -231,7 +234,7 @@ class GracefulShutdownHandler:
                 with open(state_path, "w", encoding="utf-8") as f:
                     json.dump(state, f, indent=2)
                 logger.info(f"State file updated: status={status}")
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, ValueError) as e:
             logger.warning(f"Failed to update status file: {e}")
 
     def _remove_state_file(self):
@@ -243,7 +246,7 @@ class GracefulShutdownHandler:
             if state_path.exists():
                 state_path.unlink()
                 logger.info(f"State file removed: {state_path}")
-        except Exception as e:
+        except (OSError, PermissionError) as e:
             logger.warning(f"Failed to remove state file: {e}")
 
     def _handle_atexit(self):

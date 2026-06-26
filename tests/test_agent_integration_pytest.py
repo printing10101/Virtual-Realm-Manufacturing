@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "python"))
 import pytest
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8765"
 
 class TestAgentTokenCreation:
     def test_create_rb_token(self):

@@ -670,15 +670,13 @@ async function handleImportToProject() {
       // 触发响应式更新
       projectStore.markModified?.()
     }
-    ElMessage.success(t('dxfImport.importToProjectSuccess'))
+   ElMessage.success(t('dxfImport.importToProjectSuccess'))
     store.closeDialog()
-  } catch (err) {
-    console.error(err)
+  } catch {
     ElMessage.error(t('dxfImport.importToProjectFailed'))
   } finally {
     importing.value = false
-  }
-}
+  }}
 </script>
 
 <style scoped>

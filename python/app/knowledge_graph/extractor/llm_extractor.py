@@ -114,8 +114,8 @@ class LLMExtractor:
 
         extractor = LLMExtractor(llm_client=client)
         result = await extractor.extract("path/to/document.pdf")
-        print(f"提取了 {len(result.entities)} 个实体")
-        print(f"提取了 {len(result.relations)} 个关系")
+        logger.info(f"提取了 {len(result.entities)} 个实体")
+        logger.info(f"提取了 {len(result.relations)} 个关系")
 
     Args:
         llm_client: LLM 客户端实例。
@@ -321,7 +321,7 @@ class LLMExtractor:
                     self.max_retries,
                     exc,
                 )
-            except Exception as exc:
+            except (ConnectionError, TimeoutError, RuntimeError, ValueError) as exc:
                 last_error = exc
                 logger.warning(
                     "批次 %d: LLM 调用异常 (尝试 %d/%d): %s",
@@ -584,7 +584,7 @@ async def _async_main():  # pragma: no cover
             json.dump(output_data, f, ensure_ascii=False, indent=2)
         logger.info("结果已保存到 %s", args.output)
     else:
-        print(json.dumps(output_data, ensure_ascii=False, indent=2))
+        logger.info(json.dumps(output_data, ensure_ascii=False, indent=2))
 
     # 打印摘要
     summary = f"""
@@ -600,7 +600,7 @@ async def _async_main():  # pragma: no cover
         summary += f"""  - 验证准确率: {vs.get('accuracy_score', 0):.1f}%
   - 建议: {vs.get('recommendation', 'N/A')}
 """
-    print(summary)
+    logger.info(summary)
 
 
 def main():  # pragma: no cover

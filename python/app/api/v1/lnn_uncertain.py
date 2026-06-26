@@ -76,7 +76,7 @@ async def predict_uncertain(body: LNNPredictRequest):
                 input_data=body.input_data,
                 return_confidence=True,
             )
-        except Exception as model_err:
+        except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as model_err:
             safe = safe_error_message(
                 model_err,
                 context=f"lnn.predict_uncertain_inference[{body.model_name}]",
@@ -135,7 +135,7 @@ async def predict_uncertain(body: LNNPredictRequest):
             code=ErrorCode.NOT_FOUND,
             message=f"Model '{body.model_name}' not found in registry",
         )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         safe = safe_error_message(
             e,
             context=f"lnn.predict_uncertain[{body.model_name}]",

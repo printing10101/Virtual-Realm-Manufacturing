@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from dataclasses import dataclass, field
@@ -246,8 +247,8 @@ class SolutionGenerator:
                 temperature=0.3,
             )
             content = response.get("content", "").strip()
-        except Exception as e:
-            logger.error("LLM方案生成失败: %s", e)
+        except (RuntimeError, OSError, ValueError, TypeError, ImportError, AttributeError, KeyError) as e:
+            logger.error("LLM方案生成失败: %s", e, exc_info=True)
             return self._create_fallback_solution(
                 material, precision_level, batch_size, machine_type
             )
@@ -339,8 +340,8 @@ class SolutionGenerator:
                 confidence_score=float(data.get("confidence_score", 5.0)),
                 uncertainty=data.get("uncertainty", ""),
             )
-        except Exception as e:
-            logger.warning("方案解析失败: %s，使用降级方案", e)
+        except (ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
+            logger.warning("方案解析失败: %s，使用降级方案", e, exc_info=True)
             return SolutionGenerator._create_fallback_solution(
                 material, precision_level, batch_size, machine_type
             )

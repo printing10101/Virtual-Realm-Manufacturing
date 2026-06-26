@@ -120,9 +120,8 @@ class DxfToModelConverter:
 
         try:
             base = self._create_base_solid(length, width, height)
-        except Exception as e:
-            # 兜底捕获：cadquery/OCCT 在构造基础实体时可能抛出多种异常
-            # (ValueError 类型参数错误、RuntimeError OCCT 内部错误等)
+        except (ValueError, TypeError, ZeroDivisionError, OverflowError, RuntimeError, OSError) as e:
+            # cadquery/OCCT 在构造基础实体时可能抛出参数错误、内部运行时错误等
             # 统一收口为 DxfModelError 向上抛出，保持业务异常类型一致
             raise DxfModelError(
                 f"基础立方体创建失败(尺寸={length}x{width}x{height}mm): {e}"
@@ -133,7 +132,7 @@ class DxfToModelConverter:
             try:
                 base = self._add_hole(base, hole, height)
                 hole_count += 1
-            except Exception as e:
+            except (ValueError, TypeError, ZeroDivisionError, OverflowError, RuntimeError) as e:
                 # 单个孔特征失败不应阻塞整个模型转换，记录后跳过
                 # 异常族：ValueError/TypeError/cadquery.CQException
                 result.warnings.append(
@@ -170,7 +169,7 @@ class DxfToModelConverter:
                     "hole_count": hole_count,
                 },
             )
-        except Exception as e:  # noqa: BLE001
+        except (OSError, RuntimeError, ImportError) as e:  # noqa: BLE001
             logger.debug("bridge 数据收集失败（不影响主流程）: %s", e)
 
         return result
@@ -272,9 +271,8 @@ class DxfToModelConverter:
             )
             logger.info("STL导出: %s (%.1f KB)", path.name, path.stat().st_size / 1024)
             return path
-        except Exception as e:
-            # 兜底捕获：cadquery + OCCT 在 STL 导出阶段可能抛出多种异常
-            # (IOError 写盘失败、RuntimeError OCCT 网格化错误等)
+        except (OSError, RuntimeError, ValueError, TypeError, OverflowError) as e:
+            # cadquery + OCCT 在 STL 导出阶段可能抛出文件 I/O 错误、网格化错误等
             raise DxfModelError(f"STL导出失败({path}): {e}") from e
 
     def export_step(
@@ -307,7 +305,7 @@ class DxfToModelConverter:
             )
             logger.info("STEP导出: %s (%.1f KB)", path.name, path.stat().st_size / 1024)
             return path
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TypeError, OverflowError) as e:
             raise DxfModelError(f"STEP导出失败({path}): {e}") from e
 
     def convert_from_polylines(
@@ -381,11 +379,11 @@ class DxfToModelConverter:
                     hwp = hwp.extrude(height * 1.2)
                     base = base.cut(hwp)
                     result.hole_count += 1
-                except Exception as e:
+                except (ValueError, TypeError, ZeroDivisionError, RuntimeError) as e:
                     result.warnings.append(
                         f"挖孔失败(handle={hole.source_handle}): {e}"
                     )
-                    logger.warning("挖孔失败: %s", e)
+                    logger.warning("挖孔失败: %s", e, exc_info=True)
 
             # 平移让最小 Z=0
             base = base.translate((0, 0, 0))
@@ -395,7 +393,7 @@ class DxfToModelConverter:
                 "polyline→3D 完成: %.1fx%.1fx%.1f, 孔=%d",
                 length, width, height, result.hole_count,
             )
-        except Exception as e:
+        except (ValueError, TypeError, ZeroDivisionError, RuntimeError, OverflowError) as e:
             result.errors.append(f"多段线建模失败: {e}")
             logger.error("多段线建模失败: %s", e, exc_info=True)
         return result
@@ -420,8 +418,8 @@ class DxfToModelConverter:
         """
         try:
             model = self._create_base_solid(length, width, height)
-        except Exception as e:
-            # 兜底捕获：与 convert_feature_to_model 入口一致，统一收口
+        except (ValueError, TypeError, ZeroDivisionError, OverflowError, RuntimeError, OSError) as e:
+            # 与 convert 入口一致，统一收口
             raise DxfModelError(
                 f"直接创建模型失败(尺寸={length}x{width}x{height}mm): {e}"
             ) from e
@@ -443,7 +441,7 @@ class DxfToModelConverter:
                 )
                 try:
                     model = self._add_hole(model, hole_info, height)
-                except Exception as e:
+                except (ValueError, TypeError, ZeroDivisionError, RuntimeError) as e:
                     # 单个孔失败不阻塞后续孔和整体模型
                     logger.warning("孔创建失败: %s", e, exc_info=True)
 

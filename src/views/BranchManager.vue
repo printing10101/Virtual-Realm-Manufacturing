@@ -1,19 +1,46 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getBranchTypeTagType } from '@/utils/statusHelpers'
 import http from '@/utils/http'
+import { API_CONFIG } from '@/config/api'
 
-const branches = ref<any[]>([])
+// 类型定义
+interface Branch {
+  id: string
+  name: string
+  type: string
+  base_branch: string | null
+  data: Record<string, unknown>
+  metadata: Record<string, unknown>
+  created_at: number
+  updated_at: number
+}
+
+interface MergeForm {
+  source_id: string
+  target_id: string
+  strategy: 'overwrite' | 'merge' | 'rebase'
+}
+
+interface CreateForm {
+  name: string
+  base_branch: string
+  type: 'main' | 'feature' | 'hotfix'
+  data: Record<string, unknown>
+}
+
+const branches = ref<Branch[]>([])
 const loading = ref(false)
 const createDialog = ref(false)
 const mergeDialog = ref(false)
-const mergeForm = ref({ source_id: '', target_id: '', strategy: 'overwrite' })
-const createForm = ref({ name: '', base_branch: '', type: 'main', data: {} })
+const mergeForm = ref<MergeForm>({ source_id: '', target_id: '', strategy: 'overwrite' })
+const createForm = ref<CreateForm>({ name: '', base_branch: '', type: 'main', data: {} })
 const typeFilter = ref('')
 const branchDataInput = ref('{}')
 
-const API_BASE = '/api/v1'
+const API_BASE = API_CONFIG.V1
 
 async function fetchBranches() {
   loading.value = true
@@ -23,19 +50,19 @@ async function fetchBranches() {
       : `${API_BASE}/templates/branches`
     const res = await http.get(url)
     if (res.data.code === 'SUCCESS') branches.value = res.data.data
-  } catch (e: unknown) {
-    console.warn('Failed to fetch branches:', e)
+  } catch {
+    // 静默处理
   } finally {
     loading.value = false
   }
 }
 
 async function createBranch() {
-  let data = {}
+  let data: Record<string, unknown> = {}
   try {
     data = JSON.parse(branchDataInput.value || '{}')
-  } catch (e: unknown) {
-    console.warn('Failed to parse branch data:', e)
+  } catch {
+    // JSON 解析失败，使用空对象
     data = {}
   }
   try {
@@ -49,8 +76,8 @@ async function createBranch() {
     createForm.value = { name: '', base_branch: '', type: 'main', data: {} }
     branchDataInput.value = '{}'
     fetchBranches()
-  } catch (e: unknown) {
-    console.warn('Failed to create branch:', e)
+  } catch {
+    // 静默处理
   }
 }
 
@@ -62,22 +89,29 @@ async function mergeBranch() {
     })
     mergeDialog.value = false
     fetchBranches()
-  } catch (e: unknown) {
-    console.warn('Failed to merge branch:', e)
+  } catch {
+    // 静默处理
   }
 }
 
 async function deleteBranch(branchId: string, type: string) {
   if (type === 'main') {
-    alert('不能删除主线分支')
+    ElMessage.warning('不能删除主线分支')
     return
   }
-  if (!confirm('确定删除此分支？')) return
   try {
+    await ElMessageBox.confirm('确定删除此分支？', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
     await http.delete(`${API_BASE}/templates/branches/${branchId}`)
     fetchBranches()
   } catch (e: unknown) {
-    console.warn('Failed to delete branch:', e)
+    // 用户取消对话框时不处理
+    if (e !== 'cancel') {
+      // 静默处理
+    }
   }
 }
 

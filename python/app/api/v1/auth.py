@@ -18,6 +18,7 @@ from app.auth.security import (
     decode_token_strict,
     get_token_ban_list,
 )
+from typing import Any
 from app.middleware.rate_limiter import limiter
 from app.core.request_id import get_request_id as _get_request_id
 
@@ -29,7 +30,7 @@ security_scheme = HTTPBearer()
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-) -> dict:
+) -> dict[str, Any]:
     token = credentials.credentials
     ban_list = get_token_ban_list()
     if ban_list.is_banned(token):
@@ -157,7 +158,8 @@ async def login(request: Request, body: UserLogin):
 
 
 @router.post("/refresh", response_model=dict)
-async def refresh_token(body: dict):
+@limiter.limit("10/minute")
+async def refresh_token(request: Request, body: dict):
     refresh_token_str = body.get("refresh_token", "")
     if not refresh_token_str:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="缺少refresh_token")
@@ -197,7 +199,8 @@ async def refresh_token(body: dict):
 
 
 @router.post("/logout", response_model=dict)
-async def logout(body: dict):
+@limiter.limit("20/minute")
+async def logout(request: Request, body: dict):
     access_token_str = body.get("access_token", "")
     refresh_token_str = body.get("refresh_token", "")
 

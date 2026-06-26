@@ -320,8 +320,8 @@ class TaskClassifier:
             )
             content = response.get("content", "").strip()
             return self._parse_llm_response(content)
-        except Exception as e:
-            logger.warning("LLM分类失败，降级为通用查询: %s", e)
+        except (RuntimeError, OSError, ValueError, TypeError, ImportError, AttributeError, KeyError) as e:
+            logger.warning("LLM分类失败，降级为通用查询: %s", e, exc_info=True)
             return ClassificationResult(
                 task_type=TaskType.KNOWLEDGE_QUERY,
                 confidence=0.3,

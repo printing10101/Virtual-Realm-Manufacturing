@@ -192,7 +192,6 @@ const validation = validateTurningParams(turningPath);
 if (validation.isValid) {
   // 计算加工时间
   const machiningTime = calculateTurningTime(turningPath);
-  console.log('预计加工时间:', machiningTime.toFixed(1), '分钟');
   
   // 导出G代码
   exportGCode(turningPath, 'shaft_part.nc');
@@ -266,11 +265,9 @@ const result = await thermalSim.run();
 
 // 获取最高温度
 const maxTemp = result.getMaxTemperature();
-console.log('最高温度:', maxTemp, '°C');
 
 // 获取热变形
-const deformation = result.getThermalDeformation();
-console.log('最大变形:', deformation.max, 'mm');`,
+const deformation = result.getThermalDeformation();`,
     language: 'typescript',
     useCases: [
       '高速加工工艺优化',
@@ -324,17 +321,11 @@ const features = await featureRecognizer.recognize(model);
 
 // 输出识别结果
 features.forEach(feature => {
-  console.log('特征类型:', feature.type);
-  console.log('置信度:', feature.confidence);
-  console.log('参数:', feature.parameters);
-  console.log('加工建议:', feature.machiningSuggestion);
+  // 特征类型、置信度、参数和加工建议
 });
 
 // 统计特征数量
-const summary = featureRecognizer.getSummary(features);
-console.log('总特征数:', summary.totalCount);
-console.log('孔类特征:', summary.holeCount);
-console.log('槽类特征:', summary.slotCount);`,
+const summary = featureRecognizer.getSummary(features);`,
     language: 'typescript',
     useCases: [
       '自动化工艺路线生成',
@@ -408,7 +399,7 @@ assembly.addConstraint({
 // 干涉检查
 const interference = assembly.checkInterference();
 if (interference.hasInterference) {
-  console.warn('发现干涉:', interference.details);
+  // 处理干涉情况
 }
 
 // 生成爆炸视图
@@ -491,9 +482,8 @@ const simResult = await machineSim.run();
 
 // 检查碰撞
 if (simResult.hasCollision) {
-  console.error('检测到碰撞:', simResult.collisionDetails);
+  // 处理碰撞情况
 } else {
-  console.log('加工时间:', simResult.machiningTime, '分钟');
   exportGCode(toolpath, '5axis_part.nc');
 }`,
     language: 'typescript',
@@ -572,18 +562,12 @@ const forceModel = new CuttingForceModel({
 // 预测切削力
 const forces = forceModel.predict();
 
-console.log('主切削力 Fc:', forces.Fc.toFixed(1), 'N');
-console.log('进给力 Ff:', forces.Ff.toFixed(1), 'N');
-console.log('背向力 Fp:', forces.Fp.toFixed(1), 'N');
-console.log('合力 F:', forces.resultant.toFixed(1), 'N');
-
 // 校核机床功率
 const requiredPower = forces.powerRequirement;
-console.log('所需功率:', requiredPower.toFixed(2), 'kW');
 
 // 判断是否安全
 if (forces.maxStress > toolParams.allowableStress) {
-  console.warn('切削力过大，建议降低切深或进给');
+  // 切削力过大，建议降低切深或进给
 }`,
     language: 'typescript',
     useCases: [
@@ -648,17 +632,13 @@ const processPlan = await processPlanner.generate(part, {
 });
 
 // 输出工艺路线
-console.log('工序数量:', processPlan.operations.length);
 processPlan.operations.forEach((op, index) => {
-  console.log(\`工序 \${index + 1}: \${op.name}\`);
-  console.log(\`  设备: \${op.machine}\`);
-  console.log(\`  刀具: \${op.tool}\`);
-  console.log(\`  工时: \${op.timeEstimate} 分钟\`);
+  // 工序信息：名称、设备、刀具、工时
 });
 
 // 总工时估算
-console.log('总工时:', processPlan.totalTime, '分钟');
-console.log('总成本:', processPlan.totalCost, '元');
+const totalTime = processPlan.totalTime;
+const totalCost = processPlan.totalCost;
 
 // 导出工艺卡片
 exportProcessPlan(processPlan, 'bracket_process_plan.pdf');`,
@@ -742,9 +722,7 @@ for (let i = 0; i < 5; i++) {
     height: 30 * scale
   });
   variants.push(variant);
-}
-
-console.log('生成了', variants.length, '个变型');`,
+}`,
     language: 'typescript',
     useCases: [
       '系列化产品设计',
@@ -809,9 +787,7 @@ const holeToolpath = await generateHoleToolpath(holes, {
 
 // 输出加工顺序
 holeToolpath.operations.forEach((op, index) => {
-  console.log(\`\${index + 1}. \${op.operation} - 孔\${op.holeId}\`);
-  console.log(\`   刀具: \${op.tool}\`);
-  console.log(\`   参数: S\${op.speed} F\${op.feed}\`);
+  // 加工步骤：操作类型、孔ID、刀具、参数
 });
 
 // 导出G代码
@@ -891,13 +867,10 @@ const latticeGeometry = lattice.generate();
 
 // 力学性能预测
 const mechanicalProps = lattice.predictProperties();
-console.log('等效弹性模量:', mechanicalProps.elasticModulus, 'MPa');
-console.log('等效屈服强度:', mechanicalProps.yieldStrength, 'MPa');
-console.log('重量:', mechanicalProps.weight, 'g');
 
 // 与实心对比
 const solidWeight = 100 * 50 * 30 * 7.8e-3; // 钢的密度
-console.log('减重率:', ((1 - mechanicalProps.weight / solidWeight) * 100).toFixed(1), '%');
+const weightReduction = ((1 - mechanicalProps.weight / solidWeight) * 100).toFixed(1);
 
 // 导出为STL（3D打印）
 exportSTL(latticeGeometry, 'lattice_structure.stl');`,
@@ -975,10 +948,6 @@ const stableParams = stabilityLobe.recommendStableParameters({
   targetDepth: 5,
   preferredSpeed: 6000
 });
-
-console.log('推荐主轴转速:', stableParams.speed, 'rpm');
-console.log('最大稳定切深:', stableParams.maxDepth, 'mm');
-console.log('稳定性裕度:', (stableParams.stabilityMargin * 100).toFixed(1), '%');
 
 // 可视化稳定性叶瓣图
 stabilityLobe.plot('stability_lobe.png');`,

@@ -95,7 +95,8 @@ class BaseLLMClient:
             return parser(response_data, model)
         except (LLMError, InvalidResponseError):
             raise
-        except Exception as e:
+        except (ValueError, KeyError, TypeError, AttributeError) as e:
+            logger.error("Failed to parse response from %s: %s", model, e, exc_info=True)
             raise InvalidResponseError(
                 f"Failed to parse response from {model}: {e}"
             ) from e

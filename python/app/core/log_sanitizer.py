@@ -9,10 +9,13 @@ Filters sensitive information from logs and error responses:
 - Database structure and sensitive config
 """
 
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Callable
 import getpass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -157,7 +160,9 @@ class LogSanitizer:
 
         try:
             self._current_user = getpass.getuser()
-        except Exception:
+        except (OSError, RuntimeError) as e:
+            # getuser() 失败时记录警告但不阻塞初始化
+            logger.warning("Failed to get current user for log sanitization: %s", e)
             self._current_user = None
 
     def sanitize(self, data: Any) -> Any:

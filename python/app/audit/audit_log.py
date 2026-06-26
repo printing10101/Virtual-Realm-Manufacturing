@@ -138,8 +138,8 @@ class AuditLog:
                 operation_status.value,
             )
 
-        except Exception as e:
-            logger.error("Failed to write audit log: %s", e)
+        except (OSError, IOError, PermissionError) as e:
+            logger.error("Failed to write audit log", exc_info=True)
 
         return entry
 
@@ -334,8 +334,8 @@ class AuditLog:
                     log_file,
                 )
 
-        except Exception as e:
-            logger.error("Failed to rotate audit log: %s", e)
+        except (OSError, IOError, PermissionError) as e:
+            logger.error("Failed to rotate audit log", exc_info=True)
 
     def clear_logs(self) -> int:
         count = 0
@@ -346,8 +346,8 @@ class AuditLog:
 
                 with open(log_file, "w", encoding="utf-8") as f:
                     pass
-            except Exception as e:
-                logger.error("Failed to clear audit log %s: %s", log_file, e)
+            except (OSError, IOError, PermissionError) as e:
+                logger.error("Failed to clear audit log", exc_info=True)
 
         logger.info("Audit log cleared: %d entries removed", count)
         return count

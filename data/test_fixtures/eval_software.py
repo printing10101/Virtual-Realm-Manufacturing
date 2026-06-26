@@ -1,12 +1,14 @@
 """启动 FastAPI TestClient 验证关键端点（用线程超时）"""
 import os
+import secrets
 import sys
 import json
 import time
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 
-os.environ.setdefault("LNN_JWT_SECRET", "eval_secret_2026_32chars_min_xxxxxxxxxx")
+# 安全修复：使用随机密钥替代硬编码密钥
+os.environ.setdefault("LNN_JWT_SECRET", secrets.token_urlsafe(48))
 os.environ.setdefault("LNN_BANNED_TOKENS_FILE", ".lnn_banned_tokens.json")
 os.environ.setdefault("APP_ENV", "development")
 

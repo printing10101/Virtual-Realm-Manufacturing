@@ -11,6 +11,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from app.utils.sqlite_pool import get_sqlite_manager
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,6 +83,9 @@ class TemplateBranchManager:
         self.json_dir = json_dir
         self._lock = threading.RLock()
         self._cache: Dict[str, TemplateBranch] = {}
+        # 使用统一的连接池管理器
+        self._manager = get_sqlite_manager()
+        self._pool = self._manager.get_pool("template_branches")
         self._db: Optional[sqlite3.Connection] = None
 
     def initialize(self) -> None:
@@ -88,8 +93,7 @@ class TemplateBranchManager:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         os.makedirs(self.json_dir, exist_ok=True)
 
-        self._db = sqlite3.connect(self.db_path, check_same_thread=False)
-        self._db.row_factory = sqlite3.Row
+        self._db = self._pool.get_connection()
         self._db.execute("""
             CREATE TABLE IF NOT EXISTS template_branches (
                 branch_id TEXT PRIMARY KEY,
@@ -317,9 +321,11 @@ class TemplateBranchManager:
             return True
 
     def close(self) -> None:
-        """Close database connection."""
+        """关闭数据库连接，归还连接到连接池"""
         if self._db:
-            self._db.close()
+            self._pool.return_connection(self._db)
+            self._db = None
+            logger.info("TemplateBranchManager closed")
 
 
 class _BranchManagerHolder:

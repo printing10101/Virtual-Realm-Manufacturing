@@ -96,10 +96,10 @@ def _get_token_metadata(token: str) -> dict:
     meta_file = Path(os.environ.get("LNN_TOKEN_META_FILE", ".lnn_token_meta.json"))
     if not meta_file.exists():
         logger.warning(
-            "Using default token permission level 'T' because metadata file not found. "
-            "Please configure the token metadata file."
+            "Using default token permission level 'R' (read-only) because metadata file not found. "
+            "Please configure the token metadata file for elevated permissions."
         )
-        return {"level": "T"}
+        return {"level": "R"}
     try:
         data = json.loads(meta_file.read_text())
         if isinstance(data, list):
@@ -112,8 +112,8 @@ def _get_token_metadata(token: str) -> dict:
     except (OSError, ValueError, json.JSONDecodeError, AttributeError, TypeError) as e:
         # token 元数据文件读取或解析失败时降级为最低权限（业务预期行为）
         logger.debug(f"Token metadata parsing failed: {e}", exc_info=True)
-    logger.warning("使用默认权限T，token元数据解析失败或未匹配")
-    return {"level": "T"}
+    logger.warning("使用默认权限R（只读），token元数据解析失败或未匹配")
+    return {"level": "R"}
 
 
 def _generate_token() -> str:
@@ -150,8 +150,8 @@ def _load_token(file_path: Optional[Path] = None) -> Optional[str]:
     try:
         token = file_path.read_text().strip()
         return token if token else None
-    except Exception as e:
-        logger.error("Failed to load token: %s", e)
+    except (OSError, UnicodeDecodeError) as e:
+        logger.error("Failed to load token: %s", e, exc_info=True)
         return None
 
 
@@ -194,7 +194,7 @@ def _decode_token(token: str) -> Optional[dict]:
     try:
         from app.auth.security import decode_token
         return decode_token(token)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError) as e:
         logger.debug("JWT token 解码失败: %s", e)
         return None
 
@@ -204,7 +204,7 @@ def _decode_token_strict(token: str, expected_type: str = "access") -> Optional[
     try:
         from app.auth.security import decode_token_strict
         return decode_token_strict(token, expected_type)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError) as e:
         logger.debug("JWT token 严格解码失败: %s", e)
         return None
 
@@ -214,8 +214,8 @@ def _get_token_ban_list():
     try:
         from app.auth.security import get_token_ban_list
         return get_token_ban_list()
-    except Exception as e:
-        logger.warning("获取 token 黑名单失败: %s", e)
+    except (ImportError, AttributeError) as e:
+        logger.warning("获取 token 黑名单失败: %s", e, exc_info=True)
         return None
 
 
@@ -570,7 +570,7 @@ class UnifiedAuthMiddleware:
         self,
         app: ASGIApp,
         lnn_auth_enabled: bool = True,
-        lnn_permission_enforced: bool = False,
+        lnn_permission_enforced: bool = True,  # 安全修复：默认启用权限强制检查
         jwt_auth_enabled: bool = True,
         agent_auth_enabled: bool = True,
     ) -> None:
@@ -579,6 +579,13 @@ class UnifiedAuthMiddleware:
         self.lnn_permission_enforced = lnn_permission_enforced
         self.jwt_auth_enabled = jwt_auth_enabled
         self.agent_auth_enabled = agent_auth_enabled
+
+        # 安全修复：如果权限检查被关闭，输出警告日志
+        if not lnn_permission_enforced:
+            logger.warning(
+                "权限强制检查已关闭 (lnn_permission_enforced=False)。"
+                "这可能导致未授权访问，生产环境应启用此选项。"
+            )
 
         # LNN token singleton
         self._lnn_token: Optional[str] = None
@@ -808,7 +815,8 @@ class UnifiedAuthMiddleware:
             token_level_str = metadata.get("level", "T")
             try:
                 token_level = PL(token_level_str)
-            except ValueError:
+            except ValueError as e:
+                logger.warning(f"无效的 token 权限级别 '{token_level_str}'，使用默认级别 T: {e}")
                 token_level = PL.T
 
             if not permission_checker.has_permission(token_level, path, method):

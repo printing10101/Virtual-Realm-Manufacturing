@@ -1,10 +1,12 @@
 """直接测试 knowledge-graph/stats 不通过 TestClient，而是直接调用服务函数"""
 import os
+import secrets
 import sys
 import time
 from pathlib import Path
 
-os.environ.setdefault("LNN_JWT_SECRET", "eval_secret_2026_32chars_min_xxxxxxxxxx")
+# 安全修复：使用随机密钥替代硬编码密钥，防止密钥泄露后被伪造 JWT
+os.environ.setdefault("LNN_JWT_SECRET", secrets.token_urlsafe(48))
 os.environ.setdefault("LNN_BANNED_TOKENS_FILE", ".lnn_banned_tokens.json")
 os.environ.setdefault("APP_ENV", "development")
 

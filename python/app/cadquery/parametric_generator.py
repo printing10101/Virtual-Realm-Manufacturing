@@ -52,11 +52,50 @@ class ParametricGenerator:
         if params is not None:
             self._parameters.update(params)
 
-        # 参数化几何生成（待实现）
-        # - 根据参数创建基础形状
-        # - 应用特征操作
-        # - 返回 CadQuery Workplane
-        raise NotImplementedError("Parametric generation not yet implemented")
+        # 验证参数
+        is_valid, errors = self.validate_parameters()
+        if not is_valid:
+            raise ValueError(f"参数验证失败: {', '.join(errors)}")
+
+        # 获取几何参数
+        shape_type = self._parameters.get("shape_type", "box")
+        length = self._parameters.get("length", 10.0)
+        width = self._parameters.get("width", 10.0)
+        height = self._parameters.get("height", 10.0)
+        radius = self._parameters.get("radius", 5.0)
+
+        try:
+            import cadquery as cq
+
+            # 根据形状类型生成基础几何体
+            if shape_type == "box":
+                result = cq.Workplane("XY").box(length, width, height)
+            elif shape_type == "cylinder":
+                result = (
+                    cq.Workplane("XY")
+                    .circle(radius)
+                    .extrude(height)
+                )
+            elif shape_type == "sphere":
+                result = cq.Workplane("XY").sphere(radius)
+            else:
+                raise ValueError(f"不支持的形状类型: {shape_type}")
+
+            logger.info("生成参数化几何体: %s", shape_type)
+            return result
+
+        except ImportError:
+            logger.warning("CadQuery 未安装，返回简化几何表示")
+            # 返回简化的几何表示（用于测试或无 CadQuery 环境）
+            return {
+                "type": shape_type,
+                "dimensions": {
+                    "length": length,
+                    "width": width,
+                    "height": height,
+                    "radius": radius,
+                },
+            }
 
     def validate_parameters(self) -> tuple[bool, list[str]]:
         """验证参数有效性。
@@ -66,9 +105,28 @@ class ParametricGenerator:
         """
         errors: list[str] = []
 
-        # 参数验证（待实现）
-        # - 检查必需参数是否存在
-        # - 验证参数范围
-        # - 检查参数依赖关系
+        # 检查必需参数是否存在
+        shape_type = self._parameters.get("shape_type", "box")
+        if shape_type not in ["box", "cylinder", "sphere"]:
+            errors.append(f"不支持的形状类型: {shape_type}")
+
+        # 验证参数范围
+        length = self._parameters.get("length", 10.0)
+        width = self._parameters.get("width", 10.0)
+        height = self._parameters.get("height", 10.0)
+        radius = self._parameters.get("radius", 5.0)
+
+        if length <= 0:
+            errors.append(f"长度必须为正数，当前值: {length}")
+        if width <= 0:
+            errors.append(f"宽度必须为正数，当前值: {width}")
+        if height <= 0:
+            errors.append(f"高度必须为正数，当前值: {height}")
+        if radius <= 0:
+            errors.append(f"半径必须为正数，当前值: {radius}")
+
+        # 检查参数依赖关系
+        if shape_type in ["cylinder", "sphere"] and radius <= 0:
+            errors.append(f"{shape_type} 形状需要有效的半径值")
 
         return len(errors) == 0, errors

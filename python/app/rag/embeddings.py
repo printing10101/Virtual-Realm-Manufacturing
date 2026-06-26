@@ -1,14 +1,21 @@
 """Embedding model wrapper with caching for semantic search.
 
 Supports local BGE-small-zh model with optional API fallback.
+Uses HuggingFace Chinese mirror (hf-mirror.com) for faster model downloads in China.
 """
 
 from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import threading
 from typing import Sequence
+
+# 设置 HuggingFace 中国镜像，加速模型下载
+# 可通过环境变量 HF_ENDPOINT 覆盖，默认为 https://hf-mirror.com
+if "HF_ENDPOINT" not in os.environ:
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +50,32 @@ class EmbeddingService:
             logger.info("Loading embedding model: %s", self._model_name)
             from sentence_transformers import SentenceTransformer
 
-            self._model = SentenceTransformer(self._model_name)
+            try:
+                # 优先从 HuggingFace 镜像站下载（通过 HF_ENDPOINT 环境变量控制）
+                self._model = SentenceTransformer(self._model_name)
+            except Exception as download_err:
+                # 下载失败时尝试从本地缓存加载
+                logger.warning(
+                    "Failed to download model from remote (%s), "
+                    "attempting to load from local cache...",
+                    download_err,
+                )
+                try:
+                    self._model = SentenceTransformer(
+                        self._model_name, cache_folder="./models/embedding_cache"
+                    )
+                except Exception as cache_err:
+                    logger.error(
+                        "Failed to load embedding model from local cache: %s",
+                        cache_err,
+                    )
+                    raise RuntimeError(
+                        f"无法加载 Embedding 模型 '{self._model_name}'。"
+                        f"远程下载失败: {download_err}；"
+                        f"本地缓存加载也失败: {cache_err}。"
+                        f"请检查网络连接或手动将模型放置到 ./models/embedding_cache 目录。"
+                    ) from cache_err
+
             actual_dim = self._model.get_sentence_embedding_dimension()
             if actual_dim:
                 self._vector_dim = actual_dim
@@ -52,7 +84,8 @@ class EmbeddingService:
             )
 
     def _cache_key(self, text: str) -> str:
-        return hashlib.md5(text.encode("utf-8")).hexdigest()
+        # 安全修复：使用 SHA256 替代 MD5，避免碰撞导致的缓存投毒
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
     def _cache_get(self, key: str) -> list[float] | None:
         return self._cache.get(key)

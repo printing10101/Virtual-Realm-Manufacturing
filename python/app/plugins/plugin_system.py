@@ -135,6 +135,7 @@ class PluginMetadata:
 
 class PluginRegistry:
     _instance: Optional["PluginRegistry"] = None
+    _instance_lock = threading.Lock()
 
     def __init__(self):
         self._plugins: Dict[str, PluginMetadata] = {}
@@ -145,13 +146,17 @@ class PluginRegistry:
 
     @classmethod
     def get_instance(cls) -> "PluginRegistry":
+        # 安全修复：双重检查锁，防止并发创建多个实例
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._instance_lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod
     def reset(cls):
-        cls._instance = None
+        with cls._instance_lock:
+            cls._instance = None
 
     def register(self, metadata: PluginMetadata) -> None:
         with self._lock:
@@ -190,18 +195,24 @@ class PluginRegistry:
                     self._plugins_by_capability[cap].remove(plugin_id)
 
             self._plugin_instances.pop(plugin_id, None)
-            del self._plugins[plugin_id]
+            self._plugins.pop(plugin_id, None)
 
             logger.info(f"Plugin unregistered: {plugin_id}")
 
     def get(self, plugin_id: str) -> Optional[PluginMetadata]:
-        return self._plugins.get(plugin_id)
+        # 安全修复：保护 _plugins 字典的并发读
+        with self._lock:
+            return self._plugins.get(plugin_id)
 
     def get_plugin_instance(self, plugin_id: str) -> Optional[Any]:
-        return self._plugin_instances.get(plugin_id)
+        # 安全修复：保护 _plugin_instances 字典的并发读
+        with self._lock:
+            return self._plugin_instances.get(plugin_id)
 
     def set_instance(self, plugin_id: str, instance: Any) -> None:
-        self._plugin_instances[plugin_id] = instance
+        # 安全修复：保护 _plugin_instances 字典的并发写
+        with self._lock:
+            self._plugin_instances[plugin_id] = instance
 
     def list_plugins(
         self,
@@ -209,7 +220,9 @@ class PluginRegistry:
         plugin_type: Optional[str] = None,
         capability: Optional[str] = None,
     ) -> List[PluginMetadata]:
-        result = list(self._plugins.values())
+        # 安全修复：保护 _plugins 字典的并发读，构建快照避免迭代时被修改
+        with self._lock:
+            result = list(self._plugins.values())
 
         if status:
             result = [p for p in result if p.status == status]
@@ -221,32 +234,44 @@ class PluginRegistry:
         return result
 
     def get_plugins_by_type(self, plugin_type: str) -> List[str]:
-        return self._plugins_by_type.get(plugin_type, [])
+        # 安全修复：保护 _plugins_by_type 字典的并发读
+        with self._lock:
+            return list(self._plugins_by_type.get(plugin_type, []))
 
     def get_plugins_by_capability(self, capability: str) -> List[str]:
-        return self._plugins_by_capability.get(capability, [])
+        # 安全修复：保护 _plugins_by_capability 字典的并发读
+        with self._lock:
+            return list(self._plugins_by_capability.get(capability, []))
 
     def has_plugin(self, plugin_id: str) -> bool:
-        return plugin_id in self._plugins
+        # 安全修复：保护 _plugins 字典的并发读
+        with self._lock:
+            return plugin_id in self._plugins
 
     def update_status(self, plugin_id: str, status: PluginStatus) -> None:
-        if plugin_id in self._plugins:
-            self._plugins[plugin_id].status = status
-            if status == PluginStatus.ENABLED:
-                self._plugins[plugin_id].enabled_at = time.time()
-            elif status == PluginStatus.DISABLED:
-                self._plugins[plugin_id].disabled_at = time.time()
+        # 安全修复：保护 _plugins 字典的并发读写
+        with self._lock:
+            if plugin_id in self._plugins:
+                self._plugins[plugin_id].status = status
+                if status == PluginStatus.ENABLED:
+                    self._plugins[plugin_id].enabled_at = time.time()
+                elif status == PluginStatus.DISABLED:
+                    self._plugins[plugin_id].disabled_at = time.time()
 
     def update_config(self, plugin_id: str, config: Dict[str, Any]) -> None:
-        if plugin_id in self._plugins:
-            self._plugins[plugin_id].config.update(config)
+        # 安全修复：保护 _plugins 字典的并发读写
+        with self._lock:
+            if plugin_id in self._plugins:
+                self._plugins[plugin_id].config.update(config)
 
     def get_all_metadata(self) -> Dict[str, Any]:
-        return {
-            "plugins": {pid: p.to_dict() for pid, p in self._plugins.items()},
-            "by_type": dict(self._plugins_by_type),
-            "by_capability": dict(self._plugins_by_capability),
-        }
+        # 安全修复：保护所有字典的并发读，构建快照
+        with self._lock:
+            return {
+                "plugins": {pid: p.to_dict() for pid, p in self._plugins.items()},
+                "by_type": {k: list(v) for k, v in self._plugins_by_type.items()},
+                "by_capability": {k: list(v) for k, v in self._plugins_by_capability.items()},
+            }
 
 
 class PluginDiscovery:
@@ -371,7 +396,7 @@ class PluginLoader:
 
             return instance
 
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
             # 兜底捕获：插件加载涉及 importlib + 用户代码 + 反射实例化，
             # 任何异常类型都应被收口并转换为 ERROR 状态后抛出
             metadata.status = PluginStatus.ERROR
@@ -423,7 +448,7 @@ class PluginLoader:
         if old_instance and hasattr(old_instance, "shutdown"):
             try:
                 old_instance.shutdown()
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 # 旧实例关闭失败不应阻塞插件重载流程
                 logger.warning(
                     f"Error shutting down old instance: {e}", exc_info=True,
@@ -525,7 +550,7 @@ class PluginLifecycleManager:
         if instance and hasattr(instance, "shutdown"):
             try:
                 instance.shutdown()
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 # 卸载时插件关闭失败不应阻塞文件清理
                 logger.warning(
                     f"Error during plugin shutdown: {e}", exc_info=True,
@@ -560,7 +585,7 @@ class PluginLifecycleManager:
             try:
                 self.initialize_plugin(metadata.id)
                 count += 1
-            except Exception as e:
+            except (RuntimeError, ValueError, ImportError, OSError) as e:
                 # 批量初始化时单个插件失败不应阻塞其他插件
                 logger.error(
                     f"Failed to initialize plugin {metadata.id}: {e}", exc_info=True,
@@ -574,7 +599,7 @@ class PluginLifecycleManager:
             try:
                 self.enable_plugin(metadata.id)
                 count += 1
-            except Exception as e:
+            except (RuntimeError, ValueError, OSError) as e:
                 # 批量启用时单个插件失败不应阻塞其他插件
                 logger.error(
                     f"Failed to enable plugin {metadata.id}: {e}", exc_info=True,
@@ -587,7 +612,7 @@ class PluginLifecycleManager:
             if metadata.status == PluginStatus.ENABLED:
                 try:
                     self.disable_plugin(metadata.id)
-                except Exception as e:
+                except (RuntimeError, OSError) as e:
                     # 关闭过程中单个插件失败不应阻塞整体清理
                     logger.error(
                         f"Error disabling plugin {metadata.id}: {e}", exc_info=True,
@@ -598,7 +623,7 @@ class PluginLifecycleManager:
                 instance = self._registry.get_plugin_instance(metadata.id)
                 if instance and hasattr(instance, "shutdown"):
                     instance.shutdown()
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 # 关闭过程中单个插件失败不应阻塞整体清理
                 logger.error(
                     f"Error shutting down plugin {metadata.id}: {e}", exc_info=True,

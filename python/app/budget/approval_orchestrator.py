@@ -33,6 +33,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from app.utils.utils import get_output_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -131,13 +133,11 @@ class ApprovalOrchestrator:
     _lock = threading.Lock()
 
     def __init__(self, audit_log_path: Optional[str] = None):
-        self._audit_path = Path(
-            audit_log_path
-            or os.environ.get(
-                "APPROVAL_AUDIT_LOG",
-                str(Path("data/budget/approval_audit.jsonl")),
+        if audit_log_path is None:
+            audit_log_path = str(
+                get_output_dir("budget") / "approval_audit.jsonl"
             )
-        )
+        self._audit_path = Path(audit_log_path)
         self._audit_path.parent.mkdir(parents=True, exist_ok=True)
         # 内存中跟踪 in-flight 的请求（业务方需要时 query）
         self._pending: dict[str, ApprovalRequestLite] = {}
@@ -164,8 +164,8 @@ class ApprovalOrchestrator:
             )
 
             self._engine = ApprovalWorkflowEngine()
-        except Exception as e:  # noqa: BLE001
-            logger.warning("ApprovalWorkflowEngine 加载失败，降级: %s", e)
+        except (ImportError, ModuleNotFoundError, RuntimeError) as e:  # noqa: BLE001
+            logger.warning("ApprovalWorkflowEngine 加载失败，降级", exc_info=True)
             self._engine_load_failed = True
         return self._engine
 
@@ -175,8 +175,8 @@ class ApprovalOrchestrator:
             with open(self._audit_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False, default=str))
                 f.write("\n")
-        except Exception as e:  # noqa: BLE001
-            logger.debug("audit log write failed: %s", e)
+        except (OSError, IOError, PermissionError) as e:  # noqa: BLE001
+            logger.debug("audit log write failed", exc_info=True)
 
     # ============================================================== 入口
 
@@ -254,8 +254,8 @@ class ApprovalOrchestrator:
                     requires_human=True,
                     fallback_to_full_engine=True,
                 )
-            except Exception as e:  # noqa: BLE001
-                logger.warning("full engine submit failed: %s", e)
+            except (RuntimeError, ValueError, TypeError, AttributeError) as e:  # noqa: BLE001
+                logger.warning("full engine submit failed", exc_info=True)
                 self._pending[request_id] = req
                 return ApprovalDecisionLite(
                     outcome=DecisionOutcome.NEEDS_REVIEW,

@@ -91,8 +91,8 @@ def _warmup_graph_async() -> None:
             logger.info(
                 "KG warmup done: nodes=%d edges=%d", n_nodes, n_edges
             )
-        except Exception as exc:  # pragma: no cover - 后台线程兜底
-            logger.warning("KG warmup failed (non-fatal): %s", exc)
+        except (ImportError, OSError, RuntimeError, ValueError, AttributeError) as exc:  # pragma: no cover - 后台线程兜底
+            logger.warning("KG warmup failed (non-fatal): %s", exc, exc_info=True)
             # 失败时重置标志，允许下次请求再次尝试预热
             with _warmup_lock:
                 _warmup_started = False
@@ -156,7 +156,7 @@ def get_stats() -> dict[str, Any]:
     """图规模统计。"""
     try:
         return _get_query_api().stats()
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /stats failed")
         raise HTTPException(
             status_code=503,
@@ -169,7 +169,7 @@ def get_node(node_id: str) -> dict[str, Any]:
     """按 ID 取节点。"""
     try:
         node = _get_query_api().node(node_id)
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /nodes/{node_id} failed: %s", node_id)
         raise HTTPException(
             status_code=503,
@@ -195,7 +195,7 @@ def list_nodes(
             )
         else:
             nodes = api.nodes_by_type(type or "", limit=limit)
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /nodes failed")
         raise HTTPException(
             status_code=503,
@@ -223,7 +223,7 @@ def list_edges(
             max_confidence=max_confidence,
             limit=limit,
         )
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /edges failed")
         raise HTTPException(
             status_code=503,
@@ -250,7 +250,7 @@ def get_neighbors(
         )
     except HTTPException:
         raise
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /neighbors/{node_id} failed: %s", node_id)
         raise HTTPException(
             status_code=503,
@@ -282,7 +282,7 @@ def post_query(payload: GraphQueryRequest) -> dict[str, Any]:
             status_code=400,
             detail=f"invalid query params for '{qt}': {exc}",
         ) from exc
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /query failed: %s", qt)
         raise HTTPException(
             status_code=503,
@@ -301,7 +301,7 @@ def get_tools_for_material(
         items = _get_query_api().tools_for_material(
             material_id, min_confidence=min_confidence, limit=limit
         )
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /tools-for-material failed: %s", material_id)
         raise HTTPException(
             status_code=503,
@@ -321,7 +321,7 @@ def get_materials_for_tool(
         items = _get_query_api().materials_for_tool(
             tool_id, min_confidence=min_confidence, limit=limit
         )
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /materials-for-tool failed: %s", tool_id)
         raise HTTPException(
             status_code=503,
@@ -345,7 +345,7 @@ def get_process_chain(
         chain = api.process_chain(feature_id, max_hops=max_hops)
     except HTTPException:
         raise
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /process-chain/{feature_id} failed: %s", feature_id)
         raise HTTPException(
             status_code=503,
