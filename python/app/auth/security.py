@@ -125,14 +125,29 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-BANNED_TOKENS_FILE = os.environ.get("LNN_BANNED_TOKENS_FILE", ".lnn_banned_tokens.json")
+# 安全修复 [B42]：默认使用绝对路径，避免相对路径依赖于进程工作目录。
+# 项目根目录（python/app/auth/security.py 向上 4 级为项目根）。
+# 环境变量 LNN_BANNED_TOKENS_FILE 仍可覆盖，但默认值不再依赖 CWD。
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+BANNED_TOKENS_FILE = os.environ.get(
+    "LNN_BANNED_TOKENS_FILE"
+) or str(_PROJECT_ROOT / ".lnn_banned_tokens.json")
 
 
 def _reset_secret_for_testing(secret: Optional[str] = None) -> str:
     """仅供单元测试使用：允许在运行时替换 SECRET_KEY 以避开模块级副作用。
 
     正常业务代码不应调用此函数。
+
+    安全门控 [B41]：仅在 ``TESTING=true`` 环境下允许执行，
+    防止生产环境运行时替换 JWT 密钥导致已有 token 全部失效或被伪造。
     """
+    # 安全修复 [B41]：通过环境变量门控，禁止在非测试环境运行时替换密钥
+    if os.environ.get("TESTING", "false").lower() != "true":
+        raise RuntimeError(
+            "_reset_secret_for_testing() 仅在 TESTING=true 环境下可用，"
+            "生产环境禁止运行时替换 JWT 密钥"
+        )
     global SECRET_KEY
     if secret is None:
         # 安全修复：避免使用可预测的弱密钥 "a"*64。

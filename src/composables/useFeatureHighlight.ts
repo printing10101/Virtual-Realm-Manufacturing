@@ -217,7 +217,7 @@ export function useFeatureHighlight(options: {
       originalMaterials.forEach((mat, meshId) => {
         modelGroup.traverse((child) => {
           if ((child as THREE.Mesh & { uuid: string }).uuid === meshId) {
-            ;(child as THREE.Mesh).material = mat
+            (child as THREE.Mesh).material = mat
           }
         })
       })

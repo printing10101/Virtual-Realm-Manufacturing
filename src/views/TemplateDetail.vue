@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getBranchTypeTagType } from '@/utils/statusHelpers'
 import http from '@/utils/http'
-import { API_CONFIG } from '@/config/api'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -19,16 +19,23 @@ interface Branch {
   base_branch: string | null
   data: Record<string, unknown>
   metadata: Record<string, unknown>
+  template_data?: Record<string, unknown>
+  commit_log?: Array<Record<string, unknown>>
   created_at: number
   updated_at: number
 }
 
 interface EvolutionEvent {
   event_id: string
+  id: string
   branch_id: string
   event_type: string
   description: string
+  action: string
+  suggestion_id: string
+  details: Record<string, unknown>
   timestamp: number
+  created_at: number
   metadata: Record<string, unknown>
 }
 
@@ -48,6 +55,10 @@ interface TemplateMetrics {
   subscriptions: number
   rating: number
   usage_count: number
+  success_rate: number
+  total_experiments: number
+  adoption_count: number
+  last_updated: number
 }
 
 const branch = ref<Branch | null>(null)
@@ -57,56 +68,45 @@ const metrics = ref<TemplateMetrics | null>(null)
 const loading = ref(false)
 const activeTab = ref('info')
 
-const API_BASE = API_CONFIG.V1
-
 async function fetchBranch() {
-  loading.value = true
-  try {
-    const res = await http.get(`${API_BASE}/templates/branches/${branchId}`)
-    if (res.data.code === 'SUCCESS') branch.value = res.data.data
-  } catch {
-    // 静默处理
-  } finally {
-    loading.value = false
-  }
+  const res = await http.get(buildApiPath(API_CONFIG.V1, `/templates/branches/${branchId}`))
+  if (res.data.code === 'SUCCESS') branch.value = res.data.data
 }
 
 async function fetchEvolutionHistory() {
-  try {
-    const res = await http.get(`${API_BASE}/templates/evolution/history`, { params: { branch_id: branchId } })
-    if (res.data.code === 'SUCCESS') evolutionHistory.value = res.data.data
-  } catch {
-    // 静默处理
-  }
+  const res = await http.get(buildApiPath(API_CONFIG.V1, '/templates/evolution/history'), { params: { branch_id: branchId } })
+  if (res.data.code === 'SUCCESS') evolutionHistory.value = res.data.data
 }
 
 async function fetchABExperiments() {
-  try {
-    const res = await http.get(`${API_BASE}/templates/ab_tests`)
-    if (res.data.code === 'SUCCESS') {
-      abExperiments.value = (res.data.data || []).filter(
-        (e: ABExperiment) => e.control_branch === branchId || e.candidate_branch === branchId
-      )
-    }
-  } catch {
-    // 静默处理
+  const res = await http.get(buildApiPath(API_CONFIG.V1, '/templates/ab_tests'))
+  if (res.data.code === 'SUCCESS') {
+    abExperiments.value = (res.data.data || []).filter(
+      (e: ABExperiment) => e.control_branch === branchId || e.candidate_branch === branchId
+    )
   }
 }
 
 async function fetchMetrics() {
-  try {
-    const res = await http.get(`${API_BASE}/template_market/templates/${branchId}/metrics`)
-    if (res.data.code === 'SUCCESS') metrics.value = res.data.data
-  } catch {
-    // 静默处理
-  }
+  const res = await http.get(buildApiPath(API_CONFIG.V1, `/template_market/templates/${branchId}/metrics`))
+  if (res.data.code === 'SUCCESS') metrics.value = res.data.data
 }
 
-onMounted(() => {
-  fetchBranch()
-  fetchEvolutionHistory()
-  fetchABExperiments()
-  fetchMetrics()
+onMounted(async () => {
+  loading.value = true
+  try {
+    // 并行请求 4 个独立接口，减少总等待时间
+    await Promise.all([
+      fetchBranch(),
+      fetchEvolutionHistory(),
+      fetchABExperiments(),
+      fetchMetrics(),
+    ])
+  } catch {
+    // 单个请求失败不影响其他请求
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
@@ -125,8 +125,8 @@ onMounted(() => {
       <template #header>
         <div class="branch-header">
           <h2>{{ branch.name }}</h2>
-          <el-tag :type="getBranchTypeTagType(branch.metadata?.type)">
-            {{ branch.metadata?.type || 'unknown' }}
+          <el-tag :type="getBranchTypeTagType(branch.metadata?.type as string)">
+            {{ (branch.metadata?.type as string) || 'unknown' }}
           </el-tag>
         </div>
       </template>
@@ -136,7 +136,7 @@ onMounted(() => {
         border
       >
         <el-descriptions-item :label="t('templateDetail.branchId')">
-          {{ branch.branch_id }}
+          {{ branch.id }}
         </el-descriptions-item>
         <el-descriptions-item :label="t('templateDetail.baseBranch')">
           {{ branch.base_branch || t('templateDetail.none') }}

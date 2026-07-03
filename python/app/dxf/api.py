@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
-from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file
+from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file, sanitize_filename
 from app.dxf.dxf_parser import DxfParser
 from app.dxf.feature_extractor import FeatureExtractor
 from app.dxf.dxf_to_model import DxfToModelConverter
@@ -331,32 +331,11 @@ async def convert_to_stl(
 def _sanitize_filename(file_name: str) -> str:
     """严格净化文件名，防止路径遍历攻击。
 
-    净化规则（任何一条不满足即视为无效输入，返回空字符串）：
-    1. 输入必须为非空字符串；
-    2. 禁止包含路径分隔符（/ 或 \\）；
-    3. 禁止包含 ".." 序列（任意父目录引用均被拒绝）；
-    4. 通过 pathlib.Path.name 提取纯文件名后不得为空。
-
-    Args:
-        file_name: 用户传入的原始文件名。
-
-    Returns:
-        净化后的纯文件名；无效输入返回空字符串。
+    .. deprecated::
+        已迁移至 ``app.utils.utils.sanitize_filename``，本函数保留为
+        薄包装以兼容现有调用方，新代码应直接使用统一工具函数。
     """
-    # [路径遍历修复] 输入类型与空值检查
-    if not file_name or not isinstance(file_name, str):
-        return ""
-    # [路径遍历修复] 明确拒绝包含路径分隔符的输入
-    if "/" in file_name or "\\" in file_name:
-        return ""
-    # [路径遍历修复] 明确拒绝包含 ".." 序列的输入
-    if ".." in file_name:
-        return ""
-    # [路径遍历修复] 防御性编程：使用 Path.name 提取纯文件名
-    safe_name = Path(file_name).name
-    if not safe_name:
-        return ""
-    return safe_name
+    return sanitize_filename(file_name)
 
 
 @router.get("/model/download/{file_name}")

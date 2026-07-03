@@ -92,14 +92,16 @@ _JWT_PUBLIC_PREFIXES = [
 ]
 
 
-def _get_token_metadata(token: str) -> dict:
+def _get_token_metadata(token: str) -> Optional[dict]:
+    # 安全修复 B4：fail-closed 策略
+    # 元数据文件不存在、解析失败或 token 未匹配时返回 None，
+    # 由上层调用方根据 None 拒绝访问，避免回退到 "R" 只读权限造成越权风险。
     meta_file = Path(os.environ.get("LNN_TOKEN_META_FILE", ".lnn_token_meta.json"))
     if not meta_file.exists():
         logger.warning(
-            "Using default token permission level 'R' (read-only) because metadata file not found. "
-            "Please configure the token metadata file for elevated permissions."
+            "Token metadata file not found; refusing to grant any permission (fail-closed)."
         )
-        return {"level": "R"}
+        return None
     try:
         data = json.loads(meta_file.read_text())
         if isinstance(data, list):
@@ -110,10 +112,15 @@ def _get_token_metadata(token: str) -> dict:
             if data.get("token") == token:
                 return data
     except (OSError, ValueError, json.JSONDecodeError, AttributeError, TypeError) as e:
-        # token 元数据文件读取或解析失败时降级为最低权限（业务预期行为）
-        logger.debug(f"Token metadata parsing failed: {e}", exc_info=True)
-    logger.warning("使用默认权限R（只读），token元数据解析失败或未匹配")
-    return {"level": "R"}
+        # 安全修复 B4：解析失败时 fail-closed，不再降级为只读权限
+        logger.error(
+            "Token metadata parsing failed; refusing to grant any permission: %s",
+            e,
+            exc_info=True,
+        )
+        return None
+    logger.warning("Token 未在元数据中匹配；拒绝授权 (fail-closed)")
+    return None
 
 
 def _generate_token() -> str:
@@ -812,6 +819,16 @@ class UnifiedAuthMiddleware:
             )
 
             metadata = _get_token_metadata(token)
+            # 安全修复 B4：元数据解析失败时 fail-closed，拒绝访问
+            if metadata is None:
+                return lambda send: _send_json_response(
+                    send,
+                    403,
+                    {
+                        "error": "forbidden",
+                        "message": "Token metadata unavailable; access denied (fail-closed)",
+                    },
+                )
             token_level_str = metadata.get("level", "T")
             try:
                 token_level = PL(token_level_str)

@@ -728,9 +728,16 @@ class ConfigLoader:
         if controller_id is None:
             cls._cache.clear()
             logger.info("已清除全部配置缓存")
-        elif controller_id in cls._cache:
-            del cls._cache[controller_id]
-            logger.info("已清除控制器 %s 的配置缓存", controller_id)
+        else:
+            # 缓存键格式为 "{config_path}:{controller_id}"，需匹配后缀
+            keys_to_delete = [
+                key for key in cls._cache
+                if key.endswith(f":{controller_id}")
+            ]
+            for key in keys_to_delete:
+                del cls._cache[key]
+            if keys_to_delete:
+                logger.info("已清除控制器 %s 的配置缓存 (%d 个)", controller_id, len(keys_to_delete))
 
     def _resolve_path(self, config_path: Optional[str]) -> str:
         """解析配置文件路径。

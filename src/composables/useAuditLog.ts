@@ -9,6 +9,7 @@ import {
   getGenericStatusLabel as getStatusName,
   getGenericStatusTagType as getStatusType,
 } from '@/utils/statusHelpers'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 /** 审计日志记录 */
 export interface AuditLogEntry {
@@ -134,7 +135,7 @@ export function useAuditLog(): UseAuditLogReturn {
         params.end_time = logFilters.dateRange[1].getTime()
       }
 
-      const res = await http.post<{ data: AuditLogResponse }>('/api/v1/user-sovereignty/audit-log/query', params)
+      const res = await http.post<{ data: AuditLogResponse }>(buildApiPath(API_CONFIG.USER_SOVEREIGNTY, '/audit-log/query'), params)
       auditLogs.value = res.data.data.logs
       logPagination.total = res.data.data.total
     } catch {
@@ -152,7 +153,7 @@ export function useAuditLog(): UseAuditLogReturn {
 
     loadingLogs.value = true
     try {
-      const res = await http.post<{ data: AuditLogResponse }>('/api/v1/user-sovereignty/audit-log/search', {
+      const res = await http.post<{ data: AuditLogResponse }>(buildApiPath(API_CONFIG.USER_SOVEREIGNTY, '/audit-log/search'), {
         keyword: logSearchKeyword.value,
         limit: 50,
       })
@@ -167,7 +168,7 @@ export function useAuditLog(): UseAuditLogReturn {
 
   async function loadStatistics() {
     try {
-      const res = await http.get<{ data: AuditLogStatistics }>('/api/v1/user-sovereignty/audit-log/statistics')
+      const res = await http.get<{ data: AuditLogStatistics }>(buildApiPath(API_CONFIG.USER_SOVEREIGNTY, '/audit-log/statistics'))
       auditLogStatistics.value = res.data.data
     } catch {
       // 静默处理
@@ -184,7 +185,7 @@ export function useAuditLog(): UseAuditLogReturn {
         params.end_time = logFilters.dateRange[1].getTime()
       }
 
-      const res = await http.post<{ data: { content: string } }>('/api/v1/user-sovereignty/audit-log/export', params)
+      const res = await http.post<{ data: { content: string } }>(buildApiPath(API_CONFIG.USER_SOVEREIGNTY, '/audit-log/export'), params)
       const blob = new Blob([res.data.data.content], { type: 'application/json' })
       triggerFileDownload(blob, `audit_log_${Date.now()}.json`)
       ElMessage.success('日志导出成功')
@@ -203,7 +204,7 @@ export function useAuditLog(): UseAuditLogReturn {
         type: 'warning',
       })
 
-      const res = await http.delete<{ data: ClearLogsResponse }>('/api/v1/user-sovereignty/audit-log/clear')
+      const res = await http.delete<{ data: ClearLogsResponse }>(buildApiPath(API_CONFIG.USER_SOVEREIGNTY, '/audit-log/clear'))
       ElMessage.success(`已清空 ${res.data.data.cleared_entries} 条日志`)
       loadAuditLogs()
       loadStatistics()

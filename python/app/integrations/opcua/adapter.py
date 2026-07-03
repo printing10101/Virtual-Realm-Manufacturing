@@ -25,12 +25,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
-import re
 import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from app.integrations._common import parse_tds_url
 
 logger = logging.getLogger(__name__)
 
@@ -700,32 +701,6 @@ class SubHandler:
 def build_table_ddl() -> Tuple[str, ...]:
     """Return the canonical TDengine DDL column list for the table."""
     return DEFAULT_TABLE_DDL
-
-
-# Regex used by the CLI to translate ``tds://host:port/db`` shorthand
-# into the (host, port, database) tuple the TDengine client expects.
-_TDS_URL_RE = re.compile(r"^tds://([^:/]+):(\d+)/(.+)$")
-
-
-def parse_tds_url(url: str) -> Tuple[str, int, str]:
-    """Parse a ``tds://host:port/database`` URL.
-
-    Args:
-        url: Connection string of the form ``tds://localhost:6030/test``.
-
-    Returns:
-        ``(host, port, database)`` tuple.
-
-    Raises:
-        ValueError: if the URL does not match the expected format.
-    """
-    match = _TDS_URL_RE.match(url)
-    if not match:
-        raise ValueError(
-            f"Invalid TDS URL: {url!r}. Expected tds://host:port/database"
-        )
-    host, port, database = match.group(1), int(match.group(2)), match.group(3)
-    return host, port, database
 
 
 __all__ = [

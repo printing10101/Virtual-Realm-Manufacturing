@@ -31,7 +31,7 @@ class HeidenhainPostProcessor(BasePostProcessor):
     def __init__(
         self,
         decimal_places: int = 3,
-        safe_z_height: float = 50.0,
+        safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
@@ -132,7 +132,7 @@ class HeidenhainPostProcessor(BasePostProcessor):
                 f"{self._next_block()}     Q206={drill_feed}  ;FEED RATE",
                 f"{self._next_block()}     Q202={self._fmt(peck_depth)}  ;PLUNGING DEPTH",
                 f"{self._next_block()}     Q210={self._fmt(dwell)}  ;DWELL TIME AT TOP",
-                f"{self._next_block()}     Q211={self._fmt(dwell)}  ;DWELL TIME AT DEPTH",
+                f"{self._next_block()}     Q211={self._fmt(dwell or 0.0)}  ;DWELL TIME AT DEPTH",
                 f"{self._next_block()}     Q203={self._fmt(0.0)}  ;SURFACE COORDINATE",
                 f"{self._next_block()}     Q204={self._fmt(r_plane)}  ;2ND SET-UP CLEARANCE",
                 f"{self._next_block()}  CYCL CALL",
@@ -203,7 +203,7 @@ class HeidenhainPostProcessor(BasePostProcessor):
                 f"{self._next_block()}     Q210={self._fmt(0.0)}  ;DWELL TIME AT TOP",
                 f"{self._next_block()}     Q203={self._fmt(0.0)}  ;SURFACE COORDINATE",
                 f"{self._next_block()}     Q204={self._fmt(r_plane)}  ;2ND SET-UP CLEARANCE",
-                f"{self._next_block()}     Q211={self._fmt(dwell)}  ;DWELL TIME AT DEPTH",
+                f"{self._next_block()}     Q211={self._fmt(dwell or 0.0)}  ;DWELL TIME AT DEPTH",
                 f"{self._next_block()}     Q214={orient}  ;SPINDLE ORIENTATION",
                 f"{self._next_block()}  CYCL CALL",
             ]
@@ -217,7 +217,7 @@ class HeidenhainPostProcessor(BasePostProcessor):
                 f"{self._next_block()}     Q210={self._fmt(0.0)}  ;DWELL TIME AT TOP",
                 f"{self._next_block()}     Q203={self._fmt(0.0)}  ;SURFACE COORDINATE",
                 f"{self._next_block()}     Q204={self._fmt(r_plane)}  ;2ND SET-UP CLEARANCE",
-                f"{self._next_block()}     Q211={self._fmt(dwell)}  ;DWELL TIME AT DEPTH",
+                f"{self._next_block()}     Q211={self._fmt(dwell or 0.0)}  ;DWELL TIME AT DEPTH",
                 f"{self._next_block()}     Q214={orient}  ;SPINDLE ORIENTATION",
                 f"{self._next_block()}  CYCL CALL",
             ]

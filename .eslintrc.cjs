@@ -20,8 +20,11 @@ module.exports = {
     '@typescript-eslint',
   ],
   rules: {
-    'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-    'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+    // 生产环境禁止 console（允许 console.error/warn 用于错误上报）
+    'no-console': process.env.NODE_ENV === 'production'
+      ? ['error', { allow: ['warn', 'error'] }]
+      : 'off',
+    'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
     'no-undef': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', {

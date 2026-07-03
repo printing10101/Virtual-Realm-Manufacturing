@@ -149,7 +149,7 @@ async def check_collision(request: CollisionCheckRequest) -> CollisionCheckRespo
 
     except Exception as e:
         logger.exception("碰撞检测失败")
-        raise HTTPException(status_code=500, detail=f"碰撞检测失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="碰撞检测失败，请联系管理员")
 
 
 @router.get("/collision-check/health")

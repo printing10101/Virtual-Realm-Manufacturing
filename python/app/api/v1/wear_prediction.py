@@ -1,7 +1,9 @@
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+
+from app.auth.permissions import require_permission
 
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
@@ -9,7 +11,11 @@ from app.services.tool_wear_predictor import ToolWearPredictor
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/wear", tags=["Tool Wear Prediction"])
+router = APIRouter(
+    prefix="/api/v1/wear",
+    tags=["Tool Wear Prediction"],
+    dependencies=[Depends(require_permission("wear:read"))],
+)
 
 predictor = ToolWearPredictor()
 
@@ -53,6 +59,33 @@ class CalibrateRequest(BaseModel):
     depth_of_cut: float = Field(default=1.5, description="切削深度 (mm)")
     material_type: str = Field(default="steel_45", description="材料类型")
     tool_type: str = Field(default="carbide", description="刀具类型")
+
+
+class RealTimeCalibrateRequest(BaseModel):
+    real_time_wear: float = Field(default=0.12, description="实时磨损量 (mm)")
+    elapsed_time: float = Field(default=30.0, description="已加工时间 (min)")
+    sensor_features: dict[str, float] = Field(
+        default_factory=dict,
+        description="传感器特征（vibration_rms, cutting_force, temperature, acoustic_emission）",
+    )
+    cutting_speed: float = Field(default=150.0, description="切削速度 (m/min)")
+    feed_rate: float = Field(default=0.2, description="进给量 (mm/rev)")
+    depth_of_cut: float = Field(default=1.5, description="切削深度 (mm)")
+    material_type: str = Field(default="steel_45", description="材料类型")
+    tool_type: str = Field(default="carbide", description="刀具类型")
+
+
+class CompensationRequest(BaseModel):
+    current_wear: float = Field(default=0.15, description="当前磨损量 (mm)")
+    cutting_speed: float = Field(default=150.0, description="切削速度 (m/min)")
+    feed_rate: float = Field(default=0.2, description="进给量 (mm/rev)")
+    depth_of_cut: float = Field(default=1.5, description="切削深度 (mm)")
+    material_type: str = Field(default="steel_45", description="材料类型")
+    tool_type: str = Field(default="carbide", description="刀具类型")
+    tool_diameter: float = Field(default=10.0, description="刀具直径 (mm)")
+    machine_capabilities: dict[str, float] | None = Field(
+        default=None, description="机床能力限制（可选）"
+    )
 
 
 @router.post("/predict")
@@ -236,6 +269,76 @@ async def calibrate_prediction(request: CalibrateRequest):
         safe = safe_error_message(e, context="wear_prediction.calibrate")
         logger.error(
             "Wear calibration failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
+
+
+@router.post("/calibrate-realtime")
+async def calibrate_with_real_time_data(request: RealTimeCalibrateRequest):
+    try:
+        params = {
+            "cutting_speed": request.cutting_speed,
+            "feed_rate": request.feed_rate,
+            "depth_of_cut": request.depth_of_cut,
+            "material_type": request.material_type,
+            "tool_type": request.tool_type,
+        }
+        result = predictor.calibrate_with_real_time_data(
+            real_time_wear=request.real_time_wear,
+            sensor_features=request.sensor_features,
+            elapsed_time=request.elapsed_time,
+            input_parameters=params,
+        )
+        return success(
+            data=result, message="Real-time calibration completed successfully"
+        )
+    except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
+        # 数值计算异常：实时校正涉及 EWMA 融合与传感器修正
+        safe = safe_error_message(e, context="wear_prediction.calibrate_realtime")
+        logger.error(
+            "Real-time calibration failed | error_id=%s | exc=%s",
+            safe.get("error_id"),
+            e,
+            exc_info=True,
+        )
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
+
+
+@router.post("/compensation")
+async def get_compensation_suggestions(request: CompensationRequest):
+    try:
+        params = {
+            "cutting_speed": request.cutting_speed,
+            "feed_rate": request.feed_rate,
+            "depth_of_cut": request.depth_of_cut,
+            "material_type": request.material_type,
+            "tool_type": request.tool_type,
+            "tool_diameter": request.tool_diameter,
+        }
+        result = predictor.get_compensation_recommendations(
+            current_wear=request.current_wear,
+            input_parameters=params,
+            machine_capabilities=request.machine_capabilities,
+        )
+        return success(
+            data=result, message="Compensation suggestions generated successfully"
+        )
+    except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
+        # 数值计算异常：补偿建议涉及 Taylor 公式与机床能力校验
+        safe = safe_error_message(e, context="wear_prediction.compensation")
+        logger.error(
+            "Compensation suggestion failed | error_id=%s | exc=%s",
             safe.get("error_id"),
             e,
             exc_info=True,

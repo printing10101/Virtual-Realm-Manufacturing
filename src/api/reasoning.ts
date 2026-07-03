@@ -4,6 +4,7 @@
  */
 
 import http from '@/utils/http'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 /** 推理步骤类型 */
 export type StepType = 'task_routing' | 'physical_validation' | 'active_learning' | 'recommendation'
@@ -100,7 +101,7 @@ interface ApiResponse<T> {
 export async function getReasoningTrace(traceId: string): Promise<ReasoningTrace> {
   try {
     const response = await http.get<ApiResponse<ReasoningTrace>>(
-      `/reasoning/trace/${traceId}`
+      buildApiPath(API_CONFIG.REASONING, `/trace/${traceId}`)
     )
     return response.data.data
   } catch {
@@ -115,7 +116,7 @@ export async function getReasoningTrace(traceId: string): Promise<ReasoningTrace
 export async function listReasoningTraces(taskId: string): Promise<ReasoningTrace[]> {
   try {
     const response = await http.get<ApiResponse<ReasoningTrace[]>>(
-      `/reasoning/traces/${taskId}`
+      buildApiPath(API_CONFIG.REASONING, `/traces/${taskId}`)
     )
     return response.data.data
   } catch {
@@ -128,6 +129,5 @@ export async function listReasoningTraces(taskId: string): Promise<ReasoningTrac
  * @param traceId 推理轨迹ID
  */
 export function getReasoningStreamUrl(traceId: string): string {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
-  return `${baseUrl}/api/v1/reasoning/${traceId}/stream`
+  return buildApiPath(API_CONFIG.REASONING, `/${traceId}/stream`)
 }

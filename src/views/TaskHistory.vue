@@ -126,7 +126,7 @@
             <el-button
               size="small"
               type="primary"
-              @click="viewTaskDetail(row)"
+              @click="viewTaskDetail(row as TaskItem)"
             >
               {{ $t('taskHistory.detail') }}
             </el-button>
@@ -134,7 +134,7 @@
               size="small"
               type="success"
               :disabled="row.status !== 'completed' && row.status !== 'failed'"
-              @click="rerunTask(row)"
+              @click="rerunTask(row as TaskItem)"
             >
               {{ $t('taskHistory.rerun') }}
             </el-button>
@@ -175,7 +175,7 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item :label="$t('taskHistory.colProgress')">
-          {{ Math.round(selectedTask.progress) }}%
+          {{ Math.round(selectedTask.progress ?? 0) }}%
         </el-descriptions-item>
         <el-descriptions-item :label="$t('taskHistory.colCreated')">
           {{ formatDate(selectedTask.created_at) }}
@@ -196,7 +196,7 @@
           v-if="selectedTask.duration_seconds"
           :label="$t('taskHistory.colDuration')"
         >
-          {{ selectedTask.duration_seconds.toFixed(1) }}{{ $t('taskHistory.durationSuffix') }}
+          {{ (selectedTask.duration_seconds ?? 0).toFixed(1) }}{{ $t('taskHistory.durationSuffix') }}
         </el-descriptions-item>
         <el-descriptions-item
           v-if="selectedTask.error"
@@ -240,16 +240,25 @@ import { ElMessage } from 'element-plus'
 import http from '@/utils/http'
 import { formatDate } from '@/utils/formatters'
 import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 const { t } = useI18n()
 const router = useRouter()
 
 interface TaskItem {
   id: string
+  job_id?: string
   task_type: string
   status: string
+  progress?: number
   created_at: string
+  started_at?: string
+  completed_at?: string
+  duration_seconds?: number
+  error?: string
   params?: Record<string, unknown>
+  metrics?: Record<string, unknown>
+  result?: unknown
   [key: string]: unknown
 }
 
@@ -274,7 +283,7 @@ async function loadTasks() {
       params.status = filterStatus.value
     }
 
-    const res = await http.get('/api/v1/jobs', { params })
+    const res = await http.get(API_CONFIG.JOBS, { params })
     tasks.value = res.data.data.jobs || []
     total.value = res.data.data.total || 0
   } catch (e: unknown) {
@@ -304,14 +313,14 @@ async function rerunTask(task: TaskItem) {
   try {
     let res
     if (task.task_type === 'lnn_training') {
-      res = await http.post('/api/v1/lnn/train', {
+      res = await http.post(buildApiPath(API_CONFIG.LNN, '/train'), {
         model_name: task.params.model_name,
         data_path: task.params.data_path,
         hyperparameters: task.params.hyperparameters,
         device: task.params.device,
       })
     } else if (task.task_type === 'lnn_batch_inference') {
-      res = await http.post('/api/v1/lnn/batch-inference', {
+      res = await http.post(buildApiPath(API_CONFIG.LNN, '/batch-inference'), {
         model_name: task.params.model_name,
         input_data: task.params.input_data,
         batch_size: task.params.batch_size,
@@ -334,8 +343,10 @@ async function rerunTask(task: TaskItem) {
 }
 
 function getTaskTypeText(type: string): string {
-  // Translate via i18n key from the pre-defined map
-  return t(`taskHistory.typeMap.${type}`) || type
+  if (!type) return '-'
+  const key = `taskHistory.typeMap.${type}`
+  const translated = t(key)
+  return (translated !== key) ? translated : type
 }
 
 watch(filterStatus, () => {

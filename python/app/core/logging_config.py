@@ -10,6 +10,7 @@ import json
 import logging
 import logging.handlers
 import os
+import queue as _queue_mod
 import re
 import sys
 import threading
@@ -32,9 +33,14 @@ DEFAULT_RETENTION_DAYS = 30
 
 
 class SensitiveDataFilter(logging.Filter):
-    """日志脱敏过滤器"""
+    """日志脱敏过滤器
 
-    # 敏感信息模式
+    优化：使用预编译的组合"哨兵"正则做一次快速扫描，仅在命中哨兵时
+    才执行逐条替换，避免对绝大多数不含敏感信息的日志消息执行 9 次正则
+    替换的开销。
+    """
+
+    # 敏感信息模式（顺序保持稳定，便于阅读与维护）
     PATTERNS = [
         (re.compile(r'password["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'password=***'),
         (re.compile(r'token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'token=***'),
@@ -51,10 +57,19 @@ class SensitiveDataFilter(logging.Filter):
         (re.compile(r'1[3-9]\d{9}'), 'phone=***'),
     ]
 
+    # 组合哨兵：任一敏感关键字命中即触发逐条替换
+    # 选择"出现概率极低但匹配廉价"的子串作为哨兵
+    _SENTINEL = re.compile(
+        r'password|token|secret|api[_-]?key|authorization|eyJ|@|\d{17}|1[3-9]\d{9}',
+        re.IGNORECASE,
+    )
+
     def filter(self, record: logging.LogRecord) -> bool:
-        if isinstance(record.msg, str):
+        msg = record.msg
+        if isinstance(msg, str) and self._SENTINEL.search(msg):
             for pattern, replacement in self.PATTERNS:
-                record.msg = pattern.sub(replacement, record.msg)
+                msg = pattern.sub(replacement, msg)
+            record.msg = msg
         return True
 
 
@@ -301,7 +316,24 @@ def configure_logging(
         file_handler.setFormatter(formatter)
         file_handler.addFilter(sensitive_filter)
         file_handler.addFilter(request_id_filter)
-        root_logger.addHandler(file_handler)
+
+        # 使用 QueueHandler + QueueListener 模式将同步文件 I/O 移至后台线程，
+        # 避免阻塞 asyncio 事件循环。日志记录入队后立即返回，QueueListener
+        # 在单独线程中调用 file_handler.emit 落盘。
+        log_queue: _queue_mod.Queue[logging.LogRecord] = _queue_mod.Queue(-1)
+        queue_handler = logging.handlers.QueueHandler(log_queue)
+        queue_handler.setLevel(level)
+        # QueueHandler 仅负责入队；过滤与格式化由下游 listener 调用的
+        # file_handler 完成，因此这里不再为 queue_handler 设置 filter/formatter。
+        root_logger.addHandler(queue_handler)
+
+        queue_listener = logging.handlers.QueueListener(
+            log_queue, file_handler, respect_handler_level=True
+        )
+        queue_listener.start()
+        # 将 listener 挂到 logger 模块属性上，便于 shutdown 时 enqueued 处理
+        root_logger._file_queue_listener = queue_listener  # type: ignore[attr-defined]
+
         root_logger.info(
             "File logging enabled: root=%s module=%s max_bytes=%d retention=%dd",
             log_root, module_name, max_bytes, retention_days,
@@ -349,3 +381,29 @@ def configure_logging_with_config(config: dict) -> None:
         max_bytes=config.get("logMaxBytes", DEFAULT_MAX_BYTES),
         retention_days=config.get("logRetentionDays", DEFAULT_RETENTION_DAYS),
     )
+
+
+def shutdown_logging() -> None:
+    """关闭日志系统，确保 QueueListener 中残留日志全部落盘。
+
+    应在 FastAPI shutdown 事件中调用，避免进程退出时丢失队列中尚未写入
+    的日志记录。
+    """
+    root_logger = logging.getLogger()
+    listener = getattr(root_logger, "_file_queue_listener", None)
+    if listener is not None:
+        try:
+            listener.stop()
+        except (RuntimeError, OSError) as e:
+            # 停止失败时仅记录到控制台，避免阻塞 shutdown
+            logger.debug("QueueListener stop failed: %s", e, exc_info=True)
+        try:
+            delattr(root_logger, "_file_queue_listener")
+        except AttributeError:
+            pass
+    # 刷新所有 handler，确保缓冲区写入
+    for handler in root_logger.handlers:
+        try:
+            handler.flush()
+        except (OSError, ValueError, RuntimeError):
+            pass

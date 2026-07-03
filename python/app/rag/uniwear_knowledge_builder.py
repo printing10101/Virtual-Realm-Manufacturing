@@ -96,6 +96,14 @@ class UniwearKnowledgeBuilder:
 
         doc_id = "uniwear_dataset_overview"
         document = "\n".join(lines)
+        # 结构化实体：数据集概述涵盖所有数据集与材料
+        overview_entities = [
+            "uniwear", "nuaa", "phm2010",
+            NUAA_MATERIAL.lower(), PHM2010_MATERIAL.lower(),
+            NUAA_MATERIAL_FULL.lower(), PHM2010_MATERIAL_FULL.lower(),
+            "tc4", "hrc52", "钛合金", "不锈钢",
+            "刀具磨损", "多材料", "数据集",
+        ]
         try:
             self.kb.add_knowledge(
                 document=document,
@@ -107,6 +115,7 @@ class UniwearKnowledgeBuilder:
                     "keywords": "Uniwear,NUAA,PHM2010,刀具磨损,多材料,TC4,HRC52,数据集概述",
                 },
                 doc_id=doc_id,
+                entities=overview_entities,
             )
         except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
             # 主 doc_id 冲突时，UUID 后缀兜底；其他异常（序列化/类型错误等）也一并捕获
@@ -125,6 +134,7 @@ class UniwearKnowledgeBuilder:
                     "keywords": "Uniwear,NUAA,PHM2010,刀具磨损,多材料,TC4,HRC52,数据集概述",
                 },
                 doc_id=doc_id,
+                entities=overview_entities,
             )
 
         logger.info("Built uniwear dataset overview: %s", doc_id)
@@ -194,6 +204,16 @@ class UniwearKnowledgeBuilder:
 
             doc_id = f"uniwear_nuaa_{exp}"
             document = "\n".join(lines)
+            # 结构化实体：实验编号 + 材料 + 数据集 + 信号类型 + 工艺
+            nuaa_entities = [
+                "nuaa", "uniwear",
+                NUAA_MATERIAL.lower(), NUAA_MATERIAL_FULL.lower(),
+                "tc4", "钛合金", "ti-6al-4v",
+                exp.lower(),
+                PROCESS_CN_MAP.get(exp, "").lower(),
+                "正交切削", "刀具磨损", "振动", "切削力", "主轴功率",
+                "force", "vibration", "power",
+            ]
             for attempt in range(3):
                 try:
                     self.kb.add_knowledge(
@@ -211,6 +231,7 @@ class UniwearKnowledgeBuilder:
                             "keywords": f"NUAA,TC4,钛合金,{exp},正交切削,刀具磨损,振动,切削力,主轴功率",
                         },
                         doc_id=doc_id if attempt == 0 else f"{doc_id}_{attempt}",
+                        entities=nuaa_entities,
                     )
                     doc_ids.append(doc_id if attempt == 0 else f"{doc_id}_{attempt}")
                     break
@@ -282,6 +303,16 @@ class UniwearKnowledgeBuilder:
 
             doc_id = f"uniwear_phm2010_{exp}"
             document = "\n".join(lines)
+            # 结构化实体：实验编号 + 材料 + 数据集 + 信号类型 + 工艺
+            phm_entities = [
+                "phm2010", "uniwear",
+                PHM2010_MATERIAL.lower(), PHM2010_MATERIAL_FULL.lower(),
+                "hrc52", "不锈钢",
+                exp.lower(),
+                PROCESS_CN_MAP.get(exp, "").lower(),
+                "全寿命切削", "刀具磨损", "振动", "切削力", "声发射",
+                "force", "vibration", "acoustic",
+            ]
             for attempt in range(3):
                 try:
                     self.kb.add_knowledge(
@@ -300,6 +331,7 @@ class UniwearKnowledgeBuilder:
                             "keywords": f"PHM2010,HRC52,不锈钢,{exp},刀具磨损,振动,切削力,声发射",
                         },
                         doc_id=doc_id if attempt == 0 else f"{doc_id}_{attempt}",
+                        entities=phm_entities,
                     )
                     doc_ids.append(doc_id if attempt == 0 else f"{doc_id}_{attempt}")
                     break
@@ -355,6 +387,14 @@ class UniwearKnowledgeBuilder:
 
         doc_id = "uniwear_material_comparison"
         document = "\n".join(lines)
+        # 结构化实体：两材料 + 信号类型 + 对比维度
+        comparison_entities = [
+            "tc4", "hrc52", "钛合金", "不锈钢", "ti-6al-4v",
+            NUAA_MATERIAL.lower(), PHM2010_MATERIAL.lower(),
+            "nuaa", "phm2010", "uniwear",
+            "材料对比", "磨损特征", "振动分析", "跨材料迁移",
+            "振动", "切削力", "声发射", "弹性模量", "导热系数",
+        ]
         for attempt in range(3):
             try:
                 self.kb.add_knowledge(
@@ -368,6 +408,7 @@ class UniwearKnowledgeBuilder:
                         "keywords": "TC4,HRC52,钛合金,不锈钢,材料对比,磨损特征,振动分析,跨材料迁移",
                     },
                     doc_id=doc_id,
+                    entities=comparison_entities,
                 )
                 break
             except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
@@ -420,6 +461,14 @@ class UniwearKnowledgeBuilder:
 
         doc_id = "uniwear_vibration_wear_correlation"
         document = "\n".join(lines)
+        # 结构化实体：信号类型 + 磨损阶段 + 监测策略
+        vib_entities = [
+            "振动", "vibration", "rms", "声发射", "acoustic",
+            "频域", "频谱", "切削力", "主轴功率",
+            "振动磨损", "磨损关联", "信号分析", "监测策略",
+            "初期磨损", "稳态磨损", "加速磨损",
+            "多源融合", "uniwear", "刀具磨损",
+        ]
         for attempt in range(3):
             try:
                 self.kb.add_knowledge(
@@ -435,6 +484,7 @@ class UniwearKnowledgeBuilder:
                         "keywords": "振动,磨损关联,信号分析,RMS,频域,声发射,多源融合,监测策略",
                     },
                     doc_id=doc_id,
+                    entities=vib_entities,
                 )
                 break
             except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
@@ -475,6 +525,14 @@ class UniwearKnowledgeBuilder:
 
         doc_id = "cross_source_bosch_uniwear"
         document = "\n".join(lines)
+        # 结构化实体：所有数据源 + 材料 + 信号类型 + 验证策略
+        cross_entities = [
+            "bosch", "bosch_cnc", "nuaa", "phm2010", "uniwear",
+            "tc4", "hrc52", "钛合金", "不锈钢", "铸铁",
+            "振动", "切削力", "声发射", "主轴功率",
+            "多源对比", "交叉验证", "振动分析", "磨损预测", "联合标定",
+            "铣削", "正交切削", "全寿命切削",
+        ]
         for attempt in range(3):
             try:
                 self.kb.add_knowledge(
@@ -487,6 +545,7 @@ class UniwearKnowledgeBuilder:
                         "keywords": "Bosch,Uniwear,多源对比,交叉验证,振动分析,磨损预测,联合标定",
                     },
                     doc_id=doc_id,
+                    entities=cross_entities,
                 )
                 break
             except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:

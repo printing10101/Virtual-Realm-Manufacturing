@@ -33,11 +33,12 @@ import logging
 import sys
 from typing import List, Optional, Sequence
 
-from app.integrations.mtconnect.adapter import (
-    AdapterConfig,
-    MTConnectAdapter,
+from app.integrations._common import (
+    build_tdengine_client,
+    format_sample,
     parse_tds_url,
 )
+from app.integrations.mtconnect.adapter import AdapterConfig, MTConnectAdapter
 from app.integrations.mtconnect.parser import Sample
 
 
@@ -45,74 +46,9 @@ from app.integrations.mtconnect.parser import Sample
 DEFAULT_AGENT_URL = "http://demo.mtconnect.org:80"
 DEFAULT_OUTPUT = "tds://localhost:6030/test.mtconnect"
 
-
-# ---------------------------------------------------------------------------
-# Output formatting
-# ---------------------------------------------------------------------------
-
-
-def format_sample(sample: Sample) -> str:
-    """Render a sample as a single line of text for CLI display.
-
-    The format is intentionally compact and human-friendly so it can
-    be eyeballed during a smoke test::
-
-        [2026-06-11 10:23:45.123] speed=12000.0 load=42.5 feed=1500.0 exec=ACTIVE
-
-    Missing values are rendered as ``-`` so columns stay aligned.
-    """
-    ts = (sample.observed_at.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-          if sample.observed_at else "-")
-    speed = _fmt(sample.spindle_speed)
-    load = _fmt(sample.spindle_load)
-    feed = _fmt(sample.feedrate)
-    exec_ = sample.execution if sample.execution is not None else "-"
-    return f"[{ts}] speed={speed} load={load} feed={feed} exec={exec_}"
-
-
-def _fmt(value: Optional[float]) -> str:
-    """Format a float compactly; return ``-`` for ``None``."""
-    if value is None:
-        return "-"
-    return f"{value:.2f}"
-
-
-# ---------------------------------------------------------------------------
-# TDengine wiring
-# ---------------------------------------------------------------------------
-
-
-def build_tdengine_client(output_url: str):
-    """Construct a TDengine client from a ``tds://`` URL.
-
-    The function is lazy: it imports :mod:`app.services.tdengine_client`
-    only when actually needed so unit tests that don't care about
-    storage can run in isolation.
-    """
-    host, port, database = parse_tds_url(output_url)
-    # The TDengine client reads its connection parameters from
-    # environment variables.  Set them on the fly so the same client
-    # can be reused for any URL passed via the CLI.
-    import os
-    password = os.environ.get("TDENGINE_PASSWORD", "")
-    if not password:
-        logger.warning(
-            "TDENGINE_PASSWORD not set. Please configure it in .env file."
-        )
-    os.environ["TDENGINE_URL"] = f"taos://root:{password}@{host}:{port}"
-    os.environ["TDENGINE_DB"] = database
-
-    try:
-        from app.services import tdengine_client as tdc
-    except ImportError as exc:  # pragma: no cover - import-time guard
-        raise SystemExit(
-            f"Cannot import TDengine client: {exc}\n"
-            "Make sure the python/app directory is on PYTHONPATH "
-            "and taospy is installed."
-        )
-
-    client = tdc.get_tdengine()
-    return client, database, tdc
+# ``format_sample`` / ``build_tdengine_client`` / ``parse_tds_url`` are
+# imported from :mod:`app.integrations._common` to avoid duplicating the
+# implementations between the OPC UA and MTConnect CLIs.
 
 
 async def ensure_table(database: str, table: str) -> bool:

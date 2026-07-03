@@ -13,11 +13,11 @@ pydantic==2.9.2         # 2.5.3→2.9.2 (feature updates, bug fixes)
 pydantic-settings==2.5.2   # 2.1.0→2.5.2 (feature updates)
 
 # 3D Geometry & Simulation
-trimesh>=4.0.0          # 三角网格处理与体素化
-rtree>=1.0.0            # 空间索引加速(trimesh依赖)
-cadquery>=2.4.0         # 参数化CAD几何生成
-Pillow>=10.0.0          # 图像处理与CV几何参数提取
-ezdxf>=1.1.0            # DXF工程图文件解析（dxf_parser依赖）
+trimesh==4.6.0          # 三角网格处理与体素化
+rtree==1.4.0            # 空间索引加速(trimesh依赖)
+cadquery==2.5.2         # 参数化CAD几何生成
+Pillow==11.1.0          # 图像处理与CV几何参数提取 (10.0.0→11.1.0 安全更新)
+ezdxf==1.3.5            # DXF工程图文件解析（dxf_parser依赖）
 
 # PyTorch CPU 版本索引（放在文件开头）
 --extra-index-url https://download.pytorch.org/whl/cpu
@@ -31,68 +31,65 @@ pandas==2.2.3           # 2.1.4→2.2.3 (stable release)
 scikit-learn==1.6.1     # 1.3.2→1.6.1 (latest stable)
 
 # Data & Config
-pyyaml>=6.0.2           # 安全更新
-python-dotenv>=1.0.1    # 环境变量管理
-packaging>=24.0         # 版本解析（plugin_system, tool_wear_predictor依赖）
-matplotlib>=3.9.0       # 数据可视化
-seaborn>=0.13.2         # 统计可视化
+pyyaml==6.0.2           # 安全更新
+python-dotenv==1.0.1    # 环境变量管理
+packaging==24.2         # 版本解析（plugin_system, tool_wear_predictor依赖）
+matplotlib==3.10.0      # 数据可视化
+seaborn==0.13.2         # 统计可视化
 
 # Database & Cache
-sqlalchemy>=2.0.36      # ORM 框架
-psycopg2-binary>=2.9.10 # PostgreSQL 驱动
-redis>=5.2.0            # 缓存和消息队列
-taospy>=2.7.0           # TDengine 时序数据库驱动
+sqlalchemy==2.0.36      # ORM 框架
+psycopg2-binary==2.9.10 # PostgreSQL 驱动
+redis==5.2.1            # 缓存和消息队列
+taospy==2.7.0           # TDengine 时序数据库驱动
 
 # HTTP & Networking (Security Fixes)
-httpx>=0.28.0           # HTTP 客户端
-requests>=2.32.0        # HTTP 请求库
-urllib3>=2.3.0          # URL 处理库
-python-multipart>=0.0.20 # 表单数据处理
+httpx==0.28.1           # HTTP 客户端
+requests==2.32.3        # HTTP 请求库
+urllib3==2.3.0          # URL 处理库
+python-multipart==0.0.20 # 表单数据处理
 
 # XML Parsing (MTConnect Adapter - M0.3 任务新增)
-lxml>=5.3.0             # MTConnect XML 解析
+lxml==5.3.0             # MTConnect XML 解析
 
 # OPC UA Protocol (OPC UA Adapter 依赖)
-asyncua>=1.1.0          # OPC UA 客户端库（异步实现）
+asyncua==1.1.5          # OPC UA 客户端库（异步实现）
 
 # Security
-cryptography>=44.0.0    # 加密库
-python-jose>=3.3.0      # JWT 处理
-bcrypt>=4.2.0           # 密码哈希
-passlib>=1.7.4          # bcrypt 兼容层
-pygments>=2.19.0        # 语法高亮
+cryptography==44.0.0    # 加密库
+python-jose==3.4.0      # JWT 处理（3.3.0→3.4.0 修复 CVE-2024-33664 算法混淆漏洞）
+bcrypt==4.2.1           # 密码哈希（bcrypt 4.x 原生 API，无需 passlib 兼容层）
 
 # LangChain Ecosystem (Security Fixes)
-langchain>=0.3.0        # LangChain 核心
-langchain-core>=0.3.0   # LangChain 核心库
-langchain-community>=0.3.0  # LangChain 社区集成
-langsmith>=0.1.0        # LangSmith 监控平台
+langchain==0.3.14        # LangChain 核心
+langchain-core==0.3.29   # LangChain 核心库
 
 # Protocol Buffers (Security Fix)
-protobuf>=5.29.0        # Protocol Buffers
+protobuf==5.29.3        # Protocol Buffers
 
 # PDF Processing (Security Fix)
-pdfminer.six>=20231228  # PDF 解析
-pdfplumber>=0.11.0      # PDF 处理
+pdfminer.six==20231228  # PDF 解析
+pdfplumber==0.11.4      # PDF 处理
 
 # Monitoring & Utils
-psutil>=6.0.0           # 系统监控
-h5py>=3.12.0            # HDF5 文件处理
+psutil==6.1.1           # 系统监控
+h5py==3.12.1            # HDF5 文件处理
 
-# Infrastructure
-pip>=24.0               # 包管理器
-setuptools>=75.0.0      # 构建工具
+# Document Generation
+python-docx==1.1.2      # Word 文档生成（实验报告）
 
 # Vector DB & Embedding (RAG Semantic Search)
-chromadb>=0.5.0         # 向量数据库引擎
-sentence-transformers>=3.0.0  # 3.x 兼容 transformers 4.x（修复 CVE-2026-1839）
-transformers>=4.46.0    # 4.46+ 修复 CVE-2026-1839
+chromadb==0.6.3         # 向量数据库引擎
+sentence-transformers==3.3.1  # 3.x 兼容 transformers 4.x（修复 CVE-2026-1839）
+transformers==4.48.0    # 4.46+ 修复 CVE-2026-1839
+rank_bm25==0.2.2        # BM25 关键词检索（hybrid_search.py & reranker.py fallback 依赖）
+jieba==0.42.1           # 中文分词（reranker/hybrid_search 检索质量关键依赖）
 
 # Rate Limiting
-slowapi>=0.1.9           # 速率限制（内存存储，无需Redis）
+slowapi==0.1.9          # 速率限制（内存存储，无需Redis）
 
 # Testing & Dev
-pytest>=8.0.0           # 测试框架
-pytest-asyncio>=0.24.0  # 异步测试支持
-black>=24.0.0           # 代码格式化
-flake8>=7.0.0           # 代码检查
+pytest==8.3.4           # 测试框架
+pytest-asyncio==0.25.2  # 异步测试支持
+black==24.10.0          # 代码格式化
+flake8==7.1.1           # 代码检查

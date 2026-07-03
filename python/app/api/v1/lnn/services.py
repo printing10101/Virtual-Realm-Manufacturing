@@ -93,7 +93,23 @@ def _generate_alternatives(
     primary_value: float | list[float],
     primary_confidence: float,
 ) -> list[AlternativePlan]:
-    """生成备选方案。"""
+    """生成备选方案（启发式，非独立模型预测）。
+
+    学术诚信说明 [S4]：
+    ----------------------------
+    本函数生成的"保守方案"与"激进方案"是**对主预测值的简单 ±5%
+    偏移启发式**，并非通过独立模型推理得到的预测结果。它们的目的是
+    为决策者提供围绕主预测的敏感性区间参考，不应在论文中报告为
+    "多模型预测对比"或"集成学习结果"。
+
+    如需真实的多模型对比，应当：
+    1. 使用不同架构（如 CFC vs LTC）独立训练并预测；或
+    2. 使用不同超参数/数据划分训练同一架构的多个实例；或
+    3. 使用 Monte Carlo Dropout 等不确定性量化方法。
+
+    论文报告时，本函数的输出应明确标注为"启发式敏感性分析"或
+    "工程安全边际参考"，而非"备选预测模型输出"。
+    """
     alternatives = []
 
     if isinstance(primary_value, (int, float)):
@@ -208,6 +224,7 @@ async def run_training_task_v2(
     progress_updater: Callable,
 ):
     """V2 训练执行器,带进度回调和取消支持。"""
+    metrics = None
     try:
         from app.utils.utils import get_metrics_collector
 
@@ -219,165 +236,213 @@ async def run_training_task_v2(
             exc_info=True,
         )
 
-    await progress_updater(5.0, "Loading data...")
-
     try:
-        data = np.loadtxt(data_path, delimiter=",", skiprows=1, dtype=float)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Data file not found: {data_path}")
-    except (ValueError, UnicodeDecodeError):
+        await progress_updater(5.0, "Loading data...")
+
+        # np.loadtxt 是同步阻塞 I/O，在大数据集上会长时间冻结事件循环。
+        # 通过 asyncio.to_thread 将其移至工作线程，期间事件循环可继续处理
+        # SSE 心跳、取消信号等其他协程。
+        def _load_csv_sync() -> np.ndarray:
+            try:
+                return np.loadtxt(data_path, delimiter=",", skiprows=1, dtype=float)
+            except (ValueError, UnicodeDecodeError):
+                # Fallback：手动解析非标准 CSV（含非数值单元格）
+                with open(data_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                numeric_lines = []
+                for line in lines[1:]:
+                    parts = line.strip().split(",")
+                    numeric_line = []
+                    for p in parts:
+                        try:
+                            numeric_line.append(float(p))
+                        except ValueError as e:
+                            logger.debug(
+                                f"Skipping non-numeric value in row: {e}",
+                                exc_info=True,
+                            )
+                    if numeric_line:
+                        numeric_lines.append(numeric_line)
+                return np.array(numeric_lines)
+
         try:
-            with open(data_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
+            data = await asyncio.to_thread(_load_csv_sync)
         except FileNotFoundError:
             raise FileNotFoundError(f"Data file not found: {data_path}")
-        numeric_lines = []
-        for line in lines[1:]:
-            parts = line.strip().split(",")
-            numeric_line = []
-            for p in parts:
-                try:
-                    numeric_line.append(float(p))
-                except ValueError as e:
-                    logger.debug(
-                        f"Skipping non-numeric value in row: {e}",
-                        exc_info=True,
+
+        if data.ndim == 1:
+            data = data.reshape(-1, 1)
+        if data.shape[1] == 1:
+            data = np.column_stack([data, data])
+
+        X = data[:, :-1]
+        y = data[:, -1]
+        input_dim = X.shape[1]
+
+        await progress_updater(10.0, "Preparing datasets...")
+
+        X_tensor = torch.FloatTensor(X)
+        y_tensor = torch.FloatTensor(y)
+        dataset = TensorDataset(X_tensor, y_tensor)
+        train_size = int(0.8 * len(dataset))
+        train_dataset, val_dataset = torch.utils.data.random_split(
+            dataset, [train_size, len(dataset) - train_size]
+        )
+
+        device, _ = detect_device(device_preference)
+        batch_size = hyperparameters.get("batch_size", 32)
+        if device.type == "cuda":
+            batch_size = get_optimal_batch_size(device, batch_size)
+
+        num_workers = get_optimal_num_workers()
+        train_loader = DataLoader(
+            train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+        )
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers)
+
+        from app.api.v1.lnn.dependencies import registry_service
+
+        lnn_registry = registry_service.model_registry
+        entry = lnn_registry.registry.get(model_name)
+        if not entry:
+            raise ValueError(f"Model '{model_name}' not found")
+
+        model_class = get_torch_model_class(entry.info.model_type)
+        if not model_class:
+            raise ValueError(f"Unsupported model type: {entry.info.model_type}")
+
+        hidden_size = min(256, max(64, input_dim * 2))
+        config_obj = LNNConfig(
+            input_size=input_dim,
+            hidden_size=hidden_size,
+            output_size=1,
+            num_layers=2,
+            dropout=0.1,
+        )
+        model = model_class(config_obj)
+
+        use_amp = device.type == "cuda" and torch.cuda.is_available()
+        epochs = hyperparameters.get("epochs", 100)
+
+        await progress_updater(15.0, f"Starting training on {device.type}...")
+
+        trainer = LNNTrainer(
+            model=model,
+            learning_rate=hyperparameters.get("learning_rate", 0.001),
+            optimizer_type=hyperparameters.get("optimizer", "adam"),
+            loss_type="mse",
+            batch_size=batch_size,
+            epochs=epochs,
+            device=str(device),
+            use_amp=use_amp,
+        )
+
+        start_time = time.perf_counter()
+        history = {"train_loss": [], "val_loss": []}
+        best_val_loss = float("inf")
+        patience = 5
+        patience_counter = 0
+
+        for epoch in range(1, epochs + 1):
+            if cancel_evt.is_set():
+                raise asyncio.CancelledError()
+
+            train_loss, train_acc = trainer.train_epoch(train_loader)
+            val_loss, val_acc = trainer.validate(val_loader)
+
+            history["train_loss"].append(train_loss)
+            history["val_loss"].append(val_loss)
+
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                patience_counter = 0
+            else:
+                patience_counter += 1
+
+            progress = 15.0 + (epoch / epochs) * 80.0
+            await progress_updater(
+                progress,
+                f"Training: epoch {epoch}/{epochs}, val_loss={val_loss:.4f}",
+                {
+                    "epoch": epoch,
+                    "train_loss": round(train_loss, 4),
+                    "val_loss": round(val_loss, 4),
+                },
+            )
+
+            if patience_counter >= patience:
+                logger.info(f"Early stopping at epoch {epoch}")
+                break
+
+        training_time = time.perf_counter() - start_time
+        final_val_loss = best_val_loss
+
+        # 学术诚信修复 [S4]：基于验证集计算真实 R² 分数。
+        # 原实现直接返回 ``"r2_score": None``，违反学术诚信——论文中
+        # 需要报告 R² 指标时无法从训练服务获取真实值。此处对验证集
+        # 执行前向推理，按标准公式 R² = 1 - SS_res/SS_tot 计算真实值。
+        # 若验证集为空或方差为零（常数目标），返回 None 并附带原因。
+        r2_score: float | None = None
+        try:
+            model.eval()
+            y_true_list: list[float] = []
+            y_pred_list: list[float] = []
+            with torch.no_grad():
+                for X_batch, y_batch in val_loader:
+                    preds = model(X_batch.to(device))
+                    # 兼容 (B, 1) 与 (B,) 两种输出形状
+                    preds_np = preds.detach().cpu().numpy().reshape(-1)
+                    y_np = y_batch.detach().cpu().numpy().reshape(-1)
+                    y_pred_list.extend(preds_np.tolist())
+                    y_true_list.extend(y_np.tolist())
+
+            if y_true_list:
+                y_true_arr = np.array(y_true_list, dtype=np.float64)
+                y_pred_arr = np.array(y_pred_list, dtype=np.float64)
+                ss_res = float(np.sum((y_true_arr - y_pred_arr) ** 2))
+                y_mean = float(np.mean(y_true_arr))
+                ss_tot = float(np.sum((y_true_arr - y_mean) ** 2))
+                if ss_tot > 1e-12:
+                    r2_score = 1.0 - ss_res / ss_tot
+                else:
+                    # 目标方差为零时 R² 无法定义
+                    r2_score = None
+                    logger.warning(
+                        "R² 不可计算：验证集目标方差为零（ss_tot≈0），"
+                        "请检查数据是否为常数标签。"
                     )
-            if numeric_line:
-                numeric_lines.append(numeric_line)
-        data = np.array(numeric_lines)
+        except Exception as r2_err:
+            # R² 计算失败不应阻断训练流程，但必须记录以便排查
+            logger.warning(
+                f"R² 计算失败，本次训练将返回 r2_score=None：{r2_err}",
+                exc_info=True,
+            )
+            r2_score = None
 
-    if data.ndim == 1:
-        data = data.reshape(-1, 1)
-    if data.shape[1] == 1:
-        data = np.column_stack([data, data])
-
-    X = data[:, :-1]
-    y = data[:, -1]
-    input_dim = X.shape[1]
-
-    await progress_updater(10.0, "Preparing datasets...")
-
-    X_tensor = torch.FloatTensor(X)
-    y_tensor = torch.FloatTensor(y)
-    dataset = TensorDataset(X_tensor, y_tensor)
-    train_size = int(0.8 * len(dataset))
-    train_dataset, val_dataset = torch.utils.data.random_split(
-        dataset, [train_size, len(dataset) - train_size]
-    )
-
-    device, _ = detect_device(device_preference)
-    batch_size = hyperparameters.get("batch_size", 32)
-    if device.type == "cuda":
-        batch_size = get_optimal_batch_size(device, batch_size)
-
-    num_workers = get_optimal_num_workers()
-    train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
-    )
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers)
-
-    from app.api.v1.lnn.dependencies import registry_service
-
-    lnn_registry = registry_service.model_registry
-    entry = lnn_registry.registry.get(model_name)
-    if not entry:
-        raise ValueError(f"Model '{model_name}' not found")
-
-    model_class = get_torch_model_class(entry.info.model_type)
-    if not model_class:
-        raise ValueError(f"Unsupported model type: {entry.info.model_type}")
-
-    hidden_size = min(256, max(64, input_dim * 2))
-    config_obj = LNNConfig(
-        input_size=input_dim,
-        hidden_size=hidden_size,
-        output_size=1,
-        num_layers=2,
-        dropout=0.1,
-    )
-    model = model_class(config_obj)
-
-    use_amp = device.type == "cuda" and torch.cuda.is_available()
-    epochs = hyperparameters.get("epochs", 100)
-
-    await progress_updater(15.0, f"Starting training on {device.type}...")
-
-    trainer = LNNTrainer(
-        model=model,
-        learning_rate=hyperparameters.get("learning_rate", 0.001),
-        optimizer_type=hyperparameters.get("optimizer", "adam"),
-        loss_type="mse",
-        batch_size=batch_size,
-        epochs=epochs,
-        device=str(device),
-        use_amp=use_amp,
-    )
-
-    start_time = time.perf_counter()
-    history = {"train_loss": [], "val_loss": []}
-    best_val_loss = float("inf")
-    patience = 5
-    patience_counter = 0
-
-    for epoch in range(1, epochs + 1):
-        if cancel_evt.is_set():
-            raise asyncio.CancelledError()
-
-        train_loss, train_acc = trainer.train_epoch(train_loader)
-        val_loss, val_acc = trainer.validate(val_loader)
-
-        history["train_loss"].append(train_loss)
-        history["val_loss"].append(val_loss)
-
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            patience_counter = 0
-        else:
-            patience_counter += 1
-
-        progress = 15.0 + (epoch / epochs) * 80.0
-        await progress_updater(
-            progress,
-            f"Training: epoch {epoch}/{epochs}, val_loss={val_loss:.4f}",
-            {
-                "epoch": epoch,
-                "train_loss": round(train_loss, 4),
-                "val_loss": round(val_loss, 4),
-            },
-        )
-
-        if patience_counter >= patience:
-            logger.info(f"Early stopping at epoch {epoch}")
-            break
-
-    training_time = time.perf_counter() - start_time
-    final_val_loss = best_val_loss
-
-    try:
-        from app.utils.utils import get_metrics_collector
-
-        m = get_metrics_collector()
-        m.set_active_training_tasks(max(0, m._active_training_tasks - 1))
-    except (ImportError, AttributeError, RuntimeError) as e:
-        logger.debug(
-            f"Failed to decrement active training tasks counter: {e}",
-            exc_info=True,
-        )
-
-    return {
-        "status": "completed",
-        "model_name": model_name,
-        "epochs_completed": epoch,
-        "final_val_loss": round(final_val_loss, 4),
-        "training_time": round(training_time, 2),
-        "metrics": {
-            "r2_score": None,
-            "loss": round(final_val_loss, 4),
-            "training_time": round(training_time, 2),
+        return {
+            "status": "completed",
+            "model_name": model_name,
             "epochs_completed": epoch,
-        },
-    }
+            "final_val_loss": round(final_val_loss, 4),
+            "training_time": round(training_time, 2),
+            "metrics": {
+                # 真实 R² 分数（基于验证集前向推理计算）
+                "r2_score": round(r2_score, 4) if r2_score is not None else None,
+                "loss": round(final_val_loss, 4),
+                "training_time": round(training_time, 2),
+                "epochs_completed": epoch,
+            },
+        }
+    finally:
+        # 确保无论成功还是异常，计数器都会递减
+        if metrics is not None:
+            try:
+                metrics.set_active_training_tasks(max(0, metrics._active_training_tasks - 1))
+            except (ImportError, AttributeError, RuntimeError) as e:
+                logger.debug(
+                    f"Failed to decrement active training tasks counter: {e}",
+                    exc_info=True,
+                )
 
 
 async def _run_training_task_async(
@@ -636,7 +701,10 @@ async def _run_quantization_task_v2(
         await progress_updater(30.0, "加载校准数据...")
 
         try:
-            calibration_data = np.loadtxt(calibration_data_path, delimiter=",")
+            # 修复 P2：用 asyncio.to_thread 包装同步 np.loadtxt，避免阻塞事件循环
+            calibration_data = await asyncio.to_thread(
+                np.loadtxt, calibration_data_path, delimiter=","
+            )
             if calibration_data.ndim == 1:
                 calibration_data = calibration_data.reshape(-1, 1)
             if calibration_data.shape[1] == 1:
@@ -758,16 +826,19 @@ async def run_batch_inference_v2(
             raise asyncio.CancelledError()
 
         batch = input_data[i : i + batch_size]
-        batch_results = []
 
-        for sample in batch:
-            result = predictor.predict(input_data=sample, return_confidence=True)
+        # 使用 predict_batch 替代逐样本 predict，将 N 次 forward pass 合并为 1 次。
+        # 同时通过 asyncio.to_thread 将 CPU/GPU 密集型推理移至工作线程，
+        # 避免阻塞事件循环（SSE 心跳、取消信号等其他协程可继续运行）。
+        batch_predictions = await asyncio.to_thread(
+            predictor.predict_batch, batch, len(batch)
+        )
+
+        for result in batch_predictions:
             value = result.value
             if hasattr(value, "tolist"):
                 value = value.tolist()
-            batch_results.append({"value": value, "confidence": result.confidence})
-
-        results.extend(batch_results)
+            results.append({"value": value, "confidence": result.confidence})
 
         progress = 10.0 + ((i + len(batch)) / total) * 85.0
         await progress_updater(progress, f"Processed {i + len(batch)}/{total} samples")

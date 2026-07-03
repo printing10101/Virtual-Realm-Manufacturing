@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import logging
 import random
-import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -38,6 +37,8 @@ import requests
 from requests import Session
 
 from app.integrations.mtconnect.parser import Sample, parse_sample_response
+
+from app.integrations._common import parse_tds_url
 
 logger = logging.getLogger(__name__)
 
@@ -513,50 +514,6 @@ class MTConnectAdapter:
 def build_table_ddl() -> Tuple[str, ...]:
     """Return the canonical TDengine DDL column list for the table."""
     return DEFAULT_TABLE_DDL
-
-
-# Regex used by the CLI to translate ``tds://host:port/db`` shorthand
-# into the (host, port, database) tuple the TDengine client expects.
-_TDS_URL_RE = re.compile(r"^tds://([^:/]+):(\d+)/(.+)$")
-
-
-def _local_attr_name(attr_name: str) -> str:
-    """Return the local part of an ElementTree attribute name.
-
-    ElementTree uses Clark notation (``{namespace}local``) to expose
-    namespaced attribute keys.  When the MTConnect namespace is
-    declared on the root element (as in :file:`MTConnectDevices` /
-    :file:`MTConnectStreams` documents) every header attribute – e.g.
-    ``sender`` / ``instanceId`` – shows up with the
-    ``{urn:mtconnect.org:MTConnectDevices:1.5}`` prefix.  This helper
-    strips the prefix so the rest of the parser can look up the
-    attribute by its bare local name.  When the attribute is already
-    local (no namespace) it is returned unchanged.
-    """
-    if attr_name.startswith("{"):
-        return attr_name.split("}", 1)[1]
-    return attr_name
-
-
-def parse_tds_url(url: str) -> Tuple[str, int, str]:
-    """Parse a ``tds://host:port/database`` URL.
-
-    Args:
-        url: Connection string of the form ``tds://localhost:6030/test``.
-
-    Returns:
-        ``(host, port, database)`` tuple.
-
-    Raises:
-        ValueError: if the URL does not match the expected format.
-    """
-    match = _TDS_URL_RE.match(url)
-    if not match:
-        raise ValueError(
-            f"Invalid TDS URL: {url!r}. Expected tds://host:port/database"
-        )
-    host, port, database = match.group(1), int(match.group(2)), match.group(3)
-    return host, port, database
 
 
 __all__ = [

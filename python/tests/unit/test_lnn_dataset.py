@@ -3,7 +3,7 @@
 目标：为 python/app/ai/lnn/training/dataset.py 提供高覆盖率的单元测试。
 覆盖范围：
 - LNNDataset：初始化、__len__、__getitem__、get_batch、split、from_numpy/from_json/from_csv
-- DataPreprocessor：fit、transform、fit_transform、_handle_missing
+- TrainingDataPreprocessor：fit、transform、fit_transform、_handle_missing
 - FeatureExtractor：时域特征、频域特征、合并特征
 - BoschCNCDataset：缓存加载/未缓存路径、__getitem__ 实时模式、split、错误处理
 - DataAugmentation：add_noise、time_shift、amplitude_scaling、time_stretch、compose_transforms
@@ -332,13 +332,13 @@ class TestLNNDatasetFromCsv:
 
 
 # =============================================================================
-# 3. DataPreprocessor
+# 3. TrainingDataPreprocessor
 # =============================================================================
 
 
-class TestDataPreprocessorInit:
+class TestTrainingDataPreprocessorInit:
     def test_init_default(self, dataset_module):
-        p = dataset_module.DataPreprocessor()
+        p = dataset_module.TrainingDataPreprocessor()
         assert p.normalize is True
         assert p.standardize is True
         assert p.handle_missing is True
@@ -346,7 +346,7 @@ class TestDataPreprocessorInit:
         assert p.std_ is None
 
     def test_init_custom(self, dataset_module):
-        p = dataset_module.DataPreprocessor(
+        p = dataset_module.TrainingDataPreprocessor(
             normalize=False, standardize=False, handle_missing=False
         )
         assert p.normalize is False
@@ -354,37 +354,37 @@ class TestDataPreprocessorInit:
         assert p.handle_missing is False
 
 
-class TestDataPreprocessorFit:
+class TestTrainingDataPreprocessorFit:
     def test_fit_computes_statistics(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-        p = dataset_module.DataPreprocessor().fit(data)
+        p = dataset_module.TrainingDataPreprocessor().fit(data)
         np.testing.assert_array_equal(p.mean_, np.array([3.0, 4.0]))
         np.testing.assert_array_equal(p.min_, np.array([1.0, 2.0]))
         np.testing.assert_array_equal(p.max_, np.array([5.0, 6.0]))
 
     def test_fit_handles_zero_std(self, dataset_module):
         data = np.array([[1.0, 2.0], [1.0, 2.0], [1.0, 2.0]])
-        p = dataset_module.DataPreprocessor().fit(data)
+        p = dataset_module.TrainingDataPreprocessor().fit(data)
         # 零标准差应被替换为 1.0
         assert np.all(p.std_ == 1.0)
 
     def test_fit_returns_self(self, dataset_module):
         data = np.array([[1.0, 2.0]])
-        p = dataset_module.DataPreprocessor()
+        p = dataset_module.TrainingDataPreprocessor()
         result = p.fit(data)
         assert result is p
 
 
-class TestDataPreprocessorTransform:
+class TestTrainingDataPreprocessorTransform:
     def test_transform_standardize_and_normalize(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-        p = dataset_module.DataPreprocessor().fit(data)
+        p = dataset_module.TrainingDataPreprocessor().fit(data)
         out = p.transform(data)
         assert out.shape == data.shape
 
     def test_transform_only_standardize(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0]])
-        p = dataset_module.DataPreprocessor(
+        p = dataset_module.TrainingDataPreprocessor(
             normalize=False, standardize=True, handle_missing=False
         ).fit(data)
         out = p.transform(data)
@@ -392,7 +392,7 @@ class TestDataPreprocessorTransform:
 
     def test_transform_only_normalize(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0]])
-        p = dataset_module.DataPreprocessor(
+        p = dataset_module.TrainingDataPreprocessor(
             normalize=True, standardize=False, handle_missing=False
         ).fit(data)
         out = p.transform(data)
@@ -402,14 +402,14 @@ class TestDataPreprocessorTransform:
 
     def test_transform_with_missing(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-        p = dataset_module.DataPreprocessor().fit(data)
+        p = dataset_module.TrainingDataPreprocessor().fit(data)
         data_with_nan = np.array([[1.0, np.nan], [3.0, 4.0]])
         out = p.transform(data_with_nan)
         assert not np.isnan(out).any()
 
     def test_transform_without_missing_handling(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0]])
-        p = dataset_module.DataPreprocessor(
+        p = dataset_module.TrainingDataPreprocessor(
             normalize=False, standardize=True, handle_missing=False
         ).fit(data)
         out = p.transform(data)
@@ -417,10 +417,10 @@ class TestDataPreprocessorTransform:
         assert np.all(np.isfinite(out))
 
 
-class TestDataPreprocessorFitTransform:
+class TestTrainingDataPreprocessorFitTransform:
     def test_fit_transform(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-        p = dataset_module.DataPreprocessor()
+        p = dataset_module.TrainingDataPreprocessor()
         out = p.fit_transform(data)
         assert out.shape == data.shape
         # fit 应已生效
@@ -430,7 +430,7 @@ class TestDataPreprocessorFitTransform:
 class TestHandleMissing:
     def test_handle_missing_replaces_nan_with_col_mean(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-        p = dataset_module.DataPreprocessor()
+        p = dataset_module.TrainingDataPreprocessor()
         p.fit(data)
         data_with_nan = np.array([[1.0, np.nan], [np.nan, 4.0], [5.0, 6.0]])
         out = p._handle_missing(data_with_nan)
@@ -439,7 +439,7 @@ class TestHandleMissing:
 
     def test_handle_missing_no_nan(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0]])
-        p = dataset_module.DataPreprocessor()
+        p = dataset_module.TrainingDataPreprocessor()
         p.fit(data)
         out = p._handle_missing(data)
         np.testing.assert_array_equal(out, data)
@@ -953,7 +953,7 @@ class TestDataAugmentation:
 
 
 # =============================================================================
-# 7. 集成场景 - 与 LNNDataset + DataPreprocessor 组合
+# 7. 集成场景 - 与 LNNDataset + TrainingDataPreprocessor 组合
 # =============================================================================
 
 
@@ -965,7 +965,7 @@ class TestIntegration:
         labels = rng.randint(0, 2, size=(50,))
 
         ds = dataset_module.LNNDataset(data=data, labels=labels)
-        pp = dataset_module.DataPreprocessor()
+        pp = dataset_module.TrainingDataPreprocessor()
         processed = pp.fit_transform(ds.data)
         # processed 与 ds.data 形状一致
         assert processed.shape == ds.data.shape

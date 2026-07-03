@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import http from '@/utils/http'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 /**
  * 插件元数据接口
@@ -27,6 +28,27 @@ export interface Plugin {
 }
 
 /**
+ * Worker 进程信息接口
+ */
+export interface WorkerInfo {
+  status: string
+  pid: number
+  port: number
+  uptime: number
+}
+
+/**
+ * 依赖节点接口
+ */
+export interface DependencyNode {
+  id: string
+  name: string
+  version: string
+  status?: string
+  dependencies?: DependencyNode[]
+}
+
+/**
  * 插件详情接口
  * 包含插件元数据、实例状态和依赖树等信息。
  */
@@ -34,9 +56,9 @@ export interface PluginDetail {
   metadata: Plugin
   has_instance: boolean
   context_keys: string[]
-  dependency_tree: unknown
+  dependency_tree: DependencyNode | null
   capabilities: string[]
-  worker?: unknown
+  worker?: WorkerInfo
 }
 
 /** 插件状态接口 */
@@ -83,7 +105,7 @@ export const usePluginStore = defineStore('plugin', {
       this.loading = true
       this.error = null
       try {
-        const response = await http.get('/api/v1/plugins')
+        const response = await http.get(API_CONFIG.PLUGINS)
         this.plugins = response.data.data.plugins
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -101,7 +123,7 @@ export const usePluginStore = defineStore('plugin', {
       this.loading = true
       this.error = null
       try {
-        const response = await http.get(`/api/v1/plugins/${pluginId}`)
+        const response = await http.get(buildApiPath(API_CONFIG.PLUGINS, `/${pluginId}`))
         this.currentPlugin = response.data.data
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -118,7 +140,7 @@ export const usePluginStore = defineStore('plugin', {
     async enablePlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
-        await http.post(`/api/v1/plugins/${pluginId}/enable`)
+        await http.post(buildApiPath(API_CONFIG.PLUGINS, `/${pluginId}/enable`))
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -135,7 +157,7 @@ export const usePluginStore = defineStore('plugin', {
     async disablePlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
-        await http.post(`/api/v1/plugins/${pluginId}/disable`)
+        await http.post(buildApiPath(API_CONFIG.PLUGINS, `/${pluginId}/disable`))
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -152,7 +174,7 @@ export const usePluginStore = defineStore('plugin', {
     async uninstallPlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
-        await http.delete(`/api/v1/plugins/${pluginId}`)
+        await http.delete(buildApiPath(API_CONFIG.PLUGINS, `/${pluginId}`))
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -170,7 +192,7 @@ export const usePluginStore = defineStore('plugin', {
     async updatePluginConfig(pluginId: string, config: Record<string, unknown>): Promise<void> {
       this.loading = true
       try {
-        await http.put(`/api/v1/plugins/${pluginId}/config`, config)
+        await http.put(buildApiPath(API_CONFIG.PLUGINS, `/${pluginId}/config`), config)
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message
@@ -187,7 +209,7 @@ export const usePluginStore = defineStore('plugin', {
     async reloadPlugin(pluginId: string): Promise<void> {
       this.loading = true
       try {
-        await http.post(`/api/v1/plugins/${pluginId}/reload`)
+        await http.post(buildApiPath(API_CONFIG.PLUGINS, `/${pluginId}/reload`))
         await this.fetchPlugins()
       } catch (err: unknown) {
         this.error = (err as Error).message

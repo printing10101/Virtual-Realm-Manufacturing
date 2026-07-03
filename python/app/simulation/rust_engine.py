@@ -50,6 +50,14 @@ from app.simulation.voxel_cutter import (
 from app.simulation.voxel_cutter import (
     VoxelSimulationResult as _PyVoxelSimulationResult,
 )
+from app.simulation.voxel_cutter.cutter import (
+    _check_rapid_collisions,
+    _discretize_segment,
+)
+from app.simulation.voxel_cutter.mesher import (
+    reconstruct_mesh,
+    voxelize_mesh,
+)
 from app.simulation.toolpath_parser import ToolpathSegment
 
 if TYPE_CHECKING:
@@ -285,7 +293,7 @@ class VoxelCutter(_PyVoxelCutter):
             "z_max": float(bbox_max[2]),
         }
 
-        voxel_grid = self._voxelize_mesh(stock_mesh, bbox_min, bbox_max)
+        voxel_grid = voxelize_mesh(stock_mesh, bbox_min, bbox_max, self._voxel_size)
         total_voxels = int(voxel_grid.sum())
 
         cutting_segments = [s for s in segments if s.type in ("linear", "arc")]
@@ -303,7 +311,7 @@ class VoxelCutter(_PyVoxelCutter):
         # -------------------------------------------------------------------
         all_cut_points: list[np.ndarray] = []
         for seg in cutting_segments:
-            seg_points = self._discretize_segment(seg, self._voxel_size * 0.5)
+            seg_points = _discretize_segment(seg, self._voxel_size * 0.5, self._voxel_size)
             for pt in seg_points:
                 x, y, z = float(pt[0]), float(pt[1]), float(pt[2])
                 if z < bbox_min[2] - 0.01:
@@ -336,8 +344,8 @@ class VoxelCutter(_PyVoxelCutter):
             )
             collision_info.collision_severity = severity
 
-        rapid_check = self._check_rapid_collisions(
-            segments, voxel_grid, bbox_min, safe_z_height
+        rapid_check = _check_rapid_collisions(
+            segments, voxel_grid, bbox_min, safe_z_height, self._voxel_size
         )
         if rapid_check.collided:
             collision_info.collided = True
@@ -357,7 +365,7 @@ class VoxelCutter(_PyVoxelCutter):
                     unique_positions.append(pos)
             collision_info.collision_positions = unique_positions[:20]
 
-        result_mesh = self._reconstruct_mesh(voxel_grid, bbox_min, self._voxel_size)
+        result_mesh = reconstruct_mesh(voxel_grid, bbox_min, self._voxel_size)
 
         output_dir.mkdir(parents=True, exist_ok=True)
         stl_filename = f"sim_result_{task_id}.stl"

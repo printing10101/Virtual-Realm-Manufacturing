@@ -31,6 +31,53 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_DELAY = 1.0
 
 
+# ---------------------------------------------------------------------------
+# 共享 httpx.AsyncClient 单例（连接池复用，避免每次调用都新建客户端）
+# ---------------------------------------------------------------------------
+# 原实现每次 chat_completion 都 `async with httpx.AsyncClient(...)` 新建客户端，
+# 导致 TLS 握手重复、连接无法复用。改为共享单例后，所有 LLM 调用复用同一连接池。
+# 单次请求的 timeout 仍在 post() 调用级别通过 timeout=self.timeout 覆盖。
+# ---------------------------------------------------------------------------
+
+_shared_http_client: httpx.AsyncClient | None = None
+_shared_http_client_lock = asyncio.Lock()
+
+# 共享连接池配置：默认 60s 总超时，5s 连接超时，最多 100 连接，20 keepalive
+_SHARED_TIMEOUT = httpx.Timeout(60.0, connect=5.0)
+_SHARED_LIMITS = httpx.Limits(max_connections=100, max_keepalive_connections=20)
+
+
+async def get_shared_http_client() -> httpx.AsyncClient:
+    """获取共享的 httpx.AsyncClient 单例。
+
+    使用双重检查锁定（DCL）确保并发安全且无锁开销。
+    """
+    global _shared_http_client
+    if _shared_http_client is not None:
+        return _shared_http_client
+    async with _shared_http_client_lock:
+        if _shared_http_client is not None:
+            return _shared_http_client
+        _shared_http_client = httpx.AsyncClient(
+            timeout=_SHARED_TIMEOUT,
+            limits=_SHARED_LIMITS,
+        )
+        logger.info("Shared httpx.AsyncClient initialized (connection pool reuse)")
+        return _shared_http_client
+
+
+async def close_shared_http_client() -> None:
+    """关闭共享的 httpx.AsyncClient（FastAPI shutdown 时调用）。"""
+    global _shared_http_client
+    if _shared_http_client is not None:
+        try:
+            await _shared_http_client.aclose()
+        except (RuntimeError, httpx.HTTPError) as e:
+            logger.debug("Shared httpx client close failed: %s", e, exc_info=True)
+        _shared_http_client = None
+        logger.info("Shared httpx.AsyncClient closed")
+
+
 def _classify_error(status_code: int, body: str) -> LLMError:
     if status_code == 429:
         return RateLimitError(f"Rate limit exceeded: {status_code} - {body}")
@@ -111,20 +158,22 @@ class BaseLLMClient:
         """Call LLM chat completion API with retry logic."""
         self._validate_inputs(messages, max_tokens, temperature)
 
-        payload, headers, endpoint = self._build_payload(
+        payload, headers, endpoint = await self._build_payload(
             messages, max_tokens, temperature, model
         )
         target_model = model or self._default_model()
 
         last_error: Exception | None = None
+        # 复用共享 httpx.AsyncClient 连接池，避免每次调用都新建客户端
+        client = await get_shared_http_client()
         for attempt in range(1, self.max_retries + 1):
             try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    response = await client.post(
-                        endpoint,
-                        headers=headers,
-                        json=payload,
-                    )
+                response = await client.post(
+                    endpoint,
+                    headers=headers,
+                    json=payload,
+                    timeout=self.timeout,
+                )
                 if response.status_code != 200:
                     raise _classify_error(response.status_code, response.text)
                 return self._safe_parse(
@@ -275,3 +324,116 @@ class CloudLLMClient(BaseLLMClient):
             "finish_reason": choice.get("finish_reason", "stop"),
             "usage": data.get("usage", {}),
         }
+
+
+class ProviderAdapter(BaseLLMClient):
+    """将 LLMProvider 适配为 BaseLLMClient 接口。
+
+    让既有调用方（task_classifier / solution_generator / nl2cad / ...）
+    可以无感切换到 ProviderRegistry 管理的 Provider 实例。
+    """
+
+    def __init__(self, provider: Any) -> None:
+        # 不调用 BaseLLMClient.__init__ 的 retry 参数，因为 Provider 自身已处理重试
+        self._provider = provider
+        # 同步关键属性以兼容外部读取
+        self.timeout = getattr(provider.config, "timeout", 60)
+        self.max_retries = getattr(provider.config, "max_retries", DEFAULT_MAX_RETRIES)
+        self.retry_delay = getattr(provider.config, "retry_delay", DEFAULT_RETRY_DELAY)
+
+    def _default_model(self) -> str:
+        return getattr(self._provider.config, "default_model", "")
+
+    async def _build_payload(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        model: str | None,
+    ) -> tuple[dict[str, Any], dict[str, str] | None, str]:
+        # 适配器模式下不使用 BaseLLMClient 的请求构造路径
+        raise NotImplementedError(
+            "ProviderAdapter 通过 chat_completion() 直接委托给 Provider"
+        )
+
+    def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
+        raise NotImplementedError(
+            "ProviderAdapter 通过 chat_completion() 直接委托给 Provider"
+        )
+
+    async def chat_completion(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        model: str | None = None,
+    ) -> dict[str, Any]:
+        """直接委托给封装的 LLMProvider。
+
+        Provider 自身已实现重试/超时/连接池复用，此处不再叠加 BaseLLMClient 的重试。
+        """
+        self._validate_inputs(messages, max_tokens, temperature)
+        try:
+            return await self._provider.chat_completion(
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                model=model,
+            )
+        except Exception as e:
+            # 将 Provider 异常转换为 LLMError 体系，保持调用方错误处理一致
+            if isinstance(e, LLMError):
+                raise
+            raise LLMError(f"Provider {self._provider.provider_id} 调用失败: {e}") from e
+
+
+async def get_llm_client() -> BaseLLMClient:
+    """工厂函数：返回当前可用的 LLM 客户端。
+
+    优先级：
+    1. ProviderRegistry 中已激活的 Provider（用户在系统设置中启用的 Provider）
+    2. 回退到 config.ai 配置（向后兼容，未启用 Provider 网关时使用）
+
+    Returns:
+        BaseLLMClient 实例（OllamaClient / CloudLLMClient / ProviderAdapter）
+    """
+    # 优先尝试 Provider 网关
+    try:
+        from app.ai.llm.provider_registry import get_registry
+
+        registry = get_registry()
+        provider = registry.get_active_provider()
+        if provider is not None:
+            logger.debug(
+                "使用激活的 LLM Provider: %s (%s)",
+                provider.provider_id,
+                provider.provider_type.value,
+            )
+            return ProviderAdapter(provider)
+    except Exception as e:
+        # 注册表不可用（如数据库未初始化）时降级到原有配置逻辑
+        logger.debug(
+            "ProviderRegistry 不可用，回退到 config.ai 配置: %s",
+            e,
+            exc_info=True,
+        )
+
+    # 向后兼容：基于 config.ai.mode 创建客户端
+    from app.config import config
+
+    mode = config.ai.mode
+    if mode == "local":
+        return OllamaClient(
+            base_url=config.ai.ollama_base_url,
+            model=config.ai.ollama_model,
+            timeout=config.ai.timeout,
+            max_retries=config.ai.max_retries,
+        )
+    else:
+        return CloudLLMClient(
+            api_key=config.ai.cloud_api_key,
+            base_url=config.ai.cloud_base_url,
+            model=config.ai.cloud_model,
+            timeout=config.ai.timeout,
+            max_retries=config.ai.max_retries,
+        )

@@ -39,7 +39,7 @@ class BasePostProcessor(ABC):
     def __init__(
         self,
         decimal_places: int = 3,
-        safe_z_height: float = 50.0,
+        safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
@@ -185,7 +185,7 @@ class BasePostProcessor(ABC):
         # 验证顶层基础参数
         top_level_defaults = {
             "decimal_places": 3,
-            "safe_z_height": 50.0,
+            "safe_z_height": 80.0,
             "rapid_feed": 10000.0,
         }
         for key, default_val in top_level_defaults.items():
@@ -601,6 +601,99 @@ class BasePostProcessor(ABC):
             程序停止NC代码字符串 "M00"
         """
         return "M00"
+
+    # ------------------------------------------------------------------
+    # 通用直线/快速移动与 RTCP 接口
+    # ------------------------------------------------------------------
+    # 背景：gcode_generator 在三轴与五轴模式下均会调用 format_linear_move，
+    # 因此必须在基类提供默认实现；format_rapid_move / format_rtcp_on/off
+    # 仅在五轴模式下调用（已用 hasattr 保护），仍提供默认实现以便子类按需覆盖。
+
+    def format_linear_move(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        feed: Optional[float] = None,
+        a: Optional[float] = None,
+        c: Optional[float] = None,
+    ) -> str:
+        """生成直线插补指令（G01）。
+
+        默认实现输出 Fanuc 风格的 G01 X Y Z F 代码，子类可覆盖以适配
+        控制器特定语法（如 Heidenhain 的 L X+ Y+ Z+ F）。
+
+        Args:
+            x: X轴坐标
+            y: Y轴坐标
+            z: Z轴坐标
+            feed: 进给速度 (mm/min)，None使用默认值
+            a: A轴角度（可选，度）
+            c: C轴角度（可选，度）
+
+        Returns:
+            直线插补NC代码字符串
+        """
+        feed_val = self.get_feed_rate(feed) if feed is not None else self.get_feed_rate()
+        line = f"G01 X{self._fmt(x)} Y{self._fmt(y)} Z{self._fmt(z)} F{self._fmt(feed_val)}"
+        if a is not None:
+            line += f" A{self._fmt(a)}"
+        if c is not None:
+            line += f" C{self._fmt(c)}"
+        return line
+
+    def format_rapid_move(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        a: Optional[float] = None,
+        c: Optional[float] = None,
+    ) -> str:
+        """生成快速定位指令（G00）。
+
+        默认实现输出 G00 X Y Z 代码，子类可覆盖。
+
+        Args:
+            x: X轴坐标
+            y: Y轴坐标
+            z: Z轴坐标
+            a: A轴角度（可选，度）
+            c: C轴角度（可选，度）
+
+        Returns:
+            快速定位NC代码字符串
+        """
+        line = f"G00 X{self._fmt(x)} Y{self._fmt(y)} Z{self._fmt(z)}"
+        if a is not None:
+            line += f" A{self._fmt(a)}"
+        if c is not None:
+            line += f" C{self._fmt(c)}"
+        return line
+
+    def format_rtcp_on(self, tool_length: float = 0.0) -> str:
+        """开启 RTCP（旋转刀具中心点）补偿模式。
+
+        默认实现使用 Fanuc 风格的 G43.4 指令，子类可覆盖以适配
+        其他控制器（如 Siemens TRAORI / Heidenhain M128）。
+
+        Args:
+            tool_length: 刀具长度 (mm)
+
+        Returns:
+            RTCP开启NC代码字符串
+        """
+        return f"G43.4 H{int(tool_length):02d}"
+
+    def format_rtcp_off(self) -> str:
+        """关闭 RTCP 补偿模式。
+
+        默认实现使用 G49 指令，子类可覆盖。
+
+        Returns:
+            RTCP关闭NC代码字符串
+        """
+        return "G49"
 
     @staticmethod
     def _date_string() -> str:

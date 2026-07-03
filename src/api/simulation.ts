@@ -5,6 +5,7 @@
 
 import http from '@/utils/http'
 import type { SimulationResult, SimulationStatus } from '@/types'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 /** 仿真结果数据（扩展用于可视化） */
 export interface SimulationVisualizationData {
@@ -98,7 +99,7 @@ export async function getSimulationResult(
   try {
     // 获取仿真状态和结果
     const statusResponse = await http.get<ApiResponse<SimulationStatus>>(
-      `/simulation/status/${taskId}`
+      buildApiPath(API_CONFIG.SIMULATION, `/status/${taskId}`)
     )
 
     const status = statusResponse.data.data
@@ -109,7 +110,7 @@ export async function getSimulationResult(
 
     // 获取仿真结果详情
     const resultResponse = await http.get<ApiResponse<SimulationResult>>(
-      `/simulation/result/${taskId}`
+      buildApiPath(API_CONFIG.SIMULATION, `/result/${taskId}`)
     )
 
     const result = resultResponse.data.data

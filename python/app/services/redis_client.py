@@ -17,6 +17,8 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
+from app.services.memory_cache import get_memory_cache, init_memory_cache, close_memory_cache
+
 logger = logging.getLogger(__name__)
 
 TASK_PROGRESS_PREFIX = "task"
@@ -53,17 +55,13 @@ class _RedisHolder:
         self._client: Optional[Any] = None
 
     async def get(self) -> Optional[Any]:
-        # 快速路径：已有客户端且健康
+        # 快速路径：已有客户端直接返回。
+        # Redis 客户端已配置 health_check_interval=30，会自动进行健康检查
+        # 并在连接异常时重连；内存缓存无需健康检查。
+        # 移除每次 get() 都 ping 的冗余往返，将延迟降低 ~1 个 RTT。
         client = self._client
         if client is not None:
-            try:
-                await client.ping()
-                return client
-            except (ConnectionError, OSError, TimeoutError) as e:
-                # 客户端已损坏，置空后走重连分支
-                logger.warning("Redis ping 失败，重新建立连接: %s", e)
-                with self._init_lock:
-                    self._client = None
+            return client
 
         async with self._lock:
             # 双重检查：可能在获取锁的过程中其他协程已建立连接
@@ -72,8 +70,16 @@ class _RedisHolder:
 
             config = RedisConfig()
             if not config.enabled:
-                logger.warning("REDIS_URL not configured, Redis caching disabled")
-                return None
+                # 桌面模式：使用内存缓存替代 Redis
+                logger.info("REDIS_URL not configured, using in-memory cache (desktop mode)")
+                try:
+                    cache = await init_memory_cache()
+                    with self._init_lock:
+                        self._client = cache
+                    return cache
+                except Exception as e:
+                    logger.warning("Failed to initialize memory cache: %s", e)
+                    return None
 
             try:
                 import redis.asyncio as aioredis
@@ -92,12 +98,26 @@ class _RedisHolder:
                 logger.info("Redis client connected: %s", config.url)
                 return client
             except ImportError:
-                logger.warning("redis library not installed, Redis caching disabled")
-                return None
+                logger.warning("redis library not installed, falling back to memory cache")
+                try:
+                    cache = await init_memory_cache()
+                    with self._init_lock:
+                        self._client = cache
+                    return cache
+                except Exception as e:
+                    logger.warning("Failed to initialize memory cache: %s", e)
+                    return None
             except (ConnectionError, OSError, ValueError, TimeoutError) as e:
-                # Redis 连接失败时记录错误并返回 None，允许系统降级运行
-                logger.error("Failed to connect to Redis: %s", e)
-                return None
+                # Redis 连接失败时降级到内存缓存
+                logger.error("Failed to connect to Redis: %s, falling back to memory cache", e)
+                try:
+                    cache = await init_memory_cache()
+                    with self._init_lock:
+                        self._client = cache
+                    return cache
+                except Exception as fallback_err:
+                    logger.warning("Failed to initialize memory cache: %s", fallback_err)
+                    return None
 
     async def close(self) -> None:
         with self._init_lock:

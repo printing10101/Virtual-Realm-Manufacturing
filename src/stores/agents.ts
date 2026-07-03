@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import http from '@/utils/http'
-import { extractErrorMessage } from '@/utils/errorUtils'
+import { extractErrorMessage } from '@/utils/error-handler'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 export interface AgentSummary {
   agent_id: string
@@ -62,8 +63,6 @@ export interface AgentDetail {
   }
   metadata: Record<string, unknown>
 }
-
-const API_BASE = API_CONFIG.AGENTS
 
 export const useAgentStore = defineStore('agents', () => {
   const agents = ref<AgentSummary[]>([])
@@ -128,7 +127,7 @@ export const useAgentStore = defineStore('agents', () => {
     try {
       const params: Record<string, string> = {}
       if (statusFilter.value) params.status = statusFilter.value
-      const response = await http.get(API_BASE + '/', { params })
+      const response = await http.get(buildApiPath(API_CONFIG.AGENTS, '/'), { params })
       agents.value = response.data.data || []
     } catch (e: unknown) {
       error.value = extractErrorMessage(e, '获取Agent列表失败')
@@ -146,7 +145,7 @@ export const useAgentStore = defineStore('agents', () => {
     detailLoading.value = true
     error.value = null
     try {
-      const response = await http.get(`${API_BASE}/${agentId}`)
+      const response = await http.get(buildApiPath(API_CONFIG.AGENTS, `/${agentId}`))
       currentAgent.value = response.data.data
       return response.data.data as AgentDetail
     } catch (e: unknown) {
@@ -164,7 +163,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 检查点数据
    */
   async function saveCheckpoint(agentId: string, data: Record<string, unknown>): Promise<unknown> {
-    const response = await http.post(`${API_BASE}/${agentId}/checkpoints/save`, data)
+    const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/checkpoints/save`), data)
     return response.data.data
   }
 
@@ -175,7 +174,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 回滚结果
    */
   async function rollbackCheckpoint(agentId: string, checkpointId: string): Promise<unknown> {
-    const response = await http.post(`${API_BASE}/${agentId}/checkpoints/rollback`, {
+    const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/checkpoints/rollback`), {
       checkpoint_id: checkpointId,
     })
     return response.data.data
@@ -188,7 +187,7 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 克隆结果
    */
   async function cloneAgent(sourceId: string, targetId: string): Promise<unknown> {
-    const response = await http.post(`${API_BASE}/${sourceId}/clone`, {
+    const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${sourceId}/clone`), {
       target_agent_id: targetId,
     })
     return response.data.data
@@ -200,35 +199,8 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 恢复结果
    */
   async function resumeAgent(agentId: string): Promise<unknown> {
-    const response = await http.post(`${API_BASE}/${agentId}/resume`)
+    const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/resume`))
     return response.data.data
-  }
-
-  /**
-   * 保存 Agent 状态
-   * @param agentId - Agent ID
-   * @param payload - 状态数据
-   * @returns 保存结果
-   */
-  async function saveAgentState(agentId: string, payload: Record<string, unknown>): Promise<unknown> {
-    const response = await http.post(`${API_BASE}/${agentId}/save`, payload)
-    return response.data.data
-  }
-
-  /**
-   * 开始 Agent 心跳
-   * @param agentId - Agent ID
-   */
-  async function startHeartbeat(agentId: string): Promise<void> {
-    await http.post(`${API_BASE}/${agentId}/heartbeat/start`)
-  }
-
-  /**
-   * 停止 Agent 心跳
-   * @param agentId - Agent ID
-   */
-  async function stopHeartbeat(agentId: string): Promise<void> {
-    await http.post(`${API_BASE}/${agentId}/heartbeat/stop`)
   }
 
   /**
@@ -236,19 +208,8 @@ export const useAgentStore = defineStore('agents', () => {
    * @param agentId - Agent ID
    */
   async function deleteAgent(agentId: string): Promise<void> {
-    await http.delete(`${API_BASE}/${agentId}`)
+    await http.delete(buildApiPath(API_CONFIG.AGENTS, `/${agentId}`))
     agents.value = agents.value.filter((a) => a.agent_id !== agentId)
-  }
-
-  /**
-   * 更新 Agent 上下文
-   * @param agentId - Agent ID
-   * @param updates - 更新数据
-   * @returns 更新结果
-   */
-  async function updateContext(agentId: string, updates: Record<string, unknown>): Promise<unknown> {
-    const response = await http.post(`${API_BASE}/${agentId}/context/update`, { updates })
-    return response.data.data
   }
 
   return {
@@ -271,10 +232,6 @@ export const useAgentStore = defineStore('agents', () => {
     rollbackCheckpoint,
     cloneAgent,
     resumeAgent,
-    saveAgentState,
-    startHeartbeat,
-    stopHeartbeat,
     deleteAgent,
-    updateContext,
   }
 })

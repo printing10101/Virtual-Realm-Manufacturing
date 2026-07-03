@@ -6,5 +6,5 @@
 *.pkl filter=lfs diff=lfs merge=lfs -text
 *.bin filter=lfs diff=lfs merge=lfs -text
 data/traces/** filter=lfs diff=lfs merge=lfs -text
-CNC_Machining-main/** filter=lfs diff=lfs merge=lfs -text
+data/external/cnc_machining/** filter=lfs diff=lfs merge=lfs -text
 uniwear-dataset-main/**/*.csv filter=lfs diff=lfs merge=lfs -text

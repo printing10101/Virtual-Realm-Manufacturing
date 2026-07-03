@@ -504,8 +504,8 @@ def phase4_rust_interface_compatibility():
 
     print("\n--- config.py版本号一致性 ---")
     from app.config import config
-    check("config.app_version = 2.3.0",
-          config.app_version == "2.3.0",
+    check("config.app_version = 2.4.0",
+          config.app_version == "2.4.0",
           f"实际: {config.app_version}")
     check("SimulationConfig.voxel_size默认1.0",
           abs(config.simulation.voxel_size - 1.0) < 0.01)
@@ -591,7 +591,7 @@ def generate_real_gcode() -> list[str]:
     return [
         "%",
         "O1000 (Bracket Machining - VMC850 + 40Cr + φ10 Carbide Endmill)",
-        "(Programmed by 灵境制造 V2.3.0)",
+        "(Programmed by 灵境制造 V2.4.0)",
         "",
         "N10 G90 G21 G17 G40 G49 G80",
         "N20 G91 G28 Z0",
@@ -665,7 +665,7 @@ def generate_real_gcode() -> list[str]:
 # =============================================================================
 if __name__ == "__main__":
     print("+" + "=" * 70 + "+")
-    print("|     Lingjing Manufacturing -- E2E Machining Scenario Test V2.3.0  |")
+    print("|     Lingjing Manufacturing -- E2E Machining Scenario Test V2.4.0  |")
     print("|     Python Domain Models <-> Rust Interface Full-Chain Verify       |")
     print("+" + "=" * 70 + "+")
 

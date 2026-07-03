@@ -216,7 +216,7 @@
     "hardness_hb": 3,
     "tensile_strength_mpa": 40,
     "thermal_conductivity": 0.12,
-    "density_gcm3": 0.45,
+    "density_gcm3": 0.5,
     "specific_cutting_force": 150,
     "cutting_speed_range": {"roughing": [300, 600], "finishing": [400, 1000]},
     "feed_range": {"roughing": [0.1, 0.5], "finishing": [0.05, 0.2]},

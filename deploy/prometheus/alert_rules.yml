@@ -32,14 +32,16 @@ groups:
           description: "HTTP 5xx error rate is {{ $value | humanizePercentage }}, exceeding 5% threshold."
 
       - alert: HighMemoryUsage
-        expr: process_resident_memory_bytes / 1024 / 1024 / (1024 * 1024) > 0.80
+        # 容器内存限制为 4G（docker-compose.yml deploy.resources.limits.memory）
+        # process_resident_memory_bytes 单位为字节，除以 4GiB 得到占用比例
+        expr: process_resident_memory_bytes / (4 * 1024 * 1024 * 1024) > 0.80
         for: 5m
         labels:
           severity: warning
           category: resources
         annotations:
-          summary: "Memory usage exceeds 80%"
-          description: "Process memory usage is {{ $value | humanizePercentage }} of available RAM."
+          summary: "Memory usage exceeds 80% of 4G limit"
+          description: "Process RSS is {{ $value | humanizePercentage }} of the 4G container memory limit."
 
       - alert: LNNInferenceLatency
         expr: histogram_quantile(0.95, rate(lnn_inference_duration_seconds_bucket[5m])) > 1.0

@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { extractErrorMessage } from '@/utils/errorUtils'
+import { extractErrorMessage } from '@/utils/error-handler'
 import http from '@/utils/http'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 /** 任务基本信息接口 */
 export interface TaskInfo {
@@ -28,8 +29,6 @@ export interface TaskStats {
   max_concurrent: number
   available_slots: number
 }
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 /** 任务管理 Store */
 export const useTasksStore = defineStore('tasks', () => {
@@ -88,7 +87,7 @@ export const useTasksStore = defineStore('tasks', () => {
       searchParams.set('limit', String(params?.limit ?? 50))
       searchParams.set('offset', String(params?.offset ?? 0))
 
-      const response = await http.get(`${API_BASE}/jobs`, { params: Object.fromEntries(searchParams) })
+      const response = await http.get(API_CONFIG.JOBS, { params: Object.fromEntries(searchParams) })
       const json = response.data
       if (json.code === 0) {
         tasks.value = json.data.jobs || []
@@ -111,7 +110,7 @@ export const useTasksStore = defineStore('tasks', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await http.get(`${API_BASE}/jobs/${jobId}`)
+      const response = await http.get(buildApiPath(API_CONFIG.JOBS, `/${jobId}`))
       const json = response.data
       if (json.code === 0) {
         currentTask.value = json.data
@@ -135,7 +134,7 @@ export const useTasksStore = defineStore('tasks', () => {
    */
   async function fetchTaskProgress(jobId: string): Promise<unknown> {
     try {
-      const response = await http.get(`${API_BASE}/jobs/${jobId}/progress`)
+      const response = await http.get(buildApiPath(API_CONFIG.JOBS, `/${jobId}/progress`))
       const json = response.data
       if (json.code === 0 && currentTask.value) {
         currentTask.value.progress = json.data.progress_db ?? currentTask.value.progress
@@ -161,7 +160,7 @@ export const useTasksStore = defineStore('tasks', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await http.post(`${API_BASE}/jobs/${jobId}/cancel`)
+      const response = await http.post(buildApiPath(API_CONFIG.JOBS, `/${jobId}/cancel`))
       const json = response.data
       if (json.code === 0) {
         const idx = tasks.value.findIndex(t => t.job_id === jobId)
@@ -189,7 +188,7 @@ export const useTasksStore = defineStore('tasks', () => {
    */
   async function fetchStats(): Promise<unknown> {
     try {
-      const response = await http.get(`${API_BASE}/api/v1/jobs/stats`)
+      const response = await http.get(buildApiPath(API_CONFIG.JOBS, '/stats'))
       const json = response.data
       if (json.code === 0) {
         stats.value = json.data

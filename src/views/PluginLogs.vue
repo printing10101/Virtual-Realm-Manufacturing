@@ -2,15 +2,15 @@
   <div class="plugin-logs">
     <el-card class="header-card">
       <div class="header-content">
-        <h2>插件日志</h2>
+        <h2>{{ t('pluginLogs.pageTitle') }}</h2>
         <div class="actions">
           <el-select
             v-model="selectedPlugin"
-            placeholder="选择插件"
+            :placeholder="t('pluginLogs.placeholderSelectPlugin')"
             style="width: 200px"
           >
             <el-option
-              label="全部插件"
+              :label="t('pluginLogs.labelAllPlugins')"
               value=""
             />
             <el-option
@@ -22,11 +22,11 @@
           </el-select>
           <el-select
             v-model="logLevel"
-            placeholder="日志级别"
+            :placeholder="t('pluginLogs.placeholderLogLevel')"
             style="width: 120px; margin-left: 10px"
           >
             <el-option
-              label="全部"
+              :label="t('pluginLogs.labelAll')"
               value=""
             />
             <el-option
@@ -52,7 +52,7 @@
             :loading="loading"
             @click="refreshLogs"
           >
-            <el-icon><Refresh /></el-icon> 刷新
+            <el-icon><Refresh /></el-icon> {{ t('pluginLogs.btnRefresh') }}
           </el-button>
           <el-button
             type="success"
@@ -60,7 +60,7 @@
             :disabled="filteredLogs.length === 0"
             @click="exportLogs"
           >
-            <el-icon><Download /></el-icon> 导出
+            <el-icon><Download /></el-icon> {{ t('pluginLogs.btnExport') }}
           </el-button>
         </div>
       </div>
@@ -93,7 +93,7 @@
         </div>
         <el-empty
           v-if="!loading && filteredLogs.length === 0"
-          description="暂无日志"
+          :description="t('pluginLogs.emptyNoLogs')"
         />
       </div>
     </el-card>
@@ -102,11 +102,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Refresh, Download } from '@element-plus/icons-vue'
 import http from '@/utils/http'
 import { triggerFileDownload } from '@/utils/download'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 import { usePluginStore } from '../stores/plugin'
+
+const { t } = useI18n()
 
 /** 日志条目接口 */
 interface LogEntry {
@@ -198,7 +202,7 @@ async function fetchLogsForPlugin(pluginId: string): Promise<LogEntry[]> {
   if (logLevel.value) params.level = logLevel.value
 
   const response = await http.get<PluginLogsResponse>(
-    `/api/v1/plugins/${encodeURIComponent(pluginId)}/logs`,
+    buildApiPath(API_CONFIG.PLUGINS, `/${encodeURIComponent(pluginId)}/logs`),
     { params }
   )
   const rawLogs = response.data?.data?.logs ?? []
@@ -234,7 +238,7 @@ async function refreshLogs() {
         logs.value = merged
       }
     }
-    ElMessage.success(`已加载 ${logs.value.length} 条日志`)
+    ElMessage.success(t('pluginLogs.msgLoaded', { count: logs.value.length }))
   } catch (err) {
     // http 拦截器已统一提示错误，此处仅兜底
     logs.value = []
@@ -249,7 +253,7 @@ async function refreshLogs() {
 function exportLogs() {
   const data = filteredLogs.value
   if (data.length === 0) {
-    ElMessage.warning('暂无日志可导出')
+    ElMessage.warning(t('pluginLogs.msgNoLogsToExport'))
     return
   }
 
@@ -278,7 +282,7 @@ function exportLogs() {
   // 添加 BOM 以便 Excel 正确识别 UTF-8 编码
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   triggerFileDownload(blob, `plugin-logs-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`)
-  ElMessage.success(`已导出 ${data.length} 条日志`)
+  ElMessage.success(t('pluginLogs.msgExported', { count: data.length }))
 }
 
 const formatTime = (timestamp: number) => {
@@ -301,8 +305,11 @@ const getLevelType = (level: string) => {
 }
 
 onMounted(async () => {
-  await pluginStore.fetchPlugins()
-  await refreshLogs()
+  // 并行请求插件列表和日志数据
+  await Promise.all([
+    pluginStore.fetchPlugins(),
+    refreshLogs(),
+  ])
 })
 
 // 切换插件或日志级别时自动刷新

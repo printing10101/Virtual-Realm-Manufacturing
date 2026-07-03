@@ -217,113 +217,56 @@ class TestRetrievalDocument:
         assert doc.vector_score == 0.8
 
 
-class TestMergeResults:
-    """合并结果测试"""
+class TestDelegationMapping:
+    """委托架构映射配置测试（v2：KnowledgeRetriever 委托给 RagRetrievalEngine）"""
 
-    def test_merge_deduplication(self):
-        """测试结果去重。"""
-        doc1 = RetrievalDocument(
-            id="doc_1", content="内容A", vector_score=0.8, keyword_score=0.0
+    def test_all_task_types_have_intent_mapping(self):
+        """确保所有任务类型都有 QueryIntent 映射。"""
+        from app.ai.process_understanding.knowledge_retriever import (
+            TASK_TYPE_TO_QUERY_INTENT,
         )
-        doc2 = RetrievalDocument(
-            id="doc_1", content="内容A", vector_score=0.0, keyword_score=0.7
-        )
-
-        merged = KnowledgeRetriever._merge_results(
-            [doc1], [doc2], vector_weight=0.6, keyword_weight=0.4
-        )
-        assert len(merged) == 1
-        assert merged[0].vector_score == 0.8
-        assert merged[0].keyword_score == 0.7
-
-    def test_merge_different_sources(self):
-        """测试不同来源的结果合并。"""
-        vector_docs = [
-            RetrievalDocument(id="1", content="A", vector_score=0.9, source="db1"),
-        ]
-        keyword_docs = [
-            RetrievalDocument(id="2", content="B", keyword_score=0.8, source="db2"),
-        ]
-
-        merged = KnowledgeRetriever._merge_results(
-            vector_docs, keyword_docs, vector_weight=0.5, keyword_weight=0.5
-        )
-        assert len(merged) == 2
-
-
-class TestReranking:
-    """重排序测试"""
-
-    def test_reranking_by_source_priority(self):
-        """测试来源优先级重排序。"""
-        docs = [
-            RetrievalDocument(
-                id="1", content="普通知识", final_score=0.8, source="unknown"
-            ),
-            RetrievalDocument(
-                id="2", content="工业数据", final_score=0.8, source="bosch_cnc"
-            ),
-            RetrievalDocument(
-                id="3", content="默认知识", final_score=0.8, source="default"
-            ),
-        ]
-
-        reranked = KnowledgeRetriever._apply_reranking(
-            docs, "刀具磨损", TaskType.FAULT_DIAGNOSIS
-        )
-
-        # bosch_cnc 对于故障诊断优先级最高
-        assert reranked[0].source == "bosch_cnc"
-
-    def test_reranking_score_order(self):
-        """测试重排序保持得分递减。"""
-        docs = [
-            RetrievalDocument(
-                id="1", content="A", final_score=0.9, source="default"
-            ),
-            RetrievalDocument(
-                id="2", content="B", final_score=0.5, source="default"
-            ),
-            RetrievalDocument(
-                id="3", content="C", final_score=0.3, source="default"
-            ),
-        ]
-
-        reranked = KnowledgeRetriever._apply_reranking(
-            docs, "测试", TaskType.KNOWLEDGE_QUERY
-        )
-
-        scores = [d.final_score for d in reranked]
-        assert scores == sorted(scores, reverse=True)
-
-
-class TestRetrievalWeights:
-    """检索权重配置测试"""
-
-    def test_all_task_types_have_weights(self):
-        """确保所有任务类型都有配置。"""
-        from app.ai.process_understanding.knowledge_retriever import RETRIEVAL_WEIGHTS
 
         for task_type in TaskType:
-            assert task_type in RETRIEVAL_WEIGHTS, f"{task_type} 缺少检索权重配置"
+            assert task_type in TASK_TYPE_TO_QUERY_INTENT, (
+                f"{task_type} 缺少 QueryIntent 映射"
+            )
+            assert isinstance(TASK_TYPE_TO_QUERY_INTENT[task_type], str)
 
-    def test_weights_sum_valid(self):
-        """确保权重配置合理。"""
-        from app.ai.process_understanding.knowledge_retriever import RETRIEVAL_WEIGHTS
+    def test_all_task_types_have_pipeline_level(self):
+        """确保所有任务类型都有 pipeline_level 配置。"""
+        from app.ai.process_understanding.knowledge_retriever import (
+            TASK_TYPE_TO_PIPELINE_LEVEL,
+        )
 
-        for task_type, weights in RETRIEVAL_WEIGHTS.items():
-            total = weights["vector_weight"] + weights["keyword_weight"]
-            assert abs(total - 1.0) < 0.01, (
-                f"{task_type} 向量+关键词权重之和应为1.0，实际为{total}"
+        valid_levels = {"fast", "standard", "full"}
+        for task_type in TaskType:
+            assert task_type in TASK_TYPE_TO_PIPELINE_LEVEL, (
+                f"{task_type} 缺少 pipeline_level 配置"
+            )
+            assert TASK_TYPE_TO_PIPELINE_LEVEL[task_type] in valid_levels, (
+                f"{task_type} pipeline_level 无效"
             )
 
-    def test_source_priorities_for_all_types(self):
-        """确保所有任务类型都有来源优先级配置。"""
-        from app.ai.process_understanding.knowledge_retriever import SOURCE_PRIORITY
+    def test_all_task_types_have_default_top_k(self):
+        """确保所有任务类型都有默认 top_k 配置。"""
+        from app.ai.process_understanding.knowledge_retriever import (
+            TASK_TYPE_DEFAULT_TOP_K,
+        )
 
         for task_type in TaskType:
-            assert task_type in SOURCE_PRIORITY, f"{task_type} 缺少来源优先级配置"
-            assert len(SOURCE_PRIORITY[task_type]) > 0, f"{task_type} 来源列表为空"
+            assert task_type in TASK_TYPE_DEFAULT_TOP_K, (
+                f"{task_type} 缺少默认 top_k 配置"
+            )
+            assert isinstance(TASK_TYPE_DEFAULT_TOP_K[task_type], int)
+            assert TASK_TYPE_DEFAULT_TOP_K[task_type] > 0
+
+    def test_chitchat_uses_fast_pipeline(self):
+        """闲聊任务应使用 fast pipeline 以降低延迟。"""
+        from app.ai.process_understanding.knowledge_retriever import (
+            TASK_TYPE_TO_PIPELINE_LEVEL,
+        )
+
+        assert TASK_TYPE_TO_PIPELINE_LEVEL[TaskType.CHITCHAT] == "fast"
 
 
 if __name__ == "__main__":

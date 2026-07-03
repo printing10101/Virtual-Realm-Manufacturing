@@ -85,6 +85,12 @@ class ImagePreprocessor(BasePreprocessor):
                 f"支持: {self.config.supported_bit_depths}"
             )
 
+        # 校验图像尺寸：零维图像无法进行 zoom 缩放，会触发 ZeroDivisionError
+        if img.shape[0] == 0 or img.shape[1] == 0:
+            raise ValueError(
+                f"图像尺寸无效: {img.shape[:2]}，高度和宽度必须大于 0"
+            )
+
         if raw_input.bit_depth == 16:
             img = (img / 65535.0).astype(np.float32)
         else:
@@ -259,6 +265,10 @@ class TextPreprocessor(BasePreprocessor):
     def preprocess(self, raw_input: TextInput) -> ProcessedData:
         import time
         t0 = time.perf_counter()
+
+        # 校验文本数据：None 不应被 str() 转换为 "None"，否则会错误产生特征
+        if raw_input.data is None:
+            raise ValueError("文本数据不能为 None")
 
         if isinstance(raw_input.data, dict):
             text = json.dumps(raw_input.data, ensure_ascii=False, indent=2)

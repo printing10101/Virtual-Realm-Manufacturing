@@ -148,7 +148,8 @@ def safe_file_path(user_input: str, base_dir: str) -> Path:
 
     安全校验逻辑:
         1. 将基础目录和用户输入都解析为绝对路径
-        2. 验证目标路径必须在基础目录内
+        2. 验证目标路径必须在基础目录内（使用 ``is_relative_to`` 而非
+           字符串前缀匹配，避免 ``/data/foo`` 与 ``/data/foobar`` 误判）
         3. 拒绝任何试图通过 '../' 等序列逃逸基础目录的路径
 
     Args:
@@ -164,8 +165,9 @@ def safe_file_path(user_input: str, base_dir: str) -> Path:
     base = Path(base_dir).resolve()
     target = (base / user_input).resolve()
 
-    # 核心校验：目标路径必须在基础目录内
-    if not str(target).startswith(str(base)):
+    # 核心校验：目标路径必须在基础目录内（使用 is_relative_to 替代
+    # str.startswith，修复前缀匹配的边界安全漏洞）
+    if not target.is_relative_to(base):
         logger.warning(
             "路径遍历检测: 用户输入 '%s' 试图访问基础目录 '%s' 之外的路径 '%s'",
             user_input, base_dir, target
@@ -195,6 +197,112 @@ def safe_open(file_path: str, base_dir: str, mode: str = 'r', **kwargs):
     """
     safe_path = safe_file_path(file_path, base_dir)
     return open(safe_path, mode, **kwargs)  # 调用方应使用 with 语句
+
+
+def sanitize_filename(file_name: str) -> str:
+    """严格净化文件名，防止路径遍历攻击。
+
+    统一替代分散在 ``dxf/api.py``、``step_import/api.py``、
+    ``simulation/api.py`` 中的同名私有函数。
+
+    净化规则（任何一条不满足即视为无效输入，返回空字符串）：
+    1. 输入必须为非空字符串；
+    2. 禁止包含路径分隔符（/ 或 \\）；
+    3. 禁止包含 ".." 序列（任意父目录引用均被拒绝）；
+    4. 通过 pathlib.Path.name 提取纯文件名后不得为空。
+
+    Args:
+        file_name: 用户传入的原始文件名。
+
+    Returns:
+        净化后的纯文件名；无效输入返回空字符串。
+    """
+    if not file_name or not isinstance(file_name, str):
+        return ""
+    if "/" in file_name or "\\" in file_name:
+        return ""
+    if ".." in file_name:
+        return ""
+    safe_name = Path(file_name).name
+    if not safe_name:
+        return ""
+    return safe_name
+
+
+def validate_user_path(
+    user_path: str,
+    allowed_base_dirs: list[Path] | None = None,
+    allowed_extensions: set[str] | None = None,
+    project_root: Path | None = None,
+) -> Path:
+    """统一的用户路径校验工厂函数。
+
+    替代分散在 ``lnn/routes.py``、``dxf_pipeline.py``、
+    ``project_api.py``、``simulation/api.py`` 中的重复路径校验逻辑。
+
+    校验流程：
+        1. 拒绝空路径/非字符串
+        2. 扩展名白名单校验（若提供 ``allowed_extensions``）
+        3. ``resolve(strict=False)`` 后遍历 ``allowed_base_dirs``，
+           使用 ``relative_to`` 校验目标路径在允许范围内
+        4. 二次校验解析后扩展名（防符号链接绕过）
+        5. 若 ``project_root`` 提供，兜底相对项目根解析并再次校验
+
+    Args:
+        user_path: 用户提交的路径（相对或绝对）
+        allowed_base_dirs: 允许的基础目录列表
+        allowed_extensions: 允许的扩展名集合（小写，含点号，如 ``{".csv", ".txt"}``）
+        project_root: 项目根目录，用于兜底相对路径解析
+
+    Returns:
+        校验通过后的 Path 对象
+
+    Raises:
+        ValueError: 路径为空、扩展名不允许或路径遍历检测失败
+    """
+    if not user_path or not isinstance(user_path, str):
+        raise ValueError("路径不能为空")
+
+    raw = Path(user_path)
+
+    # 扩展名白名单预校验
+    if allowed_extensions:
+        if raw.suffix.lower() not in allowed_extensions:
+            raise ValueError(
+                f"不支持的文件扩展名: {raw.suffix!r}，仅允许: {sorted(allowed_extensions)}"
+            )
+
+    resolved = raw.resolve(strict=False)
+
+    # 二次校验解析后扩展名（防符号链接绕过）
+    if allowed_extensions:
+        if resolved.suffix.lower() not in allowed_extensions:
+            raise ValueError("路径遍历检测：解析后扩展名不在允许列表内")
+
+    # 遍历允许的基础目录
+    if allowed_base_dirs:
+        for base in allowed_base_dirs:
+            try:
+                resolved.relative_to(base)
+                return resolved
+            except ValueError:
+                continue
+
+    # 兜底：相对项目根解析
+    if project_root is not None:
+        alt_resolved = (project_root / user_path).resolve(strict=False)
+        try:
+            alt_resolved.relative_to(project_root)
+        except ValueError:
+            raise ValueError("路径遍历检测：路径超出允许目录范围")
+
+        if allowed_extensions:
+            if alt_resolved.suffix.lower() not in allowed_extensions:
+                raise ValueError("路径遍历检测：解析后扩展名不在允许列表内")
+
+        return alt_resolved
+
+    raise ValueError("路径遍历检测：路径超出允许目录范围")
 
 
 def extract_json_from_markdown(content: str) -> dict[str, Any]:
@@ -268,6 +376,21 @@ class MetricsCollector:
         float("inf"),
     )
     _MODEL_LOAD_BUCKETS = (0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, float("inf"))
+    # HTTP 请求延迟分位数桶（秒）：覆盖 5ms~10s，支持 p50/p90/p95/p99 计算
+    _HTTP_BUCKETS = (
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1.0,
+        2.5,
+        5.0,
+        10.0,
+        float("inf"),
+    )
 
     def __init__(self):
         from threading import Lock
@@ -397,12 +520,16 @@ class MetricsCollector:
             "# TYPE http_request_duration_seconds histogram",
         ]
         with self._lock:
-            for path, latencies in self._request_latency.items():
-                if latencies:
-                    avg = sum(latencies) / len(latencies)
-                    lines.append(
-                        f'http_request_duration_seconds_bucket{{path="{path}",le="+Inf"}} {avg:.4f}'
-                    )
+            # 使用完整分位数桶输出，支持 PromQL histogram_quantile 计算 p50/p90/p95/p99
+            lines.extend(
+                self._format_histogram(
+                    "http_request_duration_seconds",
+                    "HTTP request duration in seconds",
+                    "path",
+                    self._request_latency,
+                    self._HTTP_BUCKETS,
+                )
+            )
             lines.append("")
             lines.extend(
                 self._format_histogram(

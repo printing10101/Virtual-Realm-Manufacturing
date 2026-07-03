@@ -135,8 +135,6 @@ class CTLTCModel(nn.Module):
         hidden_states = []
         for _ in range(self.num_layers):
             h = torch.zeros(batch_size, self.hidden_dim, device=device)
-            # 让隐藏状态参与计算图，这样梯度可以流过
-            h = h + x[:, :1] * 0.0  # 用输入的零缩放来建立连接
             hidden_states.append(h)
         
         # 输入投影

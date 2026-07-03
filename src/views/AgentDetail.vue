@@ -8,10 +8,10 @@
         :icon="ArrowLeft"
         @click="$router.push({ name: 'agent-dashboard' })"
       >
-        返回列表
+        {{ t('agentDetail.btnBackToList') }}
       </el-button>
       <h2 v-if="agentStore.currentAgent">
-        代理详情: {{ agentStore.currentAgent.agent_id }}
+        {{ t('agentDetail.agentDetailTitle', { agentId: agentStore.currentAgent.agent_id }) }}
       </h2>
       <div
         v-if="agentStore.currentAgent"
@@ -28,21 +28,21 @@
           size="small"
           @click="refreshDetail"
         >
-          刷新
+          {{ t('agentDetail.btnRefresh') }}
         </el-button>
         <el-button
           type="warning"
           size="small"
           @click="showCloneDialog = true"
         >
-          克隆
+          {{ t('agentDetail.btnClone') }}
         </el-button>
       </div>
     </div>
 
     <el-empty
       v-if="!agentStore.currentAgent && !agentStore.detailLoading"
-      description="未找到代理信息"
+      :description="t('agentDetail.emptyAgentNotFound')"
     />
 
     <template v-if="agentStore.currentAgent">
@@ -53,29 +53,29 @@
         <el-col :span="8">
           <el-card shadow="hover">
             <template #header>
-              基本信息
+              {{ t('agentDetail.sectionBasicInfo') }}
             </template>
             <el-descriptions
               :column="1"
               size="small"
               border
             >
-              <el-descriptions-item label="代理ID">
+              <el-descriptions-item :label="t('agentDetail.labelAgentId')">
                 {{ agentStore.currentAgent.agent_id }}
               </el-descriptions-item>
-              <el-descriptions-item label="当前任务">
-                {{ agentStore.currentAgent.current_task_id || '无' }}
+              <el-descriptions-item :label="t('agentDetail.labelCurrentTask')">
+                {{ agentStore.currentAgent.current_task_id || t('agentDetail.textNone') }}
               </el-descriptions-item>
-              <el-descriptions-item label="最后心跳">
+              <el-descriptions-item :label="t('agentDetail.labelLastHeartbeat')">
                 {{ agentStore.formatTime(agentStore.currentAgent.last_heartbeat) }}
               </el-descriptions-item>
-              <el-descriptions-item label="创建时间">
+              <el-descriptions-item :label="t('agentDetail.labelCreatedAt')">
                 {{ agentStore.formatTime(agentStore.currentAgent.created_at) }}
               </el-descriptions-item>
-              <el-descriptions-item label="更新时间">
+              <el-descriptions-item :label="t('agentDetail.labelUpdatedAt')">
                 {{ agentStore.formatTime(agentStore.currentAgent.updated_at) }}
               </el-descriptions-item>
-              <el-descriptions-item label="Schema版本">
+              <el-descriptions-item :label="t('agentDetail.labelSchemaVersion')">
                 {{ agentStore.currentAgent.state_version?.schema_version || '-' }}
               </el-descriptions-item>
             </el-descriptions>
@@ -85,25 +85,25 @@
         <el-col :span="8">
           <el-card shadow="hover">
             <template #header>
-              会话上下文
+              {{ t('agentDetail.sectionSessionContext') }}
             </template>
             <el-descriptions
               :column="1"
               size="small"
               border
             >
-              <el-descriptions-item label="任务类型">
+              <el-descriptions-item :label="t('agentDetail.labelTaskType')">
                 {{ agentStore.currentAgent.session_context?.task_type || '-' }}
               </el-descriptions-item>
-              <el-descriptions-item label="当前阶段">
+              <el-descriptions-item :label="t('agentDetail.labelCurrentStage')">
                 {{ agentStore.currentAgent.session_context?.current_stage || '-' }}
               </el-descriptions-item>
-              <el-descriptions-item label="任务描述">
+              <el-descriptions-item :label="t('agentDetail.labelTaskDescription')">
                 <el-text truncated>
-                  {{ agentStore.currentAgent.session_context?.task_description || '无' }}
+                  {{ agentStore.currentAgent.session_context?.task_description || t('agentDetail.textNone') }}
                 </el-text>
               </el-descriptions-item>
-              <el-descriptions-item label="已注入技能">
+              <el-descriptions-item :label="t('agentDetail.labelInjectedSkills')">
                 <el-tag
                   v-for="skill in agentStore.currentAgent.session_context?.injected_skills || []"
                   :key="skill"
@@ -114,7 +114,7 @@
                 </el-tag>
                 <span v-if="!(agentStore.currentAgent.session_context?.injected_skills || []).length">-</span>
               </el-descriptions-item>
-              <el-descriptions-item label="活跃上下文键">
+              <el-descriptions-item :label="t('agentDetail.labelActiveContextKeys')">
                 <el-tag
                   v-for="key in agentStore.currentAgent.session_context?.active_context_keys || []"
                   :key="key"
@@ -126,8 +126,8 @@
                 </el-tag>
                 <span v-if="!(agentStore.currentAgent.session_context?.active_context_keys || []).length">-</span>
               </el-descriptions-item>
-              <el-descriptions-item label="对话历史">
-                {{ (agentStore.currentAgent.session_context?.conversation_history || []).length }} 条
+              <el-descriptions-item :label="t('agentDetail.labelConversationHistory')">
+                {{ t('agentDetail.textEntriesCount', { count: (agentStore.currentAgent.session_context?.conversation_history || []).length }) }}
               </el-descriptions-item>
             </el-descriptions>
           </el-card>
@@ -140,13 +140,13 @@
           >
             <template #header>
               <div class="card-header-flex">
-                <span>当前检查点</span>
+                <span>{{ t('agentDetail.sectionCurrentCheckpoint') }}</span>
                 <el-button
                   size="small"
                   type="primary"
                   @click="showCheckpointDialog = true"
                 >
-                  手动保存
+                  {{ t('agentDetail.btnSaveManually') }}
                 </el-button>
               </div>
             </template>
@@ -156,32 +156,32 @@
                 size="small"
                 border
               >
-                <el-descriptions-item label="检查点ID">
+                <el-descriptions-item :label="t('agentDetail.labelCheckpointId')">
                   {{ agentStore.currentAgent.checkpoint.checkpoint_id }}
                 </el-descriptions-item>
-                <el-descriptions-item label="Epoch">
+                <el-descriptions-item :label="t('agentDetail.labelEpoch')">
                   {{ agentStore.currentAgent.checkpoint.epoch }}
                 </el-descriptions-item>
-                <el-descriptions-item label="Step">
+                <el-descriptions-item :label="t('agentDetail.labelStep')">
                   {{ agentStore.currentAgent.checkpoint.step }}
                 </el-descriptions-item>
-                <el-descriptions-item label="最佳指标">
+                <el-descriptions-item :label="t('agentDetail.labelBestMetric')">
                   {{ agentStore.currentAgent.checkpoint.best_metric ?? '-' }}
                   <span v-if="agentStore.currentAgent.checkpoint.best_metric !== null">
                     ({{ agentStore.currentAgent.checkpoint.best_metric_name }})
                   </span>
                 </el-descriptions-item>
-                <el-descriptions-item label="类型">
+                <el-descriptions-item :label="t('agentDetail.labelType')">
                   {{ agentStore.currentAgent.checkpoint.checkpoint_type }}
                 </el-descriptions-item>
-                <el-descriptions-item label="文件大小">
+                <el-descriptions-item :label="t('agentDetail.labelFileSize')">
                   {{ formatBytes(agentStore.currentAgent.checkpoint.file_size_bytes) }}
                 </el-descriptions-item>
               </el-descriptions>
             </template>
             <el-empty
               v-else
-              description="暂无检查点"
+              :description="t('agentDetail.emptyNoCheckpoint')"
               :image-size="60"
             />
           </el-card>
@@ -194,12 +194,12 @@
       >
         <template #header>
           <div class="card-header-flex">
-            <span>代理记忆 ({{ agentStore.currentAgent.memory?.length || 0 }} 条)</span>
+            <span>{{ t('agentDetail.sectionAgentMemory', { count: agentStore.currentAgent.memory?.length || 0 }) }}</span>
             <el-button
               size="small"
               @click="viewMode = viewMode === 'list' ? 'chart' : 'list'"
             >
-              {{ viewMode === 'list' ? '可视化' : '列表' }}
+              {{ viewMode === 'list' ? t('agentDetail.btnVisualize') : t('agentDetail.btnList') }}
             </el-button>
           </div>
         </template>
@@ -212,7 +212,7 @@
           >
             <el-table-column
               prop="memory_type"
-              label="类型"
+              :label="t('agentDetail.colType')"
               width="100"
             >
               <template #default="{ row }">
@@ -223,7 +223,7 @@
             </el-table-column>
             <el-table-column
               prop="content"
-              label="内容"
+              :label="t('agentDetail.colContent')"
               min-width="200"
             >
               <template #default="{ row }">
@@ -234,7 +234,7 @@
             </el-table-column>
             <el-table-column
               prop="importance"
-              label="重要性"
+              :label="t('agentDetail.colImportance')"
               width="120"
               sortable
             >
@@ -248,7 +248,7 @@
             </el-table-column>
             <el-table-column
               prop="tags"
-              label="标签"
+              :label="t('agentDetail.colTags')"
               width="160"
             >
               <template #default="{ row }">
@@ -263,7 +263,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              label="访问次数"
+              :label="t('agentDetail.colAccessCount')"
               width="80"
               sortable
               prop="access_count"
@@ -271,7 +271,7 @@
           </el-table>
           <el-empty
             v-else
-            description="空记忆"
+            :description="t('agentDetail.emptyNoMemory')"
             :image-size="50"
           />
         </template>
@@ -309,7 +309,7 @@
             </div>
             <el-empty
               v-if="sortedMemory.length === 0"
-              description="空记忆"
+              :description="t('agentDetail.emptyNoMemory')"
               :image-size="50"
             />
           </div>
@@ -322,7 +322,7 @@
         class="history-card"
       >
         <template #header>
-          <span>检查点历史 ({{ agentStore.currentAgent.checkpoints_history.length }} 个)</span>
+          <span>{{ t('agentDetail.sectionCheckpointHistory', { count: agentStore.currentAgent.checkpoints_history.length }) }}</span>
         </template>
         <el-timeline>
           <el-timeline-item
@@ -339,16 +339,16 @@
                 <el-tag size="small">
                   {{ ckpt.checkpoint_type }}
                 </el-tag>
-                <span>Epoch {{ ckpt.epoch }}, Step {{ ckpt.step }}</span>
+                <span>{{ t('agentDetail.textEpochStep', { epoch: ckpt.epoch, step: ckpt.step }) }}</span>
                 <span v-if="ckpt.best_metric !== null">
-                  最佳 {{ ckpt.best_metric_name }}: {{ ckpt.best_metric }}
+                  {{ t('agentDetail.textBestMetricLabel', { name: ckpt.best_metric_name, value: ckpt.best_metric }) }}
                 </span>
                 <el-button
                   size="small"
                   type="warning"
                   @click="handleRollback(ckpt.checkpoint_id)"
                 >
-                  回滚
+                  {{ t('agentDetail.btnRollback') }}
                 </el-button>
               </div>
             </el-card>
@@ -359,46 +359,46 @@
 
     <el-dialog
       v-model="showCheckpointDialog"
-      title="手动保存检查点"
+      :title="t('agentDetail.dialogSaveCheckpointTitle')"
       width="480px"
     >
       <el-form label-position="top">
-        <el-form-item label="Epoch">
+        <el-form-item :label="t('agentDetail.labelEpoch')">
           <el-input-number
             v-model="checkpointForm.epoch"
             :min="0"
           />
         </el-form-item>
-        <el-form-item label="Step">
+        <el-form-item :label="t('agentDetail.labelStep')">
           <el-input-number
             v-model="checkpointForm.step"
             :min="0"
           />
         </el-form-item>
-        <el-form-item label="最佳指标值">
+        <el-form-item :label="t('agentDetail.labelBestMetricValue')">
           <el-input
             v-model="checkpointForm.best_metric"
-            placeholder="可选"
+            :placeholder="t('agentDetail.placeholderOptional')"
           />
         </el-form-item>
-        <el-form-item label="指标名称">
+        <el-form-item :label="t('agentDetail.labelMetricName')">
           <el-input
             v-model="checkpointForm.best_metric_name"
-            placeholder="如 loss, accuracy"
+            :placeholder="t('agentDetail.placeholderMetricName')"
           />
         </el-form-item>
-        <el-form-item label="检查点类型">
+        <el-form-item :label="t('agentDetail.labelCheckpointType')">
           <el-select v-model="checkpointForm.checkpoint_type">
             <el-option
-              label="手动"
+              :label="t('agentDetail.optionManual')"
               value="manual"
             />
             <el-option
-              label="自动"
+              :label="t('agentDetail.optionAuto')"
               value="auto"
             />
             <el-option
-              label="Epoch"
+              :label="t('agentDetail.labelEpoch')"
               value="epoch"
             />
           </el-select>
@@ -406,39 +406,39 @@
       </el-form>
       <template #footer>
         <el-button @click="showCheckpointDialog = false">
-          取消
+          {{ t('agentDetail.btnCancel') }}
         </el-button>
         <el-button
           type="primary"
           @click="handleSaveCheckpoint"
         >
-          保存
+          {{ t('agentDetail.btnSave') }}
         </el-button>
       </template>
     </el-dialog>
 
     <el-dialog
       v-model="showCloneDialog"
-      title="克隆代理状态"
+      :title="t('agentDetail.dialogCloneTitle')"
       width="400px"
     >
       <el-form label-position="top">
-        <el-form-item label="目标代理ID">
+        <el-form-item :label="t('agentDetail.labelTargetAgentId')">
           <el-input
             v-model="cloneTargetId"
-            placeholder="输入新代理ID"
+            :placeholder="t('agentDetail.placeholderCloneTargetId')"
           />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCloneDialog = false">
-          取消
+          {{ t('agentDetail.btnCancel') }}
         </el-button>
         <el-button
           type="primary"
           @click="handleClone"
         >
-          克隆
+          {{ t('agentDetail.btnCloneConfirm') }}
         </el-button>
       </template>
     </el-dialog>
@@ -448,9 +448,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ArrowLeft } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { useAgentStore } from '@/stores/agents'
 
+const { t } = useI18n()
 const agentStore = useAgentStore()
 const route = useRoute()
 const agentId = computed(() => route.params.agentId as string)
@@ -516,36 +519,36 @@ async function handleSaveCheckpoint() {
       data.best_metric = parseFloat(checkpointForm.value.best_metric)
     }
     await agentStore.saveCheckpoint(agentId.value, data)
-    ElMessage.success('检查点保存成功')
+    ElMessage.success(t('agentDetail.msgSaveCheckpointSuccess'))
     showCheckpointDialog.value = false
     refreshDetail()
   } catch (e: unknown) {
-    ElMessage.error(`保存失败: ${(e as Error).message}`)
+    ElMessage.error(t('agentDetail.msgSaveCheckpointFailed', { error: (e as Error).message }))
   }
 }
 
 async function handleRollback(checkpointId: string) {
   try {
     await agentStore.rollbackCheckpoint(agentId.value, checkpointId)
-    ElMessage.success('回滚成功')
+    ElMessage.success(t('agentDetail.msgRollbackSuccess'))
     refreshDetail()
   } catch (e: unknown) {
-    ElMessage.error(`回滚失败: ${(e as Error).message}`)
+    ElMessage.error(t('agentDetail.msgRollbackFailed', { error: (e as Error).message }))
   }
 }
 
 async function handleClone() {
   if (!cloneTargetId.value) {
-    ElMessage.warning('请输入目标代理ID')
+    ElMessage.warning(t('agentDetail.msgCloneTargetRequired'))
     return
   }
   try {
     await agentStore.cloneAgent(agentId.value, cloneTargetId.value)
-    ElMessage.success(`已克隆到 ${cloneTargetId.value}`)
+    ElMessage.success(t('agentDetail.msgCloneSuccess', { agentId: cloneTargetId.value }))
     showCloneDialog.value = false
     cloneTargetId.value = ''
   } catch (e: unknown) {
-    ElMessage.error(`克隆失败: ${(e as Error).message}`)
+    ElMessage.error(t('agentDetail.msgCloneFailed', { error: (e as Error).message }))
   }
 }
 </script>

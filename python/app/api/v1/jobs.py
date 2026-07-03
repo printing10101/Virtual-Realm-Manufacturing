@@ -9,12 +9,13 @@ import asyncio
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
 from app.tasks.task_manager import TaskType, TaskStatus
 from app.tasks.task_system import AsyncTaskManager
+from app.auth.permissions import require_permission
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,10 @@ async def stream_job_events(job_id: str):
     )
 
 
-@router.post("/{job_id}/cancel")
+@router.post(
+    "/{job_id}/cancel",
+    dependencies=[Depends(require_permission("job:manage"))],
+)
 async def cancel_job(job_id: str):
     result = await task_manager.cancel_task(job_id)
     if not result:
@@ -108,7 +112,10 @@ async def cancel_job(job_id: str):
     )
 
 
-@router.delete("/{job_id}")
+@router.delete(
+    "/{job_id}",
+    dependencies=[Depends(require_permission("job:manage"))],
+)
 async def delete_job(job_id: str):
     result = await task_manager.cancel_task(job_id)
     if not result:

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import threading
 import time
 from collections import defaultdict
 from dataclasses import dataclass
@@ -25,7 +27,13 @@ class AgentAuditEntry:
 
 
 class AgentAuditLog:
-    """JSONL-based audit log for Agent requests."""
+    """JSONL-based audit log for Agent requests.
+
+    优化：
+    - 缓存文件句柄，避免每次 log 都 open/close（原实现每次 open+write+close 三次系统调用）
+    - 目录创建移到 __init__，避免每次 log 都 mkdir
+    - 用 threading.Lock 保护并发写入
+    """
 
     def __init__(self, log_path: str | None = None):
         if log_path is None:
@@ -34,6 +42,23 @@ class AgentAuditLog:
             log_path = get_project_root() / "logs" / "audit" / "agent_audit.log"
         self._log_path = Path(log_path)
         self._log_path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
+        # 缓存文件句柄（追加模式），避免每次 log 都 open/close
+        self._stream = None
+        self._open_stream()
+
+    def _open_stream(self):
+        """打开持久文件句柄。"""
+        try:
+            self._stream = open(self._log_path, "a", encoding="utf-8")
+        except (OSError, IOError) as e:
+            logger.debug(
+                "Failed to open audit log stream %s: %s",
+                self._log_path,
+                e,
+                exc_info=True,
+            )
+            self._stream = None
 
     def log(
         self,
@@ -43,8 +68,6 @@ class AgentAuditLog:
         status_code: int,
         latency_ms: float,
     ):
-        import json
-
         entry = AgentAuditEntry(
             timestamp_ms=int(time.time() * 1000),
             agent_id=agent_id,
@@ -53,11 +76,15 @@ class AgentAuditLog:
             status_code=status_code,
             latency_ms=round(latency_ms, 2),
         )
-        self._log_path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(entry.__dict__, ensure_ascii=False) + "\n"
         try:
-            with open(str(self._log_path), "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry.__dict__) + "\n")
-        except (OSError, IOError) as log_err:
+            with self._lock:
+                if self._stream is None:
+                    self._open_stream()
+                if self._stream is not None:
+                    self._stream.write(line)
+                    self._stream.flush()
+        except (OSError, IOError, ValueError) as log_err:
             # 审计日志写入失败不应阻塞主请求，记录以便后续排查
             logger.debug(
                 "Failed to append agent audit log to %s: %s",
@@ -65,6 +92,8 @@ class AgentAuditLog:
                 log_err,
                 exc_info=True,
             )
+            # 流损坏时重置，下次 log 尝试重新打开
+            self._stream = None
 
     def get_entries(
         self,
@@ -73,8 +102,6 @@ class AgentAuditLog:
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict]:
-        import json
-
         entries = []
         if self._log_path.exists():
             with self._log_path.open("r") as f:
@@ -98,9 +125,22 @@ class AgentAuditLog:
         entries.reverse()
         return entries[offset : offset + limit]
 
+    def close(self):
+        """关闭文件句柄（应用关闭时调用）。"""
+        with self._lock:
+            if self._stream is not None:
+                try:
+                    self._stream.close()
+                except (OSError, ValueError):
+                    pass
+                self._stream = None
+
 
 class AgentRateLimiter:
-    """Per-token rate limiter: max requests per minute and max concurrent tasks."""
+    """Per-token rate limiter: max requests per minute and max concurrent tasks.
+
+    优化：加 threading.Lock 保护并发访问，避免 defaultdict 在多线程下的竞态。
+    """
 
     def __init__(
         self,
@@ -111,40 +151,59 @@ class AgentRateLimiter:
         self._max_concurrent = max_concurrent_tasks
         self._request_log: dict[str, list[float]] = defaultdict(list)
         self._active_tasks: dict[str, int] = defaultdict(int)
+        self._lock = threading.Lock()
 
     def check_rate_limit(self, agent_id: str) -> bool:
         now = time.time()
         cutoff = now - 60
-        self._request_log[agent_id] = [
-            t for t in self._request_log[agent_id] if t > cutoff
-        ]
-        if len(self._request_log[agent_id]) >= self._max_rpm:
-            return False
-        self._request_log[agent_id].append(now)
-        return True
+        with self._lock:
+            self._request_log[agent_id] = [
+                t for t in self._request_log[agent_id] if t > cutoff
+            ]
+            if len(self._request_log[agent_id]) >= self._max_rpm:
+                return False
+            self._request_log[agent_id].append(now)
+            return True
 
     def acquire_task(self, agent_id: str) -> bool:
-        if self._active_tasks.get(agent_id, 0) >= self._max_concurrent:
-            return False
-        self._active_tasks[agent_id] += 1
-        return True
+        with self._lock:
+            if self._active_tasks.get(agent_id, 0) >= self._max_concurrent:
+                return False
+            self._active_tasks[agent_id] += 1
+            return True
 
     def release_task(self, agent_id: str):
-        self._active_tasks[agent_id] = max(0, self._active_tasks.get(agent_id, 0) - 1)
+        with self._lock:
+            self._active_tasks[agent_id] = max(
+                0, self._active_tasks.get(agent_id, 0) - 1
+            )
 
     def get_active_tasks(self, agent_id: str) -> int:
-        return self._active_tasks.get(agent_id, 0)
+        with self._lock:
+            return self._active_tasks.get(agent_id, 0)
 
 
 class IdempotencyStore:
-    """Store idempotency keys for W/B/T requests."""
+    """Store idempotency keys for W/B/T requests.
+
+    优化：惰性清理——仅在超过清理间隔时才执行 cleanup，
+    避免每次 check_and_set 都全表扫描。
+    """
+
+    # 清理间隔（秒）：仅在距上次清理超过此间隔时才触发清理
+    _CLEANUP_INTERVAL = 60
 
     def __init__(self):
         self._keys: dict[str, dict] = {}
+        self._last_cleanup = 0.0
 
     def check_and_set(self, key: str, agent_id: str) -> Optional[dict]:
         """Returns cached result if key exists, None if new."""
-        self.cleanup()
+        # 惰性清理：仅在间隔到期时才清理，避免每次都全表扫描
+        now = time.time()
+        if now - self._last_cleanup > self._CLEANUP_INTERVAL:
+            self.cleanup()
+            self._last_cleanup = now
         if key in self._keys:
             entry = self._keys[key]
             if entry["agent_id"] == agent_id:

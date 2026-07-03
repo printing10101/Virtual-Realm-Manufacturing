@@ -9,8 +9,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from app.auth.permissions import require_permission
 
 from app.metrics.flywheel_metrics import (
     get_flywheel_collector,
@@ -19,7 +21,11 @@ from app.metrics.flywheel_metrics import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/flywheel", tags=["Flywheel"])
+router = APIRouter(
+    prefix="/api/v1/flywheel",
+    tags=["Flywheel"],
+    dependencies=[Depends(require_permission("flywheel:read"))],
+)
 
 
 # ---------------------------------------------------------------------------

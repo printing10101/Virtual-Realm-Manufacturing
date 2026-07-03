@@ -1,369 +1,280 @@
 <template>
   <div id="app">
-    <SplashScreen v-if="showSplash" @complete="showSplash = false" />
-    <el-config-provider :locale="elLocale">
-      <el-container class="app-container">
-        <el-header class="app-header">
-          <div class="header-left">
-            <h1 class="app-title">
-              {{ $t('app.title') }}
-            </h1>
-            <span class="app-version">v{{ frontendVersion }}</span>
-          </div>
-
-          <div class="header-center">
-            <el-menu
-              :default-active="activeRoute"
-              mode="horizontal"
-              router
-              class="header-menu"
-            >
-              <el-menu-item index="/">
-                {{ $t('navigation.home') }}
-              </el-menu-item>
-              <el-menu-item index="/workspace">
-                {{ $t('navigation.workspace') }}
-              </el-menu-item>
-              <el-menu-item index="/settings">
-                {{ $t('navigation.settings') }}
-              </el-menu-item>
-              <el-menu-item index="/about">
-                {{ $t('navigation.about') }}
-              </el-menu-item>
-              <el-menu-item index="/rule-editor">
-                <el-icon><Setting /></el-icon>{{ $t('navigation.processRules') }}
-              </el-menu-item>
-              <el-menu-item index="/toolpath-editor">
-                <el-icon><EditPen /></el-icon>{{ $t('navigation.toolpathEdit') }}
-              </el-menu-item>
-              <el-menu-item index="/process-planning">
-                <el-icon><SetUp /></el-icon>{{ $t('navigation.processPlanning') }}
-              </el-menu-item>
-            </el-menu>
-          </div>
-
-          <div class="header-right">
-            <BackendStatusIndicator />
-            <el-dropdown
-              trigger="click"
-              @command="handleFileCommand"
-            >
-              <el-button
-                type="default"
-                size="small"
-              >
-                {{ $t('app.fileMenu') }}
-                <el-icon class="el-icon--right">
-                  <arrow-down />
-                </el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="new">
-                    <el-icon><document-add /></el-icon>{{ $t('app.newProject') }}
-                  </el-dropdown-item>
-                  <el-dropdown-item command="open">
-                    <el-icon><folder-opened /></el-icon>{{ $t('app.openProject') }}
-                  </el-dropdown-item>
-                  <el-dropdown-item
-                    divided
-                    command="save"
-                  >
-                    <el-icon><disk /></el-icon>{{ $t('common.save') }}
-                  </el-dropdown-item>
-                  <el-dropdown-item command="save-as">
-                    <el-icon><copy-document /></el-icon>{{ $t('app.saveAs') }}
-                  </el-dropdown-item>
-                  <el-dropdown-item
-                    divided
-                    command="download"
-                  >
-                    <el-icon><download /></el-icon>{{ $t('app.downloadProject') }}
-                  </el-dropdown-item>
-                  <el-dropdown-item
-                    divided
-                    command="import-step"
-                  >
-                    <el-icon><upload /></el-icon>{{ $t('app.importStep') }}
-                  </el-dropdown-item>
-                  <el-dropdown-item command="import-dxf">
-                    <el-icon><document-copy /></el-icon>{{ $t('app.importDxf') }}
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-
-            <span
-              v-if="projectStore.projectName !== $t('app.defaultProjectName')"
-              class="project-indicator"
-            >
-              {{ projectStore.projectName }}
-              <el-tag
-                v-if="projectStore.isModified"
-                size="small"
-                type="warning"
-                effect="plain"
-              >{{ $t('app.modified') }}</el-tag>
-            </span>
-          </div>
-        </el-header>
-
-        <el-main class="app-main">
-          <div v-if="!appReady" class="app-initializing">
-            <el-icon class="is-loading" :size="28"><loading /></el-icon>
-            <span>正在初始化...</span>
-          </div>
-          <router-view v-else />
-        </el-main>
-      </el-container>
-
-      <!-- ==================== 新建工程对话框 ==================== -->
-      <el-dialog
-        v-model="showNewDialog"
-        :title="$t('app.newDialogTitle')"
-        width="480px"
-        :close-on-click-modal="false"
-      >
-        <el-form
-          :model="newForm"
-          label-width="80px"
+    <ErrorBoundary>
+      <SplashScreen
+        v-if="showSplash"
+        @complete="showSplash = false"
+      />
+      <el-config-provider :locale="elLocale">
+        <div
+          v-if="!appReady"
+          class="app-initializing"
         >
-          <el-form-item
-            :label="$t('app.projectName')"
-            required
+          <el-icon
+            class="is-loading"
+            :size="28"
           >
-            <el-input
-              v-model="newForm.name"
-              maxlength="128"
-              :placeholder="$t('app.projectNamePlaceholder')"
-            />
-          </el-form-item>
-          <el-form-item :label="$t('common.author')">
-            <el-input
-              v-model="newForm.author"
-              maxlength="64"
-              :placeholder="$t('app.authorPlaceholder')"
-            />
-          </el-form-item>
-          <el-form-item :label="$t('common.description')">
-            <el-input
-              v-model="newForm.description"
-              type="textarea"
-              :rows="3"
-              maxlength="512"
-              :placeholder="$t('app.descriptionPlaceholder')"
-            />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="showNewDialog = false">
-            {{ $t('common.cancel') }}
-          </el-button>
-          <el-button
-            type="primary"
-            :loading="creating"
-            @click="handleCreate"
+            <Loading />
+          </el-icon>
+          <span>{{ $t('splashScreen.statusInit') }}</span>
+        </div>
+        <AppLayout
+          v-else
+          :project-name="projectStore.projectName"
+          :is-modified="projectStore.isModified"
+          @file-command="handleFileCommand"
+          @refresh="handleRefresh"
+        /><!-- ==================== 新建工程对话框 ==================== -->
+        <el-dialog
+          v-model="showNewDialog"
+          :title="$t('app.newDialogTitle')"
+          width="480px"
+          :close-on-click-modal="false"
+        >
+          <el-form
+            :model="newForm"
+            label-width="80px"
           >
-            {{ $t('app.createProject') }}
-          </el-button>
-        </template>
-      </el-dialog>
-
-      <!-- ==================== 打开工程对话框 ==================== -->
-      <el-dialog
-        v-model="showOpenDialog"
-        :title="$t('app.openDialogTitle')"
-        width="600px"
-        :close-on-click-modal="false"
-      >
-        <el-tabs v-model="openTab">
-          <el-tab-pane
-            :label="$t('app.localTab')"
-            name="local"
-          >
-            <div
-              v-if="openListLoading"
-              style="text-align:center;padding:20px;"
+            <el-form-item
+              :label="$t('app.projectName')"
+              required
             >
-              <el-icon class="is-loading">
-                <loading />
-              </el-icon> {{ $t('common.loading') }}
-            </div>
-            <el-table
-              v-else
-              :data="projectStore.projectList"
-              height="300"
-              highlight-current-row
-              stripe
-              size="small"
-              @row-dblclick="handleOpenFromList"
-              @current-change="onOpenSelectChange"
-            >
-              <el-table-column
-                prop="name"
-                :label="$t('app.projectNameCol')"
-                min-width="150"
+              <el-input
+                v-model="newForm.name"
+                maxlength="128"
+                :placeholder="$t('app.projectNamePlaceholder')"
               />
-              <el-table-column
-                :label="$t('app.modifiedTimeCol')"
-                width="170"
-              >
-                <template #default="{ row }">
-                  {{ formatDate(row.modified_at) }}
-                </template>
-              </el-table-column>
-              <el-table-column
-                :label="$t('app.sizeCol')"
-                width="90"
-              >
-                <template #default="{ row }">
-                  {{ formatSize(row.file_size) }}
-                </template>
-              </el-table-column>
-              <el-table-column
-                :label="$t('app.resourceCol')"
-                width="60"
-              >
-                <template #default="{ row }">
-                  {{ row.resource_count }}
-                </template>
-              </el-table-column>
-              <el-table-column
-                :label="$t('common.operation')"
-                width="120"
-              >
-                <template #default="{ row }">
-                  <el-button
-                    size="small"
-                    text
-                    type="primary"
-                    @click="handleOpenFromList(row as ProjectSummary)"
-                  >
-                    {{ $t('app.open') }}
-                  </el-button>
-                  <el-button
-                    size="small"
-                    text
-                    type="danger"
-                    @click="handleDeleteProject(row as ProjectSummary)"
-                  >
-                    {{ $t('common.delete') }}
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </el-tab-pane>
-          <el-tab-pane
-            :label="$t('app.importTab')"
-            name="import"
-          >
-            <el-upload
-              drag
-              :auto-upload="false"
-              :limit="1"
-              accept=".vrm"
-              :on-change="handleFileSelected"
-              :file-list="importFileList"
+            </el-form-item>
+            <el-form-item :label="$t('common.author')">
+              <el-input
+                v-model="newForm.author"
+                maxlength="64"
+                :placeholder="$t('app.authorPlaceholder')"
+              />
+            </el-form-item>
+            <el-form-item :label="$t('common.description')">
+              <el-input
+                v-model="newForm.description"
+                type="textarea"
+                :rows="3"
+                maxlength="512"
+                :placeholder="$t('app.descriptionPlaceholder')"
+              />
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <el-button @click="showNewDialog = false">
+              {{ $t('common.cancel') }}
+            </el-button>
+            <el-button
+              type="primary"
+              :loading="creating"
+              @click="handleCreate"
             >
-              <el-icon class="el-icon--upload">
-                <upload-filled />
-              </el-icon>
-              <div class="el-upload__text">
-                {{ $t('app.importVrmHint') }} <em>{{ $t('app.importVrmClick') }}</em>
-              </div>
-            </el-upload>
-          </el-tab-pane>
-        </el-tabs>
-        <template #footer>
-          <el-button @click="showOpenDialog = false">
-            {{ $t('common.cancel') }}
-          </el-button>
-          <el-button
-            type="primary"
-            :loading="opening"
-            :disabled="!canOpen"
-            @click="handleOpen"
-          >
-            {{ $t('app.openProject') }}
-          </el-button>
-        </template>
-      </el-dialog>
+              {{ $t('app.createProject') }}
+            </el-button>
+          </template>
+        </el-dialog>
 
-      <!-- ==================== 另存为对话框 ==================== -->
-      <el-dialog
-        v-model="showSaveAsDialog"
-        :title="$t('app.saveAsDialogTitle')"
-        width="420px"
-        :close-on-click-modal="false"
-      >
-        <el-form
-          :model="saveAsForm"
-          label-width="80px"
+        <!-- ==================== 打开工程对话框 ==================== -->
+        <el-dialog
+          v-model="showOpenDialog"
+          :title="$t('app.openDialogTitle')"
+          width="600px"
+          :close-on-click-modal="false"
         >
-          <el-form-item
-            :label="$t('app.fileName')"
-            required
-          >
-            <el-input
-              v-model="saveAsForm.outputName"
-              maxlength="128"
-              :placeholder="$t('app.fileNamePlaceholder')"
+          <el-tabs v-model="openTab">
+            <el-tab-pane
+              :label="$t('app.localTab')"
+              name="local"
             >
-              <template #append>
-                .vrm
-              </template>
-            </el-input>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="showSaveAsDialog = false">
-            {{ $t('common.cancel') }}
-          </el-button>
-          <el-button
-            type="primary"
-            :loading="saving"
-            @click="handleSaveAs"
-          >
-            {{ $t('app.saveAsBtn') }}
-          </el-button>
-        </template>
-      </el-dialog>
+              <div
+                v-if="openListLoading"
+                style="text-align:center;padding:20px;"
+              >
+                <el-icon class="is-loading">
+                  <Loading />
+                </el-icon> {{ $t('common.loading') }}
+              </div>
+              <el-table
+                v-else
+                :data="projectStore.projectList"
+                height="300"
+                highlight-current-row
+                stripe
+                size="small"
+                @row-dblclick="handleOpenFromList"
+                @current-change="onOpenSelectChange"
+              >
+                <el-table-column
+                  prop="name"
+                  :label="$t('app.projectNameCol')"
+                  min-width="150"
+                />
+                <el-table-column
+                  :label="$t('app.modifiedTimeCol')"
+                  width="170"
+                >
+                  <template #default="{ row }">
+                    {{ formatDate(row.modified_at) }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  :label="$t('app.sizeCol')"
+                  width="90"
+                >
+                  <template #default="{ row }">
+                    {{ formatSize(row.file_size) }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  :label="$t('app.resourceCol')"
+                  width="60"
+                >
+                  <template #default="{ row }">
+                    {{ row.resource_count }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  :label="$t('common.operation')"
+                  width="120"
+                >
+                  <template #default="{ row }">
+                    <el-button
+                      size="small"
+                      text
+                      type="primary"
+                      @click="handleOpenFromList(row as ProjectSummary)"
+                    >
+                      {{ $t('app.open') }}
+                    </el-button>
+                    <el-button
+                      size="small"
+                      text
+                      type="danger"
+                      @click="handleDeleteProject(row as ProjectSummary)"
+                    >
+                      {{ $t('common.delete') }}
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-tab-pane>
+            <el-tab-pane
+              :label="$t('app.importTab')"
+              name="import"
+            >
+              <el-upload
+                drag
+                :auto-upload="false"
+                :limit="1"
+                accept=".vrm"
+                :on-change="handleFileSelected"
+                :file-list="importFileList"
+              >
+                <el-icon class="el-icon--upload">
+                  <UploadFilled />
+                </el-icon>
+                <div class="el-upload__text">
+                  {{ $t('app.importVrmHint') }} <em>{{ $t('app.importVrmClick') }}</em>
+                </div>
+              </el-upload>
+            </el-tab-pane>
+          </el-tabs>
+          <template #footer>
+            <el-button @click="showOpenDialog = false">
+              {{ $t('common.cancel') }}
+            </el-button>
+            <el-button
+              type="primary"
+              :loading="opening"
+              :disabled="!canOpen"
+              @click="handleOpen"
+            >
+              {{ $t('app.openProject') }}
+            </el-button>
+          </template>
+        </el-dialog>
 
-      <!-- ==================== 未保存提示对话框 ==================== -->
-      <el-dialog
-        v-model="showUnsavedDialog"
-        :title="$t('app.unsavedTitle')"
-        width="400px"
-      >
-        <p>{{ $t('app.unsavedMessage') }}</p>
-        <template #footer>
-          <el-button @click="discardAndProceed">
-            {{ $t('common.discard') }}
-          </el-button>
-          <el-button
-            type="primary"
-            :loading="saving"
-            @click="saveAndProceed"
+        <!-- ==================== 另存为对话框 ==================== -->
+        <el-dialog
+          v-model="showSaveAsDialog"
+          :title="$t('app.saveAsDialogTitle')"
+          width="420px"
+          :close-on-click-modal="false"
+        >
+          <el-form
+            :model="saveAsForm"
+            label-width="80px"
           >
-            {{ $t('common.saveAndContinue') }}
-          </el-button>
-          <el-button @click="cancelProceed">
-            {{ $t('common.cancel') }}
-          </el-button>
-        </template>
-      </el-dialog>
+            <el-form-item
+              :label="$t('app.fileName')"
+              required
+            >
+              <el-input
+                v-model="saveAsForm.outputName"
+                maxlength="128"
+                :placeholder="$t('app.fileNamePlaceholder')"
+              >
+                <template #append>
+                  .vrm
+                </template>
+              </el-input>
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <el-button @click="showSaveAsDialog = false">
+              {{ $t('common.cancel') }}
+            </el-button>
+            <el-button
+              type="primary"
+              :loading="saving"
+              @click="handleSaveAs"
+            >
+              {{ $t('app.saveAsBtn') }}
+            </el-button>
+          </template>
+        </el-dialog>
 
-      <StepImportDialog />
-      <DxfImportDialog />
-      <ErrorConflictDialog />
-      <BackendStartupDialog v-if="showStartupDialog" v-model="showStartupDialog" />
-    </el-config-provider>
+        <!-- ==================== 未保存提示对话框 ==================== -->
+        <el-dialog
+          v-model="showUnsavedDialog"
+          :title="$t('app.unsavedTitle')"
+          width="400px"
+        >
+          <p>{{ $t('app.unsavedMessage') }}</p>
+          <template #footer>
+            <el-button @click="discardAndProceed">
+              {{ $t('common.discard') }}
+            </el-button>
+            <el-button
+              type="primary"
+              :loading="saving"
+              @click="saveAndProceed"
+            >
+              {{ $t('common.saveAndContinue') }}
+            </el-button>
+            <el-button @click="cancelProceed">
+              {{ $t('common.cancel') }}
+            </el-button>
+          </template>
+        </el-dialog>
+
+        <StepImportDialog />
+        <DxfImportDialog />
+        <ErrorConflictDialog />
+        <BackendStartupDialog
+          v-if="showStartupDialog"
+          v-model="showStartupDialog"
+        />
+      </el-config-provider>
+    </ErrorBoundary>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, inject, ref, reactive, watch, type Ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useVersionStore } from '@/stores/version'
 import { useProjectStore } from '@/stores/project'
 import { useAuthStore } from '@/stores/auth'
@@ -372,16 +283,17 @@ import { useDxfImportStore } from '@/stores/dxfImport'
 import StepImportDialog from '@/components/step_import/StepImportDialog.vue'
 import DxfImportDialog from '@/components/dxf_import/DxfImportDialog.vue'
 import ErrorConflictDialog from '@/components/ErrorConflictDialog.vue'
-import BackendStatusIndicator from '@/components/BackendStatusIndicator.vue'
 import BackendStartupDialog from '@/components/BackendStartupDialog.vue'
 import SplashScreen from '@/components/SplashScreen.vue'
+import AppLayout from '@/components/AppLayout.vue'
 import { useBackendStatus } from '@/composables/useBackendStatus'
+import { Loading, UploadFilled } from '@element-plus/icons-vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
 import type { ProjectSummary } from '@/types'
+import type { UploadUserFile } from 'element-plus'
 
-const route = useRoute()
-const activeRoute = computed(() => route.path)
+const router = useRouter()
 const authStore = useAuthStore()
 
 const elLocaleRef = inject<Ref<typeof zhCn>>('locale', ref(zhCn))
@@ -427,7 +339,7 @@ const openTab = ref('local')
 
 const newForm = reactive({ name: '', author: '', description: '' })
 const saveAsForm = reactive({ outputName: '' })
-const importFileList = ref<any[]>([])
+const importFileList = ref<UploadUserFile[]>([])
 const selectedSummary = ref<ProjectSummary | null>(null)
 const pendingFileCommand = ref('')
 
@@ -437,14 +349,19 @@ const canOpen = computed(() => {
 })
 
 onMounted(async () => {
-  // 自动登录：桌面应用启动时自动获取 token（每次都重新登录确保 token 有效）
+  // 安全修复 [B7]：删除硬编码凭据 admin/admin123 自动登录。
+  // 改为检查已有 token；未登录时由路由守卫引导至登录页，用户手动完成认证。
+  // 桌面应用可通过 Tauri sidecar 预置 token，Web 端需用户手动登录。
   try {
-    await authStore.login('admin', 'admin123')
+    if (!authStore.isAuthenticated) {
+      console.info('[App] 未检测到登录态，请通过登录页面完成认证')
+    }
   } catch {
-    // 登录失败不影响应用启动
+    // 检查登录态失败不阻塞应用启动
   }
   appReady.value = true
-  await versionStore.fetchVersionInfo()
+  // 版本检查不阻塞 UI 渲染，后台静默执行
+  versionStore.fetchVersionInfo().catch(() => {})
   versionStore.checkConsistency()
 })
 
@@ -471,6 +388,12 @@ function handleFileCommand(cmd: string) {
     return
   }
   executeCommand(cmd)
+}
+
+function handleRefresh() {
+  // 刷新操作：重新获取版本信息并检查一致性
+  versionStore.fetchVersionInfo()
+  versionStore.checkConsistency()
 }
 
 function executeCommand(cmd: string) {
@@ -535,8 +458,15 @@ async function handleOpenFromList(row: ProjectSummary) {
   if (ok) showOpenDialog.value = false
 }
 
-function handleFileSelected(file: { raw?: File }) {
-  importFileList.value = [{ raw: file.raw }] as Array<{ raw?: File }>
+function handleFileSelected(file: { raw?: File; name?: string }) {
+  if (!file.raw) {
+    importFileList.value = []
+    return
+  }
+  importFileList.value = [{
+    name: file.name ?? file.raw.name,
+    raw: file.raw,
+  }] as UploadUserFile[]
 }
 
 async function handleOpen() {
@@ -594,88 +524,10 @@ function cancelProceed() {
 
 <style>
 #app {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-family: inherit;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text-primary);
-  background-color: var(--bg-primary);
-}
-
-.app-container {
-  min-height: 100vh;
-  background-color: var(--bg-primary);
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-light);
-  background-color: var(--bg-card);
-  gap: 16px;
-  padding: 0 24px;
-  height: 60px;
-  box-shadow: var(--shadow-sm);
-}
-
-.app-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--text-primary);
-}
-
-.header-left {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.app-version {
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-
-.header-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-}
-
-.header-menu {
-  border-bottom: none;
-  background: transparent;
-}
-
-.header-menu .el-menu-item {
-  font-weight: 500;
-  transition: all var(--transition-fast);
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.project-indicator {
-  font-size: 13px;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.app-main {
-  padding: 24px;
   background-color: var(--bg-primary);
 }
 

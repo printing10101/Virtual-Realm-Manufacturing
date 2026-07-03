@@ -35,7 +35,7 @@ class GSKPostProcessor(FanucPostProcessor):
     def __init__(
         self,
         decimal_places: int = 3,
-        safe_z_height: float = 50.0,
+        safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
         config: Optional[Dict[str, Any]] = None,
     ) -> None:

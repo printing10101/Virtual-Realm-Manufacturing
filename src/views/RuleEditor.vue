@@ -2,7 +2,9 @@
   <div class="rule-editor">
     <div class="page-header">
       <h2>{{ $t('ruleEditor.pageTitle') }}</h2>
-      <p class="subtitle">{{ $t('ruleEditor.subtitle') }}</p>
+      <p class="subtitle">
+        {{ $t('ruleEditor.subtitle') }}
+      </p>
     </div>
 
     <el-row

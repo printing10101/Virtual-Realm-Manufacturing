@@ -4,7 +4,8 @@ Governance & Approval Management API Routes
 Endpoints for approval workflow, risk assessment, emergency override, and governance reports.
 """
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException
+from pydantic import BaseModel, Field
 from typing import Optional
 import time
 
@@ -18,6 +19,7 @@ from app.models.governance import (
     ApprovalStatus,
     AgentRole,
 )
+from app.auth.permissions import require_permission
 
 router = APIRouter(prefix="/api/v1/governance", tags=["Governance & Approval"])
 
@@ -242,23 +244,29 @@ async def get_risk_categories():
     }
 
 
-@router.post("/emergency-override")
-async def emergency_override(data: dict):
+class EmergencyOverrideRequest(BaseModel):
+    """紧急覆盖请求模型。"""
+    request_id: str = Field(..., description="关联的审批请求ID")
+    task_id: str = Field(..., description="任务ID")
+    operator_id: str = Field(..., description="操作员ID")
+    reason: str = Field(..., description="紧急覆盖原因")
+    emergency_type: str = Field("production_halt", description="紧急类型")
+
+
+@router.post(
+    "/emergency-override",
+    dependencies=[Depends(require_permission("governance:emergency"))],
+)
+async def emergency_override(request: EmergencyOverrideRequest):
     engine = get_approval_engine()
 
     try:
-        request_id = data["request_id"]
-        task_id = data["task_id"]
-        operator_id = data["operator_id"]
-        reason = data["reason"]
-        emergency_type = data.get("emergency_type", "production_halt")
-
         result = engine.record_emergency_operation(
-            request_id=request_id,
-            task_id=task_id,
-            operator_id=operator_id,
-            reason=reason,
-            emergency_type=emergency_type,
+            request_id=request.request_id,
+            task_id=request.task_id,
+            operator_id=request.operator_id,
+            reason=request.reason,
+            emergency_type=request.emergency_type,
         )
 
         return {"ok": True, "data": result}

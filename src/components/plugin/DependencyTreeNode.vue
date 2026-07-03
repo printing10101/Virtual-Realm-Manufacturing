@@ -22,7 +22,7 @@
         size="small"
         style="margin-left: 5px"
       >
-        缺失
+        {{ $t('dependencyTree.statusMissing') }}
       </el-tag>
     </div>
     <div
@@ -41,14 +41,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ArrowRight, ArrowDown } from '@element-plus/icons-vue'
-
-interface DependencyNode {
-  id: string
-  name: string
-  version: string
-  status?: string
-  dependencies?: DependencyNode[]
-}
+import type { DependencyNode } from '../../stores/plugin'
 
 defineProps<{
   node: DependencyNode

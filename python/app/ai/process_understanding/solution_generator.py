@@ -169,16 +169,13 @@ class SolutionGenerator:
         self._total_latency_ms = 0.0
 
     async def _get_llm_client(self) -> Any:
+        # 修复断点 A：通过 get_llm_client() 工厂函数接入 Provider 网关，
+        # 优先使用用户在系统设置中激活的 Provider（本地 Ollama/LM Studio/llama.cpp/vLLM 或云端 API），
+        # 无激活 Provider 时回退到 config.ai 配置（向后兼容）。
         if self._llm_client is None:
-            from app.ai.llm_client import CloudLLMClient
-            from app.config import config
+            from app.ai.llm_client import get_llm_client
 
-            self._llm_client = CloudLLMClient(
-                api_key=config.ai.cloud_api_key,
-                base_url=config.ai.cloud_base_url,
-                model=config.ai.cloud_model,
-                timeout=config.ai.timeout,
-            )
+            self._llm_client = await get_llm_client()
         return self._llm_client
 
     def _get_retriever(self) -> KnowledgeRetriever:

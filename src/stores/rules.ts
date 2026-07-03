@@ -15,7 +15,8 @@ import type {
   RuleGroupUpdateRequest,
 } from '@/types'
 import { ElMessage } from 'element-plus'
-import { extractErrorMessage } from '@/utils/errorUtils'
+import { extractErrorMessage } from '@/utils/error-handler'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 /**
  * 工艺规则管理 Store
@@ -60,7 +61,7 @@ export const useRuleStore = defineStore('rules', () => {
   }) {
     loading.value = true
     try {
-      const response = await http.get('/api/rules/list', { params })
+      const response = await http.get(buildApiPath(API_CONFIG.RULES, '/list'), { params })
       const data: RuleListResponse = response.data.data
       rules.value = data.rules
       totalRules.value = data.total
@@ -76,7 +77,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function fetchGroups() {
     try {
-      const response = await http.get('/api/rules/groups/list')
+      const response = await http.get(buildApiPath(API_CONFIG.RULES, '/groups/list'))
       const data: RuleGroupListResponse = response.data.data
       groups.value = data.groups
     } catch (e: unknown) {
@@ -86,7 +87,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function fetchStats() {
     try {
-      const response = await http.get('/api/rules/stats')
+      const response = await http.get(buildApiPath(API_CONFIG.RULES, '/stats'))
       stats.value = response.data.data
     } catch {
       // 静默处理
@@ -95,7 +96,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function createRule(rule: RuleCreateRequest) {
     try {
-      const response = await http.post('/api/rules/create', rule)
+      const response = await http.post(buildApiPath(API_CONFIG.RULES, '/create'), rule)
       ElMessage.success(response.data.message || '规则创建成功')
       await fetchRules()
       await fetchStats()
@@ -108,7 +109,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function updateRule(ruleId: number, rule: RuleUpdateRequest) {
     try {
-      const response = await http.put(`/api/rules/update/${ruleId}`, rule)
+      const response = await http.put(buildApiPath(API_CONFIG.RULES, `/update/${ruleId}`), rule)
       ElMessage.success(response.data.message || '规则更新成功')
       await fetchRules()
       await fetchStats()
@@ -121,7 +122,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function deleteRule(ruleId: number) {
     try {
-      const response = await http.delete(`/api/rules/delete/${ruleId}`)
+      const response = await http.delete(buildApiPath(API_CONFIG.RULES, `/delete/${ruleId}`))
       ElMessage.success(response.data.message || '规则删除成功')
       await fetchRules()
       await fetchStats()
@@ -133,7 +134,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function getRule(ruleId: number) {
     try {
-      const response = await http.get(`/api/rules/detail/${ruleId}`)
+      const response = await http.get(buildApiPath(API_CONFIG.RULES, `/detail/${ruleId}`))
       currentRule.value = response.data.data
       return response.data.data
     } catch (e: unknown) {
@@ -144,7 +145,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function createGroup(group: RuleGroupCreateRequest) {
     try {
-      const response = await http.post('/api/rules/groups/create', group)
+      const response = await http.post(buildApiPath(API_CONFIG.RULES, '/groups/create'), group)
       ElMessage.success(response.data.message || '分组创建成功')
       await fetchGroups()
       await fetchStats()
@@ -157,7 +158,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function updateGroup(groupId: number, group: RuleGroupUpdateRequest) {
     try {
-      const response = await http.put(`/api/rules/groups/update/${groupId}`, group)
+      const response = await http.put(buildApiPath(API_CONFIG.RULES, `/groups/update/${groupId}`), group)
       ElMessage.success(response.data.message || '分组更新成功')
       await fetchGroups()
       return response.data.data
@@ -169,7 +170,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function deleteGroup(groupId: number) {
     try {
-      const response = await http.delete(`/api/rules/groups/delete/${groupId}`)
+      const response = await http.delete(buildApiPath(API_CONFIG.RULES, `/groups/delete/${groupId}`))
       ElMessage.success(response.data.message || '分组删除成功')
       await fetchGroups()
       await fetchStats()
@@ -181,7 +182,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function exportRules() {
     try {
-      const response = await http.get('/api/rules/export', {
+      const response = await http.get(buildApiPath(API_CONFIG.RULES, '/export'), {
         responseType: 'blob',
       })
       const disposition = response.headers['content-disposition']
@@ -202,7 +203,7 @@ export const useRuleStore = defineStore('rules', () => {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const response = await http.post('/api/rules/import', formData, {
+      const response = await http.post(buildApiPath(API_CONFIG.RULES, '/import'), formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       const data: RuleImportResponse = response.data.data
@@ -221,7 +222,7 @@ export const useRuleStore = defineStore('rules', () => {
 
   async function backupDatabase() {
     try {
-      const response = await http.post('/api/rules/backup')
+      const response = await http.post(buildApiPath(API_CONFIG.RULES, '/backup'))
       ElMessage.success(response.data.message || '数据库备份成功')
       return response.data.data
     } catch (e: unknown) {

@@ -6,8 +6,11 @@ import asyncio
 import logging
 from typing import Optional
 from datetime import datetime
+from pathlib import Path
 
-from fastapi import APIRouter, Header, Request
+import numpy as np
+
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
@@ -15,6 +18,7 @@ from app.core.safe_errors import safe_error_message
 from app.core.api_response import api_response
 from app.audit.audit_log import AIModule, UserDecision, OperationStatus
 from app.utils.ring_buffer import get_ring_log_buffer
+from app.utils.utils import validate_user_path
 from app.middleware.rate_limiter import limiter
 from app.models.schemas import (
     LNNPredictRequest,
@@ -65,10 +69,55 @@ from app.api.v1.lnn.services import (
     sse_event_generator,
 )
 
-import torch
-import numpy as np
-
 logger = logging.getLogger(__name__)
+
+# 修复 [B10] /train/dry_run 路径遍历：允许的数据文件根目录白名单。
+# 1. python/data/ —— 项目内置训练/校准数据目录（含 uniwear/、training_data/ 等）；
+# 2. 项目根目录 —— 兼容从仓库内 fixtures 目录加载数据；
+# 3. 环境变量 LNN_DATA_BASE_DIRS 注入的额外目录（多路径用 os.pathsep 分隔）。
+# 任意 data_path 在 resolve() 后必须位于以下根目录之一，否则视为路径遍历攻击。
+_ALLOWED_DATA_BASE_DIRS: list[Path] = [
+    Path(os.getenv("LNN_DATA_DIR", Path(__file__).resolve().parents[3] / "data")).resolve(),
+    Path(__file__).resolve().parents[4],  # python/ 项目根
+]
+_extra_data_dirs = os.getenv("LNN_DATA_BASE_DIRS", "")
+if _extra_data_dirs:
+    for _d in _extra_data_dirs.split(os.pathsep):
+        _d = _d.strip()
+        if _d:
+            _ALLOWED_DATA_BASE_DIRS.append(Path(_d).resolve())
+
+
+def _validate_data_path(user_path: str) -> Path:
+    """校验 /train/dry_run 接收的数据文件路径，防止路径遍历攻击。
+
+    修复 [B10]：原端点直接将 ``request.data_path`` 透传给 ``np.loadtxt()``，
+    攻击者可构造 ``/etc/passwd``、``../../../app.db`` 等任意路径读取服务器文件。
+    本函数委托给统一的 ``app.utils.utils.validate_user_path``，在 ``resolve()``
+    后强制校验绝对路径必须位于 ``_ALLOWED_DATA_BASE_DIRS`` 之一之下，并要求
+    扩展名为常见数据文件类型，从而将可读取范围严格限制在数据目录内。
+
+    Args:
+        user_path: 用户提交的数据文件路径（相对或绝对）
+
+    Returns:
+        校验通过后的 Path 对象
+
+    Raises:
+        HTTPException: 400 当路径为空、扩展名不允许或解析后超出允许目录范围
+    """
+    # 允许的数据文件扩展名白名单（避免读取 .py、.db 等敏感文件）
+    _allowed_exts = {".csv", ".txt", ".tsv", ".dat", ".json", ".jsonl", ".npy"}
+    try:
+        return validate_user_path(
+            user_path=user_path,
+            allowed_base_dirs=_ALLOWED_DATA_BASE_DIRS,
+            allowed_extensions=_allowed_exts,
+            project_root=_ALLOWED_DATA_BASE_DIRS[1],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
 
 router = APIRouter(prefix="/api/v1/lnn", tags=["LNN Models"])
 
@@ -285,21 +334,26 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
 @router.post("/train/dry_run")
 async def dry_run_training(request: LNNTrainDryRunRequest):
     try:
+        # 修复 [B10]：对 data_path 做路径遍历校验，限制在允许的数据目录内
+        validated_data_path = _validate_data_path(request.data_path)
         max_size = 100 * 1024 * 1024
-        try:
-            with open(request.data_path, 'rb') as f:
+
+        def _load_data_sync():
+            """同步读取文件大小并加载 CSV（在线程池中执行避免阻塞事件循环）。"""
+            with open(str(validated_data_path), 'rb') as f:
                 f.seek(0, 2)
                 file_size = f.tell()
-
                 if file_size > max_size:
-                    return error(
-                        code=ErrorCode.INVALID_REQUEST,
-                        message=f"File too large ({file_size / 1024 / 1024:.1f} MB), max {max_size / 1024 / 1024:.0f} MB",
+                    raise ValueError(
+                        f"File too large ({file_size / 1024 / 1024:.1f} MB), "
+                        f"max {max_size / 1024 / 1024:.0f} MB"
                     )
-
                 f.seek(0)
+                return np.loadtxt(f, delimiter=",")
 
-                data = np.loadtxt(f, delimiter=",")
+        try:
+            # 修复 P2：用 asyncio.to_thread 包装同步文件 IO + np.loadtxt，避免阻塞事件循环
+            data = await asyncio.to_thread(_load_data_sync)
         except FileNotFoundError:
             return error(
                 code=ErrorCode.NOT_FOUND,
@@ -315,6 +369,13 @@ async def dry_run_training(request: LNNTrainDryRunRequest):
                 code=ErrorCode.INVALID_REQUEST,
                 message=f"Permission denied: {request.data_path}",
             )
+        except ValueError as e:
+            if "File too large" in str(e):
+                return error(
+                    code=ErrorCode.INVALID_REQUEST,
+                    message=str(e),
+                )
+            raise
         if data.ndim == 1:
             data = data.reshape(-1, 1)
 

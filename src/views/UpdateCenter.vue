@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import http from '@/utils/http'
-import { API_CONFIG } from '@/config/api'
+import { API_CONFIG, buildApiPath } from '@/config/api'
+import { extractErrorMessage } from '@/utils/error-handler'
+import { useProjectStore } from '@/stores/project'
+import type { TagType } from '@/utils/statusHelpers'
 
+const { t } = useI18n()
 const notifications = ref<NotificationItem[]>([])
 const loading = ref(false)
 const statusFilter = ref('pending')
 const previewDialog = ref(false)
 const previewData = ref<NotificationPreview | null>(null)
-const projectId = 'default'
-
-const API_BASE = API_CONFIG.V1
+const projectStore = useProjectStore()
 
 interface NotificationItem {
   notification_id: string
@@ -35,22 +38,20 @@ const filteredNotifications = computed(() => {
   return notifications.value.filter(n => n.status === statusFilter.value)
 })
 
-type TagType = 'success' | 'primary' | 'info' | 'warning' | 'danger'
-
 function priorityTag(priority: string): { text: string; type: TagType } {
   const map: Record<string, { text: string; type: TagType }> = {
-    optional: { text: '可选', type: 'info' },
-    recommended: { text: '推荐', type: 'primary' },
-    critical: { text: '关键', type: 'danger' },
+    optional: { text: t('updateCenter.priorityOptional'), type: 'info' },
+    recommended: { text: t('updateCenter.priorityRecommended'), type: 'primary' },
+    critical: { text: t('updateCenter.priorityCritical'), type: 'danger' },
   }
   return map[priority] || { text: priority, type: 'info' }
 }
 
 function statusTag(status: string): { text: string; type: TagType } {
   const map: Record<string, { text: string; type: TagType }> = {
-    pending: { text: '待处理', type: 'warning' },
-    applied: { text: '已应用', type: 'success' },
-    dismissed: { text: '已忽略', type: 'info' },
+    pending: { text: t('updateCenter.statusPending'), type: 'warning' },
+    applied: { text: t('updateCenter.statusApplied'), type: 'success' },
+    dismissed: { text: t('updateCenter.statusDismissed'), type: 'info' },
   }
   return map[status] || { text: status, type: 'info' }
 }
@@ -58,12 +59,12 @@ function statusTag(status: string): { text: string; type: TagType } {
 async function fetchNotifications() {
   loading.value = true
   try {
-    const res = await http.get(`${API_BASE}/templates/updates/${projectId}`, {
+    const res = await http.get(buildApiPath(API_CONFIG.V1, `/templates/updates/${projectStore.projectId}`), {
       params: { status: statusFilter.value === 'all' ? undefined : statusFilter.value }
     })
     if (res.data.code === 'SUCCESS') notifications.value = res.data.data
-  } catch {
-    // 静默处理，loading 状态会在 finally 中重置
+  } catch (error) {
+    console.warn(t('updateCenter.errorFetchFailed'), extractErrorMessage(error))
   } finally {
     loading.value = false
   }
@@ -71,31 +72,31 @@ async function fetchNotifications() {
 
 async function applyUpdate(id: string) {
   try {
-    await http.post(`${API_BASE}/templates/updates/apply/${id}`)
+    await http.post(buildApiPath(API_CONFIG.V1, `/templates/updates/apply/${id}`))
     fetchNotifications()
-  } catch {
-    // 静默处理
+  } catch (error) {
+    console.warn(t('updateCenter.errorApplyFailed'), extractErrorMessage(error))
   }
 }
 
 async function dismissUpdate(id: string) {
   try {
-    await http.post(`${API_BASE}/templates/updates/dismiss/${id}`)
+    await http.post(buildApiPath(API_CONFIG.V1, `/templates/updates/dismiss/${id}`))
     fetchNotifications()
-  } catch {
-    // 静默处理
+  } catch (error) {
+    console.warn(t('updateCenter.errorDismissFailed'), extractErrorMessage(error))
   }
 }
 
 async function showPreview(id: string) {
   try {
-    const res = await http.get(`${API_BASE}/templates/updates/preview/${id}`)
+    const res = await http.get(buildApiPath(API_CONFIG.V1, `/templates/updates/preview/${id}`))
     if (res.data.code === 'SUCCESS') {
       previewData.value = res.data.data
       previewDialog.value = true
     }
-  } catch {
-    // 静默处理
+  } catch (error) {
+    console.warn(t('updateCenter.errorPreviewFailed'), extractErrorMessage(error))
   }
 }
 
@@ -106,12 +107,12 @@ onMounted(fetchNotifications)
   <div class="update-center-page">
     <el-card class="header-card">
       <div class="page-header">
-        <h2>更新中心</h2>
+        <h2>{{ t('updateCenter.pageTitle') }}</h2>
         <el-button
           type="primary"
           @click="fetchNotifications"
         >
-          刷新
+          {{ t('updateCenter.btnRefresh') }}
         </el-button>
       </div>
     </el-card>
@@ -121,17 +122,17 @@ onMounted(fetchNotifications)
         v-model="statusFilter"
         @change="fetchNotifications"
       >
-        <el-radio-button label="pending">
-          待处理
+        <el-radio-button value="pending">
+          {{ t('updateCenter.filterPending') }}
         </el-radio-button>
-        <el-radio-button label="applied">
-          已应用
+        <el-radio-button value="applied">
+          {{ t('updateCenter.filterApplied') }}
         </el-radio-button>
-        <el-radio-button label="dismissed">
-          已忽略
+        <el-radio-button value="dismissed">
+          {{ t('updateCenter.filterDismissed') }}
         </el-radio-button>
-        <el-radio-button label="all">
-          全部
+        <el-radio-button value="all">
+          {{ t('updateCenter.filterAll') }}
         </el-radio-button>
       </el-radio-group>
     </el-card>
@@ -140,7 +141,7 @@ onMounted(fetchNotifications)
       v-if="loading"
       class="loading"
     >
-      加载中...
+      {{ t('updateCenter.loading') }}
     </div>
 
     <el-card
@@ -174,7 +175,7 @@ onMounted(fetchNotifications)
           v-if="notif.expected_impact && Object.keys(notif.expected_impact).length > 0"
           class="impact-section"
         >
-          <h4>预期影响</h4>
+          <h4>{{ t('updateCenter.expectedImpact') }}</h4>
           <div
             v-for="(val, key) in notif.expected_impact"
             :key="key"
@@ -194,7 +195,7 @@ onMounted(fetchNotifications)
             size="small"
             @click="showPreview(notif.notification_id)"
           >
-            预览变更
+            {{ t('updateCenter.btnPreview') }}
           </el-button>
           <el-button
             v-if="notif.status === 'pending'"
@@ -202,7 +203,7 @@ onMounted(fetchNotifications)
             size="small"
             @click="applyUpdate(notif.notification_id)"
           >
-            一键应用
+            {{ t('updateCenter.btnApply') }}
           </el-button>
           <el-button
             v-if="notif.status === 'pending'"
@@ -210,7 +211,7 @@ onMounted(fetchNotifications)
             size="small"
             @click="dismissUpdate(notif.notification_id)"
           >
-            忽略
+            {{ t('updateCenter.btnDismiss') }}
           </el-button>
         </div>
       </template>
@@ -218,20 +219,20 @@ onMounted(fetchNotifications)
 
     <el-empty
       v-if="!loading && filteredNotifications.length === 0"
-      description="暂无更新通知"
+      :description="t('updateCenter.emptyNoNotifications')"
     />
 
     <el-dialog
       v-model="previewDialog"
-      title="变更预览"
+      :title="t('updateCenter.dialogTitle')"
       width="600px"
     >
       <div v-if="previewData">
         <h3>{{ previewData.title }}</h3>
         <p>{{ previewData.description }}</p>
-        <h4>具体变更</h4>
+        <h4>{{ t('updateCenter.sectionChanges') }}</h4>
         <pre class="change-preview">{{ JSON.stringify(previewData.change_preview, null, 2) }}</pre>
-        <h4>预期效果</h4>
+        <h4>{{ t('updateCenter.sectionExpectedEffect') }}</h4>
         <pre class="impact-preview">{{ JSON.stringify(previewData.expected_impact, null, 2) }}</pre>
       </div>
     </el-dialog>

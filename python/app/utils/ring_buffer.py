@@ -85,6 +85,17 @@ class RingBuffer:
         with self._lock:
             return list(self._buffer)
 
+    def get_last_n(self, n: int) -> list[LogEntry]:
+        """获取最近 N 条记录，避免全量 snapshot 后再切片"""
+        with self._lock:
+            buffer_len = len(self._buffer)
+            if n >= buffer_len:
+                return list(self._buffer)
+            # 使用 itertools.islice 高效获取最后 N 条
+            from itertools import islice
+            start = buffer_len - n
+            return list(islice(self._buffer, start, buffer_len))
+
     def query(
         self,
         since: str | None = None,
@@ -211,10 +222,8 @@ class RingLogBuffer:
                     new_count = current_total - already_flushed
                     if new_count <= 0:
                         continue
-                    entries = buf.snapshot()
-                    new_entries = (
-                        entries[-new_count:] if new_count <= len(entries) else entries
-                    )
+                    # 使用 get_last_n 直接获取最新条目，避免全量 snapshot
+                    new_entries = buf.get_last_n(new_count)
                     if not new_entries:
                         continue
                     log_path = self._base_dir / f"{buffer_type}.log"

@@ -4,7 +4,8 @@ Cost & Budget Management API Routes
 Endpoints for cost tracking, budget enforcement, alerts, and optimization suggestions.
 """
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from app.budget.budget_enforcer import (
@@ -21,8 +22,78 @@ from app.models.budget import (
     ResourceType,
     BudgetPolicy,
 )
+from app.auth.permissions import require_permission
 
-router = APIRouter(prefix="/api/v1/cost-budget", tags=["Cost & Budget"])
+router = APIRouter(
+    prefix="/api/v1/cost-budget",
+    tags=["Cost & Budget"],
+    # 安全修复 B2：为所有财务端点添加统一认证依赖，避免越权访问
+    dependencies=[Depends(require_permission("cost:budget"))],
+)
+
+
+# ---------------------------------------------------------------------------
+# B13 安全修复：Pydantic 请求模型替换 data: dict 弱验证
+# ---------------------------------------------------------------------------
+
+class SetUnitPriceRequest(BaseModel):
+    """设置单价请求模型。"""
+    key: str = Field(..., min_length=1, description="单价键名")
+    value: float = Field(..., description="单价数值")
+
+
+class SetBudgetPolicyRequest(BaseModel):
+    """设置预算策略请求模型。"""
+    level: str = Field("global", description="预算层级")
+    scope_id: str = Field("default", description="范围ID")
+    resource_type: str = Field("total_cost", description="资源类型")
+    limit: float = Field(100.0, description="预算上限")
+    period: str = Field("daily", description="预算周期")
+    warning_threshold: float = Field(0.8, description="预警阈值")
+    hard_stop: bool = Field(True, description="是否硬性停止")
+    auto_notify: bool = Field(True, description="是否自动通知")
+    enabled: bool = Field(True, description="是否启用")
+
+
+class AdjustBudgetRequest(BaseModel):
+    """调整预算请求模型。"""
+    level: str = Field(..., description="预算层级")
+    scope_id: str = Field("default", description="范围ID")
+    resource_type: str = Field(..., description="资源类型")
+    new_limit: float = Field(..., description="新预算上限")
+    reason: str = Field("", description="调整原因")
+    adjusted_by: str = Field("admin", description="调整人")
+
+
+class CheckBudgetRequest(BaseModel):
+    """检查预算请求模型。"""
+    level: str = Field("global", description="预算层级")
+    scope_id: str = Field("default", description="范围ID")
+    resource_type: str = Field("total_cost", description="资源类型")
+    planned_usage: float = Field(0.0, description="计划用量")
+
+
+class CheckBudgetCascadeRequest(BaseModel):
+    """级联检查预算请求模型。"""
+    agent_id: str = Field("", description="Agent ID")
+    project_id: str = Field("default", description="项目ID")
+    resource_type: str = Field("total_cost", description="资源类型")
+    planned_usage: float = Field(0.0, description="计划用量")
+
+
+class EnforceBudgetRequest(BaseModel):
+    """强制预算请求模型。"""
+    level: str = Field("global", description="预算层级")
+    scope_id: str = Field("default", description="范围ID")
+    resource_type: str = Field("total_cost", description="资源类型")
+    planned_usage: float = Field(0.0, description="计划用量")
+
+
+class ResetBudgetPeriodRequest(BaseModel):
+    """重置预算周期请求模型。"""
+    level: str = Field(..., description="预算层级")
+    scope_id: str = Field("default", description="范围ID")
+    resource_type: str = Field(..., description="资源类型")
 
 
 @router.get("/summary")
@@ -81,12 +152,9 @@ async def get_unit_prices():
 
 
 @router.post("/unit-prices")
-async def set_unit_price(data: dict):
-    key = data.get("key")
-    value = data.get("value")
-
-    if not key or value is None:
-        raise HTTPException(400, "key and value are required")
+async def set_unit_price(payload: SetUnitPriceRequest):
+    key = payload.key
+    value = payload.value
 
     valid_keys = [
         "gpu_time_per_second",
@@ -98,7 +166,7 @@ async def set_unit_price(data: dict):
         raise HTTPException(400, f"Invalid key. Must be one of: {valid_keys}")
 
     tracker = get_cost_tracker()
-    tracker.set_unit_price(key, float(value))
+    tracker.set_unit_price(key, value)
 
     return {"ok": True, "data": tracker.get_unit_prices()}
 
@@ -117,20 +185,20 @@ async def get_budget_policies(
 
 
 @router.post("/policies")
-async def set_budget_policy(data: dict):
+async def set_budget_policy(payload: SetBudgetPolicyRequest):
     enforcer = get_budget_enforcer()
 
     try:
         policy = BudgetPolicy(
-            level=BudgetLevel(data.get("level", "global")),
-            scope_id=data.get("scope_id", "default"),
-            resource_type=ResourceType(data.get("resource_type", "total_cost")),
-            limit=float(data.get("limit", 100.0)),
-            period=BudgetPeriod(data.get("period", "daily")),
-            warning_threshold=float(data.get("warning_threshold", 0.8)),
-            hard_stop=bool(data.get("hard_stop", True)),
-            auto_notify=bool(data.get("auto_notify", True)),
-            enabled=bool(data.get("enabled", True)),
+            level=BudgetLevel(payload.level),
+            scope_id=payload.scope_id,
+            resource_type=ResourceType(payload.resource_type),
+            limit=payload.limit,
+            period=BudgetPeriod(payload.period),
+            warning_threshold=payload.warning_threshold,
+            hard_stop=payload.hard_stop,
+            auto_notify=payload.auto_notify,
+            enabled=payload.enabled,
         )
     except (ValueError, KeyError):
         # 修复：参数验证失败时不应回显 e 给客户端（可能含键名/结构信息），
@@ -142,16 +210,16 @@ async def set_budget_policy(data: dict):
 
 
 @router.post("/adjust-budget")
-async def adjust_budget(data: dict):
+async def adjust_budget(payload: AdjustBudgetRequest):
     enforcer = get_budget_enforcer()
 
     try:
-        level = BudgetLevel(data["level"])
-        scope_id = data.get("scope_id", "default")
-        resource_type = ResourceType(data["resource_type"])
-        new_limit = float(data["new_limit"])
-        reason = data.get("reason", "")
-        adjusted_by = data.get("adjusted_by", "admin")
+        level = BudgetLevel(payload.level)
+        scope_id = payload.scope_id
+        resource_type = ResourceType(payload.resource_type)
+        new_limit = payload.new_limit
+        reason = payload.reason
+        adjusted_by = payload.adjusted_by
     except (ValueError, KeyError):
         # 修复：不回显异常详情
         raise HTTPException(400, "Invalid adjustment data")
@@ -170,14 +238,14 @@ async def get_adjustment_history(limit: int = Query(50, ge=1, le=200)):
 
 
 @router.post("/check")
-async def check_budget(data: dict):
+async def check_budget(payload: CheckBudgetRequest):
     enforcer = get_budget_enforcer()
 
     try:
-        level = BudgetLevel(data.get("level", "global"))
-        scope_id = data.get("scope_id", "default")
-        resource_type = ResourceType(data.get("resource_type", "total_cost"))
-        planned_usage = float(data.get("planned_usage", 0.0))
+        level = BudgetLevel(payload.level)
+        scope_id = payload.scope_id
+        resource_type = ResourceType(payload.resource_type)
+        planned_usage = payload.planned_usage
     except (ValueError, KeyError):
         # 修复：不回显异常详情
         raise HTTPException(400, "Invalid check data")
@@ -187,13 +255,13 @@ async def check_budget(data: dict):
 
 
 @router.post("/check-cascade")
-async def check_budget_cascade(data: dict):
+async def check_budget_cascade(payload: CheckBudgetCascadeRequest):
     enforcer = get_budget_enforcer()
 
-    agent_id = data.get("agent_id", "")
-    project_id = data.get("project_id", "default")
-    resource_type_str = data.get("resource_type", "total_cost")
-    planned_usage = float(data.get("planned_usage", 0.0))
+    agent_id = payload.agent_id
+    project_id = payload.project_id
+    resource_type_str = payload.resource_type
+    planned_usage = payload.planned_usage
 
     try:
         resource_type = ResourceType(resource_type_str)
@@ -207,14 +275,14 @@ async def check_budget_cascade(data: dict):
 
 
 @router.post("/enforce")
-async def enforce_budget(data: dict):
+async def enforce_budget(payload: EnforceBudgetRequest):
     enforcer = get_budget_enforcer()
 
     try:
-        level = BudgetLevel(data.get("level", "global"))
-        scope_id = data.get("scope_id", "default")
-        resource_type = ResourceType(data.get("resource_type", "total_cost"))
-        planned_usage = float(data.get("planned_usage", 0.0))
+        level = BudgetLevel(payload.level)
+        scope_id = payload.scope_id
+        resource_type = ResourceType(payload.resource_type)
+        planned_usage = payload.planned_usage
     except (ValueError, KeyError):
         # 修复：不回显异常详情
         raise HTTPException(400, "Invalid enforce data")
@@ -234,13 +302,13 @@ async def enforce_budget(data: dict):
 
 
 @router.post("/reset")
-async def reset_budget_period(data: dict):
+async def reset_budget_period(payload: ResetBudgetPeriodRequest):
     enforcer = get_budget_enforcer()
 
     try:
-        level = BudgetLevel(data["level"])
-        scope_id = data.get("scope_id", "default")
-        resource_type = ResourceType(data["resource_type"])
+        level = BudgetLevel(payload.level)
+        scope_id = payload.scope_id
+        resource_type = ResourceType(payload.resource_type)
     except (ValueError, KeyError):
         # 修复：不回显异常详情
         raise HTTPException(400, "Invalid reset data")

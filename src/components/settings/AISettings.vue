@@ -1,278 +1,314 @@
 <template>
-  <div>
-    <el-card class="ai-sovereignty-card">
-      <template #header>
-        <div class="card-header">
-          <span>{{ $t('settings.aiSovereignty') }}</span>
-          <el-tag
-            type="success"
-            size="small"
-          >
-            {{ $t('settings.sovereigntyMode') }}
-          </el-tag>
-        </div>
-      </template>
-
-      <el-alert
-        v-if="showSovereigntyIntro"
-        :title="$t('settings.autonomyModeTitle')"
-        type="info"
-        :closable="true"
-        show-icon
-        style="margin-bottom: 16px;"
-        @close="showSovereigntyIntro = false"
-      >
-        <div>
-          <p><strong>{{ $t('settings.aiAutonomyLevel') }}</strong>{{ $t('settings.autonomyModeDesc') }}</p>
-          <ul>
-            <li><strong>0 - {{ $t('settings.fullyManual') }}</strong>：{{ $t('settings.autonomyLevel0') }}</li>
-            <li><strong>1 - {{ $t('settings.confirmRequired') }}</strong>：{{ $t('settings.autonomyLevel1') }}</li>
-            <li><strong>2 - {{ $t('settings.recommended') }}</strong>：{{ $t('settings.autonomyLevel2') }}</li>
-            <li><strong>3 - {{ $t('settings.semiAuto') }}</strong>：{{ $t('settings.autonomyLevel3') }}</li>
-            <li><strong>4 - {{ $t('settings.fullyAuto') }}</strong>：{{ $t('settings.autonomyLevel4') }}</li>
-          </ul>
-        </div>
-      </el-alert>
-
-      <el-form
-        :model="sovereigntySettings"
-        label-width="160px"
-      >
-        <el-form-item :label="$t('settings.aiAutonomyLevel')">
-          <div class="autonomy-slider">
-            <el-slider
-              v-model="sovereigntySettings.ai_autonomy_level"
-              :min="0"
-              :max="4"
-              :step="1"
-              :marks="autonomyMarks"
-              :format-tooltip="formatAutonomyLevel"
-              @change="handleAutonomyChange"
-            />
-            <div class="autonomy-labels">
-              <span
-                v-for="(label, idx) in autonomyLabels"
-                :key="idx"
-                class="autonomy-label"
-              >
-                {{ label }}
-              </span>
-            </div>
-          </div>
-        </el-form-item>
-
-        <el-form-item :label="$t('settings.recommended')">
-          <el-alert
-            :title="currentAutonomyDescription"
-            :type="getAutonomyAlertType(sovereigntySettings.ai_autonomy_level)"
-            :closable="false"
-            show-icon
-          />
-        </el-form-item>
-
-        <el-form-item :label="$t('settings.showConfidence')">
-          <el-switch v-model="sovereigntySettings.show_confidence_indicator" />
-        </el-form-item>
-
-        <el-form-item :label="$t('settings.showAlternatives')">
-          <el-switch v-model="sovereigntySettings.show_alternatives" />
-        </el-form-item>
-
-        <el-form-item :label="$t('settings.showReasoning')">
-          <el-switch v-model="sovereigntySettings.show_reasoning" />
-        </el-form-item>
-
-        <el-form-item :label="$t('settings.predictConfirm')">
-          <el-switch
-            v-model="sovereigntySettings.require_confirmation_for_predict"
-            :disabled="sovereigntySettings.ai_autonomy_level >= 3"
-          />
-        </el-form-item>
-
-        <el-form-item :label="$t('settings.trainConfirm')">
-          <el-switch
-            v-model="sovereigntySettings.require_confirmation_for_train"
-            :disabled="sovereigntySettings.ai_autonomy_level >= 4"
-          />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button
-            type="primary"
-            @click="saveSovereigntySettings"
-          >
-            {{ $t('settings.saveSovereignty') }}
-          </el-button>
-          <el-button @click="resetSovereigntySettings">
-            {{ $t('common.reset') }}
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card
-      class="health-card"
-      shadow="hover"
-    >
-      <template #header>
-        <div class="card-header">
-          <span>{{ $t('settings.systemHealth') }}</span>
+  <div class="ai-settings">
+    <!-- AI 自主权 -->
+    <div class="content-card">
+      <div class="content-card__header">
+        <span class="content-card__title">
+          <el-icon style="margin-right: 6px;"><MagicStick /></el-icon>
+          {{ $t('settings.aiSovereignty') }}
+        </span>
+        <el-tag
+          type="success"
+          size="small"
+        >
+          {{ $t('settings.sovereigntyMode') }}
+        </el-tag>
+      </div>
+      <div class="content-card__body">
+        <el-alert
+          v-if="showSovereigntyIntro"
+          :title="$t('settings.autonomyModeTitle')"
+          type="info"
+          :closable="true"
+          show-icon
+          style="margin-bottom: 20px;"
+          @close="showSovereigntyIntro = false"
+        >
           <div>
-            <el-tag
-              :type="healthStatus.backendOnline ? 'success' : 'danger'"
-              size="small"
-            >
-              {{ healthStatus.backendOnline ? $t('common.online') : $t('common.offline') }}
-            </el-tag>
+            <p><strong>{{ $t('settings.aiAutonomyLevel') }}</strong>{{ $t('settings.autonomyModeDesc') }}</p>
+            <ul>
+              <li><strong>0 - {{ $t('settings.fullyManual') }}</strong>：{{ $t('settings.autonomyLevel0') }}</li>
+              <li><strong>1 - {{ $t('settings.confirmRequired') }}</strong>：{{ $t('settings.autonomyLevel1') }}</li>
+              <li><strong>2 - {{ $t('settings.recommended') }}</strong>：{{ $t('settings.autonomyLevel2') }}</li>
+              <li><strong>3 - {{ $t('settings.semiAuto') }}</strong>：{{ $t('settings.autonomyLevel3') }}</li>
+              <li><strong>4 - {{ $t('settings.fullyAuto') }}</strong>：{{ $t('settings.autonomyLevel4') }}</li>
+            </ul>
+          </div>
+        </el-alert>
+
+        <el-form
+          :model="sovereigntySettings"
+          label-width="160px"
+          class="settings-form"
+        >
+          <el-form-item :label="$t('settings.aiAutonomyLevel')">
+            <div class="autonomy-slider">
+              <el-slider
+                v-model="sovereigntySettings.ai_autonomy_level"
+                :min="0"
+                :max="4"
+                :step="1"
+                :marks="autonomyMarks"
+                :format-tooltip="formatAutonomyLevel"
+                @change="handleAutonomyChange"
+              />
+              <div class="autonomy-labels">
+                <span
+                  v-for="(label, idx) in autonomyLabels"
+                  :key="idx"
+                  class="autonomy-label"
+                >{{ label }}</span>
+              </div>
+            </div>
+          </el-form-item>
+
+          <el-form-item :label="$t('settings.recommended')">
+            <el-alert
+              :title="currentAutonomyDescription"
+              :type="getAutonomyAlertType(sovereigntySettings.ai_autonomy_level)"
+              :closable="false"
+              show-icon
+            />
+          </el-form-item>
+
+          <el-divider />
+
+          <div class="switch-grid">
+            <el-form-item :label="$t('settings.showConfidence')">
+              <el-switch v-model="sovereigntySettings.show_confidence_indicator" />
+            </el-form-item>
+            <el-form-item :label="$t('settings.showAlternatives')">
+              <el-switch v-model="sovereigntySettings.show_alternatives" />
+            </el-form-item>
+            <el-form-item :label="$t('settings.showReasoning')">
+              <el-switch v-model="sovereigntySettings.show_reasoning" />
+            </el-form-item>
+            <el-form-item :label="$t('settings.predictConfirm')">
+              <el-switch
+                v-model="sovereigntySettings.require_confirmation_for_predict"
+                :disabled="sovereigntySettings.ai_autonomy_level >= 3"
+              />
+            </el-form-item>
+            <el-form-item :label="$t('settings.trainConfirm')">
+              <el-switch
+                v-model="sovereigntySettings.require_confirmation_for_train"
+                :disabled="sovereigntySettings.ai_autonomy_level >= 4"
+              />
+            </el-form-item>
+          </div>
+
+          <div class="form-actions">
             <el-button
-              size="small"
-              :loading="healthLoading"
-              style="margin-left:8px"
-              circle
-              @click="refreshHealth"
+              type="primary"
+              @click="saveSovereigntySettings"
             >
-              <el-icon><Refresh /></el-icon>
+              <el-icon style="margin-right: 4px;">
+                <Check />
+              </el-icon>
+              {{ $t('settings.saveSovereignty') }}
+            </el-button>
+            <el-button @click="resetSovereigntySettings">
+              <el-icon style="margin-right: 4px;">
+                <RefreshLeft />
+              </el-icon>
+              {{ $t('common.reset') }}
             </el-button>
           </div>
+        </el-form>
+      </div>
+    </div>
+
+    <!-- 系统健康监控 -->
+    <div class="content-card">
+      <div class="content-card__header">
+        <span class="content-card__title">
+          <el-icon style="margin-right: 6px;"><Odometer /></el-icon>
+          {{ $t('settings.systemHealth') }}
+        </span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <el-tag
+            :type="healthStatus.backendOnline ? 'success' : 'danger'"
+            size="small"
+          >
+            {{ healthStatus.backendOnline ? $t('common.online') : $t('common.offline') }}
+          </el-tag>
+          <el-button
+            size="small"
+            :loading="healthLoading"
+            circle
+            @click="refreshHealth"
+          >
+            <el-icon><Refresh /></el-icon>
+          </el-button>
         </div>
-      </template>
+      </div>
+      <div class="content-card__body">
+        <!-- 关键指标 -->
+        <div class="health-stats">
+          <div class="health-stat">
+            <div class="health-stat__icon health-stat__icon--blue">
+              <el-icon :size="18">
+                <Timer />
+              </el-icon>
+            </div>
+            <div class="health-stat__content">
+              <span class="health-stat__label">{{ $t('settings.uptime') }}</span>
+              <span class="health-stat__value">{{ healthStatus.uptimeStr }}</span>
+            </div>
+          </div>
+          <div class="health-stat">
+            <div class="health-stat__icon health-stat__icon--green">
+              <el-icon :size="18">
+                <DataLine />
+              </el-icon>
+            </div>
+            <div class="health-stat__content">
+              <span class="health-stat__label">{{ $t('settings.totalRequests') }}</span>
+              <span class="health-stat__value">{{ healthStatus.totalRequests.toLocaleString() }}</span>
+            </div>
+          </div>
+          <div class="health-stat">
+            <div class="health-stat__icon health-stat__icon--orange">
+              <el-icon :size="18">
+                <Lightning />
+              </el-icon>
+            </div>
+            <div class="health-stat__content">
+              <span class="health-stat__label">{{ $t('settings.avgResponse') }}</span>
+              <span class="health-stat__value">{{ healthStatus.avgResponseMs }}ms</span>
+            </div>
+          </div>
+          <div class="health-stat">
+            <div class="health-stat__icon health-stat__icon--purple">
+              <el-icon :size="18">
+                <Box />
+              </el-icon>
+            </div>
+            <div class="health-stat__content">
+              <span class="health-stat__label">{{ $t('settings.activeModels') }}</span>
+              <span class="health-stat__value">{{ healthStatus.activeModels }}</span>
+            </div>
+          </div>
+        </div>
 
-      <el-row :gutter="16">
-        <el-col :span="6">
-          <div class="stat-item">
-            <span class="stat-label">{{ $t('settings.uptime') }}</span>
-            <span class="stat-value">{{ healthStatus.uptimeStr }}</span>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="stat-item">
-            <span class="stat-label">{{ $t('settings.totalRequests') }}</span>
-            <span class="stat-value">{{ healthStatus.totalRequests.toLocaleString() }}</span>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="stat-item">
-            <span class="stat-label">{{ $t('settings.avgResponse') }}</span>
-            <span class="stat-value">{{ healthStatus.avgResponseMs }}ms</span>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="stat-item">
-            <span class="stat-label">{{ $t('settings.activeModels') }}</span>
-            <span class="stat-value">{{ healthStatus.activeModels }}</span>
-          </div>
-        </el-col>
-      </el-row>
-
-      <el-divider style="margin: 12px 0" />
-
-      <el-row :gutter="16">
-        <el-col :span="8">
-          <div class="stat-item">
-            <span class="stat-label">{{ $t('settings.memoryUsage') }}</span>
+        <!-- 资源使用 -->
+        <div class="resource-section">
+          <div class="resource-bar">
+            <div class="resource-bar__header">
+              <span class="resource-bar__label">{{ $t('settings.memoryUsage') }}</span>
+              <span class="resource-bar__value">{{ healthStatus.memoryUsedMb }} / {{ healthStatus.memoryTotalMb }} MB</span>
+            </div>
             <el-progress
               :percentage="healthStatus.memoryPercent"
               :status="healthStatus.memoryPercent > 80 ? 'exception' : healthStatus.memoryPercent > 60 ? 'warning' : ''"
-              :stroke-width="6"
+              :stroke-width="8"
+              :show-text="true"
             />
-            <span class="stat-sub">{{ healthStatus.memoryUsedMb }} / {{ healthStatus.memoryTotalMb }} MB</span>
           </div>
-        </el-col>
-        <el-col :span="8">
-          <div class="stat-item">
-            <span class="stat-label">{{ $t('settings.cpuUsage') }}</span>
+          <div class="resource-bar">
+            <div class="resource-bar__header">
+              <span class="resource-bar__label">{{ $t('settings.cpuUsage') }}</span>
+              <span class="resource-bar__value">{{ healthStatus.cpuPercent }}%</span>
+            </div>
             <el-progress
               :percentage="healthStatus.cpuPercent"
               :status="healthStatus.cpuPercent > 80 ? 'exception' : healthStatus.cpuPercent > 60 ? 'warning' : ''"
-              :stroke-width="6"
+              :stroke-width="8"
+              :show-text="true"
             />
-            <span class="stat-sub">{{ healthStatus.cpuPercent }}%</span>
           </div>
-        </el-col>
-        <el-col :span="8">
-          <div class="stat-item">
-            <span class="stat-label">{{ $t('settings.trainingTasks') }}</span>
-            <span class="stat-value">
+          <div class="resource-bar">
+            <div class="resource-bar__header">
+              <span class="resource-bar__label">{{ $t('settings.trainingTasks') }}</span>
               <el-tag
                 :type="healthStatus.activeTrainingTasks > 0 ? 'warning' : 'info'"
                 size="small"
               >
                 {{ healthStatus.activeTrainingTasks }} {{ $t('settings.activeSuffix') }}
               </el-tag>
-            </span>
+            </div>
           </div>
-        </el-col>
-      </el-row>
+        </div>
 
-      <el-divider style="margin: 12px 0" />
-
-      <div class="lnn-trend-section">
-        <span class="stat-label">{{ $t('settings.lnnTrend') }}</span>
-        <div class="trend-chart">
-          <div
-            v-for="(item, idx) in healthStatus.recentInferences"
-            :key="idx"
-            class="trend-bar-wrapper"
-          >
+        <!-- 推理趋势 -->
+        <div class="trend-section">
+          <div class="trend-section__header">
+            <span class="trend-section__title">{{ $t('settings.lnnTrend') }}</span>
+            <span class="trend-section__stats">P50: {{ healthStatus.p50Ms }}ms | P95: {{ healthStatus.p95Ms }}ms | Max: {{ healthStatus.maxRecentDuration }}ms</span>
+          </div>
+          <div class="trend-chart">
             <div
-              class="trend-bar"
-              :style="{
-                height: Math.max(4, (item.duration_ms / Math.max(healthStatus.maxRecentDuration, 1)) * 40) + 'px',
-                backgroundColor: item.duration_ms > 500 ? 'var(--error)' : item.duration_ms > 200 ? 'var(--warning)' : 'var(--success)'
-              }"
-              :title="`${item.model}: ${item.duration_ms}ms`"
-            />
-            <span class="trend-bar-label">{{ item.model ? item.model.substring(0, 6) : '-' }}</span>
+              v-for="(item, idx) in healthStatus.recentInferences"
+              :key="idx"
+              class="trend-bar-wrapper"
+            >
+              <div
+                class="trend-bar"
+                :style="{
+                  height: Math.max(4, (item.duration_ms / Math.max(healthStatus.maxRecentDuration, 1)) * 48) + 'px',
+                  backgroundColor: item.duration_ms > 500 ? 'var(--el-color-error)' : item.duration_ms > 200 ? 'var(--el-color-warning)' : 'var(--el-color-success)'
+                }"
+                :title="`${item.model}: ${item.duration_ms}ms`"
+              />
+              <span class="trend-bar-label">{{ item.model ? item.model.substring(0, 6) : '-' }}</span>
+            </div>
           </div>
         </div>
-        <div class="stat-sub">
-          P50: {{ healthStatus.p50Ms }}ms | P95: {{ healthStatus.p95Ms }}ms | 最大: {{ healthStatus.maxRecentDuration }}ms
+
+        <!-- 服务状态 -->
+        <div class="services-bar">
+          <span class="services-bar__label">{{ $t('settings.serviceStatus') }}</span>
+          <div class="services-bar__tags">
+            <el-tag
+              :type="healthStatus.dbHealthy ? 'success' : 'danger'"
+              size="small"
+              effect="plain"
+            >
+              DB
+            </el-tag>
+            <el-tag
+              :type="healthStatus.redisHealthy ? 'success' : 'danger'"
+              size="small"
+              effect="plain"
+            >
+              Redis
+            </el-tag>
+            <el-tag
+              :type="healthStatus.prometheusHealthy ? 'success' : 'danger'"
+              size="small"
+              effect="plain"
+            >
+              Prometheus
+            </el-tag>
+          </div>
+          <span class="services-bar__interval">{{ $t('settings.autoRefresh') }}: {{ healthStatus.pollInterval }}s</span>
         </div>
       </div>
+    </div>
 
-      <el-divider style="margin: 12px 0" />
-
-      <div class="services-row">
-        <el-tag
-          :type="healthStatus.dbHealthy ? 'success' : 'danger'"
-          size="small"
-        >
-          {{ $t('settings.db') }}
-        </el-tag>
-        <el-tag
-          :type="healthStatus.redisHealthy ? 'success' : 'danger'"
-          size="small"
-          style="margin-left:6px"
-        >
-          Redis
-        </el-tag>
-        <el-tag
-          :type="healthStatus.prometheusHealthy ? 'success' : 'danger'"
-          size="small"
-          style="margin-left:6px"
-        >
-          Prometheus
-        </el-tag>
-        <span style="margin-left:12px;font-size:12px;color:var(--text-secondary)">{{ $t('settings.autoRefresh') }}: {{ healthStatus.pollInterval }}s</span>
+    <!-- 系统健康检查 -->
+    <div class="content-card">
+      <div class="content-card__header">
+        <span class="content-card__title">
+          <el-icon style="margin-right: 6px;"><CircleCheck /></el-icon>
+          {{ $t('settings.systemHealthCheck') }}
+        </span>
+        <span style="font-size: 12px; color: var(--text-tertiary);">{{ $t('settings.healthCheckDesc') }}</span>
       </div>
-    </el-card>
-
-    <el-card class="health-check-card">
-      <template #header>
-        <div class="card-header">
-          <span>{{ $t('settings.systemHealthCheck') }}</span>
-          <span style="font-size:12px;color:var(--text-secondary)">{{ $t('settings.healthCheckDesc') }}</span>
-        </div>
-      </template>
-      <HealthCheck ref="healthCheckRef" />
-    </el-card>
+      <div class="content-card__body">
+        <HealthCheck ref="healthCheckRef" />
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Refresh } from '@element-plus/icons-vue'
+import {
+  Refresh, MagicStick, Odometer, Timer, DataLine, Lightning, Box,
+  Check, RefreshLeft, CircleCheck
+} from '@element-plus/icons-vue'
 import { useSovereigntySettings } from '@/composables/useSovereigntySettings'
 import { useHealthMonitor } from '@/composables/useHealthMonitor'
 import HealthCheck from '@/components/HealthCheck.vue'
@@ -324,25 +360,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.health-card {
-  margin-bottom: 16px;
-}
-
-.health-check-card {
-  margin-bottom: 24px;
-}
-
-.health-card .card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.ai-sovereignty-card {
-  margin-bottom: 24px;
-}
-
 .autonomy-slider {
   width: 100%;
 }
@@ -360,49 +377,144 @@ onBeforeUnmount(() => {
   flex: 1;
 }
 
-.card-header {
+.switch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+}
+
+.form-actions {
   display: flex;
-  justify-content: space-between;
+  gap: 8px;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid var(--bg-100);
+}
+
+.settings-form :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+.settings-form :deep(.el-divider) {
+  border-color: var(--bg-100);
+  margin: 4px 0;
+}
+
+/* 健康监控指标网格 */
+.health-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.health-stat {
+  display: flex;
   align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-100);
 }
 
-.stat-item {
-  text-align: center;
-  padding: 8px 0;
+.health-stat__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
 }
 
-.stat-label {
-  display: block;
+.health-stat__icon--blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.health-stat__icon--green { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+.health-stat__icon--orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
+.health-stat__icon--purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+
+.health-stat__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.health-stat__label {
   font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
+  color: var(--text-tertiary);
 }
 
-.stat-value {
-  display: block;
-  font-size: 20px;
-  font-weight: 600;
+.health-stat__value {
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
-.stat-sub {
-  display: block;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-top: 2px;
+/* 资源使用进度条 */
+.resource-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--bg-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-100);
 }
 
-.lnn-trend-section {
-  padding: 4px 0;
+.resource-bar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.resource-bar__label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.resource-bar__value {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  font-family: monospace;
+}
+
+/* 推理趋势 */
+.trend-section {
+  padding: 16px;
+  background: var(--bg-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-100);
+  margin-bottom: 16px;
+}
+
+.trend-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.trend-section__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.trend-section__stats {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: monospace;
 }
 
 .trend-chart {
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  height: 48px;
+  height: 56px;
   padding: 4px 0;
-  margin: 8px 0;
 }
 
 .trend-bar-wrapper {
@@ -415,8 +527,8 @@ onBeforeUnmount(() => {
 
 .trend-bar {
   width: 100%;
-  max-width: 24px;
-  border-radius: 2px 2px 0 0;
+  max-width: 28px;
+  border-radius: 3px 3px 0 0;
   min-height: 4px;
   transition: height 0.3s ease;
 }
@@ -424,16 +536,38 @@ onBeforeUnmount(() => {
 .trend-bar-label {
   font-size: 9px;
   color: var(--text-tertiary);
-  margin-top: 2px;
+  margin-top: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
 }
 
-.services-row {
+/* 服务状态栏 */
+.services-bar {
   display: flex;
   align-items: center;
-  padding: 4px 0;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-100);
+}
+
+.services-bar__label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.services-bar__tags {
+  display: flex;
+  gap: 6px;
+}
+
+.services-bar__interval {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 </style>

@@ -28,9 +28,19 @@ from sqlalchemy import text
 logger = logging.getLogger(__name__)
 
 
+def _resolve_db_url() -> str:
+    # 优先使用 DB_URL 环境变量以保持向后兼容，否则回退到 config.database.db_url
+    # 这样配置统一由 config.py 管理（DATABASE_URL），main.py 不再需要设置 DB_URL
+    url = os.environ.get("DB_URL")
+    if url:
+        return url
+    from app.config import config
+    return config.database.db_url
+
+
 @dataclass
 class DatabaseConfig:
-    url: str = field(default_factory=lambda: os.environ.get("DB_URL", ""))
+    url: str = field(default_factory=_resolve_db_url)
     pool_size: int = field(default_factory=lambda: int(os.environ.get("DB_POOL_SIZE", "15")))
     max_overflow: int = field(default_factory=lambda: int(os.environ.get("DB_MAX_OVERFLOW", "10")))
     pool_timeout: int = field(default_factory=lambda: int(os.environ.get("DB_POOL_TIMEOUT", "30")))

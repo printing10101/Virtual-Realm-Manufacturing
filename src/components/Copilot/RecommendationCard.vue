@@ -2,7 +2,9 @@
   <div class="copilot-recommendation-card">
     <div class="card-header">
       <div class="header-left">
-        <el-icon class="ai-icon"><Promotion /></el-icon>
+        <el-icon class="ai-icon">
+          <Promotion />
+        </el-icon>
         <span class="card-title">{{ $t('copilot.card.title') }}</span>
       </div>
       <div class="header-right">
@@ -12,7 +14,9 @@
 
     <div class="card-content">
       <div class="recommendation-section">
-        <div class="section-label">{{ $t('copilot.card.recommendation') }}</div>
+        <div class="section-label">
+          {{ $t('copilot.card.recommendation') }}
+        </div>
         <div class="recommendation-content">
           <slot name="recommendation">
             <pre class="recommendation-json">{{ formatRecommendation(recommendation) }}</pre>
@@ -21,7 +25,7 @@
       </div>
 
       <div class="confidence-section">
-        <ConfidenceIndicator :confidence="confidence" />
+        <CopilotConfidenceIndicator :confidence="confidence" />
       </div>
 
       <div class="reasoning-section">
@@ -33,7 +37,10 @@
             <el-icon><ChatDotRound /></el-icon>
             <span>{{ $t('copilot.card.reasoning') }}</span>
           </div>
-          <el-icon class="collapse-icon" :class="{ 'is-expanded': isReasoningExpanded }">
+          <el-icon
+            class="collapse-icon"
+            :class="{ 'is-expanded': isReasoningExpanded }"
+          >
             <ArrowDown />
           </el-icon>
         </div>
@@ -43,13 +50,20 @@
           class="reasoning-content"
         >
           <slot name="reasoning">
-            <p class="reasoning-text">{{ reasoning }}</p>
+            <p class="reasoning-text">
+              {{ reasoning }}
+            </p>
           </slot>
         </div>
       </div>
 
-      <div class="alternatives-section" v-if="alternatives && alternatives.length > 0">
-        <div class="section-label">{{ $t('copilot.card.alternatives') }}</div>
+      <div
+        v-if="alternatives && alternatives.length > 0"
+        class="alternatives-section"
+      >
+        <div class="section-label">
+          {{ $t('copilot.card.alternatives') }}
+        </div>
         <div class="alternatives-list">
           <div
             v-for="(alt, index) in alternatives"
@@ -57,7 +71,7 @@
             class="alternative-item"
           >
             <div class="alternative-header">
-              <span class="alternative-label">{{ alt.label || `方案 ${index + 1}` }}</span>
+              <span class="alternative-label">{{ alt.label || $t('recommendationCard.alternativeLabel', { index: index + 1 }) }}</span>
               <el-tag
                 :type="getConfidenceTagType(alt.confidence)"
                 size="small"
@@ -65,7 +79,9 @@
                 {{ (alt.confidence * 100).toFixed(0) }}%
               </el-tag>
             </div>
-            <div class="alternative-description">{{ alt.description }}</div>
+            <div class="alternative-description">
+              {{ alt.description }}
+            </div>
           </div>
         </div>
       </div>
@@ -88,7 +104,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Promotion, ChatDotRound, ArrowDown } from '@element-plus/icons-vue'
-import ConfidenceIndicator from './ConfidenceIndicator.vue'
+import CopilotConfidenceIndicator from './CopilotConfidenceIndicator.vue'
 import DecisionActions from './DecisionActions.vue'
 import { formatTimestamp } from '@/utils/formatters'
 import { getConfidenceTagType } from '@/utils/statusHelpers'

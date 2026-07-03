@@ -6,7 +6,8 @@
  */
 import { defineStore } from 'pinia'
 import http from '@/utils/http'
-import { extractErrorMessage } from '@/utils/errorUtils'
+import { extractErrorMessage } from '@/utils/error-handler'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 import type {
   ProjectManifest,
   ProjectMetadata,
@@ -14,8 +15,6 @@ import type {
   NewProjectRequest,
   SaveProjectRequest,
 } from '@/types'
-
-const API_BASE = '/api/projects'
 
 function defaultManifest(name = '未命名工程'): ProjectManifest {
   return {
@@ -82,7 +81,7 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const resp = await http.post(`${API_BASE}/new`, request)
+      const resp = await http.post(buildApiPath(API_CONFIG.PROJECTS, '/new'), request)
       if (resp.data.code === 0) {
         projectId.value = resp.data.data.project_id
         manifest.value = resp.data.data.manifest as ProjectManifest
@@ -104,7 +103,7 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const resp = await http.post(`${API_BASE}/open`, {
+      const resp = await http.post(buildApiPath(API_CONFIG.PROJECTS, '/open'), {
         file_path: filePath || undefined,
         upload_data: uploadData || undefined,
       })
@@ -130,10 +129,10 @@ export const useProjectStore = defineStore('project', () => {
     try {
       const payload: SaveProjectRequest = {
         manifest: JSON.parse(JSON.stringify(manifest.value)),
-        project_id: projectId.value,
-        output_name: outputName || '',
+        project_id: projectId.value || 'default',
+        output_name: outputName || 'project',
       }
-      const resp = await http.post(`${API_BASE}/save`, payload)
+      const resp = await http.post(buildApiPath(API_CONFIG.PROJECTS, '/save-as'), payload)
       if (resp.data.code === 0) {
         currentFilePath.value = resp.data.data.file_path
         isModified.value = false
@@ -158,7 +157,7 @@ export const useProjectStore = defineStore('project', () => {
         project_id: projectId.value,
         output_name: outputName,
       }
-      const resp = await http.post(`${API_BASE}/save-as`, payload)
+      const resp = await http.post(buildApiPath(API_CONFIG.PROJECTS, '/save-as'), payload)
       if (resp.data.code === 0) {
         currentFilePath.value = resp.data.data.file_path
         manifest.value.metadata.name = outputName.replace('.vrm', '')
@@ -178,7 +177,7 @@ export const useProjectStore = defineStore('project', () => {
   async function fetchProjectList(): Promise<void> {
     listLoading.value = true
     try {
-      const resp = await http.get(`${API_BASE}/list`)
+      const resp = await http.get(buildApiPath(API_CONFIG.PROJECTS, '/list'))
       if (resp.data.code === 0) {
         projectList.value = resp.data.data.items as ProjectSummary[]
       }
@@ -191,7 +190,7 @@ export const useProjectStore = defineStore('project', () => {
 
   async function deleteProject(projectName: string): Promise<boolean> {
     try {
-      const resp = await http.delete(`${API_BASE}/${projectName}`)
+      const resp = await http.delete(buildApiPath(API_CONFIG.PROJECTS, `/${projectName}`))
       return resp.data.code === 0
     } catch {
       return false
@@ -199,7 +198,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   function downloadProject(projectName: string): void {
-    const url = `${API_BASE}/download/${projectName}`
+    const url = buildApiPath(API_CONFIG.PROJECTS, `/download/${projectName}`)
     const a = document.createElement('a')
     a.href = url
     a.download = projectName

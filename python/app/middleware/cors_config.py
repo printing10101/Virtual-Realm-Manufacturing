@@ -11,7 +11,7 @@ The active environment is driven by the ``LINGJING_ENV`` environment variable:
 
 * ``"development"`` – explicit ``http://localhost:<port>`` origins only
 * ``"production"``  – explicit allowlist (empty by default) + restricted
-  ``http://localhost(:<port>)?`` regex for Tauri dev shells
+  ``https?://localhost(:<port>)?`` regex for Tauri dev shells
 
 Any other value (or the absence of the variable) falls back to
 ``"production"`` for safety.
@@ -33,12 +33,12 @@ Development
 
 Production
     ``PRODUCTION_ORIGINS`` is empty by default.  All matching is done via
-    the narrow ``PRODUCTION_ORIGIN_REGEX`` (``http://localhost(:\\d+)?``) which
-    restricts the protocol to ``http`` and the host to ``localhost`` only —
-    this is **not** a wildcard.  Real production deployments are expected to
-    set the ``ALLOWED_ORIGINS`` env var to a comma-separated list of explicit
-    production domains.  Partial wildcards such as ``*.example.com`` are
-    rejected at startup.
+    the narrow ``PRODUCTION_ORIGIN_REGEX`` (``https?://localhost(:\\d+)?``)
+    which allows ``http`` and ``https`` protocols but restricts the host to
+    ``localhost`` only — this is **not** a wildcard.  Real production
+    deployments are expected to set the ``ALLOWED_ORIGINS`` env var to a
+    comma-separated list of explicit production domains.  Partial wildcards
+    such as ``*.example.com`` are rejected at startup.
 
 Security risks and guarantees
 -----------------------------
@@ -66,7 +66,7 @@ This module enforces the following invariants at startup:
     ``allow_credentials=True``.
 3.  No origin_regex is set when ``allow_credentials=True`` *and* the regex
     is overly broad.  In practice, the production regex is bounded to
-    ``http://localhost(:\\d+)?`` and is verified by ``PRODUCTION_ORIGIN_REGEX``
+    ``https?://localhost(:\\d+)?`` and is verified by ``PRODUCTION_ORIGIN_REGEX``
     at module load time.
 
 If any of the above checks fail, ``enforce_startup_security()`` logs an
@@ -137,12 +137,12 @@ class CorsConfigError(Exception):
 # variable to a comma-separated list of explicit production domains.
 PRODUCTION_ORIGINS: List[str] = []
 
-#: Matches ``http://localhost`` with an optional port number
-#: (e.g. ``:5173``, ``:8080``).  Protocol is fixed to ``http``; HTTPS is
-#: not used by the Tauri dev shell that talks to this service.  Explicit
-#: port matching prevents open-redirect-style bypasses that could exploit
-#: a permissive regex like ``https?://.*``.
-PRODUCTION_ORIGIN_REGEX = r"http://localhost(:\d+)?"
+#: Matches ``http://localhost`` or ``https://localhost`` with an optional
+#: port number (e.g. ``:5173``, ``:8080``).  允许 HTTP 与 HTTPS 两种协议，
+#: 以支持生产环境通过 HTTPS 访问 localhost 的场景（如反向代理终结 TLS）。
+#: 显式端口匹配可防止开放重定向式绕过，避免使用 ``https?://.*`` 这类过于
+#: 宽松的正则。  真实生产域名请通过 ``ALLOWED_ORIGINS`` 环境变量显式配置。
+PRODUCTION_ORIGIN_REGEX = r"https?://localhost(:\d+)?"
 
 
 # ---------------------------------------------------------------------------
@@ -227,10 +227,10 @@ def validate_cors_config(
         non-empty, no entry may contain a partial wildcard (e.g. a
         leading-dot subdomain wildcard).
     3.  When ``allow_credentials`` is ``True``, ``origin_regex`` must not
-        be overly broad.  The production regex is verified against the
-        narrow ``http://localhost(:\\d+)?`` pattern at module load time
-        via :data:`PRODUCTION_ORIGIN_REGEX`; runtime callers that pass
-        a custom regex are responsible for keeping it tight.
+    be overly broad.  The production regex is verified against the narrow
+    ``https?://localhost(:\\d+)?`` pattern at module load time
+    via :data:`PRODUCTION_ORIGIN_REGEX`; runtime callers that pass
+    a custom regex are responsible for keeping it tight.
 
     On failure, an ``ERROR``-level log line containing the Chinese
     security warning is emitted, followed by raising
@@ -279,7 +279,7 @@ def validate_cors_config(
         )
 
     # --- Origin regex sanity check -----------------------------------------
-    # The production regex is hard-coded to ``http://localhost(:\d+)?`` and
+    # The production regex is hard-coded to ``https?://localhost(:\d+)?`` and
     # is considered safe.  If a custom regex is supplied at runtime it
     # must not be a bare wildcard pattern.
     if origin_regex is not None and WILDCARD_CHAR in origin_regex:
@@ -415,7 +415,7 @@ class CorsSettings:
     def get_origin_regex(self) -> Optional[str]:
         """Return the origin regex pattern, or ``None``.
 
-        The production regex is bounded to ``http://localhost(:\\d+)?``
+        The production regex is bounded to ``https?://localhost(:\\d+)?``
         and is verified at module load time; see :data:`PRODUCTION_ORIGIN_REGEX`.
         """
         return self._origin_regex
@@ -655,7 +655,7 @@ def is_production() -> bool:
 #
 # 安全修复：使用显式 raise 替代 assert，因为 python -O 会跳过 assert，
 # 导致安全校验失效。安全检查绝不能依赖 assert。
-if PRODUCTION_ORIGIN_REGEX != r"http://localhost(:\d+)?":
+if PRODUCTION_ORIGIN_REGEX != r"https?://localhost(:\d+)?":
     raise CorsConfigError(
         "PRODUCTION_ORIGIN_REGEX drifted from its narrow localhost-only "
         "contract.  This is a CORS security regression and must not ship."

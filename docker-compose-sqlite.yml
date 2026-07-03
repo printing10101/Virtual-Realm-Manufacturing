@@ -12,8 +12,8 @@
 #   - 安装步骤 ≤ 3 步：解压 → 双击 → 使用
 #
 # 使用说明：
-#   1. 复制环境变量模板：cp .env.sqlite .env
-#   2. 启动服务：docker compose -f docker-compose-sqlite.yml up -d
+#   1. 复制环境变量模板：cp .env.sqlite.example .env.sqlite
+#   2. 启动服务：docker compose -f docker-compose-sqlite.yml --env-file .env.sqlite up -d
 #   3. 访问：http://localhost:8765
 # ============================================================
 

@@ -1,7 +1,7 @@
 # 灵境制造系统运维手册
 
-**版本**: 1.0.0  
-**最后更新**: 2024-01-20  
+**版本**: 2.4.0
+**最后更新**: 2026-06-26  
 **维护团队**: 运维团队
 
 ---
@@ -130,7 +130,7 @@ curl http://localhost:8765/health
 # 预期响应
 {
   "status": "healthy",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "database": "connected",
   "lnn_engine": "ready"
 }

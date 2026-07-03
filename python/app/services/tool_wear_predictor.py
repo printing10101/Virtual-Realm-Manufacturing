@@ -157,6 +157,12 @@ class ToolWearPredictor:
     组合修正Taylor模型与Usui磨损率模型
     VB < 0.2mm: Usui模型主导 (加速磨损阶段)
     VB >= 0.2mm: Taylor模型主导 (稳态磨损阶段)
+
+    注意：本类是基于 sklearn 的传统 ML 磨损预测服务，model_type 参数
+    支持 'random_forest' / 'xgboost' / 'svm' / 'gradient_boosting' / 'linear'。
+    与 lnn_workflow.yaml 中注册的 LNN 模型 'wear_prediction'（type: "ltc"，
+    基于 LTC 神经网络，通过 /api/v1/lnn/predict 调用）是两套独立的系统，
+    两者命名空间互不相关，不应混淆。
     """
 
     USUI_TAYLOR_SWITCH_THRESHOLD = 0.2
@@ -328,9 +334,9 @@ class ToolWearPredictor:
 
             point = WearDataPoint(
                 time=round(time, 2),
-                vb=round(current_vb, 4),
+                wear=round(current_vb, 4),
                 wear_rate=round(wear_rate, 6),
-                phase=phase,
+                metadata={"phase": phase},
             )
             data_points.append(point)
 
@@ -350,10 +356,15 @@ class ToolWearPredictor:
 
         return WearCurve(
             data_points=data_points,
-            total_life=total_life,
-            time_to_threshold=time_to_threshold,
-            wear_rate_avg=avg_wear_rate,
+            total_time=total_life,
+            max_wear=round(current_wear, 4),
             confidence=round(confidence, 2),
+            model_info={
+                "total_life": total_life,
+                "time_to_threshold": time_to_threshold,
+                "wear_rate_avg": avg_wear_rate,
+                "wear_threshold": wear_threshold,
+            },
         )
 
     def predict_remaining_life(
@@ -377,11 +388,17 @@ class ToolWearPredictor:
         simulated_curve = self.predict_wear_curve(temp_params)
         elapsed = 0.0
         for point in simulated_curve.data_points:
-            if point.vb >= current_wear:
+            if point.wear >= current_wear:
                 break
             elapsed = point.time
 
-        return max(0.0, round(simulated_curve.time_to_threshold - elapsed, 2))
+        # time_to_threshold 存储在 model_info 中（参见 WearCurve 数据类定义）
+        t_threshold = (
+            simulated_curve.model_info.get("time_to_threshold", 0.0)
+            if simulated_curve.model_info
+            else 0.0
+        )
+        return max(0.0, round(t_threshold - elapsed, 2))
 
     def get_replacement_threshold(self, material_type: Optional[str] = None) -> float:
         if material_type is None:
@@ -515,11 +532,16 @@ class ToolWearPredictor:
         predicted_at_time = None
         for point in predicted_curve.data_points:
             if abs(point.time - elapsed_time) < 1.0:
-                predicted_at_time = point.vb
+                predicted_at_time = point.wear
                 break
 
         if predicted_at_time is None:
-            predicted_at_time = predicted_curve.wear_rate_avg * elapsed_time
+            _wr_avg = (
+                predicted_curve.model_info.get("wear_rate_avg", 0.0)
+                if predicted_curve.model_info
+                else 0.0
+            )
+            predicted_at_time = _wr_avg * elapsed_time
 
         deviation = measured_wear - predicted_at_time
         deviation_percent = (deviation / max(predicted_at_time, 0.001)) * 100.0
@@ -537,6 +559,330 @@ class ToolWearPredictor:
             "deviation_percent": round(deviation_percent, 2),
             "correction_factor": round(correction_factor, 3),
             "calibrated_curve": recalibrated_curve.to_dict(),
+        }
+
+    def calibrate_with_real_time_data(
+        self,
+        real_time_wear: float,
+        sensor_features: dict[str, float],
+        elapsed_time: float,
+        input_parameters: dict,
+    ) -> dict[str, Any]:
+        """使用实时传感器数据动态校正磨损预测。
+
+        采用指数加权移动平均（EWMA）融合模型预测值与实测值，
+        并结合传感器特征（振动 RMS、切削力、温度）进行综合校正。
+
+        Args:
+            real_time_wear: 实时测量的磨损量 (mm)
+            sensor_features: 传感器特征字典，可包含：
+                - vibration_rms: 振动 RMS (g)
+                - cutting_force: 切削力 (N)
+                - temperature: 切削温度 (°C)
+                - acoustic_emission: 声发射信号
+            elapsed_time: 已加工时间 (min)
+            input_parameters: 切削参数字典
+
+        Returns:
+            校正后的预测结果，包含：
+            - measured_wear: 实测磨损量
+            - predicted_wear_at_time: 原始预测值
+            - corrected_wear: 校正后的磨损值
+            - deviation: 偏差
+            - deviation_ratio: 偏差比率
+            - corrected_wear_rate: 校正后的磨损率
+            - sensor_adjustment: 传感器修正因子
+            - calibrated_curve: 校正后的磨损曲线
+            - confidence: 置信度
+        """
+        cutting_speed = input_parameters.get("cutting_speed", 150.0)
+        material_type = input_parameters.get("material_type", "steel_45")
+        material = self._get_material_params(material_type)
+
+        # 1. 获取原始预测曲线
+        predicted_curve = self.predict_wear_curve(input_parameters)
+
+        # 2. 找到对应时间的预测值
+        predicted_at_time = None
+        for point in predicted_curve.data_points:
+            if abs(point.time - elapsed_time) < 1.0:
+                predicted_at_time = point.wear
+                break
+
+        if predicted_at_time is None:
+            _wr_avg = (
+                predicted_curve.model_info.get("wear_rate_avg", 0.0)
+                if predicted_curve.model_info
+                else 0.0
+            )
+            predicted_at_time = _wr_avg * elapsed_time
+
+        # 3. 计算模型偏差
+        deviation = real_time_wear - predicted_at_time
+        deviation_ratio = deviation / max(predicted_at_time, 0.001)
+
+        # 4. 传感器特征修正因子计算
+        sensor_adjustment = 1.0
+        adjustment_reasons: list[str] = []
+
+        vibration_rms = sensor_features.get("vibration_rms", 0.0)
+        if vibration_rms > 0:
+            # 振动 RMS 超过阈值时加速磨损
+            if vibration_rms > 2.0:
+                sensor_adjustment *= 1.15
+                adjustment_reasons.append(
+                    f"振动RMS={vibration_rms:.2f}g超阈值，磨损加速15%"
+                )
+            elif vibration_rms > 1.0:
+                sensor_adjustment *= 1.05
+                adjustment_reasons.append(
+                    f"振动RMS={vibration_rms:.2f}g偏高，磨损加速5%"
+                )
+
+        cutting_force = sensor_features.get("cutting_force", 0.0)
+        if cutting_force > 0:
+            # 切削力超过预期时加速磨损
+            expected_force = material.hardness_factor * 100.0
+            if cutting_force > expected_force * 1.5:
+                sensor_adjustment *= 1.20
+                adjustment_reasons.append(
+                    f"切削力{cutting_force:.0f}N远超预期{expected_force:.0f}N，磨损加速20%"
+                )
+            elif cutting_force > expected_force * 1.2:
+                sensor_adjustment *= 1.10
+                adjustment_reasons.append(
+                    f"切削力{cutting_force:.0f}N高于预期{expected_force:.0f}N，磨损加速10%"
+                )
+
+        temperature = sensor_features.get("temperature", 0.0)
+        if temperature > 0:
+            # 温度过高加速磨损（热磨损机制）
+            if temperature > 800.0:
+                sensor_adjustment *= 1.25
+                adjustment_reasons.append(
+                    f"切削温度{temperature:.0f}°C过高，热磨损加速25%"
+                )
+            elif temperature > 600.0:
+                sensor_adjustment *= 1.10
+                adjustment_reasons.append(
+                    f"切削温度{temperature:.0f}°C偏高，热磨损加速10%"
+                )
+
+        acoustic_emission = sensor_features.get("acoustic_emission", 0.0)
+        if acoustic_emission > 0:
+            # 声发射信号异常表明刀具可能崩刃
+            if acoustic_emission > 0.8:
+                sensor_adjustment *= 1.30
+                adjustment_reasons.append(
+                    f"声发射信号{acoustic_emission:.2f}异常，刀具可能崩刃，磨损加速30%"
+                )
+
+        # 5. EWMA 融合预测值与实测值
+        alpha = 0.3  # 平滑系数，实测值权重
+        measured_rate = real_time_wear / max(elapsed_time, 0.01)
+        _wr_avg = (
+            predicted_curve.model_info.get("wear_rate_avg", 0.0)
+            if predicted_curve.model_info
+            else 0.0
+        )
+        corrected_wear_rate = (
+            alpha * measured_rate * sensor_adjustment
+            + (1.0 - alpha) * _wr_avg
+        )
+        corrected_wear_rate = max(1e-6, min(0.05, corrected_wear_rate))
+
+        # 6. 生成校正后的预测曲线
+        calibrated_params = input_parameters.copy()
+        correction_factor = 1.0 + (deviation_ratio / 200.0) * sensor_adjustment
+        calibrated_params["material_hardness_adjustment"] = round(correction_factor, 3)
+
+        recalibrated_curve = self.predict_wear_curve(calibrated_params)
+
+        # 7. 计算综合置信度
+        confidence = self._compute_confidence(real_time_wear, cutting_speed, material)
+        # 传感器数据齐全时提高置信度
+        sensor_coverage = sum(1 for v in sensor_features.values() if v > 0) / max(
+            len(sensor_features), 1
+        )
+        confidence = min(0.98, confidence + 0.05 * sensor_coverage)
+
+        return {
+            "measured_wear": round(real_time_wear, 4),
+            "predicted_wear_at_time": round(predicted_at_time, 4),
+            "corrected_wear": round(
+                predicted_at_time + deviation * sensor_adjustment, 4
+            ),
+            "deviation": round(deviation, 4),
+            "deviation_ratio": round(deviation_ratio, 4),
+            "corrected_wear_rate": round(corrected_wear_rate, 6),
+            "sensor_adjustment": round(sensor_adjustment, 3),
+            "adjustment_reasons": adjustment_reasons,
+            "calibrated_curve": recalibrated_curve.to_dict(),
+            "confidence": round(confidence, 2),
+            "sensor_coverage": round(sensor_coverage, 2),
+        }
+
+    def get_compensation_recommendations(
+        self,
+        current_wear: float,
+        input_parameters: dict,
+        machine_capabilities: dict | None = None,
+    ) -> dict[str, Any]:
+        """基于当前磨损状态推荐切削参数补偿方案。
+
+        综合考虑磨损程度、机床能力限制和加工质量要求，
+        提供可执行的参数调整建议。
+
+        Args:
+            current_wear: 当前磨损量 (mm)
+            input_parameters: 当前切削参数
+            machine_capabilities: 机床能力限制（可选），包含：
+                - max_spindle_speed: 最大主轴转速
+                - max_feed_rate: 最大进给速度
+                - max_power: 最大功率
+                - max_torque: 最大扭矩
+
+        Returns:
+            参数补偿建议字典
+        """
+        cutting_speed = input_parameters.get("cutting_speed", 150.0)
+        feed_rate = input_parameters.get("feed_rate", 0.2)
+        depth_of_cut = input_parameters.get("depth_of_cut", 1.5)
+        material_type = input_parameters.get("material_type", "steel_45")
+        tool_type = input_parameters.get("tool_type", "carbide")
+
+        material = self._get_material_params(material_type)
+        tool = self._get_tool_params(tool_type)
+        wear_threshold = tool.get("max_vb", self.default_replacement_threshold)
+        wear_ratio = current_wear / wear_threshold
+
+        # 机床能力限制（提供默认值）
+        if machine_capabilities is None:
+            machine_capabilities = {
+                "max_spindle_speed": 24000,
+                "max_feed_rate": 20000,
+                "max_power": 15.0,
+                "max_torque": 100.0,
+            }
+
+        # 根据磨损程度确定调整策略
+        if wear_ratio > 0.9:
+            strategy = "replace_tool"
+            urgency = "critical"
+            speed_reduction = 0.40
+            feed_reduction = 0.30
+            depth_reduction = 0.25
+        elif wear_ratio > 0.7:
+            strategy = "aggressive_compensation"
+            urgency = "critical"
+            speed_reduction = 0.30
+            feed_reduction = 0.20
+            depth_reduction = 0.15
+        elif wear_ratio > 0.5:
+            strategy = "moderate_compensation"
+            urgency = "warning"
+            speed_reduction = 0.15
+            feed_reduction = 0.10
+            depth_reduction = 0.05
+        elif wear_ratio > 0.3:
+            strategy = "slight_compensation"
+            urgency = "normal"
+            speed_reduction = 0.05
+            feed_reduction = 0.0
+            depth_reduction = 0.0
+        else:
+            strategy = "no_adjustment"
+            urgency = "normal"
+            speed_reduction = 0.0
+            feed_reduction = 0.0
+            depth_reduction = 0.0
+
+        # 计算调整后的参数
+        new_speed = cutting_speed * (1.0 - speed_reduction)
+        new_feed = feed_rate * (1.0 - feed_reduction)
+        new_depth = depth_of_cut * (1.0 - depth_reduction)
+
+        # 机床能力限制校验
+        warnings: list[str] = []
+        if new_speed > 0:
+            # 计算主轴转速
+            tool_diameter = input_parameters.get("tool_diameter", 10.0)
+            if tool_diameter > 0:
+                spindle_speed = (new_speed * 1000.0) / (math.pi * tool_diameter)
+                max_spindle = machine_capabilities.get("max_spindle_speed", 24000)
+                if spindle_speed > max_spindle:
+                    warnings.append(
+                        f"调整后主轴转速{spindle_speed:.0f}RPM超过机床最大值{max_spindle}RPM，"
+                        "已自动限制"
+                    )
+                    spindle_speed = max_spindle
+                    new_speed = (spindle_speed * math.pi * tool_diameter) / 1000.0
+
+        max_feed = machine_capabilities.get("max_feed_rate", 20000)
+        new_feed_mm_min = new_feed * 1000.0  # 转换为 mm/min
+        if new_feed_mm_min > max_feed:
+            warnings.append(
+                f"调整后进给速度{new_feed_mm_min:.0f}mm/min超过机床最大值{max_feed}mm/min，"
+                "已自动限制"
+            )
+            new_feed = max_feed / 1000.0
+
+        # 计算预期寿命延长
+        life_extension = 0.0
+        if speed_reduction > 0 and strategy != "no_adjustment":
+            n = material.taylor_n
+            speed_factor = (1.0 - speed_reduction) ** (-1.0 / n)
+            life_extension = (speed_factor - 1.0) * 100.0
+
+        # 生成建议项
+        suggestions: list[dict[str, Any]] = []
+
+        if speed_reduction > 0:
+            suggestions.append({
+                "param": "cutting_speed",
+                "current": round(cutting_speed, 2),
+                "recommended": round(new_speed, 2),
+                "change_percent": round(-speed_reduction * 100, 1),
+                "reason": f"磨损率{wear_ratio*100:.0f}%，降低切削速度以延长寿命",
+                "expected_life_extension_percent": round(life_extension, 1),
+            })
+
+        if feed_reduction > 0:
+            suggestions.append({
+                "param": "feed_rate",
+                "current": round(feed_rate, 3),
+                "recommended": round(new_feed, 3),
+                "change_percent": round(-feed_reduction * 100, 1),
+                "reason": "降低进给量以减少切削力",
+            })
+
+        if depth_reduction > 0:
+            suggestions.append({
+                "param": "depth_of_cut",
+                "current": round(depth_of_cut, 2),
+                "recommended": round(new_depth, 2),
+                "change_percent": round(-depth_reduction * 100, 1),
+                "reason": "降低切深以改善散热",
+            })
+
+        if strategy == "replace_tool":
+            suggestions.append({
+                "param": "tool_replacement",
+                "current": "current_tool",
+                "recommended": "new_tool",
+                "change_percent": 0,
+                "reason": "刀具磨损已达临界值，必须立即更换",
+            })
+
+        return {
+            "current_wear": round(current_wear, 4),
+            "wear_ratio": round(wear_ratio, 3),
+            "strategy": strategy,
+            "urgency": urgency,
+            "suggestions": suggestions,
+            "expected_life_extension_percent": round(life_extension, 1),
+            "warnings": warnings,
+            "machine_capability_checked": True,
         }
 
     def _get_bosch_loader(self, data_dir: str = "python/data/datasets/bosch_cnc"):
@@ -681,10 +1027,9 @@ class ToolWearPredictor:
         else:
             raise ValueError(
                 f"刀具磨损预测失败：不支持的模型类型 '{model_type}'。"
-                "支持的模型类型包括：'LNN'（神经逻辑网络）、"
-                "'CTC'（连续时间分类）、'CFC'（连续-离散混合模型）。"
-                "请调用 GET /api/v1/lnn/models 查看支持的模型类型列表，"
-                "或检查 model_type 参数配置。"
+                "支持的模型类型包括：'random_forest'（随机森林）、"
+                "'xgboost'（极端梯度提升）、'svm'（支持向量机）。"
+                "请检查 model_type 参数配置。"
             )
 
         model.fit(X_train_scaled, y_train)
@@ -1020,10 +1365,9 @@ class ToolWearPredictor:
                 else:
                     raise ValueError(
                         f"刀具磨损预测失败：不支持的模型类型 '{model_type}'。"
-                        "支持的模型类型包括：'LNN'（神经逻辑网络）、"
-                        "'CTC'（连续时间分类）、'CFC'（连续-离散混合模型）。"
-                        "请调用 GET /api/v1/lnn/models 查看支持的模型类型列表，"
-                        "或检查 model_type 参数配置。"
+                        "支持的模型类型包括：'random_forest'（随机森林）、"
+                        "'gradient_boosting'（梯度提升）、'linear'（线性回归）。"
+                        "请检查 model_type 参数配置。"
                     )
 
                 model.fit(X_train_scaled, y_train)

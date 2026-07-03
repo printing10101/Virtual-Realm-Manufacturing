@@ -6,8 +6,10 @@ import logging
 import time
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+
+from app.auth.permissions import require_permission
 
 from app.templates.template_branching import get_branch_manager
 from app.templates.template_ab_testing import get_ab_testing
@@ -15,7 +17,11 @@ from app.core.response import success, error
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/template_market", tags=["template_market"])
+router = APIRouter(
+    prefix="/api/v1/template_market",
+    tags=["template_market"],
+    dependencies=[Depends(require_permission("template:read"))],
+)
 
 
 class PublishRequest(BaseModel):

@@ -2,7 +2,7 @@
 
 from .dataset import (
     LNNDataset,
-    DataPreprocessor,
+    TrainingDataPreprocessor,
     FeatureExtractor,
     BoschCNCDataset,
     DataAugmentation,
@@ -21,7 +21,7 @@ from .device_manager import (
 
 __all__ = [
     "LNNDataset",
-    "DataPreprocessor",
+    "TrainingDataPreprocessor",
     "FeatureExtractor",
     "BoschCNCDataset",
     "DataAugmentation",

@@ -1,147 +1,171 @@
 <template>
-  <div>
-    <el-card class="log-manage-card">
-      <template #header>
-        <div class="card-header">
-          <span>{{ $t('settings.logManagement') }}</span>
-          <div class="header-actions">
+  <div class="process-settings">
+    <!-- 日志管理 -->
+    <div class="content-card">
+      <div class="content-card__header">
+        <span class="content-card__title">
+          <el-icon style="margin-right: 6px;"><Setting /></el-icon>
+          {{ $t('settings.logManagement') }}
+        </span>
+        <el-button
+          size="small"
+          type="primary"
+          :loading="exportingLogs"
+          :disabled="exportingLogs"
+          @click="exportSystemLogs(store.settings.logSettings.exportDays)"
+        >
+          <el-icon
+            v-if="!exportingLogs"
+            style="margin-right: 4px;"
+          >
+            <Download />
+          </el-icon>
+          {{ exportingLogs ? `${$t('settings.exporting')} ${exportProgress}%` : $t('settings.exportLogs') }}
+        </el-button>
+      </div>
+      <div class="content-card__body">
+        <el-form
+          :model="store.settings.logSettings"
+          label-width="160px"
+          class="settings-form"
+        >
+          <div class="form-grid">
+            <el-form-item :label="$t('settings.logLevel')">
+              <el-select
+                v-model="store.settings.logSettings.logLevel"
+                style="width: 180px;"
+              >
+                <el-option
+                  label="DEBUG"
+                  value="DEBUG"
+                />
+                <el-option
+                  label="INFO"
+                  value="INFO"
+                />
+                <el-option
+                  label="WARN"
+                  value="WARN"
+                />
+                <el-option
+                  label="ERROR"
+                  value="ERROR"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item :label="$t('settings.logMaxFileSize')">
+              <div class="input-with-unit">
+                <el-input-number
+                  v-model="store.settings.logSettings.maxFileSizeMB"
+                  :min="10"
+                  :max="500"
+                  :step="10"
+                  style="width: 180px;"
+                />
+                <span class="input-unit">MB</span>
+              </div>
+            </el-form-item>
+            <el-form-item :label="$t('settings.logRetentionDays')">
+              <div class="input-with-unit">
+                <el-input-number
+                  v-model="store.settings.logSettings.retentionDays"
+                  :min="1"
+                  :max="365"
+                  :step="1"
+                  style="width: 180px;"
+                />
+                <span class="input-unit">{{ $t('settings.days') }}</span>
+              </div>
+            </el-form-item>
+            <el-form-item :label="$t('settings.logExportDays')">
+              <div class="input-with-unit">
+                <el-input-number
+                  v-model="store.settings.logSettings.exportDays"
+                  :min="1"
+                  :max="90"
+                  :step="1"
+                  style="width: 180px;"
+                />
+                <span class="input-unit">{{ $t('settings.days') }}</span>
+              </div>
+            </el-form-item>
+          </div>
+
+          <div class="form-actions">
             <el-button
-              size="small"
               type="primary"
-              :loading="exportingLogs"
-              :disabled="exportingLogs"
-              @click="exportSystemLogs(store.settings.logSettings.exportDays)"
+              @click="store.saveSettings()"
             >
-              <el-icon v-if="!exportingLogs">
-                <Download />
+              <el-icon style="margin-right: 4px;">
+                <Check />
               </el-icon>
-              {{ exportingLogs ? `${$t('settings.exporting')} ${exportProgress}%` : $t('settings.exportLogs') }}
+              {{ $t('settings.saveSettings') }}
             </el-button>
           </div>
-        </div>
-      </template>
+        </el-form>
 
-      <el-form
-        :model="store.settings.logSettings"
-        label-width="160px"
-      >
-        <el-form-item :label="$t('settings.logLevel')">
-          <el-select
-            v-model="store.settings.logSettings.logLevel"
-            style="width: 160px;"
-          >
-            <el-option
-              label="DEBUG"
-              value="DEBUG"
-            />
-            <el-option
-              label="INFO"
-              value="INFO"
-            />
-            <el-option
-              label="WARN"
-              value="WARN"
-            />
-            <el-option
-              label="ERROR"
-              value="ERROR"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="$t('settings.logMaxFileSize')">
-          <el-input-number
-            v-model="store.settings.logSettings.maxFileSizeMB"
-            :min="10"
-            :max="500"
-            :step="10"
-            style="width: 160px;"
-          />
-          <span style="margin-left: 8px; color: var(--info); font-size: 12px;">MB</span>
-        </el-form-item>
-        <el-form-item :label="$t('settings.logRetentionDays')">
-          <el-input-number
-            v-model="store.settings.logSettings.retentionDays"
-            :min="1"
-            :max="365"
-            :step="1"
-            style="width: 160px;"
-          />
-          <span style="margin-left: 8px; color: var(--info); font-size: 12px;">{{ $t('settings.days') }}</span>
-        </el-form-item>
-        <el-form-item :label="$t('settings.logExportDays')">
-          <el-input-number
-            v-model="store.settings.logSettings.exportDays"
-            :min="1"
-            :max="90"
-            :step="1"
-            style="width: 160px;"
-          />
-          <span style="margin-left: 8px; color: var(--info); font-size: 12px;">{{ $t('settings.days') }}</span>
-        </el-form-item>
-        <el-form-item>
+        <el-alert
+          v-if="exportResult"
+          :title="exportResult.success ? $t('settings.exportSuccess') : $t('settings.exportFailed')"
+          :type="exportResult.success ? 'success' : 'error'"
+          :closable="true"
+          show-icon
+          style="margin-top: 16px;"
+          @close="exportResult = null"
+        >
+          <div>
+            <p>{{ exportResult.message }}</p>
+            <p
+              v-if="exportResult.outputPath"
+              style="font-size: 12px; color: var(--info); word-break: break-all;"
+            >
+              {{ $t('settings.exportSavePath') }}: {{ exportResult.outputPath }}
+            </p>
+          </div>
+        </el-alert>
+      </div>
+    </div>
+
+    <!-- 审计日志 -->
+    <div class="content-card">
+      <div class="content-card__header">
+        <span class="content-card__title">
+          <el-icon style="margin-right: 6px;"><Document /></el-icon>
+          {{ $t('settings.auditLog') }}
+        </span>
+        <div style="display: flex; gap: 8px;">
           <el-button
-            type="primary"
-            @click="store.saveSettings()"
+            size="small"
+            :loading="exporting"
+            @click="exportLogs"
           >
-            {{ $t('settings.saveSettings') }}
+            <el-icon style="margin-right: 4px;">
+              <Download />
+            </el-icon>
+            {{ $t('settings.exportLogs') }}
           </el-button>
-        </el-form-item>
-      </el-form>
-
-      <el-alert
-        v-if="exportResult"
-        :title="exportResult.success ? $t('settings.exportSuccess') : $t('settings.exportFailed')"
-        :type="exportResult.success ? 'success' : 'error'"
-        :closable="true"
-        show-icon
-        style="margin-top: 12px;"
-        @close="exportResult = null"
-      >
-        <div>
-          <p>{{ exportResult.message }}</p>
-          <p
-            v-if="exportResult.outputPath"
-            style="font-size: 12px; color: var(--info); word-break: break-all;"
+          <el-button
+            size="small"
+            type="danger"
+            :loading="clearing"
+            @click="clearLogs"
           >
-            {{ $t('settings.exportSavePath') }}: {{ exportResult.outputPath }}
-          </p>
+            <el-icon style="margin-right: 4px;">
+              <Delete />
+            </el-icon>
+            {{ $t('settings.clearLogs') }}
+          </el-button>
         </div>
-      </el-alert>
-    </el-card>
-
-    <el-card class="audit-log-card">
-      <template #header>
-        <div class="card-header">
-          <span>{{ $t('settings.auditLog') }}</span>
-          <div class="header-actions">
-            <el-button
-              size="small"
-              :loading="exporting"
-              @click="exportLogs"
-            >
-              {{ $t('settings.exportLogs') }}
-            </el-button>
-            <el-button
-              size="small"
-              type="danger"
-              :loading="clearing"
-              @click="clearLogs"
-            >
-              {{ $t('settings.clearLogs') }}
-            </el-button>
-          </div>
-        </div>
-      </template>
-
-      <el-form
-        :inline="true"
-        class="log-filters"
-      >
-        <el-form-item :label="$t('settings.aiModule')">
+      </div>
+      <div class="content-card__body">
+        <!-- 筛选栏 -->
+        <div class="filter-bar">
           <el-select
             v-model="logFilters.ai_module"
             :placeholder="$t('settings.allModules')"
             clearable
+            size="small"
+            style="width: 140px;"
             @change="loadAuditLogs"
           >
             <el-option
@@ -165,12 +189,12 @@
               value="cad_generate"
             />
           </el-select>
-        </el-form-item>
-        <el-form-item :label="$t('settings.userDecision')">
           <el-select
             v-model="logFilters.user_decision"
             :placeholder="$t('settings.allModules')"
             clearable
+            size="small"
+            style="width: 120px;"
             @change="loadAuditLogs"
           >
             <el-option
@@ -190,160 +214,161 @@
               value="auto_executed"
             />
           </el-select>
-        </el-form-item>
-        <el-form-item :label="$t('settings.timeRange')">
           <el-date-picker
             v-model="logFilters.dateRange"
             type="daterange"
             :range-separator="$t('settings.to')"
             :start-placeholder="$t('settings.startDate')"
             :end-placeholder="$t('settings.endDate')"
+            size="small"
             @change="loadAuditLogs"
           />
-        </el-form-item>
-        <el-form-item :label="$t('common.search')">
           <el-input
             v-model="logSearchKeyword"
             :placeholder="$t('settings.keyword')"
             clearable
+            size="small"
+            style="width: 180px;"
             @keyup.enter="searchLogs"
           />
           <el-button
             type="primary"
+            size="small"
             @click="searchLogs"
           >
             {{ $t('common.search') }}
           </el-button>
-        </el-form-item>
-      </el-form>
+        </div>
 
-      <div
-        v-if="auditLogStatistics"
-        class="log-statistics"
-      >
-        <el-descriptions
-          :column="3"
-          border
-          size="small"
+        <!-- 统计摘要 -->
+        <div
+          v-if="auditLogStatistics"
+          class="audit-stats"
         >
-          <el-descriptions-item :label="$t('settings.totalEntries')">
-            {{ auditLogStatistics.total_entries }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('settings.avgConfidence')">
-            {{ ((auditLogStatistics.avg_confidence ?? 0) * 100).toFixed(1) }}%
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('settings.recent24h')">
-            {{ auditLogStatistics.recent_24h }} 条
-          </el-descriptions-item>
-        </el-descriptions>
+          <div class="audit-stat-item">
+            <span class="audit-stat-item__value">{{ auditLogStatistics.total_entries }}</span>
+            <span class="audit-stat-item__label">{{ $t('settings.totalEntries') }}</span>
+          </div>
+          <div class="audit-stat-item">
+            <span class="audit-stat-item__value">{{ ((auditLogStatistics.avg_confidence ?? 0) * 100).toFixed(1) }}%</span>
+            <span class="audit-stat-item__label">{{ $t('settings.avgConfidence') }}</span>
+          </div>
+          <div class="audit-stat-item">
+            <span class="audit-stat-item__value">{{ auditLogStatistics.recent_24h }}</span>
+            <span class="audit-stat-item__label">{{ $t('settings.recent24h') }}</span>
+          </div>
+        </div>
+
+        <!-- 表格 -->
+        <el-table
+          v-loading="loadingLogs"
+          :data="auditLogs"
+          style="width: 100%;"
+          stripe
+        >
+          <el-table-column
+            prop="timestamp_ms"
+            :label="$t('common.time')"
+            width="180"
+          >
+            <template #default="{ row }">
+              {{ formatTimestamp(row.timestamp_ms) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="ai_module"
+            :label="$t('settings.aiModuleCol')"
+            width="140"
+          >
+            <template #default="{ row }">
+              <el-tag size="small">
+                {{ getModuleName(row.ai_module) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="user_decision"
+            :label="$t('settings.userDecisionCol')"
+            width="100"
+          >
+            <template #default="{ row }">
+              <el-tag
+                :type="getDecisionType(row.user_decision as string)"
+                size="small"
+              >
+                {{ getDecisionName(row.user_decision) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="operation_status"
+            :label="$t('settings.opStatus')"
+            width="100"
+          >
+            <template #default="{ row }">
+              <el-tag
+                :type="getStatusType(row.operation_status as string)"
+                size="small"
+              >
+                {{ getStatusName(row.operation_status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="confidence"
+            :label="$t('settings.confidence')"
+            width="100"
+          >
+            <template #default="{ row }">
+              <span v-if="row.confidence !== null">{{ (row.confidence * 100).toFixed(0) }}%</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="reasoning"
+            :label="$t('settings.reasoningDesc')"
+            min-width="200"
+          >
+            <template #default="{ row }">
+              <el-tooltip
+                :content="row.reasoning"
+                placement="top"
+              >
+                <span class="reasoning-text">{{ row.reasoning }}</span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
+          <el-table-column
+            :label="$t('common.operation')"
+            width="80"
+          >
+            <template #default="{ row }">
+              <el-button
+                type="primary"
+                text
+                size="small"
+                @click="viewLogDetail(row)"
+              >
+                {{ $t('common.detail') }}
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-pagination
+          v-model:current-page="logPagination.page"
+          v-model:page-size="logPagination.pageSize"
+          :total="logPagination.total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          style="margin-top: 16px; justify-content: flex-end;"
+          @size-change="loadAuditLogs"
+          @current-change="loadAuditLogs"
+        />
       </div>
+    </div>
 
-      <el-table
-        v-loading="loadingLogs"
-        :data="auditLogs"
-        style="width: 100%; margin-top: 16px;"
-      >
-        <el-table-column
-          prop="timestamp_ms"
-          :label="$t('common.time')"
-          width="180"
-        >
-          <template #default="{ row }">
-            {{ formatTimestamp(row.timestamp_ms) }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="ai_module"
-          :label="$t('settings.aiModuleCol')"
-          width="140"
-        >
-          <template #default="{ row }">
-            <el-tag size="small">
-              {{ getModuleName(row.ai_module) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="user_decision"
-          :label="$t('settings.userDecisionCol')"
-          width="100"
-        >
-          <template #default="{ row }">
-            <el-tag
-              :type="getDecisionType(row.user_decision as string)"
-              size="small"
-            >
-              {{ getDecisionName(row.user_decision) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="operation_status"
-          :label="$t('settings.opStatus')"
-          width="100"
-        >
-          <template #default="{ row }">
-            <el-tag
-              :type="getStatusType(row.operation_status as string)"
-              size="small"
-            >
-              {{ getStatusName(row.operation_status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="confidence"
-          :label="$t('settings.confidence')"
-          width="100"
-        >
-          <template #default="{ row }">
-            <span v-if="row.confidence !== null">{{ (row.confidence * 100).toFixed(0) }}%</span>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="reasoning"
-          :label="$t('settings.reasoningDesc')"
-          min-width="200"
-        >
-          <template #default="{ row }">
-            <el-tooltip
-              :content="row.reasoning"
-              placement="top"
-            >
-              <span class="reasoning-text">{{ row.reasoning }}</span>
-            </el-tooltip>
-          </template>
-        </el-table-column>
-        <el-table-column
-          :label="$t('common.operation')"
-          width="80"
-        >
-          <template #default="{ row }">
-            <el-button
-              type="primary"
-              link
-              size="small"
-              @click="viewLogDetail(row)"
-            >
-              {{ $t('common.detail') }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-model:current-page="logPagination.page"
-        v-model:page-size="logPagination.pageSize"
-        :total="logPagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next"
-        style="margin-top: 16px; justify-content: flex-end;"
-        @size-change="loadAuditLogs"
-        @current-change="loadAuditLogs"
-      />
-    </el-card>
-
+    <!-- 日志详情弹窗 -->
     <el-dialog
       v-model="logDetailVisible"
       :title="$t('settings.logDetail')"
@@ -390,7 +415,7 @@
 </template>
 
 <script setup lang="ts">
-import { Download } from '@element-plus/icons-vue'
+import { Download, Delete, Check, Setting, Document } from '@element-plus/icons-vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useAuditLog } from '@/composables/useAuditLog'
 import { useSettings } from '@/composables/useSettings'
@@ -430,31 +455,62 @@ const {
 </script>
 
 <style scoped>
-.log-manage-card {
-  margin-bottom: 24px;
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
 }
 
-.audit-log-card {
-  margin-bottom: 24px;
-}
-
-.card-header {
+.input-with-unit {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.header-actions {
-  display: flex;
   gap: 8px;
 }
 
-.log-filters {
+.input-unit {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--bg-100);
+}
+
+.settings-form :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+/* 审计统计 */
+.audit-stats {
+  display: flex;
+  gap: 24px;
+  padding: 14px 16px;
+  background: var(--bg-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-100);
   margin-bottom: 16px;
 }
 
-.log-statistics {
-  margin-bottom: 16px;
+.audit-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.audit-stat-item__value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.audit-stat-item__label {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .reasoning-text {

@@ -306,7 +306,9 @@ class DatabaseConfig:
     db_url: str = field(
         default_factory=lambda: _env(
             "DATABASE_URL",
-            f"sqlite+aiosqlite:///{_ROOT_DIR}/data/app.db",
+            # 默认路径与原 main.py 中 Path(__file__).parent.parent / "data" / "app.db" 一致
+            # 使用 PYTHON_DIR 以保持向后兼容（现有 DB 位于 python/data/app.db）
+            f"sqlite+aiosqlite:///{PYTHON_DIR}/data/app.db",
         )
     )
 
@@ -316,22 +318,50 @@ class DatabaseConfig:
 # =============================================================================
 
 
+def _resolve_cors_origins() -> list[str]:
+    """统一解析 CORS 允许的来源列表。
+
+    修复 [B30]：原本 SecurityConfig.cors_origins 仅读取 CORS_ORIGINS 环境变量，
+    而 main.py 实际使用 cors_config.py 中的 cors_settings（读取 ALLOWED_ORIGINS）。
+    这导致两个系统读取不同的环境变量，配置不一致。
+
+    本函数统一读取顺序为：
+    1. ALLOWED_ORIGINS（与 cors_config.py 一致，逗号分隔，优先级最高）
+    2. CORS_ORIGINS（向后兼容字段，逗号分隔）
+
+    这样 config.security.cors_origins 与 cors_settings.get_origins()
+    将基于相同的环境变量来源，保持单一配置源。
+    """
+    # 优先级 1：ALLOWED_ORIGINS（与 cors_config.py 保持一致）
+    allowed = _env("ALLOWED_ORIGINS", "")
+    if allowed:
+        return [o.strip() for o in allowed.split(",") if o.strip()]
+    # 优先级 2：CORS_ORIGINS（向后兼容字段）
+    legacy = _env("CORS_ORIGINS", "")
+    if legacy:
+        return [o.strip() for o in legacy.split(",") if o.strip()]
+    return []
+
+
 @dataclass
 class SecurityConfig:
     # 安全修复：CORS 默认改为空列表，强制部署时显式配置允许的来源。
     # 通配符 "*" 配合 allow_credentials=True 会导致 CSRF 型凭证泄露。
-    cors_origins: list[str] = field(
-        default_factory=lambda: [
-            origin.strip()
-            for origin in _env("CORS_ORIGINS", "").split(",")
-            if origin.strip()
-        ]
-    )
+    # 修复 [B30]：与 cors_config.py 统一读取 ALLOWED_ORIGINS（优先）和 CORS_ORIGINS（回退），
+    # 保证 config.security.cors_origins 与 cors_settings.get_origins() 数据源一致。
+    cors_origins: list[str] = field(default_factory=_resolve_cors_origins)
     allow_credentials: bool = field(
         default_factory=lambda: _bool_env("CORS_ALLOW_CREDENTIALS", True)
     )
     cors_origin_regex: str | None = field(
         default_factory=lambda: _env("CORS_ORIGIN_REGEX", "") or None
+    )
+    # 修复 [B30]：LINGJING_ENV 用于环境感知的 CORS 默认配置，
+    # 与 cors_config.py 中的 _resolve_environment() 保持一致。
+    lingjing_env: str = field(
+        default_factory=lambda: _env("LINGJING_ENV", "production").lower()
+        if _env("LINGJING_ENV", "").lower() in ("development", "production")
+        else "production"
     )
     rate_limit_enabled: bool = field(
         default_factory=lambda: _bool_env("RATE_LIMIT_ENABLED", True)
@@ -351,6 +381,21 @@ class SecurityConfig:
     )
     agent_auth_enabled: bool = field(
         default_factory=lambda: _bool_env("AGENT_AUTH_ENABLED", True)
+    )
+    # JWT 认证开关，统一通过 config 管理，避免在 main.py 中直接读取环境变量
+    jwt_auth_enabled: bool = field(
+        default_factory=lambda: _bool_env("LNN_JWT_AUTH_ENABLED", True)
+    )
+    # 修复 [B32]：JWT 密钥统一在 config 中声明，便于配置审计和文档化。
+    # 注意：实际的密钥验证逻辑仍由 app/auth/security.py 的
+    # _validate_and_get_secret() 负责（包含长度、随机性等安全检查），
+    # 此字段仅作为配置项暴露，避免在多处直接读取环境变量。
+    jwt_secret: str = field(default_factory=lambda: _env("LNN_JWT_SECRET", ""))
+    # 修复 [B39]：注册邀请码统一在 config 中声明，避免在 auth.py 中
+    # 直接读取 os.environ.get("LNN_REGISTRATION_CODE") 绕过配置审计。
+    # 当该字段为空字符串时，注册功能视为已关闭（返回 403）。
+    registration_code: str = field(
+        default_factory=lambda: _env("LNN_REGISTRATION_CODE", "")
     )
 
     def __post_init__(self) -> None:
@@ -499,7 +544,7 @@ class ProcessPlanningConfig:
 @dataclass
 class AppConfig:
     app_name: str = field(default_factory=lambda: _env("APP_NAME", "灵境制造"))
-    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "2.3.0"))
+    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "2.4.0"))
     offline_mode: bool = field(
         default_factory=lambda: _bool_env("OFFLINE_MODE", False)
     )

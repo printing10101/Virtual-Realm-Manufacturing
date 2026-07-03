@@ -1,4 +1,26 @@
-"""Backend pytest conftest - shared fixtures for organized test framework."""
+"""Backend pytest conftest - shared fixtures for organized test framework.
+
+本文件是后端测试套件的**根 conftest**，承担跨所有测试目录共享的职责：
+
+1. **环境配置**：补齐 ``LNN_JWT_SECRET`` 等在导入期读取的强制环境变量
+2. **Torch 加载策略**：真实 torch 优先，无则跳过（避免桩模块掩盖覆盖空洞）
+3. **懒加载桩包**：``_install_lazy_app_api_v1`` 避免 lnn 子模块副作用
+4. **CJK 兼容**：traceback 中文编码补丁
+5. **autouse fixture**：``_env_setup`` 统一测试环境
+6. **通用 fixtures**：数据类（MaterialSpec/SensorDataStream/...）、
+   G-code 样本、计时器等跨目录复用资产
+
+分层 conftest 组织（pytest 自动发现机制）：
+    ``tests/conftest.py``（本文件）           → 全局共享
+    ``tests/api/conftest.py``                  → API TestClient fixture
+    ``tests/security/conftest.py``             → 安全测试环境变量
+    ``tests/simulation/conftest.py``           → rust_engine / voxel_cutter fixtures
+    ``app/api/v1/tests/conftest.py``           → mock task_system
+    ``app/simulation/chatter/tests/conftest.py``→ sys.path 设置
+
+子目录 conftest 仅承载该目录专属的 fixture，避免污染全局作用域。
+若 fixture 需跨目录复用，应上提到本文件；若仅单目录使用，应下沉到对应子 conftest。
+"""
 
 from __future__ import annotations
 
@@ -28,299 +50,50 @@ if not os.environ.get("LNN_JWT_SECRET"):
 
 
 # ---------------------------------------------------------------------------
-# Torch stub: 避免测试触发真实的 torch C 扩展重复初始化
+# Torch 加载策略：真实 torch 优先，无 torch 时显式标记并跳过
 # ---------------------------------------------------------------------------
-# 背景：
-# - ``app.api.v1.__init__`` 会触发 ``app.api.v1.lnn`` 的导入，进而 ``import torch``。
-# - 在 ``pytest-cov`` / ``importlib`` 重新加载场景下，torch C 扩展函数
-#   ``_has_torch_function`` 二次注册时会抛出
-#   ``RuntimeError: function '_has_torch_function' already has a docstring``。
-# - 通过在 conftest 中预先注入轻量级 ``torch`` 桩，让所有受影响的导入链走桩
-#   实现，从而避免真实的 torch 初始化和冲突。仅用于单元测试，性能不受影响。
+# 学术诚信修复 [S7]：
+# 原实现通过 _LazyStubModule 注入完整的 torch 桩模块，使所有依赖 torch 的
+# 测试在不安装 torch 的环境下也能"通过"——这掩盖了真实的测试覆盖空洞。
+#
+# 新策略：
+# 1. 优先尝试导入真实 torch；成功则直接使用，测试执行真实计算路径。
+# 2. 若真实 torch 不可用，打印明确警告并让依赖 torch 的测试通过
+#    ``pytest.importorskip("torch")`` 自然跳过，而非用桩模块伪装通过。
+# 3. 仅保留对 torch C 扩展冲突的容错处理（retry 机制），不再注入桩。
+#
+# 这保证了：
+# - 有 torch 时：测试走真实 torch 路径，结果可信；
+# - 无 torch 时：测试显式跳过，不会产出虚假的"全绿"报告。
 if "torch" not in sys.modules:
-    def _stub_function(*args, **kwargs):
-        return None
+    try:
+        import torch  # noqa: F401  # 真实 torch 导入
+    except ImportError:
+        # 真实 torch 不可用：不注入桩模块，让 pytest.importorskip 自然跳过
+        import warnings
 
-    def _stub_decorator(*args, **kwargs):
-        """Stub decorator that can be used bare or as ``@stub()`` / ``@stub(fn)``."""
+        warnings.warn(
+            "[S7] 真实 torch 不可用。依赖 torch 的测试将通过 "
+            "pytest.importorskip('torch') 跳过，而非通过桩模块伪装通过。"
+            "如需运行完整测试套件，请安装 PyTorch。",
+            stacklevel=2,
+        )
+    except RuntimeError as _torch_init_err:
+        # torch C 扩展冲突（如 pytest-cov 重复加载场景）
+        # 清理后重试一次；若仍失败则回退到无 torch 模式
+        import warnings
 
-        def _wrap(fn=None):
-            if fn is None:
-                return _stub_decorator
-            return fn
-
-        if len(args) == 1 and callable(args[0]) and not kwargs:
-            return args[0]
-        return _wrap
-
-    class _LazyStubModule(types.ModuleType):
-        """A ``ModuleType`` that lazily fabricates missing attributes.
-
-        Accessing an attribute that has not been explicitly set returns a
-        ``_LazyStub`` so that production code which introspects torch
-        sub-modules (e.g. ``torch.optim.Optimizer``, ``torch.utils.data.DataLoader``)
-        can be imported and used as a type annotation without raising
-        ``AttributeError``.  A ``_LazyStub`` itself is callable, subscriptable,
-        iterable, and supports attribute access - mirroring the typical
-        usage pattern of ``torch.<x>.<y>`` in the codebase.
-        """
-
-        def __getattr__(self, name):
-            # Avoid recursion for dunder lookups
-            if name.startswith("__") and name.endswith("__"):
-                raise AttributeError(name)
-            value = _LazyStub(name)
-            # Cache on the module so the same attribute returns the same object
-            try:
-                object.__setattr__(self, name, value)
-            except Exception:
-                pass
-            return value
-
-    class _LazyStub:
-        """A recursive stub object usable as a function, class, container, or module."""
-
-        def __init__(self, name: str = "stub"):
-            self.__name__ = name
-
-        def __getattr__(self, name):
-            if name.startswith("__") and name.endswith("__"):
-                raise AttributeError(name)
-            value = _LazyStub(name)
-            try:
-                object.__setattr__(self, name, value)
-            except Exception:
-                pass
-            return value
-
-        def __call__(self, *args, **kwargs):
-            # If called with a single callable, behave like a passthrough decorator
-            if len(args) == 1 and callable(args[0]) and not kwargs:
-                return args[0]
-            return _stub_function(*args, **kwargs)
-
-        def __getitem__(self, key):
-            return self
-
-        def __iter__(self):
-            return iter(())
-
-        def __bool__(self):
-            return True
-
-        def __repr__(self) -> str:
-            return f"<torch-stub {self.__name__}>"
-
-        def __or__(self, other):
-            return other
-
-        def __ror__(self, other):
-            return other
-
-    # Build a lazy stub root module
-    _torch_stub = _LazyStubModule("torch")
-
-    _torch_stub.Tensor = type("Tensor", (), {})
-    _torch_stub.nn = _LazyStubModule("torch.nn")
-    _torch_stub.nn.Module = type("Module", (), {})
-    _torch_stub.nn.functional = _LazyStubModule("torch.nn.functional")
-    # Common nn.functional entry points - return None to satisfy import + light call sites
-    for _fn_name in (
-        "mse_loss",
-        "l1_loss",
-        "smooth_l1_loss",
-        "cross_entropy",
-        "binary_cross_entropy",
-        "cosine_similarity",
-        "normalize",
-        "relu",
-        "sigmoid",
-        "tanh",
-        "softmax",
-        "log_softmax",
-        "dropout",
-        "linear",
-        "conv2d",
-        "max_pool2d",
-        "avg_pool2d",
-        "adaptive_avg_pool2d",
-        "one_hot",
-        "embedding",
-    ):
-        setattr(_torch_stub.nn.functional, _fn_name, _stub_function)
-    # Common nn.* entry points (parameter factory + containers)
-    for _nn_name in (
-        "Linear",
-        "Conv2d",
-        "Conv1d",
-        "Conv3d",
-        "BatchNorm1d",
-        "BatchNorm2d",
-        "LayerNorm",
-        "Dropout",
-        "Sequential",
-        "ModuleList",
-        "ModuleDict",
-        "ParameterList",
-        "ParameterDict",
-        "Parameter",
-        "ReLU",
-        "Sigmoid",
-        "Tanh",
-        "Softmax",
-        "LogSoftmax",
-        "Embedding",
-        "MultiheadAttention",
-        "TransformerEncoder",
-        "TransformerDecoder",
-        "TransformerEncoderLayer",
-        "TransformerDecoderLayer",
-        "MSELoss",
-        "L1Loss",
-        "SmoothL1Loss",
-        "CrossEntropyLoss",
-        "BCELoss",
-    ):
-        setattr(_torch_stub.nn, _nn_name, type(_nn_name, (), {}))
-    # Common torch.* attributes used in production code
-
-    class _DeviceStub:
-        """Stub for ``torch.device`` that accepts any positional args."""
-
-        def __init__(self, *args, **kwargs):
-            self.args = args
-            self.kwargs = kwargs
-            self.type = args[0] if args else kwargs.get("type", "cpu")
-
-        def __repr__(self) -> str:
-            return f"device({self.type!r})"
-
-        def __eq__(self, other) -> bool:
-            if isinstance(other, _DeviceStub):
-                return self.type == other.type
-            return False
-
-        def __hash__(self) -> int:
-            return hash(self.type)
-
-    _torch_stub.device = _DeviceStub
-    _torch_stub.dtype = _LazyStub("dtype")
-    _torch_stub.float = "float"
-    _torch_stub.double = "double"
-    _torch_stub.int = "int"
-    _torch_stub.bool = "bool"
-    _torch_stub.bfloat16 = "bfloat16"
-    _torch_stub.float64 = "float64"
-    _torch_stub.float16 = "float16"
-    _torch_stub.int8 = "int8"
-    _torch_stub.int16 = "int16"
-    _torch_stub.int32 = "int32"
-    _torch_stub.int64 = "int64"
-    _torch_stub.uint8 = "uint8"
-    _torch_stub.pi = 3.141592653589793
-    _torch_stub.inf = float("inf")
-    _torch_stub.nan = float("nan")
-    _torch_stub.is_tensor = lambda *a, **k: False
-    _torch_stub.from_numpy = _stub_function
-    _torch_stub.stack = _stub_function
-    _torch_stub.cat = _stub_function
-    _torch_stub.matmul = _stub_function
-    _torch_stub.bmm = _stub_function
-    _torch_stub.einsum = _stub_function
-    _torch_stub.sum = _stub_function
-    _torch_stub.mean = _stub_function
-    _torch_stub.max = _stub_function
-    _torch_stub.min = _stub_function
-    _torch_stub.argmax = _stub_function
-    _torch_stub.argmin = _stub_function
-    _torch_stub.softmax = _stub_function
-    _torch_stub.transpose = _stub_function
-    _torch_stub.reshape = _stub_function
-    _torch_stub.view = _stub_function
-    _torch_stub.squeeze = _stub_function
-    _torch_stub.unsqueeze = _stub_function
-    _torch_stub.expand = _stub_function
-    _torch_stub.repeat = _stub_function
-    _torch_stub.permute = _stub_function
-    _torch_stub.contiguous = _stub_function
-    _torch_stub.to = _stub_function
-    _torch_stub.optim = _LazyStubModule("torch.optim")
-    # Common torch.optim entry points
-    for _opt_name in (
-        "Optimizer",
-        "SGD",
-        "Adam",
-        "AdamW",
-        "RMSprop",
-        "Adagrad",
-        "Adadelta",
-        "LBFGS",
-    ):
-        setattr(_torch_stub.optim, _opt_name, type(_opt_name, (), {}))
-    # torch.optim.lr_scheduler submodule
-    _torch_stub.optim.lr_scheduler = _LazyStubModule("torch.optim.lr_scheduler")
-    for _sched_name in (
-        "StepLR",
-        "MultiStepLR",
-        "ExponentialLR",
-        "CosineAnnealingLR",
-        "ReduceLROnPlateau",
-        "LambdaLR",
-    ):
-        setattr(_torch_stub.optim.lr_scheduler, _sched_name, type(_sched_name, (), {}))
-    _torch_stub.utils = _LazyStubModule("torch.utils")
-    _torch_stub.utils.data = _LazyStubModule("torch.utils.data")
-    # Common torch.utils.data entry points
-    for _data_name in (
-        "DataLoader",
-        "TensorDataset",
-        "Dataset",
-        "IterableDataset",
-        "Subset",
-        "ConcatDataset",
-        "ChainDataset",
-        "random_split",
-        "default_collate",
-    ):
-        setattr(_torch_stub.utils.data, _data_name, type(_data_name, (), {}))
-    _torch_stub.jit = _LazyStubModule("torch.jit")
-    _torch_stub.jit.ScriptModule = type("ScriptModule", (), {})
-    _torch_stub.cuda = _LazyStubModule("torch.cuda")
-    _torch_stub.cuda.is_available = lambda: False
-    _torch_stub.tensor = _stub_function
-    _torch_stub.zeros = _stub_function
-    _torch_stub.ones = _stub_function
-    _torch_stub.empty = _stub_function
-    _torch_stub.full = _stub_function
-    _torch_stub.arange = _stub_function
-    _torch_stub.linspace = _stub_function
-    _torch_stub.eye = _stub_function
-    _torch_stub.rand = _stub_function
-    _torch_stub.randn = _stub_function
-    _torch_stub.randperm = _stub_function
-    _torch_stub.no_grad = _stub_decorator
-    _torch_stub.enable_grad = _stub_decorator
-    _torch_stub.inference_mode = _stub_decorator
-    _torch_stub.set_grad_enabled = _stub_function
-    _torch_stub.is_grad_enabled = lambda: False
-    _torch_stub.save = _stub_function
-    _torch_stub.load = _stub_function
-    _torch_stub.manual_seed = _stub_function
-    _torch_stub.cuda.manual_seed = _stub_function
-    _torch_stub.cuda.device_count = lambda: 0
-    _torch_stub.float32 = "float32"
-    _torch_stub.long = "long"
-    _torch_stub.half = "half"
-    _torch_stub.Size = tuple
-    sys.modules["torch"] = _torch_stub
-    sys.modules["torch.nn"] = _torch_stub.nn
-    sys.modules["torch.nn.functional"] = _torch_stub.nn.functional
-    sys.modules["torch.optim"] = _torch_stub.optim
-    sys.modules["torch.optim.lr_scheduler"] = _torch_stub.optim.lr_scheduler
-    sys.modules["torch.utils"] = _torch_stub.utils
-    sys.modules["torch.utils.data"] = _torch_stub.utils.data
-    sys.modules["torch.jit"] = _torch_stub.jit
-    sys.modules["torch.cuda"] = _torch_stub.cuda
+        for _mod_name in list(sys.modules.keys()):
+            if _mod_name == "torch" or _mod_name.startswith("torch."):
+                sys.modules.pop(_mod_name, None)
+        try:
+            import torch  # noqa: F401  # 重试导入
+        except Exception:
+            warnings.warn(
+                f"[S7] torch 导入失败（C 扩展冲突）：{_torch_init_err}。"
+                "依赖 torch 的测试将跳过。",
+                stacklevel=2,
+            )
 
 
 # ---------------------------------------------------------------------------

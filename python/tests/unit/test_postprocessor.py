@@ -43,9 +43,9 @@ class TestBasePostProcessor:
         assert re.match(r"\d{4}-\d{2}-\d{2}", date_str)
 
     def test_safe_z_default(self):
-        """Default safe Z height."""
+        """Default safe Z height (代码默认值 80.0，生产配置文件为 50.0)。"""
         pp = FanucPostProcessor()
-        assert pp.safe_z_height == 50.0
+        assert pp.safe_z_height == 80.0
 
     def test_rapid_feed_default(self):
         """Default rapid feed rate."""
@@ -80,7 +80,7 @@ class TestFanucPostProcessor:
         assert "%" in header
         assert "O0001" in header
         assert "G21 G17 G40 G49 G80 G90 G94" in header
-        assert "M03 S8000" in header
+        assert "M03 S1000" in header  # 代码默认 default_rpm=1000
         assert "M08" in header
         assert "G43" in header
         assert "H00" in header
@@ -101,7 +101,7 @@ class TestFanucPostProcessor:
         """Tool change with radius compensation."""
         tc = self.pp.format_tool_change(tool_id=2, length_comp=-5.0, radius_comp=3.0)
         assert "T02 M06" in tc
-        assert "M03 S8000" in tc
+        assert "M03 S1000" in tc  # 代码默认 default_rpm=1000
 
     def test_arc_clockwise(self):
         """Clockwise arc should use G02."""
@@ -183,7 +183,7 @@ class TestHeidenhainPostProcessor:
         header = self.pp.format_header(program_number=1)
         assert "BEGIN PGM 0001 MM" in header
         assert "BLK FORM" in header
-        assert "TOOL CALL 1 Z S8000" in header
+        assert "TOOL CALL 1 Z S1000" in header  # 代码默认 default_rpm=1000
 
     def test_block_numbering(self):
         """Heidenhain uses sequential block numbers."""
@@ -195,7 +195,7 @@ class TestHeidenhainPostProcessor:
         """TOOL CALL syntax."""
         self.pp.format_header()
         tc = self.pp.format_tool_change(tool_id=3)
-        assert "TOOL CALL 3 Z S8000" in tc
+        assert "TOOL CALL 3 Z S1000" in tc  # 代码默认 default_rpm=1000
 
     def test_arc_clockwise(self):
         """Heidenhain uses CC for circle center."""
@@ -270,7 +270,7 @@ class TestSiemensPostProcessor:
         header = self.pp.format_header(program_number=1)
         assert re.search(r"N\d{5}", header)
         assert "G17 G40 G90 G94" in header
-        assert "M03 S8000" in header
+        assert "M03 S1000" in header  # 代码默认 default_rpm=1000
 
     def test_block_numbering_step_10(self):
         """Siemens block numbers increment by 10."""
@@ -323,12 +323,12 @@ class TestSiemensPostProcessor:
         assert "G41 DISC3" in comp
 
     def test_drill_cycle_with_dwell(self):
-        """CYCLE81 with dwell."""
+        """CYCLE82 with dwell (Siemens钻孔循环: dwell>0 使用 CYCLE82 支持底部暂停)。"""
         self.pp.format_header()
         drill = self.pp.format_cycle_drill(
             x=10.0, y=20.0, z=-15.0, depth=15.0, dwell=1.0
         )
-        assert "CYCLE81" in drill
+        assert "CYCLE82" in drill
         assert "G00" in drill
 
     def test_drill_cycle_without_dwell(self):

@@ -7,7 +7,8 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import http from '@/utils/http'
-import { extractErrorMessage, isNetworkError } from '@/utils/errorUtils'
+import { extractErrorMessage, isNetworkError } from '@/utils/error-handler'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 import type {
   DxfParseResponse,
   DxfFeatureResponse,
@@ -21,8 +22,8 @@ export type DxfImportPhase = 'idle' | 'uploading' | 'parsing' | 'success' | 'err
  * DXF 导入管理 Store
  *
  * 负责：
- * 1. 上传 DXF 文件至后端（POST /api/dxf/upload）
- * 2. 触发后端解析（POST /api/dxf/parse）
+ * 1. 上传 DXF 文件至后端（POST {API_CONFIG.DXF}/upload）
+ * 2. 触发后端解析（POST {API_CONFIG.DXF}/parse）
  * 3. 保存解析结果与特征信息用于预览
  * 4. 维护 UI 状态（进度、错误、阶段）
  */
@@ -91,7 +92,7 @@ export const useDxfImportStore = defineStore('dxfImport', () => {
       const xhr = new XMLHttpRequest()
       // 通过相对路径，让项目封装的 Vite proxy / 反向代理处理
       // 鉴权由后端会话/Cookie 或反向代理层统一处理，前端不持有 token
-      xhr.open('POST', '/api/dxf/upload', true)
+      xhr.open('POST', buildApiPath(API_CONFIG.DXF, '/upload'), true)
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable && event.total > 0) {
@@ -138,7 +139,7 @@ export const useDxfImportStore = defineStore('dxfImport', () => {
   async function parseDxfFile(fileId: string): Promise<DxfParseResponse> {
     parseProgress.value = 10
     const response = await http.post<{ code: number; data: DxfParseResponse; message: string }>(
-      '/api/dxf/parse',
+      buildApiPath(API_CONFIG.DXF, '/parse'),
       { file_id: fileId },
       { timeout: 120000 },
     )
@@ -158,7 +159,7 @@ export const useDxfImportStore = defineStore('dxfImport', () => {
   async function extractDxfFeatures(fileId: string): Promise<DxfFeatureResponse | null> {
     try {
       const response = await http.post<{ code: number; data: DxfFeatureResponse; message: string }>(
-        '/api/dxf/features',
+        buildApiPath(API_CONFIG.DXF, '/features'),
         { file_id: fileId },
         { timeout: 120000 },
       )

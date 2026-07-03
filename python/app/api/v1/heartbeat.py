@@ -272,10 +272,10 @@ async def get_budget_notifications(agent_id: Optional[str] = None, limit: int = 
 async def get_scheduler_stats():
     """获取调度器统计信息"""
     from app.heartbeat.heartbeat import get_scheduler
-    from app.tasks.execution import get_engine
+    from app.tasks.execution import get_execution_engine
 
     scheduler = get_scheduler()
-    engine = get_engine()
+    engine = get_execution_engine()
 
     return {
         "scheduler": scheduler.get_stats(),
@@ -288,9 +288,9 @@ async def get_scheduler_stats():
 @router.post("/recovery/orphaned")
 async def recover_orphaned_tasks():
     """手动触发孤立任务恢复"""
-    from app.tasks.execution import get_engine
+    from app.tasks.execution import get_execution_engine
 
-    engine = get_engine()
+    engine = get_execution_engine()
     recovered = await engine.recover_orphaned_tasks()
 
     return {"status": "completed", "recovered_count": recovered}

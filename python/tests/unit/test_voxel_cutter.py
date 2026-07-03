@@ -41,6 +41,21 @@ from app.simulation.voxel_cutter import (
     _apply_tool_mask_single,
     _infer_source_paths,
 )
+# 包重构后，部分函数位于子模块，按子模块路径导入
+from app.simulation.voxel_cutter.cutter import (
+    _apply_tool_mask_batch,
+    _check_rapid_collisions,
+    _discretize_segment,
+    _generate_stl_from_dxf,
+    _generate_stl_from_step,
+)
+from app.simulation.voxel_cutter.mesher import (
+    HAS_SKIMAGE,
+    _reconstruct_mesh_fallback,
+    _voxelize_contains,
+    reconstruct_mesh,
+    voxelize_mesh,
+)
 
 
 # =============================================================================
@@ -114,8 +129,6 @@ class TestInferSourcePaths:
 
 class TestGenerateStlFromStep:
     def test_returns_error_on_import_failure(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         stl_target = tmp_dir / "out.stl"
         # 强制 step_import 无法 import
         with mock.patch.dict(
@@ -125,7 +138,7 @@ class TestGenerateStlFromStep:
                 "app.step_import.step_converter": None,
             },
         ):
-            result = vc._generate_stl_from_step(
+            result = _generate_stl_from_step(
                 step_path=tmp_dir / "in.step",
                 stl_target_path=stl_target,
                 output_dir=tmp_dir,
@@ -135,8 +148,6 @@ class TestGenerateStlFromStep:
         assert "STEP模块导入失败" in result["error"]
 
     def test_returns_error_on_parser_exception(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         # 构造两个伪模块，让 from-import 成功
         step_parser_mod = types.ModuleType("app.step_import.step_parser")
 
@@ -155,7 +166,7 @@ class TestGenerateStlFromStep:
             "app.step_import.step_parser": step_parser_mod,
             "app.step_import.step_converter": step_converter_mod,
         }):
-            result = vc._generate_stl_from_step(
+            result = _generate_stl_from_step(
                 step_path=tmp_dir / "in.step",
                 stl_target_path=tmp_dir / "out.stl",
                 output_dir=tmp_dir,
@@ -164,8 +175,6 @@ class TestGenerateStlFromStep:
         assert "STEP文件解析失败" in result["error"]
 
     def test_returns_error_on_converter_exception(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         step_parser_mod = types.ModuleType("app.step_import.step_parser")
 
         class _FakeParser:
@@ -191,7 +200,7 @@ class TestGenerateStlFromStep:
             "app.step_import.step_parser": step_parser_mod,
             "app.step_import.step_converter": step_converter_mod,
         }):
-            result = vc._generate_stl_from_step(
+            result = _generate_stl_from_step(
                 step_path=tmp_dir / "in.step",
                 stl_target_path=tmp_dir / "out.stl",
                 output_dir=tmp_dir,
@@ -200,8 +209,6 @@ class TestGenerateStlFromStep:
         assert "STEP→STL转换失败" in result["error"]
 
     def test_returns_error_on_copy_failure(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         step_parser_mod = types.ModuleType("app.step_import.step_parser")
 
         class _FakeParser:
@@ -238,7 +245,7 @@ class TestGenerateStlFromStep:
         }):
             # Patch shutil.copy2 以触发 OSError
             with mock.patch("shutil.copy2", side_effect=OSError("disk full")):
-                result = vc._generate_stl_from_step(
+                result = _generate_stl_from_step(
                     step_path=tmp_dir / "in.step",
                     stl_target_path=stl_target,
                     output_dir=tmp_dir,
@@ -247,8 +254,6 @@ class TestGenerateStlFromStep:
         assert "STL文件复制到目标路径失败" in result["error"]
 
     def test_success_path(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         step_parser_mod = types.ModuleType("app.step_import.step_parser")
 
         class _FakeParser:
@@ -283,7 +288,7 @@ class TestGenerateStlFromStep:
             "app.step_import.step_parser": step_parser_mod,
             "app.step_import.step_converter": step_converter_mod,
         }):
-            result = vc._generate_stl_from_step(
+            result = _generate_stl_from_step(
                 step_path=tmp_dir / "in.step",
                 stl_target_path=stl_target,
                 output_dir=tmp_dir,
@@ -298,8 +303,6 @@ class TestGenerateStlFromStep:
 
 class TestGenerateStlFromDxf:
     def test_returns_error_on_import_failure(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         with mock.patch.dict(sys.modules, {
             "app.dxf": types.ModuleType("app.dxf"),
             "app.dxf.dxf_parser": None,
@@ -307,7 +310,7 @@ class TestGenerateStlFromDxf:
             "app.dxf.feature_extractor": None,
             "app.dxf.dxf_to_model": None,
         }):
-            result = vc._generate_stl_from_dxf(
+            result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
                 output_dir=tmp_dir,
@@ -316,8 +319,6 @@ class TestGenerateStlFromDxf:
         assert "DXF模块导入失败" in result["error"]
 
     def test_returns_error_on_parse_failure(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         dxf_parser_mod = types.ModuleType("app.dxf.dxf_parser")
 
         class _FakeParser:
@@ -342,7 +343,7 @@ class TestGenerateStlFromDxf:
             "app.dxf.feature_extractor": fe_mod,
             "app.dxf.dxf_to_model": cnv_mod,
         }):
-            result = vc._generate_stl_from_dxf(
+            result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
                 output_dir=tmp_dir,
@@ -351,8 +352,6 @@ class TestGenerateStlFromDxf:
         assert "DXF文件解析失败" in result["error"]
 
     def test_returns_error_on_feature_extract_failure(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         dxf_parser_mod = types.ModuleType("app.dxf.dxf_parser")
 
         class _FakeParser:
@@ -382,7 +381,7 @@ class TestGenerateStlFromDxf:
             "app.dxf.feature_extractor": fe_mod,
             "app.dxf.dxf_to_model": cnv_mod,
         }):
-            result = vc._generate_stl_from_dxf(
+            result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
                 output_dir=tmp_dir,
@@ -391,8 +390,6 @@ class TestGenerateStlFromDxf:
         assert "DXF特征提取失败" in result["error"]
 
     def test_returns_error_on_converter_failure(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         dxf_parser_mod = types.ModuleType("app.dxf.dxf_parser")
 
         class _FakeParser:
@@ -427,7 +424,7 @@ class TestGenerateStlFromDxf:
             "app.dxf.feature_extractor": fe_mod,
             "app.dxf.dxf_to_model": cnv_mod,
         }):
-            result = vc._generate_stl_from_dxf(
+            result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
                 output_dir=tmp_dir,
@@ -436,8 +433,6 @@ class TestGenerateStlFromDxf:
         assert "DXF→3D模型转换失败" in result["error"]
 
     def test_returns_error_on_export_failure(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         dxf_parser_mod = types.ModuleType("app.dxf.dxf_parser")
 
         class _FakeParser:
@@ -475,7 +470,7 @@ class TestGenerateStlFromDxf:
             "app.dxf.feature_extractor": fe_mod,
             "app.dxf.dxf_to_model": cnv_mod,
         }):
-            result = vc._generate_stl_from_dxf(
+            result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
                 output_dir=tmp_dir,
@@ -484,8 +479,6 @@ class TestGenerateStlFromDxf:
         assert "模型→STL导出失败" in result["error"]
 
     def test_success_path(self, tmp_dir):
-        from app.simulation import voxel_cutter as vc
-
         dxf_parser_mod = types.ModuleType("app.dxf.dxf_parser")
 
         class _FakeParser:
@@ -524,7 +517,7 @@ class TestGenerateStlFromDxf:
             "app.dxf.feature_extractor": fe_mod,
             "app.dxf.dxf_to_model": cnv_mod,
         }):
-            result = vc._generate_stl_from_dxf(
+            result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
                 output_dir=tmp_dir,
@@ -772,9 +765,8 @@ class TestApplyToolMaskBatch:
             [5.0, 5.0, 5.0],
             [7.0, 7.0, 7.0],
         ])
-        from app.simulation import voxel_cutter as vc
 
-        removed = vc._apply_tool_mask_batch(
+        removed = _apply_tool_mask_batch(
             grid, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 2.0,
         )
         assert removed > 0
@@ -787,9 +779,8 @@ class TestApplyToolMaskBatch:
             [100.0, 100.0, 100.0],
             [-100.0, -100.0, -100.0],
         ])
-        from app.simulation import voxel_cutter as vc
 
-        removed = vc._apply_tool_mask_batch(
+        removed = _apply_tool_mask_batch(
             grid, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 2.0,
         )
         assert removed == 0
@@ -905,7 +896,7 @@ class TestRunSimulation:
         assert result.voxel_count > 0
         assert result.removed_voxel_count == 0
 
-    def test_with_gcode_segments(self):
+    def test_with_gcode_segments(self, tmp_dir):
         c = VoxelCutter(voxel_size=2.0)
         tool = ToolModel(diameter=10.0, tool_type="flat")
         parser = ToolpathParser()
@@ -916,10 +907,10 @@ class TestRunSimulation:
             "suggestion": None, "source_file": None,
         }):
             result = c.run_simulation(
-                stock_stl_path=Path("/tmp/no.stl"),
+                stock_stl_path=tmp_dir / "no.stl",
                 tool=tool,
                 segments=segments,
-                output_dir=Path("/tmp/out"),
+                output_dir=tmp_dir / "out",
             )
         assert result.toolpath_segment_count == len(segments)
 
@@ -1020,7 +1011,6 @@ class TestVoxelizeMesh:
         """当 trimesh.voxel.creation 不可用且 contains 也失败时，返回空网格。"""
         trimesh = pytest.importorskip("trimesh", reason="需要 trimesh")
 
-        c = VoxelCutter(voxel_size=2.0)
         # 创建一个小的 box 网格
         box = trimesh.creation.box(extents=[10, 10, 10])
         bbox_min = box.bounds[0]
@@ -1028,7 +1018,7 @@ class TestVoxelizeMesh:
 
         # 让 voxelize 不可用
         with mock.patch.dict(sys.modules, {"trimesh.voxel": None, "trimesh.voxel.creation": None}):
-            grid = c._voxelize_mesh(box, bbox_min.copy(), bbox_max.copy())
+            grid = voxelize_mesh(box, bbox_min.copy(), bbox_max.copy(), 2.0)
         assert grid.dtype == bool
         assert grid.ndim == 3
 
@@ -1036,23 +1026,20 @@ class TestVoxelizeMesh:
 class TestVoxelizeContains:
     def test_basic_voxelize(self):
         trimesh = pytest.importorskip("trimesh", reason="需要 trimesh")
-        c = VoxelCutter(voxel_size=2.0)
         box = trimesh.creation.box(extents=[10, 10, 10])
         bbox_min = box.bounds[0]
-        # nx=ny=nz=5
-        grid = c._voxelize_contains(box, bbox_min, padding=0.0, nx=5, ny=5, nz=5)
+        # nx=ny=nz=5, voxel_size=2.0
+        grid = _voxelize_contains(box, bbox_min, 0.0, 5, 5, 5, 2.0)
         assert grid.shape == (5, 5, 5)
         # box 内部应该有 True
         assert grid.sum() > 0
 
     def test_contains_failure_returns_empty(self):
-        c = VoxelCutter(voxel_size=2.0)
-
         class _BadMesh:
             def contains(self, pts):
                 raise RuntimeError("contains boom")
 
-        grid = c._voxelize_contains(_BadMesh(), np.array([0.0, 0.0, 0.0]), padding=0.0, nx=3, ny=3, nz=3)
+        grid = _voxelize_contains(_BadMesh(), np.array([0.0, 0.0, 0.0]), 0.0, 3, 3, 3, 2.0)
         # contains 失败时返回当前已计算的 grid（全 False）
         assert grid.shape == (3, 3, 3)
         assert grid.sum() == 0
@@ -1065,53 +1052,46 @@ class TestVoxelizeContains:
 
 class TestDiscretizeSegment:
     def test_linear(self):
-        c = VoxelCutter(voxel_size=1.0)
         seg = make_segment("linear", (0, 0, 0), (10, 0, 0))
-        pts = c._discretize_segment(seg, step=1.0)
+        pts = _discretize_segment(seg, 1.0, 1.0)
         assert pts.shape[0] >= 2
         assert pts.shape[1] == 3
         np.testing.assert_allclose(pts[0], [0, 0, 0])
         np.testing.assert_allclose(pts[-1], [10, 0, 0])
 
     def test_rapid(self):
-        c = VoxelCutter(voxel_size=1.0)
         seg = make_segment("rapid", (0, 0, 50), (100, 50, 50))
-        pts = c._discretize_segment(seg, step=10.0)
+        pts = _discretize_segment(seg, 10.0, 1.0)
         assert pts.shape[0] >= 2
         np.testing.assert_allclose(pts[0], [0, 0, 50])
         np.testing.assert_allclose(pts[-1], [100, 50, 50])
 
     def test_arc(self):
-        c = VoxelCutter(voxel_size=1.0)
         seg = make_segment("arc", (0, -25, -2), (0, 25, -2), g_code="G02")
-        pts = c._discretize_segment(seg, step=1.0)
+        pts = _discretize_segment(seg, 1.0, 1.0)
         assert pts.shape[0] >= 2
         assert pts.shape[1] == 3
 
     def test_arc_g02(self):
-        c = VoxelCutter(voxel_size=1.0)
         seg = make_segment("arc", (10, 0, 0), (0, 10, 0), g_code="G02")
-        pts = c._discretize_segment(seg, step=0.5)
+        pts = _discretize_segment(seg, 0.5, 1.0)
         assert pts.shape[0] >= 2
 
     def test_arc_g03(self):
-        c = VoxelCutter(voxel_size=1.0)
         seg = make_segment("arc", (10, 0, 0), (0, 10, 0), g_code="G03")
-        pts = c._discretize_segment(seg, step=0.5)
+        pts = _discretize_segment(seg, 0.5, 1.0)
         assert pts.shape[0] >= 2
 
     def test_arc_chord_too_small(self):
-        c = VoxelCutter(voxel_size=1.0)
         # 起点终点几乎重合
         seg = make_segment("arc", (0, 0, 0), (0, 0, 0), g_code="G02")
-        pts = c._discretize_segment(seg, step=1.0)
+        pts = _discretize_segment(seg, 1.0, 1.0)
         # 弦长为 0 时返回起点单点
         assert pts.shape == (1, 3)
 
     def test_unknown_type_returns_start(self):
-        c = VoxelCutter(voxel_size=1.0)
         seg = make_segment("dwell", (1, 2, 3), (1, 2, 3))
-        pts = c._discretize_segment(seg, step=1.0)
+        pts = _discretize_segment(seg, 1.0, 1.0)
         np.testing.assert_allclose(pts, [[1, 2, 3]])
 
 
@@ -1122,16 +1102,14 @@ class TestDiscretizeSegment:
 
 class TestCheckRapidCollisions:
     def test_rapid_above_safe_z_no_collision(self):
-        c = VoxelCutter(voxel_size=1.0)
         voxel_grid = np.zeros((20, 20, 20), dtype=bool)
         bbox_min = np.array([0.0, 0.0, 0.0])
         seg = make_segment("rapid", (0, 0, 50), (10, 0, 50))
-        result = c._check_rapid_collisions([seg], voxel_grid, bbox_min, safe_z_height=10.0)
+        result = _check_rapid_collisions([seg], voxel_grid, bbox_min, 10.0, 1.0)
         assert result.collided is False
         assert result.collision_severity == "none"
 
     def test_rapid_hits_voxel_collision(self):
-        c = VoxelCutter(voxel_size=1.0)
         voxel_grid = np.zeros((20, 20, 20), dtype=bool)
         # 在 safe_z_height 以下，bbox_min[2]=0 之上 5 处放一个体素
         # 路径 (0,0,5) -> (5,0,5) 会撞击
@@ -1140,7 +1118,7 @@ class TestCheckRapidCollisions:
         # (0,0,5) -> (2, 2, 7) 应在 grid 内
         voxel_grid[2, 2, 7] = True
         seg = make_segment("rapid", (0, 0, 5), (5, 0, 5))
-        result = c._check_rapid_collisions([seg], voxel_grid, bbox_min, safe_z_height=10.0)
+        result = _check_rapid_collisions([seg], voxel_grid, bbox_min, 10.0, 1.0)
         assert result.collided is True
         assert result.collision_severity == "critical"
         assert len(result.collision_segment_indices) == 1
@@ -1153,26 +1131,21 @@ class TestCheckRapidCollisions:
 
 class TestReconstructMesh:
     def test_empty_grid_returns_none(self):
-        c = VoxelCutter(voxel_size=1.0)
         voxel_grid = np.zeros((10, 10, 10), dtype=bool)
-        m = c._reconstruct_mesh(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0)
+        m = reconstruct_mesh(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0)
         assert m is None
 
     def test_single_voxel_returns_fallback_mesh(self):
         pytest.importorskip("trimesh", reason="需要 trimesh")
-        c = VoxelCutter(voxel_size=1.0)
         voxel_grid = np.zeros((10, 10, 10), dtype=bool)
         voxel_grid[5, 5, 5] = True
-        m = c._reconstruct_mesh(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0)
+        m = reconstruct_mesh(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0)
         assert m is not None
         assert len(m.vertices) > 0
         assert len(m.faces) > 0
 
     def test_with_skimage_marching_cubes(self):
         pytest.importorskip("trimesh", reason="需要 trimesh")
-        from app.simulation import voxel_cutter as vc
-
-        c = VoxelCutter(voxel_size=1.0)
         # 构造一个 5x5x5 实心球
         grid = np.zeros((10, 10, 10), dtype=bool)
         for i in range(10):
@@ -1181,9 +1154,9 @@ class TestReconstructMesh:
                     if (i - 5) ** 2 + (j - 5) ** 2 + (k - 5) ** 2 <= 9:
                         grid[i, j, k] = True
 
-        # 强制 skimage 可用
-        with mock.patch.object(vc, "HAS_SKIMAGE", True):
-            m = c._reconstruct_mesh(grid, np.array([0.0, 0.0, 0.0]), 1.0)
+        # 强制 skimage 可用（HAS_SKIMAGE 现位于 mesher 子模块）
+        with mock.patch("app.simulation.voxel_cutter.mesher.HAS_SKIMAGE", True):
+            m = reconstruct_mesh(grid, np.array([0.0, 0.0, 0.0]), 1.0)
         # skimage 可能不可用；若不可用，结果为 None（fallback）
         # 此处不强制断言，仅保证调用不崩溃
         assert m is None or (hasattr(m, "vertices") and len(m.vertices) > 0)
@@ -1192,27 +1165,24 @@ class TestReconstructMesh:
 class TestReconstructMeshFallback:
     def test_single_voxel(self):
         trimesh = pytest.importorskip("trimesh", reason="需要 trimesh")
-        c = VoxelCutter(voxel_size=1.0)
         voxel_grid = np.zeros((10, 10, 10), dtype=bool)
         voxel_grid[5, 5, 5] = True
-        m = c._reconstruct_mesh_fallback(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0, trimesh)
+        m = _reconstruct_mesh_fallback(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0, trimesh)
         assert m is not None
 
     def test_empty_grid_returns_none(self):
         trimesh = pytest.importorskip("trimesh", reason="需要 trimesh")
-        c = VoxelCutter(voxel_size=1.0)
         voxel_grid = np.zeros((10, 10, 10), dtype=bool)
-        m = c._reconstruct_mesh_fallback(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0, trimesh)
+        m = _reconstruct_mesh_fallback(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0, trimesh)
         assert m is None
 
     def test_multiple_voxels_combined(self):
         trimesh = pytest.importorskip("trimesh", reason="需要 trimesh")
-        c = VoxelCutter(voxel_size=1.0)
         voxel_grid = np.zeros((10, 10, 10), dtype=bool)
         voxel_grid[5, 5, 5] = True
         voxel_grid[5, 5, 6] = True
         voxel_grid[5, 6, 5] = True
-        m = c._reconstruct_mesh_fallback(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0, trimesh)
+        m = _reconstruct_mesh_fallback(voxel_grid, np.array([0.0, 0.0, 0.0]), 1.0, trimesh)
         assert m is not None
 
 
@@ -1257,11 +1227,13 @@ class TestGenerateFallbackResult:
 
 class TestVoxelCutterApplyToolMask:
     def test_delegates_to_single(self):
-        c = VoxelCutter(voxel_size=1.0)
+        # 包重构后 _apply_tool_mask 包装方法已移除，直接调用模块级 _apply_tool_mask_single
         grid = np.ones((10, 10, 10), dtype=bool)
         mask = np.zeros((3, 3, 3), dtype=bool)
         mask[1, 1, 1] = True
         center = np.array([1, 1, 1])
-        removed = c._apply_tool_mask(grid, mask, center, 5.0, 5.0, 5.0,
-                                     np.array([0.0, 0.0, 0.0]), 1.0)
+        removed = _apply_tool_mask_single(
+            grid, mask, center, 5.0, 5.0, 5.0,
+            np.array([0.0, 0.0, 0.0]), 1.0, 2.0,
+        )
         assert removed >= 0

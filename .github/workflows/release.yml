@@ -214,15 +214,20 @@ jobs:
           pnpm install --frozen-lockfile
 
       - name: 更新版本号
+        env:
+          # 安全修复 [B40]：通过环境变量传递版本号给 node 脚本，
+          # 避免字符串拼接执行导致的命令注入风险
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
         run: |
-          VERSION="${{ needs.prepare-release.outputs.version }}"
+          VERSION="${RELEASE_VERSION}"
           echo "${VERSION}" > VERSION
           
           # 更新 package.json 版本号
+          # 安全修复 [B40]：使用 process.env 读取版本号，避免在脚本中插值
           node -e "
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            pkg.version = '${VERSION}';
+            pkg.version = process.env.RELEASE_VERSION;
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
           

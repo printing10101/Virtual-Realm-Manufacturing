@@ -30,6 +30,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from app.auth.permissions import require_permission
+
 from app.integrations.mes.client import (
     MESClient,
     WorkOrderData,
@@ -225,6 +227,7 @@ async def get_mes_client() -> MESClient:
 router = APIRouter(
     prefix="/api/v1/mes",
     tags=["MES Integration"],
+    dependencies=[Depends(require_permission("mes:read"))],
     responses={
         status.HTTP_500_INTERNAL_SERVER_ERROR: {
             "description": "Internal server error"
@@ -300,14 +303,14 @@ async def sync_work_order(
         logger.error("工单同步参数错误: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"参数错误: {str(e)}",
+            detail="请求参数无效",
         )
 
     except Exception as e:
         logger.error("工单同步异常: %s", str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"同步失败: {str(e)}",
+            detail="处理失败，请联系管理员",
         )
 
 
@@ -372,14 +375,14 @@ async def report_production(
         logger.error("生产数据上报参数错误: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"参数错误: {str(e)}",
+            detail="请求参数无效",
         )
 
     except Exception as e:
         logger.error("生产数据上报异常: %s", str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"上报失败: {str(e)}",
+            detail="处理失败，请联系管理员",
         )
 
 
@@ -448,14 +451,14 @@ async def query_material(
         logger.error("物料查询参数错误: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"参数错误: {str(e)}",
+            detail="请求参数无效",
         )
 
     except Exception as e:
         logger.error("物料查询异常: %s", str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"查询失败: {str(e)}",
+            detail="处理失败，请联系管理员",
         )
 
 
@@ -530,14 +533,14 @@ async def report_quality(
         logger.error("质量数据上报参数错误: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"参数错误: {str(e)}",
+            detail="请求参数无效",
         )
 
     except Exception as e:
         logger.error("质量数据上报异常: %s", str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"上报失败: {str(e)}",
+            detail="处理失败，请联系管理员",
         )
 
 

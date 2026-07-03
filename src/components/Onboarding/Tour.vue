@@ -1,7 +1,11 @@
 <template>
   <Teleport to="body">
     <Transition name="tour-fade">
-      <div v-if="visible" class="tour-overlay" @click.self="handleOverlayClick">
+      <div
+        v-if="visible"
+        class="tour-overlay"
+        @click.self="handleOverlayClick"
+      >
         <!-- 高亮区域 -->
         <div
           v-if="currentStep?.target"
@@ -31,14 +35,24 @@
             </div>
 
             <!-- 标题 -->
-            <h3 class="tour-title">{{ currentStep.title }}</h3>
+            <h3 class="tour-title">
+              {{ currentStep.title }}
+            </h3>
 
             <!-- 描述 -->
-            <p class="tour-description">{{ currentStep.description }}</p>
+            <p class="tour-description">
+              {{ currentStep.description }}
+            </p>
 
             <!-- 视觉指引图片 -->
-            <div v-if="currentStep.image" class="tour-image">
-              <img :src="currentStep.image" :alt="currentStep.title" />
+            <div
+              v-if="currentStep.image"
+              class="tour-image"
+            >
+              <img
+                :src="currentStep.image"
+                :alt="currentStep.title"
+              >
             </div>
 
             <!-- 操作按钮 -->
@@ -48,13 +62,13 @@
                 size="small"
                 @click="prev"
               >
-                {{ $t('tour.prev') }}
+                {{ t('onboardingTour.prev') }}
               </el-button>
               <el-button
                 size="small"
                 @click="skip"
               >
-                {{ $t('tour.skip') }}
+                {{ t('onboardingTour.skip') }}
               </el-button>
               <el-button
                 v-if="currentStepIndex < steps.length - 1"
@@ -62,7 +76,7 @@
                 size="small"
                 @click="next"
               >
-                {{ $t('tour.next') }}
+                {{ t('onboardingTour.next') }}
               </el-button>
               <el-button
                 v-else
@@ -70,8 +84,9 @@
                 size="small"
                 @click="finish"
               >
-                {{ $t('tour.finish') }}
+                {{ t('onboardingTour.finish') }}
               </el-button>
+
             </div>
           </div>
         </Transition>

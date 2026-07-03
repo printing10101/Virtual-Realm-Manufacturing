@@ -1,774 +1,1207 @@
 <template>
   <div class="task-board-page">
-    <div class="board-header">
-      <h2>任务看板</h2>
-      <div class="board-actions">
+    <!-- ===== Page Header ===== -->
+    <div class="page-header">
+      <div class="page-header__title">
+        <h1>{{ t('taskBoard.pageTitle') }}</h1>
+      </div>
+      <div class="page-header__actions">
+        <el-button-group>
+          <el-button
+            :type="viewMode === 'kanban' ? 'primary' : 'default'"
+            size="small"
+            @click="viewMode = 'kanban'"
+          >
+            {{ t('taskBoard.btnKanban') }}
+          </el-button>
+          <el-button
+            :type="viewMode === 'list' ? 'primary' : 'default'"
+            size="small"
+            @click="viewMode = 'list'"
+          >
+            {{ t('taskBoard.btnList') }}
+          </el-button>
+        </el-button-group>
         <el-button
-          :loading="loading"
-          :icon="Refresh"
-          @click="loadBoard"
+          size="small"
+          :icon="Filter"
+          @click="filterVisible = !filterVisible"
         >
-          刷新
-        </el-button>
-        <el-button
-          type="warning"
-          :loading="cleaningUp"
-          :icon="Delete"
-          @click="cleanupExpired"
-        >
-          清理过期锁
+          {{ t('taskBoard.btnFilter') }}
         </el-button>
         <el-button
           type="primary"
-          :icon="Lock"
-          @click="showLocksDialog = true"
+          size="small"
+          :icon="Plus"
+          @click="handleCreate"
         >
-          执行锁管理
+          {{ t('taskBoard.btnCreateTask') }}
         </el-button>
       </div>
     </div>
 
+    <!-- ===== Filter Panel (collapsible, inline below header) ===== -->
     <div
-      v-loading="loading"
-      class="kanban-container"
+      class="filter-panel-wrapper"
+      :class="{ collapsed: !filterVisible }"
     >
-      <el-row :gutter="16">
-        <el-col
-          v-for="col in columns"
-          :key="col.status"
-          :span="col.span"
-        >
-          <el-card
-            :class="['kanban-column', `column-${col.status}`]"
-            shadow="hover"
-          >
-            <template #header>
-              <div class="column-header">
-                <span>{{ col.label }}</span>
-                <el-tag
-                  :type="col.tagType"
-                  size="small"
-                  round
-                >
-                  {{ getColumnTasks(col.status).length }}
-                </el-tag>
-              </div>
-            </template>
-
-            <div class="column-body">
-              <el-empty
-                v-if="getColumnTasks(col.status).length === 0"
-                :description="`暂无${col.label}任务`"
-                :image-size="60"
+      <div class="filter-bar">
+        <div class="filter-row">
+          <div class="filter-item">
+            <span class="filter-label">{{ t('taskBoard.labelPriority') }}</span>
+            <el-select
+              v-model="filters.priority"
+              :placeholder="t('taskBoard.placeholderAll')"
+              size="small"
+              style="width: 120px"
+              clearable
+            >
+              <el-option
+                :label="t('taskBoard.priorityHigh')"
+                value="high"
               />
+              <el-option
+                :label="t('taskBoard.priorityMedium')"
+                value="medium"
+              />
+              <el-option
+                :label="t('taskBoard.priorityLow')"
+                value="low"
+              />
+            </el-select>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">{{ t('taskBoard.labelAssignee') }}</span>
+            <el-select
+              v-model="filters.assignee"
+              :placeholder="t('taskBoard.placeholderAll')"
+              size="small"
+              style="width: 120px"
+              clearable
+            >
+              <el-option
+                v-for="name in assigneeOptions"
+                :key="name"
+                :label="name"
+                :value="name"
+              />
+            </el-select>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">{{ t('taskBoard.labelDateRange') }}</span>
+            <el-date-picker
+              v-model="filters.dateRange"
+              type="daterange"
+              :range-separator="t('taskBoard.rangeSeparator')"
+              :start-placeholder="t('taskBoard.placeholderStartDate')"
+              :end-placeholder="t('taskBoard.placeholderEndDate')"
+              size="small"
+              style="width: 260px"
+              value-format="YYYY-MM-DD"
+            />
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">{{ t('taskBoard.labelTaskType') }}</span>
+            <el-select
+              v-model="filters.taskType"
+              :placeholder="t('taskBoard.placeholderAll')"
+              size="small"
+              style="width: 140px"
+              clearable
+            >
+              <el-option
+                v-for="opt in taskTypeOptions"
+                :key="opt"
+                :label="opt"
+                :value="opt"
+              />
+            </el-select>
+          </div>
+        </div>
+      </div>
+    </div>
 
-              <el-card
-                v-for="task in getColumnTasks(col.status)"
-                :key="task.id"
+    <!-- ===== Loading State ===== -->
+    <div
+      v-if="tasksStore.loading && allTasks.length === 0"
+      class="board-loading"
+    >
+      <el-skeleton
+        :rows="6"
+        animated
+      />
+    </div>
+
+    <!-- ===== Error Banner (non-blocking) ===== -->
+    <div
+      v-if="fetchFailed && allTasks.length === 0"
+      class="error-banner"
+    >
+      <el-icon :size="16">
+        <WarningFilled />
+      </el-icon>
+      <span>{{ t('taskBoard.msgDataLoadFailed') }}</span>
+      <el-button
+        text
+        type="primary"
+        size="small"
+        @click="retryFetch"
+      >
+        {{ t('taskBoard.btnRetry') }}
+      </el-button>
+    </div>
+
+    <!-- ===== Empty State ===== -->
+    <div
+      v-else-if="!tasksStore.loading && allTasks.length === 0"
+      class="empty-state"
+    >
+      <el-empty :description="t('taskBoard.emptyNoTasks')" />
+    </div>
+
+    <!-- ===== Kanban View ===== -->
+    <template v-else>
+      <div
+        v-if="viewMode === 'kanban'"
+        class="kanban-container"
+      >
+        <div class="kanban-board">
+          <div
+            v-for="column in filteredColumns"
+            :key="column.key"
+            class="kanban-column"
+          >
+            <div class="column-header">
+              <div class="column-header-left">
+                <span
+                  class="column-dot"
+                  :class="`dot-${column.key}`"
+                />
+                <span class="column-name">{{ column.label }}</span>
+              </div>
+              <span
+                class="column-badge"
+                :class="`badge-${column.key}`"
+              >
+                {{ column.items.length }}
+              </span>
+            </div>
+            <div class="column-body">
+              <div
+                v-for="task in column.items"
+                :key="task.job_id"
                 class="task-card"
-                :body-style="{ padding: '12px' }"
-                shadow="hover"
-                @click="viewTaskDetail(task)"
+                :class="`priority-${mapPriority(task)}`"
+                @click="openDetail(task)"
               >
                 <div class="task-card-header">
-                  <el-tag
-                    :type="getPriorityTagType(task.priority)"
-                    size="small"
-                    effect="dark"
-                  >
-                    {{ getPriorityLabel(task.priority) }}
-                  </el-tag>
-                  <span class="task-id">{{ task.id }}</span>
+                  <span class="task-type-tag">{{ task.task_type }}</span>
+                  <span class="task-date">{{ formatDate(task.created_at) }}</span>
                 </div>
-
                 <div class="task-title">
-                  {{ task.title || task.id }}
+                  {{ task.job_id }}
                 </div>
-
                 <div
-                  v-if="task.description"
-                  class="task-description"
+                  v-if="getParamDesc(task)"
+                  class="task-desc"
                 >
-                  {{ task.description }}
+                  {{ getParamDesc(task) }}
                 </div>
-
-                <div class="task-meta">
-                  <el-tag
-                    v-if="task.status === 'in_progress' && task.assigned_to"
-                    type="warning"
-                    size="small"
+                <div
+                  v-if="task.error"
+                  class="task-error"
+                >
+                  <el-icon :size="14">
+                    <CircleCloseFilled />
+                  </el-icon>
+                  {{ truncate(task.error, 60) }}
+                </div>
+                <div class="task-footer">
+                  <div
+                    class="avatar"
+                    :style="{ backgroundColor: avatarColor(task.owner_id || '') }"
                   >
-                    {{ task.assigned_to }}
-                  </el-tag>
-                  <el-tag
-                    v-if="task.status === 'completed' && task.completed_at"
-                    type="success"
-                    size="small"
-                  >
-                    {{ formatDate(task.completed_at) }}
-                  </el-tag>
-                  <el-tag
-                    v-if="task.status === 'failed'"
-                    type="danger"
-                    size="small"
-                  >
-                    已失败
-                  </el-tag>
-
-                  <el-tooltip
-                    v-if="task.lock_info && task.lock_info.status === 'active'"
-                    :content="`锁剩余时间: ${formatDuration(task.lock_info.time_remaining_seconds, false)}`"
-                    placement="top"
+                    {{ (task.owner_id || '?').charAt(0).toUpperCase() }}
+                  </div>
+                  <div
+                    v-if="task.status === 'running'"
+                    class="task-progress"
                   >
                     <el-progress
-                      :percentage="getLockRemainingPercent(task.lock_info)"
+                      :percentage="Math.round(task.progress)"
                       :stroke-width="6"
                       :show-text="false"
-                      style="width: 60px; margin-left: auto;"
                     />
-                  </el-tooltip>
+                    <span class="progress-text">{{ Math.round(task.progress) }}%</span>
+                  </div>
                 </div>
+              </div>
+              <div
+                v-if="column.items.length === 0"
+                class="column-empty"
+              >
+                {{ t('taskBoard.emptyColumn') }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                <div
-                  v-if="task.blockers && task.blockers.length > 0"
-                  class="task-blockers"
-                >
+      <!-- ===== List View ===== -->
+      <div v-else>
+        <div class="content-card">
+          <div class="content-card__body">
+            <el-table
+              :data="flatFilteredTasks"
+              stripe
+              style="width: 100%"
+            >
+              <el-table-column
+                prop="job_id"
+                :label="t('taskBoard.colJobId')"
+                min-width="180"
+                show-overflow-tooltip
+              />
+              <el-table-column
+                prop="task_type"
+                :label="t('taskBoard.colType')"
+                width="130"
+              />
+              <el-table-column
+                :label="t('taskBoard.colStatus')"
+                width="110"
+              >
+                <template #default="{ row }">
                   <el-tag
-                    v-for="blocker in task.blockers"
-                    :key="blocker"
+                    :type="statusTagType(row.status)"
                     size="small"
-                    type="danger"
-                    effect="plain"
+                    effect="light"
                   >
-                    {{ blocker }}
+                    {{ statusLabel(row.status) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column
+                :label="t('taskBoard.colProgress')"
+                width="140"
+              >
+                <template #default="{ row }">
+                  <el-progress
+                    :percentage="Math.round(row.progress)"
+                    :stroke-width="8"
+                    :show-text="true"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="owner_id"
+                :label="t('taskBoard.colAssignee')"
+                width="100"
+                show-overflow-tooltip
+              />
+              <el-table-column
+                :label="t('taskBoard.colCreatedAt')"
+                width="170"
+              >
+                <template #default="{ row }">
+                  {{ formatDate(row.created_at) }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                :label="t('taskBoard.colActions')"
+                width="100"
+                fixed="right"
+              >
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.status === 'running' || row.status === 'queued' || row.status === 'pending'"
+                    text
+                    type="danger"
+                    size="small"
+                    @click.stop="handleCancel(row.job_id)"
+                  >
+                    {{ t('taskBoard.btnCancel') }}
+                  </el-button>
+                  <el-button
+                    text
+                    type="primary"
+                    size="small"
+                    @click.stop="openDetail(row as TaskInfo)"
+                  >
+                    {{ t('taskBoard.btnDetail') }}
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== Task Detail Side Panel ===== -->
+    <transition name="slide-panel">
+      <div
+        v-if="detailVisible"
+        class="detail-overlay"
+        @click.self="closeDetail"
+      >
+        <div class="detail-panel">
+          <div class="detail-header">
+            <h3 class="detail-title">
+              {{ t('taskBoard.detailTitle') }}
+            </h3>
+            <el-button
+              :icon="Close"
+              text
+              @click="closeDetail"
+            />
+          </div>
+
+          <template v-if="detailTask">
+            <div class="detail-body">
+              <div class="detail-field">
+                <label class="field-label">{{ t('taskBoard.detailJobId') }}</label>
+                <div class="field-value mono">
+                  {{ detailTask.job_id }}
+                </div>
+              </div>
+
+              <div class="detail-field">
+                <label class="field-label">{{ t('taskBoard.detailTaskType') }}</label>
+                <div class="field-value">
+                  {{ detailTask.task_type }}
+                </div>
+              </div>
+
+              <div class="detail-field-row">
+                <div class="detail-field">
+                  <label class="field-label">{{ t('taskBoard.detailStatus') }}</label>
+                  <el-tag
+                    :type="statusTagType(detailTask.status)"
+                    effect="light"
+                  >
+                    {{ statusLabel(detailTask.status) }}
                   </el-tag>
                 </div>
-              </el-card>
+                <div class="detail-field">
+                  <label class="field-label">{{ t('taskBoard.detailProgress') }}</label>
+                  <el-progress
+                    :percentage="Math.round(detailTask.progress)"
+                    :stroke-width="10"
+                    :show-text="true"
+                    style="width: 100%"
+                  />
+                </div>
+              </div>
+
+              <div class="detail-field">
+                <label class="field-label">{{ t('taskBoard.detailAssignee') }}</label>
+                <div class="field-value">
+                  <div
+                    class="avatar"
+                    :style="{ backgroundColor: avatarColor(detailTask.owner_id || '') }"
+                  >
+                    {{ (detailTask.owner_id || '?').charAt(0).toUpperCase() }}
+                  </div>
+                  <span style="margin-left: 8px">{{ detailTask.owner_id || '-' }}</span>
+                </div>
+              </div>
+
+              <div class="detail-field">
+                <label class="field-label">{{ t('taskBoard.detailCreatedAt') }}</label>
+                <div class="field-value">
+                  {{ formatDate(detailTask.created_at) }}
+                </div>
+              </div>
+
+              <div
+                v-if="detailTask.duration_seconds != null"
+                class="detail-field"
+              >
+                <label class="field-label">{{ t('taskBoard.detailDuration') }}</label>
+                <div class="field-value">
+                  {{ formatDuration(detailTask.duration_seconds) }}
+                </div>
+              </div>
+
+              <div class="detail-field">
+                <label class="field-label">{{ t('taskBoard.detailParams') }}</label>
+                <div class="field-value code-block">
+                  <pre>{{ JSON.stringify(detailTask.params || {}, null, 2) }}</pre>
+                </div>
+              </div>
+
+              <div
+                v-if="detailTask.result"
+                class="detail-field"
+              >
+                <label class="field-label">{{ t('taskBoard.detailResult') }}</label>
+                <div class="field-value code-block">
+                  <pre>{{ JSON.stringify(detailTask.result, null, 2) }}</pre>
+                </div>
+              </div>
+
+              <div
+                v-if="detailTask.error"
+                class="detail-field"
+              >
+                <label class="field-label">{{ t('taskBoard.detailError') }}</label>
+                <div class="field-value error-text">
+                  {{ detailTask.error }}
+                </div>
+              </div>
             </div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </div>
 
-    <el-dialog
-      v-model="detailDialogVisible"
-      :title="`任务详情: ${selectedTaskId}`"
-      width="700px"
-      destroy-on-close
-    >
-      <div
-        v-if="detailLoading"
-        v-loading="detailLoading"
-        style="min-height: 200px;"
-      />
-
-      <template v-else-if="taskDetail">
-        <el-descriptions
-          :column="2"
-          border
-          size="small"
-        >
-          <el-descriptions-item
-            label="任务ID"
-            :span="2"
-          >
-            {{ taskDetail.task.id }}
-          </el-descriptions-item>
-          <el-descriptions-item label="标题">
-            {{ taskDetail.task.title }}
-          </el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="getTaskStatusTagType(taskDetail.task.status)">
-              {{ getTaskStatusLabel(taskDetail.task.status) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="分配代理">
-            {{ taskDetail.task.assigned_to || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="类型">
-            {{ taskDetail.task.task_type }}
-          </el-descriptions-item>
-          <el-descriptions-item label="检出时间">
-            {{ taskDetail.task.checked_out_at || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="检出到期">
-            {{ taskDetail.task.checkout_expires_at || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建时间">
-            {{ taskDetail.task.created_at }}
-          </el-descriptions-item>
-          <el-descriptions-item label="完成时间">
-            {{ taskDetail.task.completed_at || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="GPU需求">
-            {{ taskDetail.task.required_gpu_memory ? `${taskDetail.task.required_gpu_memory}GB` : '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="优先级">
-            {{ getPriorityLabel(taskDetail.task.priority) }}
-          </el-descriptions-item>
-        </el-descriptions>
-
-        <el-divider content-position="left">
-          执行锁历史
-        </el-divider>
-        <el-table
-          v-if="taskDetail.lock_history && taskDetail.lock_history.length > 0"
-          :data="taskDetail.lock_history"
-          size="small"
-          max-height="200"
-        >
-          <el-table-column
-            prop="action"
-            label="操作"
-            width="100"
-          >
-            <template #default="{ row }">
-              <el-tag
-                :type="getLockActionTagType(row.action)"
-                size="small"
-              >
-                {{ getLockActionLabel(row.action) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column
-            prop="agent_id"
-            label="代理"
-            width="120"
-          />
-          <el-table-column
-            prop="reason"
-            label="原因"
-            min-width="150"
-          />
-          <el-table-column
-            prop="timestamp"
-            label="时间"
-            width="170"
-          />
-        </el-table>
-        <el-empty
-          v-else
-          description="暂无锁历史"
-          :image-size="40"
-        />
-
-        <el-divider content-position="left">
-          失败历史
-        </el-divider>
-        <el-table
-          v-if="taskDetail.failure_history && taskDetail.failure_history.length > 0"
-          :data="taskDetail.failure_history"
-          size="small"
-          max-height="200"
-        >
-          <el-table-column
-            prop="reason"
-            label="失败原因"
-            width="150"
-          >
-            <template #default="{ row }">
-              <el-tag
-                type="danger"
-                size="small"
-              >
-                {{ row.reason }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column
-            prop="message"
-            label="详情"
-            min-width="200"
-          />
-          <el-table-column
-            prop="agent_id"
-            label="代理"
-            width="120"
-          />
-          <el-table-column
-            prop="timestamp"
-            label="时间"
-            width="170"
-          />
-        </el-table>
-        <el-empty
-          v-else
-          description="暂无失败历史"
-          :image-size="40"
-        />
-      </template>
-
-      <template #footer>
-        <el-button @click="detailDialogVisible = false">
-          关闭
-        </el-button>
-        <el-button
-          v-if="selectedTask?.status === 'in_progress'"
-          type="warning"
-          @click="forceReleaseFromDetail"
-        >
-          强制释放
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="showLocksDialog"
-      title="执行锁管理"
-      width="800px"
-      destroy-on-close
-    >
-      <div v-loading="locksLoading">
-        <el-table
-          :data="locks"
-          size="small"
-          max-height="400"
-          stripe
-        >
-          <el-table-column
-            prop="task_id"
-            label="任务ID"
-            width="180"
-          />
-          <el-table-column
-            prop="agent_id"
-            label="代理ID"
-            width="150"
-          />
-          <el-table-column
-            prop="status"
-            label="状态"
-            width="110"
-          >
-            <template #default="{ row }">
-              <el-tag
-                :type="getLockStatusTagType(row.status)"
-                size="small"
-              >
-                {{ getLockStatusLabel(row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column
-            prop="is_expired"
-            label="是否过期"
-            width="90"
-          >
-            <template #default="{ row }">
-              <el-tag
-                :type="row.is_expired ? 'danger' : 'success'"
-                size="small"
-              >
-                {{ row.is_expired ? '已过期' : '有效' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column
-            prop="created_at"
-            label="创建时间"
-            width="170"
-          />
-          <el-table-column
-            prop="expires_at"
-            label="过期时间"
-            width="170"
-          />
-          <el-table-column
-            label="操作"
-            fixed="right"
-            width="100"
-          >
-            <template #default="{ row }">
+            <div class="detail-footer">
               <el-button
-                v-if="row.status === 'active'"
-                size="small"
+                v-if="
+                  detailTask.status === 'running' ||
+                    detailTask.status === 'queued' ||
+                    detailTask.status === 'pending'
+                "
                 type="danger"
-                @click="forceReleaseLock(row.task_id)"
+                text
+                size="small"
+                @click="handleCancel(detailTask.job_id); closeDetail()"
               >
-                释放
+                {{ t('taskBoard.btnCancelTask') }}
               </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+              <el-button
+                size="small"
+                @click="closeDetail"
+              >
+                {{ t('taskBoard.btnClose') }}
+              </el-button>
+            </div>
+          </template>
+        </div>
       </div>
-    </el-dialog>
+    </transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { Refresh, Delete, Lock } from '@element-plus/icons-vue'
-import http from '@/utils/http'
-import { formatDate, formatDuration } from '@/utils/formatters'
-import { getPriorityTagType, getPriorityLabel, getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
+import { ref, reactive, computed, onMounted } from 'vue'
+import {
+  Filter,
+  Plus,
+  Close,
+  WarningFilled,
+  CircleCloseFilled,
+} from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
+import { useTasksStore, type TaskInfo } from '@/stores/tasks'
+import type { TagType } from '@/utils/statusHelpers'
 
-interface TaskItem {
-  id: string
-  title: string
-  description: string
-  task_type: string
-  status: string
-  assigned_to: string | null
-  priority: number
-  checked_out_at: string | null
-  checkout_expires_at: string | null
-  created_at: string
-  completed_at: string | null
-  required_gpu_memory: number
-  blockers: string[]
-  lock_info: LockInfo | null
-}
+/* ------------------------------------------------------------------ */
+/*  i18n                                                               */
+/* ------------------------------------------------------------------ */
+const { t } = useI18n()
 
-interface LockInfo {
-  task_id: string
-  agent_id: string
-  status: string
-  created_at: string
-  expires_at: string
-  heartbeat_at: string
-  released_at: string | null
-  release_reason: string | null
-  is_expired: boolean
-  time_remaining_seconds: number
-}
+/* ------------------------------------------------------------------ */
+/*  Store                                                              */
+/* ------------------------------------------------------------------ */
+const tasksStore = useTasksStore()
 
-interface BoardData {
-  pending: TaskItem[]
-  in_progress: TaskItem[]
-  completed: TaskItem[]
-  failed: TaskItem[]
-  cancelled: TaskItem[]
-}
+/* ------------------------------------------------------------------ */
+/*  State                                                              */
+/* ------------------------------------------------------------------ */
+const viewMode = ref<'kanban' | 'list'>('kanban')
+const filterVisible = ref(true)
+const fetchFailed = ref(false)
 
-interface TaskDetail {
-  task: TaskItem
-  lock_history: Array<Record<string, unknown>>
-  failure_history: Array<Record<string, unknown>>
-}
-
-interface LockEntry {
-  task_id: string
-  agent_id: string
-  status: string
-  created_at: string
-  expires_at: string
-  is_expired: boolean
-}
-
-const columns = [
-  { status: 'pending', label: '待处理', tagType: 'info' as const, span: 4 },
-  { status: 'in_progress', label: '进行中', tagType: 'warning' as const, span: 6 },
-  { status: 'completed', label: '已完成', tagType: 'success' as const, span: 5 },
-  { status: 'failed', label: '失败', tagType: 'danger' as const, span: 5 },
-  { status: 'cancelled', label: '已取消', tagType: 'info' as const, span: 4 },
-]
-
-const loading = ref(false)
-const cleaningUp = ref(false)
-const board = ref<BoardData>({
-  pending: [],
-  in_progress: [],
-  completed: [],
-  failed: [],
-  cancelled: [],
+const filters = reactive({
+  priority: '' as string,
+  assignee: '' as string,
+  dateRange: null as [string, string] | null,
+  taskType: '' as string,
 })
 
-const detailDialogVisible = ref(false)
-const detailLoading = ref(false)
-const selectedTask = ref<TaskItem | null>(null)
-const selectedTaskId = ref('')
-const taskDetail = ref<TaskDetail | null>(null)
+const detailVisible = ref(false)
+const detailTask = ref<TaskInfo | null>(null)
 
-const showLocksDialog = ref(false)
-const locksLoading = ref(false)
-const locks = ref<LockEntry[]>([])
-
-let pollTimer: ReturnType<typeof setInterval> | null = null
-
-function getColumnTasks(status: string): TaskItem[] {
-  return board.value[status as keyof BoardData] || []
-}
-
-async function loadBoard() {
-  loading.value = true
+/* ------------------------------------------------------------------ */
+/*  Lifecycle                                                          */
+/* ------------------------------------------------------------------ */
+onMounted(async () => {
   try {
-    const res = await http.get('/api/v1/task-checkout/board')
-    board.value = res.data?.data || {
-      pending: [],
-      in_progress: [],
-      completed: [],
-      failed: [],
-      cancelled: [],
+    await tasksStore.fetchTasks()
+  } catch {
+    fetchFailed.value = true
+  }
+  if (tasksStore.error && tasksStore.tasks.length === 0) {
+    fetchFailed.value = true
+  }
+})
+
+async function retryFetch() {
+  fetchFailed.value = false
+  try {
+    await tasksStore.fetchTasks()
+    if (!tasksStore.error) {
+      fetchFailed.value = false
     }
-  } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('加载看板失败: ' + errorMsg)
-  } finally {
-    loading.value = false
+  } catch {
+    fetchFailed.value = true
   }
 }
 
-async function viewTaskDetail(task: TaskItem) {
-  selectedTask.value = task
-  selectedTaskId.value = task.id
-  detailDialogVisible.value = true
-  detailLoading.value = true
-  taskDetail.value = null
+/* ------------------------------------------------------------------ */
+/*  Computed — task source                                             */
+/* ------------------------------------------------------------------ */
+const allTasks = computed<TaskInfo[]>(() => {
+  return tasksStore.tasks
+})
 
-  try {
-    const res = await http.get(`/api/v1/task-checkout/tasks/${task.id}/history`)
-    taskDetail.value = res.data?.data
-  } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('加载任务详情失败: ' + errorMsg)
-  } finally {
-    detailLoading.value = false
+/* ------------------------------------------------------------------ */
+/*  Computed — derived filter options                                  */
+/* ------------------------------------------------------------------ */
+const assigneeOptions = computed(() => {
+  const set = new Set<string>()
+  allTasks.value.forEach(task => { if (task.owner_id) set.add(task.owner_id) })
+  return Array.from(set).sort()
+})
+
+const taskTypeOptions = computed(() => {
+  const set = new Set<string>()
+  allTasks.value.forEach(task => set.add(task.task_type))
+  return Array.from(set).sort()
+})
+
+/* ------------------------------------------------------------------ */
+/*  Computed — kanban columns                                          */
+/* ------------------------------------------------------------------ */
+interface KanbanColumn {
+  key: string
+  label: string
+  items: TaskInfo[]
+}
+
+const kanbanColumns = computed<KanbanColumn[]>(() => {
+  const src = allTasks.value
+  return [
+    {
+      key: 'pending',
+      label: t('taskBoard.colPending'),
+      items: src.filter(task => task.status === 'pending' || task.status === 'queued'),
+    },
+    {
+      key: 'running',
+      label: t('taskBoard.colRunning'),
+      items: src.filter(task => task.status === 'running'),
+    },
+    {
+      key: 'review',
+      label: t('taskBoard.colReview'),
+      items: src.filter(task => task.status === 'completed'),
+    },
+    {
+      key: 'done',
+      label: t('taskBoard.colDone'),
+      items: src.filter(task => task.status === 'failed' || task.status === 'cancelled'),
+    },
+  ]
+})
+
+/* ------------------------------------------------------------------ */
+/*  Computed — filtered kanban columns (applies user filters)           */
+/* ------------------------------------------------------------------ */
+const filteredColumns = computed<KanbanColumn[]>(() => {
+  return kanbanColumns.value.map(col => ({
+    ...col,
+    items: col.items.filter(task => applyFilters(task)),
+  }))
+})
+
+/* flat list for table view */
+const flatFilteredTasks = computed(() => {
+  return allTasks.value.filter(task => applyFilters(task))
+})
+
+function applyFilters(task: TaskInfo): boolean {
+  if (filters.priority && mapPriority(task) !== filters.priority) return false
+  if (filters.assignee && task.owner_id !== filters.assignee) return false
+  if (filters.taskType && task.task_type !== filters.taskType) return false
+  if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
+    const d = task.created_at.slice(0, 10)
+    if (d < filters.dateRange[0] || d > filters.dateRange[1]) return false
   }
+  return true
 }
 
-async function loadLocks() {
-  locksLoading.value = true
-  try {
-    const res = await http.get('/api/v1/task-checkout/locks')
-    locks.value = res.data?.data || []
-  } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('加载锁列表失败: ' + errorMsg)
-  } finally {
-    locksLoading.value = false
-  }
+/* ------------------------------------------------------------------ */
+/*  Helpers — map TaskInfo fields to UI concepts                       */
+/* ------------------------------------------------------------------ */
+function mapPriority(task: TaskInfo): 'high' | 'medium' | 'low' {
+  if (task.status === 'failed') return 'high'
+  if (task.error) return 'high'
+  const p = task.params?.priority as string | undefined
+  if (p === 'high' || p === 'urgent') return 'high'
+  if (p === 'low') return 'low'
+  // Default: running = high, completed/pending = medium
+  if (task.status === 'running') return 'medium'
+  return 'medium'
 }
 
-async function forceReleaseLock(taskId: string) {
-  try {
-    await ElMessageBox.confirm(
-      `确定要强制释放任务 "${taskId}" 的执行锁吗？该任务将回到待处理状态。`,
-      '确认强制释放',
-      { confirmButtonText: '释放', cancelButtonText: '取消', type: 'warning' }
-    )
-    await http.delete(`/api/v1/task-checkout/locks/${taskId}?admin_id=admin`)
-    ElMessage.success(`任务 ${taskId} 的锁已释放`)
-    await loadLocks()
-    await loadBoard()
-  } catch (e: unknown) {
-    if (e !== 'cancel' && e !== 'close') {
-      const errorMsg = e instanceof Error ? e.message : String(e)
-      ElMessage.error('释放锁失败: ' + errorMsg)
-    }
-  }
+function getParamDesc(task: TaskInfo): string {
+  if (!task.params) return ''
+  const entries = Object.entries(task.params).filter(
+    ([k]) => !['priority', 'revision'].includes(k)
+  )
+  if (entries.length === 0) return ''
+  return entries
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(' | ')
 }
 
-async function forceReleaseFromDetail() {
-  if (selectedTask.value) {
-    await forceReleaseLock(selectedTask.value.id)
-    detailDialogVisible.value = false
-  }
-}
-
-async function cleanupExpired() {
-  cleaningUp.value = true
-  try {
-    const res = await http.post('/api/v1/task-checkout/cleanup')
-    const data = res.data?.data
-    ElMessage.success(`清理完成，释放了 ${data?.count || 0} 个过期的锁`)
-    await loadBoard()
-  } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('清理过期锁失败: ' + errorMsg)
-  } finally {
-    cleaningUp.value = false
-  }
-}
-
-function getLockRemainingPercent(lockInfo: LockInfo): number {
-  if (!lockInfo || lockInfo.is_expired) return 0
-  const total = 4 * 3600
-  return Math.round((lockInfo.time_remaining_seconds / total) * 100)
-}
-
-function getLockActionTagType(action: string): 'success' | 'warning' | 'danger' | 'info' {
-  if (action === 'created') return 'success'
-  if (action === 'released') return 'info'
-  if (action === 'force_released') return 'danger'
-  if (action === 'expired') return 'warning'
-  return 'info'
-}
-
-function getLockActionLabel(action: string): string {
-  const map: Record<string, string> = {
-    created: '创建',
-    released: '释放',
-    force_released: '强制释放',
-    expired: '过期',
-  }
-  return map[action] || action
-}
-
-function getLockStatusTagType(status: string): 'success' | 'warning' | 'danger' | 'info' {
-  if (status === 'active') return 'success'
-  if (status === 'released') return 'info'
-  if (status === 'force_released') return 'danger'
-  if (status === 'expired') return 'warning'
-  return 'info'
-}
-
-function getLockStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    active: '活跃',
-    released: '已释放',
-    force_released: '强制释放',
-    expired: '已过期',
+function statusLabel(status: TaskInfo['status']): string {
+  const map: Record<TaskInfo['status'], string> = {
+    pending: t('taskBoard.statusPending'),
+    queued: t('taskBoard.statusQueued'),
+    running: t('taskBoard.statusRunning'),
+    completed: t('taskBoard.statusCompleted'),
+    failed: t('taskBoard.statusFailed'),
+    cancelled: t('taskBoard.statusCancelled'),
   }
   return map[status] || status
 }
 
-onMounted(() => {
-  loadBoard()
-  pollTimer = setInterval(() => {
-    loadBoard()
-  }, 30000)
-})
-
-onUnmounted(() => {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
+function statusTagType(status: TaskInfo['status']): TagType {
+  const map: Record<TaskInfo['status'], TagType> = {
+    pending: 'info',
+    queued: 'warning',
+    running: 'primary',
+    completed: 'success',
+    failed: 'danger',
+    cancelled: 'info',
   }
-})
+  return map[status] || 'info'
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers — formatting                                              */
+/* ------------------------------------------------------------------ */
+function formatDate(iso: string): string {
+  if (!iso) return '-'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${day} ${h}:${min}`
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  if (m < 60) return `${m}m ${s}s`
+  const h = Math.floor(m / 60)
+  const rm = m % 60
+  return `${h}h ${rm}m`
+}
+
+function truncate(str: string, max: number): string {
+  if (!str) return ''
+  return str.length > max ? str.slice(0, max) + '...' : str
+}
+
+/* ------------------------------------------------------------------ */
+/*  Avatar color                                                       */
+/* ------------------------------------------------------------------ */
+const avatarColorMap: Record<string, string> = {
+  [t('taskBoard.userZhangSan')]: '#007aff',
+  [t('taskBoard.userLiSi')]: '#34c759',
+  [t('taskBoard.userWangWu')]: '#ff9500',
+  [t('taskBoard.userZhaoLiu')]: '#af52de',
+}
+
+function avatarColor(name: string): string {
+  return avatarColorMap[name] || '#8e897f'
+}
+
+/* ------------------------------------------------------------------ */
+/*  Actions                                                            */
+/* ------------------------------------------------------------------ */
+function openDetail(task: TaskInfo) {
+  detailTask.value = { ...task }
+  detailVisible.value = true
+}
+
+function closeDetail() {
+  detailVisible.value = false
+  detailTask.value = null
+}
+
+async function handleCancel(jobId: string) {
+  await tasksStore.cancelTask(jobId)
+  ElMessage.success(t('taskBoard.msgTaskCancelled'))
+}
+
+function handleCreate() {
+  ElMessage.info(t('taskBoard.msgCreateTaskWip'))
+}
 </script>
 
 <style scoped>
+/* ==================== Page Layout ==================== */
 .task-board-page {
-  padding: 16px;
-  max-width: 1600px;
+  padding: var(--page-padding);
+  max-width: var(--content-max-width);
   margin: 0 auto;
 }
 
-.board-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding: 0 4px;
-}
-
-.board-header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.board-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.kanban-container {
-  min-height: 400px;
-}
-
-.kanban-column {
-  min-height: 300px;
-  max-height: calc(100vh - 200px);
+/* ==================== Filter Panel — smooth height collapse ==================== */
+.filter-panel-wrapper {
+  max-height: 120px;
   overflow: hidden;
+  margin-bottom: 24px;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease;
+  opacity: 1;
+}
+
+.filter-panel-wrapper.collapsed {
+  max-height: 0;
+  margin-bottom: 0;
+  opacity: 0;
+}
+
+.filter-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-item {
   display: flex;
   flex-direction: column;
+  gap: 6px;
 }
 
-.kanban-column :deep(.el-card__body) {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
-.kanban-column :deep(.el-card__header) {
+/* ==================== Error Banner ==================== */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 16px;
+  margin-bottom: 16px;
+  background: #fef0f0;
+  border: 1px solid #fde2e2;
+  border-radius: var(--radius-md);
+  color: var(--error, #f56c6c);
+  font-size: 13px;
+}
+
+.error-banner .el-button {
+  margin-left: auto;
+}
+
+/* ==================== Board Loading ==================== */
+.board-loading {
+  padding: 40px 0;
+}
+
+/* ==================== Empty State ==================== */
+.empty-state {
+  padding: 60px 0;
+}
+
+/* ==================== Kanban Board ==================== */
+.kanban-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.kanban-board {
+  display: flex;
+  gap: 16px;
+  min-width: 900px;
+}
+
+/* ==================== Column ==================== */
+.kanban-column {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
 }
 
 .column-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border-light);
 }
+
+.column-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.column-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-pending { background: var(--bg-500, #909399); }
+.dot-running { background: var(--brand-500, #409eff); }
+.dot-review { background: var(--warning, #e6a23c); }
+.dot-done { background: var(--success, #67c23a); }
+
+.column-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.column-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.badge-pending { background: var(--bg-500, #909399); }
+.badge-running { background: var(--brand-500, #409eff); }
+.badge-review { background: var(--warning, #e6a23c); }
+.badge-done { background: var(--success, #67c23a); }
 
 .column-body {
-  min-height: 100px;
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 120px;
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
 }
 
+.column-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+/* ==================== Task Card ==================== */
 .task-card {
-  margin-bottom: 8px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 14px 14px 12px;
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid transparent;
   cursor: pointer;
-  transition: box-shadow 0.2s;
-  border-left: 3px solid transparent;
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .task-card:hover {
   box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
-.column-pending .task-card {
-  border-left-color: var(--border-dark);
+/* Priority left border colors */
+.task-card.priority-high {
+  border-left-color: var(--error, #f56c6c);
 }
-
-.column-in_progress .task-card {
-  border-left-color: var(--warning);
+.task-card.priority-medium {
+  border-left-color: var(--warning, #e6a23c);
 }
-
-.column-completed .task-card {
-  border-left-color: var(--success);
-}
-
-.column-failed .task-card {
-  border-left-color: var(--error);
-}
-
-.column-cancelled .task-card {
-  border-left-color: var(--border-medium);
+.task-card.priority-low {
+  border-left-color: var(--info, #909399);
 }
 
 .task-card-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-bottom: 4px;
 }
 
-.task-id {
+.task-type-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--brand-500, #409eff);
+  background: rgba(64, 158, 255, 0.08);
+  border-radius: 4px;
+}
+
+.task-date {
   font-size: 11px;
   color: var(--text-tertiary);
-  font-family: monospace;
+  flex-shrink: 0;
 }
 
 .task-title {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.task-description {
+.task-desc {
   font-size: 12px;
   color: var(--text-tertiary);
-  margin-bottom: 6px;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.task-meta {
+.task-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--error, #f56c6c);
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.task-error .el-icon {
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.task-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* Avatar */
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* Progress in card footer */
+.task-progress {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
 }
 
-.task-blockers {
+.task-progress .el-progress {
+  flex: 1;
+}
+
+.progress-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* ==================== Detail Side Panel ==================== */
+.detail-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.25);
   display: flex;
-  gap: 4px;
-  margin-top: 6px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.detail-panel {
+  width: 400px;
+  max-width: 100vw;
+  height: 100vh;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.detail-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.detail-field-row {
+  display: flex;
+  gap: 16px;
+}
+
+.detail-field-row .detail-field {
+  flex: 1;
+}
+
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.field-value {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+}
+
+.field-value.mono {
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.field-value.code-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+
+.field-value.code-block pre {
+  margin: 0;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.field-value.error-text {
+  color: var(--error, #f56c6c);
+}
+
+.detail-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+/* panel slide animation */
+.slide-panel-enter-active,
+.slide-panel-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-panel-enter-from .detail-panel,
+.slide-panel-leave-to .detail-panel {
+  transform: translateX(100%);
+}
+.slide-panel-enter-from,
+.slide-panel-leave-to {
+  opacity: 0;
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 1200px) {
+  .kanban-board {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .task-board-page {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .filter-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .detail-panel {
+    width: 100vw;
+  }
 }
 </style>

@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Verify version consistency
-        run: node version-sync.js --dry-run
+        run: node version-sync.cjs --dry-run
 
   # ============================================
   # Job 1: Python Unit Tests
@@ -989,7 +989,7 @@ jobs:
         run: pnpm run lint
 
       - name: Run type check
-        run: pnpm run type-check || true
+        run: pnpm run type-check
 
   # ============================================
   # Job 6.5: API Documentation Sync Check

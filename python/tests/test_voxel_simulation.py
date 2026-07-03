@@ -167,7 +167,9 @@ class TestVoxelCutter:
         assert cutter._voxel_size >= 0.1
 
     def test_discretize_linear_segment(self):
-        cutter = VoxelCutter(voxel_size=1.0)
+        # 包重构后 _discretize_segment 为模块级函数，签名 (seg, step, voxel_size)
+        from app.simulation.voxel_cutter.cutter import _discretize_segment
+
         seg = ToolpathSegment(
             type="linear",
             start_point=(0.0, 0.0, 0.0),
@@ -175,12 +177,13 @@ class TestVoxelCutter:
             block_number=1,
             g_code="G01",
         )
-        points = cutter._discretize_segment(seg, step=1.0)
+        points = _discretize_segment(seg, 1.0, 1.0)
         assert points.shape[0] >= 2
         assert points.shape[1] == 3
 
     def test_discretize_rapid_segment(self):
-        cutter = VoxelCutter(voxel_size=1.0)
+        from app.simulation.voxel_cutter.cutter import _discretize_segment
+
         seg = ToolpathSegment(
             type="rapid",
             start_point=(0.0, 0.0, 50.0),
@@ -188,13 +191,14 @@ class TestVoxelCutter:
             block_number=1,
             g_code="G00",
         )
-        points = cutter._discretize_segment(seg, step=1.0)
+        points = _discretize_segment(seg, 1.0, 1.0)
         assert points.shape[0] >= 2
         assert np.allclose(points[0], [0.0, 0.0, 50.0])
         assert np.allclose(points[-1], [100.0, 50.0, 50.0])
 
     def test_discretize_arc_segment(self):
-        cutter = VoxelCutter(voxel_size=1.0)
+        from app.simulation.voxel_cutter.cutter import _discretize_segment
+
         seg = ToolpathSegment(
             type="arc",
             start_point=(0.0, -25.0, -2.0),
@@ -202,7 +206,7 @@ class TestVoxelCutter:
             block_number=5,
             g_code="G02",
         )
-        points = cutter._discretize_segment(seg, step=1.0)
+        points = _discretize_segment(seg, 1.0, 1.0)
         assert points.shape[0] >= 2
         assert points.shape[1] == 3
 

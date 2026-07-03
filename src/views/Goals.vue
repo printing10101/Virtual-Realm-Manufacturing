@@ -5,7 +5,7 @@
       type="border-card"
     >
       <el-tab-pane
-        label="目标树"
+        :label="t('goals.tabTree')"
         name="tree"
       >
         <GoalTreeView
@@ -16,7 +16,7 @@
         />
       </el-tab-pane>
       <el-tab-pane
-        label="目标详情"
+        :label="t('goals.tabDetail')"
         name="detail"
       >
         <GoalDetail
@@ -27,11 +27,11 @@
         />
         <el-empty
           v-else
-          description="请从目标树中选择一个目标查看详情"
+          :description="t('goals.emptySelectGoal')"
         />
       </el-tab-pane>
       <el-tab-pane
-        label="创建任务"
+        :label="t('goals.tabCreateTask')"
         name="create-task"
       >
         <TaskWizard
@@ -41,7 +41,7 @@
         />
       </el-tab-pane>
       <el-tab-pane
-        label="对齐检查"
+        :label="t('goals.tabAlignment')"
         name="alignment"
       >
         <AlignmentChecker
@@ -57,12 +57,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import http from '@/utils/http'
 import GoalTreeView from '../components/goals/GoalTreeView.vue'
 import GoalDetail from '../components/goals/GoalDetail.vue'
 import TaskWizard from '../components/goals/TaskWizard.vue'
 import AlignmentChecker from '../components/goals/AlignmentChecker.vue'
+import { API_CONFIG, buildApiPath } from '@/config/api'
+
+const { t } = useI18n()
 
 interface GoalNode {
   id: string
@@ -92,13 +96,13 @@ const alignmentSummary = ref<AlignmentSummary | null>(null)
 const loadGoalTree = async () => {
   treeLoading.value = true
   try {
-    const res = await http.get('/api/v1/goal-alignment/goals/tree')
+    const res = await http.get(buildApiPath(API_CONFIG.GOAL_ALIGNMENT, '/goals/tree'))
     goalTree.value = res.data?.data || []
-    const goalsRes = await http.get('/api/v1/goal-alignment/goals')
+    const goalsRes = await http.get(buildApiPath(API_CONFIG.GOAL_ALIGNMENT, '/goals'))
     allGoals.value = goalsRes.data?.data || []
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('加载目标树失败: ' + errorMsg)
+    ElMessage.error(t('goals.errorLoadTree') + errorMsg)
   } finally {
     treeLoading.value = false
   }
@@ -110,19 +114,19 @@ const selectGoal = (goalId: string) => {
 }
 
 const onTaskCreated = () => {
-  ElMessage.success('任务创建成功')
+  ElMessage.success(t('goals.successTaskCreated'))
   loadGoalTree()
 }
 
 const runAlignmentScan = async () => {
   scanLoading.value = true
   try {
-    await http.post('/api/v1/goal-alignment/scan')
+    await http.post(buildApiPath(API_CONFIG.GOAL_ALIGNMENT, '/scan'))
     await loadAlignmentSummary()
-    ElMessage.success('对齐检查完成')
+    ElMessage.success(t('goals.successAlignmentComplete'))
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('对齐检查失败: ' + errorMsg)
+    ElMessage.error(t('goals.errorAlignmentFailed') + errorMsg)
   } finally {
     scanLoading.value = false
   }
@@ -130,7 +134,7 @@ const runAlignmentScan = async () => {
 
 const loadAlignmentSummary = async () => {
   try {
-    const res = await http.get('/api/v1/goal-alignment/summary')
+    const res = await http.get(buildApiPath(API_CONFIG.GOAL_ALIGNMENT, '/summary'))
     alignmentSummary.value = res.data?.data
   } catch {
     // 静默处理

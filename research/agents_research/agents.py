@@ -206,17 +206,33 @@ class BaseAgent(ABC):
         return self._llm_client
 
     async def _get_model_router(self) -> Any:
-        """获取模型路由器，优先使用注入实例"""
+        """获取模型路由器，优先使用注入实例。
+
+        路由器为实验性 stub 实现（详见 app.ai.lnn.router.task_router）。
+        当依赖缺失（例如运行环境未安装 lnn 包）时记录警告并返回 None，
+        不再静默吞掉异常。
+        """
         if self._model_router is not None:
             return self._model_router
         try:
             from app.ai.lnn.router.task_router import TaskRouter
+        except ImportError as e:
+            logger.warning(
+                "[%s] TaskRouter 不可用（lnn 包未安装）: %s", self.name, e
+            )
+            self._model_router = None
+            return self._model_router
 
+        try:
             self._model_router = TaskRouter(
                 rule_weight=self._rule_weight,
                 ml_weight=self._ml_weight,
             )
-        except Exception:
+        except Exception as e:
+            # 构造失败属于配置/参数错误，记录后回退到 None 但不静默
+            logger.warning(
+                "[%s] TaskRouter 初始化失败: %s", self.name, e, exc_info=True
+            )
             self._model_router = None
         return self._model_router
 

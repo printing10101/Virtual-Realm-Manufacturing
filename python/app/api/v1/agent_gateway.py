@@ -8,12 +8,12 @@ import os
 import time
 import uuid
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
-from app.auth.permissions import paper_only_guard
+from app.auth.permissions import paper_only_guard, require_permission
 from app.agent.auth import agent_token_store
 from app.agent.middleware import (
     agent_audit_log,
@@ -123,7 +123,8 @@ async def model_info(name: str):
     )
 
 
-@router.post("/predict")
+# 认证：预测操作需要 agent:predict 权限
+@router.post("/predict", dependencies=[Depends(require_permission("agent:predict"))])
 async def agent_predict(request: AgentPredictRequest):
     """LNN 预测（R类）"""
     try:
@@ -245,7 +246,7 @@ async def _run_agent_training(
                 get_optimal_num_workers,
             )
 
-            data = np.loadtxt(data_path, delimiter=",")
+            data = await asyncio.to_thread(np.loadtxt, data_path, delimiter=",")
             if data.ndim == 1:
                 data = data.reshape(-1, 1)
             if data.shape[0] < 2:
@@ -344,7 +345,8 @@ async def _run_agent_training(
             _active_training.discard(task_id)
 
 
-@router.post("/train")
+# 认证：训练操作需要 agent:train 权限
+@router.post("/train", dependencies=[Depends(require_permission("agent:train"))])
 async def agent_train(request: AgentTrainRequest):
     """启动训练（B类，异步，返回job_id）"""
     try:
@@ -459,7 +461,8 @@ async def stream_training(job_id: str):
     )
 
 
-@router.post("/execute")
+# 认证：执行类操作需要 agent:execute 权限
+@router.post("/execute", dependencies=[Depends(require_permission("agent:execute"))])
 async def agent_execute(request: AgentExecuteRequest):
     """工艺参数下发（T类，paper_only默认）"""
     try:
@@ -504,7 +507,8 @@ async def agent_execute(request: AgentExecuteRequest):
         )
 
 
-@router.get("/audit-log")
+# 认证：审计日志查询需要 agent:audit:read 权限
+@router.get("/audit-log", dependencies=[Depends(require_permission("agent:audit:read"))])
 async def get_audit_log(
     agent_id: str | None = None,
     permission_class: str | None = None,
@@ -530,7 +534,8 @@ async def get_audit_log(
 
 
 # Token management endpoints (for internal use / settings page)
-@router.post("/tokens")
+# 认证：创建 Token 需要 agent:token:create 权限
+@router.post("/tokens", dependencies=[Depends(require_permission("agent:token:create"))])
 async def create_agent_token(req: AgentTokenCreateRequest):
     """创建 Agent Token"""
     try:
@@ -575,14 +580,16 @@ async def create_agent_token(req: AgentTokenCreateRequest):
         )
 
 
-@router.get("/tokens")
+# 认证：列出 Token 需要 agent:token:create 权限（Token 管理操作）
+@router.get("/tokens", dependencies=[Depends(require_permission("agent:token:create"))])
 async def list_agent_tokens():
     """列出所有 Agent Token"""
     tokens = agent_token_store.list_tokens()
     return success(data={"tokens": tokens, "total": len(tokens)})
 
 
-@router.delete("/tokens/{agent_id}")
+# 认证：撤销单个 Token 需要 agent:token:revoke 权限
+@router.delete("/tokens/{agent_id}", dependencies=[Depends(require_permission("agent:token:revoke"))])
 async def revoke_agent_token(agent_id: str):
     """撤销 Agent Token"""
     if agent_token_store.revoke_token(agent_id):
@@ -590,7 +597,8 @@ async def revoke_agent_token(agent_id: str):
     return error(code=ErrorCode.NOT_FOUND, message=f"Token '{agent_id}' not found")
 
 
-@router.post("/tokens/revoke-t-all")
+# 认证：一键撤销所有 T 类 Token 需要 agent:token:revoke_all 权限（紧急停止）
+@router.post("/tokens/revoke-t-all", dependencies=[Depends(require_permission("agent:token:revoke_all"))])
 async def revoke_all_t_tokens():
     """一键撤销所有 T 类 Token（紧急停止）"""
     count = agent_token_store.revoke_t_tokens()
@@ -606,7 +614,8 @@ async def revoke_all_t_tokens():
 from app.models.schemas import AgentPipelineRequest
 
 
-@router.post("/pipeline/execute")
+# 认证：管线执行属于执行类操作，需要 agent:execute 权限
+@router.post("/pipeline/execute", dependencies=[Depends(require_permission("agent:execute"))])
 async def execute_pipeline(request: AgentPipelineRequest):
     """
     执行工作流管线（B类，需要认证）

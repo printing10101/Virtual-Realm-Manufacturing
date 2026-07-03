@@ -5,6 +5,7 @@ import en from 'element-plus/es/locale/lang/en'
 import App from './App.vue'
 import router from './router'
 import { i18n, setLocale, SUPPORTED_LOCALES, type SupportedLocale } from './i18n'
+import { setHttpReady } from './utils/http'
 import './assets/styles/theme.css'
 
 const elLocale = ref(getLocale() === 'en' ? en : zhCn)
@@ -38,3 +39,6 @@ app.use(router)
 app.config.globalProperties.$setLocale = setLocaleWithEl
 
 app.mount('#app')
+
+// 初始化阶段完成后启用 HTTP 错误弹窗（延迟 3 秒等待后端健康检查）
+setTimeout(() => setHttpReady(), 3000)

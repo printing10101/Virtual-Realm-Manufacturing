@@ -1,8 +1,16 @@
-"""统一数据仓储基类。
+"""统一数据仓储基类（精简泛型版，生产用）。
 
 提供JSON文件加载、内存缓存、查询和筛选功能。
 MachineDatabase、ToolDatabase、MaterialDatabase均从此基类继承，
 消除"拷贝-修改"式重复代码。
+
+.. note::
+    本模块为 ``app.database.repository`` 包下的**精简泛型版** JSON Repository，
+    基于 ``Generic[T]``，仅提供加载+缓存+查询，供生产模块使用。
+
+    与 ``app/repository/json_repository.py`` 的**完整版**不同：后者提供文件锁
+    （fcntl）、版本控制（jsonl 日志）、事务支持，继承自 ``Repository`` 基类，
+    但当前仅由测试覆盖。两者 API 不同，非简单替换关系。
 
 设计原则：
 - 单一职责：仅负责JSON文件加载和基础CRUD

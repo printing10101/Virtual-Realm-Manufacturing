@@ -2,10 +2,10 @@
   <div class="plugin-market">
     <el-card class="header-card">
       <div class="header-content">
-        <h2>插件市场</h2>
+        <h2>{{ t('pluginMarket.pageTitle') }}</h2>
         <el-input
           v-model="searchQuery"
-          placeholder="搜索插件..."
+          :placeholder="t('pluginMarket.placeholderSearch')"
           style="width: 300px"
           clearable
         >
@@ -55,13 +55,13 @@
               size="small"
               @click="handleInstall(plugin)"
             >
-              安装
+              {{ t('pluginMarket.btnInstall') }}
             </el-button>
             <el-button
               size="small"
               @click="handleViewDetail(plugin)"
             >
-              详情
+              {{ t('pluginMarket.btnDetail') }}
             </el-button>
           </div>
         </el-card>
@@ -70,15 +70,18 @@
 
     <el-empty
       v-if="filteredPlugins.length === 0"
-      description="暂无可用插件"
+      :description="t('pluginMarket.emptyNoPlugin')"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Search, Setting } from '@element-plus/icons-vue'
+
+const { t } = useI18n()
 
 interface MarketplacePlugin {
   id: string
@@ -92,12 +95,12 @@ interface MarketplacePlugin {
 const searchQuery = ref('')
 
 const marketplacePlugins = ref<MarketplacePlugin[]>([
-  { id: 'fanuc-adapter', name: '发那科适配器', version: '1.0.0', description: '支持发那科系列机床通信', plugin_type: 'adapter', author: '灵境制造团队' },
-  { id: 'siemens-adapter', name: '西门子适配器', version: '1.0.0', description: '支持西门子840D/828D系统', plugin_type: 'adapter', author: '灵境制造团队' },
-  { id: 'opcua-source', name: 'OPC UA数据源', version: '2.0.0', description: 'OPC UA协议数据采集', plugin_type: 'data_source', author: '灵境制造团队' },
-  { id: 'modbus-source', name: 'Modbus数据源', version: '1.7.0', description: 'Modbus RTU/TCP数据采集', plugin_type: 'data_source', author: '灵境制造团队' },
-  { id: 'vibration-analyzer', name: '振动分析器', version: '1.0.0', description: '机床振动频谱分析', plugin_type: 'analyzer', author: '灵境制造团队' },
-  { id: '3d-monitor', name: '3D监控', version: '1.0.0', description: '三维机床状态监控', plugin_type: 'visualization', author: '灵境制造团队' },
+  { id: 'fanuc-adapter', name: t('pluginMarket.pluginFanucAdapter'), version: '1.0.0', description: t('pluginMarket.pluginFanucAdapterDesc'), plugin_type: 'adapter', author: t('pluginMarket.pluginAuthor') },
+  { id: 'siemens-adapter', name: t('pluginMarket.pluginSiemensAdapter'), version: '1.0.0', description: t('pluginMarket.pluginSiemensAdapterDesc'), plugin_type: 'adapter', author: t('pluginMarket.pluginAuthor') },
+  { id: 'opcua-source', name: t('pluginMarket.pluginOpcuaSource'), version: '2.0.0', description: t('pluginMarket.pluginOpcuaSourceDesc'), plugin_type: 'data_source', author: t('pluginMarket.pluginAuthor') },
+  { id: 'modbus-source', name: t('pluginMarket.pluginModbusSource'), version: '1.7.0', description: t('pluginMarket.pluginModbusSourceDesc'), plugin_type: 'data_source', author: t('pluginMarket.pluginAuthor') },
+  { id: 'vibration-analyzer', name: t('pluginMarket.pluginVibrationAnalyzer'), version: '1.0.0', description: t('pluginMarket.pluginVibrationAnalyzerDesc'), plugin_type: 'analyzer', author: t('pluginMarket.pluginAuthor') },
+  { id: '3d-monitor', name: t('pluginMarket.plugin3dMonitor'), version: '1.0.0', description: t('pluginMarket.plugin3dMonitorDesc'), plugin_type: 'visualization', author: t('pluginMarket.pluginAuthor') },
 ])
 
 const filteredPlugins = computed(() => {
@@ -109,11 +112,11 @@ const filteredPlugins = computed(() => {
 })
 
 const handleInstall = (plugin: MarketplacePlugin) => {
-  ElMessage.success(`插件 "${plugin.name}" 安装已开始`)
+  ElMessage.success(t('pluginMarket.msgInstallStarted', { name: plugin.name }))
 }
 
 const handleViewDetail = (plugin: MarketplacePlugin) => {
-  ElMessage.info(`查看插件 "${plugin.name}" 详情`)
+  ElMessage.info(t('pluginMarket.msgViewDetail', { name: plugin.name }))
 }
 </script>
 

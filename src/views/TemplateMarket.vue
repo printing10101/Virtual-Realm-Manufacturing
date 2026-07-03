@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import http from '@/utils/http'
-import { API_CONFIG } from '@/config/api'
+import { API_CONFIG, buildApiPath } from '@/config/api'
+import { extractErrorMessage } from '@/utils/error-handler'
+import { useProjectStore } from '@/stores/project'
 
+const { t } = useI18n()
 const router = useRouter()
+const projectStore = useProjectStore()
 
 // 类型定义
 interface TrendingTemplate {
@@ -24,6 +29,8 @@ interface Template {
   author: string
   created_at: number
   updated_at: number
+  metadata?: Record<string, unknown>
+  commit_log?: Array<Record<string, unknown>>
 }
 
 const trending = ref<TrendingTemplate[]>([])
@@ -39,24 +46,39 @@ const publishForm = ref({
   description: ''
 })
 
-const API_BASE = API_CONFIG.V1
+// 缓存机制：避免重复请求
+const trendingCache = ref<TrendingTemplate[] | null>(null)
+const trendingCacheTime = ref<number>(0)
+const CACHE_DURATION = 60000 // 1分钟缓存
 
-async function fetchTrending() {
+async function fetchTrending(forceRefresh = false) {
+  const now = Date.now()
+  
+  // 使用缓存（除非强制刷新）
+  if (!forceRefresh && trendingCache.value && (now - trendingCacheTime.value < CACHE_DURATION)) {
+    trending.value = trendingCache.value
+    return
+  }
+  
   try {
-    const res = await http.get(`${API_BASE}/template_market/trending`)
-    if (res.data.code === 'SUCCESS') trending.value = res.data.data
-  } catch {
-    // 静默处理
+    const res = await http.get(buildApiPath(API_CONFIG.V1, '/template_market/trending'))
+    if (res.data.code === 'SUCCESS') {
+      trending.value = res.data.data
+      trendingCache.value = res.data.data
+      trendingCacheTime.value = now
+    }
+  } catch (error) {
+    console.warn(t('templateMarket.errorFetchTrending'), extractErrorMessage(error))
   }
 }
 
 async function fetchTemplates() {
   loading.value = true
   try {
-    const res = await http.get(`${API_BASE}/templates/branches`)
+    const res = await http.get(buildApiPath(API_CONFIG.V1, '/templates/branches'))
     if (res.data.code === 'SUCCESS') templates.value = res.data.data
-  } catch {
-    // 静默处理
+  } catch (error) {
+    console.warn(t('templateMarket.errorFetchTemplates'), extractErrorMessage(error))
   } finally {
     loading.value = false
   }
@@ -65,29 +87,37 @@ async function fetchTemplates() {
 async function subscribe() {
   if (!subscribeCategory.value.trim()) return
   try {
-    await http.post(`${API_BASE}/template_market/subscribe`, {
-      project_id: 'default', category: subscribeCategory.value
+    await http.post(buildApiPath(API_CONFIG.V1, '/template_market/subscribe'), {
+      project_id: projectStore.projectId || 'default', category: subscribeCategory.value
     })
     subscriptions.value.push(subscribeCategory.value)
     subscribeCategory.value = ''
-  } catch {
-    // 静默处理
+  } catch (error) {
+    console.warn(t('templateMarket.errorSubscribe'), extractErrorMessage(error))
   }
 }
 
 async function publishTemplate() {
   if (!publishForm.value.branch_id || !publishForm.value.name) return
   try {
-    await http.post(`${API_BASE}/template_market/publish`, publishForm.value)
+    await http.post(buildApiPath(API_CONFIG.V1, '/template_market/publish'), publishForm.value)
     publishForm.value = { branch_id: '', name: '', category: 'general', description: '' }
-    fetchTrending()
-  } catch {
-    // 静默处理
+    fetchTrending(true) // 发布后强制刷新缓存
+  } catch (error) {
+    console.warn(t('templateMarket.errorPublish'), extractErrorMessage(error))
   }
 }
 
 function viewDetail(branchId: string) {
   router.push(`/templates/${branchId}`)
+}
+
+function viewUpdates() {
+  router.push('/update-center')
+}
+
+function viewBranches() {
+  router.push('/branch-manager')
 }
 </script>
 
@@ -95,16 +125,16 @@ function viewDetail(branchId: string) {
   <div class="template-market-page">
     <el-card class="header-card">
       <div class="page-header">
-        <h2>模板市场</h2>
+        <h2>{{ t('templateMarket.pageTitle') }}</h2>
         <div class="header-actions">
           <el-button
             type="primary"
             @click="viewUpdates"
           >
-            更新中心
+            {{ t('templateMarket.btnUpdateCenter') }}
           </el-button>
           <el-button @click="viewBranches">
-            分支管理
+            {{ t('templateMarket.btnBranchManager') }}
           </el-button>
         </div>
       </div>
@@ -115,14 +145,14 @@ function viewDetail(branchId: string) {
       class="main-tabs"
     >
       <el-tab-pane
-        label="模板列表"
+        :label="t('templateMarket.tabTemplateList')"
         name="market"
       >
         <div
           v-if="loading"
           class="loading"
         >
-          加载中...
+          {{ t('common.loading') }}
         </div>
         <el-row
           v-else
@@ -150,8 +180,8 @@ function viewDetail(branchId: string) {
                 </div>
               </template>
               <div class="template-meta">
-                <div>更新时间: {{ new Date(tpl.updated_at * 1000).toLocaleDateString() }}</div>
-                <div>提交记录: {{ tpl.commit_log?.length || 0 }} 条</div>
+                <div>{{ t('templateMarket.labelUpdateTime') }}: {{ new Date(tpl.updated_at * 1000).toLocaleDateString() }}</div>
+                <div>{{ t('templateMarket.labelCommitLog') }}: {{ tpl.commit_log?.length || 0 }} {{ t('templateMarket.unitCount') }}</div>
               </div>
             </el-card>
           </el-col>
@@ -159,7 +189,7 @@ function viewDetail(branchId: string) {
       </el-tab-pane>
 
       <el-tab-pane
-        label="热度榜"
+        :label="t('templateMarket.tabTrending')"
         name="trending"
       >
         <el-table
@@ -168,21 +198,21 @@ function viewDetail(branchId: string) {
         >
           <el-table-column
             prop="name"
-            label="模板名称"
+            :label="t('templateMarket.labelTemplateName')"
           />
           <el-table-column
             prop="category"
-            label="分类"
+            :label="t('templateMarket.labelCategory')"
             width="120"
           />
           <el-table-column
             prop="adoption_count"
-            label="采用次数"
+            :label="t('templateMarket.labelAdoptionCount')"
             width="120"
             sortable
           />
           <el-table-column
-            label="操作"
+            :label="t('templateMarket.labelOperation')"
             width="100"
           >
             <template #default="{ row }">
@@ -190,30 +220,30 @@ function viewDetail(branchId: string) {
                 size="small"
                 @click="viewDetail(row.branch_id)"
               >
-                查看
+                {{ t('common.view') }}
               </el-button>
             </template>
           </el-table-column>
         </el-table>
         <el-empty
           v-if="trending.length === 0"
-          description="暂无热度数据"
+          :description="t('templateMarket.emptyNoTrending')"
         />
       </el-tab-pane>
 
       <el-tab-pane
-        label="订阅"
+        :label="t('templateMarket.tabSubscribe')"
         name="subscribe"
       >
         <div class="subscribe-section">
           <el-input
             v-model="subscribeCategory"
-            placeholder="输入行业或材料类别"
+            :placeholder="t('templateMarket.placeholderSubscribe')"
             style="width: 300px; margin-right: 12px;"
           >
             <template #append>
               <el-button @click="subscribe">
-                订阅
+                {{ t('templateMarket.btnSubscribe') }}
               </el-button>
             </template>
           </el-input>
@@ -228,13 +258,13 @@ function viewDetail(branchId: string) {
           </el-tag>
           <el-empty
             v-if="subscriptions.length === 0"
-            description="暂无订阅"
+            :description="t('templateMarket.emptyNoSubscribe')"
           />
         </div>
       </el-tab-pane>
 
       <el-tab-pane
-        label="发布"
+        :label="t('templateMarket.tabPublish')"
         name="publish"
       >
         <el-form
@@ -242,51 +272,51 @@ function viewDetail(branchId: string) {
           label-width="100px"
           style="max-width: 500px;"
         >
-          <el-form-item label="分支ID">
+          <el-form-item :label="t('templateMarket.labelBranchId')">
             <el-input
               v-model="publishForm.branch_id"
-              placeholder="选择要发布的分支ID"
+              :placeholder="t('templateMarket.placeholderBranchId')"
             />
           </el-form-item>
-          <el-form-item label="模板名称">
+          <el-form-item :label="t('templateMarket.labelTemplateName')">
             <el-input
               v-model="publishForm.name"
-              placeholder="模板显示名称"
+              :placeholder="t('templateMarket.placeholderTemplateName')"
             />
           </el-form-item>
-          <el-form-item label="分类">
+          <el-form-item :label="t('templateMarket.labelCategory')">
             <el-select v-model="publishForm.category">
               <el-option
-                label="通用"
+                :label="t('templateMarket.categoryGeneral')"
                 value="general"
               />
               <el-option
-                label="汽车行业"
+                :label="t('templateMarket.categoryAutomotive')"
                 value="automotive"
               />
               <el-option
-                label="航空航天"
+                :label="t('templateMarket.categoryAerospace')"
                 value="aerospace"
               />
               <el-option
-                label="模具"
+                :label="t('templateMarket.categoryMold')"
                 value="mold"
               />
               <el-option
-                label="45钢"
+                :label="t('templateMarket.categorySteel45')"
                 value="steel_45"
               />
               <el-option
-                label="铝合金"
+                :label="t('templateMarket.categoryAluminum')"
                 value="aluminum"
               />
               <el-option
-                label="钛合金"
+                :label="t('templateMarket.categoryTitanium')"
                 value="titanium"
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="描述">
+          <el-form-item :label="t('templateMarket.labelDescription')">
             <el-input
               v-model="publishForm.description"
               type="textarea"
@@ -298,7 +328,7 @@ function viewDetail(branchId: string) {
               type="primary"
               @click="publishTemplate"
             >
-              发布到市场
+              {{ t('templateMarket.btnPublish') }}
             </el-button>
           </el-form-item>
         </el-form>
