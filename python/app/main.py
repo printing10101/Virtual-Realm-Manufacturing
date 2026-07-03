@@ -71,6 +71,7 @@ from app.api.v1 import (
     dnc as dnc_routes,
     plugins,
     template_market,
+    llm_providers,
 )
 from app.integrations.mes import api as mes_api
 
@@ -132,7 +133,7 @@ def get_state_file_path() -> str:
 
 app = FastAPI(
     title="灵境制造 API",
-    version="2.3.0",
+    version="2.4.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -179,14 +180,13 @@ async def startup_event():
     from app.database.models import init_db
     from app.tasks.task_system import AsyncTaskManager
     from app.services.redis_client import get_redis
-    import os as _os
 
-    # --- Step 1: Set DB_URL for async SQLAlchemy ---
-    if not _os.environ.get("DB_URL"):
-        db_path = Path(__file__).parent.parent / "data" / "app.db"
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        _os.environ["DB_URL"] = f"sqlite+aiosqlite:///{db_path}"
-        logger.info("[startup] DB_URL not set, using default: %s", _os.environ["DB_URL"])
+    # --- Step 1: 确保默认 SQLite 数据库目录存在 ---
+    # DB_URL 环境变量不再由 main.py 设置，统一由 config.database.db_url 管理
+    _db_url = config.database.db_url
+    if _db_url.startswith("sqlite"):
+        _db_file = _db_url.split("///", 1)[-1]
+        Path(_db_file).parent.mkdir(parents=True, exist_ok=True)
 
     # --- Step 2: Initialize async DB tables + seed RBAC ---
     # (init_db uses Base.metadata.create_all, which handles fresh DB creation)
@@ -231,11 +231,15 @@ async def shutdown_event():
     from app.tasks.task_system import AsyncTaskManager
     from app.database.connection import close_db
     from app.services.redis_client import close_redis
+    from app.ai.llm_client import close_shared_http_client
+    from app.core.logging_config import shutdown_logging
 
     task_mgr = AsyncTaskManager()
     await task_mgr.shutdown()
     await close_redis()
+    await close_shared_http_client()
     await close_db()
+    shutdown_logging()
 
     logger.info("FastAPI shutdown event completed")
 
@@ -298,7 +302,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 app.add_middleware(MetricsMiddleware)
 
 # Unified ASGI auth middleware (merges AuthMiddleware, JwtAuthMiddleware, AgentAuthMiddleware)
-jwt_auth_enabled = os.environ.get("LNN_JWT_AUTH_ENABLED", "true").lower() == "true"
+jwt_auth_enabled = config.security.jwt_auth_enabled
 app.add_middleware(
     UnifiedAuthMiddleware,
     lnn_auth_enabled=auth_enabled,
@@ -425,10 +429,15 @@ app.include_router(mes_api.router)
 app.include_router(plugins.router)
 # 模板市场
 app.include_router(template_market.router)
+# NL-to-CAD 自然语言建模
+from app.api.v1.nl2cad.routes import router as nl2cad_router
+app.include_router(nl2cad_router)
+# LLM Provider 网关（多后端 LLM 管理：Ollama/LMStudio/llama.cpp/vLLM 等 + 云端 API）
+app.include_router(llm_providers.router)
 
 register_exception_handlers(app)
 
 logger.info("Application initialized with %d routes", len(app.routes))
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=config.server.port, reload=True)
+    uvicorn.run("app.main:app", host=config.server.host, port=config.server.port, reload=True)

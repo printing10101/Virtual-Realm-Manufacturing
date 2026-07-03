@@ -3,15 +3,18 @@
     <el-card class="demo-section">
       <template #header>
         <div class="card-header">
-          <h3>UX 功能演示</h3>
+          <h3>{{ t('uxDemo.pageTitle') }}</h3>
           <div class="header-actions">
-            <el-button type="primary" @click="startTour">
+            <el-button
+              type="primary"
+              @click="startTour"
+            >
               <el-icon><Guide /></el-icon>
-              启动引导流程
+              {{ t('uxDemo.btnStartTour') }}
             </el-button>
             <el-button @click="openCommandPalette">
               <el-icon><Search /></el-icon>
-              命令面板 (Ctrl+K)
+              {{ t('uxDemo.btnCommandPalette') }}
             </el-button>
           </div>
         </div>
@@ -19,32 +22,50 @@
 
       <el-row :gutter="20">
         <el-col :span="8">
-          <el-statistic title="引导步骤数" :value="tourSteps.length" />
+          <el-statistic
+            :title="t('uxDemo.statTourSteps')"
+            :value="tourSteps.length"
+          />
         </el-col>
         <el-col :span="8">
-          <el-statistic title="示例工程数" :value="exampleCount" />
+          <el-statistic
+            :title="t('uxDemo.statExampleCount')"
+            :value="exampleCount"
+          />
         </el-col>
         <el-col :span="8">
-          <el-statistic title="注册命令数" :value="commandCount" />
+          <el-statistic
+            :title="t('uxDemo.statCommandCount')"
+            :value="commandCount"
+          />
         </el-col>
       </el-row>
 
       <el-divider />
 
       <div class="feature-list">
-        <h4>已实现功能</h4>
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="引导流程">
-            <el-tag type="success">已完成</el-tag>
-            <span class="feature-desc">5个步骤、进度记忆、响应式设计</span>
+        <h4>{{ t('uxDemo.sectionFeatures') }}</h4>
+        <el-descriptions
+          :column="1"
+          border
+        >
+          <el-descriptions-item :label="t('uxDemo.featureTourLabel')">
+            <el-tag type="success">
+              {{ t('uxDemo.tagCompleted') }}
+            </el-tag>
+            <span class="feature-desc">{{ t('uxDemo.featureTourDesc') }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="示例工程库">
-            <el-tag type="success">已完成</el-tag>
-            <span class="feature-desc">12个示例、搜索过滤、代码预览、一键复制</span>
+          <el-descriptions-item :label="t('uxDemo.featureGalleryLabel')">
+            <el-tag type="success">
+              {{ t('uxDemo.tagCompleted') }}
+            </el-tag>
+            <span class="feature-desc">{{ t('uxDemo.featureGalleryDesc') }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="命令面板">
-            <el-tag type="success">已完成</el-tag>
-            <span class="feature-desc">快捷键唤起、模糊搜索、智能排序、使用频率记忆</span>
+          <el-descriptions-item :label="t('uxDemo.featureCommandLabel')">
+            <el-tag type="success">
+              {{ t('uxDemo.tagCompleted') }}
+            </el-tag>
+            <span class="feature-desc">{{ t('uxDemo.featureCommandDesc') }}</span>
           </el-descriptions-item>
         </el-descriptions>
       </div>
@@ -71,7 +92,7 @@
     <!-- 示例工程库 -->
     <el-card class="demo-section">
       <template #header>
-        <h3>示例工程库预览</h3>
+        <h3>{{ t('uxDemo.sectionGalleryPreview') }}</h3>
       </template>
       <ExampleGallery />
     </el-card>
@@ -80,7 +101,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
+
+const { t } = useI18n()
 import { Guide, Search } from '@element-plus/icons-vue'
 import Tour from '@/components/Onboarding/Tour.vue'
 import type { TourStep } from '@/components/Onboarding/Tour.vue'
@@ -92,32 +116,32 @@ import { exampleProjects } from '@/examples/data'
 // 引导步骤配置
 const tourSteps: TourStep[] = [
   {
-    title: '欢迎使用灵境制造系统',
-    description: '这是一个AI驱动的3D建模与工艺规划系统。让我们通过几个简单的步骤来了解主要功能。',
+    title: t('uxDemo.tourStep1Title'),
+    description: t('uxDemo.tourStep1Desc'),
     target: '.app-header',
     placement: 'bottom'
   },
   {
-    title: '文件管理',
-    description: '在这里可以新建、打开、保存工程项目，支持导入STEP和DXF格式文件。',
+    title: t('uxDemo.tourStep2Title'),
+    description: t('uxDemo.tourStep2Desc'),
     target: '.header-right',
     placement: 'bottom'
   },
   {
-    title: '导航菜单',
-    description: '通过顶部菜单可以快速访问工作区、设置、工艺规划等核心功能模块。',
+    title: t('uxDemo.tourStep3Title'),
+    description: t('uxDemo.tourStep3Desc'),
     target: '.header-menu',
     placement: 'bottom'
   },
   {
-    title: '命令面板',
-    description: '按 Ctrl+K 可以快速唤起命令面板，支持模糊搜索和智能排序，提升操作效率。',
+    title: t('uxDemo.tourStep4Title'),
+    description: t('uxDemo.tourStep4Desc'),
     target: '.header-actions',
     placement: 'bottom'
   },
   {
-    title: '准备开始',
-    description: '引导已完成！您可以随时从帮助菜单重新启动引导流程。现在让我们开始探索系统的强大功能吧！'
+    title: t('uxDemo.tourStep5Title'),
+    description: t('uxDemo.tourStep5Desc')
   }
 ]
 
@@ -125,85 +149,85 @@ const tourSteps: TourStep[] = [
 const registeredCommands = computed<Command[]>(() => [
   {
     id: 'new-project',
-    name: '新建项目',
-    description: '创建一个新的工程项目',
-    category: '文件',
+    name: t('uxDemo.cmdNewProjectName'),
+    description: t('uxDemo.cmdNewProjectDesc'),
+    category: t('uxDemo.categoryFile'),
     icon: 'DocumentAdd',
     shortcut: 'Ctrl+N',
     action: () => {
-      ElMessage.success('新建项目功能已触发')
+      ElMessage.success(t('uxDemo.msgNewProjectTriggered'))
     }
   },
   {
     id: 'open-project',
-    name: '打开项目',
-    description: '打开已有的工程项目',
-    category: '文件',
+    name: t('uxDemo.cmdOpenProjectName'),
+    description: t('uxDemo.cmdOpenProjectDesc'),
+    category: t('uxDemo.categoryFile'),
     icon: 'FolderOpened',
     shortcut: 'Ctrl+O',
     action: () => {
-      ElMessage.success('打开项目功能已触发')
+      ElMessage.success(t('uxDemo.msgOpenProjectTriggered'))
     }
   },
   {
     id: 'save-project',
-    name: '保存项目',
-    description: '保存当前工程项目',
-    category: '文件',
+    name: t('uxDemo.cmdSaveProjectName'),
+    description: t('uxDemo.cmdSaveProjectDesc'),
+    category: t('uxDemo.categoryFile'),
     icon: 'Download',
     shortcut: 'Ctrl+S',
     action: () => {
-      ElMessage.success('保存项目功能已触发')
+      ElMessage.success(t('uxDemo.msgSaveProjectTriggered'))
     }
   },
   {
     id: 'export-gcode',
-    name: '导出G代码',
-    description: '将工具路径导出为G代码文件',
-    category: '工具路径',
+    name: t('uxDemo.cmdExportGCodeName'),
+    description: t('uxDemo.cmdExportGCodeDesc'),
+    category: t('uxDemo.categoryToolpath'),
     icon: 'Document',
     action: () => {
-      ElMessage.success('导出G代码功能已触发')
+      ElMessage.success(t('uxDemo.msgExportGCodeTriggered'))
     }
   },
   {
     id: 'start-simulation',
-    name: '启动仿真',
-    description: '开始加工过程仿真模拟',
-    category: '仿真',
+    name: t('uxDemo.cmdStartSimulationName'),
+    description: t('uxDemo.cmdStartSimulationDesc'),
+    category: t('uxDemo.categorySimulation'),
     icon: 'VideoPlay',
     action: () => {
-      ElMessage.success('启动仿真功能已触发')
+      ElMessage.success(t('uxDemo.msgStartSimulationTriggered'))
     }
   },
   {
     id: 'ai-feature-recognition',
-    name: 'AI特征识别',
-    description: '使用AI自动识别加工特征',
-    category: 'AI',
+    name: t('uxDemo.cmdAiFeatureName'),
+    description: t('uxDemo.cmdAiFeatureDesc'),
+    category: t('uxDemo.categoryAI'),
     icon: 'MagicStick',
     action: () => {
-      ElMessage.success('AI特征识别功能已触发')
+      ElMessage.success(t('uxDemo.msgAiFeatureTriggered'))
     }
   },
   {
     id: 'view-examples',
-    name: '查看示例',
-    description: '浏览示例工程库',
-    category: '帮助',
+    name: t('uxDemo.cmdViewExamplesName'),
+    description: t('uxDemo.cmdViewExamplesDesc'),
+    category: t('uxDemo.categoryHelp'),
     icon: 'Collection',
     action: () => {
-      ElMessage.success('查看示例功能已触发')
+      ElMessage.success(t('uxDemo.msgViewExamplesTriggered'))
     }
   },
   {
     id: 'open-settings',
-    name: '系统设置',
-    description: '打开系统设置页面',
-    category: '系统',
+    name: t('uxDemo.cmdOpenSettingsName'),
+    description: t('uxDemo.cmdOpenSettingsDesc'),
+    category: t('uxDemo.categorySystem'),
     icon: 'Setting',
     action: () => {
-      ElMessage.success('系统设置功能已触发')
+      ElMessage.success(t('uxDemo.msgOpenSettingsTriggered'))
     }
   }
 ])
@@ -234,11 +258,11 @@ function onTourStepChange(index: number) {
 }
 
 function onTourFinish() {
-  ElMessage.success('引导流程已完成！')
+  ElMessage.success(t('uxDemo.msgTourCompleted'))
 }
 
 function onTourSkip(index: number) {
-  ElMessage.info(`引导流程已跳过（从第 ${index + 1} 步）`)
+  ElMessage.info(t('uxDemo.msgTourSkipped', { step: index + 1 }))
 }
 
 function onCommandExecute(command: Command) {

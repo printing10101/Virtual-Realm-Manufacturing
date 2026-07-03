@@ -117,16 +117,16 @@ class PredictionExplainer:
         self._total_latency_ms = 0.0
 
     async def _get_llm_client(self) -> Any:
-        if self._llm_client is None:
-            from app.ai.llm_client import CloudLLMClient
-            from app.config import config
+        """获取 LLM 客户端。
 
-            self._llm_client = CloudLLMClient(
-                api_key=config.ai.cloud_api_key,
-                base_url=config.ai.cloud_base_url,
-                model=config.ai.cloud_model,
-                timeout=config.ai.timeout,
-            )
+        统一使用 ``get_llm_client()`` 工厂函数，优先复用 ProviderRegistry 中
+        已激活的 Provider，回退到 config.ai 配置。避免在此处直接实例化
+        ``CloudLLMClient``，以保证客户端生命周期与连接池的统一管理。
+        """
+        if self._llm_client is None:
+            from app.ai.llm_client import get_llm_client
+
+            self._llm_client = await get_llm_client()
         return self._llm_client
 
     async def explain(

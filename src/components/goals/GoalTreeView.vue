@@ -1,14 +1,14 @@
 <template>
   <div class="goal-tree-view">
     <div class="tree-header">
-      <h3>目标层级结构</h3>
+      <h3>{{ t('goals.treeView.title') }}</h3>
       <el-button
         size="small"
         :loading="loading"
         @click="$emit('refresh')"
       >
         <el-icon><Refresh /></el-icon>
-        刷新
+        {{ t('goals.treeView.refresh') }}
       </el-button>
     </div>
     <el-tree
@@ -43,7 +43,10 @@
 
 <script setup lang="ts">
 import { Refresh } from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 import { getGoalLevelLabel, getGoalLevelTagType, getGoalStatusLabel, getGoalStatusTagType } from '@/utils/statusHelpers'
+
+const { t } = useI18n()
 
 interface GoalTreeNode {
   id: string

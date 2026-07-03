@@ -150,8 +150,17 @@ class GracefulShutdownHandler:
         self._shutting_down = False
 
     def setup(self):
-        signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
-        signal.signal(signal.SIGINT, self._handle_shutdown_signal)
+        # signal.signal() 仅在主线程中可用；在测试环境（TestClient 运行于
+        # 子线程）或非主解释器中会抛 ValueError，需优雅降级。
+        try:
+            signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
+            signal.signal(signal.SIGINT, self._handle_shutdown_signal)
+        except (ValueError, OSError) as e:
+            logger.warning(
+                "Signal handlers not registered (non-main thread or "
+                "unsupported platform): %s",
+                e,
+            )
 
         atexit.register(self._handle_atexit)
 

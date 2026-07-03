@@ -1,15 +1,22 @@
 <template>
   <div class="cost-dashboard">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-header__title">
+        <h1>{{ t('costDashboard.pageTitle') }}</h1>
+      </div>
+    </div>
+
     <el-alert
       v-if="budgetExceeded"
-      title="预算超限警告"
+      :title="t('costDashboard.alertBudgetExceededTitle')"
       type="error"
       :closable="false"
       show-icon
       style="margin-bottom: 16px"
     >
       <div>
-        部分预算已达到或超过限额，新任务可能被阻止执行。请尽快调整预算或减少资源消耗。
+        {{ t('costDashboard.alertBudgetExceededDesc') }}
       </div>
     </el-alert>
 
@@ -58,7 +65,7 @@
         >
           <template #header>
             <div class="card-header">
-              <span>成本维度分布</span>
+              <span>{{ t('costDashboard.chartCostDistribution') }}</span>
               <div>
                 <el-select
                   v-model="costDimension"
@@ -67,19 +74,19 @@
                   @change="loadCostDistribution"
                 >
                   <el-option
-                    label="按代理"
+                    :label="t('costDashboard.dimensionAgent')"
                     value="agent"
                   />
                   <el-option
-                    label="按项目"
+                    :label="t('costDashboard.dimensionProject')"
                     value="project"
                   />
                   <el-option
-                    label="按模型"
+                    :label="t('costDashboard.dimensionModel')"
                     value="model"
                   />
                   <el-option
-                    label="按提供商"
+                    :label="t('costDashboard.dimensionProvider')"
                     value="provider"
                   />
                 </el-select>
@@ -87,10 +94,14 @@
                   size="small"
                   :loading="loading.pie"
                   circle
+                  :aria-label="t('costDashboard.refreshCostDistributionAriaLabel')"
+                  :title="t('costDashboard.refreshCostDistributionTitle')"
                   style="margin-left:4px"
                   @click="loadCostDistribution"
                 >
-                  <el-icon><Refresh /></el-icon>
+                  <el-icon :size="16">
+                    <Refresh />
+                  </el-icon>
                 </el-button>
               </div>
             </div>
@@ -109,15 +120,19 @@
         >
           <template #header>
             <div class="card-header">
-              <span>成本分类对比</span>
+              <span>{{ t('costDashboard.chartCostByType') }}</span>
               <div>
                 <el-button
                   size="small"
                   :loading="loading.bar"
                   circle
+                  :aria-label="t('costDashboard.refreshCostByTypeAriaLabel')"
+                  :title="t('costDashboard.refreshCostByTypeTitle')"
                   @click="loadCostByType"
                 >
-                  <el-icon><Refresh /></el-icon>
+                  <el-icon :size="16">
+                    <Refresh />
+                  </el-icon>
                 </el-button>
               </div>
             </div>
@@ -138,7 +153,7 @@
         >
           <template #header>
             <div class="card-header">
-              <span>成本趋势分析</span>
+              <span>{{ t('costDashboard.chartCostTrend') }}</span>
               <div>
                 <el-select
                   v-model="trendDays"
@@ -147,19 +162,19 @@
                   @change="loadCostTrend"
                 >
                   <el-option
-                    label="7天"
+                    :label="t('costDashboard.days7')"
                     :value="7"
                   />
                   <el-option
-                    label="14天"
+                    :label="t('costDashboard.days14')"
                     :value="14"
                   />
                   <el-option
-                    label="30天"
+                    :label="t('costDashboard.days30')"
                     :value="30"
                   />
                   <el-option
-                    label="60天"
+                    :label="t('costDashboard.days60')"
                     :value="60"
                   />
                 </el-select>
@@ -167,10 +182,14 @@
                   size="small"
                   :loading="loading.trend"
                   circle
+                  :aria-label="t('costDashboard.refreshCostTrendAriaLabel')"
+                  :title="t('costDashboard.refreshCostTrendTitle')"
                   style="margin-left:4px"
                   @click="loadCostTrend"
                 >
-                  <el-icon><Refresh /></el-icon>
+                  <el-icon :size="16">
+                    <Refresh />
+                  </el-icon>
                 </el-button>
               </div>
             </div>
@@ -183,62 +202,62 @@
       </el-col>
     </el-row>
 
-    <el-card
-      shadow="hover"
-      class="alerts-card"
-    >
-      <template #header>
-        <div class="card-header">
-          <span>预算告警列表</span>
-          <div>
-            <el-select
-              v-model="alertFilter"
-              size="small"
-              style="width:100px"
-              @change="loadAlerts"
-            >
-              <el-option
-                label="全部"
-                value=""
-              />
-              <el-option
-                label="警告"
-                value="warning"
-              />
-              <el-option
-                label="超限"
-                value="exceeded"
-              />
-            </el-select>
-            <el-button
-              size="small"
-              :disabled="!hasUnread"
-              style="margin-left:4px"
-              @click="markAllRead"
-            >
-              全部已读
-            </el-button>
-            <el-button
-              size="small"
-              :loading="loading.alerts"
-              circle
-              style="margin-left:4px"
-              @click="loadAlerts"
-            >
-              <el-icon><Refresh /></el-icon>
-            </el-button>
-          </div>
+    <div class="content-card">
+      <div class="content-card__header">
+        <span class="content-card__title">{{ t('costDashboard.alertListTitle') }}</span>
+        <div>
+          <el-select
+            v-model="alertFilter"
+            size="small"
+            style="width:100px"
+            @change="loadAlerts"
+          >
+            <el-option
+              :label="t('costDashboard.filterAll')"
+              value=""
+            />
+            <el-option
+              :label="t('costDashboard.filterWarning')"
+              value="warning"
+            />
+            <el-option
+              :label="t('costDashboard.filterExceeded')"
+              value="exceeded"
+            />
+          </el-select>
+          <el-button
+            size="small"
+            :disabled="!hasUnread"
+            style="margin-left:4px"
+            @click="markAllRead"
+          >
+            {{ t('costDashboard.btnMarkAllRead') }}
+          </el-button>
+          <el-button
+            size="small"
+            :loading="loading.alerts"
+            circle
+            :aria-label="t('costDashboard.refreshBudgetAlertsAriaLabel')"
+            :title="t('costDashboard.refreshBudgetAlertsTitle')"
+            style="margin-left:4px"
+            @click="loadAlerts"
+          >
+            <el-icon :size="16">
+              <Refresh />
+            </el-icon>
+          </el-button>
         </div>
-      </template>
+      </div>
 
       <el-table
         v-loading="loading.alerts"
         :data="alerts"
         style="width: 100%"
-        empty-text="暂无告警"
+        :empty-text="t('costDashboard.emptyAlerts')"
+        stripe
       >
         <el-table-column
-          label="紧急度"
+          :label="t('costDashboard.colUrgency')"
           width="80"
         >
           <template #default="{ row }">
@@ -246,13 +265,13 @@
               :type="row.status === 'exceeded' ? 'danger' : 'warning'"
               size="small"
             >
-              {{ row.status === 'exceeded' ? '超限' : '警告' }}
+              {{ row.status === 'exceeded' ? t('costDashboard.statusExceeded') : t('costDashboard.statusWarning') }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column
           prop="created_at"
-          label="时间"
+          :label="t('costDashboard.colTime')"
           width="180"
         >
           <template #default="{ row }">
@@ -261,7 +280,7 @@
         </el-table-column>
         <el-table-column
           prop="level"
-          label="层级"
+          :label="t('costDashboard.colLevel')"
           width="80"
         >
           <template #default="{ row }">
@@ -275,16 +294,16 @@
         </el-table-column>
         <el-table-column
           prop="scope_id"
-          label="范围"
+          :label="t('costDashboard.colScope')"
           width="140"
         />
         <el-table-column
           prop="resource_type"
-          label="资源类型"
+          :label="t('costDashboard.colResourceType')"
           width="120"
         />
         <el-table-column
-          label="使用率"
+          :label="t('costDashboard.colUsageRatio')"
           width="120"
         >
           <template #default="{ row }">
@@ -297,12 +316,12 @@
         </el-table-column>
         <el-table-column
           prop="message"
-          label="信息"
+          :label="t('costDashboard.colMessage')"
           min-width="300"
           show-overflow-tooltip
         />
         <el-table-column
-          label="状态"
+          :label="t('costDashboard.colStatus')"
           width="80"
         >
           <template #default="{ row }">
@@ -310,12 +329,12 @@
               size="small"
               :type="row.is_read ? 'info' : 'warning'"
             >
-              {{ row.is_read ? '已读' : '未读' }}
+              {{ row.is_read ? t('costDashboard.statusRead') : t('costDashboard.statusUnread') }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column
-          label="操作"
+          :label="t('costDashboard.colActions')"
           width="140"
         >
           <template #default="{ row }">
@@ -324,19 +343,20 @@
               :disabled="row.is_read"
               @click="markRead(row.id)"
             >
-              已读
+              {{ t('costDashboard.btnMarkRead') }}
             </el-button>
             <el-button
               size="small"
               type="danger"
+              text
               @click="deleteAlert(row.id)"
             >
-              删除
+              {{ t('costDashboard.btnDelete') }}
             </el-button>
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+    </div>
 
     <el-card
       v-if="suggestions.length > 0"
@@ -345,7 +365,7 @@
     >
       <template #header>
         <div class="card-header">
-          <span>智能成本优化建议</span>
+          <span>{{ t('costDashboard.suggestionsTitle') }}</span>
           <el-button
             size="small"
             :loading="loading.suggestions"
@@ -353,7 +373,7 @@
           >
             <el-icon style="margin-right:4px">
               <Refresh />
-            </el-icon>刷新
+            </el-icon>{{ t('costDashboard.btnRefresh') }}
           </el-button>
         </div>
       </template>
@@ -373,7 +393,7 @@
                 :type="s.priority === 'high' ? 'danger' : 'warning'"
                 size="small"
               >
-                {{ s.priority === 'high' ? '高优先' : '中优先' }}
+                {{ s.priority === 'high' ? t('costDashboard.priorityHigh') : t('costDashboard.priorityMedium') }}
               </el-tag>
               <el-tag
                 size="small"
@@ -392,19 +412,19 @@
             <div class="suggestion-stats">
               <div class="stat">
                 <span class="stat-value text-danger">{{ formatCost(s.current_cost) }}</span>
-                <span class="stat-label">当前成本</span>
+                <span class="stat-label">{{ t('costDashboard.statCurrentCost') }}</span>
               </div>
               <div class="stat">
                 <span class="stat-value text-success">{{ formatCost(s.estimated_savings) }}</span>
-                <span class="stat-label">预估节省</span>
+                <span class="stat-label">{{ t('costDashboard.statEstimatedSavings') }}</span>
               </div>
               <div class="stat">
                 <span class="stat-value text-warning">{{ s.savings_percentage.toFixed(0) }}%</span>
-                <span class="stat-label">节省比例</span>
+                <span class="stat-label">{{ t('costDashboard.statSavingsPercentage') }}</span>
               </div>
             </div>
             <p class="suggestion-reco">
-              <strong>建议：</strong>{{ s.recommendation }}
+              <strong>{{ t('costDashboard.recommendationLabel') }}</strong>{{ s.recommendation }}
             </p>
           </el-card>
         </el-col>
@@ -417,11 +437,12 @@
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 import { Refresh } from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 import http from '@/utils/http'
 import { formatSecondsTimestamp } from '@/utils/formatters'
-import { API_CONFIG } from '@/config/api'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
-const API_BASE = API_CONFIG.COST_BUDGET
+const { t } = useI18n()
 
 // 类型定义
 interface BudgetProgress {
@@ -512,19 +533,19 @@ function formatCost(value: number): string {
 
 function budgetLevelLabel(level: string): string {
   const map: Record<string, string> = {
-    global: '全局',
-    project: '项目',
-    agent: '代理',
-    task: '任务',
+    global: t('costDashboard.levelGlobal'),
+    project: t('costDashboard.levelProject'),
+    agent: t('costDashboard.levelAgent'),
+    task: t('costDashboard.levelTask'),
   }
   return map[level] || level
 }
 
 function suggestionCategory(cat: string): string {
   const map: Record<string, string> = {
-    model_optimization: '模型优化',
-    resource_optimization: '资源优化',
-    training_efficiency: '训练效率',
+    model_optimization: t('costDashboard.categoryModelOptimization'),
+    resource_optimization: t('costDashboard.categoryResourceOptimization'),
+    training_efficiency: t('costDashboard.categoryTrainingEfficiency'),
   }
   return map[cat] || cat
 }
@@ -537,7 +558,12 @@ function statusTagType(status: string): 'success' | 'warning' | 'danger' | 'info
 }
 
 function formatStatusLabel(status: string): string {
-  const map: Record<string, string> = { ok: '正常', warning: '警告', exceeded: '超限', disabled: '禁用' }
+  const map: Record<string, string> = {
+    ok: t('costDashboard.budgetStatusOk'),
+    warning: t('costDashboard.budgetStatusWarning'),
+    exceeded: t('costDashboard.budgetStatusExceeded'),
+    disabled: t('costDashboard.budgetStatusDisabled'),
+  }
   return map[status] || status
 }
 
@@ -549,7 +575,7 @@ function formatNumber(n: number): string {
 
 async function loadBudgetProgress() {
   try {
-    const res = await http.get(`${API_BASE}/policies`)
+    const res = await http.get(buildApiPath(API_CONFIG.COST_BUDGET, '/policies'))
     if (!res.data?.ok) return
     const policies = res.data.data || []
 
@@ -582,7 +608,7 @@ async function loadBudgetProgress() {
 async function loadCostDistribution() {
   loading.value.pie = true
   try {
-    const res = await http.get(`${API_BASE}/summary`, {
+    const res = await http.get(buildApiPath(API_CONFIG.COST_BUDGET, '/summary'), {
       params: { dimension: costDimension.value }
     })
     if (!res.data?.ok) return
@@ -619,7 +645,7 @@ async function loadCostDistribution() {
 async function loadCostByType() {
   loading.value.bar = true
   try {
-    const res = await http.get(`${API_BASE}/summary`, {
+    const res = await http.get(buildApiPath(API_CONFIG.COST_BUDGET, '/summary'), {
       params: { dimension: 'agent' }
     })
     if (!res.data?.ok) return
@@ -637,15 +663,15 @@ async function loadCostByType() {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
         },
-        legend: { data: ['GPU时间', 'GPU内存', 'API调用', '数据传输'] },
+        legend: { data: [t('costDashboard.seriesGpuTime'), t('costDashboard.seriesGpuMemory'), t('costDashboard.seriesApiCalls'), t('costDashboard.seriesDataTransfer')] },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: { type: 'category', data: labels, axisLabel: { rotate: 30, fontSize: 11 } },
-        yAxis: { type: 'value', name: '成本 ($)' },
+        yAxis: { type: 'value', name: t('costDashboard.chartYAxisName') },
         series: [
-          { name: 'GPU时间', type: 'bar', stack: 'total', data: gpuTimeVals, itemStyle: { color: 'var(--accent-primary)' } },
-          { name: 'GPU内存', type: 'bar', stack: 'total', data: gpuMemVals, itemStyle: { color: 'var(--success)' } },
-          { name: 'API调用', type: 'bar', stack: 'total', data: apiCallVals, itemStyle: { color: 'var(--warning)' } },
-          { name: '数据传输', type: 'bar', stack: 'total', data: dataTransferVals, itemStyle: { color: 'var(--error)' } },
+          { name: t('costDashboard.seriesGpuTime'), type: 'bar', stack: 'total', data: gpuTimeVals, itemStyle: { color: 'var(--accent-primary)' } },
+          { name: t('costDashboard.seriesGpuMemory'), type: 'bar', stack: 'total', data: gpuMemVals, itemStyle: { color: 'var(--success)' } },
+          { name: t('costDashboard.seriesApiCalls'), type: 'bar', stack: 'total', data: apiCallVals, itemStyle: { color: 'var(--warning)' } },
+          { name: t('costDashboard.seriesDataTransfer'), type: 'bar', stack: 'total', data: dataTransferVals, itemStyle: { color: 'var(--error)' } },
         ],
       })
     }
@@ -659,7 +685,7 @@ async function loadCostByType() {
 async function loadCostTrend() {
   loading.value.trend = true
   try {
-    const res = await http.get(`${API_BASE}/trend`, {
+    const res = await http.get(buildApiPath(API_CONFIG.COST_BUDGET, '/trend'), {
       params: { days: trendDays.value, interval_hours: 24 }
     })
     if (!res.data?.ok) return
@@ -677,22 +703,22 @@ async function loadCostTrend() {
     if (trendChart) {
       trendChart.setOption({
         tooltip: { trigger: 'axis' },
-        legend: { data: ['总成本', 'GPU时间', 'GPU内存', 'API调用'] },
+        legend: { data: [t('costDashboard.seriesTotalCost'), t('costDashboard.seriesGpuTime'), t('costDashboard.seriesGpuMemory'), t('costDashboard.seriesApiCalls')] },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: { type: 'category', data: times, boundaryGap: false },
-        yAxis: { type: 'value', name: '成本 ($)' },
+        yAxis: { type: 'value', name: t('costDashboard.chartYAxisName') },
         series: [
           {
-            name: '总成本', type: 'line', smooth: true,
+            name: t('costDashboard.seriesTotalCost'), type: 'line', smooth: true,
             data: totalCosts, lineStyle: { width: 3, color: 'var(--accent-primary)' },
             areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: 'rgba(64,158,255,0.3)' },
               { offset: 1, color: 'rgba(64,158,255,0.05)' },
             ]) },
           },
-          { name: 'GPU时间', type: 'line', smooth: true, data: gpuTimeCosts, lineStyle: { color: 'var(--success)' } },
-          { name: 'GPU内存', type: 'line', smooth: true, data: gpuMemCosts, lineStyle: { color: 'var(--warning)' } },
-          { name: 'API调用', type: 'line', smooth: true, data: apiCallCosts, lineStyle: { color: 'var(--error)' } },
+          { name: t('costDashboard.seriesGpuTime'), type: 'line', smooth: true, data: gpuTimeCosts, lineStyle: { color: 'var(--success)' } },
+          { name: t('costDashboard.seriesGpuMemory'), type: 'line', smooth: true, data: gpuMemCosts, lineStyle: { color: 'var(--warning)' } },
+          { name: t('costDashboard.seriesApiCalls'), type: 'line', smooth: true, data: apiCallCosts, lineStyle: { color: 'var(--error)' } },
         ],
       })
     }
@@ -708,7 +734,7 @@ async function loadAlerts() {
   try {
     const params: Record<string, string | number> = { limit: 100 }
     if (alertFilter.value) params.status = alertFilter.value
-    const res = await http.get(`${API_BASE}/alerts`, { params })
+    const res = await http.get(buildApiPath(API_CONFIG.COST_BUDGET, '/alerts'), { params })
     if (!res.data?.ok) return
     alerts.value = res.data.data || []
   } catch {
@@ -721,7 +747,7 @@ async function loadAlerts() {
 async function loadSuggestions() {
   loading.value.suggestions = true
   try {
-    const res = await http.get(`${API_BASE}/suggestions`)
+    const res = await http.get(buildApiPath(API_CONFIG.COST_BUDGET, '/suggestions'))
     if (!res.data?.ok) return
     suggestions.value = res.data.data || []
   } catch {
@@ -733,7 +759,7 @@ async function loadSuggestions() {
 
 async function markRead(id: number) {
   try {
-    await http.post(`${API_BASE}/alerts/${id}/read`)
+    await http.post(buildApiPath(API_CONFIG.COST_BUDGET, `/alerts/${id}/read`))
     const alert = alerts.value.find((a) => a.id === id)
     if (alert) alert.is_read = 1
   } catch {
@@ -743,7 +769,7 @@ async function markRead(id: number) {
 
 async function markAllRead() {
   try {
-    await http.post(`${API_BASE}/alerts/read-all`)
+    await http.post(buildApiPath(API_CONFIG.COST_BUDGET, '/alerts/read-all'))
     alerts.value.forEach((a) => (a.is_read = 1))
   } catch {
     // 静默处理
@@ -752,7 +778,7 @@ async function markAllRead() {
 
 async function deleteAlert(id: number) {
   try {
-    await http.delete(`${API_BASE}/alerts/${id}`)
+    await http.delete(buildApiPath(API_CONFIG.COST_BUDGET, `/alerts/${id}`))
     alerts.value = alerts.value.filter((a) => a.id !== id)
   } catch {
     // 静默处理
@@ -806,7 +832,9 @@ onUnmounted(() => {
 
 <style scoped>
 .cost-dashboard {
-  padding: 0;
+  padding: var(--page-padding);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .budget-status-row {
@@ -871,10 +899,6 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.alerts-card {
-  margin-bottom: 16px;
 }
 
 .optimization-card {

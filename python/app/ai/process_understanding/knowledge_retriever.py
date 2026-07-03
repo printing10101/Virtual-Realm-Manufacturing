@@ -1,13 +1,18 @@
 """
 知识检索模块
 
-实现混合检索（向量检索 + 关键词检索）+ 智能重排序。
-根据任务类型动态调整检索权重和策略。
+v2 架构升级：作为 RagRetrievalEngine 的统一入口适配层。
+- 保留原有 HybridRetrievalResult / RetrievalDocument 接口，向后兼容
+- 将 TaskType 映射为 QueryIntent + pipeline_level，委托给 RagRetrievalEngine
+- 启用查询改写 / HyDE / 混合检索 / Cross-Encoder 重排序等增强能力
+- 同步 RagRetrievalEngine 调用通过 asyncio.to_thread 放入线程池，避免阻塞事件循环
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -50,80 +55,91 @@ class HybridRetrievalResult:
 
 
 # ---------------------------------------------------------------------------
-# 任务类型 -> 检索权重配置
+# TaskType → QueryIntent 映射（统一两套检索系统）
+# ---------------------------------------------------------------------------
+# A-工艺咨询：聚焦切削参数/刀具选择 → CUTTING_PARAMS
+# B-故障诊断：聚焦振动/磨损/异常 → VIBRATION_WEAR
+# C-方案生成：需要跨源综合数据 → CROSS_SOURCE
+# D-知识查询：通用知识检索 → GENERAL
+# E-闲聊：无需增强 pipeline → GENERAL (fast)
+TASK_TYPE_TO_QUERY_INTENT: dict[TaskType, str] = {
+    TaskType.PROCESS_CONSULT: "cutting_params",
+    TaskType.FAULT_DIAGNOSIS: "vibration_wear",
+    TaskType.SOLUTION_GENERATION: "cross_source",
+    TaskType.KNOWLEDGE_QUERY: "general",
+    TaskType.CHITCHAT: "general",
+}
+
+# pipeline 分级：fast 跳过 reranker/HyDE；standard 启用混合检索+reranker；full 启用全部
+TASK_TYPE_TO_PIPELINE_LEVEL: dict[TaskType, str] = {
+    TaskType.CHITCHAT: "fast",
+    TaskType.PROCESS_CONSULT: "standard",
+    TaskType.KNOWLEDGE_QUERY: "standard",
+    TaskType.FAULT_DIAGNOSIS: "full",
+    TaskType.SOLUTION_GENERATION: "full",
+}
+
+# TaskType → top_k 默认值（保留原 RETRIEVAL_WEIGHTS 语义）
+TASK_TYPE_DEFAULT_TOP_K: dict[TaskType, int] = {
+    TaskType.PROCESS_CONSULT: 5,
+    TaskType.FAULT_DIAGNOSIS: 5,
+    TaskType.SOLUTION_GENERATION: 8,
+    TaskType.KNOWLEDGE_QUERY: 5,
+    TaskType.CHITCHAT: 3,
+}
+
+
+# ---------------------------------------------------------------------------
+# RagRetrievalEngine 懒加载单例（线程安全）
 # ---------------------------------------------------------------------------
 
-RETRIEVAL_WEIGHTS: dict[TaskType, dict[str, float]] = {
-    TaskType.PROCESS_CONSULT: {
-        "vector_weight": 0.4,
-        "keyword_weight": 0.6,
-        "top_k": 5,
-        "min_relevance": 0.3,
-    },
-    TaskType.FAULT_DIAGNOSIS: {
-        "vector_weight": 0.5,
-        "keyword_weight": 0.5,
-        "top_k": 5,
-        "min_relevance": 0.3,
-    },
-    TaskType.SOLUTION_GENERATION: {
-        "vector_weight": 0.3,
-        "keyword_weight": 0.7,
-        "top_k": 8,
-        "min_relevance": 0.2,
-    },
-    TaskType.KNOWLEDGE_QUERY: {
-        "vector_weight": 0.6,
-        "keyword_weight": 0.4,
-        "top_k": 5,
-        "min_relevance": 0.3,
-    },
-    TaskType.CHITCHAT: {
-        "vector_weight": 0.5,
-        "keyword_weight": 0.5,
-        "top_k": 3,
-        "min_relevance": 0.4,
-    },
-}
+_rag_engine_instance: Any = None
+_rag_engine_lock = threading.Lock()
 
-# 任务类型 -> 知识来源优先级
-SOURCE_PRIORITY: dict[TaskType, list[str]] = {
-    TaskType.PROCESS_CONSULT: ["default", "bosch_cnc", "uniwear-phm2010"],
-    TaskType.FAULT_DIAGNOSIS: ["bosch_cnc", "uniwear", "uniwear-nuaa"],
-    TaskType.SOLUTION_GENERATION: ["default", "bosch_cnc"],
-    TaskType.KNOWLEDGE_QUERY: ["default", "bosch_cnc", "uniwear"],
-    TaskType.CHITCHAT: ["default"],
-}
+
+def _get_rag_engine() -> Any:
+    """懒加载 RagRetrievalEngine 单例。
+
+    避免在模块导入时初始化重型组件（reranker / hybrid_search / query_rewriter）。
+    """
+    global _rag_engine_instance
+    if _rag_engine_instance is not None:
+        return _rag_engine_instance
+    with _rag_engine_lock:
+        if _rag_engine_instance is not None:
+            return _rag_engine_instance
+        from app.rag.knowledge_base import get_knowledge_base
+        from app.rag.rag_retrieval import RagRetrievalEngine
+
+        kb = get_knowledge_base()
+        _rag_engine_instance = RagRetrievalEngine(knowledge_base=kb)
+        logger.info("KnowledgeRetriever: RagRetrievalEngine singleton initialized")
+    return _rag_engine_instance
 
 
 class KnowledgeRetriever:
-    """混合检索器：向量检索 + 关键词检索 + 智能重排序。
+    """混合检索器（v2：委托给 RagRetrievalEngine）。
 
-    检索策略：
-    1. 向量检索：基于语义相似度从ChromaDB获取候选
-    2. 关键词检索：基于TF-IDF关键词匹配
-    3. 重排序：综合语义相关性、关键词匹配、知识来源权威性、时效性
+    架构升级说明：
+    - 原 v1 实现：独立的 vector/keyword/reranking pipeline，与 RagRetrievalEngine 并行存在
+    - v2 实现：委托给 RagRetrievalEngine，统一启用查询改写、混合检索、Cross-Encoder 重排序
+    - 保留 async retrieve() 接口，向后兼容 process_understanding/engine.py
+    - 通过 asyncio.to_thread 将同步 ChromaDB 调用放入线程池，不阻塞事件循环
+    - pipeline_level 控制：CHITCHAT 走 fast 路径，跳过增强模块以降低延迟
     """
 
     def __init__(self):
-        self._kb: Any = None
-        self._reranker: Any = None
+        self._rag_engine: Any = None
         self._total_queries = 0
         self._total_latency_ms = 0.0
+        self._delegation_success = 0
+        self._delegation_fallback = 0
 
-    async def _get_knowledge_base(self) -> Any:
-        if self._kb is None:
-            from app.rag.knowledge_base import get_knowledge_base
-
-            self._kb = get_knowledge_base()
-        return self._kb
-
-    def _get_reranker(self) -> Any:
-        if self._reranker is None:
-            from app.rag.reranker import RerankerService
-
-            self._reranker = RerankerService()
-        return self._reranker
+    def _ensure_engine(self) -> Any:
+        """懒加载 RagRetrievalEngine。"""
+        if self._rag_engine is None:
+            self._rag_engine = _get_rag_engine()
+        return self._rag_engine
 
     async def retrieve(
         self,
@@ -131,11 +147,11 @@ class KnowledgeRetriever:
         task_type: TaskType = TaskType.KNOWLEDGE_QUERY,
         top_k: int | None = None,
     ) -> HybridRetrievalResult:
-        """执行混合检索。
+        """执行混合检索（委托给 RagRetrievalEngine）。
 
         Args:
             query: 检索查询文本
-            task_type: 任务类型（用于调整检索权重）
+            task_type: 任务类型（用于映射到 QueryIntent 和 pipeline_level）
             top_k: 返回文档数量上限
 
         Returns:
@@ -144,226 +160,233 @@ class KnowledgeRetriever:
         start_time = time.perf_counter()
         self._total_queries += 1
 
-        weights = RETRIEVAL_WEIGHTS.get(task_type, RETRIEVAL_WEIGHTS[TaskType.KNOWLEDGE_QUERY])
-        actual_top_k = top_k or weights["top_k"]
-        vector_weight = weights["vector_weight"]
-        keyword_weight = weights["keyword_weight"]
+        actual_top_k = top_k or TASK_TYPE_DEFAULT_TOP_K.get(task_type, 5)
+        intent_value = TASK_TYPE_TO_QUERY_INTENT.get(task_type, "general")
+        pipeline_level = TASK_TYPE_TO_PIPELINE_LEVEL.get(task_type, "standard")
 
-        kb = await self._get_knowledge_base()
+        try:
+            engine = self._ensure_engine()
 
-        # 1. 向量检索
-        vector_docs = await self._vector_search(kb, query, task_type, actual_top_k * 2)
+            # 将同步 retrieve() 调用放入线程池，避免阻塞事件循环
+            # fast pipeline：临时关闭增强模块以降低延迟
+            result_dict = await asyncio.to_thread(
+                self._invoke_engine,
+                engine,
+                query,
+                intent_value,
+                actual_top_k,
+                pipeline_level,
+            )
 
-        # 2. 关键词检索
-        keyword_docs = await self._keyword_search(kb, query, task_type, actual_top_k * 2)
+            self._delegation_success += 1
+            hybrid_result = self._convert_to_hybrid_result(
+                result_dict, query, task_type
+            )
 
-        # 3. 合并与去重
-        merged = self._merge_results(
-            vector_docs, keyword_docs, vector_weight, keyword_weight
-        )
-
-        # 4. 重排序
-        reranked = self._apply_reranking(merged, query, task_type)
-
-        # 5. 截取 Top-K
-        final_docs = reranked[:actual_top_k]
+        except (RuntimeError, OSError, ValueError, KeyError, ImportError) as e:
+            # 委托失败时降级为直接 kb.query()，保证可用性
+            self._delegation_fallback += 1
+            logger.warning(
+                "KnowledgeRetriever delegation failed, fallback to direct kb query: %s",
+                e,
+                exc_info=True,
+            )
+            hybrid_result = await self._fallback_retrieve(
+                query, task_type, actual_top_k
+            )
 
         elapsed = (time.perf_counter() - start_time) * 1000
         self._total_latency_ms += elapsed
+        hybrid_result.latency_ms = elapsed
 
         logger.info(
-            "检索完成: query='%s', task=%s, candidates=%d, results=%d, %.1fms",
+            "检索完成: query='%s', task=%s, intent=%s, pipeline=%s, "
+            "candidates=%d, results=%d, %.1fms",
             query[:50],
             task_type.label,
-            len(merged),
-            len(final_docs),
+            intent_value,
+            pipeline_level,
+            hybrid_result.total_candidates,
+            len(hybrid_result.documents),
             elapsed,
         )
+
+        return hybrid_result
+
+    @staticmethod
+    def _invoke_engine(
+        engine: Any,
+        query: str,
+        intent_value: str,
+        n_results: int,
+        pipeline_level: str,
+    ) -> dict:
+        """在线程池中执行 RagRetrievalEngine.retrieve()。
+
+        fast pipeline：临时禁用 query_rewrite / hyde / reranker 以降低延迟。
+        """
+        from app.rag.rag_retrieval import QueryIntent
+
+        # 解析 intent 字符串到枚举
+        try:
+            intent_enum = QueryIntent(intent_value)
+        except ValueError:
+            intent_enum = QueryIntent.GENERAL
+
+        # fast pipeline：临时关闭增强模块
+        if pipeline_level == "fast":
+            import app.rag.rag_retrieval as rag_mod
+
+            original_flags = {
+                "rewrite": rag_mod.ENABLE_QUERY_REWRITE,
+                "hyde": rag_mod.ENABLE_HYDE,
+                "reranker": rag_mod.ENABLE_RERANKER,
+            }
+            rag_mod.ENABLE_QUERY_REWRITE = False
+            rag_mod.ENABLE_HYDE = False
+            rag_mod.ENABLE_RERANKER = False
+            try:
+                return engine.retrieve(
+                    query=query, intent=intent_enum, n_results=n_results
+                )
+            finally:
+                rag_mod.ENABLE_QUERY_REWRITE = original_flags["rewrite"]
+                rag_mod.ENABLE_HYDE = original_flags["hyde"]
+                rag_mod.ENABLE_RERANKER = original_flags["reranker"]
+
+        return engine.retrieve(
+            query=query, intent=intent_enum, n_results=n_results
+        )
+
+    @staticmethod
+    def _convert_to_hybrid_result(
+        result_dict: dict,
+        query: str,
+        task_type: TaskType,
+    ) -> HybridRetrievalResult:
+        """将 RagRetrievalEngine 的 dict 结果转换为 HybridRetrievalResult。
+
+        保留 rerank_score / rrf_score 作为 final_score，
+        向量距离转换为 vector_score。
+        """
+        documents: list[RetrievalDocument] = []
+        results_list = result_dict.get("results", []) or []
+
+        for item in results_list:
+            if not isinstance(item, dict):
+                continue
+
+            doc_id = str(item.get("id", "") or "")
+            content = item.get("document", "") or ""
+            metadata = item.get("metadata", {}) or {}
+            distance = item.get("distance")
+            source = metadata.get("source", "unknown")
+
+            # 向量得分：距离越小越好
+            vector_score = 0.0
+            if distance is not None:
+                try:
+                    vector_score = 1.0 - min(float(distance), 1.0)
+                except (TypeError, ValueError):
+                    vector_score = 0.0
+
+            # final_score：优先 reranker > rrf > vector
+            final_score = 0.0
+            if "rerank_score" in item:
+                try:
+                    final_score = float(item["rerank_score"])
+                except (TypeError, ValueError):
+                    final_score = vector_score
+            elif "rrf_score" in item:
+                try:
+                    final_score = float(item["rrf_score"])
+                except (TypeError, ValueError):
+                    final_score = vector_score
+            else:
+                final_score = vector_score
+
+            documents.append(RetrievalDocument(
+                id=doc_id,
+                content=content,
+                metadata=metadata,
+                vector_score=vector_score,
+                keyword_score=0.0,
+                final_score=final_score,
+                source=source,
+            ))
 
         return HybridRetrievalResult(
             query=query,
             task_type=task_type,
             strategy=RetrievalStrategy.HYBRID,
-            documents=final_docs,
-            total_candidates=len(merged),
-            latency_ms=elapsed,
+            documents=documents,
+            total_candidates=result_dict.get("total_found", len(documents)),
+            latency_ms=0.0,  # 由调用方设置
         )
 
-    async def _vector_search(
+    async def _fallback_retrieve(
         self,
-        kb: Any,
         query: str,
         task_type: TaskType,
-        n_results: int,
-    ) -> list[RetrievalDocument]:
-        """执行向量语义检索。"""
+        top_k: int,
+    ) -> HybridRetrievalResult:
+        """降级路径：直接调用 kb.query()，保证委托失败时仍可用。"""
         try:
-            result = kb.query(query_text=query, n_results=n_results)
-            documents_raw = result.get("documents", [])
-            if not documents_raw:
-                return []
+            from app.rag.knowledge_base import get_knowledge_base
 
-            docs: list[RetrievalDocument] = []
-            for i, doc in enumerate(documents_raw):
-                doc_content = doc.get("document", "") if isinstance(doc, dict) else str(doc)
-                meta = doc.get("metadata", {}) if isinstance(doc, dict) else {}
-                doc_id = doc.get("id", "") if isinstance(doc, dict) else ""
-                dist = doc.get("distance", 0.5) if isinstance(doc, dict) else 0.5
-                vector_score = 1.0 - min(float(dist), 1.0)
-
-                docs.append(RetrievalDocument(
-                    id=str(doc_id),
-                    content=doc_content,
-                    metadata=meta,
-                    vector_score=vector_score,
-                    source=meta.get("source", "unknown"),
-                ))
-            return docs
-        except (KeyError, ValueError, TypeError, OSError) as e:
-            logger.warning("向量检索失败: %s", e, exc_info=True)
-            return []
-
-    async def _keyword_search(
-        self,
-        kb: Any,
-        query: str,
-        task_type: TaskType,
-        n_results: int,
-    ) -> list[RetrievalDocument]:
-        """执行关键词检索。
-
-        使用改进的TF-IDF风格评分：将查询分解为关键词，
-        在每个文档中计算词频匹配度。
-        """
-        try:
-            result = kb.query(query_text=query, n_results=n_results)
-            documents_raw = result.get("documents", [])
-            if not documents_raw:
-                return []
-
-            # 提取查询关键词（移除常见停用词）
-            stop_words = {
-                "的", "了", "是", "在", "和", "与", "或", "不", "也", "都",
-                "要", "会", "可以", "需要", "能够", "应该", "如何", "怎么",
-                "什么", "一个", "这个", "那个", "哪些", "为什么",
-            }
-            query_terms = [
-                t for t in query.lower().split()
-                if len(t) > 1 and t not in stop_words
-            ]
-
-            docs: list[RetrievalDocument] = []
-            for doc in documents_raw:
-                doc_content = doc.get("document", "") if isinstance(doc, dict) else str(doc)
-                meta = doc.get("metadata", {}) if isinstance(doc, dict) else {}
-                doc_id = doc.get("id", "") if isinstance(doc, dict) else ""
-
-                # TF-IDF风格评分
-                doc_lower = doc_content.lower()
-                keyword_score = 0.0
-                if query_terms:
-                    matches = sum(1 for t in query_terms if t in doc_lower)
-                    keyword_score = matches / len(query_terms)
-
-                # 元数据匹配加分
-                meta_str = str(meta).lower()
-                meta_matches = sum(1 for t in query_terms if t in meta_str)
-                keyword_score += meta_matches * 0.1
-
-                keyword_score = min(1.0, keyword_score)
-
-                docs.append(RetrievalDocument(
-                    id=str(doc_id),
-                    content=doc_content,
-                    metadata=meta,
-                    keyword_score=keyword_score,
-                    source=meta.get("source", "unknown"),
-                ))
-            return docs
-        except (KeyError, ValueError, TypeError, OSError) as e:
-            logger.warning("关键词检索失败: %s", e, exc_info=True)
-            return []
-
-    @staticmethod
-    def _merge_results(
-        vector_docs: list[RetrievalDocument],
-        keyword_docs: list[RetrievalDocument],
-        vector_weight: float,
-        keyword_weight: float,
-    ) -> list[RetrievalDocument]:
-        """合并向量检索和关键词检索结果，去重并计算综合得分。"""
-        merged: dict[str, RetrievalDocument] = {}
-
-        for doc in vector_docs:
-            key = doc.id or doc.content[:100]
-            merged[key] = RetrievalDocument(
-                id=doc.id,
-                content=doc.content,
-                metadata=doc.metadata,
-                vector_score=doc.vector_score,
-                keyword_score=doc.keyword_score,
-                source=doc.source,
+            kb = get_knowledge_base()
+            raw = await asyncio.to_thread(
+                kb.query, query_text=query, n_results=top_k
+            )
+        except (RuntimeError, OSError, ValueError, ImportError) as e:
+            logger.error(
+                "Fallback retrieve also failed: %s", e, exc_info=True
+            )
+            return HybridRetrievalResult(
+                query=query,
+                task_type=task_type,
+                strategy=RetrievalStrategy.HYBRID,
+                documents=[],
+                total_candidates=0,
+                latency_ms=0.0,
             )
 
-        for doc in keyword_docs:
-            key = doc.id or doc.content[:100]
-            if key in merged:
-                existing = merged[key]
-                existing.keyword_score = max(existing.keyword_score, doc.keyword_score)
+        documents: list[RetrievalDocument] = []
+        docs_raw = raw.get("documents", []) if isinstance(raw, dict) else []
+        for doc in docs_raw:
+            if isinstance(doc, dict):
+                content = doc.get("document", "")
+                metadata = doc.get("metadata", {}) or {}
+                doc_id = str(doc.get("id", "") or "")
+                distance = doc.get("distance", 0.5)
             else:
-                merged[key] = doc
+                content = str(doc)
+                metadata = {}
+                doc_id = ""
+                distance = 0.5
 
-        # 计算最终得分
-        for doc in merged.values():
-            doc.final_score = (
-                doc.vector_score * vector_weight
-                + doc.keyword_score * keyword_weight
-            )
+            try:
+                vector_score = 1.0 - min(float(distance), 1.0)
+            except (TypeError, ValueError):
+                vector_score = 0.0
 
-        return list(merged.values())
+            documents.append(RetrievalDocument(
+                id=doc_id,
+                content=content,
+                metadata=metadata,
+                vector_score=vector_score,
+                final_score=vector_score,
+                source=metadata.get("source", "unknown"),
+            ))
 
-    @staticmethod
-    def _apply_reranking(
-        docs: list[RetrievalDocument],
-        query: str,
-        task_type: TaskType,
-    ) -> list[RetrievalDocument]:
-        """应用重排序逻辑。
-
-        排序因子：
-        1. 综合得分（向量 + 关键词）: 权重 0.5
-        2. 知识来源权威性: 权重 0.3
-        3. 知识时效性: 权重 0.1
-        4. 查询关键词精确匹配: 权重 0.1
-        """
-        source_priorities = SOURCE_PRIORITY.get(task_type, ["default"])
-        source_rank = {s: 1.0 - i * 0.15 for i, s in enumerate(source_priorities)}
-
-        query_lower = query.lower()
-        query_terms = set(query_lower.split())
-
-        for doc in docs:
-            # 来源权威性
-            source_weight = source_rank.get(doc.source, 0.3)
-
-            # 时效性（更新越近越好）
-            updated_at = doc.metadata.get("updated_at", 0)
-            recency = min(1.0, float(updated_at) / (time.time() + 1))
-
-            # 精确关键词匹配
-            doc_terms = set(doc.content.lower().split())
-            exact_match = len(query_terms & doc_terms) / max(len(query_terms), 1)
-
-            # 综合重排序得分
-            doc.final_score = (
-                doc.final_score * 0.5
-                + source_weight * 0.3
-                + recency * 0.1
-                + exact_match * 0.1
-            )
-
-        docs.sort(key=lambda d: d.final_score, reverse=True)
-        return docs
+        return HybridRetrievalResult(
+            query=query,
+            task_type=task_type,
+            strategy=RetrievalStrategy.VECTOR,
+            documents=documents,
+            total_candidates=len(documents),
+            latency_ms=0.0,
+        )
 
     def get_stats(self) -> dict[str, Any]:
         """获取检索器性能统计。"""
@@ -371,6 +394,13 @@ class KnowledgeRetriever:
             "total_queries": self._total_queries,
             "avg_latency_ms": (
                 self._total_latency_ms / self._total_queries
+                if self._total_queries > 0
+                else 0.0
+            ),
+            "delegation_success": self._delegation_success,
+            "delegation_fallback": self._delegation_fallback,
+            "delegation_success_rate": (
+                self._delegation_success / self._total_queries
                 if self._total_queries > 0
                 else 0.0
             ),

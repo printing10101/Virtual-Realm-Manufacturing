@@ -2,6 +2,11 @@
 
 Provides ChromaDB-backed semantic search with CollectionProxy adapter
 for backward compatibility.
+
+v2 增强：
+- 集成 EntityIndex 倒排索引，支持 entity → chunk_ids 检索
+- add() 方法新增 entities 参数，自动维护倒排索引
+- 新增 query_by_entities() 方法，支持基于实体的跨源检索
 """
 
 from __future__ import annotations
@@ -13,6 +18,7 @@ import time
 from typing import Any
 
 from app.rag.embeddings import get_embedding_service
+from app.rag.entity_index import EntityIndex, get_entity_index
 from app.rag.vector_store import get_vector_store
 
 logger = logging.getLogger(__name__)
@@ -68,11 +74,15 @@ class CollectionProxy:
         metadatas = metadatas or []
         ids = ids or []
         embeddings = kwargs.get("embeddings")
+        entities_list = kwargs.get("entities_list") or []
         for i, doc in enumerate(documents):
             doc_id = ids[i] if i < len(ids) else None
             meta = metadatas[i] if i < len(metadatas) else {}
             emb = embeddings[i] if embeddings and i < len(embeddings) else None
-            self._store.add(doc, metadata=meta, doc_id=doc_id, embedding=emb)
+            ents = entities_list[i] if i < len(entities_list) else None
+            self._store.add(
+                doc, metadata=meta, doc_id=doc_id, embedding=emb, entities=ents
+            )
 
     def count(self):
         return self._store.count()
@@ -88,11 +98,15 @@ class CollectionProxy:
 
 
 class KnowledgeStore:
-    """ChromaDB-backed document store with semantic vector search."""
+    """ChromaDB-backed document store with semantic vector search.
+
+    v2 增强：集成 EntityIndex 倒排索引，支持 entity → chunk_ids 检索。
+    """
 
     def __init__(self):
         self._vs = get_vector_store()
         self._emb = get_embedding_service()
+        self._entity_index: EntityIndex = get_entity_index()
         self._next_id = 1
 
     def add(
@@ -101,7 +115,17 @@ class KnowledgeStore:
         metadata: dict | None = None,
         doc_id: str | None = None,
         embedding: list[float] | None = None,
+        entities: list[str] | None = None,
     ) -> str:
+        """添加文档到知识库。
+
+        Args:
+            document: 文档内容
+            metadata: 元数据
+            doc_id: 文档 ID（不传则自动生成）
+            embedding: 预计算的 embedding（不传则自动计算）
+            entities: 实体列表（会写入倒排索引，支持基于实体的检索）
+        """
         doc_id = doc_id or f"doc_{self._next_id}"
         self._next_id += 1
         if embedding is None:
@@ -114,7 +138,44 @@ class KnowledgeStore:
             embeddings=embedding,
             metadatas=metadata,
         )
+
+        # 维护 entity 倒排索引
+        if entities:
+            try:
+                self._entity_index.add(doc_id, entities)
+            except (OSError, RuntimeError, ValueError) as e:
+                logger.debug(
+                    "EntityIndex add failed for doc %s: %s",
+                    doc_id, e, exc_info=True,
+                )
+
         return doc_id
+
+    def query_by_entities(
+        self,
+        entities: list[str],
+        mode: str = "union",
+    ) -> list[dict[str, Any]]:
+        """通过实体倒排索引检索文档。
+
+        Args:
+            entities: 实体名列表
+            mode: "union" 取并集；"intersection" 取交集
+
+        Returns:
+            匹配的文档列表（含 id/document/metadata/distance 字段）
+        """
+        chunk_ids = self._entity_index.get_chunks(entities, mode=mode)
+        if not chunk_ids:
+            return []
+
+        results: list[dict[str, Any]] = []
+        for chunk_id in chunk_ids:
+            doc = self.get_by_id(chunk_id)
+            if doc:
+                doc["distance"] = 0.0  # 实体精确匹配，距离为 0
+                results.append(doc)
+        return results
 
     def query(
         self, text: str, top_k: int = 5, filters: dict | None = None
@@ -142,16 +203,27 @@ class KnowledgeStore:
             })
         return records
 
-    def query_by_source(self, source: str, query: str = "", n_results: int = 5) -> dict:
+    def query_by_source(
+        self,
+        source: str,
+        query: str = "",
+        n_results: int = 5,
+        extra_filters: dict | None = None,
+    ) -> dict:
+        # 合并 source 过滤与额外元数据过滤（如 cluster_tag、category 等）
+        if extra_filters:
+            where: dict = {"$and": [{"source": source}, extra_filters]}
+        else:
+            where = {"source": source}
         if query:
             query_embedding = self._emb.embed(query)
             result = self._vs.query(
                 query_embedding=query_embedding,
                 n_results=n_results,
-                where={"source": source},
+                where=where,
             )
         else:
-            result = self._vs.get(where={"source": source}, limit=n_results)
+            result = self._vs.get(where=where, limit=n_results)
             result.setdefault("distances", [[0.0] * len(result.get("ids", [[]])[0])])
 
         return result
@@ -175,12 +247,46 @@ class KnowledgeStore:
     def delete(self, doc_id: str) -> bool:
         before = self._vs.count()
         self._vs.delete(ids=[doc_id])
+        # 同步清理 entity 倒排索引
+        try:
+            self._entity_index.remove_chunk(doc_id)
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.debug(
+                "EntityIndex remove failed for doc %s: %s",
+                doc_id, e, exc_info=True,
+            )
         return self._vs.count() < before
 
     def delete_by_source(self, source: str) -> int:
+        # 先获取该 source 下所有 doc_id，用于清理 entity 索引
+        docs_to_clean: list[str] = []
+        try:
+            all_docs = self._vs.list_documents(limit=10000)
+            docs_to_clean = [
+                d["id"] for d in all_docs
+                if d.get("metadata", {}).get("source") == source
+            ]
+        except (OSError, RuntimeError, ValueError, KeyError) as e:
+            logger.debug(
+                "Failed to list docs for entity index cleanup: %s",
+                e, exc_info=True,
+            )
+
         before = self._vs.count()
         self._vs.delete(where={"source": source})
-        return before - self._vs.count()
+        deleted_count = before - self._vs.count()
+
+        # 批量清理 entity 倒排索引
+        if docs_to_clean:
+            try:
+                for doc_id in docs_to_clean:
+                    self._entity_index.remove_chunk(doc_id)
+            except (OSError, RuntimeError, ValueError) as e:
+                logger.debug(
+                    "EntityIndex batch remove failed: %s", e, exc_info=True,
+                )
+
+        return deleted_count
 
     def count(self) -> int:
         return self._vs.count()
@@ -311,11 +417,27 @@ class KnowledgeBase:
     def __init__(self):
         self._store = KnowledgeStore()
         self.collection = CollectionProxy(self._store)
+        # 暴露 entity index 供 RagRetrievalEngine 使用
+        self._entity_index = self._store._entity_index
 
     def add_knowledge(
-        self, document: str, metadata: dict | None = None, doc_id: str | None = None
+        self,
+        document: str,
+        metadata: dict | None = None,
+        doc_id: str | None = None,
+        entities: list[str] | None = None,
     ) -> dict:
-        doc_id = self._store.add(document, metadata=metadata, doc_id=doc_id)
+        """添加知识文档。
+
+        Args:
+            document: 文档内容
+            metadata: 元数据
+            doc_id: 文档 ID
+            entities: 实体列表（写入倒排索引）
+        """
+        doc_id = self._store.add(
+            document, metadata=metadata, doc_id=doc_id, entities=entities
+        )
         return {"doc_id": doc_id}
 
     def query(
@@ -324,11 +446,41 @@ class KnowledgeBase:
         results = self._store.query(query_text, top_k=n_results or top_k)
         return {"documents": results, "total_results": len(results)}
 
+    def query_by_entities(
+        self,
+        entities: list[str],
+        mode: str = "union",
+    ) -> dict[str, Any]:
+        """通过实体倒排索引检索文档。
+
+        Args:
+            entities: 实体名列表
+            mode: "union" 取并集；"intersection" 取交集
+
+        Returns:
+            {"documents": [...], "total_results": int}
+        """
+        results = self._store.query_by_entities(entities, mode=mode)
+        return {"documents": results, "total_results": len(results)}
+
+    @property
+    def entity_index(self) -> EntityIndex:
+        """暴露 EntityIndex 实例供外部使用。"""
+        return self._entity_index
+
     def delete(self, doc_id: str) -> bool:
         return self._store.delete(doc_id)
 
-    def query_by_source(self, source: str, query: str = "", n_results: int = 5) -> dict:
-        return self._store.query_by_source(source, query, n_results)
+    def query_by_source(
+        self,
+        source: str,
+        query: str = "",
+        n_results: int = 5,
+        extra_filters: dict | None = None,
+    ) -> dict:
+        return self._store.query_by_source(
+            source, query, n_results, extra_filters=extra_filters
+        )
 
     def delete_by_source(self, source: str) -> int:
         return self._store.delete_by_source(source)

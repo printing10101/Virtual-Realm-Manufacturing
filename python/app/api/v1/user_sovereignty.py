@@ -1,8 +1,10 @@
 import json
 import uuid
 import logging
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from datetime import datetime
+
+from app.auth.permissions import require_permission
 
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
@@ -21,7 +23,11 @@ from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/user-sovereignty", tags=["User Sovereignty"])
+router = APIRouter(
+    prefix="/api/v1/user-sovereignty",
+    tags=["User Sovereignty"],
+    dependencies=[Depends(require_permission("user:read"))],
+)
 
 model_registry = get_model_registry_service().model_registry
 audit_log = AuditLog()

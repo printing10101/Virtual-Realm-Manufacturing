@@ -460,7 +460,15 @@ class TaskExecutor:
         start_time = time.time()
 
         try:
-            result = executor(workspace_context, params or {})
+            # 修复 P2：sync 执行器（含 np.loadtxt / torch 训练等阻塞 IO）通过
+            # asyncio.to_thread 移至线程池执行，避免阻塞事件循环；async
+            # 执行器则直接 await。通过 iscoroutinefunction 区分两种情况。
+            if asyncio.iscoroutinefunction(executor):
+                result = await executor(workspace_context, params or {})
+            else:
+                result = await asyncio.to_thread(
+                    executor, workspace_context, params or {}
+                )
 
             duration_ms = (time.time() - start_time) * 1000
 
@@ -490,6 +498,7 @@ class TaskExecutor:
     ) -> Dict[str, Any]:
         """执行LNN推理任务"""
         from app.ai.lnn.inference.predictor import LNNPredictor
+        from app.services.model_registry_service import get_model_registry_service
         import numpy as np
 
         logger.info("Executing LNN inference for task %s", workspace_context.task_id)
@@ -505,8 +514,10 @@ class TaskExecutor:
         if input_array.ndim == 1:
             input_array = input_array.reshape(1, -1)
 
+        # 接口修复：使用全局 model_registry 而非空字典 {}
+        registry = get_model_registry_service().model_registry
         predictor = LNNPredictor.from_registry(
-            registry={},
+            registry=registry,
             model_name=workspace_context.model_path,
         )
 
@@ -523,7 +534,23 @@ class TaskExecutor:
     def _execute_lnn_training(
         self, workspace_context: Any, params: Dict[str, Any]
     ) -> Dict[str, Any]:
+        """执行 LNN 训练任务。
+
+        接口修复说明：
+            原实现错误调用 ``LNNTrainer(model_name=..., dataset_path=..., output_dir=...)``
+            与 ``trainer.train(params)`` / ``trainer.get_metrics()``，与
+            ``trainer.py`` 真实签名（``__init__(model, ...)`` / ``fit`` /
+            ``get_training_summary``）不匹配。此处改为：
+                1. 从全局 model_registry 获取模型实例
+                2. 从 dataset_path 加载 CSV 为 DataLoader
+                3. 调用 ``fit(train_loader, val_loader)``
+                4. 通过 ``get_training_summary()`` 获取训练指标
+        """
         from app.ai.lnn.training.trainer import LNNTrainer
+        from app.services.model_registry_service import get_model_registry_service
+        import torch
+        from torch.utils.data import DataLoader, TensorDataset
+        import numpy as np
 
         logger.info("Executing LNN training for task %s", workspace_context.task_id)
 
@@ -532,24 +559,76 @@ class TaskExecutor:
                 "LNN训练任务缺少数据集路径。请指定训练数据集的文件路径。"
             )
 
-        trainer = LNNTrainer(
-            model_name=workspace_context.model_name,
-            dataset_path=workspace_context.dataset_path,
-            output_dir=workspace_context.model_path,
+        # 1. 从全局 registry 获取模型实例（trainer.__init__ 需要 nn.Module）
+        registry_service = get_model_registry_service()
+        model_name = workspace_context.model_name or "default"
+        model = registry_service.model_registry.get(model_name)
+        if model is None:
+            raise RuntimeError(
+                f"模型 '{model_name}' 在注册表中未找到，请先注册或加载模型。"
+            )
+
+        # 2. 从 dataset_path 加载 CSV 数据为 DataLoader
+        dataset_path = workspace_context.dataset_path
+        try:
+            data = np.loadtxt(dataset_path, delimiter=",", skiprows=1)
+        except (OSError, ValueError) as e:
+            raise RuntimeError(
+                f"数据集加载失败: {dataset_path}。错误: {e}"
+            ) from e
+
+        if data.ndim == 1:
+            data = data.reshape(-1, 1)
+        features = torch.tensor(data[:, :-1], dtype=torch.float32)
+        labels = torch.tensor(data[:, -1], dtype=torch.float32).unsqueeze(1)
+        full_dataset = TensorDataset(features, labels)
+
+        # 简单 8:2 训练/验证划分
+        n_total = len(full_dataset)
+        n_train = max(1, int(n_total * 0.8))
+        n_val = n_total - n_train
+        train_dataset, val_dataset = torch.utils.data.random_split(
+            full_dataset, [n_train, n_val]
         )
-        trainer.train(params)
+
+        batch_size = params.get("batch_size", 64)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = (
+            DataLoader(val_dataset, batch_size=batch_size)
+            if n_val > 0
+            else train_loader
+        )
+
+        # 3. 构造 trainer 并训练（使用真实接口签名）
+        trainer = LNNTrainer(
+            model=model,
+            learning_rate=params.get("learning_rate", 0.001),
+            epochs=params.get("epochs", 200),
+            batch_size=batch_size,
+            device=params.get("device", "cpu"),
+        )
+        trainer.fit(train_loader, val_loader)
+
+        # 4. 保存模型到 output_dir
+        if workspace_context.model_path:
+            try:
+                trainer.save_checkpoint(workspace_context.model_path)
+            except (OSError, RuntimeError) as e:
+                logger.warning("保存模型检查点失败: %s", e)
 
         return {
             "status": "training_completed",
             "model_path": workspace_context.model_path,
             "dataset_path": workspace_context.dataset_path,
-            "metrics": trainer.get_metrics(),
+            # 接口修复：get_metrics() → get_training_summary()
+            "metrics": trainer.get_training_summary(),
         }
 
     def _execute_lnn_analysis(
         self, workspace_context: Any, params: Dict[str, Any]
     ) -> Dict[str, Any]:
         from app.ai.lnn.inference.predictor import LNNPredictor
+        from app.services.model_registry_service import get_model_registry_service
         import numpy as np
 
         logger.info("Executing LNN analysis for task %s", workspace_context.task_id)
@@ -562,8 +641,10 @@ class TaskExecutor:
         if input_array.ndim == 1:
             input_array = input_array.reshape(1, -1)
 
+        # 接口修复：使用全局 model_registry 而非空字典 {}
+        registry = get_model_registry_service().model_registry
         predictor = LNNPredictor.from_registry(
-            registry={},
+            registry=registry,
             model_name=workspace_context.model_path or "default",
         )
         result = predictor.predict(input_array, return_confidence=True)
@@ -920,17 +1001,25 @@ class _EngineHolder:
 _holder = _EngineHolder()
 
 
-def get_engine() -> ExecutionEngine:
+def get_execution_engine() -> ExecutionEngine:
     """获取共享的 :class:`ExecutionEngine` 单例；首次访问时懒初始化。
 
     Returns:
         :class:`ExecutionEngine` 实例（应用生命周期内同一实例）。
 
     Note:
-        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_engine)``。
+        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_execution_engine)``。
         实现是线程安全的，行为与重构前完全一致。
+
+        说明：原函数名 ``get_engine`` 与 ``app.database.connection.get_engine``
+        （返回 AsyncEngine，语义不同）存在命名冲突，故重命名为
+        ``get_execution_engine`` 以提升可读性。旧名仍以别名形式保留，向后兼容。
     """
     return _holder.get()
+
+
+# 向后兼容别名（已弃用，新代码请使用 get_execution_engine）
+get_engine = get_execution_engine
 
 
 def init_execution_engine() -> ExecutionEngine:

@@ -29,6 +29,7 @@ from app.simulation.voxel_cutter import (
     ToolModel,
     _apply_tool_mask_batch,
     HAS_SKIMAGE,
+    reconstruct_mesh,
 )
 from app.simulation.toolpath_parser import ToolpathParser
 
@@ -218,10 +219,10 @@ class TestMeshReconstructionPerformance:
         self.cutter = VoxelCutter(voxel_size=1.0)
         self.bbox_min = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
-        # 预热 Marching Cubes
+        # 预热 Marching Cubes（reconstruct_mesh 为模块级函数）
         warmup = np.zeros((5, 5, 5), dtype=bool)
         warmup[1:4, 1:4, 1:4] = True
-        self.cutter._reconstruct_mesh(warmup, self.bbox_min, 1.0)
+        reconstruct_mesh(warmup, self.bbox_min, 1.0)
 
     def _make_sphere_grid(self, size: int, radius_ratio: float = 0.3) -> np.ndarray:
         """创建球形体素网格。"""
@@ -235,7 +236,7 @@ class TestMeshReconstructionPerformance:
     def test_mc_30x30x30(self):
         grid = self._make_sphere_grid(30)
         t0 = time.perf_counter()
-        mesh = self.cutter._reconstruct_mesh(grid, self.bbox_min, 1.0)
+        mesh = reconstruct_mesh(grid, self.bbox_min, 1.0)
         t1 = time.perf_counter()
         _metrics.record(
             "mc_30x30x30",
@@ -249,7 +250,7 @@ class TestMeshReconstructionPerformance:
     def test_mc_50x50x50(self):
         grid = self._make_sphere_grid(50)
         t0 = time.perf_counter()
-        mesh = self.cutter._reconstruct_mesh(grid, self.bbox_min, 1.0)
+        mesh = reconstruct_mesh(grid, self.bbox_min, 1.0)
         t1 = time.perf_counter()
         _metrics.record(
             "mc_50x50x50",
@@ -263,7 +264,7 @@ class TestMeshReconstructionPerformance:
     def test_mc_100x100x100(self):
         grid = self._make_sphere_grid(100)
         t0 = time.perf_counter()
-        mesh = self.cutter._reconstruct_mesh(grid, self.bbox_min, 1.0)
+        mesh = reconstruct_mesh(grid, self.bbox_min, 1.0)
         t1 = time.perf_counter()
         _metrics.record(
             "mc_100x100x100",

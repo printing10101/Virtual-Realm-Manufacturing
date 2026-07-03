@@ -1,4 +1,4 @@
-﻿"""
+"""
 Task Checkout API Routes
 
 Endpoints for atomic task checkout, execution lock management,
@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query, Request
 
+from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
+from app.core.safe_errors import safe_error_message
 from app.tasks.task_checkout import (
     get_checkout_manager,
     TaskCheckoutManager,
@@ -140,9 +142,15 @@ async def heartbeat(task_id: str, data: dict):
         lock = lock_store.heartbeat(task_id, agent_id)
         return success(data=lock.to_dict(), message="Heartbeat received, lock renewed")
     except LockNotFoundError as e:
-        return error(code=ErrorCode.NOT_FOUND, message=str(e))
+        # 修复 [B26]：避免 str(e) 直接进入响应，泄露内部异常详情（如锁ID、内部状态）
+        safe = safe_error_message(e, context="task_checkout.heartbeat", fallback="任务心跳失败：锁不存在或已过期")
+        logger.error("[task_checkout.heartbeat] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.NOT_FOUND, message=safe["message"], detail={"error_id": safe["error_id"]})
     except LockError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
+        # 修复 [B26]：避免 str(e) 直接进入响应，泄露内部异常详情
+        safe = safe_error_message(e, context="task_checkout.heartbeat", fallback="任务心跳失败，请稍后重试")
+        logger.error("[task_checkout.heartbeat] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INVALID_REQUEST, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/tasks/{task_id}/complete")
@@ -234,8 +242,29 @@ async def list_locks():
 
 @router.delete("/locks/{task_id}")
 async def force_release_lock(
-    task_id: str, admin_id: str = Query("admin", description="Administrator ID")
+    task_id: str,
+    request: Request,
+    _perm: None = Depends(require_permission("task:lock:release")),
 ):
+    """强制释放任务执行锁。
+
+    修复 [B11]：
+        1. 移除原 ``admin_id: str = Query("admin", ...)`` 的默认值 "admin"，
+           该默认值允许任何未认证调用方以 "admin" 身份释放锁；
+        2. 通过 ``Depends(require_permission("task:lock:release"))`` 强制认证，
+           未登录调用方将得到 401，权限不足将得到 403；
+        3. 操作者身份从认证上下文 ``request.state.username`` 获取，
+           并记录到审计链路，确保强制释放操作可追溯。
+    """
+    # 从认证上下文获取操作者身份，避免使用不可信的客户端默认值
+    admin_id = getattr(request.state, "username", None)
+    if not admin_id:
+        # require_permission 已拦截未认证请求，此处仅为防御性兜底
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message="无法获取操作者身份，请先认证",
+        )
+
     manager = _get_manager()
     result = manager.force_release_lock(task_id, admin_id)
 

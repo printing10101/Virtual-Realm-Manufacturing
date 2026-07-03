@@ -8,6 +8,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, Field
 
 from app.models.user import UserCreate, UserLogin, UserResponse, get_user_store
 from app.auth.security import (
@@ -18,14 +19,31 @@ from app.auth.security import (
     decode_token_strict,
     get_token_ban_list,
 )
+from app.config import config
 from typing import Any
 from app.middleware.rate_limiter import limiter
 from app.core.request_id import get_request_id as _get_request_id
+from app.core.safe_errors import safe_error_message
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 security_scheme = HTTPBearer()
+
+
+# ---------------------------------------------------------------------------
+# B13 安全修复：Pydantic 请求模型替换 body: dict 弱验证
+# ---------------------------------------------------------------------------
+
+class TokenRequest(BaseModel):
+    """令牌请求模型。
+
+    用于 refresh_token 和 logout 端点，替换原 body: dict 弱验证。
+    两个字段均默认空字符串以兼容 logout 端点的可选语义；
+    refresh_token 端点会在函数体内显式校验非空。
+    """
+    refresh_token: str = Field("", description="刷新令牌")
+    access_token: str = Field("", description="访问令牌")
 
 
 def get_current_user(
@@ -75,7 +93,9 @@ async def register(request: Request, body: UserCreate):
     4. 用户名唯一性检查：用户名已存在时返回 409。
     """
     # 1) 邀请码环境变量检查：未配置时注册功能视为已关闭
-    reg_code = os.environ.get("LNN_REGISTRATION_CODE", "")
+    # 修复 [B39]：通过 config.security.registration_code 统一读取，
+    # 避免在业务代码中直接调用 os.environ.get() 绕过配置审计
+    reg_code = config.security.registration_code
     if not reg_code:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -115,9 +135,13 @@ async def register(request: Request, body: UserCreate):
             ).model_dump(),
         }
     except ValueError as e:
+        # 修复 [B27]：避免 str(e) 直接进入响应，泄露内部异常详情（如数据库错误、库版本等）
+        # 使用 safe_error_message 包装，仅在 debug 模式下保留原始信息
+        safe = safe_error_message(e, context="auth.refresh_token", fallback="认证服务异常，请稍后重试")
+        logger.error("[auth.refresh_token] error_id=%s: %s", safe["error_id"], e, exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
-            content={"code": 1009, "message": str(e), "request_id": _get_request_id()},
+            content={"code": 1009, "message": safe["message"], "request_id": _get_request_id(), "error_id": safe["error_id"]},
         )
 
 
@@ -159,8 +183,8 @@ async def login(request: Request, body: UserLogin):
 
 @router.post("/refresh", response_model=dict)
 @limiter.limit("10/minute")
-async def refresh_token(request: Request, body: dict):
-    refresh_token_str = body.get("refresh_token", "")
+async def refresh_token(request: Request, body: TokenRequest):
+    refresh_token_str = body.refresh_token
     if not refresh_token_str:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="缺少refresh_token")
 
@@ -200,9 +224,9 @@ async def refresh_token(request: Request, body: dict):
 
 @router.post("/logout", response_model=dict)
 @limiter.limit("20/minute")
-async def logout(request: Request, body: dict):
-    access_token_str = body.get("access_token", "")
-    refresh_token_str = body.get("refresh_token", "")
+async def logout(request: Request, body: TokenRequest):
+    access_token_str = body.access_token
+    refresh_token_str = body.refresh_token
 
     ban_list = get_token_ban_list()
     if access_token_str:

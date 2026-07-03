@@ -28,7 +28,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 
 def run(cmd: list[str], cwd: Path | None = None, env: dict | None = None) -> int:
     print(f"\n>>> {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=str(cwd or PROJECT_ROOT), env=env)
+    # Windows 上需要 shell=True 来执行 .CMD 文件（如 pnpm.CMD）
+    result = subprocess.run(cmd, cwd=str(cwd or PROJECT_ROOT), env=env, shell=True)
     return result.returncode
 
 

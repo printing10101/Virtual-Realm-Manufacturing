@@ -2,28 +2,62 @@
   <div class="trace-timeline">
     <div class="timeline-controls">
       <el-button-group>
-        <el-button :icon="VideoPlay" @click="play" :disabled="isPlaying || !steps.length">
-          播放
+        <el-button
+          :icon="VideoPlay"
+          :disabled="isPlaying || !steps.length"
+          @click="play"
+        >
+          {{ t('traceTimeline.play') }}
         </el-button>
-        <el-button :icon="VideoPause" @click="pause" :disabled="!isPlaying">
-          暂停
+        <el-button
+          :icon="VideoPause"
+          :disabled="!isPlaying"
+          @click="pause"
+        >
+          {{ t('traceTimeline.pause') }}
         </el-button>
-        <el-button :icon="DArrowLeft" @click="prevStep" :disabled="isPlaying || currentIndex <= 0">
-          上一步
+        <el-button
+          :icon="DArrowLeft"
+          :disabled="isPlaying || currentIndex <= 0"
+          @click="prevStep"
+        >
+          {{ t('traceTimeline.prevStep') }}
         </el-button>
-        <el-button :icon="DArrowRight" @click="nextStep" :disabled="isPlaying || currentIndex >= steps.length - 1">
-          下一步
+        <el-button
+          :icon="DArrowRight"
+          :disabled="isPlaying || currentIndex >= steps.length - 1"
+          @click="nextStep"
+        >
+          {{ t('traceTimeline.nextStep') }}
         </el-button>
       </el-button-group>
 
-      <el-select v-model="playbackSpeed" style="width: 120px; margin-left: 12px">
-        <el-option :value="0.5" label="0.5x" />
-        <el-option :value="1" label="1x" />
-        <el-option :value="2" label="2x" />
-        <el-option :value="4" label="4x" />
+      <el-select
+        v-model="playbackSpeed"
+        style="width: 120px; margin-left: 12px"
+      >
+        <el-option
+          :value="0.5"
+          label="0.5x"
+        />
+        <el-option
+          :value="1"
+          label="1x"
+        />
+        <el-option
+          :value="2"
+          label="2x"
+        />
+        <el-option
+          :value="4"
+          label="4x"
+        />
       </el-select>
 
-      <div class="progress-info" v-if="steps.length">
+      <div
+        v-if="steps.length"
+        class="progress-info"
+      >
         <span>{{ currentIndex + 1 }} / {{ steps.length }}</span>
         <span v-if="currentStep">- {{ currentStep.title }}</span>
       </div>
@@ -42,32 +76,59 @@
         @click="goToStep(index)"
       >
         <div class="node-dot">
-          <el-icon v-if="index < currentIndex" :size="14"><Check /></el-icon>
-          <el-icon v-else-if="index === currentIndex" :size="14"><Loading /></el-icon>
+          <el-icon
+            v-if="index < currentIndex"
+            :size="14"
+          >
+            <Check />
+          </el-icon>
+          <el-icon
+            v-else-if="index === currentIndex"
+            :size="14"
+          >
+            <Loading />
+          </el-icon>
         </div>
-        <div class="node-label">{{ step.title }}</div>
-        <div class="node-time" v-if="step.timestamp">
+        <div class="node-label">
+          {{ step.title }}
+        </div>
+        <div
+          v-if="step.timestamp"
+          class="node-time"
+        >
           {{ formatTime(step.timestamp) }}
         </div>
       </div>
-      <div class="timeline-line" :style="{ width: `${(currentIndex / Math.max(steps.length - 1, 1)) * 100}%` }" />
+      <div
+        class="timeline-line"
+        :style="{ width: `${(currentIndex / Math.max(steps.length - 1, 1)) * 100}%` }"
+      />
     </div>
 
-    <div class="timeline-content" v-if="currentStep">
+    <div
+      v-if="currentStep"
+      class="timeline-content"
+    >
       <StepCard :step="currentStep" />
     </div>
 
-    <div class="timeline-empty" v-else>
-      <el-empty description="暂无推理步骤" />
+    <div
+      v-else
+      class="timeline-empty"
+    >
+      <el-empty :description="t('traceTimeline.empty')" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { VideoPlay, VideoPause, DArrowLeft, DArrowRight, Check, Loading } from '@element-plus/icons-vue'
 import StepCard from './StepCard.vue'
 import type { ReasoningStep } from '@/api/reasoning'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   steps: ReasoningStep[]

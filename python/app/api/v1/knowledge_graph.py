@@ -29,9 +29,10 @@ import logging
 import threading
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.auth.permissions import require_permission
 from app.knowledge_graph.graph_store import GraphStore
 from app.knowledge_graph.query_api import KnowledgeGraphQueryAPI
 
@@ -151,7 +152,7 @@ class GraphQueryRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(require_permission("kg:read"))])
 def get_stats() -> dict[str, Any]:
     """图规模统计。"""
     try:
@@ -164,7 +165,7 @@ def get_stats() -> dict[str, Any]:
         ) from exc
 
 
-@router.get("/nodes/{node_id}")
+@router.get("/nodes/{node_id}", dependencies=[Depends(require_permission("kg:read"))])
 def get_node(node_id: str) -> dict[str, Any]:
     """按 ID 取节点。"""
     try:
@@ -180,7 +181,7 @@ def get_node(node_id: str) -> dict[str, Any]:
     return node
 
 
-@router.get("/nodes")
+@router.get("/nodes", dependencies=[Depends(require_permission("kg:read"))])
 def list_nodes(
     type: Optional[str] = Query(None, description="节点类型，如 material / tool"),
     pattern: Optional[str] = Query(None, description="ID 通配符（%/_)"),
@@ -204,7 +205,7 @@ def list_nodes(
     return {"count": len(nodes), "nodes": nodes}
 
 
-@router.get("/edges")
+@router.get("/edges", dependencies=[Depends(require_permission("kg:read"))])
 def list_edges(
     edge_type: Optional[str] = Query(None, description="关系类型，如 SUITABLE_FOR"),
     source_id: Optional[str] = Query(None, description="源节点 ID"),
@@ -232,7 +233,7 @@ def list_edges(
     return {"count": len(edges), "edges": edges}
 
 
-@router.get("/neighbors/{node_id}")
+@router.get("/neighbors/{node_id}", dependencies=[Depends(require_permission("kg:read"))])
 def get_neighbors(
     node_id: str,
     max_hops: int = Query(1, ge=1, le=5),
@@ -259,7 +260,7 @@ def get_neighbors(
     return {"count": len(neighbors), "neighbors": neighbors}
 
 
-@router.post("/query")
+@router.post("/query", dependencies=[Depends(require_permission("kg:read"))])
 def post_query(payload: GraphQueryRequest) -> dict[str, Any]:
     """统一查询入口。
 
@@ -290,7 +291,7 @@ def post_query(payload: GraphQueryRequest) -> dict[str, Any]:
         ) from exc
 
 
-@router.get("/tools-for-material")
+@router.get("/tools-for-material", dependencies=[Depends(require_permission("kg:read"))])
 def get_tools_for_material(
     material_id: str = Query(..., description="材料节点 ID"),
     min_confidence: float = Query(0.0, ge=0.0, le=1.0),
@@ -310,7 +311,7 @@ def get_tools_for_material(
     return {"count": len(items), "items": items}
 
 
-@router.get("/materials-for-tool")
+@router.get("/materials-for-tool", dependencies=[Depends(require_permission("kg:read"))])
 def get_materials_for_tool(
     tool_id: str = Query(..., description="刀具节点 ID"),
     min_confidence: float = Query(0.0, ge=0.0, le=1.0),
@@ -330,7 +331,7 @@ def get_materials_for_tool(
     return {"count": len(items), "items": items}
 
 
-@router.get("/process-chain/{feature_id}")
+@router.get("/process-chain/{feature_id}", dependencies=[Depends(require_permission("kg:read"))])
 def get_process_chain(
     feature_id: str,
     max_hops: int = Query(3, ge=1, le=5),

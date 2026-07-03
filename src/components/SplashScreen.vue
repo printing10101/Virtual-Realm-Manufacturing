@@ -1,34 +1,79 @@
 <template>
-  <Transition name="splash-fade" @after-leave="$emit('complete')">
-    <div v-if="visible" class="splash-overlay">
+  <Transition
+    name="splash-fade"
+    @after-leave="$emit('complete')"
+  >
+    <div
+      v-if="visible"
+      class="splash-overlay"
+    >
       <!-- 背景粒子效果 -->
       <div class="particles">
-        <div v-for="i in 20" :key="i" class="particle" :style="particleStyle(i)"></div>
+        <div
+          v-for="i in 20"
+          :key="i"
+          class="particle"
+          :style="particleStyle(i)"
+        />
       </div>
 
       <!-- 主内容区域 -->
       <div class="splash-content">
         <!-- 3D 线框立方体动画 -->
         <div class="cube-container">
-          <svg viewBox="0 0 200 200" class="cube-svg">
+          <svg
+            viewBox="0 0 200 200"
+            class="cube-svg"
+          >
             <!-- 外圈光晕 -->
-            <circle cx="100" cy="100" r="90" class="glow-ring" />
-            <circle cx="100" cy="100" r="75" class="glow-ring inner" />
+            <circle
+              cx="100"
+              cy="100"
+              r="90"
+              class="glow-ring"
+            />
+            <circle
+              cx="100"
+              cy="100"
+              r="75"
+              class="glow-ring inner"
+            />
 
             <!-- 3D 立方体线框 -->
-            <g class="cube-wireframe" transform="translate(100, 95)">
+            <g
+              class="cube-wireframe"
+              transform="translate(100, 95)"
+            >
               <!-- 后面 -->
-              <polygon :points="backFace" class="cube-face back" />
+              <polygon
+                :points="backFace"
+                class="cube-face back"
+              />
               <!-- 前面 -->
-              <polygon :points="frontFace" class="cube-face front" />
+              <polygon
+                :points="frontFace"
+                class="cube-face front"
+              />
               <!-- 连接线 -->
-              <line v-for="(line, i) in connectingLines" :key="'l'+i"
-                :x1="line[0]" :y1="line[1]" :x2="line[2]" :y2="line[3]"
-                class="cube-edge" />
+              <line
+                v-for="(line, i) in connectingLines"
+                :key="'l'+i"
+                :x1="line[0]"
+                :y1="line[1]"
+                :x2="line[2]"
+                :y2="line[3]"
+                class="cube-edge"
+              />
               <!-- 顶点 -->
-              <circle v-for="(v, i) in allVertices" :key="'v'+i"
-                :cx="v[0]" :cy="v[1]" r="3" class="cube-vertex"
-                :style="{ animationDelay: `${i * 0.1}s` }" />
+              <circle
+                v-for="(v, i) in allVertices"
+                :key="'v'+i"
+                :cx="v[0]"
+                :cy="v[1]"
+                r="3"
+                class="cube-vertex"
+                :style="{ animationDelay: `${i * 0.1}s` }"
+              />
             </g>
           </svg>
         </div>
@@ -36,21 +81,34 @@
         <!-- 应用名称 -->
         <div class="app-brand">
           <h1 class="app-name">
-            <span v-for="(char, i) in appNameChars" :key="i"
-              class="char" :style="{ animationDelay: `${0.8 + i * 0.1}s` }">
+            <span
+              v-for="(char, i) in appNameChars"
+              :key="i"
+              class="char"
+              :style="{ animationDelay: `${0.8 + i * 0.1}s` }"
+            >
               {{ char }}
             </span>
           </h1>
-          <p class="app-subtitle">AI驱动的3D建模与工艺规划系统</p>
-          <p class="app-version-text">V4 · v{{ version }}</p>
+          <p class="app-subtitle">
+            {{ t('splashScreen.appSubtitle') }}
+          </p>
+          <p class="app-version-text">
+            V4 · v{{ version }}
+          </p>
         </div>
 
         <!-- 进度条 -->
         <div class="progress-container">
           <div class="progress-track">
-            <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+            <div
+              class="progress-fill"
+              :style="{ width: `${progress}%` }"
+            />
           </div>
-          <p class="progress-text">{{ statusText }}</p>
+          <p class="progress-text">
+            {{ statusText }}
+          </p>
         </div>
       </div>
 
@@ -65,19 +123,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useVersionStore } from '@/stores/version'
+import { useI18n } from 'vue-i18n'
 
 const emit = defineEmits<{
   (e: 'complete'): void
 }>()
 
+const { t } = useI18n()
+
 const visible = ref(true)
 const progress = ref(0)
-const statusText = ref('正在初始化...')
+const statusText = ref(t('splashScreen.statusInit'))
 
 const versionStore = useVersionStore()
-const version = computed(() => versionStore.frontendVersion || '2.3.0')
+const version = computed(() => versionStore.frontendVersion || '2.4.0')
 
-const appNameChars = '灵境制造'.split('')
+const appNameChars = t('splashScreen.appName').split('')
 
 // 3D 立方体旋转角度
 const rotation = ref(0)
@@ -144,14 +205,14 @@ function particleStyle(i: number) {
   }
 }
 
-const statusMessages = [
-  { at: 0, text: '正在初始化...' },
-  { at: 15, text: '加载核心模块...' },
-  { at: 35, text: '启动后端服务...' },
-  { at: 55, text: '初始化3D引擎...' },
-  { at: 75, text: '加载配置数据...' },
-  { at: 90, text: '准备就绪...' }
-]
+const statusMessages = computed(() => [
+  { at: 0, text: t('splashScreen.statusInit') },
+  { at: 15, text: t('splashScreen.statusLoadingCore') },
+  { at: 35, text: t('splashScreen.statusStartingBackend') },
+  { at: 55, text: t('splashScreen.statusInit3dEngine') },
+  { at: 75, text: t('splashScreen.statusLoadingConfig') },
+  { at: 90, text: t('splashScreen.statusReady') }
+])
 
 // 定时器ID，用于组件卸载时清理
 let intervalId: ReturnType<typeof setInterval> | null = null
@@ -165,9 +226,9 @@ onMounted(() => {
       if (progress.value > 100) progress.value = 100
 
       // 更新状态文本
-      for (let i = statusMessages.length - 1; i >= 0; i--) {
-        if (progress.value >= statusMessages[i].at) {
-          statusText.value = statusMessages[i].text
+      for (let i = statusMessages.value.length - 1; i >= 0; i--) {
+        if (progress.value >= statusMessages.value[i].at) {
+          statusText.value = statusMessages.value[i].text
           break
         }
       }

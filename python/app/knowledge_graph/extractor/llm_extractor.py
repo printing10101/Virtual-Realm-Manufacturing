@@ -492,7 +492,14 @@ class LLMExtractor:
 
 
 def create_llm_client() -> BaseLLMClient:
-    """根据环境变量创建 LLM 客户端。
+    """根据环境变量创建 LLM 客户端（同步工厂，用于知识图谱抽取场景）。
+
+    .. note::
+        本函数为知识图谱抽取模块的专用工厂，基于 ``LLM_PROVIDER`` 等环境变量
+        构造客户端，便于在脚本化抽取流程中独立配置。**新代码应优先使用**
+        ``await app.ai.llm_client.get_llm_client()``，它优先复用
+        ProviderRegistry 中已激活的 Provider，回退到 ``config.ai`` 配置，
+        并统一管理 httpx 连接池。仅当需要独立环境变量配置时使用本函数。
 
     环境变量：
         LLM_PROVIDER: ollama / cloud（默认 ollama）

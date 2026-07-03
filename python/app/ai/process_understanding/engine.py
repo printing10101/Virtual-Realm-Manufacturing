@@ -13,6 +13,7 @@ LLM工艺理解主引擎
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import threading
@@ -173,16 +174,13 @@ class ProcessUnderstandingEngine:
         return self._explainer
 
     async def _get_llm_client(self) -> Any:
+        # 修复断点 A：通过 get_llm_client() 工厂函数接入 Provider 网关，
+        # 优先使用用户在系统设置中激活的 Provider（本地 Ollama/LM Studio/llama.cpp/vLLM 或云端 API），
+        # 无激活 Provider 时回退到 config.ai 配置（向后兼容）。
         if self._llm_client is None:
-            from app.ai.llm_client import CloudLLMClient
-            from app.config import config
+            from app.ai.llm_client import get_llm_client
 
-            self._llm_client = CloudLLMClient(
-                api_key=config.ai.cloud_api_key,
-                base_url=config.ai.cloud_base_url,
-                model=config.ai.cloud_model,
-                timeout=config.ai.timeout,
-            )
+            self._llm_client = await get_llm_client()
         return self._llm_client
 
     async def process(self, user_input: str) -> ProcessUnderstandingOutput:
@@ -199,19 +197,20 @@ class ProcessUnderstandingEngine:
         start_time = time.perf_counter()
         self._total_requests += 1
 
-        # 1. 任务分类
-        classification = await self.classifier.classify(user_input)
+        # 1. 任务分类 + 实体提取 并行执行（两者相互独立）
+        # 检索依赖 task_type，需等分类完成后再启动
+        classification, entities = await asyncio.gather(
+            self.classifier.classify(user_input),
+            self._extract_entities(user_input),
+        )
         task_type = classification.task_type
 
-        # 2. 知识检索
+        # 2. 知识检索（依赖 task_type）
         retrieval = await self.retriever.retrieve(
             query=user_input, task_type=task_type
         )
 
-        # 3. 实体提取
-        entities = await self._extract_entities(user_input)
-
-        # 4. 根据任务类型路由处理
+        # 3. 根据任务类型路由处理
         output = await self._route_by_task_type(
             user_input=user_input,
             task_type=task_type,
@@ -259,7 +258,7 @@ class ProcessUnderstandingEngine:
             )
         else:  # KNOWLEDGE_QUERY
             return await self._handle_knowledge_query(
-                user_input, retrieval, entities
+                user_input, retrieval, entities, classification
             )
 
     async def _handle_solution_generation(

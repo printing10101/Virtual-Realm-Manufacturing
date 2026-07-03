@@ -40,7 +40,7 @@ with open(results_dir / "active_learning_results.json", 'r', encoding='utf-8') a
 # 图1: 模型综合性能排名图
 print("\n[1/8] 生成模型综合性能排名图...")
 
-datasets = list(main_results.keys())
+datasets = [k for k in main_results.keys() if not k.startswith('_')]
 models = list(main_results[datasets[0]].keys())
 
 # 计算每个模型在所有数据集上的平均排名

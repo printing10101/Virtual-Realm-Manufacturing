@@ -67,7 +67,7 @@ async function tauriListen<T = any>(
 }
 
 let _state: ReturnType<typeof reactive<BackendState>> | null = null
-let _unlisten: Array<() => void> = []
+const _unlisten: Array<() => void> = []
 let _initialized = false
 
 export function useBackendStatus() {

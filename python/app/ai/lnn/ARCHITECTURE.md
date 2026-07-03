@@ -1,5 +1,22 @@
 # 混合推理引擎系统 - 架构设计文档
 
+> **实现状态说明（2026-07-03 修订）**
+>
+> 本文档描述的是目标架构（target design）。当前代码库中的实现状态如下：
+>
+> | 组件 | 文件 | 状态 |
+> |------|------|------|
+> | 核心数据模型（TaskInput/RoutingDecision/InferenceResult/FusionResult） | `core.py` | ✅ 完整实现 |
+> | LNN 模型（CFC/LTC/Hybrid） | `models/` | ✅ 完整实现 |
+> | 训练与推理 | `training/`、`inference/` | ✅ 完整实现 |
+> | `TaskRouter` | `router/task_router.py` | ⚠️ 实验性 stub（仅返回固定决策） |
+> | `DempsterShaferFusion` | `fusion.py` | ⚠️ 实验性 stub（仅做加权平均） |
+> | `HybridInferenceEngine` | `engine.py` | ⚠️ 实验性 stub（委托给上述 stub） |
+>
+> stub 组件的公共 API 与本文档契约一致，可在下游代码中安全导入；但其
+> 内部算法尚未实现，决策结果会带有 `"stub": True` 元数据标记。完整算法
+> 实现后，本文档无需修改公共 API 描述。
+
 ## 1. 系统概述
 
 混合推理引擎系统是一个高可用、可扩展、可维护的AI推理框架，整合了LNN（神经逻辑网络）、LLM（大语言模型）、Rule（规则引擎）和Hybrid（混合模式）四种推理引擎，通过智能任务路由和Dempster-Shafer证据理论结果融合，实现最优推理效果。

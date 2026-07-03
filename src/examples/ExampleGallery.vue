@@ -1,18 +1,25 @@
 <template>
   <div class="example-gallery">
     <!-- 搜索和过滤区域 -->
-    <el-card class="filter-card" shadow="never">
+    <el-card
+      class="filter-card"
+      shadow="never"
+    >
       <el-row :gutter="16">
         <el-col :span="8">
           <el-input
             v-model="filter.keyword"
-            placeholder="搜索示例..."
+            :placeholder="t('exampleGallery.placeholderSearch')"
             clearable
             prefix-icon="Search"
           />
         </el-col>
         <el-col :span="4">
-          <el-select v-model="filter.category" placeholder="分类" clearable>
+          <el-select
+            v-model="filter.category"
+            :placeholder="t('exampleGallery.placeholderCategory')"
+            clearable
+          >
             <el-option
               v-for="cat in categories"
               :key="cat.value"
@@ -22,7 +29,11 @@
           </el-select>
         </el-col>
         <el-col :span="4">
-          <el-select v-model="filter.difficulty" placeholder="难度" clearable>
+          <el-select
+            v-model="filter.difficulty"
+            :placeholder="t('exampleGallery.placeholderDifficulty')"
+            clearable
+          >
             <el-option
               v-for="diff in difficulties"
               :key="diff.value"
@@ -32,11 +43,26 @@
           </el-select>
         </el-col>
         <el-col :span="4">
-          <el-select v-model="filter.sortBy" placeholder="排序">
-            <el-option label="名称" value="name" />
-            <el-option label="更新时间" value="date" />
-            <el-option label="下载次数" value="downloads" />
-            <el-option label="难度" value="difficulty" />
+          <el-select
+            v-model="filter.sortBy"
+            :placeholder="t('exampleGallery.placeholderSort')"
+          >
+            <el-option
+              :label="t('exampleGallery.sortName')"
+              value="name"
+            />
+            <el-option
+              :label="t('exampleGallery.sortUpdated')"
+              value="date"
+            />
+            <el-option
+              :label="t('exampleGallery.sortDownloads')"
+              value="downloads"
+            />
+            <el-option
+              :label="t('exampleGallery.sortDifficulty')"
+              value="difficulty"
+            />
           </el-select>
         </el-col>
         <el-col :span="4">
@@ -57,7 +83,10 @@
     </el-card>
 
     <!-- 示例列表 -->
-    <div v-if="viewMode === 'grid'" class="example-grid">
+    <div
+      v-if="viewMode === 'grid'"
+      class="example-grid"
+    >
       <el-card
         v-for="example in filteredExamples"
         :key="example.id"
@@ -69,19 +98,28 @@
           <div class="card-header">
             <div class="card-title">
               <h4>{{ example.name }}</h4>
-              <el-tag :type="(getDifficultyType(example.difficulty) as any)" size="small">
+              <el-tag
+                :type="getDifficultyType(example.difficulty)"
+                size="small"
+              >
                 {{ getDifficultyLabel(example.difficulty) }}
               </el-tag>
             </div>
             <div class="card-category">
-              <el-tag type="info" size="small" effect="plain">
+              <el-tag
+                type="info"
+                size="small"
+                effect="plain"
+              >
                 {{ getCategoryLabel(example.category) }}
               </el-tag>
             </div>
           </div>
         </template>
 
-        <p class="card-description">{{ example.description }}</p>
+        <p class="card-description">
+          {{ example.description }}
+        </p>
 
         <div class="card-tags">
           <el-tag
@@ -112,7 +150,7 @@
               icon="View"
               @click.stop="handlePreview(example)"
             >
-              预览
+              {{ t('exampleGallery.btnPreview') }}
             </el-button>
             <el-button
               size="small"
@@ -120,51 +158,86 @@
               icon="CopyDocument"
               @click.stop="handleCopy(example)"
             >
-              复制
+              {{ t('exampleGallery.btnCopy') }}
             </el-button>
           </div>
         </div>
       </el-card>
     </div>
 
-    <div v-else class="example-list">
+    <div
+      v-else
+      class="example-list"
+    >
       <el-table
         :data="filteredExamples"
         stripe
         @row-click="handleSelect"
       >
-        <el-table-column prop="name" label="名称" width="200">
+        <el-table-column
+          prop="name"
+          :label="t('exampleGallery.colName')"
+          width="200"
+        >
           <template #default="{ row }">
             <div class="table-name">
               <strong>{{ row.name }}</strong>
-              <el-tag :type="(getDifficultyType(row.difficulty) as any)" size="small">
+              <el-tag
+                :type="getDifficultyType(row.difficulty)"
+                size="small"
+              >
                 {{ getDifficultyLabel(row.difficulty) }}
               </el-tag>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="300" />
-        <el-table-column prop="category" label="分类" width="120">
+        <el-table-column
+          prop="description"
+          :label="t('exampleGallery.colDescription')"
+          min-width="300"
+        />
+        <el-table-column
+          prop="category"
+          :label="t('exampleGallery.colCategory')"
+          width="120"
+        >
           <template #default="{ row }">
-            <el-tag type="info" size="small" effect="plain">
+            <el-tag
+              type="info"
+              size="small"
+              effect="plain"
+            >
               {{ getCategoryLabel(row.category) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="downloadCount" label="下载" width="100" sortable />
-        <el-table-column prop="updatedAt" label="更新时间" width="120">
+        <el-table-column
+          prop="downloadCount"
+          :label="t('exampleGallery.colDownloads')"
+          width="100"
+          sortable
+        />
+        <el-table-column
+          prop="updatedAt"
+          :label="t('exampleGallery.colUpdatedAt')"
+          width="120"
+        >
           <template #default="{ row }">
             {{ formatDate(row.updatedAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column
+          :label="t('exampleGallery.colActions')"
+          width="180"
+          fixed="right"
+        >
           <template #default="{ row }">
             <el-button
               size="small"
               icon="View"
               @click.stop="handlePreview(row as ExampleProject)"
             >
-              预览
+              {{ t('exampleGallery.btnPreview') }}
             </el-button>
             <el-button
               size="small"
@@ -172,7 +245,7 @@
               icon="CopyDocument"
               @click.stop="handleCopy(row as ExampleProject)"
             >
-              复制
+              {{ t('exampleGallery.btnCopy') }}
             </el-button>
           </template>
         </el-table-column>
@@ -186,33 +259,48 @@
       width="800px"
       top="5vh"
     >
-      <div v-if="selectedExample" class="example-detail">
+      <div
+        v-if="selectedExample"
+        class="example-detail"
+      >
         <el-tabs v-model="activeTab">
-          <el-tab-pane label="说明" name="details">
+          <el-tab-pane
+            :label="t('exampleGallery.tabDetails')"
+            name="details"
+          >
             <div class="detail-section">
               <div class="detail-meta">
-                <el-tag :type="(getDifficultyType(selectedExample.difficulty) as any)">
+                <el-tag :type="getDifficultyType(selectedExample.difficulty)">
                   {{ getDifficultyLabel(selectedExample.difficulty) }}
                 </el-tag>
-                <el-tag type="info" effect="plain">
+                <el-tag
+                  type="info"
+                  effect="plain"
+                >
                   {{ getCategoryLabel(selectedExample.category) }}
                 </el-tag>
                 <span class="meta-item">
                   <el-icon><Download /></el-icon>
-                  {{ selectedExample.downloadCount }} 次下载
+                  {{ t('exampleGallery.downloadCount', { count: selectedExample.downloadCount }) }}
                 </span>
                 <span class="meta-item">
                   <el-icon><Clock /></el-icon>
-                  更新于 {{ formatDate(selectedExample.updatedAt) }}
+                  {{ t('exampleGallery.updatedAt', { date: formatDate(selectedExample.updatedAt) }) }}
                 </span>
               </div>
 
-              <div class="detail-content" v-html="renderMarkdown(selectedExample.details)" />
+              <div
+                class="detail-content"
+                v-html="renderMarkdown(selectedExample.details)"
+              />
 
               <div class="detail-use-cases">
-                <h4>应用场景</h4>
+                <h4>{{ t('exampleGallery.useCasesTitle') }}</h4>
                 <ul>
-                  <li v-for="useCase in selectedExample.useCases" :key="useCase">
+                  <li
+                    v-for="useCase in selectedExample.useCases"
+                    :key="useCase"
+                  >
                     {{ useCase }}
                   </li>
                 </ul>
@@ -220,7 +308,10 @@
             </div>
           </el-tab-pane>
 
-          <el-tab-pane label="代码" name="code">
+          <el-tab-pane
+            :label="t('exampleGallery.tabCode')"
+            name="code"
+          >
             <div class="code-section">
               <div class="code-header">
                 <span class="code-language">{{ selectedExample.language }}</span>
@@ -230,7 +321,7 @@
                   icon="CopyDocument"
                   @click="handleCopyCode"
                 >
-                  复制代码
+                  {{ t('exampleGallery.btnCopyCode') }}
                 </el-button>
               </div>
               <pre class="code-block"><code>{{ selectedExample.code }}</code></pre>
@@ -240,13 +331,15 @@
       </div>
 
       <template #footer>
-        <el-button @click="showDetail = false">关闭</el-button>
+        <el-button @click="showDetail = false">
+          {{ t('exampleGallery.btnClose') }}
+        </el-button>
         <el-button
           type="primary"
           icon="Download"
           @click="handleImport(selectedExample!)"
         >
-          导入到项目
+          {{ t('exampleGallery.btnImport') }}
         </el-button>
       </template>
     </el-dialog>
@@ -254,20 +347,25 @@
     <!-- 预览对话框 -->
     <el-dialog
       v-model="showPreview"
-      title="代码预览"
+      :title="t('exampleGallery.previewTitle')"
       width="700px"
     >
-      <div v-if="previewExample" class="preview-content">
+      <div
+        v-if="previewExample"
+        class="preview-content"
+      >
         <pre class="code-block"><code>{{ previewExample.code }}</code></pre>
       </div>
       <template #footer>
-        <el-button @click="showPreview = false">关闭</el-button>
+        <el-button @click="showPreview = false">
+          {{ t('exampleGallery.btnClose') }}
+        </el-button>
         <el-button
           type="primary"
           icon="CopyDocument"
           @click="handleCopy(previewExample!)"
         >
-          复制代码
+          {{ t('exampleGallery.btnCopyCode') }}
         </el-button>
       </template>
     </el-dialog>
@@ -276,10 +374,13 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Download, Clock, Search, Grid, List, View, CopyDocument } from '@element-plus/icons-vue'
 import type { ExampleProject, ExampleFilter, ExampleCategory, ExampleDifficulty } from './types'
 import { exampleProjects, getCategories, getDifficulties } from './data'
+
+const { t } = useI18n()
 
 // 状态
 const filter = ref<ExampleFilter>({
@@ -339,10 +440,11 @@ const filteredExamples = computed(() => {
         case 'downloads':
           compareValue = b.downloadCount - a.downloadCount
           break
-        case 'difficulty':
+        case 'difficulty': {
           const difficultyOrder = { beginner: 1, intermediate: 2, advanced: 3 }
           compareValue = difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]
           break
+        }
       }
 
       return filter.value.sortOrder === 'asc' ? compareValue : -compareValue
@@ -367,9 +469,9 @@ function handlePreview(example: ExampleProject) {
 async function handleCopy(example: ExampleProject) {
   try {
     await navigator.clipboard.writeText(example.code)
-    ElMessage.success('代码已复制到剪贴板')
+    ElMessage.success(t('exampleGallery.msgCopied'))
   } catch (error) {
-    ElMessage.error('复制失败，请手动复制')
+    ElMessage.error(t('exampleGallery.msgCopyFailed'))
   }
 }
 
@@ -381,12 +483,14 @@ function handleCopyCode() {
 
 function handleImport(example: ExampleProject) {
   // 这里可以实现导入逻辑
-  ElMessage.success(`示例 "${example.name}" 已导入到项目`)
+  ElMessage.success(t('exampleGallery.msgImported', { name: example.name }))
   showDetail.value = false
 }
 
-function getDifficultyType(difficulty: ExampleDifficulty) {
-  const typeMap = {
+type TagType = 'success' | 'warning' | 'danger' | 'info' | 'primary'
+
+function getDifficultyType(difficulty: ExampleDifficulty): TagType {
+  const typeMap: Record<ExampleDifficulty, TagType> = {
     beginner: 'success',
     intermediate: 'warning',
     advanced: 'danger'
@@ -396,21 +500,21 @@ function getDifficultyType(difficulty: ExampleDifficulty) {
 
 function getDifficultyLabel(difficulty: ExampleDifficulty) {
   const labelMap = {
-    beginner: '入门',
-    intermediate: '中级',
-    advanced: '高级'
+    beginner: t('exampleGallery.difficultyBeginner'),
+    intermediate: t('exampleGallery.difficultyIntermediate'),
+    advanced: t('exampleGallery.difficultyAdvanced')
   }
   return labelMap[difficulty]
 }
 
 function getCategoryLabel(category: ExampleCategory) {
   const categoryMap = {
-    basic: '基础示例',
-    modeling: '3D建模',
-    toolpath: '工具路径',
-    simulation: '仿真模拟',
-    ai: 'AI功能',
-    advanced: '高级应用'
+    basic: t('exampleGallery.categoryBasic'),
+    modeling: t('exampleGallery.categoryModeling'),
+    toolpath: t('exampleGallery.categoryToolpath'),
+    simulation: t('exampleGallery.categorySimulation'),
+    ai: t('exampleGallery.categoryAi'),
+    advanced: t('exampleGallery.categoryAdvanced')
   }
   return categoryMap[category]
 }

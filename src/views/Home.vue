@@ -1,555 +1,848 @@
 <template>
   <div class="home-page">
-    <!-- 顶部欢迎横幅 -->
-    <section class="hero-banner">
-      <div class="hero-content">
-        <div class="hero-text">
-          <h1>{{ $t('home.welcome') }}</h1>
-          <p>{{ $t('home.welcomeDesc') }}</p>
-        </div>
-        <div class="hero-actions">
-          <el-button type="primary" size="large" @click="$router.push('/workspace')">
-            <el-icon><EditPen /></el-icon>
-            {{ $t('app.newProject') }}
-          </el-button>
-          <el-button size="large" @click="emit('open-project')">
-            <el-icon><FolderOpened /></el-icon>
-            {{ $t('app.openProject') }}
-          </el-button>
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-header__title">
+        <h1>{{ t('home.pageTitle') }}</h1>
+      </div>
+    </div>
+
+    <!-- 1. Welcome Banner -->
+    <section class="welcome-banner">
+      <div class="banner-content">
+        <div class="banner-text">
+          <h2>{{ greeting }}{{ t('home.greetingOperator') }}</h2>
+          <p class="banner-date">
+            {{ currentDateTime }}
+          </p>
         </div>
       </div>
-      <div class="hero-decoration">
-        <svg viewBox="0 0 200 200" class="hero-svg">
-          <g transform="translate(100,100)">
-            <polygon :points="cubeFront" class="cube-face front" />
-            <polygon :points="cubeBack" class="cube-face back" />
-            <line v-for="(l, i) in cubeEdges" :key="i"
-              :x1="l[0]" :y1="l[1]" :x2="l[2]" :y2="l[3]" class="cube-edge" />
-            <circle v-for="(v, i) in cubeVertices" :key="'v'+i"
-              :cx="v[0]" :cy="v[1]" r="2.5" class="cube-dot" />
-          </g>
+      <div class="banner-illustration">
+        <svg
+          viewBox="0 0 120 120"
+          class="banner-svg"
+        >
+          <rect
+            x="15"
+            y="50"
+            width="90"
+            height="55"
+            rx="6"
+            fill="rgba(255,255,255,0.15)"
+          />
+          <rect
+            x="25"
+            y="35"
+            width="25"
+            height="20"
+            rx="3"
+            fill="rgba(255,255,255,0.2)"
+          />
+          <rect
+            x="55"
+            y="25"
+            width="25"
+            height="30"
+            rx="3"
+            fill="rgba(255,255,255,0.25)"
+          />
+          <rect
+            x="25"
+            y="75"
+            width="70"
+            height="8"
+            rx="2"
+            fill="rgba(255,255,255,0.1)"
+          />
+          <rect
+            x="25"
+            y="88"
+            width="70"
+            height="8"
+            rx="2"
+            fill="rgba(255,255,255,0.1)"
+          />
+          <circle
+            cx="95"
+            cy="30"
+            r="12"
+            fill="none"
+            stroke="rgba(255,255,255,0.4)"
+            stroke-width="2"
+          />
+          <circle
+            cx="95"
+            cy="30"
+            r="5"
+            fill="rgba(255,255,255,0.3)"
+          />
+          <line
+            x1="95"
+            y1="15"
+            x2="95"
+            y2="20"
+            stroke="rgba(255,255,255,0.4)"
+            stroke-width="2"
+          />
+          <line
+            x1="95"
+            y1="40"
+            x2="95"
+            y2="45"
+            stroke="rgba(255,255,255,0.4)"
+            stroke-width="2"
+          />
+          <line
+            x1="80"
+            y1="30"
+            x2="85"
+            y2="30"
+            stroke="rgba(255,255,255,0.4)"
+            stroke-width="2"
+          />
+          <line
+            x1="105"
+            y1="30"
+            x2="110"
+            y2="30"
+            stroke="rgba(255,255,255,0.4)"
+            stroke-width="2"
+          />
+          <circle
+            cx="35"
+            cy="22"
+            r="5"
+            fill="rgba(255,255,255,0.15)"
+          />
+          <circle
+            cx="40"
+            cy="15"
+            r="7"
+            fill="rgba(255,255,255,0.1)"
+          />
+          <circle
+            cx="38"
+            cy="7"
+            r="4"
+            fill="rgba(255,255,255,0.06)"
+          />
         </svg>
       </div>
     </section>
 
-    <!-- 快捷功能入口 -->
-    <section class="quick-access">
-      <h3 class="section-title">{{ $t('home.quickAccess') || '快捷功能' }}</h3>
-      <div class="feature-grid">
-        <div v-for="item in featureItems" :key="item.path"
-          class="feature-card" @click="$router.push(item.path)">
-          <div class="feature-icon" :style="{ background: item.color }">
-            <el-icon :size="24"><component :is="item.icon" /></el-icon>
+    <!-- 2. Time Range Filter -->
+    <section class="time-filter">
+      <div class="filter-group">
+        <button
+          v-for="range in timeRanges"
+          :key="range.key"
+          :class="['filter-btn', { active: activeRange === range.key }]"
+          @click="activeRange = range.key"
+        >
+          {{ range.label }}
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. KPI Cards -->
+    <div class="stats-row">
+      <div
+        v-for="kpi in kpiCards"
+        :key="kpi.title"
+        class="stat-card"
+      >
+        <div
+          class="stat-card__icon"
+          :style="{ background: kpi.iconBg }"
+        >
+          <el-icon
+            :size="24"
+            :style="{ color: kpi.color }"
+          >
+            <component :is="kpi.icon" />
+          </el-icon>
+        </div>
+        <div class="stat-card__content">
+          <span class="stat-card__label">{{ kpi.title }}</span>
+          <span class="stat-card__value">{{ kpi.value }}</span>
+          <span
+            class="stat-card__trend"
+            :class="kpi.isPositive ? 'stat-card__trend--up' : 'stat-card__trend--down'"
+          >
+            {{ kpi.isPositive ? '↑' : '↓' }} {{ kpi.change }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Two-column Layout -->
+    <section class="content-row">
+      <!-- Left: Production Progress Table -->
+      <div class="content-card">
+        <div class="content-card__header">
+          <span class="content-card__title">{{ t('home.cardProductionProgress') }}</span>
+          <el-tag
+            v-if="tasksStore.error"
+            type="warning"
+            size="small"
+            effect="plain"
+          >
+            {{ t('home.msgDataLoadFailed') }}
+          </el-tag>
+        </div>
+        <div class="content-card__body">
+          <el-table
+            :data="displayWorkOrders"
+            style="width: 100%"
+            stripe
+          >
+            <el-table-column
+              prop="orderNo"
+              :label="t('home.labelOrderNo')"
+              width="130"
+            />
+            <el-table-column
+              prop="productName"
+              :label="t('home.labelProductName')"
+              min-width="140"
+            />
+            <el-table-column
+              prop="process"
+              :label="t('home.labelProcess')"
+              width="100"
+            />
+            <el-table-column
+              :label="t('home.labelProgress')"
+              width="180"
+            >
+              <template #default="{ row }">
+                <el-progress
+                  :percentage="row.progress"
+                  :stroke-width="8"
+                  :color="row.progress === 100 ? 'var(--success)' : 'var(--accent-primary)'"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column
+              :label="t('home.labelStatus')"
+              width="100"
+              align="center"
+            >
+              <template #default="{ row }">
+                <el-tag
+                  :type="statusTagType(row.status)"
+                  size="small"
+                  effect="light"
+                >
+                  {{ row.statusLabel }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column
+              :label="t('home.labelAction')"
+              width="80"
+              align="center"
+            >
+              <template #default>
+                <el-button
+                  type="primary"
+                  text
+                  size="small"
+                >
+                  {{ t('home.btnDetail') }}
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+
+      <!-- Right: Real-time Alerts -->
+      <div class="panel panel-alerts">
+        <div class="panel-header">
+          <h3 class="panel-title">
+            {{ t('home.cardRealTimeAlerts') }}
+          </h3>
+          <el-badge
+            :value="alerts.length"
+            class="alert-badge"
+          />
+        </div>
+        <div class="alert-list">
+          <div
+            v-if="alertsLoading"
+            class="alert-empty"
+          >
+            {{ t('home.msgAlertsLoading') }}
           </div>
-          <div class="feature-info">
-            <span class="feature-name">{{ item.label }}</span>
-            <span class="feature-desc">{{ item.desc }}</span>
+          <div
+            v-else-if="alertsError"
+            class="alert-empty"
+          >
+            {{ t('home.msgAlertsLoadFailed') }}
           </div>
+          <div
+            v-else-if="alerts.length === 0"
+            class="alert-empty"
+          >
+            {{ t('home.msgNoAlerts') }}
+          </div>
+          <template v-else>
+            <div
+              v-for="(alert, index) in alerts"
+              :key="index"
+              class="alert-item"
+            >
+              <span
+                class="alert-dot"
+                :style="{ background: alert.severityColor }"
+              />
+              <div class="alert-content">
+                <span class="alert-message">{{ alert.message }}</span>
+                <span class="alert-time">{{ alert.time }}</span>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </section>
 
-    <!-- 下方两栏：最近项目 + 系统状态 -->
-    <section class="bottom-row">
-      <div class="recent-projects">
-        <h3 class="section-title">{{ $t('home.recentProjects') || '最近项目' }}</h3>
-        <div v-if="loading" class="loading-placeholder">
-          <el-icon class="is-loading"><Loading /></el-icon>
-          <span>{{ $t('common.loading') }}</span>
-        </div>
-        <div v-else-if="loadFailed || !recentProjects.length" class="empty-placeholder">
-          <el-icon :size="40" color="var(--text-tertiary)"><FolderOpened /></el-icon>
-          <p>{{ loadFailed ? ($t('home.fetchFailed') || '获取失败') : ($t('home.noRecentProject') || '暂无最近项目') }}</p>
-          <el-button type="primary" text @click="emit('open-project')">
-            {{ $t('app.openProject') }}
-          </el-button>
-        </div>
-        <div v-else class="project-list">
-          <div v-for="proj in recentProjects" :key="proj.path"
-            class="project-item" @click="handleOpenProject(proj)">
-            <div class="project-icon">
-              <el-icon :size="20"><Document /></el-icon>
-            </div>
-            <div class="project-meta">
-              <span class="project-name">{{ proj.name }}</span>
-              <span class="project-time">{{ formatDate(proj.modified_at) }}</span>
-            </div>
-            <span class="project-size">{{ formatSize(proj.file_size) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="system-status">
-        <h3 class="section-title">{{ $t('home.systemStatus') }}</h3>
-        <div class="status-list">
-          <div class="status-row">
-            <span class="status-label">{{ $t('home.aiService') }}</span>
-            <el-tag v-if="loading" type="info" class="status-loading">
-              <el-icon class="is-loading"><Loading /></el-icon>
-              <span class="status-loading-text">{{ $t('common.loading') }}</span>
-            </el-tag>
-            <el-tag v-else-if="loadFailed" type="danger">{{ $t('home.fetchFailed') }}</el-tag>
-            <el-tag v-else-if="aiServiceStatus === 'running'" type="success">{{ $t('home.running') }}</el-tag>
-            <el-tag v-else type="warning">{{ $t('home.stopped') }}</el-tag>
-          </div>
-          <div class="status-row">
-            <span class="status-label">{{ $t('home.registeredModels') }}</span>
-            <span v-if="loading" class="stat-value status-loading">
-              <el-icon class="is-loading"><Loading /></el-icon>
-            </span>
-            <span v-else-if="loadFailed" class="stat-value stat-failed">{{ $t('home.fetchFailed') }}</span>
-            <span v-else class="stat-value">{{ modelCount }}</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label">{{ $t('home.frontendVersion') || '前端版本' }}</span>
-            <span class="stat-value">v{{ frontendVersion }}</span>
-          </div>
-        </div>
+    <!-- 5. Quick Actions -->
+    <section class="quick-actions">
+      <h3 class="section-title">
+        {{ t('home.cardQuickActions') }}
+      </h3>
+      <div class="action-grid">
+        <el-button
+          v-for="action in quickActions"
+          :key="action.label"
+          class="action-btn"
+          @click="handleAction(action)"
+        >
+          <el-icon :size="20">
+            <component :is="action.icon" />
+          </el-icon>
+          <span>{{ action.label }}</span>
+        </el-button>
       </div>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, markRaw, type Component } from 'vue'
+import { ref, computed, markRaw, onMounted, onUnmounted, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  Loading, EditPen, FolderOpened, Document, SetUp,
-  Monitor, Cpu, Files, Grid, DataLine, ShoppingBag,
+  Box,
+  CircleCheck,
+  Setting,
+  Tickets,
+  Plus,
+  DataLine,
+  Document,
+  Monitor,
 } from '@element-plus/icons-vue'
 import http from '@/utils/http'
-import { useVersionStore } from '@/stores/version'
-import { useProjectStore } from '@/stores/project'
-import type { ProjectSummary } from '@/types'
+import { API_CONFIG } from '@/config/api'
+import { useAgentStore } from '@/stores/agents'
+import { useTasksStore } from '@/stores/tasks'
+import type { TaskInfo } from '@/stores/tasks'
 
+// ---------------------------------------------------------------------------
+// Stores
+// ---------------------------------------------------------------------------
+const agentStore = useAgentStore()
+const tasksStore = useTasksStore()
+const router = useRouter()
 const { t } = useI18n()
 
-const emit = defineEmits<{ (e: 'open-project'): void }>()
-const router = useRouter()
-const versionStore = useVersionStore()
-const projectStore = useProjectStore()
-
-const frontendVersion = computed(() => versionStore.frontendVersion)
-
-const aiServiceStatus = ref<'running' | 'stopped' | 'unknown'>('unknown')
-const modelCount = ref(0)
-const loading = ref(true)
-const loadFailed = ref(false)
-const recentProjects = ref<ProjectSummary[]>([])
-
-const REQUEST_TIMEOUT = 10000
-
-interface FeatureItem {
-  label: string
-  desc: string
-  icon: Component
-  color: string
-  path: string
+// ---------------------------------------------------------------------------
+// WorkOrder 类型
+// ---------------------------------------------------------------------------
+interface WorkOrder {
+  orderNo: string
+  productName: string
+  process: string
+  progress: number
+  status: string
+  statusLabel: string
 }
 
-const featureItems: FeatureItem[] = [
-  { label: t('home.featureItems.workspace.label'), desc: t('home.featureItems.workspace.desc'), icon: markRaw(Grid), color: 'linear-gradient(135deg,#4A90D9,#357ABD)', path: '/workspace' },
-  { label: t('home.featureItems.ruleEditor.label'), desc: t('home.featureItems.ruleEditor.desc'), icon: markRaw(SetUp), color: 'linear-gradient(135deg,#67A67A,#4E8C5F)', path: '/rule-editor' },
-  { label: t('home.featureItems.toolpathEditor.label'), desc: t('home.featureItems.toolpathEditor.desc'), icon: markRaw(EditPen), color: 'linear-gradient(135deg,#D4A857,#B8903E)', path: '/toolpath-editor' },
-  { label: t('home.featureItems.processPlanning.label'), desc: t('home.featureItems.processPlanning.desc'), icon: markRaw(DataLine), color: 'linear-gradient(135deg,#7B9AAF,#5F8299)', path: '/process-planning' },
-  { label: t('home.featureItems.templateMarket.label'), desc: t('home.featureItems.templateMarket.desc'), icon: markRaw(ShoppingBag), color: 'linear-gradient(135deg,#C76B6B,#A85555)', path: '/template-market' },
-  { label: t('home.featureItems.taskBoard.label'), desc: t('home.featureItems.taskBoard.desc'), icon: markRaw(Files), color: 'linear-gradient(135deg,#8B7D6B,#6B5D4F)', path: '/task-board' },
-]
+// ---------------------------------------------------------------------------
+// Computed — 使用 Store 数据
+// ---------------------------------------------------------------------------
+const displayAgents = computed(() => agentStore.agents)
 
-// 3D cube decoration
-const cubeSize = 50
-const angle = Math.PI / 6
-const cos = Math.cos(angle)
-const sin = Math.sin(angle)
-const s = cubeSize
-const cubeFront = `0,${-s} ${s * cos},${-s + s * sin} 0,0 ${-s * cos},${-s + s * sin}`
-const cubeBack = `${25},${-s - 15} ${25 + s * cos},${-s + s * sin - 15} ${25},${-15} ${25 - s * cos},${-s + s * sin - 15}`
-const cubeEdges = [
-  [0, -s, 25, -s - 15],
-  [s * cos, -s + s * sin, 25 + s * cos, -s + s * sin - 15],
-  [0, 0, 25, -15],
-  [-s * cos, -s + s * sin, 25 - s * cos, -s + s * sin - 15],
-]
-const cubeVertices = [
-  [0, -s], [s * cos, -s + s * sin], [0, 0], [-s * cos, -s + s * sin],
-  [25, -s - 15], [25 + s * cos, -s + s * sin - 15], [25, -15], [25 - s * cos, -s + s * sin - 15],
-]
+const displayTasks = computed(() => tasksStore.tasks)
 
-async function loadHealth(): Promise<boolean> {
-  try {
-    const res = await http.get('/api/health', { timeout: REQUEST_TIMEOUT })
-    const data = res.data?.data ?? res.data ?? {}
-    const rawStatus = (data.status ?? data.ai_service ?? data.aiService ?? '').toString().toLowerCase()
-    if (['running', 'ok', 'healthy', 'up'].includes(rawStatus)) {
-      aiServiceStatus.value = 'running'
-    } else if (['stopped', 'down', 'unhealthy'].includes(rawStatus)) {
-      aiServiceStatus.value = 'stopped'
-    } else {
-      aiServiceStatus.value = 'running'
-    }
-    return true
-  } catch {
-    return false
+/** 将 tasksStore 数据映射为工单表格格式 */
+const displayWorkOrders = computed<WorkOrder[]>(() => {
+  const tasks = displayTasks.value
+
+  const statusMap: Record<string, string> = {
+    pending: t('home.statusPending'),
+    queued: t('home.statusQueued'),
+    running: t('home.statusRunning'),
+    completed: t('home.statusCompleted'),
+    failed: t('home.statusFailed'),
+    cancelled: t('home.statusCancelled'),
   }
+
+  return tasks.map((task) => ({
+    orderNo: task.job_id,
+    productName: (task.params?.product as string) || task.task_type,
+    process: (task.params?.process as string) || task.task_type,
+    progress: task.progress ?? 0,
+    status: task.status,
+    statusLabel: statusMap[task.status] || task.status,
+  }))
+})
+
+// ---------------------------------------------------------------------------
+// Greeting & Clock
+// ---------------------------------------------------------------------------
+const now = ref(new Date())
+let timer: ReturnType<typeof setInterval>
+
+// 告警 & KPI 响应式状态
+const alerts = ref<Array<{ message: string; severityColor: string; time: string }>>([])
+const alertsLoading = ref(false)
+const alertsError = ref(false)
+
+interface ProductionDashboard {
+  total_output: number
+  qualified_output: number
+  total_orders: number
+  active_orders: number
+  pass_rate: number
+  avg_cycle_time: number
 }
 
-async function loadModelCount(): Promise<boolean> {
-  try {
-    const res = await http.get('/api/v1/lnn/models', { timeout: REQUEST_TIMEOUT })
-    const data = res.data?.data ?? res.data ?? {}
-    const total = data.total ?? data.count ?? data.model_count
-    if (typeof total === 'number') modelCount.value = total
-    else if (Array.isArray(data.models)) modelCount.value = data.models.length
-    else modelCount.value = 0
-    return true
-  } catch {
-    return false
-  }
-}
-
-async function loadRecentProjects() {
-  try {
-    await projectStore.fetchProjectList()
-    const list = projectStore.projectList || []
-    recentProjects.value = list.slice(0, 5)
-  } catch {
-    recentProjects.value = []
-  }
-}
-
-function handleOpenProject(proj: ProjectSummary) {
-  projectStore.openProject(proj.path)
-  router.push('/workspace')
-}
-
-function formatDate(iso: string) {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  const locale = localStorage.getItem('app_locale') || 'zh-CN'
-  return d.toLocaleString(locale === 'en' ? 'en-US' : 'zh-CN', { hour12: false })
-}
-
-function formatSize(bytes: number) {
-  if (!bytes) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let i = 0; let s = bytes
-  while (s >= 1024 && i < units.length - 1) { s /= 1024; i++ }
-  return s.toFixed(i > 0 ? 1 : 0) + ' ' + units[i]
-}
+const productionData = ref<ProductionDashboard | null>(null)
+const productionLoading = ref(false)
+const productionError = ref(false)
 
 onMounted(async () => {
-  loading.value = true
-  loadFailed.value = false
+  // 时钟
+  timer = setInterval(() => { now.value = new Date() }, 1000)
+
+  // 并行请求 4 个独立数据源，减少总等待时间
+  alertsLoading.value = true
+  productionLoading.value = true
+
+  const [agentsResult, tasksResult, alertsResult, dashboardResult] = await Promise.allSettled([
+    agentStore.fetchAgents(),
+    tasksStore.fetchTasks(),
+    http.get(API_CONFIG.EQUIPMENT + '/alarms/'),
+    http.get(API_CONFIG.PRODUCTION + '/dashboard'),
+  ])
+
+  // 处理告警数据
   try {
-    const results = await Promise.all([loadHealth(), loadModelCount()])
-    if (results.some(ok => !ok)) loadFailed.value = true
+    if (alertsResult.status === 'fulfilled') {
+      const list = alertsResult.value.data?.data ?? []
+      const severityColorMap: Record<string, string> = {
+        high: 'var(--error)',
+        medium: 'var(--warning)',
+        low: 'var(--info)',
+      }
+      alerts.value = list.map((a: { message?: string; severity?: string; created_at?: string }) => ({
+        message: a.message || t('home.msgUnknownAlert'),
+        severityColor: severityColorMap[a.severity || 'low'] || 'var(--info)',
+        time: a.created_at ? formatRelativeTime(a.created_at) : t('home.msgJustNow'),
+      }))
+    }
   } catch {
-    loadFailed.value = true
+    alertsError.value = true
+    alerts.value = []
   } finally {
-    loading.value = false
+    alertsLoading.value = false
   }
-  loadRecentProjects()
+
+  // 处理生产仪表板数据
+  try {
+    if (dashboardResult.status === 'fulfilled') {
+      const data = dashboardResult.value.data?.data
+      if (data) productionData.value = data
+    }
+  } catch {
+    productionError.value = true
+    productionData.value = null
+  } finally {
+    productionLoading.value = false
+  }
 })
+
+onUnmounted(() => { clearInterval(timer) })
+
+const greeting = computed(() => {
+  const h = now.value.getHours()
+  if (h < 6) return t('home.greetingEarlyMorning')
+  if (h < 12) return t('home.greetingMorning')
+  if (h < 14) return t('home.greetingNoon')
+  if (h < 18) return t('home.greetingAfternoon')
+  return t('home.greetingEvening')
+})
+
+const currentDateTime = computed(() => {
+  const d = now.value
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const weekDays = [
+    t('home.weekdaySun'),
+    t('home.weekdayMon'),
+    t('home.weekdayTue'),
+    t('home.weekdayWed'),
+    t('home.weekdayThu'),
+    t('home.weekdayFri'),
+    t('home.weekdaySat'),
+  ]
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  return t('home.dateFormat', {
+    year: d.getFullYear(),
+    month: pad(d.getMonth() + 1),
+    day: pad(d.getDate()),
+    weekday: weekDays[d.getDay()],
+    time,
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Time Range Filter
+// ---------------------------------------------------------------------------
+const timeRanges = computed(() => [
+  { key: 'today', label: t('home.rangeToday') },
+  { key: 'week', label: t('home.rangeWeek') },
+  { key: 'month', label: t('home.rangeMonth') },
+])
+const activeRange = ref('today')
+
+// ---------------------------------------------------------------------------
+// KPI Cards — 从生产仪表板 API 获取真实数据
+// ---------------------------------------------------------------------------
+interface KpiCard {
+  title: string
+  value: string
+  change: string
+  isPositive: boolean
+  icon: Component
+  color: string
+  iconBg: string
+}
+
+const kpiCards = computed<KpiCard[]>(() => {
+  const tasks = displayTasks.value
+  const stats = tasksStore.stats
+  const pd = productionData.value
+
+  // 今日产量
+  const hasRealStats = stats && stats.total_tasks > 0
+  const productionCount = pd
+    ? pd.total_output.toLocaleString() + t('home.unitPiece')
+    : hasRealStats
+      ? stats.completed_tasks.toLocaleString() + t('home.unitPiece')
+      : productionLoading.value
+        ? t('home.loadingText')
+        : '--'
+
+  const productionChange = hasRealStats && stats.completed_tasks > 0
+    ? `+${stats.completed_tasks}%`
+    : '--'
+
+  // 良品率
+  const passRateValue = pd
+    ? (pd.pass_rate * 100).toFixed(1) + '%'
+    : productionLoading.value
+      ? t('home.loadingText')
+      : '--'
+
+  // 设备稼动率 — 暂无独立 API，显示加载中或暂无数据
+  const utilizationValue = productionLoading.value
+    ? t('home.loadingText')
+    : '--'
+
+  // 在制工单：running + pending
+  const activeOrders = tasks.filter(
+    (task) => task.status === 'running' || task.status === 'pending'
+  ).length
+  const activeOrdersDisplay = hasRealStats || tasks.length > 0
+    ? activeOrders + t('home.unitOrder')
+    : '--'
+  const activeOrdersChange = tasks.length > 0 ? String(activeOrders) : '--'
+
+  return [
+    {
+      title: t('home.statTodayOutput'),
+      value: productionCount,
+      change: productionChange,
+      isPositive: true,
+      icon: markRaw(Box),
+      color: 'var(--brand-500)',
+      iconBg: 'var(--info-bg)',
+    },
+    {
+      title: t('home.statPassRate'),
+      value: passRateValue,
+      change: '--',
+      isPositive: true,
+      icon: markRaw(CircleCheck),
+      color: 'var(--success)',
+      iconBg: 'var(--success-bg)',
+    },
+    {
+      title: t('home.statUtilization'),
+      value: utilizationValue,
+      change: '--',
+      isPositive: false,
+      icon: markRaw(Setting),
+      color: 'var(--warning)',
+      iconBg: 'var(--warning-bg)',
+    },
+    {
+      title: t('home.statActiveOrders'),
+      value: activeOrdersDisplay,
+      change: activeOrdersChange,
+      isPositive: true,
+      icon: markRaw(Tickets),
+      color: 'var(--info)',
+      iconBg: 'var(--info-bg)',
+    },
+  ]
+})
+
+// ---------------------------------------------------------------------------
+// Status helpers
+// ---------------------------------------------------------------------------
+function statusTagType(status: string): 'success' | 'warning' | 'info' | 'danger' | 'primary' {
+  if (status === 'completed') return 'success'
+  if (status === 'running' || status === 'queued') return 'warning'
+  if (status === 'pending') return 'info'
+  if (status === 'failed') return 'danger'
+  if (status === 'cancelled') return 'info'
+  return 'info'
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (diff < 60) return t('home.msgJustNow')
+  if (diff < 3600) return t('home.timeMinutesAgo', { n: Math.floor(diff / 60) })
+  if (diff < 86400) return t('home.timeHoursAgo', { n: Math.floor(diff / 3600) })
+  return t('home.timeDaysAgo', { n: Math.floor(diff / 86400) })
+}
+
+// ---------------------------------------------------------------------------
+// Alerts — 从 API 获取真实告警（已在 onMounted 中加载）
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Quick Actions
+// ---------------------------------------------------------------------------
+interface QuickAction {
+  label: string
+  icon: Component
+  route: string
+}
+
+const quickActions = computed<QuickAction[]>(() => [
+  { label: t('home.btnNewOrder'), icon: markRaw(Plus), route: '/process-planning' },
+  { label: t('home.btnStartInspection'), icon: markRaw(DataLine), route: '/quality-inspection' },
+  { label: t('home.btnViewReport'), icon: markRaw(Document), route: '/production-report' },
+  { label: t('home.btnEquipmentInspection'), icon: markRaw(Monitor), route: '/equipment-monitor' },
+])
+
+function handleAction(action: QuickAction) {
+  router.push(action.route)
+}
 </script>
 
 <style scoped>
 .home-page {
-  max-width: 1200px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
+  padding: var(--page-padding);
 }
 
-/* ===== Hero Banner ===== */
-.hero-banner {
+/* ===== Welcome Banner ===== */
+.welcome-banner {
   position: relative;
-  background: linear-gradient(135deg, #2C3E6B 0%, #1A2744 60%, #0F1B33 100%);
-  border-radius: 16px;
-  padding: 40px 44px;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-300));
+  border-radius: var(--radius-lg);
+  padding: 32px 40px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-shadow: var(--shadow-md);
 }
 
-.hero-content {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-}
-
-.hero-text h1 {
-  margin: 0 0 10px;
-  font-size: 1.75rem;
+.banner-text h2 {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #fff;
-  letter-spacing: 0.04em;
 }
 
-.hero-text p {
-  margin: 0 0 28px;
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.65);
-  line-height: 1.6;
-  max-width: 420px;
+.banner-date {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.75);
 }
 
-.hero-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.hero-actions .el-button--primary {
-  --el-button-bg-color: #4A90D9;
-  --el-button-border-color: #4A90D9;
-  --el-button-hover-bg-color: #5BA0E9;
-  --el-button-hover-border-color: #5BA0E9;
-}
-
-.hero-actions .el-button:not(.el-button--primary) {
-  --el-button-bg-color: rgba(255,255,255,0.12);
-  --el-button-border-color: rgba(255,255,255,0.25);
-  --el-button-text-color: #fff;
-  --el-button-hover-bg-color: rgba(255,255,255,0.2);
-  --el-button-hover-border-color: rgba(255,255,255,0.4);
-  --el-button-hover-text-color: #fff;
-}
-
-.hero-decoration {
+.banner-illustration {
   position: absolute;
-  right: 30px;
+  right: 32px;
   top: 50%;
   transform: translateY(-50%);
-  opacity: 0.15;
+  opacity: 0.7;
   pointer-events: none;
 }
 
-.hero-svg {
-  width: 220px;
-  height: 220px;
-  animation: hero-rotate 20s linear infinite;
+.banner-svg {
+  width: 140px;
+  height: 140px;
 }
 
-@keyframes hero-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* ===== Time Range Filter ===== */
+.time-filter {
+  display: flex;
+  justify-content: flex-end;
 }
 
-.cube-face.front {
-  fill: rgba(74, 144, 217, 0.15);
-  stroke: rgba(74, 144, 217, 0.8);
-  stroke-width: 1.5;
-}
-.cube-face.back {
-  fill: none;
-  stroke: rgba(74, 144, 217, 0.4);
-  stroke-width: 1;
-}
-.cube-edge {
-  stroke: rgba(74, 144, 217, 0.6);
-  stroke-width: 1;
-}
-.cube-dot {
-  fill: rgba(255, 255, 255, 0.9);
+.filter-group {
+  display: flex;
+  gap: 0;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 3px;
 }
 
-/* ===== Section Title ===== */
+.filter-btn {
+  padding: 8px 24px;
+  border: none;
+  background: transparent;
+  border-radius: calc(var(--radius-md) - 2px);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-sans);
+}
+
+.filter-btn.active {
+  background: var(--accent-primary);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-btn:not(.active):hover {
+  color: var(--text-primary);
+  background: var(--bg-card);
+}
+
+/* ===== Content Row (Two-column) ===== */
+.content-row {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 20px;
+}
+
+/* ===== Alerts Panel ===== */
+.alert-badge {
+  flex-shrink: 0;
+}
+
+.alert-list {
+  padding: 0 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.alert-empty {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+}
+
+.alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.alert-item:last-child {
+  border-bottom: none;
+}
+
+.alert-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.alert-message {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.alert-time {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* ===== Quick Actions ===== */
 .section-title {
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-/* ===== Quick Access Grid ===== */
-.feature-grid {
+.action-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.feature-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-}
-
-.feature-card:hover {
-  border-color: var(--accent-light);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
-.feature-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.feature-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.feature-name {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.feature-desc {
-  font-size: 0.8rem;
-  color: var(--text-tertiary);
-}
-
-/* ===== Bottom Row ===== */
-.bottom-row {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 20px;
-}
-
-.recent-projects,
-.system-status {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  padding: 24px;
-}
-
-.loading-placeholder,
-.empty-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 32px 0;
-  color: var(--text-tertiary);
-  font-size: 0.9rem;
-}
-
-.project-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.project-item {
-  display: flex;
-  align-items: center;
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
-  padding: 12px 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background var(--transition-fast);
 }
 
-.project-item:hover {
-  background: var(--bg-secondary);
-}
-
-.project-item + .project-item {
-  border-top: 1px solid var(--border-light);
-}
-
-.project-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: var(--bg-secondary);
+.action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-primary);
-  flex-shrink: 0;
-}
-
-.project-meta {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.project-name {
+  gap: 8px;
+  height: 48px;
+  border-radius: var(--radius-md) !important;
   font-size: 0.9rem;
   font-weight: 500;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border: 1px solid var(--border-light) !important;
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  transition: all var(--transition-fast);
 }
 
-.project-time {
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-}
-
-.project-size {
-  font-size: 0.8rem;
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-}
-
-/* ===== System Status ===== */
-.status-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.status-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.status-row:last-child {
-  border-bottom: none;
-}
-
-.status-label {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.stat-value {
-  font-weight: 600;
-  color: var(--accent-primary);
-  font-size: 0.95rem;
-}
-
-.stat-failed {
-  color: var(--error);
-  font-weight: normal;
-  font-size: 0.85rem;
-}
-
-.status-loading {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.status-loading-text {
-  margin-left: 2px;
-  color: var(--text-tertiary);
+.action-btn:hover {
+  border-color: var(--accent-primary) !important;
+  color: var(--accent-primary) !important;
+  box-shadow: var(--shadow-sm);
 }
 </style>

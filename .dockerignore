@@ -66,13 +66,23 @@ run_tests_via_subprocess.py
 run_verify.bat
 run_agent_test.py
 run_agent_tests.bat
+# E-19: 手动运行脚本已迁移到 scripts/，排除整个目录避免进入镜像
+python/scripts/run_agent_test.py
+python/scripts/run_integration_tests.py
+python/scripts/verify_*.py
+python/scripts/integration_test.py
+python/scripts/vrm_save_restore_test.py
+python/scripts/project_api_integration.py
+python/scripts/frontend_proxy_test.py
+python/scripts/api_test_runner.py
+python/scripts/curl_cors_tests.py
 launch_test.py
 
 # --- E2E & Testing ---
 e2e/
 playwright.config.ts
 .eslintrc.cjs
-commitlint.config.js
+commitlint.config.cjs
 
 # --- Documentation ---
 docs/
@@ -96,7 +106,7 @@ index.html
 !docker-compose.yml
 
 # --- Other Sub-projects ---
-CNC_Machining-main/
+data/external/cnc_machining/
 uniwear-dataset-main/
 mcp_server/
 skills/

@@ -22,6 +22,7 @@ from app.plugins.skill_loader import (
 )
 from app.plugins.skill_marketplace import get_marketplace
 from app.core.response import ErrorCode, success, error
+from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -125,8 +126,10 @@ async def list_skills(
     except HTTPException:
         raise
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to list skills")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.list", fallback="技能列表查询失败，请稍后重试")
+        logger.error("[skills.list] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.get("/stats")
@@ -139,8 +142,10 @@ async def get_skill_stats():
         stats["marketplace"] = market_stats
         return success(data=stats, message="技能系统统计")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to get skill stats")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.stats", fallback="技能统计查询失败，请稍后重试")
+        logger.error("[skills.stats] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/create")
@@ -162,8 +167,10 @@ async def create_skill(request: SkillContentRequest):
         raise
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：技能创建涉及文件 IO + 路径校验 + 注册
-        logger.exception("Failed to create skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.create", fallback="技能创建失败，请稍后重试")
+        logger.error("[skills.create] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.put("/{skill_id}")
@@ -184,8 +191,10 @@ async def update_skill(skill_id: str, request: SkillContentRequest):
     except HTTPException:
         raise
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to update skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.update", fallback="技能更新失败，请稍后重试")
+        logger.error("[skills.update] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.delete("/{skill_id}")
@@ -205,8 +214,10 @@ async def delete_skill(skill_id: str):
         return success(data={"skill_id": skill_id}, message=f"技能已删除: {skill_id}")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：技能删除涉及文件系统 + 注册表清理
-        logger.exception("Failed to delete skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.delete", fallback="技能删除失败，请稍后重试")
+        logger.error("[skills.delete] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.get("/{skill_id}")
@@ -242,8 +253,10 @@ async def get_skill(skill_id: str):
             message="技能详情",
         )
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to get skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.get", fallback="技能详情查询失败，请稍后重试")
+        logger.error("[skills.get] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/reload")
@@ -256,8 +269,10 @@ async def reload_skills(skill_id: Optional[str] = None):
         init_skill_loader()
         return success(data=result, message="全量技能重新加载完成")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to reload skills")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.reload", fallback="技能重载失败，请稍后重试")
+        logger.error("[skills.reload] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.get("/{skill_id}/versions")
@@ -278,8 +293,10 @@ async def get_skill_versions(skill_id: str):
         )
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：版本历史查询涉及文件 IO + 注册表
-        logger.exception("Failed to get versions")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.get_versions", fallback="技能版本历史查询失败，请稍后重试")
+        logger.error("[skills.get_versions] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/export")
@@ -292,8 +309,10 @@ async def export_skill(request: SkillExportRequest):
 
         return success(data=package, message=f"技能已导出: {request.skill_id}")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to export skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.export", fallback="技能导出失败，请稍后重试")
+        logger.error("[skills.export] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/import")
@@ -319,8 +338,10 @@ async def import_skill(request: SkillImportRequest):
     except HTTPException:
         raise
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to import skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.import", fallback="技能导入失败，请稍后重试")
+        logger.error("[skills.import] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/rate")
@@ -330,12 +351,20 @@ async def rate_skill(request: SkillRatingRequest):
         result = loader.rate_skill(request.skill_id, request.rating)
         return success(data=result, message="评分已记录")
     except KeyError as e:
-        return error(ErrorCode.NOT_FOUND, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="skills.rate.not_found", fallback="技能不存在")
+        logger.error("[skills.rate.not_found] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.NOT_FOUND, message=safe["message"], detail={"error_id": safe["error_id"]})
     except ValueError as e:
-        return error(ErrorCode.INVALID_REQUEST, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="skills.rate.invalid", fallback="请求参数无效")
+        logger.error("[skills.rate.invalid] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INVALID_REQUEST, message=safe["message"], detail={"error_id": safe["error_id"]})
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to rate skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.rate", fallback="技能评分失败，请稍后重试")
+        logger.error("[skills.rate] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/inject")
@@ -358,8 +387,10 @@ async def inject_skills_endpoint(
             message="技能注入完成",
         )
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to inject skills")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.inject", fallback="技能注入失败，请稍后重试")
+        logger.error("[skills.inject] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 # ─── 技能市场 ───
@@ -373,8 +404,10 @@ async def marketplace_list(tag: Optional[str] = Query(None, description="按标�
         return success(data=items, message=f"市场共 {len(items)} 个技能")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：市场列表查询涉及存储 + 缓存
-        logger.exception("Failed to list marketplace")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.marketplace_list", fallback="技能市场列表查询失败，请稍后重试")
+        logger.error("[skills.marketplace_list] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.get("/marketplace/search")
@@ -385,8 +418,10 @@ async def marketplace_search(query: str = Query(..., description="搜索关键�
         return success(data=items, message=f"搜索到 {len(items)} 个技能")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：市场搜索涉及文本匹配 + 索引
-        logger.exception("Failed to search marketplace")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.marketplace_search", fallback="技能市场搜索失败，请稍后重试")
+        logger.error("[skills.marketplace_search] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/marketplace/publish")
@@ -400,8 +435,10 @@ async def marketplace_publish(request: SkillPublishRequest):
         return success(data=result, message=f"已发布: {request.skill_id}")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：发布操作涉及网络 + 存储
-        logger.exception("Failed to publish skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.marketplace_publish", fallback="技能发布失败，请稍后重试")
+        logger.error("[skills.marketplace_publish] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/marketplace/download")
@@ -418,8 +455,10 @@ async def marketplace_download(request: SkillDownloadRequest):
         raise
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：下载涉及网络 + 文件 IO
-        logger.exception("Failed to download skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.marketplace_download", fallback="技能下载失败，请稍后重试")
+        logger.error("[skills.marketplace_download] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/marketplace/rate")
@@ -431,12 +470,20 @@ async def marketplace_rate(request: SkillMarketplaceRateRequest):
         )
         return success(data=result, message="评分已记录")
     except KeyError as e:
-        return error(ErrorCode.NOT_FOUND, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="skills.marketplace_rate.not_found", fallback="技能不存在")
+        logger.error("[skills.marketplace_rate.not_found] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.NOT_FOUND, message=safe["message"], detail={"error_id": safe["error_id"]})
     except ValueError as e:
-        return error(ErrorCode.INVALID_REQUEST, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="skills.marketplace_rate.invalid", fallback="请求参数无效")
+        logger.error("[skills.marketplace_rate.invalid] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INVALID_REQUEST, message=safe["message"], detail={"error_id": safe["error_id"]})
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to rate marketplace skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.marketplace_rate", fallback="市场技能评分失败，请稍后重试")
+        logger.error("[skills.marketplace_rate] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.delete("/marketplace/{skill_id}")
@@ -448,5 +495,7 @@ async def marketplace_unpublish(skill_id: str):
             return success(data={"skill_id": skill_id}, message=f"已下架: {skill_id}")
         return error(ErrorCode.NOT_FOUND, f"市场中不存在该技能: {skill_id}")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
-        logger.exception("Failed to unpublish skill")
-        return error(ErrorCode.INTERNAL_ERROR, str(e))
+        # 使用安全错误消息，避免泄露内部异常详情（safe_error_message 内部已记录堆栈）
+        safe = safe_error_message(e, context="skills.marketplace_unpublish", fallback="技能下架失败，请稍后重试")
+        logger.error("[skills.marketplace_unpublish] error_id=%s: %s", safe["error_id"], e)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})

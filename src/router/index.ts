@@ -9,21 +9,25 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: () => import('../views/Home.vue'),
+      meta: { public: true },
     },
     {
       path: '/workspace',
       name: 'workspace',
       component: () => import('../views/Workspace.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/Settings.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/about',
       name: 'about',
       component: () => import('../views/About.vue'),
+      meta: { public: true },
     },
     {
       path: '/task-history',
@@ -125,10 +129,52 @@ const router = createRouter({
       meta: { title: '目标管理' },
     },
     {
+      path: '/simulation',
+      name: 'simulation',
+      component: () => import('../views/Simulation.vue'),
+      meta: { title: '仿真模拟' },
+    },
+    {
+      path: '/equipment-monitor',
+      name: 'equipment-monitor',
+      component: () => import('../views/EquipmentMonitor.vue'),
+      meta: { title: '设备监控' },
+    },
+    {
+      path: '/quality-inspection',
+      name: 'quality-inspection',
+      component: () => import('../views/QualityInspection.vue'),
+      meta: { title: '质量检测' },
+    },
+    {
+      path: '/material-management',
+      name: 'material-management',
+      component: () => import('../views/MaterialManagement.vue'),
+      meta: { title: '物料管理' },
+    },
+    {
+      path: '/production-report',
+      name: 'production-report',
+      component: () => import('../views/ProductionReport.vue'),
+      meta: { title: '生产报表' },
+    },
+    {
       path: '/update-center',
       name: 'update-center',
       component: () => import('../views/UpdateCenter.vue'),
       meta: { title: '更新中心' },
+    },
+    {
+      path: '/nl-modeling',
+      name: 'nl-modeling',
+      component: () => import('../views/NLModeling.vue'),
+      meta: { title: '自然语言建模' },
+    },
+    {
+      path: '/process-understanding',
+      name: 'process-understanding',
+      component: () => import('../views/ProcessUnderstanding.vue'),
+      meta: { title: '工艺理解' },
     },
     {
       path: '/:pathMatch(.*)*',
@@ -138,22 +184,32 @@ const router = createRouter({
   ],
 })
 
-// 路由守卫：权限检查
+// 路由守卫：认证与权限检查（安全默认：非公开路由均要求登录）
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  
-  // 检查是否需要特定权限（示例：管理员页面）
-  const requiresAdmin = to.meta?.requiresAdmin === true
-  
-  if (requiresAdmin) {
-    // 使用 auth store 检查实际权限
-    if (!authStore.isAuthenticated || !authStore.isAdmin()) {
-      ElMessage.warning('权限不足，无法访问该页面')
-      next('/')
-      return
-    }
+
+  // 公开路由直接放行（首页、关于页等）
+  const isPublic = to.meta?.public === true
+  if (isPublic) {
+    next()
+    return
   }
-  
+
+  // 所有非公开路由默认要求认证
+  if (!authStore.isAuthenticated) {
+    ElMessage.warning('请先登录后再访问该页面')
+    next('/')
+    return
+  }
+
+  // 管理员权限检查
+  const requiresAdmin = to.meta?.requiresAdmin === true
+  if (requiresAdmin && !authStore.isAdmin()) {
+    ElMessage.warning('权限不足，无法访问该页面')
+    next('/')
+    return
+  }
+
   next()
 })
 

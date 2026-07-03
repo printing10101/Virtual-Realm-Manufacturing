@@ -22,7 +22,7 @@ class TestHealthEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
-        assert data["version"] == "2.3.0"
+        assert data["version"] == "2.4.0"
 
     def test_ping_returns_true(self, client):
         response = client.get("/api/health/ping")

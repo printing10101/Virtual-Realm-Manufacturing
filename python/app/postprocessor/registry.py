@@ -181,7 +181,7 @@ class PostProcessorRegistry:
         full_id = CONTROLLER_ID_TO_FULL.get(controller_id, "fanuc_0i")
 
         decimal_places = merged_config.get("decimal_places", 3)
-        safe_z_height = float(merged_config.get("safe_z_height", 50.0))
+        safe_z_height = float(merged_config.get("safe_z_height", 80.0))
         rapid_feed = float(merged_config.get("rapid_feed", 10000))
 
         instance = self.get_processor(

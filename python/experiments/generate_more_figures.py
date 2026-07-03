@@ -126,7 +126,7 @@ print("\n[2/7] 生成多数据集性能对比图...")
 
 fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 
-datasets = list(main_results.keys())
+datasets = [k for k in main_results.keys() if not k.startswith('_')]
 models_all = list(main_results[datasets[0]].keys())
 
 # 子图1: 各数据集上CT-LTC的MAE

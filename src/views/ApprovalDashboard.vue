@@ -1,21 +1,21 @@
 <template>
   <div class="approval-dashboard-page">
     <div class="dashboard-header">
-      <h2>审批看板</h2>
+      <h2>{{ t('approvalDashboard.pageTitle') }}</h2>
       <div class="header-actions">
         <el-button
           :loading="loading"
           :icon="Refresh"
           @click="loadDashboard"
         >
-          刷新
+          {{ t('approvalDashboard.btnRefresh') }}
         </el-button>
         <el-button
           type="primary"
           :icon="Document"
           @click="showReport = true"
         >
-          治理报告
+          {{ t('approvalDashboard.btnGovernanceReport') }}
         </el-button>
       </div>
     </div>
@@ -33,7 +33,7 @@
             {{ counts.pending }}
           </div>
           <div class="stat-label">
-            待审批
+            {{ t('approvalDashboard.statPending') }}
           </div>
         </el-card>
       </el-col>
@@ -46,7 +46,7 @@
             {{ counts.under_review }}
           </div>
           <div class="stat-label">
-            审核中
+            {{ t('approvalDashboard.statUnderReview') }}
           </div>
         </el-card>
       </el-col>
@@ -59,7 +59,7 @@
             {{ counts.approved }}
           </div>
           <div class="stat-label">
-            已批准
+            {{ t('approvalDashboard.statApproved') }}
           </div>
         </el-card>
       </el-col>
@@ -72,7 +72,7 @@
             {{ counts.rejected }}
           </div>
           <div class="stat-label">
-            已拒绝
+            {{ t('approvalDashboard.statRejected') }}
           </div>
         </el-card>
       </el-col>
@@ -83,7 +83,7 @@
       class="approval-tabs"
     >
       <el-tab-pane
-        label="待审批"
+        :label="t('approvalDashboard.tabPending')"
         name="pending"
       >
         <div
@@ -92,7 +92,7 @@
         >
           <el-empty
             v-if="!pending.length"
-            description="暂无待审批请求"
+            :description="t('approvalDashboard.emptyPending')"
           />
           <el-card
             v-for="req in pending"
@@ -115,23 +115,23 @@
                   :type="getRiskTagType(req.risk_score)"
                   size="small"
                 >
-                  风险: {{ req.risk_score.toFixed(2) }}
+                  {{ t('approvalDashboard.riskLabel', { score: req.risk_score.toFixed(2) }) }}
                 </el-tag>
               </div>
             </div>
             <div class="request-body">
-              <p><strong>任务ID:</strong> {{ req.task_id }}</p>
-              <p><strong>请求人:</strong> {{ req.requester }}</p>
-              <p><strong>请求时间:</strong> {{ formatSecondsTimestamp(req.requested_at) }}</p>
+              <p><strong>{{ t('approvalDashboard.fieldTaskId') }}</strong> {{ req.task_id }}</p>
+              <p><strong>{{ t('approvalDashboard.fieldRequester') }}</strong> {{ req.requester }}</p>
+              <p><strong>{{ t('approvalDashboard.fieldRequestedAt') }}</strong> {{ formatSecondsTimestamp(req.requested_at) }}</p>
               <p v-if="req.suggested_decision">
-                <strong>系统建议:</strong> {{ req.suggested_decision }}
+                <strong>{{ t('approvalDashboard.fieldSuggestedDecision') }}</strong> {{ req.suggested_decision }}
               </p>
               <el-tag
                 v-if="req.emergency_override"
                 type="danger"
                 size="small"
               >
-                紧急覆盖
+                {{ t('approvalDashboard.tagEmergencyOverride') }}
               </el-tag>
             </div>
             <div class="request-actions">
@@ -139,28 +139,28 @@
                 size="small"
                 @click="viewDetail(req)"
               >
-                详情
+                {{ t('approvalDashboard.btnDetail') }}
               </el-button>
               <el-button
                 size="small"
                 type="success"
                 @click="quickApprove(req, 'approved')"
               >
-                批准
+                {{ t('approvalDashboard.btnApprove') }}
               </el-button>
               <el-button
                 size="small"
                 type="danger"
                 @click="quickApprove(req, 'rejected')"
               >
-                拒绝
+                {{ t('approvalDashboard.btnReject') }}
               </el-button>
               <el-button
                 size="small"
                 type="warning"
                 @click="quickApprove(req, 'escalated')"
               >
-                升级
+                {{ t('approvalDashboard.btnEscalate') }}
               </el-button>
             </div>
           </el-card>
@@ -168,7 +168,7 @@
       </el-tab-pane>
 
       <el-tab-pane
-        label="已批准"
+        :label="t('approvalDashboard.tabApproved')"
         name="approved"
       >
         <div
@@ -177,7 +177,7 @@
         >
           <el-empty
             v-if="!approved.length"
-            description="暂无已批准请求"
+            :description="t('approvalDashboard.emptyApproved')"
           />
           <el-card
             v-for="req in approved"
@@ -193,20 +193,20 @@
                 type="success"
                 size="small"
               >
-                已批准
+                {{ t('approvalDashboard.statApproved') }}
               </el-tag>
             </div>
             <div class="request-body">
-              <p><strong>任务ID:</strong> {{ req.task_id }}</p>
-              <p><strong>请求人:</strong> {{ req.requester }}</p>
-              <p><strong>完成时间:</strong> {{ formatSecondsTimestamp(req.completed_at) }}</p>
+              <p><strong>{{ t('approvalDashboard.fieldTaskId') }}</strong> {{ req.task_id }}</p>
+              <p><strong>{{ t('approvalDashboard.fieldRequester') }}</strong> {{ req.requester }}</p>
+              <p><strong>{{ t('approvalDashboard.fieldCompletedAt') }}</strong> {{ formatSecondsTimestamp(req.completed_at) }}</p>
             </div>
           </el-card>
         </div>
       </el-tab-pane>
 
       <el-tab-pane
-        label="已拒绝"
+        :label="t('approvalDashboard.tabRejected')"
         name="rejected"
       >
         <div
@@ -215,7 +215,7 @@
         >
           <el-empty
             v-if="!rejected.length"
-            description="暂无已拒绝请求"
+            :description="t('approvalDashboard.emptyRejected')"
           />
           <el-card
             v-for="req in rejected"
@@ -231,20 +231,20 @@
                 type="danger"
                 size="small"
               >
-                已拒绝
+                {{ t('approvalDashboard.statRejected') }}
               </el-tag>
             </div>
             <div class="request-body">
-              <p><strong>任务ID:</strong> {{ req.task_id }}</p>
-              <p><strong>请求人:</strong> {{ req.requester }}</p>
-              <p><strong>完成时间:</strong> {{ formatSecondsTimestamp(req.completed_at) }}</p>
+              <p><strong>{{ t('approvalDashboard.fieldTaskId') }}</strong> {{ req.task_id }}</p>
+              <p><strong>{{ t('approvalDashboard.fieldRequester') }}</strong> {{ req.requester }}</p>
+              <p><strong>{{ t('approvalDashboard.fieldCompletedAt') }}</strong> {{ formatSecondsTimestamp(req.completed_at) }}</p>
             </div>
           </el-card>
         </div>
       </el-tab-pane>
 
       <el-tab-pane
-        label="审批历史"
+        :label="t('approvalDashboard.tabHistory')"
         name="history"
       >
         <div
@@ -257,22 +257,22 @@
           >
             <el-table-column
               prop="request_id"
-              label="请求ID"
+              :label="t('approvalDashboard.colRequestId')"
               width="150"
             />
             <el-table-column
               prop="task_id"
-              label="任务ID"
+              :label="t('approvalDashboard.colTaskId')"
               width="120"
             />
             <el-table-column
               prop="requester"
-              label="请求人"
+              :label="t('approvalDashboard.colRequester')"
               width="100"
             />
             <el-table-column
               prop="status"
-              label="状态"
+              :label="t('approvalDashboard.colStatus')"
               width="100"
             >
               <template #default="{ row }">
@@ -286,7 +286,7 @@
             </el-table-column>
             <el-table-column
               prop="risk_score"
-              label="风险评分"
+              :label="t('approvalDashboard.colRiskScore')"
               width="100"
             >
               <template #default="{ row }">
@@ -295,7 +295,7 @@
             </el-table-column>
             <el-table-column
               prop="requested_at"
-              label="请求时间"
+              :label="t('approvalDashboard.colRequestedAt')"
               width="160"
             >
               <template #default="{ row }">
@@ -303,7 +303,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              label="操作"
+              :label="t('approvalDashboard.colActions')"
               fixed="right"
             >
               <template #default="{ row }">
@@ -311,7 +311,7 @@
                   size="small"
                   @click="viewDetail(row as ApprovalRequest)"
                 >
-                  查看
+                  {{ t('approvalDashboard.btnView') }}
                 </el-button>
               </template>
             </el-table-column>
@@ -322,7 +322,7 @@
 
     <el-dialog
       v-model="detailDialogVisible"
-      title="审批详情"
+      :title="t('approvalDashboard.detailDialogTitle')"
       width="800px"
       destroy-on-close
     >
@@ -335,43 +335,43 @@
           border
         >
           <el-descriptions-item
-            label="请求ID"
+            :label="t('approvalDashboard.detailRequestId')"
             :span="2"
           >
             {{ selectedRequest.request_id }}
           </el-descriptions-item>
-          <el-descriptions-item label="任务ID">
+          <el-descriptions-item :label="t('approvalDashboard.detailTaskId')">
             {{ selectedRequest.task_id }}
           </el-descriptions-item>
-          <el-descriptions-item label="状态">
+          <el-descriptions-item :label="t('approvalDashboard.detailStatus')">
             <el-tag :type="getApprovalStatusTagType(selectedRequest.status)">
               {{ getApprovalStatusLabel(selectedRequest.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="请求人">
+          <el-descriptions-item :label="t('approvalDashboard.detailRequester')">
             {{ selectedRequest.requester }}
           </el-descriptions-item>
-          <el-descriptions-item label="优先级">
+          <el-descriptions-item :label="t('approvalDashboard.detailPriority')">
             <el-tag :type="getPriorityTagType(selectedRequest.priority)">
               {{ getPriorityLabel(selectedRequest.priority) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="风险评分">
+          <el-descriptions-item :label="t('approvalDashboard.detailRiskScore')">
             {{ selectedRequest.risk_score.toFixed(2) }}
           </el-descriptions-item>
-          <el-descriptions-item label="系统建议">
+          <el-descriptions-item :label="t('approvalDashboard.detailSuggestedDecision')">
             {{ selectedRequest.suggested_decision }}
           </el-descriptions-item>
-          <el-descriptions-item label="请求时间">
+          <el-descriptions-item :label="t('approvalDashboard.detailRequestedAt')">
             {{ formatSecondsTimestamp(selectedRequest.requested_at) }}
           </el-descriptions-item>
-          <el-descriptions-item label="截止时间">
+          <el-descriptions-item :label="t('approvalDashboard.detailExpiresAt')">
             {{ formatSecondsTimestamp(selectedRequest.expires_at) }}
           </el-descriptions-item>
         </el-descriptions>
 
         <el-divider content-position="left">
-          操作上下文
+          {{ t('approvalDashboard.detailOperationContext') }}
         </el-divider>
         <pre class="context-json">{{ formatContext(selectedRequest.context) }}</pre>
 
@@ -379,7 +379,7 @@
           v-if="selectedRequest.decisions.length"
           content-position="left"
         >
-          审批决策历史
+          {{ t('approvalDashboard.detailDecisionHistory') }}
         </el-divider>
         <el-table
           v-if="selectedRequest.decisions.length"
@@ -388,12 +388,12 @@
         >
           <el-table-column
             prop="approver_id"
-            label="审批人"
+            :label="t('approvalDashboard.colApprover')"
             width="150"
           />
           <el-table-column
             prop="decision"
-            label="决策"
+            :label="t('approvalDashboard.colDecision')"
             width="100"
           >
             <template #default="{ row }">
@@ -407,12 +407,12 @@
           </el-table-column>
           <el-table-column
             prop="comment"
-            label="备注"
+            :label="t('approvalDashboard.colComment')"
             min-width="200"
           />
           <el-table-column
             prop="decided_at"
-            label="决策时间"
+            :label="t('approvalDashboard.colDecidedAt')"
             width="160"
           >
             <template #default="{ row }">
@@ -422,39 +422,39 @@
         </el-table>
 
         <el-divider content-position="left">
-          审批操作
+          {{ t('approvalDashboard.detailDecisionActions') }}
         </el-divider>
         <div class="decision-actions">
           <el-input
             v-model="decisionComment"
             type="textarea"
             :rows="3"
-            placeholder="输入审批备注..."
+            :placeholder="t('approvalDashboard.decisionCommentPlaceholder')"
             style="margin-bottom: 12px;"
           />
           <el-button
             type="success"
             @click="submitDecision('approved')"
           >
-            批准
+            {{ t('approvalDashboard.btnApprove') }}
           </el-button>
           <el-button
             type="danger"
             @click="submitDecision('rejected')"
           >
-            拒绝
+            {{ t('approvalDashboard.btnReject') }}
           </el-button>
           <el-button
             type="warning"
             @click="submitDecision('request_info')"
           >
-            要求补充信息
+            {{ t('approvalDashboard.btnRequestInfo') }}
           </el-button>
           <el-button
             type="info"
             @click="submitDecision('escalated')"
           >
-            升级
+            {{ t('approvalDashboard.btnEscalate') }}
           </el-button>
         </div>
       </div>
@@ -462,7 +462,7 @@
 
     <el-dialog
       v-model="showReport"
-      title="治理报告"
+      :title="t('approvalDashboard.reportDialogTitle')"
       width="900px"
       destroy-on-close
     >
@@ -475,28 +475,28 @@
             :column="3"
             border
           >
-            <el-descriptions-item label="总请求数">
+            <el-descriptions-item :label="t('approvalDashboard.reportTotalRequests')">
               {{ report.total_requests }}
             </el-descriptions-item>
-            <el-descriptions-item label="已批准">
+            <el-descriptions-item :label="t('approvalDashboard.reportApprovedCount')">
               {{ report.approved_count }}
             </el-descriptions-item>
-            <el-descriptions-item label="已拒绝">
+            <el-descriptions-item :label="t('approvalDashboard.reportRejectedCount')">
               {{ report.rejected_count }}
             </el-descriptions-item>
-            <el-descriptions-item label="已升级">
+            <el-descriptions-item :label="t('approvalDashboard.reportEscalatedCount')">
               {{ report.escalated_count }}
             </el-descriptions-item>
-            <el-descriptions-item label="紧急操作">
+            <el-descriptions-item :label="t('approvalDashboard.reportEmergencyCount')">
               {{ report.emergency_count }}
             </el-descriptions-item>
-            <el-descriptions-item label="平均审批时间">
+            <el-descriptions-item :label="t('approvalDashboard.reportAvgApprovalTime')">
               {{ report.avg_approval_time_hours.toFixed(2) }}h
             </el-descriptions-item>
-            <el-descriptions-item label="拒绝率">
+            <el-descriptions-item :label="t('approvalDashboard.reportRejectionRate')">
               {{ (report.rejection_rate * 100).toFixed(2) }}%
             </el-descriptions-item>
-            <el-descriptions-item label="升级率">
+            <el-descriptions-item :label="t('approvalDashboard.reportEscalationRate')">
               {{ (report.escalation_rate * 100).toFixed(2) }}%
             </el-descriptions-item>
           </el-descriptions>
@@ -505,7 +505,7 @@
             style="margin-top: 16px;"
             @click="exportAuditLog"
           >
-            导出审计日志
+            {{ t('approvalDashboard.btnExportAuditLog') }}
           </el-button>
         </template>
       </div>
@@ -515,11 +515,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Refresh, Document } from '@element-plus/icons-vue'
 import http from '@/utils/http'
 import { triggerFileDownload } from '@/utils/download'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getPriorityTagType, getPriorityLabel, getApprovalStatusTagType, getApprovalStatusLabel } from '@/utils/statusHelpers'
+import { API_CONFIG, buildApiPath } from '@/config/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface ApprovalRequest {
   request_id: string
@@ -592,11 +597,11 @@ const counts = computed(() => dashboard.value.counts)
 async function loadDashboard() {
   loading.value = true
   try {
-    const res = await http.get('/api/v1/governance/approval-dashboard')
+    const res = await http.get(buildApiPath(API_CONFIG.GOVERNANCE, '/approval-dashboard'))
     dashboard.value = res.data?.data || dashboard.value
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('加载审批看板失败: ' + errorMsg)
+    ElMessage.error(t('approvalDashboard.msgLoadDashboardFailed', { error: errorMsg }))
   } finally {
     loading.value = false
   }
@@ -605,13 +610,13 @@ async function loadDashboard() {
 async function loadHistory() {
   historyLoading.value = true
   try {
-    const res = await http.get('/api/v1/governance/approval-requests', {
+    const res = await http.get(buildApiPath(API_CONFIG.GOVERNANCE, '/approval-requests'), {
       params: { limit: 100 },
     })
     history.value = res.data?.data || []
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('加载审批历史失败: ' + errorMsg)
+    ElMessage.error(t('approvalDashboard.msgLoadHistoryFailed', { error: errorMsg }))
   } finally {
     historyLoading.value = false
   }
@@ -625,47 +630,47 @@ function viewDetail(request: ApprovalRequest) {
 
 async function quickApprove(request: ApprovalRequest, decision: string) {
   try {
-    const comment = decision === 'approved' ? '快速批准' : decision === 'rejected' ? '快速拒绝' : '快速升级'
-    await http.post(`/api/v1/governance/approval-requests/${request.request_id}/decide`, {
+    const comment = decision === 'approved' ? t('approvalDashboard.msgQuickApprove') : decision === 'rejected' ? t('approvalDashboard.msgQuickReject') : t('approvalDashboard.msgQuickEscalate')
+    await http.post(buildApiPath(API_CONFIG.GOVERNANCE, `/approval-requests/${request.request_id}/decide`), {
       approver_id: 'current_user',
       decision,
       comment,
     })
-    ElMessage.success(`审批成功: ${decision}`)
+    ElMessage.success(t('approvalDashboard.msgApproveSuccess', { decision }))
     await loadDashboard()
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('审批失败: ' + errorMsg)
+    ElMessage.error(t('approvalDashboard.msgApproveFailed', { error: errorMsg }))
   }
 }
 
 async function submitDecision(decision: string) {
   if (!selectedRequest.value) return
   try {
-    await http.post(`/api/v1/governance/approval-requests/${selectedRequest.value.request_id}/decide`, {
+    await http.post(buildApiPath(API_CONFIG.GOVERNANCE, `/approval-requests/${selectedRequest.value.request_id}/decide`), {
       approver_id: 'current_user',
       decision,
       comment: decisionComment.value,
     })
-    ElMessage.success(`审批决策已提交: ${decision}`)
+    ElMessage.success(t('approvalDashboard.msgSubmitDecisionSuccess', { decision }))
     detailDialogVisible.value = false
     await loadDashboard()
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('提交决策失败: ' + errorMsg)
+    ElMessage.error(t('approvalDashboard.msgSubmitDecisionFailed', { error: errorMsg }))
   }
 }
 
 async function loadReport() {
   reportLoading.value = true
   try {
-    const res = await http.get('/api/v1/governance/reports/governance', {
+    const res = await http.get(buildApiPath(API_CONFIG.GOVERNANCE, '/reports/governance'), {
       params: { days: 30 },
     })
     report.value = res.data?.data || null
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('加载治理报告失败: ' + errorMsg)
+    ElMessage.error(t('approvalDashboard.msgLoadReportFailed', { error: errorMsg }))
   } finally {
     reportLoading.value = false
   }
@@ -673,15 +678,15 @@ async function loadReport() {
 
 async function exportAuditLog() {
   try {
-    const res = await http.get('/api/v1/governance/audit-log/export', {
+    const res = await http.get(buildApiPath(API_CONFIG.GOVERNANCE, '/audit-log/export'), {
       params: { format: 'csv' },
     })
     const blob = new Blob([res.data.data], { type: 'text/csv' })
     triggerFileDownload(blob, `audit_log_${Date.now()}.csv`)
-    ElMessage.success('审计日志导出成功')
+    ElMessage.success(t('approvalDashboard.msgExportAuditLogSuccess'))
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error('导出失败: ' + errorMsg)
+    ElMessage.error(t('approvalDashboard.msgExportFailed', { error: errorMsg }))
   }
 }
 

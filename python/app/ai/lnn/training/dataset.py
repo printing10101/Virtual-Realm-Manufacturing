@@ -207,8 +207,14 @@ class LNNDataset(Dataset):
         return cls(data, labels, metadata={"source": csv_path})
 
 
-class DataPreprocessor:
-    """训练数据预处理器"""
+class TrainingDataPreprocessor:
+    """训练数据预处理器
+
+    注意：这是一个轻量级的训练专用预处理器，返回 ``np.ndarray``。
+    生产推理路径使用 ``app.ai.lnn.preprocessing.DataPreprocessor``，
+    后者返回 ``PreprocessingResult`` 并支持异常值检测、多模态特征等
+    更丰富的功能。两者 API 不同，请勿混用。
+    """
 
     def __init__(
         self,
@@ -225,7 +231,7 @@ class DataPreprocessor:
         self.min_: Optional[np.ndarray] = None
         self.max_: Optional[np.ndarray] = None
 
-    def fit(self, data: np.ndarray) -> "DataPreprocessor":
+    def fit(self, data: np.ndarray) -> "TrainingDataPreprocessor":
         """拟合预处理器"""
         self.mean_ = np.mean(data, axis=0)
         self.std_ = np.std(data, axis=0)

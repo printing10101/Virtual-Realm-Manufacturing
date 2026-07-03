@@ -1,21 +1,82 @@
 <template>
   <div class="not-found-page">
-    <el-card class="not-found-card" shadow="never">
+    <el-card
+      class="not-found-card"
+      shadow="never"
+    >
       <div class="not-found-content">
         <div class="not-found-icon">
-          <svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="110" cy="110" r="100" stroke="var(--border-light)" stroke-width="3" fill="var(--bg-tertiary)" />
-            <text x="110" y="125" text-anchor="middle" font-size="72" font-weight="700" fill="var(--accent-primary)" font-family="Arial, sans-serif">404</text>
-            <line x1="70" y1="150" x2="150" y2="150" stroke="var(--border-light)" stroke-width="2" stroke-linecap="round" />
-            <circle cx="85" cy="80" r="6" fill="var(--text-tertiary)" />
-            <circle cx="110" cy="75" r="6" fill="var(--text-tertiary)" />
-            <circle cx="135" cy="80" r="6" fill="var(--text-tertiary)" />
-            <path d="M80 170 Q110 185 140 170" stroke="var(--border-light)" stroke-width="2.5" fill="none" stroke-linecap="round" />
+          <svg
+            width="220"
+            height="220"
+            viewBox="0 0 220 220"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="110"
+              cy="110"
+              r="100"
+              stroke="var(--border-light)"
+              stroke-width="3"
+              fill="var(--bg-tertiary)"
+            />
+            <text
+              x="110"
+              y="125"
+              text-anchor="middle"
+              font-size="72"
+              font-weight="700"
+              fill="var(--accent-primary)"
+              font-family="Arial, sans-serif"
+            >404</text>
+            <line
+              x1="70"
+              y1="150"
+              x2="150"
+              y2="150"
+              stroke="var(--border-light)"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <circle
+              cx="85"
+              cy="80"
+              r="6"
+              fill="var(--text-tertiary)"
+            />
+            <circle
+              cx="110"
+              cy="75"
+              r="6"
+              fill="var(--text-tertiary)"
+            />
+            <circle
+              cx="135"
+              cy="80"
+              r="6"
+              fill="var(--text-tertiary)"
+            />
+            <path
+              d="M80 170 Q110 185 140 170"
+              stroke="var(--border-light)"
+              stroke-width="2.5"
+              fill="none"
+              stroke-linecap="round"
+            />
           </svg>
         </div>
-        <h2 class="not-found-title">{{ $t('notFound.title') }}</h2>
-        <p class="not-found-desc">{{ $t('notFound.desc') }}</p>
-        <el-button type="primary" size="large" @click="goHome">
+        <h2 class="not-found-title">
+          {{ $t('notFound.title') }}
+        </h2>
+        <p class="not-found-desc">
+          {{ $t('notFound.desc') }}
+        </p>
+        <el-button
+          type="primary"
+          size="large"
+          @click="goHome"
+        >
           {{ $t('notFound.backHome') }}
         </el-button>
       </div>
@@ -25,9 +86,8 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 
-const route = useRoute()
 const router = useRouter()
 
 const goHome = (): void => {

@@ -18,7 +18,7 @@
       <div class="viewer-controls">
         <el-button-group size="small">
           <el-button @click="fitView">
-            <el-icon><aim /></el-icon> {{ $t('stepModelViewer.btnFit') }}
+            <el-icon><Aim /></el-icon> {{ $t('stepModelViewer.btnFit') }}
           </el-button>
           <el-button @click="viewFront">
             {{ $t('stepModelViewer.btnFront') }}
@@ -90,6 +90,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Aim } from '@element-plus/icons-vue'
 import * as THREE from 'three'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { formatFileSize } from '@/utils/formatters'

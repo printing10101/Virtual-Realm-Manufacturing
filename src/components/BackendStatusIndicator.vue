@@ -1,27 +1,40 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useBackendStatus, type BackendStatusKind } from '@/composables/useBackendStatus'
 
+const { t } = useI18n()
 const { state, restart, tauriMode } = useBackendStatus()
 
 const indicator = computed(() => {
   const map: Record<BackendStatusKind, { color: string; label: string; pulse: boolean }> = {
-    idle: { color: 'var(--text-tertiary)', label: '未启动', pulse: false },
-    starting: { color: 'var(--warning)', label: '启动中', pulse: true },
-    running: { color: 'var(--success)', label: '运行中', pulse: false },
-    stopping: { color: 'var(--warning)', label: '停止中', pulse: true },
-    crashed: { color: 'var(--error)', label: '已崩溃', pulse: true },
-    failed: { color: 'var(--error)', label: '启动失败', pulse: false },
-    stopped: { color: 'var(--text-tertiary)', label: '已停止', pulse: false },
+    idle: { color: 'var(--text-tertiary)', label: t('backendStatus.idle'), pulse: false },
+    starting: { color: 'var(--warning)', label: t('backendStatus.starting'), pulse: true },
+    running: { color: 'var(--success)', label: t('backendStatus.running'), pulse: false },
+    stopping: { color: 'var(--warning)', label: t('backendStatus.stopping'), pulse: true },
+    crashed: { color: 'var(--error)', label: t('backendStatus.crashed'), pulse: true },
+    failed: { color: 'var(--error)', label: t('backendStatus.failed'), pulse: false },
+    stopped: { color: 'var(--text-tertiary)', label: t('backendStatus.stopped'), pulse: false },
   }
   return map[state.status] || map.idle
 })
 </script>
 
 <template>
-  <div v-if="tauriMode" class="backend-status-indicator" :title="state.message">
-    <span class="dot" :class="{ pulse: indicator.pulse }" :style="{ background: indicator.color }"></span>
-    <span class="label" :style="{ color: indicator.color }">{{ indicator.label }}</span>
+  <div
+    v-if="tauriMode"
+    class="backend-status-indicator"
+    :title="state.message"
+  >
+    <span
+      class="dot"
+      :class="{ pulse: indicator.pulse }"
+      :style="{ background: indicator.color }"
+    />
+    <span
+      class="label"
+      :style="{ color: indicator.color }"
+    >{{ indicator.label }}</span>
     <el-button
       v-if="state.status === 'crashed' || state.status === 'failed'"
       link
@@ -29,7 +42,7 @@ const indicator = computed(() => {
       size="small"
       @click="restart"
     >
-      重启
+      {{ t('backendStatus.restart') }}
     </el-button>
   </div>
 </template>

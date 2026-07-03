@@ -26,28 +26,28 @@
       </div>
       <div class="tooltip-content">
         <div class="tooltip-row">
-          <span class="label">描述:</span>
+          <span class="label">{{ t('highlightViewer.labelDescription') }}:</span>
           <span class="value">{{ hoverInfo.feature.description }}</span>
         </div>
         <div
           v-if="hoverInfo.feature.aiInfo"
           class="tooltip-row"
         >
-          <span class="label">AI 重要度:</span>
+          <span class="label">{{ t('highlightViewer.labelAiImportance') }}:</span>
           <span class="value importance">{{ hoverInfo.feature.aiInfo.importance.toFixed(2) }}</span>
         </div>
         <div
           v-if="hoverInfo.feature.aiInfo?.reason"
           class="tooltip-row"
         >
-          <span class="label">原因:</span>
+          <span class="label">{{ t('highlightViewer.labelReason') }}:</span>
           <span class="value">{{ hoverInfo.feature.aiInfo.reason }}</span>
         </div>
         <div
           v-if="hoverInfo.feature.aiInfo?.category"
           class="tooltip-row"
         >
-          <span class="label">类别:</span>
+          <span class="label">{{ t('highlightViewer.labelCategory') }}:</span>
           <span class="value category">{{ hoverInfo.feature.aiInfo.category }}</span>
         </div>
       </div>
@@ -59,7 +59,7 @@
       class="feature-list-panel"
     >
       <div class="panel-header">
-        <h4>AI 关注特征</h4>
+        <h4>{{ t('highlightViewer.aiFeaturesTitle') }}</h4>
         <span class="feature-count">{{ composableFeatures.length }}</span>
       </div>
       <div class="feature-list">
@@ -76,8 +76,12 @@
           @mouseleave="handleHover(null)"
         >
           <div class="feature-info">
-            <div class="feature-name">{{ feature.name }}</div>
-            <div class="feature-type">{{ feature.type }}</div>
+            <div class="feature-name">
+              {{ feature.name }}
+            </div>
+            <div class="feature-type">
+              {{ feature.type }}
+            </div>
           </div>
           <div
             v-if="feature.aiInfo"
@@ -100,7 +104,7 @@
             v-model="showTooltip"
             type="checkbox"
           >
-          显示悬停提示
+          {{ t('highlightViewer.showTooltip') }}
         </label>
       </div>
       <div class="control-group">
@@ -109,7 +113,7 @@
             v-model="showFeatureList"
             type="checkbox"
           >
-          显示特征列表
+          {{ t('highlightViewer.showFeatureList') }}
         </label>
       </div>
       <div class="control-group">
@@ -118,7 +122,7 @@
             v-model="syncEnabled"
             type="checkbox"
           >
-          多窗口同步
+          {{ t('highlightViewer.syncEnabled') }}
         </label>
       </div>
       <div
@@ -129,7 +133,7 @@
           class="clear-button"
           @click="clearSelection"
         >
-          清除选择
+          {{ t('highlightViewer.clearSelection') }}
         </button>
       </div>
     </div>
@@ -140,13 +144,13 @@
       class="selection-indicator"
     >
       <div class="indicator-label">
-        已选中: {{ selectedFeature.name }}
+        {{ t('highlightViewer.selected') }}: {{ selectedFeature.name }}
       </div>
       <div
         v-if="selectedFeature.aiInfo"
         class="indicator-details"
       >
-        <span>重要度: {{ (selectedFeature.aiInfo.importance * 100).toFixed(0) }}%</span>
+        <span>{{ t('highlightViewer.importance') }}: {{ (selectedFeature.aiInfo.importance * 100).toFixed(0) }}%</span>
         <span v-if="selectedFeature.aiInfo.category"> | {{ selectedFeature.aiInfo.category }}</span>
       </div>
     </div>
@@ -158,6 +162,7 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import * as THREE from 'three'
 import { useThreeScene } from '@/composables/useThreeScene'
 import { useFeatureHighlight, type FeatureInfo } from '@/composables/useFeatureHighlight'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   modelUrl?: string
@@ -177,6 +182,7 @@ const emit = defineEmits<{
 
 const containerRef = ref<HTMLElement>()
 const canvasContainerRef = ref<HTMLElement>()
+const { t } = useI18n()
 const showTooltip = ref(props.initialShowTooltip ?? true)
 const showFeatureList = ref(props.initialShowFeatureList ?? true)
 

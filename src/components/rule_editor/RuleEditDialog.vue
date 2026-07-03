@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="visible"
-    :title="isEditing ? '编辑工艺规则' : '新建工艺规则'"
+    :title="isEditing ? t('ruleEditDialog.dialogTitleEdit') : t('ruleEditDialog.dialogTitleNew')"
     width="900px"
     @update:model-value="$emit('update:visible', $event)"
     @close="handleClose"
@@ -15,20 +15,20 @@
       <el-row :gutter="16">
         <el-col :span="16">
           <el-form-item
-            label="规则名称"
+            :label="t('ruleEditDialog.labelRuleName')"
             prop="name"
           >
             <el-input
               v-model="form.name"
-              placeholder="请输入规则名称"
+              :placeholder="t('ruleEditDialog.placeholderRuleName')"
             />
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="分组">
+          <el-form-item :label="t('ruleEditDialog.labelGroup')">
             <el-select
               v-model="form.group_id"
-              placeholder="选择分组"
+              :placeholder="t('ruleEditDialog.placeholderGroup')"
               clearable
               style="width: 100%"
             >
@@ -43,30 +43,30 @@
         </el-col>
       </el-row>
 
-      <el-form-item label="规则描述">
+      <el-form-item :label="t('ruleEditDialog.labelRuleDesc')">
         <el-input
           v-model="form.description"
           type="textarea"
           :rows="2"
-          placeholder="请输入规则描述（可选）"
+          :placeholder="t('ruleEditDialog.placeholderRuleDesc')"
         />
       </el-form-item>
 
-      <el-form-item label="逻辑关系">
+      <el-form-item :label="t('ruleEditDialog.labelLogicOperator')">
         <el-radio-group
           v-model="form.logic_operator"
           @change="updatePreview"
         >
-          <el-radio-button label="AND">
-            AND（全部满足）
+          <el-radio-button value="AND">
+            {{ t('ruleEditDialog.radioAnd') }}
           </el-radio-button>
-          <el-radio-button label="OR">
-            OR（任一满足）
+          <el-radio-button value="OR">
+            {{ t('ruleEditDialog.radioOr') }}
           </el-radio-button>
         </el-radio-group>
       </el-form-item>
 
-      <el-form-item label="条件项">
+      <el-form-item :label="t('ruleEditDialog.labelConditions')">
         <div class="conditions-container">
           <el-table
             :data="form.conditions"
@@ -74,68 +74,68 @@
             size="small"
           >
             <el-table-column
-              label="参数"
+              :label="t('ruleEditDialog.labelParameter')"
               width="180"
             >
               <template #default="{ row }">
                 <el-select
                   v-model="row.parameter"
-                  placeholder="选择参数"
+                  :placeholder="t('ruleEditDialog.placeholderParameter')"
                   @change="updatePreview"
                 >
-                  <el-option-group label="材料相关">
+                  <el-option-group :label="t('ruleEditDialog.groupMaterial')">
                     <el-option
-                      label="材料"
+                      :label="t('ruleEditDialog.paramMaterial')"
                       value="材料"
                     />
                     <el-option
-                      label="材料硬度"
+                      :label="t('ruleEditDialog.paramMaterialHardness')"
                       value="材料硬度"
                     />
                   </el-option-group>
-                  <el-option-group label="工序相关">
+                  <el-option-group :label="t('ruleEditDialog.groupProcess')">
                     <el-option
-                      label="工序"
+                      :label="t('ruleEditDialog.paramProcess')"
                       value="工序"
                     />
                     <el-option
-                      label="加工精度"
+                      :label="t('ruleEditDialog.paramMachiningPrecision')"
                       value="加工精度"
                     />
                     <el-option
-                      label="表面粗糙度"
+                      :label="t('ruleEditDialog.paramSurfaceRoughness')"
                       value="表面粗糙度"
                     />
                   </el-option-group>
-                  <el-option-group label="刀具相关">
+                  <el-option-group :label="t('ruleEditDialog.groupTool')">
                     <el-option
-                      label="刀具类型"
+                      :label="t('ruleEditDialog.paramToolType')"
                       value="刀具类型"
                     />
                     <el-option
-                      label="刀具直径"
+                      :label="t('ruleEditDialog.paramToolDiameter')"
                       value="刀具直径"
                     />
                   </el-option-group>
-                  <el-option-group label="切削参数">
+                  <el-option-group :label="t('ruleEditDialog.groupCutting')">
                     <el-option
-                      label="切削速度"
+                      :label="t('ruleEditDialog.paramCuttingSpeed')"
                       value="切削速度"
                     />
                     <el-option
-                      label="进给量"
+                      :label="t('ruleEditDialog.paramFeedRate')"
                       value="进给量"
                     />
                     <el-option
-                      label="切深"
+                      :label="t('ruleEditDialog.paramCutDepth')"
                       value="切深"
                     />
                     <el-option
-                      label="切宽"
+                      :label="t('ruleEditDialog.paramCutWidth')"
                       value="切宽"
                     />
                     <el-option
-                      label="主轴转速"
+                      :label="t('ruleEditDialog.paramSpindleSpeed')"
                       value="主轴转速"
                     />
                   </el-option-group>
@@ -143,7 +143,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              label="运算符"
+              :label="t('ruleEditDialog.labelOperator')"
               width="110"
             >
               <template #default="{ row }">
@@ -179,25 +179,25 @@
               </template>
             </el-table-column>
             <el-table-column
-              label="值"
+              :label="t('ruleEditDialog.labelValue')"
               width="140"
             >
               <template #default="{ row }">
                 <el-input
                   v-model="row.value"
-                  placeholder="输入值"
+                  :placeholder="t('ruleEditDialog.placeholderValue')"
                   @input="updatePreview"
                 />
               </template>
             </el-table-column>
             <el-table-column
-              label="单位"
+              :label="t('ruleEditDialog.labelUnit')"
               width="100"
             >
               <template #default="{ row }">
                 <el-select
                   v-model="row.unit"
-                  placeholder="无"
+                  :placeholder="t('ruleEditDialog.placeholderNone')"
                   clearable
                   @change="updatePreview"
                 >
@@ -229,7 +229,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              label="操作"
+              :label="t('ruleEditDialog.labelActions')"
               width="80"
             >
               <template #default="{ $index }">
@@ -240,7 +240,7 @@
                   :disabled="form.conditions.length <= 1"
                   @click="removeCondition($index)"
                 >
-                  删除
+                  {{ t('ruleEditDialog.btnDelete') }}
                 </el-button>
               </template>
             </el-table-column>
@@ -252,13 +252,13 @@
             @click="addCondition"
           >
             <el-icon><Plus /></el-icon>
-            添加条件
+            {{ t('ruleEditDialog.btnAddCondition') }}
           </el-button>
         </div>
       </el-form-item>
 
       <el-form-item
-        label="结果"
+        :label="t('ruleEditDialog.labelResult')"
         prop="result"
       >
         <el-row
@@ -268,27 +268,27 @@
           <el-col :span="6">
             <el-select
               v-model="form.result.parameter"
-              placeholder="结果参数"
+              :placeholder="t('ruleEditDialog.placeholderResultParameter')"
               @change="updatePreview"
             >
               <el-option
-                label="切深"
+                :label="t('ruleEditDialog.paramCutDepth')"
                 value="切深"
               />
               <el-option
-                label="切宽"
+                :label="t('ruleEditDialog.paramCutWidth')"
                 value="切宽"
               />
               <el-option
-                label="切削速度"
+                :label="t('ruleEditDialog.paramCuttingSpeed')"
                 value="切削速度"
               />
               <el-option
-                label="进给量"
+                :label="t('ruleEditDialog.paramFeedRate')"
                 value="进给量"
               />
               <el-option
-                label="主轴转速"
+                :label="t('ruleEditDialog.paramSpindleSpeed')"
                 value="主轴转速"
               />
             </el-select>
@@ -327,14 +327,14 @@
           <el-col :span="6">
             <el-input
               v-model="form.result.value"
-              placeholder="结果值"
+              :placeholder="t('ruleEditDialog.placeholderResultValue')"
               @input="updatePreview"
             />
           </el-col>
           <el-col :span="4">
             <el-select
               v-model="form.result.unit"
-              placeholder="无"
+              :placeholder="t('ruleEditDialog.placeholderNone')"
               clearable
               @change="updatePreview"
             >
@@ -359,27 +359,27 @@
         </el-row>
       </el-form-item>
 
-      <el-form-item label="状态">
+      <el-form-item :label="t('ruleEditDialog.labelStatus')">
         <el-select
           v-model="form.status"
           style="width: 120px"
         >
           <el-option
-            label="启用"
+            :label="t('ruleEditDialog.statusActive')"
             value="active"
           />
           <el-option
-            label="停用"
+            :label="t('ruleEditDialog.statusInactive')"
             value="inactive"
           />
           <el-option
-            label="草稿"
+            :label="t('ruleEditDialog.statusDraft')"
             value="draft"
           />
         </el-select>
       </el-form-item>
 
-      <el-form-item label="优先级">
+      <el-form-item :label="t('ruleEditDialog.labelPriority')">
         <el-input-number
           v-model="form.priority"
           :min="0"
@@ -387,9 +387,9 @@
         />
       </el-form-item>
 
-      <el-form-item label="规则预览">
+      <el-form-item :label="t('ruleEditDialog.labelRulePreview')">
         <el-alert
-          :title="previewText || '请完善条件以生成规则预览'"
+          :title="previewText || t('ruleEditDialog.previewEmpty')"
           type="info"
           :closable="false"
           :class="{ 'preview-empty': !previewText }"
@@ -399,14 +399,14 @@
 
     <template #footer>
       <el-button @click="$emit('update:visible', false)">
-        取消
+        {{ t('ruleEditDialog.btnCancel') }}
       </el-button>
       <el-button
         type="primary"
         :loading="submitting"
         @click="handleSubmit"
       >
-        {{ isEditing ? '保存修改' : '创建规则' }}
+        {{ isEditing ? t('ruleEditDialog.btnSave') : t('ruleEditDialog.btnCreate') }}
       </el-button>
     </template>
   </el-dialog>
@@ -414,11 +414,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import type { ProcessRule, RuleCondition, RuleResult, RuleCreateRequest, RuleUpdateRequest } from '@/types'
 import { useRuleStore } from '@/stores/rules'
 import type { FormInstance, FormRules } from 'element-plus'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   visible: boolean
@@ -469,10 +472,10 @@ const form = ref<{
   priority: 0,
 })
 
-const formRules: FormRules = {
-  name: [{ required: true, message: '请输入规则名称', trigger: 'blur' }],
-  result: [{ required: true, message: '请设置结果项', trigger: 'change' }],
-}
+const formRules = computed<FormRules>(() => ({
+  name: [{ required: true, message: t('ruleEditDialog.msgRuleNameRequired'), trigger: 'blur' }],
+  result: [{ required: true, message: t('ruleEditDialog.msgResultRequired'), trigger: 'change' }],
+}))
 
 const isEditing = computed(() => !!props.rule)
 
@@ -552,18 +555,18 @@ async function handleSubmit() {
   try {
     await formRef.value.validate()
   } catch {
-    ElMessage.warning('请检查表单填写')
+    ElMessage.warning(t('ruleEditDialog.msgCheckForm'))
     return
   }
 
   const validConditions = form.value.conditions.filter((c) => c.parameter && c.value)
   if (validConditions.length === 0) {
-    ElMessage.warning('请至少添加一个有效条件')
+    ElMessage.warning(t('ruleEditDialog.msgAddCondition'))
     return
   }
 
   if (!form.value.result.parameter || !form.value.result.value) {
-    ElMessage.warning('请设置结果项')
+    ElMessage.warning(t('ruleEditDialog.msgResultRequired'))
     return
   }
 

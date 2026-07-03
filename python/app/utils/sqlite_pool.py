@@ -98,10 +98,11 @@ class SQLiteConnectionPool:
         with self._lock:
             if self._pool:
                 conn = self._pool.pop()
-                # 检查连接是否有效
+                # 在锁内验证连接有效性，避免竞态条件
                 try:
                     conn.execute("SELECT 1")
                     self._active_count += 1
+                    self._borrowed[id(conn)] = time.time()
                     return conn
                 except Exception as e:
                     logger.warning("Invalid connection in pool, discarding: %s", e)
@@ -136,18 +137,14 @@ class SQLiteConnectionPool:
         Raises:
             RuntimeError: 无法获取连接时抛出
         """
-        # 尝试从连接池获取
+        # 尝试从连接池获取（_try_get_from_pool已记录borrow时间）
         conn = self._try_get_from_pool()
         if conn is not None:
-            with self._lock:
-                self._borrowed[id(conn)] = time.time()
             return conn
 
-        # 尝试创建新连接
+        # 尝试创建新连接（_create_new_connection已记录borrow时间）
         conn = self._create_new_connection()
         if conn is not None:
-            with self._lock:
-                self._borrowed[id(conn)] = time.time()
             return conn
 
         # 等待连接释放
@@ -156,8 +153,6 @@ class SQLiteConnectionPool:
             time.sleep(0.1)
             conn = self._try_get_from_pool()
             if conn is not None:
-                with self._lock:
-                    self._borrowed[id(conn)] = time.time()
                 return conn
 
         raise RuntimeError(

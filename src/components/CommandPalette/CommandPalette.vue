@@ -1,26 +1,44 @@
 <template>
   <teleport to="body">
     <transition name="fade">
-      <div v-if="state.visible" class="command-palette-overlay" @click.self="close">
-        <div class="command-palette" :style="{ maxWidth: isMobile ? '90vw' : '600px' }">
+      <div
+        v-if="state.visible"
+        class="command-palette-overlay"
+        @click.self="close"
+      >
+        <div
+          class="command-palette"
+          :style="{ maxWidth: isMobile ? '90vw' : '600px' }"
+        >
           <!-- 搜索输入 -->
           <div class="palette-header">
-            <el-icon class="search-icon"><Search /></el-icon>
+            <el-icon class="search-icon">
+              <Search />
+            </el-icon>
             <input
               ref="inputRef"
               v-model="query"
               class="palette-input"
-              placeholder="输入命令名称或描述..."
+              :placeholder="t('commandPalette.inputPlaceholder')"
               @keydown="handleKeydown"
-            />
-            <kbd v-if="!isMobile" class="shortcut-hint">ESC</kbd>
+            >
+            <kbd
+              v-if="!isMobile"
+              class="shortcut-hint"
+            >ESC</kbd>
           </div>
 
           <!-- 命令列表 -->
-          <div class="palette-body" @keydown="handleKeydown">
-            <div v-if="filteredCommands.length === 0" class="empty-state">
+          <div
+            class="palette-body"
+            @keydown="handleKeydown"
+          >
+            <div
+              v-if="filteredCommands.length === 0"
+              class="empty-state"
+            >
               <el-icon><Warning /></el-icon>
-              <p>未找到匹配的命令</p>
+              <p>{{ t('commandPalette.noMatchFound') }}</p>
             </div>
 
             <template v-else>
@@ -29,7 +47,9 @@
                 :key="category"
                 class="command-group"
               >
-                <div class="group-title">{{ category }}</div>
+                <div class="group-title">
+                  {{ category }}
+                </div>
                 <div
                   v-for="(cmd, index) in group"
                   :key="cmd.id"
@@ -44,16 +64,26 @@
                     <el-icon v-if="cmd.icon">
                       <component :is="cmd.icon" />
                     </el-icon>
-                    <el-icon v-else><Operation /></el-icon>
+                    <el-icon v-else>
+                      <Operation />
+                    </el-icon>
                   </div>
                   <div class="command-content">
-                    <div class="command-name">{{ cmd.name }}</div>
-                    <div v-if="cmd.description" class="command-description">
+                    <div class="command-name">
+                      {{ cmd.name }}
+                    </div>
+                    <div
+                      v-if="cmd.description"
+                      class="command-description"
+                    >
                       {{ cmd.description }}
                     </div>
                   </div>
                   <div class="command-meta">
-                    <kbd v-if="cmd.shortcut" class="command-shortcut">
+                    <kbd
+                      v-if="cmd.shortcut"
+                      class="command-shortcut"
+                    >
                       {{ cmd.shortcut }}
                     </kbd>
                     <el-tag
@@ -74,17 +104,17 @@
           <div class="palette-footer">
             <div class="footer-hints">
               <span class="hint-item">
-                <kbd>↑↓</kbd> 选择
+                <kbd>↑↓</kbd> {{ t('commandPalette.hintSelect') }}
               </span>
               <span class="hint-item">
-                <kbd>↵</kbd> 执行
+                <kbd>↵</kbd> {{ t('commandPalette.hintExecute') }}
               </span>
               <span class="hint-item">
-                <kbd>esc</kbd> 关闭
+                <kbd>esc</kbd> {{ t('commandPalette.hintClose') }}
               </span>
             </div>
             <div class="footer-stats">
-              {{ filteredCommands.length }} 个命令
+              {{ filteredCommands.length }} {{ t('commandPalette.commandCount') }}
             </div>
           </div>
         </div>
@@ -95,8 +125,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Search, Warning, Operation } from '@element-plus/icons-vue'
 import type { Command } from '@/composables/useCommandPalette'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps<{
@@ -140,7 +173,7 @@ const filteredCommands = computed(() => {
 const groupedCommands = computed(() => {
   const groups: Record<string, Command[]> = {}
   filteredCommands.value.forEach(cmd => {
-    const category = cmd.category || '其他'
+    const category = cmd.category || t('commandPalette.otherCategory')
     if (!groups[category]) {
       groups[category] = []
     }
@@ -215,13 +248,14 @@ function handleKeydown(event: KeyboardEvent) {
         selectedIndex.value--
       }
       break
-    case 'Enter':
+    case 'Enter': {
       event.preventDefault()
       const cmd = filteredCommands.value[selectedIndex.value]
       if (cmd) {
         executeCommand(cmd)
       }
       break
+    }
     case 'Escape':
       event.preventDefault()
       close()

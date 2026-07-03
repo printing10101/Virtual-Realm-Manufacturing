@@ -94,7 +94,7 @@ function _on(handler: (p: ErrorDialogPayload) => void): () => void {
   }
 }
 
-function _fanout<T>(set: Set<(p: T) => void>, payload: T, label: string): boolean {
+function _fanout<T>(set: Set<(p: T) => void>, payload: T): boolean {
   if (set.size === 0) {
     // 没有订阅者时返回 false，调用方可据此判断
     return false
@@ -152,10 +152,10 @@ export function useErrorBus(): ErrorBus {
     },
     latest: readonly(latestRef),
     emitAccepted(payload) {
-      return _fanout(acceptedHandlers, payload, 'manufacturing-error-accepted')
+      return _fanout(acceptedHandlers, payload)
     },
     emitManualEdit(payload) {
-      return _fanout(manualHandlers, payload, 'manufacturing-error-manual')
+      return _fanout(manualHandlers, payload)
     },
     onAccepted(handler) {
       if (acceptedTeardown) acceptedTeardown()

@@ -1,18 +1,30 @@
 <template>
-  <div class="step-card" :class="[`step-${step.type}`, `status-${step.status}`]">
+  <div
+    class="step-card"
+    :class="[`step-${step.type}`, `status-${step.status}`]"
+  >
     <div class="step-header">
       <div class="step-icon">
         <el-icon :size="20">
           <component :is="stepIcon" />
         </el-icon>
       </div>
-      <div class="step-title">{{ step.title }}</div>
+      <div class="step-title">
+        {{ step.title }}
+      </div>
       <div class="step-status">
-        <el-tag :type="statusTagType" size="small" effect="dark">
+        <el-tag
+          :type="statusTagType"
+          size="small"
+          effect="dark"
+        >
           {{ statusText }}
         </el-tag>
       </div>
-      <div class="step-duration" v-if="step.duration">
+      <div
+        v-if="step.duration"
+        class="step-duration"
+      >
         {{ step.duration }}ms
       </div>
     </div>
@@ -23,9 +35,17 @@
       </div>
 
       <!-- 任务路由依据 -->
-      <div v-if="step.type === 'task_routing'" class="evidence-section">
-        <div v-if="step.evidence.routingRules?.length" class="evidence-block">
-          <div class="evidence-label">匹配规则</div>
+      <div
+        v-if="step.type === 'task_routing'"
+        class="evidence-section"
+      >
+        <div
+          v-if="step.evidence.routingRules?.length"
+          class="evidence-block"
+        >
+          <div class="evidence-label">
+            {{ t('stepCard.matchingRules') }}
+          </div>
           <div class="rule-list">
             <div
               v-for="(rule, idx) in step.evidence.routingRules"
@@ -37,13 +57,21 @@
                 <component :is="rule.matched ? CircleCheck : CircleClose" />
               </el-icon>
               <span>{{ rule.rule }}</span>
-              <span v-if="rule.description" class="rule-desc">- {{ rule.description }}</span>
+              <span
+                v-if="rule.description"
+                class="rule-desc"
+              >- {{ rule.description }}</span>
             </div>
           </div>
         </div>
 
-        <div v-if="step.evidence.similarCases?.length" class="evidence-block">
-          <div class="evidence-label">相似案例</div>
+        <div
+          v-if="step.evidence.similarCases?.length"
+          class="evidence-block"
+        >
+          <div class="evidence-label">
+            {{ t('stepCard.similarCases') }}
+          </div>
           <div class="case-list">
             <div
               v-for="(case_, idx) in step.evidence.similarCases"
@@ -65,35 +93,71 @@
       </div>
 
       <!-- 物理校验依据 -->
-      <div v-if="step.type === 'physical_validation'" class="evidence-section">
-        <div v-if="step.evidence.validationParams?.length" class="evidence-block">
-          <div class="evidence-label">校验参数</div>
-          <el-table :data="step.evidence.validationParams" size="small" border>
-            <el-table-column prop="name" label="参数" width="120" />
-            <el-table-column label="值" width="100">
+      <div
+        v-if="step.type === 'physical_validation'"
+        class="evidence-section"
+      >
+        <div
+          v-if="step.evidence.validationParams?.length"
+          class="evidence-block"
+        >
+          <div class="evidence-label">
+            {{ t('stepCard.validationParams') }}
+          </div>
+          <el-table
+            :data="step.evidence.validationParams"
+            size="small"
+            border
+          >
+            <el-table-column
+              prop="name"
+              :label="t('stepCard.colParam')"
+              width="120"
+            />
+            <el-table-column
+              :label="t('stepCard.colValue')"
+              width="100"
+            >
               <template #default="{ row }">
                 {{ row.value }}{{ row.unit || '' }}
               </template>
             </el-table-column>
-            <el-table-column label="阈值" width="100">
+            <el-table-column
+              :label="t('stepCard.colThreshold')"
+              width="100"
+            >
               <template #default="{ row }">
                 ≤ {{ row.threshold }}{{ row.unit || '' }}
               </template>
             </el-table-column>
-            <el-table-column label="结果" width="80">
+            <el-table-column
+              :label="t('stepCard.colResult')"
+              width="80"
+            >
               <template #default="{ row }">
-                <el-tag :type="row.passed ? 'success' : 'danger'" size="small">
-                  {{ row.passed ? '通过' : '失败' }}
+                <el-tag
+                  :type="row.passed ? 'success' : 'danger'"
+                  size="small"
+                >
+                  {{ row.passed ? t('stepCard.resultPass') : t('stepCard.resultFail') }}
                 </el-tag>
               </template>
             </el-table-column>
           </el-table>
         </div>
 
-        <div v-if="step.evidence.physicsFormulas?.length" class="evidence-block">
-          <div class="evidence-label">物理公式</div>
+        <div
+          v-if="step.evidence.physicsFormulas?.length"
+          class="evidence-block"
+        >
+          <div class="evidence-label">
+            {{ t('stepCard.physicsFormulas') }}
+          </div>
           <div class="formula-list">
-            <code v-for="(formula, idx) in step.evidence.physicsFormulas" :key="idx">
+            <code
+              v-for="(formula, idx) in step.evidence.physicsFormulas"
+              :key="idx"
+            >
               {{ formula }}
             </code>
           </div>
@@ -101,19 +165,32 @@
       </div>
 
       <!-- 主动学习依据 -->
-      <div v-if="step.type === 'active_learning'" class="evidence-section">
-        <div v-if="step.evidence.learningCurve?.length" class="evidence-block">
-          <div class="evidence-label">学习曲线</div>
+      <div
+        v-if="step.type === 'active_learning'"
+        class="evidence-section"
+      >
+        <div
+          v-if="step.evidence.learningCurve?.length"
+          class="evidence-block"
+        >
+          <div class="evidence-label">
+            {{ t('stepCard.learningCurve') }}
+          </div>
           <div class="curve-info">
             <span>Epoch: {{ step.evidence.learningCurve.length }}</span>
             <span>
-              最终 Loss: {{ step.evidence.learningCurve[step.evidence.learningCurve.length - 1]?.loss.toFixed(4) }}
+              {{ t('stepCard.finalLoss') }}: {{ step.evidence.learningCurve[step.evidence.learningCurve.length - 1]?.loss.toFixed(4) }}
             </span>
           </div>
         </div>
 
-        <div v-if="step.evidence.sampleComparison?.length" class="evidence-block">
-          <div class="evidence-label">样本对比</div>
+        <div
+          v-if="step.evidence.sampleComparison?.length"
+          class="evidence-block"
+        >
+          <div class="evidence-label">
+            {{ t('stepCard.sampleComparison') }}
+          </div>
           <div class="sample-list">
             <div
               v-for="(sample, idx) in step.evidence.sampleComparison"
@@ -121,9 +198,12 @@
               class="sample-item"
             >
               <span class="sample-source">{{ sample.source }}</span>
-              <span v-if="sample.label" class="sample-label">{{ sample.label }}</span>
+              <span
+                v-if="sample.label"
+                class="sample-label"
+              >{{ sample.label }}</span>
               <span class="sample-features">
-                特征维度: {{ sample.features.length }}
+                {{ t('stepCard.featureDimensions') }}: {{ sample.features.length }}
               </span>
             </div>
           </div>
@@ -131,8 +211,11 @@
       </div>
     </div>
 
-    <div v-if="step.confidence !== undefined" class="step-confidence">
-      <span class="confidence-label">置信度</span>
+    <div
+      v-if="step.confidence !== undefined"
+      class="step-confidence"
+    >
+      <span class="confidence-label">{{ t('stepCard.confidence') }}</span>
       <el-progress
         :percentage="Math.round(step.confidence * 100)"
         :stroke-width="8"
@@ -144,8 +227,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { CircleCheck, CircleClose, Promotion, Check, TrendCharts, Star } from '@element-plus/icons-vue'
 import type { ReasoningStep } from '@/api/reasoning'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   step: ReasoningStep
@@ -184,17 +270,17 @@ const statusTagType = computed(() => {
 const statusText = computed(() => {
   switch (props.step.status) {
     case 'pending':
-      return '待执行'
+      return t('stepCard.statusPending')
     case 'running':
-      return '执行中'
+      return t('stepCard.statusRunning')
     case 'completed':
-      return '已完成'
+      return t('stepCard.statusCompleted')
     case 'failed':
-      return '失败'
+      return t('stepCard.statusFailed')
     case 'skipped':
-      return '已跳过'
+      return t('stepCard.statusSkipped')
     default:
-      return '未知'
+      return t('stepCard.statusUnknown')
   }
 })
 

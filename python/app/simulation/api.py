@@ -25,8 +25,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from app.utils.utils import sanitize_filename, validate_user_path
+
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.config import config
@@ -68,9 +71,8 @@ _ALLOWED_STOCK_DIRS: list[Path] = [
 def _validate_user_path(user_path: str, field_name: str) -> Path:
     """Validate that a user-provided file path is within allowed directories.
 
-    Resolves the path to an absolute path and checks that it falls within
-    one of the pre-defined allowed directories. Paths are resolved using
-    Path.resolve() to eliminate any directory traversal components.
+    委托给统一的 ``app.utils.utils.validate_user_path`` 实现：解析路径为绝对
+    路径并校验其位于预定义的允许目录之一内，消除任何目录遍历组件。
 
     Args:
         user_path: The raw path string from the user request.
@@ -82,18 +84,19 @@ def _validate_user_path(user_path: str, field_name: str) -> Path:
     Raises:
         HTTPException: 400 if the path is outside allowed directories.
     """
-    p = Path(user_path)
-    resolved = p.resolve()
-    for allowed_dir in _ALLOWED_STOCK_DIRS:
-        if resolved.is_relative_to(allowed_dir):
-            return resolved
-    raise HTTPException(
-        status_code=400,
-        detail=(
-            f"The path '{user_path}' for '{field_name}' is not allowed. "
-            f"File must reside within a permitted output or upload directory."
-        ),
-    )
+    try:
+        return validate_user_path(
+            user_path=user_path,
+            allowed_base_dirs=_ALLOWED_STOCK_DIRS,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"The path '{user_path}' for '{field_name}' is not allowed. "
+                f"File must reside within a permitted output or upload directory."
+            ),
+        ) from exc
 
 
 _in_memory_store: dict[str, VoxelSimulationResult] = {}
@@ -672,32 +675,11 @@ async def get_simulation_status(task_id: str) -> dict:
 def _sanitize_filename(file_name: str) -> str:
     """严格净化文件名，防止路径遍历攻击。
 
-    净化规则（任何一条不满足即视为无效输入，返回空字符串）：
-    1. 输入必须为非空字符串；
-    2. 禁止包含路径分隔符（/ 或 \\）；
-    3. 禁止包含 ".." 序列（任意父目录引用均被拒绝）；
-    4. 通过 pathlib.Path.name 提取纯文件名后不得为空。
-
-    Args:
-        file_name: 用户传入的原始文件名。
-
-    Returns:
-        净化后的纯文件名；无效输入返回空字符串。
+    .. deprecated::
+        已迁移至 ``app.utils.utils.sanitize_filename``，本函数保留为
+        薄包装以兼容现有调用方，新代码应直接使用统一工具函数。
     """
-    # [路径遍历修复] 输入类型与空值检查
-    if not file_name or not isinstance(file_name, str):
-        return ""
-    # [路径遍历修复] 明确拒绝包含路径分隔符的输入
-    if "/" in file_name or "\\" in file_name:
-        return ""
-    # [路径遍历修复] 明确拒绝包含 ".." 序列的输入
-    if ".." in file_name:
-        return ""
-    # [路径遍历修复] 防御性编程：使用 Path.name 提取纯文件名
-    safe_name = Path(file_name).name
-    if not safe_name:
-        return ""
-    return safe_name
+    return sanitize_filename(file_name)
 
 
 @router.get("/output/{filename}")
@@ -898,3 +880,201 @@ async def check_tool_slot_conflict(request: ConflictCheckRequest) -> dict:
         },
         message="Tool and slot are compatible, no conflicts.",
     )
+
+
+class ExportAnimationRequest(BaseModel):
+    """Request model for simulation animation export.
+
+    Attributes:
+        nc_code: G-code text content for toolpath visualization.
+        format: Output format - "gif" or "mp4".
+        voxel_size: Voxel resolution in mm (0.1-10.0).
+        tool_diameter: Tool diameter in mm (0.5-300.0).
+        tool_length: Tool cutting length in mm (1.0-500.0).
+        tool_type: Tool type - "flat", "ball", "drill".
+    """
+
+    nc_code: str = Field(
+        default="",
+        description="G-code text content for toolpath visualization.",
+    )
+    format: str = Field(
+        default="gif",
+        pattern="^(gif|mp4)$",
+        description="Output format: gif or mp4.",
+    )
+    voxel_size: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=10.0,
+        description="Voxel resolution in mm.",
+    )
+    tool_diameter: float = Field(
+        default=10.0,
+        ge=0.5,
+        le=300.0,
+        description="Tool diameter in mm.",
+    )
+    tool_length: float = Field(
+        default=50.0,
+        ge=1.0,
+        le=500.0,
+        description="Tool cutting length in mm.",
+    )
+    tool_type: str = Field(
+        default="flat",
+        pattern="^(flat|ball|drill)$",
+        description="Tool type.",
+    )
+
+
+@router.post("/export-animation")
+async def export_simulation_animation(
+    request: ExportAnimationRequest,
+) -> StreamingResponse:
+    """Export simulation animation as GIF or MP4.
+
+    Generates a frame-by-frame animation of the machining simulation
+    showing tool movement and material removal. Returns the animation
+    file as a streaming download.
+
+    Args:
+        request: Animation export parameters.
+
+    Returns:
+        StreamingResponse with animation file content.
+
+    Raises:
+        HTTPException: 400 if animation generation fails.
+    """
+    import io
+    import uuid
+    import numpy as np
+    from PIL import Image, ImageDraw
+
+    try:
+        # Parse G-code into toolpath segments
+        parser = ToolpathParser(controller_type="fanuc")
+        segments = parser.parse_gcode(request.nc_code) if request.nc_code.strip() else []
+
+        if not segments:
+            raise ValueError("No valid toolpath segments found in G-code")
+
+        # Create animation frames
+        frames = []
+        num_frames = min(len(segments), 50)  # Limit to 50 frames for performance
+        frame_indices = np.linspace(0, len(segments) - 1, num_frames, dtype=int)
+
+        for idx in frame_indices:
+            # Create frame image
+            img = Image.new("RGB", (800, 600), color=(26, 26, 46))
+            draw = ImageDraw.Draw(img)
+
+            # Draw stock bounding box (simplified 2D projection)
+            stock_color = (100, 100, 100)
+            draw.rectangle([100, 100, 700, 500], outline=stock_color, width=2)
+
+            # Draw toolpath up to current frame
+            segment = segments[idx]
+            sx, sy, sz = segment.start_point
+            ex, ey, ez = segment.end_point
+
+            # Map 3D coordinates to 2D canvas
+            def map_coord(x, y, z):
+                canvas_x = int(100 + (x + 100) * 3)
+                canvas_y = int(500 - (z * 5))
+                return canvas_x, canvas_y
+
+            start_2d = map_coord(sx, sy, sz)
+            end_2d = map_coord(ex, ey, ez)
+
+            # Color by motion type
+            colors = {
+                "rapid": (244, 67, 54),
+                "linear": (76, 175, 80),
+                "arc": (33, 150, 243),
+                "dwell": (255, 193, 7),
+            }
+            line_color = colors.get(segment.type, (200, 200, 200))
+
+            # Draw previous segments (faded)
+            for prev_idx in range(idx):
+                prev_seg = segments[prev_idx]
+                prev_start = map_coord(*prev_seg.start_point)
+                prev_end = map_coord(*prev_seg.end_point)
+                faded_color = tuple(int(c * 0.5) for c in colors.get(prev_seg.type, (200, 200, 200)))
+                draw.line([prev_start, prev_end], fill=faded_color, width=2)
+
+            # Draw current segment (bright)
+            draw.line([start_2d, end_2d], fill=line_color, width=3)
+
+            # Draw tool position
+            tool_radius = int(request.tool_diameter / 2)
+            draw.ellipse(
+                [end_2d[0] - tool_radius, end_2d[1] - tool_radius,
+                 end_2d[0] + tool_radius, end_2d[1] + tool_radius],
+                fill=(255, 255, 0),
+                outline=(255, 200, 0),
+                width=2,
+            )
+
+            # Add frame info
+            draw.text((10, 10), f"Frame {idx + 1}/{num_frames}", fill=(200, 200, 200))
+            draw.text((10, 30), f"Segment: {segment.type}", fill=line_color)
+
+            frames.append(img)
+
+        # Generate output file
+        output_format = request.format.upper()
+        buffer = io.BytesIO()
+
+        if request.format == "gif":
+            # Save as animated GIF
+            frames[0].save(
+                buffer,
+                format="GIF",
+                save_all=True,
+                append_images=frames[1:],
+                duration=100,  # 100ms per frame
+                loop=0,
+            )
+            media_type = "image/gif"
+            filename = f"simulation_{uuid.uuid4().hex[:8]}.gif"
+        else:  # mp4
+            # For MP4, we'll use imageio if available, otherwise fallback to GIF
+            try:
+                import imageio
+                frames_array = [np.array(frame) for frame in frames]
+                imageio.mimsave(buffer, frames_array, format="MP4", fps=10)
+                media_type = "video/mp4"
+                filename = f"simulation_{uuid.uuid4().hex[:8]}.mp4"
+            except ImportError:
+                # Fallback to GIF if imageio not available
+                frames[0].save(
+                    buffer,
+                    format="GIF",
+                    save_all=True,
+                    append_images=frames[1:],
+                    duration=100,
+                    loop=0,
+                )
+                media_type = "image/gif"
+                filename = f"simulation_{uuid.uuid4().hex[:8]}.gif"
+
+        buffer.seek(0)
+
+        return StreamingResponse(
+            buffer,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
+        )
+
+    except Exception as e:
+        logger.exception("Animation export failed: %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Animation generation failed: {str(e)}",
+        ) from e

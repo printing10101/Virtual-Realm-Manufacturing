@@ -17,92 +17,33 @@
 from __future__ import annotations
 
 import logging
-import os
-import threading
 import uuid
 from typing import Any, Callable, Optional, Sequence
 
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy import create_engine
 
+from app.database.sync_session import get_sync_sessionmaker
 from app.knowledge_graph.models import Base, KGEdge, KGNode
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# 同步引擎与 sessionmaker：避免污染异步 connection 模块
-# ---------------------------------------------------------------------------
+# 同步引擎与 sessionmaker 统一由 app.database.sync_session 提供，
+# 避免与 database/repository/machining_record_repo.py 重复定义
+# _SyncSingletons。``get_sync_sessionmaker`` 已通过 import 暴露在本模块
+# 命名空间，外部代码原 import 路径保持向后兼容。
 
 
-def _build_sync_url(url: str) -> str:
-    """将 ``DB_URL`` 规范化为同步驱动 URL。"""
-    if not url:
-        return url
-    if url.startswith("postgresql+asyncpg://"):
-        return url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
-    if url.startswith("sqlite+aiosqlite://"):
-        return url.replace("sqlite+aiosqlite://", "sqlite://", 1)
-    return url
+def get_sync_engine():
+    """获取同步 SQLAlchemy ``Engine``（懒加载）。
 
+    向后兼容封装：委托给 :func:`app.database.sync_session.get_sync_engine`。
+    """
+    from app.database.sync_session import get_sync_engine as _get
 
-class _SyncSingletons:
-    """线程安全的懒加载同步引擎持有者。"""
-
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._engine: Optional[Engine] = None
-        self._sessionmaker: Optional[sessionmaker] = None
-
-    def get_engine(self) -> Optional[Engine]:
-        if self._engine is not None:
-            return self._engine
-        with self._lock:
-            if self._engine is not None:
-                return self._engine
-            url = os.environ.get("DB_URL", "")
-            if not url:
-                logger.warning(
-                    "DB_URL not configured, knowledge graph in-memory only"
-                )
-                return None
-            sync_url = _build_sync_url(url)
-            self._engine = create_engine(
-                sync_url,
-                pool_pre_ping=True,
-                future=True,
-            )
-            return self._engine
-
-    def get_sessionmaker(self) -> Optional[sessionmaker]:
-        if self._sessionmaker is not None:
-            return self._sessionmaker
-        with self._lock:
-            if self._sessionmaker is not None:
-                return self._sessionmaker
-            engine = self.get_engine()
-            if engine is None:
-                return None
-            self._sessionmaker = sessionmaker(
-                bind=engine, expire_on_commit=False, future=True
-            )
-            return self._sessionmaker
-
-
-_singletons = _SyncSingletons()
-
-
-def get_sync_sessionmaker() -> Optional[sessionmaker]:
-    """获取同步 SQLAlchemy ``sessionmaker``（懒加载）。"""
-    return _singletons.get_sessionmaker()
-
-
-def get_sync_engine() -> Optional[Engine]:
-    """获取同步 SQLAlchemy ``Engine``（懒加载）。"""
-    return _singletons.get_engine()
+    return _get()
 
 
 # ---------------------------------------------------------------------------

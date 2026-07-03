@@ -246,7 +246,14 @@ def evaluate_model(
 
 
 def get_all_datasets() -> Dict[str, object]:
-    """获取所有5个数据集"""
+    """获取所有5个数据集
+
+    学术诚信说明：
+        - PHM2010: 加载真实 PHM2010 公开数据集（通过 UniwearDataLoader）
+        - NUAA/NIST/Benchmark-1: 合成数据，基于 TlustyAnalyticalModel 生成
+        - 自采6061-T6: 合成数据占位实现，**不可在论文中声称对应真实自采数据**
+          （详见 Industrial6061T6Dataset 的 docstring）
+    """
     return {
         'PHM2010': PHM2010Dataset(num_samples=2000, noise_level=0.05, seed=42),
         'NUAA': NUAADataset(num_samples=1800, noise_level=0.04, seed=43),
@@ -254,6 +261,28 @@ def get_all_datasets() -> Dict[str, object]:
         'Benchmark-1': Benchmark1Dataset(num_samples=2200, noise_level=0.045, seed=45),
         '自采6061-T6': Industrial6061T6Dataset(num_samples=500, noise_level=0.08, seed=46),
     }
+
+
+def get_dataset_data_source(dataset_name: str) -> str:
+    """获取数据集的 data_source 标签（用于结果追溯）。
+
+    Args:
+        dataset_name: 数据集名称（与 get_all_datasets() 的 key 一致）
+
+    Returns:
+        数据来源标签：
+        - 'real_PHM2010'           : 真实 PHM2010 公开数据集
+        - 'synthetic_Tlusty'       : 基于 TlustyAnalyticalModel 的合成数据
+        - 'synthetic_6061T6_placeholder': 合成数据占位（不可声称真实自采）
+    """
+    mapping = {
+        'PHM2010': 'real_PHM2010',
+        'NUAA': 'synthetic_Tlusty',
+        'NIST': 'synthetic_Tlusty',
+        'Benchmark-1': 'synthetic_Tlusty',
+        '自采6061-T6': 'synthetic_6061T6_placeholder',
+    }
+    return mapping.get(dataset_name, 'unknown')
 
 
 MODEL_NAMES = ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
@@ -282,10 +311,18 @@ def run_main_comparison_experiment():
     results = {}
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+    # 学术诚信：记录每个数据集的 data_source 标签
+    dataset_data_sources = {}
+
     for ds_idx, (dataset_name, dataset) in enumerate(all_datasets.items(), 1):
         print(f"\n{'='*80}")
         print(f"[{ds_idx}/5] 数据集: {dataset_name}")
         print(f"{'='*80}")
+
+        # 记录数据来源标签（用于结果追溯）
+        data_source = get_dataset_data_source(dataset_name)
+        dataset_data_sources[dataset_name] = data_source
+        print(f"  data_source: {data_source}")
 
         # 创建数据加载器
         train_loader, val_loader, test_loader = create_dataloaders(
@@ -340,13 +377,34 @@ def run_main_comparison_experiment():
                     'PCC': float('nan')
                 }
 
-    # 保存结果
+    # 保存结果（含 data_source 元数据，用于学术诚信追溯）
     output_dir = Path("results")
     output_dir.mkdir(exist_ok=True)
 
+    # 采用扁平结构 + _metadata key，保持向后兼容性：
+    # - 原有脚本访问 results['PHM2010'] 仍然有效
+    # - 新脚本可访问 results['_metadata'] 获取数据来源信息
+    # - 遍历数据集时需跳过 '_metadata' key
+    output_payload = dict(results)  # 复制原有扁平结构
+    output_payload['_metadata'] = {
+        'description': '主对比实验结果：5 个数据集 × 9 个模型',
+        'generated_at': timestamp,
+        'data_sources': dataset_data_sources,
+        'data_source_legend': {
+            'real_PHM2010': '真实 PHM2010 公开数据集（通过 UniwearDataLoader 加载）',
+            'synthetic_Tlusty': '基于 TlustyAnalyticalModel 生成的合成数据',
+            'synthetic_6061T6_placeholder': '合成数据占位实现（不可声称真实自采数据）',
+        },
+        'academic_integrity_note': (
+            '本结果文件中 PHM2010 数据集的指标基于真实公开数据，'
+            '其余数据集（NUAA/NIST/Benchmark-1/自采6061-T6）为合成数据。'
+            '在论文中引用本文件的指标时，必须根据 data_sources 字段如实标注数据来源。'
+        ),
+    }
+
     output_file = output_dir / "main_comparison_results.json"
     with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
+        json.dump(output_payload, f, indent=2, ensure_ascii=False)
 
     print(f"\n{'='*80}")
     print(f"实验完成！结果已保存到: {output_file}")

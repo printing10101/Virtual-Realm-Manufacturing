@@ -30,7 +30,8 @@ spec:
       containers:
         - name: lnn-api
           # 安全修复：使用固定版本标签替代 latest，确保可追溯与可复现
-          image: lnn-api:1.0.0
+          # 注意：发布流程应通过 CI 自动同步此标签与 VERSION 文件
+          image: lnn-api:2.4.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8765

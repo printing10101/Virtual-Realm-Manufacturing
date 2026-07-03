@@ -269,10 +269,32 @@ class CollisionDetector:
             return
 
         safe_plane = bbox.z_max + self.safe_z_height
+
+        # 抬刀保护：如果 rapid 是向上移动且终点在安全平面以上，
+        # 则是正常的切削后抬刀操作，不会撞入毛坯，跳过碰撞检查
+        is_retract = ez > sz and ez >= safe_plane
+
+        if is_retract:
+            # 真正的抬刀操作（向上且到达安全平面以上），完全跳过碰撞检查
+            return
+
+        # 非抬刀操作：检查是否有可能撞入毛坯
         if sz < safe_plane or ez < safe_plane:
-            steps = max(
-                int(((ex - sx) ** 2 + (ey - sy) ** 2 + (ez - sz) ** 2) ** 0.5 / 2), 5
-            )
+            # 计算移动距离
+            distance = ((ex - sx) ** 2 + (ey - sy) ** 2 + (ez - sz) ** 2) ** 0.5
+            
+            # 自适应步长：短距离使用更精细的采样
+            # - 距离 < 10mm: 步长 0.5mm (至少 10 点)
+            # - 距离 >= 10mm: 步长 2mm (至少 5 点)
+            if distance < 10.0:
+                step_size = 0.5
+                min_steps = 10
+            else:
+                step_size = 2.0
+                min_steps = 5
+            
+            steps = max(int(distance / step_size), min_steps)
+            
             for i in range(steps + 1):
                 t = i / steps
                 px = sx + (ex - sx) * t
@@ -304,6 +326,7 @@ class CollisionDetector:
 
         Verifies that the rapid move starts above the safe Z plane
         (stock top + safe_z_height).
+        Skips check for retract operations (upward moves ending above safe plane).
 
         Args:
             seg: The rapid move toolpath segment.
@@ -316,6 +339,11 @@ class CollisionDetector:
         _, _, sz = seg.start_point
         _, _, ez = seg.end_point
         safe_z = stock_z_top + self.safe_z_height
+
+        # 抬刀操作跳过 Z 安全检查（起点在毛坯内部是正常的）
+        is_retract = ez > sz and ez >= safe_z
+        if is_retract:
+            return
 
         if sz < safe_z:
             collisions.append(
@@ -340,6 +368,7 @@ class CollisionDetector:
 
         Detects when the toolpath endpoint extends beyond the stock
         bounding box with a 0.5mm tolerance margin.
+        For arc segments, samples along the arc path to detect intermediate overcuts.
 
         Args:
             seg: The cutting toolpath segment (linear or arc).
@@ -350,8 +379,131 @@ class CollisionDetector:
         if bbox is None:
             return
 
-        ex, ey, ez = seg.end_point
         margin = 0.5
+
+        # 对圆弧路径进行采样检测
+        if seg.type == "arc" and seg.arc_center is not None:
+            self._check_arc_overcut(seg, bbox, collisions, warnings, margin)
+            return
+
+        # 线性路径只检查终点
+        ex, ey, ez = seg.end_point
+
+        if ex < bbox.x_min - margin or ex > bbox.x_max + margin:
+            warnings.append(
+                f"N{seg.block_number}: Tool path X={ex:.2f} exceeds stock boundary "
+                f"[{bbox.x_min:.2f}, {bbox.x_max:.2f}]"
+            )
+        if ey < bbox.y_min - margin or ey > bbox.y_max + margin:
+            warnings.append(
+                f"N{seg.block_number}: Tool path Y={ey:.2f} exceeds stock boundary "
+                f"[{bbox.y_min:.2f}, {bbox.y_max:.2f}]"
+            )
+        if ez < bbox.z_min - margin:
+            collisions.append(
+                CollisionEvent(
+                    collision_type="overcut_z",
+                    severity="high",
+                    block_number=seg.block_number,
+                    position=seg.end_point,
+                    message=f"Tool path Z={ez:.3f} is below stock bottom Z={bbox.z_min}, risk of overcut",
+                    suggestion=f"Check Z-axis cutting depth; stock bottom is at Z={bbox.z_min}",
+                )
+            )
+
+    def _check_arc_overcut(
+        self,
+        seg: ToolpathSegment,
+        bbox: StockBoundingBox,
+        collisions: list[CollisionEvent],
+        warnings: list[str],
+        margin: float,
+    ) -> None:
+        """Check overcut for arc segments by sampling along the arc path.
+
+        Args:
+            seg: The arc toolpath segment with arc_center defined.
+            bbox: Stock bounding box.
+            collisions: List to append detected collision events to.
+            warnings: List to append boundary warning messages to.
+            margin: Tolerance margin for boundary checks.
+        """
+        sx, sy, sz = seg.start_point
+        ex, ey, ez = seg.end_point
+        cx, cy, cz = seg.arc_center
+
+        # 计算圆弧半径
+        radius = math.sqrt((sx - cx) ** 2 + (sy - cy) ** 2)
+        if radius < 0.001:
+            # 半径过小，退化为直线检查
+            self._check_linear_overcut(seg, bbox, collisions, warnings, margin)
+            return
+
+        # 计算起始角和终止角
+        start_angle = math.atan2(sy - cy, sx - cx)
+        end_angle = math.atan2(ey - cy, ex - cx)
+
+        # 确定扫掠角度
+        if seg.clockwise:
+            sweep = start_angle - end_angle
+            if sweep <= 0:
+                sweep += 2 * math.pi
+        else:
+            sweep = end_angle - start_angle
+            if sweep <= 0:
+                sweep += 2 * math.pi
+
+        # 采样点数：基于弧长，每 2mm 采样一次
+        arc_length = radius * sweep
+        num_samples = max(int(arc_length / 2.0), 5)
+
+        # 检查采样点
+        for i in range(num_samples + 1):
+            t = i / num_samples
+            if seg.clockwise:
+                angle = start_angle - sweep * t
+            else:
+                angle = start_angle + sweep * t
+
+            px = cx + radius * math.cos(angle)
+            py = cy + radius * math.sin(angle)
+            # Z 轴线性插值
+            pz = sz + (ez - sz) * t
+
+            # 检查边界
+            if px < bbox.x_min - margin or px > bbox.x_max + margin:
+                warnings.append(
+                    f"N{seg.block_number}: Arc path X={px:.2f} exceeds stock boundary "
+                    f"[{bbox.x_min:.2f}, {bbox.x_max:.2f}] at sample {i}"
+                )
+            if py < bbox.y_min - margin or py > bbox.y_max + margin:
+                warnings.append(
+                    f"N{seg.block_number}: Arc path Y={py:.2f} exceeds stock boundary "
+                    f"[{bbox.y_min:.2f}, {bbox.y_max:.2f}] at sample {i}"
+                )
+            if pz < bbox.z_min - margin:
+                collisions.append(
+                    CollisionEvent(
+                        collision_type="overcut_z",
+                        severity="high",
+                        block_number=seg.block_number,
+                        position=(round(px, 3), round(py, 3), round(pz, 3)),
+                        message=f"Arc path Z={pz:.3f} is below stock bottom Z={bbox.z_min}, risk of overcut",
+                        suggestion=f"Check Z-axis cutting depth; stock bottom is at Z={bbox.z_min}",
+                    )
+                )
+                break  # 只报告第一个碰撞
+
+    def _check_linear_overcut(
+        self,
+        seg: ToolpathSegment,
+        bbox: StockBoundingBox,
+        collisions: list[CollisionEvent],
+        warnings: list[str],
+        margin: float,
+    ) -> None:
+        """Fallback linear overcut check for degenerate arcs."""
+        ex, ey, ez = seg.end_point
 
         if ex < bbox.x_min - margin or ex > bbox.x_max + margin:
             warnings.append(
@@ -406,7 +558,11 @@ class CollisionDetector:
         """Check for OBB collision in 5-axis mode.
 
         Uses oriented bounding box that accounts for tool orientation.
-        Simplified implementation checks tool tip and tool axis against stock.
+        Enhanced implementation checks:
+        - Tool tip position
+        - Tool axis line through stock
+        - Tool holder clearance (simplified)
+        - Continuous path sampling for dynamic checking
 
         Args:
             seg: The toolpath segment.
@@ -417,20 +573,52 @@ class CollisionDetector:
         if bbox is None:
             return
 
+        sx, sy, sz = seg.start_point
         ex, ey, ez = seg.end_point
         
-        # Check if tool tip is within stock (simplified OBB check)
-        if bbox.contains_point(ex, ey, ez):
-            collisions.append(
-                CollisionEvent(
-                    collision_type="5axis_obb_collision",
-                    severity="high",
-                    block_number=seg.block_number,
-                    position=seg.end_point,
-                    message=f"5-axis OBB collision at N{seg.block_number}: tool tip inside stock",
-                    suggestion="Check tool orientation and position, adjust A/C angles",
+        # Enhanced OBB check: sample along the path for dynamic collision detection
+        path_length = math.sqrt((ex - sx)**2 + (ey - sy)**2 + (ez - sz)**2)
+        sample_steps = max(int(path_length / 1.0), 5)  # Sample every 1mm or at least 5 points
+        
+        for i in range(sample_steps + 1):
+            t = i / sample_steps
+            px = sx + (ex - sx) * t
+            py = sy + (ey - sy) * t
+            pz = sz + (ez - sz) * t
+            
+            # Check tool tip at this position
+            if bbox.contains_point(px, py, pz):
+                collisions.append(
+                    CollisionEvent(
+                        collision_type="5axis_obb_collision",
+                        severity="high",
+                        block_number=seg.block_number,
+                        position=(round(px, 3), round(py, 3), round(pz, 3)),
+                        message=f"5-axis OBB collision at N{seg.block_number}: tool tip inside stock at sampled point",
+                        suggestion="Check tool orientation and position, adjust A/C angles or reduce cut depth",
+                    )
                 )
+                break  # Only report first collision per segment
+            
+            # Check tool axis penetration (simplified: check point above tool tip along tool vector)
+            tool_length = 50.0  # mm, typical tool stick-out
+            axis_check_point = (
+                px - tool_vector.i_component * tool_length,
+                py - tool_vector.j_component * tool_length,
+                pz - tool_vector.k_component * tool_length,
             )
+            if bbox.contains_point(*axis_check_point):
+                collisions.append(
+                    CollisionEvent(
+                        collision_type="5axis_tool_axis_collision",
+                        severity="high",
+                        block_number=seg.block_number,
+                        position=(round(px, 3), round(py, 3), round(pz, 3)),
+                        message=f"5-axis tool axis collision at N{seg.block_number}: tool holder may contact stock",
+                        suggestion="Increase tool stick-out or adjust tool orientation angles",
+                    )
+                )
+                break
 
     def _check_axis_limits(
         self,

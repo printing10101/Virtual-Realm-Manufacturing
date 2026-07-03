@@ -1,7 +1,8 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import http from '@/utils/http'
-import { extractErrorMessage } from '@/utils/errorUtils'
+import { extractErrorMessage } from '@/utils/error-handler'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 import type {
   StepImportResult,
   ImportHistoryEntry,
@@ -84,7 +85,7 @@ export const useStepImportStore = defineStore('stepImport', () => {
 
     try {
       const response = await http.post<{ code: number; data: StepImportResult; message: string }>(
-        '/api/import/step',
+        buildApiPath(API_CONFIG.IMPORT, '/step'),
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -137,7 +138,7 @@ export const useStepImportStore = defineStore('stepImport', () => {
     historyLoading.value = true
     try {
       const response = await http.get<{ code: number; data: { history: ImportHistoryEntry[]; total: number } }>(
-        '/api/import/step/history',
+        buildApiPath(API_CONFIG.IMPORT, '/step/history'),
         { params: { limit: 20 } },
       )
       if (response.data.code === 0) {
@@ -152,7 +153,7 @@ export const useStepImportStore = defineStore('stepImport', () => {
 
   async function deleteHistoryFile(fileName: string) {
     try {
-      await http.delete(`/api/import/step/history/${encodeURIComponent(fileName)}`)
+      await http.delete(buildApiPath(API_CONFIG.IMPORT, `/step/history/${encodeURIComponent(fileName)}`))
       await fetchImportHistory()
     } catch {
       // 静默处理
@@ -161,7 +162,7 @@ export const useStepImportStore = defineStore('stepImport', () => {
 
   async function clearCache() {
     try {
-      await http.delete('/api/import/step/cache')
+      await http.delete(buildApiPath(API_CONFIG.IMPORT, '/step/cache'))
     } catch {
       // 静默处理
     }

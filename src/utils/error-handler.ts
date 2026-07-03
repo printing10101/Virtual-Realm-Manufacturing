@@ -207,16 +207,17 @@ export function buildErrorFromResponse(
   response: { data?: Record<string, unknown>; status?: number },
   originalError?: unknown
 ): StandardError {
-  const data = response?.data || {}
+  const data: Record<string, unknown> = response?.data || {}
   const status = response?.status
 
-  const code = data.code || data.error_code || status || 2001
-  const message = data.message || data.detail?.message || '操作失败'
-  const errorCode = typeof code === 'string' 
-    ? code 
-    : (data.error_code || getStringErrorCode(code))
+  const code: number | string = (data.code || data.error_code || status || 2001) as number | string
+  const detailObj = typeof data.detail === 'object' && data.detail !== null ? (data.detail as Record<string, unknown>) : undefined
+  const message = String(data.message || detailObj?.message || '操作失败')
+  const errorCode = typeof code === 'string'
+    ? code
+    : (data.error_code || getStringErrorCode(code as number))
   const errorType = classifyErrorByCode(code)
-  const severity = data.severity || classifySeverity(status, code)
+  const severity: ErrorSeverity = (data.severity as ErrorSeverity) || classifySeverity(status, code as number | string)
   const timestamp = data.timestamp || new Date().toISOString()
   const requestId = data.request_id || data.trace_id || ''
   const traceId = data.trace_id || requestId
@@ -227,19 +228,19 @@ export function buildErrorFromResponse(
   const adjustedValues = data.adjusted_values
 
   return {
-    code: typeof code === 'string' ? parseInt(code) || 2001 : code,
-    errorCode,
-    message,
+    code: typeof code === 'string' ? parseInt(code) || 2001 : (code as number),
+    errorCode: errorCode as string,
+    message: message as string,
     errorType,
     severity,
-    timestamp,
-    requestId,
-    traceId,
-    path,
+    timestamp: String(timestamp),
+    requestId: String(requestId),
+    traceId: String(traceId),
+    path: path as string | undefined,
     detail,
-    suggestion,
-    recoverable,
-    adjustedValues,
+    suggestion: suggestion as string | undefined,
+    recoverable: recoverable as boolean | undefined,
+    adjustedValues: adjustedValues as Record<string, unknown> | undefined,
     originalError,
   }
 }
@@ -517,4 +518,54 @@ export function installGlobalErrorCapture(): () => void {
     window.removeEventListener('unhandledrejection', rejectionHandler)
     window.removeEventListener('error', errorHandler)
   }
+}
+
+// ============================================================
+// 兼容性导出（替代 errorUtils.ts）
+// ============================================================
+
+/**
+ * 从API错误响应中提取用户友好的错误消息
+ * 优先顺序: response.data.message > response.data.detail > error.message
+ * @param error - axios错误对象或任意错误
+ * @param fallback - 当无法提取时的回退消息
+ * @returns 错误消息字符串
+ */
+export function extractErrorMessage(error: unknown, fallback = '操作失败'): string {
+  if (!error) return fallback
+
+  // Axios response errors
+  const err = error as Record<string, unknown>
+  const response = err.response as Record<string, unknown> | undefined
+  const data = response?.data as Record<string, unknown> | undefined
+  if (data) {
+    if (typeof data.message === 'string') return data.message
+    if (data.detail) {
+      if (typeof data.detail === 'string') return data.detail
+      const detail = data.detail as Record<string, unknown>
+      if (typeof detail.message === 'string') return detail.message
+    }
+  }
+
+  // Generic error
+  if (typeof error === 'string') return error
+  if (typeof err.message === 'string') return err.message
+
+  return fallback
+}
+
+/**
+ * 格式化网络错误消息（带HTTP状态码）
+ */
+export function formatNetworkError(error: unknown): string {
+  const err = error as Record<string, unknown>
+  const response = err.response as Record<string, unknown> | undefined
+  const status = response?.status as number | undefined
+  if (status) {
+    return `请求失败 (${status}): ${extractErrorMessage(error)}`
+  }
+  if (isNetworkError(error)) {
+    return '网络连接错误，请检查网络后重试'
+  }
+  return extractErrorMessage(error)
 }

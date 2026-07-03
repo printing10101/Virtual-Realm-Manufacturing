@@ -1,4 +1,6 @@
-﻿"""Tests for UnifiedAuthMiddleware (pure ASGI)."""
+"""Tests for UnifiedAuthMiddleware (pure ASGI)."""
+
+import json
 
 import pytest
 from fastapi import FastAPI
@@ -19,6 +21,20 @@ def token_file(tmp_path):
     path = tmp_path / ".lnn_token"
     path.write_text("test-token-uuid-12345")
     return path
+
+
+@pytest.fixture
+def token_meta_file(tmp_path, token_file):
+    """Create a token metadata file matching the token_file fixture.
+
+    安全修复 B4：fail-closed 策略要求 token 必须在元数据文件中匹配，
+    否则拒绝授权。本 fixture 提供匹配 test-token-uuid-12345 的元数据。
+    """
+    meta_path = tmp_path / ".lnn_token_meta.json"
+    meta_path.write_text(
+        json.dumps([{"token": "test-token-uuid-12345", "level": "T"}])
+    )
+    return meta_path
 
 
 @pytest.fixture
@@ -233,9 +249,11 @@ class TestUnifiedAuthMiddlewareLNN:
         )
         assert response.status_code == 401
 
-    def test_valid_token(self, token_file, monkeypatch):
+    def test_valid_token(self, token_file, token_meta_file, monkeypatch):
         """Valid token should pass."""
         monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
+        # 安全修复 B4：fail-closed 策略要求提供匹配的元数据文件
+        monkeypatch.setenv("LNN_TOKEN_META_FILE", str(token_meta_file))
 
         app = FastAPI()
 

@@ -3,7 +3,9 @@
 提供基于神经网络的颤振稳定性快速预测能力，用于实时加工参数优化。
 
 模型架构：
-    使用多层感知机（MLP）预测稳定性极限切削深度。
+    使用 LTC（Liquid Time-Constant）网络预测稳定性极限切削深度。
+    LTC 通过可学习时间常数 tau 实现自适应时间动态：
+        h_new = h + dt * (tanh(W @ x + U @ h + b) - h) / tau
     
     输入特征：
         - 主轴转速 (rpm)
@@ -15,7 +17,7 @@
         - 极限切削深度 (mm)
     
     网络结构：
-        Input(6) -> Dense(64, ReLU) -> Dense(32, ReLU) -> Dense(2)
+        LTCCell(6, 64) -> LTCCell(64, 32) -> Linear(32, 2)
 """
 
 from __future__ import annotations
@@ -43,44 +45,45 @@ class ChatterPredictor:
         self._load_model()
     
     def _load_model(self):
-        """加载训练好的神经网络模型。"""
+        """加载训练好的 LTC 颤振预测模型。"""
         try:
             import torch
-            import torch.nn as nn
-            
-            # 定义网络结构
-            class ChatterNet(nn.Module):
-                def __init__(self):
-                    super().__init__()
-                    self.net = nn.Sequential(
-                        nn.Linear(6, 64),
-                        nn.ReLU(),
-                        nn.Linear(64, 32),
-                        nn.ReLU(),
-                        nn.Linear(32, 2),
-                    )
-                
-                def forward(self, x):
-                    return self.net(x)
-            
-            # 尝试加载模型
+
+            from app.ai.lnn.models.torch_ltc_model import LTCModel
+            from app.ai.lnn.models.torch_base_lnn import LNNConfig
+
+            # 构建 LTC 模型配置（与论文 DL-LNN 架构一致）
+            config = LNNConfig(
+                input_size=6,        # 6 个颤振特征
+                hidden_size=64,      # 隐藏层维度
+                output_size=2,       # 稳定性状态 + 极限切深
+                num_layers=2,        # 两层 LTC 堆叠
+                dropout=0.0,         # 推理阶段关闭 dropout
+                time_constant=1.0,   # 默认时间常数
+            )
+
+            # 尝试加载模型检查点
             checkpoint_path = os.path.join(_model_dir, "chatter_model.pt")
-            
+
             if os.path.exists(checkpoint_path):
-                self.model = ChatterNet()
+                self.model = LTCModel(config)
                 checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-                self.model.load_state_dict(checkpoint["model_state_dict"])
+                # 兼容两种 checkpoint 格式：直接 state_dict 或包装在键下
+                if "model_state_dict" in checkpoint:
+                    self.model.load_state_dict(checkpoint["model_state_dict"])
+                else:
+                    self.model.load_state_dict(checkpoint)
                 self.model.eval()
-                logger.info(f"已加载颤振预测模型: {checkpoint_path}")
+                logger.info(f"已加载 LTC 颤振预测模型: {checkpoint_path}")
             else:
                 logger.warning(f"未找到模型检查点: {checkpoint_path}，使用解析法回退")
                 self.model = None
-                
+
         except ImportError:
             logger.warning("PyTorch 未安装，使用解析法回退")
             self.model = None
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.error(f"加载模型失败: {e}")
+        except (OSError, RuntimeError, ValueError, KeyError) as e:
+            logger.error(f"加载 LTC 模型失败: {e}")
             self.model = None
     
     def _normalize_inputs(
@@ -143,7 +146,7 @@ class ChatterPredictor:
         
         try:
             import torch
-            
+
             # 归一化输入
             x_norm = self._normalize_inputs(
                 spindle_rpm,
@@ -153,29 +156,29 @@ class ChatterPredictor:
                 tool_diameter,
                 tool_k_s,
             )
-            
-            # 转换为张量
+
+            # 转换为张量（batch_size=1, input_size=6）
             x_tensor = torch.tensor(x_norm, dtype=torch.float32).unsqueeze(0)
-            
-            # 推理
+
+            # LTC 推理：forward 返回 (output, hidden_state)
             with torch.no_grad():
-                output = self.model(x_tensor)
+                output, _hidden = self.model(x_tensor)
                 output = output.squeeze(0).numpy()
-            
+
             # 解析输出
             stability_logit = output[0]
             limit_depth = output[1]
-            
+
             # 稳定性判断（sigmoid > 0.5 为稳定）
             stable = 1 / (1 + np.exp(-stability_logit)) > 0.5
-            
+
             # 极限切深（取绝对值，确保为正）
             limit_depth = abs(float(limit_depth))
-            
+
             return bool(stable), limit_depth
-            
+
         except (RuntimeError, ValueError, TypeError) as e:
-            logger.error(f"神经网络推理失败: {e}")
+            logger.error(f"LTC 推理失败: {e}")
             return True, 5.0
 
 

@@ -1,5 +1,6 @@
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import http from '@/utils/http'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 interface RecentInference {
   model: string
@@ -35,7 +36,7 @@ export function useHealthMonitor() {
     healthLoading.value = true
     let backendOk = false
     try {
-      const pingRes = await http.get('/api/health/ping', { timeout: 3000 })
+      const pingRes = await http.get(buildApiPath(API_CONFIG.HEALTH, '/ping'), { timeout: 3000 })
       backendOk = pingRes.status === 200
     } catch {
       backendOk = false
@@ -49,13 +50,13 @@ export function useHealthMonitor() {
 
     try {
       const [metricRes, lnnHealthRes, lnnPerfRes] = await Promise.all([
-        http.get('/api/metrics', { timeout: 5000 }).catch(() => {
+        http.get(API_CONFIG.METRICS, { timeout: 5000 }).catch(() => {
           return null
         }),
-        http.get('/api/v1/lnn/health', { timeout: 5000 }).catch(() => {
+        http.get(buildApiPath(API_CONFIG.LNN, '/health'), { timeout: 5000 }).catch(() => {
           return null
         }),
-        http.get('/api/v1/lnn/performance', { timeout: 5000 }).catch(() => {
+        http.get(buildApiPath(API_CONFIG.LNN, '/performance'), { timeout: 5000 }).catch(() => {
           return null
         }),
       ])

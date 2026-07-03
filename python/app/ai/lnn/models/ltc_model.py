@@ -1,11 +1,17 @@
-"""LTC (Long-Term Context) Model for Time-Series Prediction.
+"""LTC (Liquid Time-Constant) Model for Time-Series Prediction.
 
-Implements a temporal processing network with memory mechanisms, supporting
-sequence lengths greater than 1000. Features memory-based hidden state updates
-and attention-weighted temporal state aggregation.
+Implements the Liquid Time-Constant network architecture for continuous-time
+neural dynamics. The LTC model uses adaptive time constants that vary with
+input signals, enabling expressive temporal processing for sequence lengths
+greater than 1000. Features memory-based hidden state updates and
+attention-weighted temporal state aggregation.
 
 Key components:
     - LTCModel: Time-series model inheriting from BaseLNNModel.
+
+Reference:
+    Hasani, R., Lechner, M., Amini, A., et al. (2021).
+    "Liquid Time-Constant Networks." AAAI Conference on Artificial Intelligence.
 
 Example:
     >>> model = LTCModel(
@@ -383,7 +389,20 @@ class LTCModel(BaseLNNModel):
         batch_size: int,
         learning_rate: float,
     ) -> float:
-        """NumPy训练回退方案（仅当PyTorch不可用时使用）"""
+        """NumPy 训练回退方案（仅当 PyTorch 不可用时使用）。
+
+        .. warning::
+            此方法为**非功能性占位**，不执行真实的梯度更新。
+            LTC 网络的连续时间 ODE 求解需要 PyTorch 的 autograd 支持，
+            NumPy 实现无法正确计算反向传播。此方法仅计算当前损失并返回，
+            不修改任何权重。论文实验和正式训练必须使用 PyTorch 后端
+            (``_train_step_torch``)。
+        """
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_train_step_numpy 被调用：此为非功能性占位，不执行真实梯度更新。"
+            "请安装 PyTorch 以启用正式训练。"
+        )
         n_samples = data.shape[0]
         indices = np.random.choice(n_samples, min(batch_size, n_samples), replace=False)
         batch_data = data[indices]
@@ -392,11 +411,7 @@ class LTCModel(BaseLNNModel):
         predictions = self.forward(batch_data)
         loss = self._mse_loss(predictions, batch_labels)
 
-        for i in range(len(self.weights)):
-            grad_noise = np.random.randn(*self.weights[i].shape) * 0.01
-            self.weights[i] -= learning_rate * grad_noise
-            self.biases[i] -= learning_rate * 0.001
-
+        # 不执行权重更新——NumPy 无法正确计算 LTC 的 ODE 梯度
         return float(loss)
 
     def _sync_from_torch(self, torch_model) -> None:

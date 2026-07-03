@@ -37,9 +37,9 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock child components
-vi.mock('../ConfidenceIndicator.vue', () => ({
+vi.mock('../CopilotConfidenceIndicator.vue', () => ({
   default: {
-    name: 'ConfidenceIndicator',
+    name: 'CopilotConfidenceIndicator',
     template: '<div class="mock-confidence-indicator"></div>',
     props: ['confidence'],
   },
@@ -144,7 +144,7 @@ describe('RecommendationCard.vue', () => {
     })
 
     it('应该传递正确的置信度值', () => {
-      const indicator = wrapper.findComponent({ name: 'ConfidenceIndicator' })
+      const indicator = wrapper.findComponent({ name: 'CopilotConfidenceIndicator' })
       expect(indicator.exists()).toBe(true)
       expect(indicator.props('confidence')).toBe(0.75)
     })

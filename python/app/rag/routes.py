@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+import threading
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 
+from app.auth.permissions import require_permission
 from app.core.safe_errors import safe_error_message
 from app.rag.knowledge_base import get_knowledge_base
 from app.rag.vector_store import get_vector_store
@@ -18,6 +21,58 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/rag", tags=["RAG 知识库"])
 
 kb = get_knowledge_base()
+
+
+# ---------------------------------------------------------------------------
+# v2 增强：懒加载单例（避免在导入时初始化重型组件）
+# ---------------------------------------------------------------------------
+
+_rag_engine_instance = None
+_rag_engine_lock = threading.Lock()
+
+
+def _get_rag_engine():
+    """懒加载 RagRetrievalEngine 单例。
+
+    RAG engine 依赖 knowledge_base，且其增强模块（reranker / hybrid_search /
+    query_rewriter）在首次调用 ``_load_enhancements`` 时才会触发模型加载，
+    避免在服务启动时阻塞。
+    """
+    global _rag_engine_instance
+    if _rag_engine_instance is not None:
+        return _rag_engine_instance
+    with _rag_engine_lock:
+        if _rag_engine_instance is not None:
+            return _rag_engine_instance
+        from app.rag.rag_retrieval import RagRetrievalEngine
+
+        _rag_engine_instance = RagRetrievalEngine(knowledge_base=kb)
+        logger.info("RagRetrievalEngine singleton initialized")
+    return _rag_engine_instance
+
+
+def _get_evaluator(use_rag_engine: bool = False):
+    """构建 RetrievalEvaluator 实例。
+
+    Args:
+        use_rag_engine: True 时注入 RAG engine，启用完整 pipeline 评估
+    """
+    from app.rag.evaluation import RetrievalEvaluator
+
+    reranker = None
+    try:
+        from app.rag.reranker import get_reranker_service
+
+        reranker = get_reranker_service()
+    except (ImportError, RuntimeError) as e:
+        logger.debug("Reranker service unavailable: %s", e)
+
+    rag_engine = _get_rag_engine() if use_rag_engine else None
+    return RetrievalEvaluator(
+        knowledge_base=kb,
+        reranker_service=reranker,
+        rag_engine=rag_engine,
+    )
 
 
 def _raise_internal(
@@ -41,10 +96,75 @@ def _raise_internal(
 async def query_knowledge(
     q: str = Query(..., description="查询文本"),
     n_results: int = Query(5, ge=1, le=50, description="返回结果数量"),
+    intent: str | None = Query(
+        None,
+        description="查询意图（material_wear/cutting_params/vibration_wear/"
+        "material_compare/cross_source/general），不传则自动检测",
+    ),
+    use_enhanced: bool = Query(
+        True,
+        description="True 启用完整增强 pipeline（reranker/hybrid_search/"
+        "query_rewrite），False 仅使用 baseline 向量检索",
+    ),
 ):
+    """RAG 知识库查询（v2 增强）。
+
+    启用完整 pipeline：查询改写 → HyDE → 意图检测 → 多源并行检索 →
+    混合检索融合（RRF）→ Cross-Encoder 重排序 → 关键词 boost。
+
+    Args:
+        q: 查询文本
+        n_results: 返回结果数量
+        intent: 可选查询意图，不传则自动检测
+        use_enhanced: 是否启用增强 pipeline（默认 True）
+
+    Returns:
+        增强检索结果，包含 results / detected_intent / enhancements 等字段
+    """
     try:
-        result = kb.query(query_text=q, n_results=n_results)
-        return {"query": q, "results": result}
+        if use_enhanced:
+            # 使用增强 pipeline（RagRetrievalEngine）
+            engine = _get_rag_engine()
+
+            # 解析 intent 字符串到 QueryIntent 枚举
+            intent_enum = None
+            if intent:
+                from app.rag.rag_retrieval import QueryIntent
+
+                try:
+                    intent_enum = QueryIntent(intent)
+                except ValueError:
+                    valid_intents = [i.value for i in QueryIntent]
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"无效的 intent: {intent}，可选值: {valid_intents}",
+                    )
+
+            # ChromaDB 同步调用通过线程池执行，避免阻塞事件循环
+            result = await asyncio.to_thread(
+                engine.retrieve,
+                q,
+                intent_enum,
+                n_results,
+                None,  # override_source
+            )
+            return {
+                "query": q,
+                "results": result,
+                "pipeline": "enhanced",
+                "n_results": n_results,
+            }
+        else:
+            # baseline 模式：直接使用 kb.query()
+            result = kb.query(query_text=q, n_results=n_results)
+            return {
+                "query": q,
+                "results": result,
+                "pipeline": "baseline",
+                "n_results": n_results,
+            }
+    except HTTPException:
+        raise
     except (ValueError, TypeError, KeyError, RuntimeError, OSError) as e:
         # 捕获 RAG 查询相关异常：embedding 生成、向量检索、ChromaDB 操作
         _raise_internal(e, context="rag.query", fallback="知识库查询失败")
@@ -195,7 +315,7 @@ async def import_document(
         _raise_internal(e, context="rag.import", fallback="文档导入失败")
 
 
-@router.post("/backup/export")
+@router.post("/backup/export", dependencies=[Depends(require_permission("backup:export"))])
 async def export_backup(backup_dir: str = Query("./backups/rag")):
     try:
         vs = get_vector_store()
@@ -207,7 +327,7 @@ async def export_backup(backup_dir: str = Query("./backups/rag")):
         _raise_internal(e, context="rag.backup_export", fallback="备份导出失败")
 
 
-@router.post("/backup/import")
+@router.post("/backup/import", dependencies=[Depends(require_permission("backup:import"))])
 async def import_backup(backup_dir: str = Query(..., description="备份目录路径")):
     try:
         vs = get_vector_store()
@@ -251,3 +371,162 @@ async def cleanup_orphaned():
         # 捕获清理异常：ChromaDB compaction、计数操作
         logger.exception("Failed to cleanup orphaned documents")
         _raise_internal(e, context="rag.cleanup", fallback="清理失败")
+
+
+# ===========================================================================
+# v2 增强 API 端点
+# ===========================================================================
+# 以下端点暴露 RAG pipeline 的诊断、评估与 ablation study 能力，
+# 便于运维与研发团队量化各增强模块的贡献度。
+# ---------------------------------------------------------------------------
+
+
+@router.get("/v2/enhancement/status")
+async def get_enhancement_status():
+    """获取 RAG 增强模块的实时状态与性能指标。
+
+    返回各模块（parallel_retrieval / hybrid_search / reranker /
+    query_rewrite / hyde / result_cache）的启用状态与统计信息，
+    用于运维诊断与灰度发布验证。
+    """
+    try:
+        engine = _get_rag_engine()
+        return engine.get_enhancement_status()
+    except (RuntimeError, OSError, ValueError, AttributeError) as e:
+        logger.exception("Failed to get enhancement status")
+        _raise_internal(
+            e, context="rag.v2.enhancement_status", fallback="获取增强状态失败"
+        )
+
+
+@router.get("/v2/cache/stats")
+async def get_cache_stats():
+    """获取检索结果 LRU 缓存的命中统计。
+
+    用于判断缓存效果与容量是否需要调整。
+    """
+    try:
+        engine = _get_rag_engine()
+        return engine._cache.stats()
+    except (RuntimeError, AttributeError) as e:
+        logger.exception("Failed to get cache stats")
+        _raise_internal(e, context="rag.v2.cache_stats", fallback="获取缓存统计失败")
+
+
+@router.delete("/v2/cache")
+async def clear_cache():
+    """清空检索结果 LRU 缓存。
+
+    在知识库内容更新后调用，避免返回过期的缓存结果。
+    """
+    try:
+        engine = _get_rag_engine()
+        engine.clear_cache()
+        return {"cleared": True, "message": "检索结果缓存已清空"}
+    except (RuntimeError, AttributeError) as e:
+        logger.exception("Failed to clear cache")
+        _raise_internal(e, context="rag.v2.cache_clear", fallback="清空缓存失败")
+
+
+@router.post("/v2/evaluation")
+def run_evaluation(
+    top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
+    category: str | None = Query(None, description="仅评估指定类别"),
+    difficulty: str | None = Query(None, description="仅评估指定难度"),
+    use_rag_engine: bool = Query(
+        False,
+        description="True 使用完整 RAG pipeline，False 使用 baseline",
+    ),
+):
+    """运行检索质量评估。
+
+    评估 60 条标准查询的 precision / recall / F1 / MRR / nDCG /
+    top3 / top5 准确率，并按类别汇总性能。
+
+    注意：此端点为同步阻塞操作（底层 ChromaDB 调用非异步），
+    FastAPI 会自动将普通 ``def`` 路由放到线程池执行，不会阻塞事件循环。
+    60 条查询的 baseline 评估约耗时 5-15 秒，启用 RAG engine 后可能
+    因 reranker 推理增加 30-90 秒。
+    """
+    try:
+        evaluator = _get_evaluator(use_rag_engine=use_rag_engine)
+        report = evaluator.evaluate_all(
+            top_k=top_k, category=category, difficulty=difficulty
+        )
+        return report.to_dict()
+    except (RuntimeError, OSError, ValueError) as e:
+        logger.exception("Evaluation failed")
+        _raise_internal(e, context="rag.v2.evaluation", fallback="评估运行失败")
+
+
+@router.post("/v2/ablation")
+def run_ablation_study(
+    top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
+    category: str | None = Query(None, description="仅评估指定类别"),
+    difficulty: str | None = Query(None, description="仅评估指定难度"),
+):
+    """运行 ablation study，逐项关闭增强模块，量化各模块贡献。
+
+    实验配置（6 组）：
+    1. baseline            - 所有增强关闭
+    2. reranker_only       - 仅 Cross-Encoder 重排序
+    3. hybrid_only         - 仅混合检索（BM25+Vector RRF）
+    4. rewrite_only        - 仅查询改写
+    5. parallel_cache_only - 仅并行检索+缓存（性能优化）
+    6. full_pipeline       - 全部增强开启
+
+    返回各组配置下的评估指标，用于判断各模块的边际贡献。
+
+    注意：此端点非常耗时（6 组 × 60 条查询），可能需要 5-15 分钟。
+    建议在低峰期或离线场景调用。
+    """
+    try:
+        evaluator = _get_evaluator(use_rag_engine=True)
+        results = evaluator.run_ablation_study(
+            top_k=top_k, category=category, difficulty=difficulty
+        )
+        return {
+            "total_configs": len(results),
+            "results": [r.to_dict() for r in results],
+        }
+    except (RuntimeError, OSError, ValueError) as e:
+        logger.exception("Ablation study failed")
+        _raise_internal(e, context="rag.v2.ablation", fallback="消融研究运行失败")
+
+
+@router.post("/v2/comparison")
+def generate_comparison_report(
+    top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
+    category: str | None = Query(None, description="仅评估指定类别"),
+    difficulty: str | None = Query(None, description="仅评估指定难度"),
+    run_ablation: bool = Query(
+        True, description="是否运行 ablation study（更全面但更耗时）"
+    ),
+):
+    """生成 baseline vs enhanced A/B 对比报告。
+
+    同时运行 baseline（纯向量检索）与 enhanced（完整 RAG pipeline）评估，
+    计算各指标的提升幅度，并可选运行 ablation study 量化各模块贡献。
+
+    返回 ComparisonReport，包含：
+    - baseline / enhanced 的完整评估报告
+    - 各指标的提升百分比
+    - ablation study 结果（可选）
+    - 自动生成的结论
+
+    注意：启用 ablation 时总耗时可能超过 10 分钟。
+    """
+    try:
+        evaluator = _get_evaluator(use_rag_engine=True)
+        comparison = evaluator.generate_comparison_report(
+            top_k=top_k,
+            category=category,
+            difficulty=difficulty,
+            run_ablation=run_ablation,
+        )
+        return comparison.to_dict()
+    except (RuntimeError, OSError, ValueError) as e:
+        logger.exception("Comparison report generation failed")
+        _raise_internal(
+            e, context="rag.v2.comparison", fallback="对比报告生成失败"
+        )

@@ -442,10 +442,34 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
         logger.error(error_msg, exc_info=True)
         raise CadQueryScriptError(error_msg) from e
 
+    # 安全修复：用 wrapper 包装反射 API，阻止字符串形式的 dunder 属性访问
+    # （AST 审计器只能拦截 `obj.__class__` 直接访问，无法拦截 `getattr(obj, "__class__")`）
+    def _safe_getattr(obj: Any, name: str, *default: Any) -> Any:
+        if isinstance(name, str) and name in _DANGEROUS_ATTRS:
+            raise CadQueryScriptError(
+                f"Access to dangerous attribute '{name}' is forbidden via getattr()"
+            )
+        return getattr(obj, name, *default) if default else getattr(obj, name)
+
+    def _safe_setattr(obj: Any, name: str, value: Any) -> None:
+        if isinstance(name, str) and name in _DANGEROUS_ATTRS:
+            raise CadQueryScriptError(
+                f"Setting dangerous attribute '{name}' is forbidden via setattr()"
+            )
+        setattr(obj, name, value)
+
+    def _safe_delattr(obj: Any, name: str) -> None:
+        if isinstance(name, str) and name in _DANGEROUS_ATTRS:
+            raise CadQueryScriptError(
+                f"Deleting dangerous attribute '{name}' is forbidden via delattr()"
+            )
+        delattr(obj, name)
+
     # 创建受控的执行环境
     safe_globals = {
         "__builtins__": {
             # 安全修复：移除 __import__，禁止脚本动态导入模块
+            # 安全修复：移除 type（可被用于动态构造类型逃逸）
             "print": print,
             "len": len,
             "range": range,
@@ -461,13 +485,13 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
             "int": int,
             "float": float,
             "bool": bool,
-            "type": type,
             "isinstance": isinstance,
             "issubclass": issubclass,
             "hasattr": hasattr,
-            "getattr": getattr,
-            "setattr": setattr,
-            "delattr": delattr,
+            # 反射 API 用 wrapper 包装，过滤危险 dunder 属性
+            "getattr": _safe_getattr,
+            "setattr": _safe_setattr,
+            "delattr": _safe_delattr,
             "property": property,
             "staticmethod": staticmethod,
             "classmethod": classmethod,

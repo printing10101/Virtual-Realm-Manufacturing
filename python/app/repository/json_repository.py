@@ -1,7 +1,20 @@
 """
-JSON Repository 实现
+JSON Repository 实现（完整版，含文件锁/版本控制/事务）
 
 实现文件锁机制确保并发安全，支持数据版本控制和增量更新。
+
+.. note::
+    本模块为 ``app.repository`` 包下的**完整版** JSON Repository，提供文件锁
+    （fcntl）、版本控制（jsonl 日志）、事务支持（begin/commit/rollback）等
+    完整功能，继承自 ``app.repository.base.Repository``。
+
+    与 ``app/database/repository/json_repository.py`` 的**精简泛型版**不同：
+    后者为 ``Generic[T]`` 实现，仅提供加载+缓存+查询，供 ``database/tools.py``、
+    ``database/machines.py``、``database/materials.py`` 等生产模块使用。
+
+    当前本完整版仅由 ``python/tests/test_json_repository.py`` 覆盖测试使用。
+    生产代码应使用精简版；如需事务/版本控制能力，请评估将相关功能下沉到
+    精简版或通过 Repository 基类共享，避免长期维护两套 API。
 """
 
 from __future__ import annotations

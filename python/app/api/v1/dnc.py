@@ -19,8 +19,10 @@ import logging
 from typing import Optional
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
+
+from app.auth.permissions import require_permission
 
 from app.dnc.dnc_manager import dnc_manager, ProtocolType
 from app.core.response import success, error, ErrorCode
@@ -30,6 +32,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/api/v1/dnc",
     tags=["DNC 机床通信"],
+    dependencies=[Depends(require_permission("dnc:read"))],
     responses={
         500: {"description": "Internal server error"},
     },

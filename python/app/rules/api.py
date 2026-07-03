@@ -14,10 +14,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Query, UploadFile, File
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from app.auth.permissions import require_permission
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
 from app.utils.utils import get_output_dir
@@ -497,7 +498,7 @@ async def export_rules():
         )
 
 
-@router.post("/backup")
+@router.post("/backup", dependencies=[Depends(require_permission("backup:read"))])
 async def backup_database():
     db = get_rule_db()
     try:

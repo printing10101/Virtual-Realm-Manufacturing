@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatSecondsTimestamp } from '@/utils/formatters'
 import { getBranchTypeTagType } from '@/utils/statusHelpers'
 import http from '@/utils/http'
-import { API_CONFIG } from '@/config/api'
+import { API_CONFIG, buildApiPath } from '@/config/api'
+
+const { t } = useI18n()
 
 // 类型定义
 interface Branch {
@@ -40,14 +43,12 @@ const createForm = ref<CreateForm>({ name: '', base_branch: '', type: 'main', da
 const typeFilter = ref('')
 const branchDataInput = ref('{}')
 
-const API_BASE = API_CONFIG.V1
-
 async function fetchBranches() {
   loading.value = true
   try {
     const url = typeFilter.value
-      ? `${API_BASE}/templates/branches?type=${typeFilter.value}`
-      : `${API_BASE}/templates/branches`
+      ? buildApiPath(API_CONFIG.V1, `/templates/branches?type=${typeFilter.value}`)
+      : buildApiPath(API_CONFIG.V1, '/templates/branches')
     const res = await http.get(url)
     if (res.data.code === 'SUCCESS') branches.value = res.data.data
   } catch {
@@ -66,7 +67,7 @@ async function createBranch() {
     data = {}
   }
   try {
-    await http.post(`${API_BASE}/templates/branches`, {
+    await http.post(`${API_CONFIG.V1}/templates/branches`, {
       name: createForm.value.name,
       base_branch: createForm.value.base_branch || null,
       data,
@@ -83,7 +84,7 @@ async function createBranch() {
 
 async function mergeBranch() {
   try {
-    await http.post(`${API_BASE}/templates/branches/${mergeForm.value.source_id}/merge`, {
+    await http.post(`${API_CONFIG.V1}/templates/branches/${mergeForm.value.source_id}/merge`, {
       target_id: mergeForm.value.target_id,
       strategy: mergeForm.value.strategy
     })
@@ -96,16 +97,16 @@ async function mergeBranch() {
 
 async function deleteBranch(branchId: string, type: string) {
   if (type === 'main') {
-    ElMessage.warning('不能删除主线分支')
+    ElMessage.warning(t('branchManager.msgCannotDeleteMain'))
     return
   }
   try {
-    await ElMessageBox.confirm('确定删除此分支？', '确认删除', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('branchManager.msgConfirmDelete'), t('branchManager.titleConfirmDelete'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning',
     })
-    await http.delete(`${API_BASE}/templates/branches/${branchId}`)
+    await http.delete(`${API_CONFIG.V1}/templates/branches/${branchId}`)
     fetchBranches()
   } catch (e: unknown) {
     // 用户取消对话框时不处理
@@ -122,37 +123,37 @@ onMounted(fetchBranches)
   <div class="branch-manager-page">
     <el-card class="header-card">
       <div class="page-header">
-        <h2>分支管理</h2>
+        <h2>{{ t('branchManager.pageTitle') }}</h2>
         <div class="header-actions">
           <el-select
             v-model="typeFilter"
-            placeholder="全部类型"
+            :placeholder="t('branchManager.placeholderAllTypes')"
             clearable
             style="width: 150px; margin-right: 12px;"
             @change="fetchBranches"
           >
             <el-option
-              label="全部"
+              :label="t('branchManager.labelAll')"
               value=""
             />
             <el-option
-              label="主线"
+              :label="t('branchManager.labelMain')"
               value="main"
             />
             <el-option
-              label="行业"
+              :label="t('branchManager.labelIndustry')"
               value="industry"
             />
             <el-option
-              label="材料"
+              :label="t('branchManager.labelMaterial')"
               value="material"
             />
             <el-option
-              label="项目"
+              :label="t('branchManager.labelProject')"
               value="project"
             />
             <el-option
-              label="实验"
+              :label="t('branchManager.labelExperiment')"
               value="experiment"
             />
           </el-select>
@@ -160,10 +161,10 @@ onMounted(fetchBranches)
             type="primary"
             @click="createDialog = true"
           >
-            创建分支
+            {{ t('branchManager.btnCreateBranch') }}
           </el-button>
           <el-button @click="mergeDialog = true">
-            合并分支
+            {{ t('branchManager.btnMergeBranch') }}
           </el-button>
         </div>
       </div>
@@ -173,7 +174,7 @@ onMounted(fetchBranches)
       v-if="loading"
       class="loading"
     >
-      加载中...
+      {{ t('common.loading') }}
     </div>
 
     <el-table
@@ -183,11 +184,11 @@ onMounted(fetchBranches)
     >
       <el-table-column
         prop="name"
-        label="分支名称"
+        :label="t('branchManager.labelBranchName')"
         min-width="150"
       />
       <el-table-column
-        label="类型"
+        :label="t('branchManager.labelType')"
         width="120"
       >
         <template #default="{ row }">
@@ -201,7 +202,7 @@ onMounted(fetchBranches)
       </el-table-column>
       <el-table-column
         prop="base_branch"
-        label="基础分支"
+        :label="t('branchManager.labelBaseBranch')"
         width="120"
       >
         <template #default="{ row }">
@@ -209,7 +210,7 @@ onMounted(fetchBranches)
         </template>
       </el-table-column>
       <el-table-column
-        label="提交记录"
+        :label="t('branchManager.labelCommitLog')"
         width="100"
       >
         <template #default="{ row }">
@@ -217,7 +218,7 @@ onMounted(fetchBranches)
         </template>
       </el-table-column>
       <el-table-column
-        label="更新时间"
+        :label="t('branchManager.labelUpdateTime')"
         width="180"
       >
         <template #default="{ row }">
@@ -225,24 +226,24 @@ onMounted(fetchBranches)
         </template>
       </el-table-column>
       <el-table-column
-        label="操作"
+        :label="t('branchManager.labelOperation')"
         width="180"
         fixed="right"
       >
         <template #default="{ row }">
           <el-button
             size="small"
-            @click="$router.push(`/templates/${row.branch_id}`)"
+            @click="$router.push(`/templates/${row.id}`)"
           >
-            详情
+            {{ t('common.detail') }}
           </el-button>
           <el-button
             v-if="row.metadata?.type !== 'main'"
             size="small"
             type="danger"
-            @click="deleteBranch(row.branch_id, row.metadata?.type)"
+            @click="deleteBranch(row.id, row.metadata?.type)"
           >
-            删除
+            {{ t('common.delete') }}
           </el-button>
         </template>
       </el-table-column>
@@ -250,81 +251,81 @@ onMounted(fetchBranches)
 
     <el-empty
       v-if="!loading && branches.length === 0"
-      description="暂无分支"
+      :description="t('branchManager.emptyNoBranch')"
     />
 
     <!-- Create Dialog -->
     <el-dialog
       v-model="createDialog"
-      title="创建分支"
+      :title="t('branchManager.titleCreateBranch')"
       width="500px"
     >
       <el-form
         :model="createForm"
         label-width="80px"
       >
-        <el-form-item label="名称">
+        <el-form-item :label="t('branchManager.labelName')">
           <el-input
             v-model="createForm.name"
-            placeholder="分支名称"
+            :placeholder="t('branchManager.placeholderBranchName')"
           />
         </el-form-item>
-        <el-form-item label="基础分支">
+        <el-form-item :label="t('branchManager.labelBaseBranch')">
           <el-select
             v-model="createForm.base_branch"
             clearable
-            placeholder="无（主线）"
+            :placeholder="t('branchManager.placeholderNoMain')"
           >
             <el-option
               v-for="b in branches"
-              :key="b.branch_id"
+              :key="b.id"
               :label="b.name"
-              :value="b.branch_id"
+              :value="b.id"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="类型">
+        <el-form-item :label="t('branchManager.labelType')">
           <el-select v-model="createForm.type">
             <el-option
-              label="主线"
+              :label="t('branchManager.labelMain')"
               value="main"
             />
             <el-option
-              label="行业"
+              :label="t('branchManager.labelIndustry')"
               value="industry"
             />
             <el-option
-              label="材料"
+              :label="t('branchManager.labelMaterial')"
               value="material"
             />
             <el-option
-              label="项目"
+              :label="t('branchManager.labelProject')"
               value="project"
             />
             <el-option
-              label="实验"
+              :label="t('branchManager.labelExperiment')"
               value="experiment"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="初始数据">
+        <el-form-item :label="t('branchManager.labelInitialData')">
           <el-input
             v-model="branchDataInput"
             type="textarea"
             :rows="6"
-            placeholder="JSON 格式的模板数据"
+            :placeholder="t('branchManager.placeholderJsonData')"
           />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="createDialog = false">
-          取消
+          {{ t('common.cancel') }}
         </el-button>
         <el-button
           type="primary"
           @click="createBranch"
         >
-          创建
+          {{ t('common.confirm') }}
         </el-button>
       </template>
     </el-dialog>
@@ -332,41 +333,41 @@ onMounted(fetchBranches)
     <!-- Merge Dialog -->
     <el-dialog
       v-model="mergeDialog"
-      title="合并分支"
+      :title="t('branchManager.titleMergeBranch')"
       width="500px"
     >
       <el-form
         :model="mergeForm"
         label-width="80px"
       >
-        <el-form-item label="源分支">
+        <el-form-item :label="t('branchManager.labelSourceBranch')">
           <el-select v-model="mergeForm.source_id">
             <el-option
               v-for="b in branches.filter(x => x.metadata?.type !== 'main')"
-              :key="b.branch_id"
+              :key="b.id"
               :label="b.name"
-              :value="b.branch_id"
+              :value="b.id"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="目标分支">
+        <el-form-item :label="t('branchManager.labelTargetBranch')">
           <el-select v-model="mergeForm.target_id">
             <el-option
               v-for="b in branches"
-              :key="b.branch_id"
+              :key="b.id"
               :label="b.name"
-              :value="b.branch_id"
+              :value="b.id"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="策略">
+        <el-form-item :label="t('branchManager.labelStrategy')">
           <el-select v-model="mergeForm.strategy">
             <el-option
-              label="覆盖"
+              :label="t('branchManager.labelOverwrite')"
               value="overwrite"
             />
             <el-option
-              label="深度合并"
+              :label="t('branchManager.labelDeepMerge')"
               value="deep_merge"
             />
           </el-select>
@@ -374,13 +375,13 @@ onMounted(fetchBranches)
       </el-form>
       <template #footer>
         <el-button @click="mergeDialog = false">
-          取消
+          {{ t('common.cancel') }}
         </el-button>
         <el-button
           type="primary"
           @click="mergeBranch"
         >
-          合并
+          {{ t('branchManager.btnMerge') }}
         </el-button>
       </template>
     </el-dialog>

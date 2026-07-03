@@ -9,7 +9,7 @@
 <template>
   <el-dialog
     v-model="visible"
-    :title="$t('dxfImport.dialogTitle')"
+    :title="$t('dxfImportDialog.dialogTitle')"
     width="900px"
     top="4vh"
     :close-on-click-modal="false"
@@ -32,14 +32,14 @@
           @drop.prevent="onFileDrop"
         >
           <el-icon class="upload-icon">
-            <upload-filled />
+            <UploadFilled />
           </el-icon>
           <div class="drop-text">
-            <span class="primary-text">{{ $t('dxfImport.uploadHint') }}</span>
-            <span class="em-text">{{ $t('dxfImport.uploadClick') }}</span>
+            <span class="primary-text">{{ $t('dxfImportDialog.uploadHint') }}</span>
+            <span class="em-text">{{ $t('dxfImportDialog.uploadClick') }}</span>
           </div>
           <div class="drop-tip">
-            {{ $t('dxfImport.uploadTip') }}
+            {{ $t('dxfImportDialog.uploadTip') }}
           </div>
         </div>
 
@@ -68,14 +68,14 @@
       >
         <div class="progress-status">
           <el-icon class="is-loading">
-            <loading />
+            <Loading />
           </el-icon>
           <span>
             <template v-if="store.isUploading">
-              {{ $t('dxfImport.uploading') }}
+              {{ $t('dxfImportDialog.uploading') }}
             </template>
             <template v-else>
-              {{ $t('dxfImport.parsing') }}
+              {{ $t('dxfImportDialog.parsing') }}
             </template>
           </span>
           <span class="file-name-inline">{{ store.currentFileName }}</span>
@@ -91,10 +91,10 @@
 
         <div class="progress-detail">
           <span v-if="store.isUploading">
-            {{ $t('dxfImport.uploadProgress', { pct: store.uploadProgress }) }}
+            {{ $t('dxfImportDialog.uploadProgress', { pct: store.uploadProgress }) }}
           </span>
           <span v-else>
-            {{ $t('dxfImport.parseProgress', { pct: store.parseProgress }) }}
+            {{ $t('dxfImportDialog.parseProgress', { pct: store.parseProgress }) }}
           </span>
         </div>
       </div>
@@ -105,7 +105,7 @@
         class="result-section"
       >
         <el-alert
-          :title="$t('dxfImport.importSuccess')"
+          :title="$t('dxfImportDialog.importSuccess')"
           type="success"
           :closable="false"
           show-icon
@@ -113,29 +113,39 @@
 
         <!-- 解析统计卡片 -->
         <div class="stats-section">
-          <h4>{{ $t('dxfImport.statistics') }}</h4>
+          <h4>{{ $t('dxfImportDialog.statistics') }}</h4>
           <div class="stat-grid">
             <div class="stat-card">
-              <div class="stat-label">{{ $t('dxfImport.linesCount') }}</div>
+              <div class="stat-label">
+                {{ $t('dxfImportDialog.linesCount') }}
+              </div>
               <div class="stat-value">
                 {{ store.parseResult.lines_count.toLocaleString() }}
               </div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">{{ $t('dxfImport.arcsCount') }}</div>
+              <div class="stat-label">
+                {{ $t('dxfImportDialog.arcsCount') }}
+              </div>
               <div class="stat-value">
                 {{ store.parseResult.arcs_count.toLocaleString() }}
               </div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">{{ $t('dxfImport.circlesCount') }}</div>
+              <div class="stat-label">
+                {{ $t('dxfImportDialog.circlesCount') }}
+              </div>
               <div class="stat-value">
                 {{ store.parseResult.circles_count.toLocaleString() }}
               </div>
             </div>
             <div class="stat-card highlight">
-              <div class="stat-label">{{ $t('dxfImport.featuresCount') }}</div>
-              <div class="stat-value">{{ featuresCount.toLocaleString() }}</div>
+              <div class="stat-label">
+                {{ $t('dxfImportDialog.featuresCount') }}
+              </div>
+              <div class="stat-value">
+                {{ featuresCount.toLocaleString() }}
+              </div>
             </div>
           </div>
 
@@ -145,20 +155,20 @@
             size="small"
             class="meta-descriptions"
           >
-            <el-descriptions-item :label="$t('dxfImport.fileName')">
+            <el-descriptions-item :label="$t('dxfImportDialog.fileName')">
               {{ store.parseResult.file_name }}
             </el-descriptions-item>
-            <el-descriptions-item :label="$t('dxfImport.fileSize')">
+            <el-descriptions-item :label="$t('dxfImportDialog.fileSize')">
               {{ formatFileSize(store.parseResult.file_size) }}
             </el-descriptions-item>
-            <el-descriptions-item :label="$t('dxfImport.dxfVersion')">
+            <el-descriptions-item :label="$t('dxfImportDialog.dxfVersion')">
               {{ store.parseResult.dxf_version || '-' }}
             </el-descriptions-item>
-            <el-descriptions-item :label="$t('dxfImport.parseTime')">
+            <el-descriptions-item :label="$t('dxfImportDialog.parseTime')">
               {{ store.parseResult.parse_time_ms.toFixed(0) }} ms
             </el-descriptions-item>
             <el-descriptions-item
-              :label="$t('dxfImport.totalEntities')"
+              :label="$t('dxfImportDialog.totalEntities')"
               :span="2"
             >
               {{ store.parseResult.total_entities.toLocaleString() }}
@@ -169,15 +179,19 @@
         <!-- 2D/3D 预览 -->
         <div class="preview-section">
           <div class="preview-header">
-            <h4>{{ $t('dxfImport.preview') }}</h4>
+            <h4>{{ $t('dxfImportDialog.preview') }}</h4>
             <el-button-group size="small">
               <el-button @click="resetView">
-                <el-icon><aim /></el-icon>{{ $t('dxfImport.viewFit') }}
+                <el-icon><Aim /></el-icon>{{ $t('dxfImportDialog.viewFit') }}
               </el-button>
-              <el-button @click="viewTop">{{ $t('dxfImport.viewTop') }}</el-button>
-              <el-button @click="view3D">{{ $t('dxfImport.viewIso') }}</el-button>
+              <el-button @click="viewTop">
+                {{ $t('dxfImportDialog.viewTop') }}
+              </el-button>
+              <el-button @click="view3D">
+                {{ $t('dxfImportDialog.viewIso') }}
+              </el-button>
               <el-button @click="toggleWireframe">
-                {{ wireframe ? $t('dxfImport.viewSolid') : $t('dxfImport.viewWire') }}
+                {{ wireframe ? $t('dxfImportDialog.viewSolid') : $t('dxfImportDialog.viewWire') }}
               </el-button>
             </el-button-group>
           </div>
@@ -190,7 +204,7 @@
             class="preview-loading"
           >
             <el-icon class="is-loading">
-              <loading />
+              <Loading />
             </el-icon>
             <span>{{ $t('viewer.loading') }}</span>
           </div>
@@ -211,18 +225,6 @@
             style="margin-bottom: 4px;"
           />
         </div>
-      </div>
-
-      <!-- 错误状态（result 区域下） -->
-      <div
-        v-else-if="store.isError"
-        class="error-section"
-      >
-        <el-result
-          icon="error"
-          :title="$t('dxfImport.importFailed')"
-          :sub-title="store.errorMessage"
-        />
       </div>
     </div>
 
@@ -263,7 +265,7 @@
             :loading="importing"
             @click="handleImportToProject"
           >
-            {{ $t('dxfImport.importToProject') }}
+            {{ $t('dxfImportDialog.importToProject') }}
           </el-button>
         </template>
       </div>
@@ -283,6 +285,7 @@ import { useI18n } from 'vue-i18n'
 import { useDxfImportStore } from '@/stores/dxfImport'
 import { formatFileSize } from '@/utils/formatters'
 import { useThreeScene } from '@/composables/useThreeScene'
+import { UploadFilled, Loading, Aim } from '@element-plus/icons-vue'
 import type { DxfParseResponse } from '@/types'
 
 // 预览场景常量
@@ -387,7 +390,7 @@ async function handleFileSelected(file: File) {
   // 1. 文件格式校验
   const ext = (file.name.split('.').pop() || '').toLowerCase()
   if (ext !== 'dxf') {
-    const msg = t('dxfImport.invalidFormat')
+    const msg = t('dxfImportDialog.invalidFormat')
     ElMessage.error(msg)
     localFormatError.value = msg
     return
@@ -395,13 +398,13 @@ async function handleFileSelected(file: File) {
 
   // 2. 大文件提示（>50MB 时给出友好提示，但不阻止）
   if (file.size > 50 * 1024 * 1024) {
-    ElMessage.warning(t('dxfImport.largeFileWarning'))
+    ElMessage.warning(t('dxfImportDialog.largeFileWarning'))
   }
 
   // 3. 触发完整流程
   const ok = await store.importDxfFile(file)
   if (!ok) {
-    ElMessage.error(store.errorMessage || t('dxfImport.dxfImportFailed'))
+    ElMessage.error(store.errorMessage || t('dxfImportDialog.dxfImportFailed'))
   }
 }
 
@@ -645,7 +648,7 @@ async function handleImportToProject() {
     const { useProjectStore } = await import('@/stores/project')
     const projectStore = useProjectStore()
     if (!projectStore.manifest) {
-      ElMessage.error(t('dxfImport.noOpenProject'))
+      ElMessage.error(t('dxfImportDialog.noOpenProject'))
       return
     }
     // 直接在工程清单中追加一条 DXF 资源记录
@@ -670,10 +673,10 @@ async function handleImportToProject() {
       // 触发响应式更新
       projectStore.markModified?.()
     }
-   ElMessage.success(t('dxfImport.importToProjectSuccess'))
+   ElMessage.success(t('dxfImportDialog.importToProjectSuccess'))
     store.closeDialog()
   } catch {
-    ElMessage.error(t('dxfImport.importToProjectFailed'))
+    ElMessage.error(t('dxfImportDialog.importToProjectFailed'))
   } finally {
     importing.value = false
   }}

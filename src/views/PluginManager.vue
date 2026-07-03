@@ -2,17 +2,17 @@
   <div class="plugin-manager">
     <el-card class="header-card">
       <div class="header-content">
-        <h2>插件管理</h2>
+        <h2>{{ t('pluginManager.pageTitle') }}</h2>
         <div class="actions">
           <el-button
             type="primary"
             @click="refreshPlugins"
           >
-            <el-icon><Refresh /></el-icon> 刷新
+            <el-icon><Refresh /></el-icon> {{ t('pluginManager.btnRefresh') }}
           </el-button>
           <el-input
             v-model="searchQuery"
-            placeholder="搜索插件..."
+            :placeholder="t('pluginManager.searchPlaceholder')"
             style="width: 200px; margin-left: 10px"
             clearable
           >
@@ -34,7 +34,7 @@
             {{ plugins.length }}
           </div>
           <div class="stat-label">
-            总计
+            {{ t('pluginManager.statTotal') }}
           </div>
         </el-card>
       </el-col>
@@ -44,7 +44,7 @@
             {{ enabledPlugins.length }}
           </div>
           <div class="stat-label">
-            已启用
+            {{ t('pluginManager.statEnabled') }}
           </div>
         </el-card>
       </el-col>
@@ -54,7 +54,7 @@
             {{ disabledPlugins.length }}
           </div>
           <div class="stat-label">
-            已停用
+            {{ t('pluginManager.statDisabled') }}
           </div>
         </el-card>
       </el-col>
@@ -64,7 +64,7 @@
             {{ errorPlugins.length }}
           </div>
           <div class="stat-label">
-            异常
+            {{ t('pluginManager.statError') }}
           </div>
         </el-card>
       </el-col>
@@ -73,7 +73,7 @@
     <el-card class="plugins-card">
       <el-tabs v-model="activeTab">
         <el-tab-pane
-          label="全部"
+          :label="t('pluginManager.tabAll')"
           name="all"
         >
           <el-table
@@ -82,22 +82,22 @@
           >
             <el-table-column
               prop="id"
-              label="ID"
+              :label="t('pluginManager.colId')"
               width="150"
             />
             <el-table-column
               prop="name"
-              label="名称"
+              :label="t('pluginManager.colName')"
               width="150"
             />
             <el-table-column
               prop="version"
-              label="版本"
+              :label="t('pluginManager.colVersion')"
               width="80"
             />
             <el-table-column
               prop="plugin_type"
-              label="类型"
+              :label="t('pluginManager.colType')"
               width="100"
             >
               <template #default="{ row }">
@@ -108,7 +108,7 @@
             </el-table-column>
             <el-table-column
               prop="status"
-              label="状态"
+              :label="t('pluginManager.colStatus')"
               width="100"
             >
               <template #default="{ row }">
@@ -122,12 +122,12 @@
             </el-table-column>
             <el-table-column
               prop="description"
-              label="描述"
+              :label="t('pluginManager.colDescription')"
               min-width="200"
               show-overflow-tooltip
             />
             <el-table-column
-              label="操作"
+              :label="t('pluginManager.colActions')"
               width="200"
               fixed="right"
             >
@@ -136,7 +136,7 @@
                   size="small"
                   @click="handleDetail(row.id)"
                 >
-                  详情
+                  {{ t('pluginManager.btnDetail') }}
                 </el-button>
                 <el-button
                   v-if="row.status === 'enabled'"
@@ -144,7 +144,7 @@
                   type="warning"
                   @click="handleDisable(row.id)"
                 >
-                  停用
+                  {{ t('pluginManager.btnDisable') }}
                 </el-button>
                 <el-button
                   v-else
@@ -152,21 +152,21 @@
                   type="success"
                   @click="handleEnable(row.id)"
                 >
-                  启用
+                  {{ t('pluginManager.btnEnable') }}
                 </el-button>
                 <el-button
                   size="small"
                   type="danger"
                   @click="handleUninstall(row.id)"
                 >
-                  卸载
+                  {{ t('pluginManager.btnUninstall') }}
                 </el-button>
               </template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
         <el-tab-pane
-          label="适配器"
+          :label="t('pluginManager.tabAdapter')"
           name="adapter"
         >
           <el-table
@@ -175,22 +175,22 @@
           >
             <el-table-column
               prop="id"
-              label="ID"
+              :label="t('pluginManager.colId')"
               width="150"
             />
             <el-table-column
               prop="name"
-              label="名称"
+              :label="t('pluginManager.colName')"
               width="150"
             />
             <el-table-column
               prop="version"
-              label="版本"
+              :label="t('pluginManager.colVersion')"
               width="80"
             />
             <el-table-column
               prop="status"
-              label="状态"
+              :label="t('pluginManager.colStatus')"
               width="100"
             >
               <template #default="{ row }">
@@ -204,12 +204,12 @@
             </el-table-column>
             <el-table-column
               prop="description"
-              label="描述"
+              :label="t('pluginManager.colDescription')"
               min-width="200"
               show-overflow-tooltip
             />
             <el-table-column
-              label="操作"
+              :label="t('pluginManager.colActions')"
               width="200"
               fixed="right"
             >
@@ -218,7 +218,7 @@
                   size="small"
                   @click="handleDetail(row.id)"
                 >
-                  详情
+                  {{ t('pluginManager.btnDetail') }}
                 </el-button>
                 <el-button
                   v-if="row.status === 'enabled'"
@@ -226,7 +226,7 @@
                   type="warning"
                   @click="handleDisable(row.id)"
                 >
-                  停用
+                  {{ t('pluginManager.btnDisable') }}
                 </el-button>
                 <el-button
                   v-else
@@ -234,21 +234,21 @@
                   type="success"
                   @click="handleEnable(row.id)"
                 >
-                  启用
+                  {{ t('pluginManager.btnEnable') }}
                 </el-button>
                 <el-button
                   size="small"
                   type="danger"
                   @click="handleUninstall(row.id)"
                 >
-                  卸载
+                  {{ t('pluginManager.btnUninstall') }}
                 </el-button>
               </template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
         <el-tab-pane
-          label="数据源"
+          :label="t('pluginManager.tabDataSource')"
           name="data_source"
         >
           <el-table
@@ -257,22 +257,22 @@
           >
             <el-table-column
               prop="id"
-              label="ID"
+              :label="t('pluginManager.colId')"
               width="150"
             />
             <el-table-column
               prop="name"
-              label="名称"
+              :label="t('pluginManager.colName')"
               width="150"
             />
             <el-table-column
               prop="version"
-              label="版本"
+              :label="t('pluginManager.colVersion')"
               width="80"
             />
             <el-table-column
               prop="status"
-              label="状态"
+              :label="t('pluginManager.colStatus')"
               width="100"
             >
               <template #default="{ row }">
@@ -286,12 +286,12 @@
             </el-table-column>
             <el-table-column
               prop="description"
-              label="描述"
+              :label="t('pluginManager.colDescription')"
               min-width="200"
               show-overflow-tooltip
             />
             <el-table-column
-              label="操作"
+              :label="t('pluginManager.colActions')"
               width="200"
               fixed="right"
             >
@@ -300,7 +300,7 @@
                   size="small"
                   @click="handleDetail(row.id)"
                 >
-                  详情
+                  {{ t('pluginManager.btnDetail') }}
                 </el-button>
                 <el-button
                   v-if="row.status === 'enabled'"
@@ -308,7 +308,7 @@
                   type="warning"
                   @click="handleDisable(row.id)"
                 >
-                  停用
+                  {{ t('pluginManager.btnDisable') }}
                 </el-button>
                 <el-button
                   v-else
@@ -316,14 +316,14 @@
                   type="success"
                   @click="handleEnable(row.id)"
                 >
-                  启用
+                  {{ t('pluginManager.btnEnable') }}
                 </el-button>
                 <el-button
                   size="small"
                   type="danger"
                   @click="handleUninstall(row.id)"
                 >
-                  卸载
+                  {{ t('pluginManager.btnUninstall') }}
                 </el-button>
               </template>
             </el-table-column>
@@ -334,7 +334,7 @@
 
     <el-dialog
       v-model="detailDialogVisible"
-      :title="currentPlugin?.metadata?.name || '插件详情'"
+      :title="currentPlugin?.metadata?.name || t('pluginManager.detailDialogTitle')"
       width="800px"
     >
       <div
@@ -345,35 +345,35 @@
           :column="2"
           border
         >
-          <el-descriptions-item label="ID">
+          <el-descriptions-item :label="t('pluginManager.detailId')">
             {{ currentPlugin.metadata.id }}
           </el-descriptions-item>
-          <el-descriptions-item label="版本">
+          <el-descriptions-item :label="t('pluginManager.detailVersion')">
             {{ currentPlugin.metadata.version }}
           </el-descriptions-item>
-          <el-descriptions-item label="作者">
+          <el-descriptions-item :label="t('pluginManager.detailAuthor')">
             {{ currentPlugin.metadata.author }}
           </el-descriptions-item>
-          <el-descriptions-item label="状态">
+          <el-descriptions-item :label="t('pluginManager.detailStatus')">
             <el-tag :type="statusType">
               {{ currentPlugin.metadata.status }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="类型">
+          <el-descriptions-item :label="t('pluginManager.detailType')">
             {{ currentPlugin.metadata.plugin_type }}
           </el-descriptions-item>
-          <el-descriptions-item label="兼容性">
+          <el-descriptions-item :label="t('pluginManager.detailCompatibility')">
             {{ currentPlugin.metadata.min_core_version }} - {{ currentPlugin.metadata.max_core_version }}
           </el-descriptions-item>
         </el-descriptions>
 
         <div class="section">
-          <h4>描述</h4>
+          <h4>{{ t('pluginManager.sectionDescription') }}</h4>
           <p>{{ currentPlugin.metadata.description }}</p>
         </div>
 
         <div class="section">
-          <h4>能力声明</h4>
+          <h4>{{ t('pluginManager.sectionCapabilities') }}</h4>
           <el-tag
             v-for="cap in currentPlugin.capabilities"
             :key="cap"
@@ -384,7 +384,7 @@
         </div>
 
         <div class="section">
-          <h4>依赖关系</h4>
+          <h4>{{ t('pluginManager.sectionDependencies') }}</h4>
           <DependencyTree
             v-if="currentPlugin.dependency_tree"
             :tree="currentPlugin.dependency_tree"
@@ -395,28 +395,28 @@
           v-if="currentPlugin.worker"
           class="section"
         >
-          <h4>Worker信息</h4>
+          <h4>{{ t('pluginManager.sectionWorkerInfo') }}</h4>
           <el-descriptions
             :column="2"
             border
           >
-            <el-descriptions-item label="状态">
+            <el-descriptions-item :label="t('pluginManager.detailWorkerStatus')">
               {{ currentPlugin.worker.status }}
             </el-descriptions-item>
-            <el-descriptions-item label="PID">
+            <el-descriptions-item :label="t('pluginManager.detailPid')">
               {{ currentPlugin.worker.pid }}
             </el-descriptions-item>
-            <el-descriptions-item label="端口">
+            <el-descriptions-item :label="t('pluginManager.detailPort')">
               {{ currentPlugin.worker.port }}
             </el-descriptions-item>
-            <el-descriptions-item label="运行时长">
+            <el-descriptions-item :label="t('pluginManager.detailUptime')">
               {{ formatUptime(currentPlugin.worker.uptime) }}
             </el-descriptions-item>
           </el-descriptions>
         </div>
 
         <div class="section">
-          <h4>配置</h4>
+          <h4>{{ t('pluginManager.sectionConfig') }}</h4>
           <el-input
             v-model="configJson"
             type="textarea"
@@ -431,11 +431,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { usePluginStore } from '../stores/plugin'
 import type { PluginDetail } from '../stores/plugin'
 import { Refresh, Search } from '@element-plus/icons-vue'
 import DependencyTree from '../components/plugin/DependencyTree.vue'
 
+const { t } = useI18n()
 const pluginStore = usePluginStore()
 const searchQuery = ref('')
 const activeTab = ref('all')
@@ -479,28 +482,28 @@ onMounted(() => {
 
 const refreshPlugins = () => {
   pluginStore.fetchPlugins()
-  ElMessage.success('插件列表已刷新')
+  ElMessage.success(t('pluginManager.msgRefreshed'))
 }
 
 const handleEnable = async (pluginId: string) => {
   await pluginStore.enablePlugin(pluginId)
-  ElMessage.success('插件已启用')
+  ElMessage.success(t('pluginManager.msgEnabled'))
 }
 
 const handleDisable = async (pluginId: string) => {
   await pluginStore.disablePlugin(pluginId)
-  ElMessage.success('插件已停用')
+  ElMessage.success(t('pluginManager.msgDisabled'))
 }
 
 const handleUninstall = async (pluginId: string) => {
   try {
-    await ElMessageBox.confirm('确定要卸载此插件吗？此操作不可恢复。', '确认卸载', {
-      confirmButtonText: '卸载',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('pluginManager.msgUninstallConfirm'), t('pluginManager.msgUninstallConfirmTitle'), {
+      confirmButtonText: t('pluginManager.btnUninstallConfirm'),
+      cancelButtonText: t('pluginManager.btnCancel'),
       type: 'warning',
     })
     await pluginStore.uninstallPlugin(pluginId)
-    ElMessage.success('插件已卸载')
+    ElMessage.success(t('pluginManager.msgUninstalled'))
   } catch (_e) {
     // Silently ignore uninstall errors
   }
@@ -514,10 +517,10 @@ const handleDetail = async (pluginId: string) => {
 }
 
 const formatUptime = (seconds: number) => {
-  if (!seconds) return 'N/A'
+  if (!seconds) return t('pluginManager.txtNA')
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  return `${hours}h ${minutes}m`
+  return t('pluginManager.uptimeFormat', { hours, minutes })
 }
 
 const handleConfigChange = async () => {
@@ -525,9 +528,9 @@ const handleConfigChange = async () => {
   try {
     const config = JSON.parse(configJson.value)
     await pluginStore.updatePluginConfig(currentPlugin.value.metadata.id, config)
-    ElMessage.success('配置已更新')
+    ElMessage.success(t('pluginManager.msgConfigUpdated'))
   } catch {
-    ElMessage.error('无效的JSON格式')
+    ElMessage.error(t('pluginManager.msgInvalidJson'))
   }
 }
 

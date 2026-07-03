@@ -20,6 +20,10 @@ from unittest import mock
 import numpy as np
 import pytest
 
+# 学术诚信修复 [S7]：优先使用真实 torch，无 torch 时跳过整个测试模块。
+# 原实现依赖 conftest.py 的 torch 桩模块，掩盖了真实的测试覆盖空洞。
+torch = pytest.importorskip("torch")
+
 
 # =============================================================================
 # 测试专用 Fixtures
@@ -34,7 +38,12 @@ class _FakeParam:
 
 
 class _FakeTensor:
-    """模拟 torch.Tensor，支持 trainer 用到的关键方法。"""
+    """模拟 torch.Tensor，支持 trainer 用到的关键方法。
+
+    学术诚信说明 [S7]：本类用于隔离 trainer 逻辑测试，不依赖真实模型权重。
+    当 trainer 调用 ``torch.argmax(outputs, dim=1)`` 时，通过 ``argmax``
+    方法将自身转为 numpy 计算后包装回 _FakeTensor，兼容真实 torch 函数调用。
+    """
 
     def __init__(self, data: Any) -> None:
         if isinstance(data, _FakeTensor):
@@ -361,7 +370,68 @@ def _build_torch_patch() -> dict[str, Any]:
         "jit.trace": _FakeTrace,
         "save": _FakeSave,
         "load": _FakeLoad,
+        # [S7] 兼容真实 torch.argmax：trainer 在分类任务中调用
+        # torch.argmax(outputs, dim=1)，需处理 _FakeTensor 输入
+        "argmax": _fake_argmax,
+        # [S7] 兼容真实 torch.randn：trainer.export_torchscript 调用
+        # torch.randn(1, input_dim, device=stub_device)，stub_device 不是
+        # 真实 torch.device，真实 randn 会报错。此处返回 _FakeTensor。
+        "randn": _fake_randn,
+        # [S7] 兼容真实 torch.tensor：trainer 部分分支可能将 numpy 数据
+        # 包装为 tensor，统一返回 _FakeTensor 以保持桩一致性。
+        "tensor": _fake_tensor,
     }
+
+
+def _fake_argmax(input_tensor, dim=None, **kwargs):
+    """处理 _FakeTensor 的 argmax 兼容层。
+
+    当 trainer 调用 ``torch.argmax(outputs, dim=1)`` 时，如果 outputs
+    是 _FakeTensor，则通过 numpy 计算等价结果并包装回 _FakeTensor。
+    对于真实 torch.Tensor 输入，回退到真实 torch.argmax。
+    """
+    if isinstance(input_tensor, _FakeTensor):
+        arr = input_tensor._arr
+        if dim is not None:
+            result = np.argmax(arr, axis=dim)
+        else:
+            result = np.argmax(arr)
+        return _FakeTensor(result)
+    # 真实 torch.Tensor：调用真实 torch.argmax
+    return torch.argmax(input_tensor, dim=dim, **kwargs) if dim is not None else torch.argmax(input_tensor)
+
+
+def _fake_randn(*size, **kwargs):
+    """处理 export_torchscript 中的 torch.randn 调用。
+
+    trainer.export_torchscript 在 example_input 为 None 时调用
+    ``torch.randn(1, input_dim, device=self.device)``。由于 self.device
+    在测试环境下是 stub Device 对象（非真实 torch.device），真实 torch.randn
+    会拒绝该参数。此处返回一个 shape 符合预期的 _FakeTensor（零张量）。
+
+    对于真实 torch.Tensor 场景（不在桩环境下），回退到真实 torch.randn。
+    """
+    # 过滤掉 device 等 stub 关键字参数
+    filtered_kwargs = {
+        k: v for k, v in kwargs.items()
+        if k not in ("device", "dtype", "layout", "pin_memory", "requires_grad", "generator", "out")
+    }
+    try:
+        return torch.randn(*size, **filtered_kwargs)
+    except Exception:
+        # 桩环境回退：构造零张量
+        shape = tuple(int(s) for s in size) if size else (1,)
+        return _FakeTensor(np.zeros(shape, dtype=np.float32))
+
+
+def _fake_tensor(data, **kwargs):
+    """处理 torch.tensor(data) 调用，包装为 _FakeTensor。"""
+    if isinstance(data, _FakeTensor):
+        return data
+    try:
+        return torch.tensor(data)
+    except Exception:
+        return _FakeTensor(data)
 
 
 class _FakeCM:

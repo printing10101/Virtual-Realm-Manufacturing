@@ -5,15 +5,21 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+
+from app.auth.permissions import require_permission
 
 from app.patterns.pattern_engine import get_pattern_engine
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/templates/patterns", tags=["patterns"])
+router = APIRouter(
+    prefix="/api/v1/templates/patterns",
+    tags=["patterns"],
+    dependencies=[Depends(require_permission("pattern:read"))],
+)
 
 
 class ExecutionRecordRequest(BaseModel):

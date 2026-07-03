@@ -184,7 +184,7 @@
                 d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
               />
             </svg>
-            {{ copySuccessId === notification.id ? '已复制' : '复制诊断信息' }}
+            {{ copySuccessId === notification.id ? t('errorNotification.copied') : t('errorNotification.copyDiagnostic') }}
           </button>
         </div>
       </div>
@@ -194,12 +194,15 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useErrorBus } from '@/composables/useErrorBus'
 import {
   type StandardError,
   collectDiagnosticContext,
   copyDiagnosticText,
 } from '@/utils/error-handler'
+
+const { t } = useI18n()
 
 interface ErrorNotification {
   id: string

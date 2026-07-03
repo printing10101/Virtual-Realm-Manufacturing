@@ -21,7 +21,7 @@ repos:
     hooks:
       - id: version-check
         name: Version Consistency Check
-        entry: node version-sync.js --dry-run
+        entry: node version-sync.cjs --dry-run
         language: system
         pass_filenames: false
         always_run: true

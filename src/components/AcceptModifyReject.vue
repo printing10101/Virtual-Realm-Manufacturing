@@ -137,16 +137,19 @@
             >
               <el-input
                 v-if="typeof value === 'string'"
-                v-model="modifiedParams[key]"
+                :model-value="getStringValue(key)"
+                @update:model-value="setStringValue(key, $event)"
               />
               <el-input-number
                 v-else-if="typeof value === 'number'"
-                v-model="modifiedParams[key]"
+                :model-value="getNumberValue(key)"
                 :step="0.01"
+                @update:model-value="setNumberValue(key, $event)"
               />
               <el-switch
                 v-else-if="typeof value === 'boolean'"
-                v-model="modifiedParams[key]"
+                :model-value="getBoolValue(key)"
+                @update:model-value="setBoolValue(key, $event)"
               />
               <pre v-else>{{ JSON.stringify(value, null, 2) }}</pre>
             </el-form-item>
@@ -187,7 +190,7 @@ interface AlternativePlan {
 }
 
 interface AIRecommendation {
-  [key: string]: unknown
+  [key: string]: string | number | boolean | null | undefined
 }
 
 interface Props {
@@ -224,6 +227,13 @@ const { t } = useI18n()
 const selectedAlternative = ref<string | undefined>(undefined)
 const modifyDrawerVisible = ref(false)
 const modifiedParams = ref<AIRecommendation>({})
+
+function getStringValue(key: string): string { return String(modifiedParams.value[key] ?? '') }
+function setStringValue(key: string, val: string) { modifiedParams.value[key] = val }
+function getNumberValue(key: string): number | undefined { const v = modifiedParams.value[key]; return typeof v === 'number' ? v : undefined }
+function setNumberValue(key: string, val: number | undefined) { if (val !== undefined) modifiedParams.value[key] = val }
+function getBoolValue(key: string): boolean { return !!modifiedParams.value[key] }
+function setBoolValue(key: string, val: boolean | string | number) { modifiedParams.value[key] = !!val }
 
 function formatRecommendation(rec: AIRecommendation): string {
   return JSON.stringify(rec, null, 2)

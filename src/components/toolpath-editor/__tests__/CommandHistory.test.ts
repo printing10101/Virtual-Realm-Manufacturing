@@ -227,9 +227,9 @@ describe('CommandHistory', () => {
 
       expect(warningCount).toBe(1)
       expect(warningDetail).not.toBeNull()
-      expect(warningDetail.current).toBe(9)
-      expect(warningDetail.max).toBe(10)
-      expect(warningDetail.percentage).toBe(90)
+      expect(warningDetail!.current).toBe(9)
+      expect(warningDetail!.max).toBe(10)
+      expect(warningDetail!.percentage).toBe(90)
     })
 
     it('should only trigger warning once per fill cycle', () => {

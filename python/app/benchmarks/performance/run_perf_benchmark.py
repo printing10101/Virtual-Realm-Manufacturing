@@ -29,6 +29,10 @@ from app.benchmarks.performance.thresholds import (  # noqa: E402
 from app.benchmarks.performance.lnn_inference_bench import LNNPerfBenchmark  # noqa: E402
 from app.benchmarks.performance.nc_generation_bench import NCGenerationBenchmark  # noqa: E402
 from app.benchmarks.performance.drawing_parse_bench import DrawingParseBenchmark  # noqa: E402
+from app.benchmarks.performance.api_bench import APIPerfBenchmark  # noqa: E402
+from app.benchmarks.performance.database_bench import DatabasePerfBenchmark  # noqa: E402
+from app.benchmarks.performance.business_logic_bench import BusinessLogicPerfBenchmark  # noqa: E402
+from app.benchmarks.performance.concurrency_bench import ConcurrencyPerfBenchmark  # noqa: E402
 
 
 @dataclass
@@ -135,7 +139,8 @@ class PerformanceBenchmarkRunner:
         logger.info("性能基准测试")
         logger.info("=" * 60)
 
-        logger.info("\n[1/3] LNN推理性能测试...")
+        # [1/7] LNN推理性能测试
+        logger.info("\n[1/7] LNN推理性能测试...")
         lnn = LNNPerfBenchmark()
         lnn.setup()
         single = lnn.run_single_inference()
@@ -170,7 +175,8 @@ class PerformanceBenchmarkRunner:
         lnn.save_results(lnn_path)
         logger.info(f"  -> {lnn_path}")
 
-        logger.info("\n[2/3] NC代码生成全流程测试...")
+        # [2/7] NC代码生成全流程测试
+        logger.info("\n[2/7] NC代码生成全流程测试...")
         nc = NCGenerationBenchmark()
         nc.setup()
         pipeline = nc.run_full_pipeline(n_parts=3)
@@ -187,7 +193,8 @@ class PerformanceBenchmarkRunner:
         nc.save_results(nc_path)
         logger.info(f"  -> {nc_path}")
 
-        logger.info("\n[3/3] 三视图解析性能测试...")
+        # [3/7] 三视图解析性能测试
+        logger.info("\n[3/7] 三视图解析性能测试...")
         dp = DrawingParseBenchmark()
         dp.setup()
         parse_results = dp.run_parse(n_iterations=5)
@@ -199,6 +206,58 @@ class PerformanceBenchmarkRunner:
         dp_path = str(self.output_dir / f"drawing_parse_{timestamp}.json")
         dp.save_results(dp_path)
         logger.info(f"  -> {dp_path}")
+
+        # [4/7] API接口性能测试
+        logger.info("\n[4/7] API接口性能测试...")
+        api = APIPerfBenchmark()
+        api_results = api.run_all()
+        for k, v in api_results.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info(f"  {k}: {v}")
+
+        api_path = str(self.output_dir / f"api_performance_{timestamp}.json")
+        api.save_results(api_path)
+        logger.info(f"  -> {api_path}")
+
+        # [5/7] 数据库性能测试
+        logger.info("\n[5/7] 数据库性能测试...")
+        db = DatabasePerfBenchmark()
+        db_results = db.run_all()
+        for k, v in db_results.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info(f"  {k}: {v}")
+
+        db_path = str(self.output_dir / f"database_performance_{timestamp}.json")
+        db.save_results(db_path)
+        logger.info(f"  -> {db_path}")
+
+        # [6/7] 业务逻辑性能测试
+        logger.info("\n[6/7] 业务逻辑性能测试...")
+        biz = BusinessLogicPerfBenchmark()
+        biz_results = biz.run_all()
+        for k, v in biz_results.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info(f"  {k}: {v}")
+
+        biz_path = str(self.output_dir / f"business_logic_performance_{timestamp}.json")
+        biz.save_results(biz_path)
+        logger.info(f"  -> {biz_path}")
+
+        # [7/7] 并发与压力测试
+        logger.info("\n[7/7] 并发与压力测试...")
+        conc = ConcurrencyPerfBenchmark()
+        conc_results = conc.run_all()
+        for k, v in conc_results.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info(f"  {k}: {v}")
+
+        conc_path = str(self.output_dir / f"concurrency_performance_{timestamp}.json")
+        conc.save_results(conc_path)
+        logger.info(f"  -> {conc_path}")
 
         # Save current results
         current_path = self.output_dir / f"current_results_{timestamp}.json"

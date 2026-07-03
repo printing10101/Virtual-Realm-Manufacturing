@@ -93,8 +93,8 @@ python/_test_output*.txt
 
 # 运行时生成的输出目录（模型/项目/规则/仿真/演示等）
 python/output/
-output/simulation/
-output/models/
+output/
+!output/.gitkeep
 
 # 测试追踪与日志
 test_traces/
@@ -113,6 +113,7 @@ test_logs/
 .env
 .env.*
 !.env.example
+!.env.sqlite.example
 .env.local
 .env.*.local
 .env.development
@@ -147,6 +148,9 @@ ENV/
 # 数据库文件（如包含敏感数据）
 # ============================================================
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 *.sqlite
 *.sqlite3
 

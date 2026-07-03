@@ -173,10 +173,11 @@ class TestIsPublicPath:
 
 class TestGetTokenMetadata:
     def test_missing_file_returns_default_T(self, tmp_path, monkeypatch, caplog):
+        # 安全修复 B4：fail-closed 策略——元数据文件缺失时返回 None 而非默认权限
         monkeypatch.setenv("LNN_TOKEN_META_FILE", str(tmp_path / "missing.json"))
         with caplog.at_level(logging.WARNING, logger="app.auth.unified_auth"):
             meta = _get_token_metadata("any-token")
-        assert meta == {"level": "T"}
+        assert meta is None
 
     def test_list_format_with_matching_token(self, tmp_path, monkeypatch):
         meta_file = tmp_path / "meta.json"
@@ -192,11 +193,12 @@ class TestGetTokenMetadata:
         assert _get_token_metadata("abc") == {"token": "abc", "level": "C"}
 
     def test_list_format_with_non_matching_token(self, tmp_path, monkeypatch):
+        # fail-closed：未匹配 token 时返回 None
         meta_file = tmp_path / "meta.json"
         meta_file.write_text(json.dumps([{"token": "abc", "level": "C"}]))
         monkeypatch.setenv("LNN_TOKEN_META_FILE", str(meta_file))
         meta = _get_token_metadata("nope")
-        assert meta == {"level": "T"}
+        assert meta is None
 
     def test_dict_format_with_matching_token(self, tmp_path, monkeypatch):
         meta_file = tmp_path / "meta.json"
@@ -205,18 +207,20 @@ class TestGetTokenMetadata:
         assert _get_token_metadata("abc") == {"token": "abc", "level": "B"}
 
     def test_dict_format_with_non_matching_token(self, tmp_path, monkeypatch):
+        # fail-closed：未匹配 token 时返回 None
         meta_file = tmp_path / "meta.json"
         meta_file.write_text(json.dumps({"token": "abc", "level": "B"}))
         monkeypatch.setenv("LNN_TOKEN_META_FILE", str(meta_file))
         meta = _get_token_metadata("nope")
-        assert meta == {"level": "T"}
+        assert meta is None
 
     def test_corrupt_json_returns_default(self, tmp_path, monkeypatch):
+        # fail-closed：JSON 解析失败时返回 None
         meta_file = tmp_path / "meta.json"
         meta_file.write_text("not valid json")
         monkeypatch.setenv("LNN_TOKEN_META_FILE", str(meta_file))
         meta = _get_token_metadata("any")
-        assert meta == {"level": "T"}
+        assert meta is None
 
 
 def caplog_at_level(monkeypatch, level_name: str):

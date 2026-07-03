@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 # pyserial 是可选依赖，只在需要串口时导入
 try:
@@ -63,6 +63,11 @@ class DNCConfig:
     chunk_size: int = 1024  # 每次发送的字节数
     tcp_send_delay: float = 0.01  # TCP 发送间隔（秒），避免机床缓冲区溢出
     serial_send_delay: float = 0.05  # 串口发送间隔（秒），等待机床处理
+    # 串口高级配置
+    flow_control: str = "xonxoff"  # 流控模式: "xonxoff"(软件流控), "rtscts"(硬件流控), "none"(无流控)
+    data_bits: int = 8  # 数据位: 5, 6, 7, 8
+    parity: str = "N"  # 校验位: "N"(无), "E"(偶), "O"(奇), "M"(标记), "S"(空格)
+    stop_bits: int = 1  # 停止位: 1, 1.5, 2
 
 
 @dataclass
@@ -117,13 +122,22 @@ class DNCTransfer:
         """获取当前传输状态"""
         return self._status
     
-    def send_gcode(self, gcode: str, target: DNCTarget) -> DNCResult:
+    def send_gcode(
+        self,
+        gcode: str,
+        target: DNCTarget,
+        on_progress: Optional[Callable[[int, int, float], None]] = None,
+    ) -> DNCResult:
         """发送 G-code 字符串到目标机床
-        
+
         Args:
             gcode: G-code 内容字符串
             target: 传输目标配置
-            
+            on_progress: 进度回调函数，签名为 (bytes_sent, total_bytes, progress_pct)
+                - bytes_sent: 已发送字节数
+                - total_bytes: 总字节数
+                - progress_pct: 进度百分比 (0.0 ~ 100.0)
+
         Returns:
             DNCResult: 传输结果
         """
@@ -148,12 +162,14 @@ class DNCTransfer:
             
             # 准备 G-code（添加控制器特定的头部和尾部）
             prepared_gcode = self._prepare_gcode(gcode, target.controller_type)
-            
-            # 发送数据
+            data_bytes = prepared_gcode.encode("utf-8")
+            total_bytes = len(data_bytes)
+
+            # 发送数据（带进度回调）
             if target.protocol == Protocol.TCP:
-                bytes_sent = self._send_tcp(prepared_gcode.encode("utf-8"))
+                bytes_sent = self._send_tcp(data_bytes, on_progress, total_bytes)
             else:
-                bytes_sent = self._send_serial(prepared_gcode.encode("utf-8"))
+                bytes_sent = self._send_serial(data_bytes, on_progress, total_bytes)
             
             self._status = DNCStatus.COMPLETE
             duration = time.time() - start_time
@@ -264,30 +280,65 @@ class DNCTransfer:
             raise RuntimeError(
                 "pyserial 未安装。请运行: pip install pyserial"
             )
-        
+
         try:
+            # 解析数据位
+            data_bits_map = {5: serial.FIVEBITS, 6: serial.SIXBITS, 7: serial.SEVENBITS, 8: serial.EIGHTBITS}
+            data_bits = data_bits_map.get(self.config.data_bits, serial.EIGHTBITS)
+
+            # 解析校验位
+            parity_map = {"N": serial.PARITY_NONE, "E": serial.PARITY_EVEN, "O": serial.PARITY_ODD,
+                         "M": serial.PARITY_MARK, "S": serial.PARITY_SPACE}
+            parity = parity_map.get(self.config.parity.upper(), serial.PARITY_NONE)
+
+            # 解析停止位
+            stop_bits_map = {1: serial.STOPBITS_ONE, 1.5: serial.STOPBITS_ONE_POINT_FIVE, 2: serial.STOPBITS_TWO}
+            stop_bits = stop_bits_map.get(self.config.stop_bits, serial.STOPBITS_ONE)
+
+            # 根据流控模式配置
+            flow = self.config.flow_control.lower()
+            xonxoff = (flow == "xonxoff")
+            rtscts = (flow == "rtscts")
+            dsrdtr = (flow == "dsrdtr")
+
             # 对于串口，host 应该是串口名称（如 COM1 或 /dev/ttyUSB0）
             self._serial = serial.Serial(
                 port=target.host,
                 baudrate=target.baud_rate,
                 timeout=self.config.timeout,
-                bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE,
-                xonxoff=True  # 启用 XON/XOFF 流控
+                bytesize=data_bits,
+                parity=parity,
+                stopbits=stop_bits,
+                xonxoff=xonxoff,
+                rtscts=rtscts,
+                dsrdtr=dsrdtr,
             )
-            logger.debug("串口连接已建立: %s @ %d", target.host, target.baud_rate)
+            logger.debug("串口连接已建立: %s @ %d (流控: %s, %d%s%s)",
+                        target.host, target.baud_rate, self.config.flow_control,
+                        self.config.data_bits, self.config.parity, self.config.stop_bits)
         except serial.SerialException as e:
             raise ConnectionError(f"串口连接失败: {str(e)}")
     
-    def _send_tcp(self, data: bytes) -> int:
-        """通过 TCP 发送数据"""
+    def _send_tcp(
+        self,
+        data: bytes,
+        on_progress: Optional[Callable[[int, int, float], None]] = None,
+        total_bytes: Optional[int] = None,
+    ) -> int:
+        """通过 TCP 发送数据
+
+        Args:
+            data: 待发送的数据
+            on_progress: 进度回调函数
+            total_bytes: 总字节数（用于计算进度百分比）
+        """
         if not self._socket:
             raise RuntimeError("TCP 连接未建立")
-        
+
         total_sent = 0
         data_len = len(data)
-        
+        report_total = total_bytes if total_bytes is not None else data_len
+
         while total_sent < data_len:
             chunk = data[total_sent:total_sent + self.config.chunk_size]
             sent = self._socket.send(chunk)
@@ -295,31 +346,59 @@ class DNCTransfer:
                 raise ConnectionError("TCP 连接中断")
             total_sent += sent
             logger.debug("已发送 %d/%d 字节", total_sent, data_len)
-            
+
+            # 触发进度回调
+            if on_progress is not None:
+                progress_pct = (total_sent / report_total * 100.0) if report_total > 0 else 0.0
+                try:
+                    on_progress(total_sent, report_total, progress_pct)
+                except Exception as cb_err:
+                    logger.warning("进度回调执行失败: %s", cb_err)
+
             # 使用配置的延迟时间，避免机床缓冲区溢出
             if self.config.tcp_send_delay > 0:
                 time.sleep(self.config.tcp_send_delay)
-        
+
         return total_sent
     
-    def _send_serial(self, data: bytes) -> int:
-        """通过串口发送数据"""
+    def _send_serial(
+        self,
+        data: bytes,
+        on_progress: Optional[Callable[[int, int, float], None]] = None,
+        total_bytes: Optional[int] = None,
+    ) -> int:
+        """通过串口发送数据
+
+        Args:
+            data: 待发送的数据
+            on_progress: 进度回调函数
+            total_bytes: 总字节数（用于计算进度百分比）
+        """
         if not self._serial:
             raise RuntimeError("串口连接未建立")
-        
+
         total_sent = 0
         data_len = len(data)
-        
+        report_total = total_bytes if total_bytes is not None else data_len
+
         while total_sent < data_len:
             chunk = data[total_sent:total_sent + self.config.chunk_size]
             sent = self._serial.write(chunk)
             total_sent += sent
             logger.debug("已发送 %d/%d 字节", total_sent, data_len)
-            
+
+            # 触发进度回调
+            if on_progress is not None:
+                progress_pct = (total_sent / report_total * 100.0) if report_total > 0 else 0.0
+                try:
+                    on_progress(total_sent, report_total, progress_pct)
+                except Exception as cb_err:
+                    logger.warning("进度回调执行失败: %s", cb_err)
+
             # 使用配置的延迟时间，等待机床处理
             if self.config.serial_send_delay > 0:
                 time.sleep(self.config.serial_send_delay)
-        
+
         return total_sent
     
     def _disconnect(self) -> None:

@@ -153,7 +153,7 @@ git lfs pull
 | `*.bin` | 二进制数据文件 |
 | `data/traces/**` | 加工轨迹数据 |
 | `uniwear-dataset-main/**/*.csv` | UniWear 刀具磨损数据集 |
-| `CNC_Machining-main/**` | CNC 加工数据集 |
+| `data/external/cnc_machining/**` | CNC 加工数据集 |
 
 ### 新增大型文件
 

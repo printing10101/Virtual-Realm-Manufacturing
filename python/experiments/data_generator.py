@@ -1,6 +1,16 @@
 """
 数据生成器模块
 实现合成数据生成（Tlusty公式）和数据集加载
+
+数据来源说明：
+    - PHM2010Dataset：加载真实 PHM2010 刀具磨损数据集（PHM Society 2010 竞赛数据）
+      输入特征从 7 个真实信号通道（force_x/y/z, vibration_x/y/z, acoustic_emission_rms）
+      按时间窗口提取统计量得到；颤振稳定性标签由 Tlusty 解析模型基于信号能量派生，
+      因 PHM2010 数据集本身不包含颤振标签（仅含刀具磨损标签 tool_wear）。
+    - SyntheticChatterDataset / IndustrialChatterDataset：纯合成数据，用于对照实验。
+    - NUAADataset / NISTDataset / Benchmark1Dataset / Industrial6061T6Dataset：
+      基于 Tlusty 解析模型的合成数据，仅在缺乏对应公开真实数据集时作为占位实现，
+      不可在论文中声称对应真实数据集实验结果。
 """
 
 import numpy as np
@@ -8,6 +18,16 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from typing import Tuple, Dict, List, Optional
 import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+# PHM2010 真实数据默认路径（相对项目根目录）
+_PHM2010_DEFAULT_DATA_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "data",
+    "uniwear",
+)
 
 
 class TlustyAnalyticalModel:
@@ -238,72 +258,343 @@ class SyntheticChatterDataset(Dataset):
 
 
 class PHM2010Dataset(Dataset):
+    """PHM2010 公开数据集（真实数据加载实现）。
+
+    数据来源：PHM Society 2010 刀具磨损预测竞赛数据集
+    （不锈钢 HRC52，3 组实验 c1/c4/c6，共 104675 个时间点）。
+
+    重要说明（学术诚信）：
+        PHM2010 数据集本身是**刀具磨损预测**任务数据集，不包含颤振稳定性标签。
+        本类按以下方式构造训练样本：
+          1. 输入特征：从 7 个真实信号通道（force_x/y/z, vibration_x/y/z,
+             acoustic_emission_rms）按时间窗口提取 6 维统计特征；
+          2. 极限切深标签 a_lim：由 Tlusty 解析模型基于振动能量派生
+             （振动能量越大，a_lim 越小）；
+          3. 稳定性标签：基于 a_lim 阈值判定。
+        因此，本数据集的**输入特征来自真实 PHM2010 信号**，但**颤振标签
+        是基于物理模型派生的代理标签**，并非实测颤振标签。在论文中应明确
+        标注此数据派生关系，避免误导读者认为使用了 PHM2010 原始颤振标签。
+
+    特征维度：
+        6 维（与 predictor.py 中 ChatterPredictor 的 input_size=6 对齐）：
+          - force_rms：合力 RMS（归一化）
+          - vibration_rms：合振动 RMS（归一化）
+          - ae_rms：声发射 RMS（归一化）
+          - force_std：合力标准差（归一化）
+          - vibration_std：合振动标准差（归一化）
+          - tool_wear_norm：刀具磨损值（归一化到 [0, 1]）
+
+    输出：
+        __getitem__ 返回 (features, a_lim, a_lim_physics) 三元组
+        （与其他数据集类保持接口一致）。
     """
-    PHM2010 公开数据集
-    铣削加工颤振数据
-    """
-    
+
+    # PHM2010 真实信号的 7 个通道
+    _SIGNAL_COLUMNS = [
+        "force_x", "force_y", "force_z",
+        "vibration_x", "vibration_y", "vibration_z",
+        "acoustic_emission_rms",
+    ]
+
     def __init__(
         self,
         num_samples: int = 2000,
         noise_level: float = 0.05,
-        seed: int = 42
+        seed: int = 42,
+        window_size: int = 500,
+        data_dir: Optional[str] = None,
     ):
+        """初始化 PHM2010 数据集。
+
+        Args:
+            num_samples: 期望的样本数上限（实际样本数由真实数据窗口数决定，
+                若真实数据窗口数大于 num_samples，则随机采样至 num_samples；
+                若小于，则使用全部窗口）。
+            noise_level: 标签噪声水平（保留用于兼容父类签名，
+                实际噪声来自真实信号本身的统计波动）。
+            seed: 随机种子（用于窗口采样）。
+            window_size: 信号窗口大小（每个样本包含的时间点数）。
+            data_dir: PHM2010 数据文件目录，默认使用
+                ``python/data/uniwear/``。
+        """
         super().__init__()
         self.num_samples = num_samples
         self.noise_level = noise_level
+        self.window_size = window_size
         self.dataset_name = "PHM2010"
-        
+
         np.random.seed(seed)
-        self.data = self._generate_data()
-    
-    def _generate_data(self) -> Dict[str, np.ndarray]:
-        """生成PHM2010风格数据"""
-        # PHM2010参数范围
+        self.data = self._load_real_data(data_dir)
+
+    def _load_real_data(self, data_dir: Optional[str]) -> Dict[str, np.ndarray]:
+        """加载真实 PHM2010 数据并构造训练样本。
+
+        Args:
+            data_dir: 数据目录路径
+
+        Returns:
+            包含 features / a_lim / a_lim_clean / stability 等键的字典
+        """
+        try:
+            from app.data.uniwear_loader import (
+                UniwearDataLoader,
+                UniwearDataset,
+                PHM2010_SIGNAL_COLUMNS,
+            )
+        except ImportError as e:
+            logger.warning(
+                "无法导入 UniwearDataLoader，PHM2010Dataset 回退到合成数据: %s", e
+            )
+            return self._fallback_synthetic()
+
+        # 解析数据目录（默认使用项目内 python/data/uniwear/）
+        if data_dir is None:
+            data_dir = _PHM2010_DEFAULT_DATA_DIR
+
+        try:
+            loader = UniwearDataLoader(data_dir=data_dir)
+            df = loader.load_dataset(UniwearDataset.PHM2010, use_cache=False)
+        except (FileNotFoundError, OSError, ValueError) as e:
+            logger.warning(
+                "加载真实 PHM2010 数据失败，回退到合成数据: %s", e
+            )
+            return self._fallback_synthetic()
+
+        # 校验信号列是否存在
+        available_cols = [c for c in self._SIGNAL_COLUMNS if c in df.columns]
+        if len(available_cols) != len(self._SIGNAL_COLUMNS):
+            logger.warning(
+                "PHM2010 数据缺少信号列，缺失列: %s",
+                set(self._SIGNAL_COLUMNS) - set(available_cols),
+            )
+
+        # 按 experiment_tag 分组提取窗口特征
+        features_list: List[np.ndarray] = []
+        a_lim_clean_list: List[float] = []
+        tool_wear_list: List[float] = []
+
+        experiment_tags = (
+            sorted(df["experiment_tag"].dropna().unique())
+            if "experiment_tag" in df.columns
+            else [None]
+        )
+
+        for tag in experiment_tags:
+            if tag is not None:
+                exp_df = df[df["experiment_tag"] == tag].reset_index(drop=True)
+            else:
+                exp_df = df.reset_index(drop=True)
+
+            if len(exp_df) < self.window_size:
+                continue
+
+            # 滑动窗口提取样本
+            num_windows = len(exp_df) // self.window_size
+            for w_idx in range(num_windows):
+                start = w_idx * self.window_size
+                end = start + self.window_size
+                window = exp_df.iloc[start:end]
+
+                feats = self._extract_window_features(window)
+                if feats is None:
+                    continue
+
+                features_list.append(feats)
+                # 振动能量越大，a_lim 越小（物理约束）
+                vib_energy = feats[1]  # vibration_rms（已归一化）
+                # 反比关系 + 物理基准值 5mm
+                a_lim_val = max(0.1, 5.0 * (1.0 - 0.8 * vib_energy))
+                a_lim_clean_list.append(float(a_lim_val))
+
+                # 窗口末尾的 tool_wear 值
+                if "tool_wear" in window.columns:
+                    tw = float(window["tool_wear"].iloc[-1])
+                else:
+                    tw = 0.0
+                tool_wear_list.append(tw)
+
+        if not features_list:
+            logger.warning(
+                "PHM2010 真实数据未提取到任何窗口样本，回退到合成数据"
+            )
+            return self._fallback_synthetic()
+
+        features_arr = np.array(features_list, dtype=np.float32)
+        a_lim_clean_arr = np.array(a_lim_clean_list, dtype=np.float32)
+        tool_wear_arr = np.array(tool_wear_list, dtype=np.float32)
+
+        # 限制样本数量
+        if len(features_arr) > self.num_samples:
+            rng = np.random.default_rng(42)
+            indices = rng.choice(
+                len(features_arr), size=self.num_samples, replace=False
+            )
+            features_arr = features_arr[indices]
+            a_lim_clean_arr = a_lim_clean_arr[indices]
+            tool_wear_arr = tool_wear_arr[indices]
+
+        # 真实信号本身的统计波动即为"噪声"，不再添加合成高斯噪声
+        # 但保留 noise_level 参数对 a_lim 的轻微扰动以维持接口兼容
+        a_lim_arr = a_lim_clean_arr * (
+            1.0 + np.random.randn(len(a_lim_clean_arr)) * self.noise_level * 0.1
+        )
+        a_lim_arr = np.maximum(a_lim_arr, 0.01).astype(np.float32)
+
+        # 稳定性标签：以 a_lim 中位数为阈值
+        threshold = float(np.median(a_lim_arr))
+        stability = (a_lim_arr < threshold).astype(np.int64)
+
+        logger.info(
+            "PHM2010Dataset 加载真实数据: %d 样本, %d 实验组, 特征维度=%d",
+            len(features_arr),
+            len(experiment_tags),
+            features_arr.shape[1],
+        )
+
+        return {
+            "features": features_arr,
+            "a_lim": a_lim_arr,
+            "a_lim_clean": a_lim_clean_arr,
+            "stability": stability,
+            "tool_wear": tool_wear_arr,
+            "experiment_tags": list(experiment_tags),
+            "data_source": "real_PHM2010",
+        }
+
+    def _extract_window_features(self, window) -> Optional[np.ndarray]:
+        """从信号窗口提取 6 维统计特征（归一化）。
+
+        Args:
+            window: 包含信号列的 DataFrame 切片
+
+        Returns:
+            6 维特征向量（float32），如无法提取返回 None
+        """
+        try:
+            # 合力 RMS
+            force_cols = [c for c in ["force_x", "force_y", "force_z"] if c in window.columns]
+            if force_cols:
+                force_mag = np.sqrt(
+                    sum(window[c].values ** 2 for c in force_cols)
+                )
+                force_rms = float(np.sqrt(np.mean(force_mag ** 2)))
+                force_std = float(np.std(force_mag))
+            else:
+                return None
+
+            # 合振动 RMS
+            vib_cols = [
+                c for c in ["vibration_x", "vibration_y", "vibration_z"]
+                if c in window.columns
+            ]
+            if vib_cols:
+                vib_mag = np.sqrt(
+                    sum(window[c].values ** 2 for c in vib_cols)
+                )
+                vib_rms = float(np.sqrt(np.mean(vib_mag ** 2)))
+                vib_std = float(np.std(vib_mag))
+            else:
+                return None
+
+            # 声发射 RMS
+            if "acoustic_emission_rms" in window.columns:
+                ae_rms = float(
+                    np.sqrt(np.mean(window["acoustic_emission_rms"].values ** 2))
+                )
+            else:
+                ae_rms = 0.0
+
+            # 刀具磨损值
+            if "tool_wear" in window.columns:
+                tw = float(window["tool_wear"].iloc[-1])
+            else:
+                tw = 0.0
+
+            # 归一化（基于典型量级，保持与 predictor.py 归一化范围一致）
+            features = np.array([
+                force_rms / 10.0,        # 合力 RMS 归一化
+                vib_rms / 5.0,            # 合振动 RMS 归一化
+                ae_rms / 2.0,             # 声发射 RMS 归一化
+                force_std / 10.0,         # 合力标准差归一化
+                vib_std / 5.0,            # 合振动标准差归一化
+                min(tw / 200.0, 1.0),     # 刀具磨损归一化到 [0, 1]
+            ], dtype=np.float32)
+
+            # 处理可能的 NaN/Inf
+            if not np.all(np.isfinite(features)):
+                return None
+
+            return features
+
+        except (KeyError, ValueError, TypeError) as e:
+            logger.debug("窗口特征提取失败: %s", e)
+            return None
+
+    def _fallback_synthetic(self) -> Dict[str, np.ndarray]:
+        """真实数据不可用时的合成数据回退实现。
+
+        保留原 Tlusty 合成数据逻辑作为兜底，确保数据集类在缺少真实
+        数据文件时仍可实例化（用于 CI 测试等场景）。回退时会在日志中
+        明确警告，避免在论文实验中误用合成数据。
+        """
+        logger.warning(
+            "PHM2010Dataset 使用合成数据回退实现，"
+            "不可用于论文实验结果！请检查数据文件路径。"
+        )
         spindle_speed = np.random.uniform(3000, 9000, self.num_samples)
         axial_depth = np.random.uniform(0.5, 8.0, self.num_samples)
-        
+
         tlusty_model = TlustyAnalyticalModel(
             stiffness=1.2e6,
             modal_mass=120.0,
-            damping_ratio=0.06
+            damping_ratio=0.06,
         )
-        
         a_lim_clean = tlusty_model.compute_limiting_depth(spindle_speed)
         a_lim = a_lim_clean * (1 + np.random.randn(self.num_samples) * self.noise_level)
         a_lim = np.maximum(a_lim, 0.01)
-        
-        stability = (axial_depth > a_lim).astype(int)
-        
+
+        # 6 维合成特征（与真实实现特征维度一致）
         features = np.column_stack([
-            spindle_speed / 10000,
-            axial_depth / 10
-        ])
-        
+            spindle_speed / 9000.0,
+            np.zeros_like(spindle_speed),  # 占位：vibration_rms
+            np.zeros_like(spindle_speed),  # 占位：ae_rms
+            np.zeros_like(spindle_speed),  # 占位：force_std
+            np.zeros_like(spindle_speed),  # 占位：vib_std
+            np.zeros_like(spindle_speed),  # 占位：tool_wear
+        ]).astype(np.float32)
+
+        stability = (axial_depth > a_lim).astype(np.int64)
+
         return {
-            'features': features.astype(np.float32),
-            'spindle_speed': spindle_speed.astype(np.float32),
-            'axial_depth': axial_depth.astype(np.float32),
-            'a_lim': a_lim.astype(np.float32),
-            'stability': stability.astype(np.int64),
-            'a_lim_clean': a_lim_clean.astype(np.float32)
+            "features": features,
+            "spindle_speed": spindle_speed.astype(np.float32),
+            "axial_depth": axial_depth.astype(np.float32),
+            "a_lim": a_lim.astype(np.float32),
+            "a_lim_clean": a_lim_clean.astype(np.float32),
+            "stability": stability,
+            "data_source": "synthetic_fallback",
         }
-    
+
     def __len__(self) -> int:
-        return self.num_samples
-    
+        return len(self.data["features"])
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        features = torch.from_numpy(self.data['features'][idx])
-        a_lim = torch.from_numpy(np.array([self.data['a_lim'][idx]]))
-        a_lim_physics = torch.from_numpy(np.array([self.data['a_lim_clean'][idx]]))
-        
+        features = torch.from_numpy(self.data["features"][idx])
+        a_lim = torch.from_numpy(np.array([self.data["a_lim"][idx]]))
+        a_lim_physics = torch.from_numpy(np.array([self.data["a_lim_clean"][idx]]))
+
         return features, a_lim, a_lim_physics
 
 
 class NUAADataset(Dataset):
     """
-    NUAA 数据集
-    南京航空航天大学铣削数据
+    NUAA 数据集（合成数据占位实现）。
+
+    学术诚信说明：
+        本类**不加载真实 NUAA 数据集**，而是使用 TlustyAnalyticalModel
+        生成合成数据。仅用于对照实验和接口兼容，**不可在论文中声称
+        对应真实 NUAA 数据集实验结果**。如需使用真实 NUAA 数据，
+        请参考 app/data/uniwear_loader.py 中的 UniwearDataLoader。
     """
     
     def __init__(
@@ -364,8 +655,12 @@ class NUAADataset(Dataset):
 
 class NISTDataset(Dataset):
     """
-    NIST 数据集
-    美国国家标准与技术研究院数据
+    NIST 数据集（合成数据占位实现）。
+
+    学术诚信说明：
+        本类**不加载真实 NIST 数据集**，而是使用 TlustyAnalyticalModel
+        生成合成数据。仅用于对照实验和接口兼容，**不可在论文中声称
+        对应真实 NIST 数据集实验结果**。
     """
     
     def __init__(
@@ -426,8 +721,12 @@ class NISTDataset(Dataset):
 
 class Benchmark1Dataset(Dataset):
     """
-    Benchmark-1 数据集
-    国际基准测试数据
+    Benchmark-1 数据集（合成数据占位实现）。
+
+    学术诚信说明：
+        本类**不加载真实 Benchmark-1 数据集**，而是使用 TlustyAnalyticalModel
+        生成合成数据。仅用于对照实验和接口兼容，**不可在论文中声称
+        对应真实 Benchmark-1 数据集实验结果**。
     """
     
     def __init__(
@@ -488,8 +787,13 @@ class Benchmark1Dataset(Dataset):
 
 class Industrial6061T6Dataset(Dataset):
     """
-    自采 6061-T6 工业数据集
-    实际加工现场采集数据
+    自采 6061-T6 工业数据集（合成数据占位实现）。
+
+    学术诚信说明：
+        本类**不加载真实自采 6061-T6 数据**，而是使用 TlustyAnalyticalModel
+        生成合成数据。仅用于对照实验和接口兼容，**不可在论文中声称
+        对应真实自采数据集实验结果**。如需使用真实自采数据，应通过
+        ``data_dir`` 参数指向真实数据文件路径。
     """
     
     def __init__(

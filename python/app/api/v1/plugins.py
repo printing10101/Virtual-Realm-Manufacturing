@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.auth.permissions import require_permission
 from app.capability.capability_gating import CapabilityGatekeeper
 from app.plugins.plugin_system import (
     PluginStatus,
@@ -12,7 +13,8 @@ from app.plugins.plugin_system import (
     get_plugin_manager,
 )
 from app.plugins.plugin_worker import PluginWorkerManager, WorkerConfig
-from app.core.response import error, success
+from app.core.response import ErrorCode, error, success
+from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +69,10 @@ def list_installed_plugins(
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.list_installed", fallback="插件列表查询失败，请稍后重试")
+        logger.error("[plugins.list_installed] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.get("/{plugin_id}")
@@ -102,8 +106,10 @@ def get_plugin_detail(plugin_id: str):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.get_detail", fallback="插件详情查询失败，请稍后重试")
+        logger.error("[plugins.get_detail] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/{plugin_id}/enable")
@@ -117,8 +123,10 @@ def enable_plugin(plugin_id: str):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.enable", fallback="插件启用失败，请稍后重试")
+        logger.error("[plugins.enable] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/{plugin_id}/disable")
@@ -132,8 +140,10 @@ def disable_plugin(plugin_id: str):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.disable", fallback="插件禁用失败，请稍后重试")
+        logger.error("[plugins.disable] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/{plugin_id}/reload")
@@ -147,8 +157,10 @@ def reload_plugin(plugin_id: str):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.reload", fallback="插件重载失败，请稍后重试")
+        logger.error("[plugins.reload] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.delete("/{plugin_id}")
@@ -162,12 +174,21 @@ def uninstall_plugin(plugin_id: str):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.uninstall", fallback="插件卸载失败，请稍后重试")
+        logger.error("[plugins.uninstall] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.put("/{plugin_id}/config")
-def update_plugin_config(plugin_id: str, config: Dict[str, Any]):
+def update_plugin_config(
+    plugin_id: str,
+    config: Dict[str, Any],
+    _perm: None = Depends(require_permission("plugin:config:update")),
+):
+    # 修复 [B22]：原端点无认证 + 弱验证，任意未登录调用方可修改任意插件配置。
+    # 通过 Depends(require_permission("plugin:config:update")) 强制认证 + 权限校验，
+    # 未登录调用方将得到 401，权限不足将得到 403。
     try:
         manager = get_plugin_manager()
         manager._registry.update_config(plugin_id, config)
@@ -177,8 +198,10 @@ def update_plugin_config(plugin_id: str, config: Dict[str, Any]):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.update_config", fallback="插件配置更新失败，请稍后重试")
+        logger.error("[plugins.update_config] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.get("/{plugin_id}/dependencies")
@@ -199,8 +222,10 @@ def get_plugin_dependencies(plugin_id: str):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.get_dependencies", fallback="插件依赖查询失败，请稍后重试")
+        logger.error("[plugins.get_dependencies] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.get("/{plugin_id}/logs")
@@ -232,8 +257,10 @@ def get_plugin_capabilities(plugin_id: str):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.get_capabilities", fallback="插件能力查询失败，请稍后重试")
+        logger.error("[plugins.get_capabilities] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.put("/{plugin_id}/capabilities/{capability}")
@@ -243,7 +270,11 @@ def update_capability_grant(
     file_rules: Optional[List[Dict]] = None,
     network_rules: Optional[List[Dict]] = None,
     gpu_limits: Optional[Dict] = None,
+    _perm: None = Depends(require_permission("plugin:capability:manage")),
 ):
+    # 修复 [B21]：原端点无认证，任意未登录调用方可修改插件能力授权规则。
+    # 通过 Depends(require_permission("plugin:capability:manage")) 强制认证 + 权限校验，
+    # 未登录调用方将得到 401，权限不足将得到 403。
     try:
         gatekeeper = CapabilityGatekeeper.get_instance()
         gatekeeper.update_grant_rules(
@@ -257,8 +288,10 @@ def update_capability_grant(
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.update_capability", fallback="插件能力规则更新失败，请稍后重试")
+        logger.error("[plugins.update_capability] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.get("/workers")
@@ -270,8 +303,10 @@ def list_workers():
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.list_workers", fallback="工作进程列表查询失败，请稍后重试")
+        logger.error("[plugins.list_workers] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/workers/{plugin_id}/start")
@@ -293,8 +328,10 @@ def start_worker(plugin_id: str):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.start_worker", fallback="工作进程启动失败，请稍后重试")
+        logger.error("[plugins.start_worker] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.post("/workers/{plugin_id}/stop")
@@ -306,8 +343,10 @@ def stop_worker(plugin_id: str):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.stop_worker", fallback="工作进程停止失败，请稍后重试")
+        logger.error("[plugins.stop_worker] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
 @router.get("/health")
@@ -319,5 +358,7 @@ def health_check(plugin_id: Optional[str] = None):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
-        logger.error("plugins API unexpected error: %s", e, exc_info=True)
-        return error(str(e), code=500)
+        # 使用安全错误消息，避免泄露内部异常详情
+        safe = safe_error_message(e, context="plugins.health_check", fallback="健康检查失败，请稍后重试")
+        logger.error("[plugins.health_check] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})

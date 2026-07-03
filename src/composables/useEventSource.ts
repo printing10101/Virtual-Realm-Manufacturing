@@ -3,7 +3,8 @@
  * 提供连接、重连、事件处理等完整功能
  */
 
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, unref, type Ref } from 'vue'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 /** SSE事件负载数据结构 */
 export interface SSEEventData {
@@ -40,7 +41,7 @@ export interface UseEventSourceReturn {
   reset: () => void
 }
 
-export function useEventSource(jobId: string, options: UseEventSourceOptions = {}): UseEventSourceReturn {
+export function useEventSource(jobId: string | Ref<string>, options: UseEventSourceOptions = {}): UseEventSourceReturn {
   const {
     autoReconnect = true,
     maxRetries = 10,
@@ -65,14 +66,14 @@ export function useEventSource(jobId: string, options: UseEventSourceOptions = {
    * @returns SSE流地址
    */
   const getEventSourceUrl = (): string => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
-    return `${baseUrl}/api/v1/jobs/${jobId}/stream`
+    return buildApiPath(API_CONFIG.JOBS, `/${unref(jobId)}/stream`)
   }
 
   /**
    * 建立SSE连接
    */
   const connect = (): void => {
+    if (!jobId) return
     if (eventSource) {
       close()
     }

@@ -34,7 +34,7 @@ class FanucPostProcessor(BasePostProcessor):
     def __init__(
         self,
         decimal_places: int = 3,
-        safe_z_height: float = 50.0,
+        safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
@@ -75,7 +75,7 @@ class FanucPostProcessor(BasePostProcessor):
             f"T{tool_id:02d} M06",
             f"G00 G90 {wcs} X0. Y0.",
             f"G43 Z{self._fmt(self.safe_z_height)} H{tool_id:02d}",
-            f"G01 Z{self._fmt(length_comp)} F{feed}",
+            f"G01 Z{self._fmt(self.safe_z_height)} F{feed}",
         ]
         if radius_comp != 0.0:
             lines.append(f"M03 S{default_rpm}")
@@ -131,7 +131,7 @@ class FanucPostProcessor(BasePostProcessor):
             dwell_ms = int(dwell * 1000)
             lines = [
                 f"{retract_mode} {cycle_code} X{self._fmt(x)} Y{self._fmt(y)} "
-                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"Z{self._fmt(z)} R{self._fmt(r_plane)} "
                 f"Q{self._fmt(peck_depth)} P{dwell_ms} "
                 f"F{drill_feed}",
                 "G80",
@@ -139,7 +139,7 @@ class FanucPostProcessor(BasePostProcessor):
         else:
             lines = [
                 f"{retract_mode} {cycle_code} X{self._fmt(x)} Y{self._fmt(y)} "
-                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"Z{self._fmt(z)} R{self._fmt(r_plane)} "
                 f"Q{self._fmt(peck_depth)} "
                 f"F{drill_feed}",
                 "G80",
@@ -171,7 +171,7 @@ class FanucPostProcessor(BasePostProcessor):
         lines = [
             f"{spindle_dir} S{int(rpm)}",
             f"G99 G84 X{self._fmt(x)} Y{self._fmt(y)} "
-            f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+            f"Z{self._fmt(z)} R{self._fmt(r_plane)} "
             f"F{self._fmt(tap_feed)}",
         ]
         if dwell_ms > 0:
@@ -200,7 +200,7 @@ class FanucPostProcessor(BasePostProcessor):
         if cycle_type == "G86":
             lines.append(
                 f"{retract_mode} G86 X{self._fmt(x)} Y{self._fmt(y)} "
-                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"Z{self._fmt(z)} R{self._fmt(r_plane)} "
                 f"F{bore_feed}"
             )
             if dwell_ms > 0:
@@ -208,13 +208,13 @@ class FanucPostProcessor(BasePostProcessor):
         elif cycle_type == "G89":
             lines.append(
                 f"{retract_mode} G89 X{self._fmt(x)} Y{self._fmt(y)} "
-                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"Z{self._fmt(z)} R{self._fmt(r_plane)} "
                 f"P{dwell_ms} F{bore_feed}"
             )
         else:
             lines.append(
                 f"{retract_mode} G86 X{self._fmt(x)} Y{self._fmt(y)} "
-                f"Z{self._fmt(-abs(depth))} R{self._fmt(r_plane)} "
+                f"Z{self._fmt(z)} R{self._fmt(r_plane)} "
                 f"F{bore_feed}"
             )
 

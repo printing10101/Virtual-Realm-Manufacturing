@@ -485,13 +485,14 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '@/utils/http'
-import { setLocale, type SupportedLocale } from '@/i18n'
 import ConfidenceIndicator from '@/components/ConfidenceIndicator.vue'
 import AcceptModifyReject from '@/components/AcceptModifyReject.vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useEventSource } from '@/composables/useEventSource'
 import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
+import { API_CONFIG, buildApiPath } from '@/config/api'
 
 const settingsStore = useSettingsStore()
 const { t } = useI18n()
@@ -502,7 +503,7 @@ const dryRunning = ref(false)
 const trainPlanConfirmed = ref(false)
 
 interface PredictResponse {
-  value: number | number[]
+  value: string | number | number[]
   confidence?: number
   reasoning?: string
   inference_time: number
@@ -571,16 +572,22 @@ const trainForm = reactive({
   device: 'auto',
 })
 
+interface PredictionParams {
+  value: string | number
+  confidence: number
+  [key: string]: string | number | boolean | null | undefined
+}
+
 const predictResponse = ref<PredictResponse | null>(null)
 const dryRunResult = ref<DryRunResult | null>(null)
 const trainResult = ref<TrainResult | null>(null)
 const modelList = ref<ModelInfo[]>([])
-const modifiedPrediction = ref<Record<string, unknown>>({})
+const modifiedPrediction = ref<PredictionParams>({ value: '', confidence: 0 })
 const showAdjustedResult = ref(false)
 
 const currentJobId = ref<string | null>(null)
 const sseJobId = ref('')
-const sse = reactive(useEventSource(sseJobId.value, { autoReconnect: true, maxRetries: 10 }))
+const sse = reactive(useEventSource(sseJobId, { autoReconnect: true, maxRetries: 10 }))
 const cancelling = ref(false)
 const lossChartCanvas = ref<HTMLCanvasElement | null>(null)
 
@@ -665,8 +672,8 @@ function drawLossChart() {
     ctx.fillText(label, width - padding + 5, padding)
   }
 
-  drawLine(lossHistory.value, 'var(--accent-primary)', 'Train Loss')
-  drawLine(valLossHistory.value, 'var(--warning)', 'Val Loss')
+  drawLine(lossHistory.value, '#8B7D6B', 'Train Loss')
+  drawLine(valLossHistory.value, '#D4A857', 'Val Loss')
 }
 
 const lossHistory = computed(() => {
@@ -697,13 +704,13 @@ async function handlePredict() {
   try {
     // 输入验证
     if (!predictForm.modelName || predictForm.modelName.trim() === '') {
-      ElMessage.error('请选择模型')
+      ElMessage.error(t('workspace.msgSelectModel'))
       predicting.value = false
       return
     }
 
     if (!predictForm.inputData || predictForm.inputData.trim() === '') {
-      ElMessage.error('请输入推理数据')
+      ElMessage.error(t('workspace.msgInputData'))
       predicting.value = false
       return
     }
@@ -717,13 +724,13 @@ async function handlePredict() {
     // 检查是否有无效数字
     const hasInvalidNumbers = inputArray.some(num => isNaN(num))
     if (hasInvalidNumbers) {
-      ElMessage.error('输入数据包含无效数字，请检查输入格式')
+      ElMessage.error(t('workspace.msgInvalidNumber'))
       predicting.value = false
       return
     }
 
     if (inputArray.length === 0) {
-      ElMessage.error('输入数据不能为空')
+      ElMessage.error(t('workspace.msgEmptyInput'))
       predicting.value = false
       return
     }
@@ -731,12 +738,12 @@ async function handlePredict() {
     // 验证数值范围（可选，根据业务需求调整）
     const hasOutOfRangeValues = inputArray.some(num => !isFinite(num) || Math.abs(num) > 1e10)
     if (hasOutOfRangeValues) {
-      ElMessage.error('输入数值超出有效范围')
+      ElMessage.error(t('workspace.msgOutOfRange'))
       predicting.value = false
       return
     }
 
-    const res = await http.post('/api/v1/lnn/predict', {
+    const res = await http.post(buildApiPath(API_CONFIG.LNN, '/predict'), {
       model_name: predictForm.modelName,
       input_data: inputArray,
       return_confidence: predictForm.returnConfidence,
@@ -744,14 +751,14 @@ async function handlePredict() {
 
     // 响应结构验证
     if (!res.data || !res.data.data) {
-      throw new Error('响应数据格式错误')
+      throw new Error(t('workspace.errMsgFormat'))
     }
 
     const responseData = res.data.data as PredictResponse
 
     // 验证必要字段
     if (responseData.value === undefined || responseData.value === null) {
-      throw new Error('响应缺少预测结果')
+      throw new Error(t('workspace.errMsgMissingResult'))
     }
 
     if (responseData.inference_time === undefined || responseData.inference_time === null) {
@@ -764,41 +771,43 @@ async function handlePredict() {
     await recordAuditLog('lnn_predict', predictResponse.value, 'auto_executed', 'success')
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error(errorMsg || '推理失败，请稍后重试')
+    ElMessage.error(errorMsg || t('workspace.msgInferenceFailed'))
   } finally {
     predicting.value = false
   }
 }
 
-function getAIRecommendation(): Record<string, unknown> {
+function getAIRecommendation(): { [key: string]: string | number | boolean | null | undefined } {
   if (!predictResponse.value) return {}
+  const val = predictResponse.value.value
   return {
-    value: predictResponse.value.value,
+    value: Array.isArray(val) ? val[0] : val,
     confidence: predictResponse.value.confidence,
     inference_time: predictResponse.value.inference_time,
   }
 }
 
-function formatPredictionValue(value: number | number[]): string {
+function formatPredictionValue(value: string | number | number[]): string {
+  if (typeof value === 'string') return value
   if (Array.isArray(value)) {
     return `[${value.map(v => v.toFixed(4)).join(', ')}]`
   }
   return value.toFixed(4)
 }
 
-async function handleAcceptPrediction(recommendation: Record<string, unknown>) {
+async function handleAcceptPrediction(recommendation: { [key: string]: string | number | boolean | null | undefined }) {
   await recordAuditLog('lnn_predict', predictResponse.value, 'accept', 'success', recommendation)
   ElMessage.success(t('settings.accept'))
 }
 
-async function handleModifyPrediction(modifiedParams: Record<string, unknown>) {
-  modifiedPrediction.value = { ...modifiedParams }
+async function handleModifyPrediction(modifiedParams: { [key: string]: string | number | boolean | null | undefined }) {
+  modifiedPrediction.value = { ...modifiedParams } as PredictionParams
   showAdjustedResult.value = true
   await recordAuditLog('lnn_predict', predictResponse.value, 'modify', 'success', modifiedParams)
   ElMessage.info(t('settings.modify'))
 }
 
-async function handleRejectPrediction(recommendation: Record<string, unknown>) {
+async function handleRejectPrediction(recommendation: { [key: string]: string | number | boolean | null | undefined }) {
   await recordAuditLog('lnn_predict', predictResponse.value, 'reject', 'cancelled', recommendation)
   predictResponse.value = null
 }
@@ -814,7 +823,7 @@ async function handleDryRun() {
   trainPlanConfirmed.value = false
 
   try {
-    const res = await http.post('/api/v1/lnn/train/dry_run', {
+    const res = await http.post(buildApiPath(API_CONFIG.LNN, '/train/dry_run'), {
       model_name: trainForm.modelName,
       data_path: trainForm.dataPath,
       hyperparameters: trainForm.hyperparameters,
@@ -841,7 +850,7 @@ async function handleTrain() {
   trainResult.value = null
 
   try {
-    const res = await http.post('/api/v1/lnn/train', {
+    const res = await http.post(buildApiPath(API_CONFIG.LNN, '/train'), {
       model_name: trainForm.modelName,
       data_path: trainForm.dataPath,
       hyperparameters: trainForm.hyperparameters,
@@ -881,7 +890,7 @@ async function handleCancelTraining() {
     })
 
     cancelling.value = true
-    await http.post(`/api/v1/jobs/${currentJobId.value}/cancel`)
+    await http.post(buildApiPath(API_CONFIG.JOBS, `/${currentJobId.value}/cancel`))
     ElMessage.info(t('workspace.trainingCancelled'))
   } catch (e: unknown) {
     if (e !== 'cancel') {
@@ -900,7 +909,7 @@ async function recordAuditLog(
   finalExecution?: Record<string, unknown>,
 ) {
   try {
-    await http.post('/api/v1/user-sovereignty/audit-log/record', null, {
+    await http.post(buildApiPath(API_CONFIG.USER_SOVEREIGNTY, '/audit-log/record'), null, {
       params: {
         ai_module: aiModule,
         ai_recommendation: JSON.stringify(aiRecommendation || {}),
@@ -924,7 +933,7 @@ function getConfidenceAlertType(confidence: number): 'success' | 'warning' | 'er
 
 onMounted(async () => {
   try {
-    const res = await http.get('/api/v1/lnn/models')
+    const res = await http.get(buildApiPath(API_CONFIG.LNN, '/models'))
     modelList.value = res.data?.data?.models || []
   } catch {
     modelList.value = []

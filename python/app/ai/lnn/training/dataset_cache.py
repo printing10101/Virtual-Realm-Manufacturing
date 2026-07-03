@@ -29,12 +29,66 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 
-# 安全修复：缓存文件 HMAC 签名密钥（每次进程启动随机生成）。
+# 安全修复：缓存文件 HMAC 签名密钥。
 # 防止攻击者篡改 .pkl 文件触发 pickle 反序列化 RCE。
-# 注意：这会导致跨进程缓存失效，但安全性优先于性能。
-_CACHE_HMAC_KEY = hashlib.sha256(
-    f"dataset_cache:{os.getpid()}:{time.time()}".encode()
-).digest()
+#
+# 密钥解析顺序：
+#   1. 环境变量 ``LNN_CACHE_HMAC_KEY``（生产部署推荐；以 hex 或 base64 字符串形式提供，
+#      长度需 ≥ 32 字节解码后）。设置后，磁盘缓存可在进程重启之间复用，提升命中率。
+#   2. 未设置时回退到进程级随机密钥（基于 pid + 启动时间）。
+#      此模式同样安全，但每次进程重启都会使旧 .pkl 文件 HMAC 校验失败而被清理，
+#      缓存命中率下降。开发环境可保持回退；生产环境务必显式配置环境变量。
+#
+# 安全提示：
+#   - 密钥一旦变更，所有现有磁盘缓存将失效（HMAC 校验失败自动清理），属预期行为。
+#   - 切勿将真实密钥提交到版本控制；通过 .env 或部署平台密钥管理注入。
+_LNN_CACHE_HMAC_KEY_ENV = os.environ.get("LNN_CACHE_HMAC_KEY", "").strip()
+
+
+def _resolve_cache_hmac_key() -> bytes:
+    """从环境变量解析 HMAC 密钥；失败时回退到进程级随机密钥。"""
+    env_value = _LNN_CACHE_HMAC_KEY_ENV
+    if env_value:
+        # 优先尝试 hex 解码（推荐格式：64 字符 hex = 32 字节）
+        try:
+            decoded = bytes.fromhex(env_value)
+            if len(decoded) >= 32:
+                return decoded
+            logger.warning(
+                "LNN_CACHE_HMAC_KEY hex 解码成功但长度不足 32 字节（实际 %d），"
+                "回退到进程级随机密钥。",
+                len(decoded),
+            )
+        except ValueError:
+            # 非 hex 字符串，尝试 base64 解码
+            import base64
+            try:
+                decoded = base64.b64decode(env_value, validate=True)
+                if len(decoded) >= 32:
+                    return decoded
+                logger.warning(
+                    "LNN_CACHE_HMAC_KEY base64 解码成功但长度不足 32 字节（实际 %d），"
+                    "回退到进程级随机密钥。",
+                    len(decoded),
+                )
+            except (ValueError, base64.binascii.Error):
+                # 既非 hex 也非 base64，直接用原始字节（需 ≥ 32 字节）
+                raw = env_value.encode("utf-8")
+                if len(raw) >= 32:
+                    # 派生定长密钥，避免直接使用可变长度密钥
+                    return hashlib.sha256(raw).digest()
+                logger.warning(
+                    "LNN_CACHE_HMAC_KEY 既非有效 hex/base64，原始长度也不足 32 字节"
+                    "（实际 %d），回退到进程级随机密钥。",
+                    len(raw),
+                )
+    # 回退：进程级随机密钥（开发模式安全默认）
+    return hashlib.sha256(
+        f"dataset_cache:{os.getpid()}:{time.time()}".encode()
+    ).digest()
+
+
+_CACHE_HMAC_KEY = _resolve_cache_hmac_key()
 
 
 @dataclass

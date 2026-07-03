@@ -4,5 +4,5 @@ python/htmlcov/
 coverage/
 *.min.js
 *.min.js.map
-version-sync.js
+version-sync.cjs
 tests/screenshots/*.spec.ts

@@ -32,7 +32,7 @@
               :file-list="fileList"
             >
               <el-icon class="el-icon--upload">
-                <upload-filled />
+                <UploadFilled />
               </el-icon>
               <div class="el-upload__text">
                 {{ $t('stepImport.uploadHint') }} <em>{{ $t('stepImport.uploadClick') }}</em>
@@ -98,7 +98,7 @@
                 v-if="store.isUploading"
                 class="is-loading"
               >
-                <loading />
+                <Loading />
               </el-icon>
               <span>{{ store.isUploading ? $t('stepImport.uploading') : $t('stepImport.processing') }}</span>
             </div>
@@ -279,7 +279,7 @@
             style="text-align:center;padding:20px;"
           >
             <el-icon class="is-loading">
-              <loading />
+              <Loading />
             </el-icon> {{ $t('common.loading') }}
           </div>
           <el-table
@@ -384,6 +384,7 @@
 import { ref, computed, watch } from 'vue'
 import { useStepImportStore } from '@/stores/stepImport'
 import StepModelViewer from '@/components/step_import/StepModelViewer.vue'
+import { UploadFilled, Loading } from '@element-plus/icons-vue'
 import type { UploadFile, UploadInstance } from 'element-plus'
 import type { ImportHistoryEntry } from '@/types'
 import { formatFileSize, formatSecondsTimestamp } from '@/utils/formatters'

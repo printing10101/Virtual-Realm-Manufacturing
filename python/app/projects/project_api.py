@@ -19,13 +19,14 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from app.auth.permissions import require_permission
 from app.core.response import error, ErrorCode, success
 from app.core.safe_errors import safe_error_message
-from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file
+from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file, validate_user_path
 from app.projects.project_store import (
     ProjectStore,
     ProjectManifest,
@@ -43,6 +44,22 @@ TEMP_UPLOAD_DIR = get_upload_dir("projects")
 # 修复 [路径遍历]：解析后的安全输出根目录。所有下载/删除接口必须把请求路径解析
 # 后与该根做 is_relative_to 校验，避免 ../ 等逃逸字符触达工作区之外的文件。
 _OUTPUT_DIR_RESOLVED = OUTPUT_DIR.resolve()
+
+# 修复 [B9] /open 端点路径遍历：允许打开 .ljm 工程文件的根目录白名单。
+# 1. OUTPUT_DIR（output/projects）—— 服务端保存的工程文件默认位置；
+# 2. 项目根目录 —— 兼容用户从仓库内 fixtures/示例 目录打开工程；
+# 3. 通过环境变量 LNN_PROJECT_OPEN_BASE_DIRS 注入的额外目录（多路径用 os.pathsep 分隔）。
+# 任意 file_path 在 resolve() 后必须位于以下根目录之一，否则视为路径遍历攻击。
+_ALLOWED_PROJECT_FILE_BASE_DIRS: list[Path] = [
+    _OUTPUT_DIR_RESOLVED,
+    Path(__file__).resolve().parents[3],  # python/ 项目根
+]
+_extra_open_dirs = os.getenv("LNN_PROJECT_OPEN_BASE_DIRS", "")
+if _extra_open_dirs:
+    for _d in _extra_open_dirs.split(os.pathsep):
+        _d = _d.strip()
+        if _d:
+            _ALLOWED_PROJECT_FILE_BASE_DIRS.append(Path(_d).resolve())
 
 _store = ProjectStore(str(OUTPUT_DIR))
 
@@ -65,6 +82,36 @@ def _safe_project_path(project_name: str) -> Path:
     if not candidate.is_relative_to(_OUTPUT_DIR_RESOLVED):
         raise HTTPException(status_code=400, detail="无效的工程路径")
     return candidate
+
+
+def _validate_project_file_path(user_path: str) -> Path:
+    """校验 /open 端点接收的 .ljm 工程文件路径，防止路径遍历攻击。
+
+    修复 [B9]：原 ``/open`` 端点直接将 ``request.file_path`` 透传给
+    ``_store.open_project()``，攻击者可构造 ``/etc/passwd``、
+    ``../../../app.db`` 等任意路径读取服务器文件（包括 .ljm 之外的任意文件）。
+    本函数委托给统一的 ``app.utils.utils.validate_user_path``，在 ``resolve()``
+    后强制校验绝对路径必须位于 ``_ALLOWED_PROJECT_FILE_BASE_DIRS`` 之一之下，
+    并要求扩展名为 ``.ljm``，从而将可读取范围严格限制在工程目录内。
+
+    Args:
+        user_path: 用户提交的 .ljm 工程文件路径（相对或绝对）
+
+    Returns:
+        校验通过后的 Path 对象
+
+    Raises:
+        HTTPException: 400 当路径为空、扩展名非 .ljm 或解析后超出允许目录范围
+    """
+    try:
+        return validate_user_path(
+            user_path=user_path,
+            allowed_base_dirs=_ALLOWED_PROJECT_FILE_BASE_DIRS,
+            allowed_extensions={PROJECT_FILE_EXTENSION.lower()},
+            project_root=Path(__file__).resolve().parents[3],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # ============================================================
@@ -172,7 +219,11 @@ async def open_project(
             tmp_path.write_bytes(base64.b64decode(request.upload_data))
             file_path = str(tmp_path)
         elif request.file_path:
-            file_path = request.file_path
+            # 修复 [B9]：对 file_path 做路径遍历校验，确保最终路径
+            # 位于工程允许的根目录下且扩展名为 .ljm，
+            # 避免攻击者读取服务器任意文件（如 /etc/passwd、app.db）。
+            validated_path = _validate_project_file_path(request.file_path)
+            file_path = str(validated_path)
         else:
             return error(
                 code=ErrorCode.INVALID_REQUEST,
@@ -233,10 +284,17 @@ async def open_project(
 
 
 @router.post("/save")
-async def save_project(request: SaveRequest) -> dict:
+async def save_project(
+    request: SaveRequest,
+    _perm: None = Depends(require_permission("project:write")),
+) -> dict:
     """保存工程为 .ljm 文件。
 
     接收完整的工程清单数据，将其打包为ZIP格式并存储。
+
+    修复 [B23]：原端点无认证，任意未登录调用方可保存工程文件。
+    通过 Depends(require_permission("project:write")) 强制认证 + 权限校验，
+    未登录调用方将得到 401，权限不足将得到 403。
 
     Args:
         request: 工程清单数据 + 可选输出文件名
@@ -280,10 +338,17 @@ async def save_project(request: SaveRequest) -> dict:
 
 
 @router.post("/save-as")
-async def save_as_project(request: SaveRequest) -> dict:
+async def save_as_project(
+    request: SaveRequest,
+    _perm: None = Depends(require_permission("project:write")),
+) -> dict:
     """另存为工程文件。
 
     创建工程文件的新副本，不覆盖原文件。
+
+    修复 [B23]：原端点无认证，任意未登录调用方可另存工程文件。
+    通过 Depends(require_permission("project:write")) 强制认证 + 权限校验，
+    未登录调用方将得到 401，权限不足将得到 403。
 
     Args:
         request: 工程清单数据 + 输出文件名
@@ -358,8 +423,15 @@ async def list_projects() -> dict:
 
 
 @router.delete("/{project_name}")
-async def delete_project(project_name: str) -> dict:
+async def delete_project(
+    project_name: str,
+    _perm: None = Depends(require_permission("project:write")),
+) -> dict:
     """删除指定的工程文件。
+
+    修复 [B23]：原端点无认证，任意未登录调用方可删除工程文件。
+    通过 Depends(require_permission("project:write")) 强制认证 + 权限校验，
+    未登录调用方将得到 401，权限不足将得到 403。
 
     Args:
         project_name: 工程文件名（含 .ljm 扩展名）

@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="visible"
-    title="规则分组管理"
+    :title="t('groupManagerDialog.title')"
     width="600px"
     @update:model-value="$emit('update:visible', $event)"
     @close="handleClose"
@@ -10,13 +10,13 @@
       <div class="group-form">
         <el-input
           v-model="groupName"
-          placeholder="输入新分组名称..."
+          :placeholder="t('groupManagerDialog.namePlaceholder')"
           style="width: 200px"
           @keyup.enter="handleCreate"
         />
         <el-input
           v-model="groupDesc"
-          placeholder="描述（可选）..."
+          :placeholder="t('groupManagerDialog.descriptionPlaceholder')"
           style="width: 180px; margin-left: 8px"
         />
         <el-button
@@ -25,7 +25,7 @@
           @click="handleCreate"
         >
           <el-icon><Plus /></el-icon>
-          {{ isEditing ? '保存' : '创建' }}
+          {{ isEditing ? t('groupManagerDialog.save') : t('groupManagerDialog.create') }}
         </el-button>
       </div>
 
@@ -36,24 +36,24 @@
       >
         <el-table-column
           prop="id"
-          label="ID"
+          :label="t('groupManagerDialog.id')"
           width="70"
         />
         <el-table-column
           prop="name"
-          label="分组名称"
+          :label="t('groupManagerDialog.groupName')"
         />
         <el-table-column
           prop="description"
-          label="描述"
+          :label="t('groupManagerDialog.description')"
         />
         <el-table-column
           prop="rule_count"
-          label="规则数"
+          :label="t('groupManagerDialog.ruleCount')"
           width="90"
         />
         <el-table-column
-          label="操作"
+          :label="t('groupManagerDialog.operation')"
           width="160"
           fixed="right"
         >
@@ -64,12 +64,12 @@
               link
               @click="handleEdit(row as RuleGroup)"
             >
-              编辑
+              {{ t('groupManagerDialog.edit') }}
             </el-button>
             <el-popconfirm
-              :title="`确定删除分组「${row.name}」？`"
-              confirm-button-text="删除"
-              cancel-button-text="取消"
+              :title="t('groupManagerDialog.deleteConfirm', { name: row.name })"
+              :confirm-button-text="t('groupManagerDialog.delete')"
+              :cancel-button-text="t('groupManagerDialog.cancel')"
               @confirm="handleDelete(row.id)"
             >
               <template #reference>
@@ -79,7 +79,7 @@
                   link
                   :disabled="row.rule_count > 0"
                 >
-                  删除
+                  {{ t('groupManagerDialog.delete') }}
                 </el-button>
               </template>
             </el-popconfirm>
@@ -90,7 +90,7 @@
 
     <template #footer>
       <el-button @click="$emit('update:visible', false)">
-        关闭
+        {{ t('groupManagerDialog.close') }}
       </el-button>
     </template>
   </el-dialog>
@@ -98,10 +98,13 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { useRuleStore } from '@/stores/rules'
 import type { RuleGroup } from '@/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   visible: boolean
@@ -136,7 +139,7 @@ watch(
 
 async function handleCreate() {
   if (!groupName.value.trim()) {
-    ElMessage.warning('请输入分组名称')
+    ElMessage.warning(t('groupManagerDialog.nameRequired'))
     return
   }
 
