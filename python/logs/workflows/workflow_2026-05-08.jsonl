@@ -1,2 +1,0 @@
-{"workflow_id": "wf_20260508111113_3472", "success": false, "output": {}, "total_time_ms": 0.024299981305375695, "steps_result": [], "fallback_triggered": true, "fallback_reason": "Workflow execution error: Router error", "metadata": {}, "timestamp": 1778209873.0179482}
-{"workflow_id": "wf_20260508111325_656", "success": false, "output": {}, "total_time_ms": 0.026599998818710446, "steps_result": [], "fallback_triggered": true, "fallback_reason": "Workflow execution error: Router error", "metadata": {}, "timestamp": 1778210005.9046693}

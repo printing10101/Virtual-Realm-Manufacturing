@@ -306,7 +306,13 @@ const stepImportStore = useStepImportStore()
 const dxfImportStore = useDxfImportStore()
 
 // 启动动画
-const showSplash = ref(true)
+// Tauri 模式下使用原生 splashscreen 窗口（splashscreen.html）覆盖预处理白屏阶段，
+// Vue 内部 SplashScreen 不再触发，避免双重启动动画；
+// Web 模式下仍使用 Vue 内部 SplashScreen 作为启动动画。
+const isTauriEnv =
+  typeof window !== 'undefined' &&
+  Boolean((window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__)
+const showSplash = ref(!isTauriEnv)
 // 应用初始化完成标志（auto-login 完成后才渲染路由页面）
 const appReady = ref(false)
 

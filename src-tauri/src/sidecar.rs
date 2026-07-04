@@ -4,7 +4,6 @@
 //! 该模块使用 Tauri 2.x 的 `tauri-plugin-shell` 提供的 Sidecar API，
 //! 并通过共享状态 (Arc<RwLock<...>>) 维护进程运行状态。
 
-use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -37,19 +36,7 @@ pub enum BackendStatus {
     Stopped,
 }
 
-impl BackendStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            BackendStatus::Idle => "idle",
-            BackendStatus::Starting => "starting",
-            BackendStatus::Running => "running",
-            BackendStatus::Stopping => "stopping",
-            BackendStatus::Crashed => "crashed",
-            BackendStatus::Failed => "failed",
-            BackendStatus::Stopped => "stopped",
-        }
-    }
-}
+impl BackendStatus {}
 
 /// 后端进程状态信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,18 +94,6 @@ impl SidecarManager {
 
     pub fn state(&self) -> BackendState {
         self.state.read().clone()
-    }
-
-    pub fn state_arc(&self) -> Arc<RwLock<BackendState>> {
-        self.state.clone()
-    }
-
-    pub fn child_arc(&self) -> Arc<Mutex<Option<CommandChild>>> {
-        self.child.clone()
-    }
-
-    pub fn shutdown_flag(&self) -> Arc<RwLock<bool>> {
-        self.shutdown_in_progress.clone()
     }
 
     /// 更新状态并通过事件总线推送给前端
@@ -282,7 +257,7 @@ impl SidecarManager {
         self.update_status(app, BackendStatus::Failed, last_progress, "后端启动超时");
         self.set_error(app, format!("健康检查超时: {url}"));
         // 杀死可能仍在运行的子进程
-        if let Some(mut child) = self.child.lock().await.take() {
+        if let Some(child) = self.child.lock().await.take() {
             let _ = child.kill();
         }
         Err(format!("后端在 {} 秒内未响应健康检查", max_attempts / 2))
@@ -292,7 +267,7 @@ impl SidecarManager {
     pub async fn stop<R: Runtime>(&self, app: &AppHandle<R>) -> Result<(), String> {
         *self.shutdown_in_progress.write() = true;
         self.update_status(app, BackendStatus::Stopping, 100, "正在关闭后端服务...");
-        if let Some(mut child) = self.child.lock().await.take() {
+        if let Some(child) = self.child.lock().await.take() {
             // 先尝试优雅 kill
             if let Err(e) = child.kill() {
                 log::warn!("终止 sidecar 失败: {e}");
@@ -321,21 +296,6 @@ impl SidecarManager {
         // 短暂等待端口释放
         sleep(Duration::from_millis(800)).await;
         self.start(app).await
-    }
-
-    /// 标记子进程已退出（由监听任务调用）
-    pub fn mark_exited<R: Runtime>(&self, app: &AppHandle<R>, code: Option<i32>) {
-        if *self.shutdown_in_progress.read() {
-            return;
-        }
-        {
-            let mut s = self.state.write();
-            s.pid = None;
-            s.status = BackendStatus::Crashed;
-            s.message = format!("后端进程异常退出 (code={:?})", code);
-            s.progress = 0;
-        }
-        self.emit_state(app);
     }
 
     fn log_dir<R: Runtime>(&self, app: &AppHandle<R>) -> String {

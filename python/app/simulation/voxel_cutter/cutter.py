@@ -21,11 +21,17 @@ from app.simulation.voxel_cutter.mesher import (
 )
 from app.simulation.voxel_cutter.models import CollisionInfo, VoxelSimulationResult
 
+import sys
+
 try:
     import numba
     HAS_NUMBA = True
 except ImportError:
     HAS_NUMBA = False
+
+# PyInstaller onefile 打包后源文件路径不存在于文件系统，numba 的 cache=True
+# 会报 "no locator available for file ..."。仅在非冻结环境下启用缓存。
+_NUMBA_CACHE = not (getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'))
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +186,7 @@ def _generate_stl_from_dxf(
 # =============================================================================
 if HAS_NUMBA:
 
-    @numba.jit(nopython=True, cache=True, parallel=False)
+    @numba.jit(nopython=True, cache=_NUMBA_CACHE, parallel=False)
     def _apply_tool_mask_batch(
         voxel_grid: np.ndarray,
         tool_mask: np.ndarray,

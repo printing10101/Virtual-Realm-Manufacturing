@@ -18,28 +18,44 @@ from __future__ import annotations
 import os
 import time
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
-import torch
+# torch 软依赖：桌面 MVP 打包时排除 torch，此时仅 Kienzle 解析解可用
+try:
+    import torch
+
+    _HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore[assignment]
+    _HAS_TORCH = False
 
 from app.simulation.cutting_force.kienzle import (
     compute_cutting_forces,
     DEFAULT_MATERIAL_COEFFICIENTS,
 )
-from app.simulation.cutting_force.pinn import CuttingForcePINN
+
+# CuttingForcePINN 依赖 torch.nn，torch 不可用时置 None
+try:
+    from app.simulation.cutting_force.pinn import CuttingForcePINN
+except ImportError:
+    CuttingForcePINN = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
 # 全局模型缓存
-_model_cache: Dict[str, CuttingForcePINN] = {}
+_model_cache: Dict[str, Any] = {}
 _model_dir = os.path.join(os.path.dirname(__file__), "checkpoints")
 
 
-def _load_model(device: str = "cpu") -> CuttingForcePINN:
+def _load_model(device: str = "cpu") -> Any:
     """加载训练好的 PINN 模型。
 
     若检查点不存在，则创建默认模型（推理时使用 Kienzle 解析解回退）。
+    torch 不可用时返回 None，调用方需检查。
     """
+    if not _HAS_TORCH or CuttingForcePINN is None:
+        return None
+
     cache_key = device
     if cache_key in _model_cache:
         return _model_cache[cache_key]
@@ -117,10 +133,35 @@ def predict_cutting_force(
             "model_version": "kienzle_v1.0",
         }
 
-    # PINN 推理
+    # PINN 推理（torch 不可用时直接回退到 Kienzle）
+    if not _HAS_TORCH or CuttingForcePINN is None:
+        logger.warning(
+            "torch 不可用，PINN 推理已跳过，使用 Kienzle 解析解"
+        )
+        return {
+            "Fx": kienzle_result["Fx"],
+            "Fy": kienzle_result["Fy"],
+            "Fz": kienzle_result["Fz"],
+            "method": "kienzle_no_torch",
+            "confidence": 0.50,
+            "model_version": "kienzle_v1.0_no_torch",
+            "warning": "torch 未安装，PINN 模型不可用，已使用解析解",
+        }
+
     try:
         device = "cpu"
         model = _load_model(device)
+
+        if model is None:
+            return {
+                "Fx": kienzle_result["Fx"],
+                "Fy": kienzle_result["Fy"],
+                "Fz": kienzle_result["Fz"],
+                "method": "kienzle_fallback",
+                "confidence": 0.50,
+                "model_version": "kienzle_v1.0_fallback",
+                "warning": "PINN 模型加载失败，已回退到解析解",
+            }
 
         with torch.no_grad():
             x_norm = CuttingForcePINN.normalize_params(speed, feed, depth)

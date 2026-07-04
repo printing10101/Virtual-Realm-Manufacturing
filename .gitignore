@@ -91,10 +91,20 @@ python/tests/_test_output/
 python/_test_output/
 python/_test_output*.txt
 
+# 临时调试输出文件（pytest 输出/异常 pass 统计）
+python/coverage_output.txt
+python/coverage-full-report.txt
+python/ep_full.txt
+python/ep_remaining.txt
+python/_test_full.txt
+
 # 运行时生成的输出目录（模型/项目/规则/仿真/演示等）
 python/output/
 output/
 !output/.gitkeep
+
+# E2E 测试输出目录（由 /e2e-fixture 端点自动生成）
+data/outputs/e2e/
 
 # 测试追踪与日志
 test_traces/
@@ -114,6 +124,7 @@ test_logs/
 .env.*
 !.env.example
 !.env.sqlite.example
+!.env.ai-cn.example
 .env.local
 .env.*.local
 .env.development
@@ -135,6 +146,13 @@ secrets/
 # 认证令牌文件（每个部署环境独立生成）
 .lnn_token
 .lnn_token_meta.json
+.lnn_banned_tokens.json
+python/.lnn_banned_tokens.json
+
+# Sidecar 运行时状态文件（由 sidecar_main.py 自动写入/读取）
+python/sidecar.json
+python/sidecar.pid
+python/sidecar_test_pid.txt
 
 # ============================================================
 # 虚拟环境

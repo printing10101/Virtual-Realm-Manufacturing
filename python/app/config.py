@@ -544,7 +544,7 @@ class ProcessPlanningConfig:
 @dataclass
 class AppConfig:
     app_name: str = field(default_factory=lambda: _env("APP_NAME", "灵境制造"))
-    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "2.4.0"))
+    app_version: str = field(default_factory=lambda: _env("APP_VERSION", "2.5.0"))
     offline_mode: bool = field(
         default_factory=lambda: _bool_env("OFFLINE_MODE", False)
     )

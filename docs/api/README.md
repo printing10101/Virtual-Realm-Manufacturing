@@ -1,7 +1,7 @@
 # API 文档
 
 > 灵境制造 LNN AI API 完整参考文档
-> **当前版本**：v2.0.0（与代码版本完全一致）
+> **当前版本**：v2.5.0（与代码版本完全一致）
 > **Base URL**：`http://localhost:8765`
 > **在线文档**：`http://localhost:8765/api/docs`（Swagger UI） | `http://localhost:8765/api/redoc`（ReDoc）
 > **OpenAPI JSON**：`http://localhost:8765/api/openapi.json`
