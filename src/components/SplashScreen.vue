@@ -136,7 +136,7 @@ const progress = ref(0)
 const statusText = ref(t('splashScreen.statusInit'))
 
 const versionStore = useVersionStore()
-const version = computed(() => versionStore.frontendVersion || '2.4.0')
+const version = computed(() => versionStore.frontendVersion || '2.5.0')
 
 const appNameChars = t('splashScreen.appName').split('')
 

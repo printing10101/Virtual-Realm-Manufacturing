@@ -1,6 +1,6 @@
 # API 请求/响应示例
 
-> 本文档为各 API 端点提供 **2 个完整示例**（正常场景 + 边界场景），包含请求头、请求体、响应状态码与响应体完整内容。所有示例均与当前代码实现 v2.0.0 完全匹配。
+> 本文档为各 API 端点提供 **2 个完整示例**（正常场景 + 边界场景），包含请求头、请求体、响应状态码与响应体完整内容。所有示例均与当前代码实现 v2.5.0 完全匹配。
 
 ## 目录
 
@@ -1004,7 +1004,7 @@ GET /health HTTP/1.1
 {
   "status": "healthy",
   "environment": "production",
-  "version": "2.0.0",
+  "version": "2.5.0",
   "components": {
     "database": { "status": "ok", "latency_ms": 5 },
     "cache": { "status": "ok", "latency_ms": 2 },
@@ -1030,7 +1030,7 @@ HTTP/1.1 503 Service Unavailable
 {
   "status": "degraded",
   "environment": "production",
-  "version": "2.0.0",
+  "version": "2.5.0",
   "components": {
     "database": { "status": "ok", "latency_ms": 8 },
     "cache": { "status": "error", "latency_ms": null, "detail": "Redis connection refused" },

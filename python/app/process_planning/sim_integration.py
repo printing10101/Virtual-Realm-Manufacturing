@@ -33,6 +33,10 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+# torch 相关模块软依赖：桌面 MVP 打包时排除 torch，此时
+# app.simulation.cutting_force.predictor 的 predict_cutting_force 会被
+# 置为 None（见 app/simulation/cutting_force/__init__.py），运行时需检查。
+from app.simulation.cutting_force import _HAS_TORCH as _CUTTING_FORCE_HAS_TORCH
 from app.simulation.cutting_force.predictor import predict_cutting_force
 from app.simulation.chatter.predictor import predict_stability
 
@@ -144,15 +148,23 @@ class SimulationIntegration:
         }
         
         try:
-            # 使用线程池执行仿真，设置超时保护
-            future_force = self._executor.submit(
-                predict_cutting_force,
-                material=material,
-                tool=tool,
-                params=force_params,
-                use_pinn=True,
-            )
-            
+            # 使用线程池执行仿真，设置超时保护。
+            # 当 torch 不可用时（桌面 MVP），predict_cutting_force 为 None，
+            # 此处跳过切削力预测，仅执行颤振稳定性分析。
+            future_force = None
+            if _CUTTING_FORCE_HAS_TORCH and predict_cutting_force is not None:
+                future_force = self._executor.submit(
+                    predict_cutting_force,
+                    material=material,
+                    tool=tool,
+                    params=force_params,
+                    use_pinn=True,
+                )
+            else:
+                logger.warning(
+                    "torch 不可用，跳过切削力预测（PINN 模型未加载）"
+                )
+
             future_chatter = self._executor.submit(
                 predict_stability,
                 spindle_rpm=spindle_rpm,
@@ -160,33 +172,44 @@ class SimulationIntegration:
                 tool=tool,
                 workpiece=workpiece,
             )
-            
+
             # 等待结果，设置超时
             try:
-                force_result = future_force.result(timeout=self.timeout_seconds)
+                force_result = (
+                    future_force.result(timeout=self.timeout_seconds)
+                    if future_force is not None
+                    else None
+                )
                 chatter_result = future_chatter.result(timeout=self.timeout_seconds)
-                
+
                 result.cutting_force = force_result
                 result.chatter_stability = chatter_result
                 result.status = "success"
-                
-                # 计算评分和推荐
-                result.score = self._calculate_score(force_result, chatter_result, depth_of_cut)
-                result.passed = self._evaluate_pass(force_result, chatter_result, depth_of_cut)
-                result.recommendation = self._generate_recommendation(result.passed, result.score)
-                
+
+                # 切削力缺失时使用空字典兜底，保证评分函数可用
+                force_for_score = force_result or {}
+                result.score = self._calculate_score(
+                    force_for_score, chatter_result, depth_of_cut
+                )
+                result.passed = self._evaluate_pass(
+                    force_for_score, chatter_result, depth_of_cut
+                )
+                result.recommendation = self._generate_recommendation(
+                    result.passed, result.score
+                )
+
             except FuturesTimeoutError:
                 result.status = "timeout"
                 result.error_message = f"仿真超时（>{self.timeout_seconds}秒）"
                 result.recommendation = "not_recommended"
                 logger.warning(f"仿真超时: material={material}, tool={tool}")
-                
+
             except (RuntimeError, ValueError, TypeError, OSError, KeyError) as e:
                 result.status = "failed"
                 result.error_message = f"仿真执行失败: {type(e).__name__}"
                 result.recommendation = "not_recommended"
                 logger.error("仿真执行失败: %s", e, exc_info=True)
-        
+
         except (RuntimeError, ValueError, TypeError, OSError, KeyError) as e:
             result.status = "failed"
             result.error_message = f"仿真服务调用失败: {type(e).__name__}"

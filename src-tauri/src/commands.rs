@@ -72,3 +72,32 @@ pub fn get_app_version<R: Runtime>(app: AppHandle<R>) -> String {
 pub fn get_backend_port(state: State<'_, AppState>) -> u16 {
     state.sidecar.state().port
 }
+
+/// 关闭 splashscreen 窗口并显示主窗口
+///
+/// 前端在 Vue 应用挂载完成、首屏渲染就绪后调用此命令，
+/// 实现"启动动画 → 主应用"的平滑切换，避免出现白屏过渡。
+#[tauri::command]
+pub fn close_splashscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    // 先显示主窗口（避免先关 splash 再显主窗口造成的视觉空档）
+    if let Some(main_window) = app.get_webview_window("main") {
+        main_window
+            .show()
+            .map_err(|e| format!("显示主窗口失败: {e}"))?;
+        // 把焦点切到主窗口
+        let _ = main_window.set_focus();
+    } else {
+        log::warn!("未找到 main 窗口，无法切换");
+    }
+
+    // 关闭 splashscreen 窗口
+    if let Some(splash_window) = app.get_webview_window("splashscreen") {
+        splash_window
+            .close()
+            .map_err(|e| format!("关闭 splashscreen 窗口失败: {e}"))?;
+    } else {
+        log::warn!("未找到 splashscreen 窗口，可能已被关闭");
+    }
+
+    Ok(())
+}

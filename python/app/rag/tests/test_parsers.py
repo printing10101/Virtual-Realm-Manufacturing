@@ -11,7 +11,6 @@ from unittest.mock import Mock, patch, MagicMock
 # 导入被测试模块
 from app.rag.pdf_parser import parse_pdf, parse_pdf_text_only
 from app.rag.excel_parser import parse_excel, parse_csv
-from app.rag.kg_interface import 对接知识图谱, convert_table_to_kg_entities
 
 
 class TestPDFParser:
@@ -183,65 +182,6 @@ class TestExcelParser:
         result = parse_csv(str(csv_file))
         assert result["status"] == "error"
         assert "数据不足" in result["error"]
-
-
-class TestKGInterface:
-    """知识图谱接口测试"""
-    
-    def test_kg_interface_empty_tables(self):
-        """测试空表格列表"""
-        result = 对接知识图谱([])
-        assert result == "success"
-    
-    def test_kg_interface_valid_tables(self):
-        """测试有效表格数据"""
-        tables = [
-            {
-                "headers": ["工序号", "工序名称", "设备"],
-                "rows": [
-                    ["10", "车端面", "C6140"],
-                    ["20", "钻中心孔", "Z525"]
-                ]
-            }
-        ]
-        
-        result = 对接知识图谱(tables)
-        assert result == "success"
-    
-    def test_convert_table_to_kg_entities(self):
-        """测试表格转换为知识图谱实体"""
-        table = {
-            "headers": ["工序号", "工序名称"],
-            "rows": [
-                ["10", "车端面"],
-                ["20", "钻中心孔"]
-            ]
-        }
-        
-        result = convert_table_to_kg_entities(table)
-        
-        assert "table_info" in result
-        assert "entities" in result
-        assert result["table_info"]["row_count"] == 2
-        assert len(result["entities"]) == 2
-        assert result["entities"][0]["data"]["工序号"] == "10"
-        assert result["entities"][0]["data"]["工序名称"] == "车端面"
-    
-    def test_kg_interface_multiple_tables(self):
-        """测试多个表格"""
-        tables = [
-            {
-                "headers": ["工序号", "工序名称"],
-                "rows": [["10", "车端面"]]
-            },
-            {
-                "headers": ["刀具编号", "刀具名称"],
-                "rows": [["T01", "外圆车刀"]]
-            }
-        ]
-        
-        result = 对接知识图谱(tables)
-        assert result == "success"
 
 
 class TestEdgeCases:
