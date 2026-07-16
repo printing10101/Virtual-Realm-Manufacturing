@@ -21,7 +21,8 @@ import uuid
 from typing import Any, Callable, Optional, Sequence
 
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.database.sync_session import get_sync_sessionmaker
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 # 命名空间，外部代码原 import 路径保持向后兼容。
 
 
-def get_sync_engine():
+def get_sync_engine() -> Engine:
     """获取同步 SQLAlchemy ``Engine``（懒加载）。
 
     向后兼容封装：委托给 :func:`app.database.sync_session.get_sync_engine`。
@@ -155,10 +156,10 @@ class KnowledgeGraphRepository:
                 orm_obj = existing
             try:
                 session.commit()
-            except IntegrityError as exc:
+            except SQLAlchemyError as exc:
                 session.rollback()
                 logger.warning(
-                    "Integrity error on upsert node %s: %s", node_id, exc.orig
+                    "Database error on upsert node %s: %s", node_id, exc
                 )
                 raise
             session.refresh(orm_obj)
@@ -241,7 +242,14 @@ class KnowledgeGraphRepository:
             )
             session.execute(edge_delete_stmt)
             session.delete(orm_obj)
-            session.commit()
+            try:
+                session.commit()
+            except SQLAlchemyError as exc:
+                session.rollback()
+                logger.error(
+                    "Database error on delete node %s: %s", node_id, exc
+                )
+                raise
             return True
 
     def count_nodes(self, node_type: Optional[str] = None) -> int:
@@ -329,14 +337,14 @@ class KnowledgeGraphRepository:
                 orm_obj = existing
             try:
                 session.commit()
-            except IntegrityError as exc:
+            except SQLAlchemyError as exc:
                 session.rollback()
                 logger.warning(
-                    "Integrity error on upsert edge %s->%s[%s]: %s",
+                    "Database error on upsert edge %s->%s[%s]: %s",
                     source_id,
                     target_id,
                     edge_type,
-                    exc.orig,
+                    exc,
                 )
                 raise
             session.refresh(orm_obj)
@@ -481,7 +489,18 @@ class KnowledgeGraphRepository:
             if orm_obj is None:
                 return False
             session.delete(orm_obj)
-            session.commit()
+            try:
+                session.commit()
+            except SQLAlchemyError as exc:
+                session.rollback()
+                logger.error(
+                    "Database error on delete edge %s->%s[%s]: %s",
+                    source_id,
+                    target_id,
+                    edge_type,
+                    exc,
+                )
+                raise
             return True
 
     def count_edges(self, edge_type: Optional[str] = None) -> int:

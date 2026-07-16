@@ -137,7 +137,11 @@ export function useToolpathInteraction(
 
   function clearHoverHighlight(): void {
     if (currentHoveredLine && originalMaterials.has(currentHoveredLine)) {
-      currentHoveredLine.material = originalMaterials.get(currentHoveredLine)!
+      // has() 已确保存在，但 TS 无法通过 has 窄化 Map.get 的返回类型，故先取出再校验
+      const material = originalMaterials.get(currentHoveredLine)
+      if (material) {
+        currentHoveredLine.material = material
+      }
       originalMaterials.delete(currentHoveredLine)
     }
   }
@@ -146,7 +150,10 @@ export function useToolpathInteraction(
     line.material = selectedHighlightMaterial
     highlightTimeoutId = window.setTimeout(() => {
       if (line && originalMaterials.has(line)) {
-        line.material = originalMaterials.get(line)!
+        const material = originalMaterials.get(line)
+        if (material) {
+          line.material = material
+        }
         originalMaterials.delete(line)
       }
       highlightTimeoutId = null

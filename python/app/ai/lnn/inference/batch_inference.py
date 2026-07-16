@@ -27,6 +27,14 @@ class BatchInferenceEngine:
     - Task priority support
     """
 
+    # 自适应批大小调整参数
+    MAX_BATCH_SIZE: int = 512  # 批大小上限
+    MIN_BATCH_SIZE: int = 4  # 批大小下限
+    BATCH_GROW_FACTOR_FAST: float = 2.0  # 性能良好时的快速增长因子
+    BATCH_GROW_FACTOR_SLOW: float = 1.5  # 性能稳定时的慢速增长因子
+    BATCH_SHRINK_FACTOR_FAST: float = 1.0 / 3.0  # 性能下降时的快速收缩因子
+    BATCH_SHRINK_FACTOR_SLOW: float = 0.7  # 性能波动时的慢速收缩因子
+
     def __init__(
         self,
         predictor: LNNPredictor,
@@ -160,16 +168,16 @@ class BatchInferenceEngine:
         # 优化阈值以降低P95响应时间
         if avg_time_per_sample < 15:
             # 推理速度快，大幅增加批大小
-            self._current_batch_size = min(self._current_batch_size * 2, 512)
+            self._current_batch_size = min(int(self._current_batch_size * self.BATCH_GROW_FACTOR_FAST), self.MAX_BATCH_SIZE)
         elif avg_time_per_sample < 30:
             # 推理速度较快，适度增加批大小
-            self._current_batch_size = min(int(self._current_batch_size * 1.5), 512)
+            self._current_batch_size = min(int(self._current_batch_size * self.BATCH_GROW_FACTOR_SLOW), self.MAX_BATCH_SIZE)
         elif avg_time_per_sample > 80:
             # 推理速度慢，大幅减少批大小
-            self._current_batch_size = max(self._current_batch_size // 3, 4)
+            self._current_batch_size = max(int(self._current_batch_size * self.BATCH_SHRINK_FACTOR_FAST), self.MIN_BATCH_SIZE)
         elif avg_time_per_sample > 50:
             # 推理速度较慢，适度减少批大小
-            self._current_batch_size = max(int(self._current_batch_size * 0.7), 4)
+            self._current_batch_size = max(int(self._current_batch_size * self.BATCH_SHRINK_FACTOR_SLOW), self.MIN_BATCH_SIZE)
 
     def get_statistics(
         self,

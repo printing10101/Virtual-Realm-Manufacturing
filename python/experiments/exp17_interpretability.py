@@ -1,7 +1,7 @@
 """
 实验17: 模型可解释性分析 - 使用SHAP值分析特征重要性
 
-本实验旨在通过SHAP (SHapley Additive exPlanations) 方法分析CT-LTC模型的输入特征重要性，
+本实验旨在通过SHAP (SHapley Additive exPlanations) 方法分析DL-LNN模型的输入特征重要性，
 理解主轴转速和切深等参数对预测结果的贡献程度，并分析不同工况下的特征贡献差异。
 """
 
@@ -19,21 +19,23 @@ import seaborn as sns
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from app.ai.lnn.training.reproducibility import set_global_seed
+
 # 按照任务要求从顶层模块导入
 from config import ModelConfig
-from models import CTCTCWithPhysics
+from models import DLLNNWithPhysics
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 
 
 class SHAPAnalyzer:
     """SHAP值分析器 - 用于计算和可视化特征重要性"""
     
-    def __init__(self, model: CTCTCWithPhysics, device: torch.device):
+    def __init__(self, model: DLLNNWithPhysics, device: torch.device):
         """
         初始化SHAP分析器
         
         Args:
-            model: 训练好的CT-LTC模型
+            model: 训练好的DL-LNN模型
             device: 计算设备 (CPU/GPU)
         """
         self.model = model
@@ -153,9 +155,9 @@ def train_ct_ltc_model(
     config: ModelConfig,
     device: torch.device,
     epochs: int = 10
-) -> CTCTCWithPhysics:
+) -> DLLNNWithPhysics:
     """
-    训练CT-LTC模型
+    训练DL-LNN模型
     
     Args:
         train_loader: 训练数据加载器
@@ -168,11 +170,11 @@ def train_ct_ltc_model(
         训练好的模型
     """
     print("=" * 60)
-    print("开始训练CT-LTC模型")
+    print("开始训练DL-LNN模型")
     print("=" * 60)
     
     # 创建模型
-    model = CTCTCWithPhysics(
+    model = DLLNNWithPhysics(
         input_dim=config.input_dim,
         hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,
@@ -248,7 +250,7 @@ def train_ct_ltc_model(
 
 
 def analyze_feature_importance(
-    model: CTCTCWithPhysics,
+    model: DLLNNWithPhysics,
     test_loader,
     device: torch.device,
     method: str = "gradient"
@@ -325,7 +327,7 @@ def analyze_feature_importance(
 
 
 def analyze_depth_range_contribution(
-    model: CTCTCWithPhysics,
+    model: DLLNNWithPhysics,
     test_loader,
     device: torch.device
 ) -> Dict:
@@ -527,4 +529,5 @@ def main():
 
 
 if __name__ == "__main__":
+    set_global_seed(42)
     results = main()

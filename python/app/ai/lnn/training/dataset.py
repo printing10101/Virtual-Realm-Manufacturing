@@ -478,10 +478,10 @@ class BoschCNCDataset(Dataset):
             self._labels = labels
             self._signals = metadata.get("signals")
             self._labels_raw = labels
-            logger.info(f"Cache hit for {self.hdf5_path}")
+            logger.info("Cache hit for %s", self.hdf5_path)
             return
 
-        logger.info(f"Cache miss for {self.hdf5_path}, loading from HDF5...")
+        logger.info("Cache miss for %s, loading from HDF5...", self.hdf5_path)
         self._load_from_hdf5(cache)
 
     def _get_or_create_cache(self) -> DatasetCache:
@@ -543,7 +543,7 @@ class BoschCNCDataset(Dataset):
                 }
 
                 cache.put(self.hdf5_path, self._data, self._labels, metadata)
-                logger.info(f"Data cached: {self.hdf5_path}")
+                logger.info("Data cached: %s", self.hdf5_path)
 
         except (OSError, KeyError, ValueError, TypeError, AttributeError) as e:
             # HDF5 文件读取可能因文件 IO、键访问、类型转换等失败

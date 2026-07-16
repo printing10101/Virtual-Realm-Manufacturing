@@ -557,6 +557,6 @@ class ActiveLearningTrigger:
 
 ## 相关文档
 
-- [优化蓝图3.5.1节](../optimization-blueprint.md#3.5.1) - 详细设计规范
-- [M3.2 不确定性评估 API](./uncertainty-api.md) - 不确定性评估接口
-- [M1 知识图谱服务](../knowledge-graph/api.md) - 知识图谱数据服务
+- [Bayesian LNN 架构与训练指南](./bayesian-lnn-guide.md) - LNN 模型架构与训练实现
+- [模型自动微调流水线指南](./auto-retrain-guide.md) - 模型自动迭代与版本管理
+- [API 参考文档](../api-reference.md) - LNN 推理与不确定性评估接口

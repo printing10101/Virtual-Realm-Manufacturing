@@ -884,8 +884,11 @@ class RetrievalEvaluator:
                 if hasattr(self.rag_engine, "clear_cache"):
                     try:
                         self.rag_engine.clear_cache()
-                    except (RuntimeError, OSError):
-                        pass
+                    except (RuntimeError, OSError) as cache_err:
+                        # clear_cache 失败不阻塞评估（可能产生少量过期命中），
+                        # 记录便于排查：评估结果可能存在轻微污染
+                        logger.debug("clear_cache failed during ablation: %s",
+                                     cache_err, exc_info=True)
 
                 # 运行评估
                 report = self.evaluate_all(

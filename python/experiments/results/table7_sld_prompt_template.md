@@ -19,7 +19,7 @@
 | 3 | User | [模板示例] 用户描述：缺少机床模态参数（k、m、ζ），需评估稳定性。 | synthetic_template_example |
 | 3 | Assistant | [模板示例] SLD-as-Prompt 模板响应：缺少模态参数时模型退化为粗略 SLD；建议先通过锤击法测定模态参数后重新校核。 | synthetic_template_example |
 | 真实查询 | User | n = 5,500 r/min（SLD 实验网格中点工况）；ap 待评估，请基于 DL-LNN 推理给出稳定性判定与极限切深。。 | real_experiment_results |
-| 真实查询 | Assistant | 根据 DL-LNN 在 SLD 网格上的预测，参考极限切深 a_lim ≈ 19.50 mm （模型与 Tlusty 理论 a_lim 的 MAE = 0.496 mm） 在 PHM2010 真实数据集上 CT-LTC 的 MAE = 0.793 mm，RMSE = 0.987 mm 跨工况平均 PCC = 0.9966（LOCO 评估） 建议：将 ap 控制在 16.58 mm 以内（保留 15% 安全裕量）。 | real_experiment_results |
+| 真实查询 | Assistant | 根据 DL-LNN 在 SLD 网格上的预测，参考极限切深 a_lim ≈ 19.50 mm （模型与 Tlusty 理论 a_lim 的 MAE = 0.496 mm） 在 PHM2010 真实数据集上 DL-LNN 的 MAE = 0.793 mm，RMSE = 0.987 mm 跨工况平均 PCC = 0.9966（LOCO 评估） 建议：将 ap 控制在 16.58 mm 以内（保留 15% 安全裕量）。 | real_experiment_results |
 
 ## 说明
 

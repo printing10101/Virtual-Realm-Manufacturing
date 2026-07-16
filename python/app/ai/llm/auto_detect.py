@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -134,10 +135,37 @@ class AutoDetector:
 
         Returns:
             探测结果列表（含可用和不可用的）
+
+        P0-4 修复：return_exceptions=True 防止单个 Provider 探测异常导致全部结果丢失。
+        原实现 return_exceptions=False（默认），任一 _detect_one 抛出未预期异常时，
+        gather 会取消其余任务并向上抛出，导致整批探测结果为空 —— 运维误以为无任何
+        本地 LLM 可用。改为 True 后，异常以 Exception 对象形式返回，此处过滤为
+        带错误信息的 DetectionResult，保证其余正常探测结果不受影响。
         """
         tasks = [self._detect_one(target) for target in _PROBE_TARGETS]
-        results = await asyncio.gather(*tasks, return_exceptions=False)
-        return list(results)
+        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+        results: list[DetectionResult] = []
+        for target, raw in zip(_PROBE_TARGETS, raw_results):
+            if isinstance(raw, Exception):
+                # 单个探测失败不应影响其余结果，构造带错误信息的降级结果
+                err_result = DetectionResult(
+                    provider_type=target["provider_type"],
+                    display_name=target["display_name"],
+                    host=target["host"],
+                    port=target["port"],
+                    base_url=target["default_base_url"],
+                    error=f"探测异常: {type(raw).__name__}: {raw}",
+                )
+                results.append(err_result)
+                logger.warning(
+                    "LLM 探测异常 (%s): %s",
+                    target["display_name"],
+                    raw,
+                    exc_info=raw,
+                )
+            else:
+                results.append(raw)
+        return results
 
     async def detect_one(self, provider_type: ProviderType) -> DetectionResult | None:
         """探测单个 Provider 类型。"""
@@ -171,7 +199,7 @@ class AutoDetector:
                     target["default_base_url"], target["health_path"]
                 )
             except Exception as e:
-                result.error = str(e)
+                result.error = "API 探测失败: 服务不可用或响应超时"
                 logger.debug(
                     "API probe failed for %s: %s",
                     target["display_name"],
@@ -188,8 +216,10 @@ class AutoDetector:
             writer.close()
             try:
                 await writer.wait_closed()
-            except (OSError, ConnectionError):
-                pass
+            except (OSError, ConnectionError) as close_err:
+                # wait_closed 失败不影响端口可达性判断，仅记录便于排查
+                logger.debug("writer.wait_closed failed (host=%s port=%d): %s",
+                             host, port, close_err, exc_info=True)
             return True
         except (asyncio.TimeoutError, ConnectionRefusedError, OSError) as e:
             logger.debug("Port %d:%d closed: %s", host, port, e)
@@ -209,8 +239,10 @@ class AutoDetector:
                 proc_name = (proc.info.get("name") or "").lower()
                 if any(target in proc_name for target in names_lower):
                     return True
-        except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
-            pass
+        except (psutil.NoSuchProcess, psutil.AccessDenied, OSError) as proc_err:
+            # 进程枚举失败（权限/进程消失）属于 best-effort 检测的预期异常，
+            # 记录 debug 级别便于排查，不影响整体探测结果（返回 False）
+            logger.debug("process scan failed: %s", proc_err, exc_info=True)
         return False
 
     async def _probe_api(
@@ -275,13 +307,17 @@ class AutoDetector:
         return configs
 
 
-# 全局单例
+# 全局单例（双重检查锁，线程安全）
 _detector: AutoDetector | None = None
+_detector_lock = threading.Lock()
 
 
 def get_detector() -> AutoDetector:
     """获取全局 AutoDetector 实例。"""
     global _detector
-    if _detector is None:
-        _detector = AutoDetector()
+    if _detector is not None:
+        return _detector
+    with _detector_lock:
+        if _detector is None:
+            _detector = AutoDetector()
     return _detector

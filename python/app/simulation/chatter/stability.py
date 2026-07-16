@@ -176,7 +176,7 @@ def get_machine_params(machine_id: str) -> MachineParams:
                     modal_mass=machine.get("modal_mass", default["modal_mass"]),
                 )
     except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-        logger.warning(f"读取 machines.json 失败: {e}，使用默认参数")
+        logger.warning("读取 machines.json 失败: %s，使用默认参数", e)
     
     # 使用硬编码默认值
     if machine_id in DEFAULT_MACHINE_PARAMS:
@@ -184,7 +184,7 @@ def get_machine_params(machine_id: str) -> MachineParams:
         return MachineParams(machine_id=machine_id, **params)
     
     # 未知机床，使用 vmc_850 默认值
-    logger.warning(f"未找到机床 '{machine_id}' 的参数，使用 vmc_850 默认值")
+    logger.warning("未找到机床 '%s' 的参数，使用 vmc_850 默认值", machine_id)
     params = DEFAULT_MACHINE_PARAMS["vmc_850"]
     return MachineParams(machine_id=machine_id, **params)
 
@@ -260,8 +260,9 @@ def compute_stability_limit(
         frf = _compute_frf(params.machine, freq)
         re_frf = frf.real
         
-        # 跳过 Re[G] <= 0 的点（无物理意义）
-        if re_frf <= 0:
+        # 跳过 Re[G] <= 0 或接近零的点（避免 a_lim 数值奇异）
+        # Re[G] → 0 时 a_lim = numerator / (2·K_s·Re[G]) 会发散到无穷大
+        if re_frf <= 1e-9:
             continue
         
         # Tlusty 公式（单自由度修正形式）
@@ -285,7 +286,7 @@ def compute_stability_limit(
     
     # 限制在合理范围内
     if min_a_lim > 100.0:
-        logger.warning(f"极限切深过大: {min_a_lim} mm，限制为 100 mm")
+        logger.warning("极限切深过大: %s mm，限制为 100 mm", min_a_lim)
         return 100.0
     
     return float(min_a_lim)
@@ -355,8 +356,8 @@ def compute_stability_lobe(
             frf = _compute_frf(machine, freq)
             re_frf = frf.real
 
-            # 只取 Re[G] > 0 的点（有效区域）
-            if re_frf <= 0:
+            # 只取 Re[G] > 0 或接近零的点（避免 a_lim 发散）
+            if re_frf <= 1e-9:
                 continue
 
             # Tlusty 公式（单自由度修正形式）
@@ -365,7 +366,8 @@ def compute_stability_lobe(
             re_frf_mm = re_frf * 1000.0  # m/N → mm/N
             a_lim_mm = numerator / (2.0 * k_s * re_frf_mm)
 
-            if a_lim_mm <= 0 or a_lim_mm > 1000:
+            # 统一截断阈值：与 compute_stability_limit 保持一致（100mm）
+            if a_lim_mm <= 0 or a_lim_mm > 100.0:
                 continue
 
             lobe_speeds.append(float(speed_rpm))

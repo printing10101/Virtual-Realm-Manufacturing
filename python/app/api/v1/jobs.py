@@ -16,10 +16,15 @@ from app.core.response import ErrorCode, error, success
 from app.tasks.task_manager import TaskType, TaskStatus
 from app.tasks.task_system import AsyncTaskManager
 from app.auth.permissions import require_permission
+from app.api.v1.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/jobs", tags=["Async Jobs"])
+router = APIRouter(
+    prefix="/api/v1/jobs",
+    tags=["Async Jobs"],
+    dependencies=[Depends(require_permission("job:read"))],
+)
 task_manager = AsyncTaskManager()
 
 
@@ -57,7 +62,7 @@ async def get_job_progress(job_id: str):
     )
 
 
-@router.get("/{job_id}/stream")
+@router.get("/{job_id}/stream", dependencies=[Depends(get_current_user)])
 async def stream_job_events(job_id: str):
     record = await task_manager.get_task(job_id)
     if not record:
@@ -69,7 +74,7 @@ async def stream_job_events(job_id: str):
         try:
             while True:
                 try:
-                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    event = await asyncio.wait_for(queue.get(), timeout=SSE_HEARTBEAT_TIMEOUT_SEC)
                     yield event
                 except asyncio.TimeoutError:
                     record = await task_manager.get_task(job_id)
@@ -132,7 +137,7 @@ async def list_jobs(
     task_type: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     owner_id: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):
     try:

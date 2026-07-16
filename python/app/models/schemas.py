@@ -1,11 +1,22 @@
+from typing import Dict, Optional, Union
+
 from pydantic import BaseModel, Field
 
 from app.tasks.task_manager import TaskType
 
+# [P0-17] 公共约束：dict 字段允许的标量值类型
+# 用于限制 dict 字段的内容，防止注入任意嵌套结构
+_ScalarValue = Union[str, int, float, bool, None]
+
 
 class KnowledgeAddRequest(BaseModel):
     document: str = Field(..., description="知识文档内容")
-    metadata: dict | None = Field(default=None, description="元数据")
+    # [P0-17] 限制元数据键值数量与值类型，防止注入任意结构
+    metadata: Optional[Dict[str, _ScalarValue]] = Field(
+        default=None,
+        max_length=50,
+        description="元数据键值对，最多50项，值仅支持标量",
+    )
     doc_id: str | None = Field(default=None, description="文档ID（为空则自动生成）")
 
 
@@ -23,16 +34,26 @@ class ProcessPlanRequest(BaseModel):
 
 
 class CadQueryRequest(BaseModel):
-    material: str = Field(default="", description="材料类型")
-    dimensions: dict | None = Field(default=None, description="尺寸参数")
-    description: str = Field(default="", description="加工描述")
-    script: str = Field(default="", description="CadQuery脚本")
-    output_format: str = Field(default="stl", description="输出格式")
+    material: str = Field(default="", max_length=64, description="材料类型")
+    # [P0-17] 限制尺寸参数键值数量与值类型，下游按 float 读取
+    dimensions: Optional[Dict[str, Union[float, int]]] = Field(
+        default=None,
+        max_length=20,
+        description="尺寸参数键值对，最多20项，值为数值",
+    )
+    description: str = Field(default="", max_length=2000, description="加工描述")
+    script: str = Field(default="", max_length=50000, description="CadQuery脚本")
+    output_format: str = Field(default="stl", max_length=10, description="输出格式")
 
 
 class CreateTaskRequest(BaseModel):
     task_type: TaskType = Field(..., description="任务类型")
-    params: dict | None = Field(default=None, description="任务参数")
+    # [P0-17] 限制任务参数键值数量与值类型
+    params: Optional[Dict[str, _ScalarValue]] = Field(
+        default=None,
+        max_length=50,
+        description="任务参数键值对，最多50项，值仅支持标量",
+    )
     timeout: float | None = Field(default=None, description="超时时间(秒)")
 
 
@@ -196,7 +217,12 @@ class LNNModelSizeResponse(BaseModel):
 
 class AlternativePlan(BaseModel):
     plan_id: str = Field(..., description="备选方案ID")
-    parameters: dict = Field(..., description="方案参数配置")
+    # [P0-17] 限制方案参数键值数量与值类型
+    parameters: Dict[str, _ScalarValue] = Field(
+        ...,
+        max_length=30,
+        description="方案参数配置，最多30项，值仅支持标量",
+    )
     expected_outcome: str = Field(..., description="预期效果说明")
     confidence: float = Field(..., description="方案置信度", ge=0, le=1)
     reasoning: str = Field(..., description="推理过程说明")
@@ -229,7 +255,12 @@ class TrainingPlanSummary(BaseModel):
         default=None, description="预估GPU显存占用（MB）"
     )
     dataset_samples: int = Field(..., description="数据集样本数")
-    train_val_split: dict = Field(..., description="训练集/验证集划分比例")
+    # [P0-17] 限制训练集/验证集划分比例的键值数量与值类型
+    train_val_split: Dict[str, Union[float, int]] = Field(
+        ...,
+        max_length=10,
+        description="训练集/验证集划分比例，值为数值",
+    )
     potential_risks: list[str] = Field(default=[], description="潜在风险提示")
     recommendations: list[str] = Field(default=[], description="训练建议")
 
@@ -328,13 +359,28 @@ class AgentTokenListItem(BaseModel):
 
 
 class AgentPredictRequest(BaseModel):
-    model_name: str = Field(..., description="模型名称", min_length=1)
+    # P2-批次2 修复：model_name 限制为合法标识符（字母/数字/下划线/连字符），
+    # 防止注入特殊字符到 registry 查找键、日志、审计记录。
+    model_name: str = Field(
+        ...,
+        description="模型名称",
+        min_length=1,
+        max_length=100,
+        pattern=r"^[A-Za-z0-9_-]+$",
+    )
     input_data: list[float] = Field(..., description="输入数据")
     return_confidence: bool = Field(default=False, description="是否返回置信度")
 
 
 class AgentTrainRequest(BaseModel):
-    model_name: str = Field(..., description="模型名称", min_length=1)
+    # P2-批次2 修复：与 AgentPredictRequest 一致，限制 model_name 格式。
+    model_name: str = Field(
+        ...,
+        description="模型名称",
+        min_length=1,
+        max_length=100,
+        pattern=r"^[A-Za-z0-9_-]+$",
+    )
     data_path: str = Field(..., description="训练数据路径", min_length=1)
     hyperparameters: LNNHyperparameters = Field(..., description="超参数")
     device: str = Field(
@@ -344,18 +390,50 @@ class AgentTrainRequest(BaseModel):
 
 class AgentExecuteRequest(BaseModel):
     machine_id: str = Field(..., description="机床ID", min_length=1)
-    parameters: dict = Field(..., description="工艺参数")
+    # [P0-17] 限制工艺参数键值数量与值类型
+    parameters: Dict[str, _ScalarValue] = Field(
+        ...,
+        max_length=50,
+        description="工艺参数键值对，最多50项，值仅支持标量",
+    )
     simulate: bool = Field(default=True, description="是否模拟执行")
+    # [F-P0-4] 双因子确认 + 机床安全前置校验
+    # 实模式（simulate=False 且 LNN_LIVE_EXECUTION_ENABLED=true）必须显式传入
+    supervisor_confirmed: bool = Field(
+        default=False,
+        description="班长双因子确认（实模式必填，Paper-Only 模式可忽略）",
+    )
+    # [P0-17] 限制机床安全状态字典键值数量
+    machine_safety_status: Optional[Dict[str, bool]] = Field(
+        default=None,
+        max_length=20,
+        description=(
+            "机床安全状态字典（实模式必填），包含："
+            "emergency_stop_active / guard_door_closed / "
+            "light_curtain_clear / operator_present"
+        ),
+    )
 
 
 class AgentPipelineRequest(BaseModel):
     """Agent 管线执行请求"""
+    # P2-批次2 修复：pipeline_type 限制为 orchestrator 实际支持的枚举值，
+    # 防止未知值导致 _get_pipeline_steps 返回空 steps 列表造成"空成功"误导。
+    # 实际支持值参见 app.agent.orchestrator.AgentOrchestrator._get_pipeline_steps。
     pipeline_type: str = Field(
         ...,
-        description="管线类型（process_planning/model_training/quality_analysis）",
+        description="管线类型（dxf_to_gcode/process_plan）",
         min_length=1,
+        max_length=50,
+        pattern=r"^(dxf_to_gcode|process_plan)$",
     )
-    input_data: dict = Field(..., description="管线输入数据")
+    # [P0-17] 限制管线输入数据键值数量与值类型，防止注入任意嵌套结构
+    # 不同管线类型的输入结构不同，保留 dict 灵活性但约束规模与值类型
+    input_data: Dict[str, _ScalarValue] = Field(
+        ...,
+        max_length=50,
+        description="管线输入数据，最多50项键值对，值仅支持标量",
+    )
     mode: str = Field(
         default="sequential",
         description="执行模式（sequential/conditional）",
@@ -375,6 +453,97 @@ class LNNBatchInferenceRequest(BaseModel):
     model_name: str = Field(..., description="模型名称", min_length=1)
     input_data: list[list[float]] = Field(..., description="批量输入数据")
     batch_size: int = Field(default=32, description="批次大小", ge=1)
+
+
+class LNNStreamingConfig(BaseModel):
+    """流式推理配置（对应 :class:`app.ai.lnn.inference.streaming.StreamingConfig`）。
+
+    借鉴 lingbot-map GCT 思想：关键帧间隔 + 锚点漂移修正 + 轨迹记忆约束 + 窗口化推理。
+    所有字段可选，缺省时使用 ``StreamingConfig`` 默认值。
+    """
+
+    keyframe_interval: int = Field(
+        default=1, description="关键帧间隔（每 N 帧一个关键帧）", ge=1
+    )
+    keyframe_mode: str = Field(
+        default="hybrid",
+        description="关键帧判定策略：interval / energy / hybrid",
+        pattern="^(interval|energy|hybrid)$",
+    )
+    energy_threshold: float = Field(
+        default=1.5, description="能量关键帧触发阈值（相对能量增益）", gt=0
+    )
+    max_cache_pages: int = Field(
+        default=320, description="长期隐状态缓存最大页数（LRU 淘汰）", ge=1
+    )
+    anchor_enabled: bool = Field(
+        default=True, description="是否启用锚点漂移修正"
+    )
+    anchor_update_rate: float = Field(
+        default=0.01, description="锚点 EMA 更新速率", gt=0, lt=1
+    )
+    anchor_correction_strength: float = Field(
+        default=0.1, description="锚点漂移修正强度 [0, 1]", ge=0, le=1
+    )
+    trajectory_memory_size: int = Field(
+        default=64, description="轨迹记忆窗口大小", ge=1
+    )
+    trajectory_correction_strength: float = Field(
+        default=0.1, description="轨迹一致性约束强度 [0, 1]", ge=0, le=1
+    )
+    window_size: int | None = Field(
+        default=None, description="窗口化推理窗口大小（None 表示不启用）"
+    )
+    overlap_keyframes: int = Field(
+        default=2, description="窗口间重叠关键帧数，用于隐状态传递", ge=0
+    )
+
+
+class LNNStreamPredictRequest(BaseModel):
+    """流式长时序推理请求（POST /api/v1/lnn/predict_stream）。
+
+    对每一帧逐次推理，通过关键帧缓存 + 锚点漂移修正保持长时序一致性。
+    响应为 NDJSON 流（``application/x-ndjson``），每行一帧的推理结果。
+    """
+
+    model_name: str = Field(..., description="模型名称", min_length=1)
+    frames: list[list[float]] = Field(
+        ...,
+        description="帧序列数据，每个内层列表为一帧输入",
+    )
+    config: LNNStreamingConfig | None = Field(
+        default=None,
+        description="流式推理配置，缺省时使用默认 StreamingConfig",
+    )
+
+
+class LNNWindowedPredictRequest(BaseModel):
+    """窗口化超长序列推理请求（POST /api/v1/lnn/predict_windowed）。
+
+    将超长序列切分为多个窗口，窗口间通过 ``overlap_keyframes`` 传递隐状态，
+    避免每次窗口都从零初始化。适用于跨工序连续切削、万帧以上颤振监控等场景。
+    响应为一次性 JSON 数组，包含完整序列的推理结果。
+    """
+
+    model_name: str = Field(..., description="模型名称", min_length=1)
+    frames: list[list[float]] = Field(
+        ...,
+        description="完整序列数据，每个内层列表为一帧输入",
+    )
+    window_size: int | None = Field(
+        default=None,
+        description="窗口大小，缺省时使用 config.window_size",
+        ge=1,
+    )
+    overlap_keyframes: int | None = Field(
+        default=None,
+        description="窗口间重叠关键帧数，缺省时使用 config.overlap_keyframes",
+        ge=0,
+    )
+    config: LNNStreamingConfig | None = Field(
+        default=None,
+        description="流式推理配置，缺省时使用默认 StreamingConfig",
+    )
 
 
 class PermissionCheckResult(BaseModel):

@@ -8,9 +8,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.auth.permissions import require_permission
 from app.simulation.collision_detector import (
     CollisionDetector,
     CollisionReport,
@@ -67,7 +68,7 @@ class CollisionCheckResponse(BaseModel):
     data: dict[str, Any] = Field(..., description="碰撞检测报告")
 
 
-@router.post("/collision-check", response_model=CollisionCheckResponse)
+@router.post("/collision-check", response_model=CollisionCheckResponse, dependencies=[Depends(require_permission("collision:check"))])
 async def check_collision(request: CollisionCheckRequest) -> CollisionCheckResponse:
     """执行碰撞检测。
 

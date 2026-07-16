@@ -142,6 +142,7 @@
                 >
                   <span class="pu-section-label">{{ t('processUnderstanding.sectionSources') }}</span>
                   <ul class="pu-source-list">
+                    <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
                     <li
                       v-for="(src, i) in msg.result.sources"
                       :key="i"
@@ -158,6 +159,7 @@
                 >
                   <span class="pu-section-label">{{ t('processUnderstanding.sectionActions') }}</span>
                   <ul class="pu-action-list">
+                    <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
                     <li
                       v-for="(act, i) in msg.result.actions"
                       :key="i"

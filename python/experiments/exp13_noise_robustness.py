@@ -4,7 +4,7 @@
 
 实验设计：
 1. 在测试数据中添加不同水平的高斯噪声（SNR = 0, 5, 10, 15, 20, 25, 30 dB）
-2. 对比CT-LTC与LSTM、Transformer、PINN、BPNN在噪声环境下的性能
+2. 对比DL-LNN与LSTM、Transformer、PINN、BPNN在噪声环境下的性能
 3. 评估指标：MAE, RMSE, R², PCC
 4. 分析各模型对噪声的敏感性和鲁棒性
 """
@@ -22,7 +22,7 @@ from typing import Dict, List, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import ModelConfig
-from models import CTCTCWithPhysics, BaselineLSTM, BaselineTransformer, BaselinePINN, BaselineBPNN
+from models import DLLNNWithPhysics, BaselineLSTM, BaselineTransformer, BaselinePINN, BaselineBPNN
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -167,7 +167,7 @@ def train_model(
             optimizer.zero_grad()
 
             output = model(x)
-            # CTCTCWithPhysics 返回元组 (final_pred, ltc_pred)，其他模型返回单个张量
+            # DLLNNWithPhysics 返回元组 (final_pred, ltc_pred)，其他模型返回单个张量
             if isinstance(output, tuple):
                 y_pred = output[0]
             else:
@@ -286,15 +286,15 @@ def create_model_by_name(
     根据模型名称创建对应的模型实例
 
     Args:
-        model_name: 模型名称（CT-LTC / LSTM / Transformer / PINN / BPNN）
+        model_name: 模型名称（DL-LNN / LSTM / Transformer / PINN / BPNN）
         config: 模型配置
         device: 计算设备
 
     Returns:
         初始化后的模型
     """
-    if model_name == "CT-LTC":
-        model = CTCTCWithPhysics(
+    if model_name == "DL-LNN":
+        model = DLLNNWithPhysics(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
@@ -346,7 +346,7 @@ def run_noise_robustness_experiment():
     2. 定义 SNR 水平列表 [0, 5, 10, 15, 20, 25, 30] dB
     3. 对每个 SNR 水平：
        a. 在测试数据上添加对应强度的高斯噪声
-       b. 训练所有对比模型（CT-LTC, LSTM, Transformer, PINN, BPNN）
+       b. 训练所有对比模型（DL-LNN, LSTM, Transformer, PINN, BPNN）
        c. 在噪声测试集上评估各模型性能
        d. 记录 MAE, RMSE, R2, PCC 指标
     4. 将结果保存为 JSON 文件
@@ -380,7 +380,7 @@ def run_noise_robustness_experiment():
     # 步骤 2: 定义 SNR 水平和模型列表
     # ============================================================
     snr_levels = [0, 5, 10, 15, 20, 25, 30]  # 单位: dB
-    model_names = ["CT-LTC", "LSTM", "Transformer", "PINN", "BPNN"]
+    model_names = ["DL-LNN", "LSTM", "Transformer", "PINN", "BPNN"]
 
     print(f"\n[步骤 2/4] 实验配置:")
     print(f"  SNR 水平 (dB): {snr_levels}")

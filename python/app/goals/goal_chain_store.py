@@ -88,27 +88,30 @@ class GoalChainStore:
         self._conn.commit()
 
     def _seed_defaults(self):
-        existing = self._conn.execute("SELECT COUNT(*) FROM goals").fetchone()[0]
-        if existing == 0:
-            for goal in DEFAULT_GOALS:
-                self._conn.execute(
-                    "INSERT INTO goals (id, name, description, level, parent_id, "
-                    "status, created_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        goal.id,
-                        goal.name,
-                        goal.description,
-                        goal.level.value,
-                        goal.parent_id,
-                        goal.status.value,
-                        time.time(),
-                        goal.version,
-                    ),
-                )
-            with self._write_lock:
-                # 实际写入在前面已执行，这里仅做提交同步保护
+        # P1 并发修复：原代码 SELECT+INSERT 在 _write_lock 外，仅 commit 在锁内，
+        # 多实例启动时会并发读到 existing==0 并重复 seed。
+        # 现将 SELECT+INSERT+commit 整个序列纳入 _write_lock 保护，保证原子性。
+        # 防复发：seed 操作的读-改-写必须完整持锁，不得拆分。
+        with self._write_lock:
+            existing = self._conn.execute("SELECT COUNT(*) FROM goals").fetchone()[0]
+            if existing == 0:
+                for goal in DEFAULT_GOALS:
+                    self._conn.execute(
+                        "INSERT INTO goals (id, name, description, level, parent_id, "
+                        "status, created_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            goal.id,
+                            goal.name,
+                            goal.description,
+                            goal.level.value,
+                            goal.parent_id,
+                            goal.status.value,
+                            time.time(),
+                            goal.version,
+                        ),
+                    )
                 self._conn.commit()
-            logger.info("Default goal hierarchy seeded")
+                logger.info("Default goal hierarchy seeded")
 
     def add_goal(self, goal: Goal) -> Goal:
         if goal.created_at is None:
@@ -148,7 +151,7 @@ class GoalChainStore:
         for key, value in kwargs.items():
             # 验证列名是否在白名单中，防止 SQL 注入
             if key not in self._ALLOWED_COLUMNS:
-                logger.warning(f"Attempted to update disallowed column: {key}")
+                logger.warning("Attempted to update disallowed column: %s", key)
                 continue
             if hasattr(goal, key) and value != getattr(goal, key):
                 old = str(getattr(goal, key))

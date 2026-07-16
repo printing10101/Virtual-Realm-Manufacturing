@@ -144,9 +144,9 @@
 ## 相关文档
 
 - [FastAPI 官方文档](https://fastapi.tiangolo.com/)
-- [后端架构概述](../docs/development/架构概述.md)
-- [API 开发指南](../docs/development/api-guide.md)
-- [API 参考文档](../docs/api/README.md)
+- [后端架构概述](../development/架构概述.md)
+- [API 参考文档](../api-reference.md)
+- [API 错误码说明](../api/error-codes.md)
 
 ## 变更记录
 

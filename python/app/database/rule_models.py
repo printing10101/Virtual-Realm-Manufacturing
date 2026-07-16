@@ -4,11 +4,14 @@ SQLAlchemy ORM models for process rules database.
 Defines RuleGroup and ProcessRule models for the rule_groups and rules tables.
 """
 
+from datetime import datetime
+
 from sqlalchemy import (
     Column,
     Integer,
     String,
     Text,
+    DateTime,
     ForeignKey,
     Index,
     text,
@@ -26,8 +29,17 @@ class RuleGroup(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, unique=True)
     description = Column(Text, nullable=False, server_default=text("''"))
-    created_at = Column(String, nullable=False)
-    updated_at = Column(String, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
+    )
 
     rules = relationship("ProcessRule", back_populates="group", lazy="select")
 
@@ -49,8 +61,17 @@ class ProcessRule(Base):
     result_json = Column(Text, nullable=False)
     status = Column(String, nullable=False, server_default=text("'active'"))
     priority = Column(Integer, nullable=False, server_default=text("0"))
-    created_at = Column(String, nullable=False)
-    updated_at = Column(String, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
+    )
 
     group = relationship("RuleGroup", back_populates="rules", lazy="select")
 

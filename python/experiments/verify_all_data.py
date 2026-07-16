@@ -76,11 +76,11 @@ if results_dir.exists():
         print(f"  数据集数量: {len(main_results)}")
         print(f"  模型数量: {len(list(main_results.values())[0])}")
         
-        # 检查CT-LTC在各数据集上的MAE
-        print(f"\n  CT-LTC MAE结果:")
+        # 检查DL-LNN在各数据集上的MAE
+        print(f"\n  DL-LNN MAE结果:")
         for dataset, models in main_results.items():
-            if 'CT-LTC' in models:
-                mae = models['CT-LTC']['MAE']
+            if 'DL-LNN' in models:
+                mae = models['DL-LNN']['MAE']
                 print(f"    {dataset}: {mae:.4f}")
     
     # 验证时间常数分析

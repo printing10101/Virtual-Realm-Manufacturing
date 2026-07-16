@@ -2,6 +2,7 @@
   <div class="workflow-guide">
     <!-- 步骤指示器 -->
     <div class="steps-indicator">
+      <!-- 静态列表，index 作为 key 可接受 -->
       <div
         v-for="(step, index) in steps"
         :key="index"

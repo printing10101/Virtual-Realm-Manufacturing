@@ -1,7 +1,7 @@
 # 灵境制造 - 开发文档
 
 > 面向**项目内部开发者、贡献者、运维工程师**的技术参考手册
-> **适用版本**：v2.0.0（与代码版本完全一致）
+> **适用版本**：v2.5.0（与代码版本完全一致）
 > 本目录包含架构说明、开发环境搭建、测试策略与贡献流程。
 
 ## 目录
@@ -47,7 +47,7 @@
 | 类别 | 技术 |
 |------|------|
 | 框架 | Vue 3.4+ + TypeScript 5.x |
-| 构建 | Vite 5 |
+| 构建 | Vite 6 |
 | 状态 | Pinia |
 | 路由 | Vue Router 4 |
 | UI | Element Plus + 自研组件 |
@@ -84,7 +84,7 @@
 ├── docs/                      # 本目录所属
 ├── deploy/                    # K8s / Prometheus
 ├── config/                    # 全局配置
-├── e2e/                       # Playwright E2E
+├── tests/                     # Vitest 前端组件测试
 ├── src-tauri/                 # Tauri Rust 桌面壳
 ├── .github/workflows/         # CI
 ├── docker-compose.yml

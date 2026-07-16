@@ -281,9 +281,9 @@ def extract_routes_from_docs(docs_path: str) -> dict[str, list[dict[str, Any]]]:
         documented_routes[path] = documented_routes.get(path, [])
         documented_routes[path].append({"method": method.upper(), "path": path})
 
-    # Pattern 4: `### METHOD /path`
+    # Pattern 4: `### METHOD /path` or `### `METHOD` `/path`` (gen-api-docs.py format)
     route_pattern_4 = re.finditer(
-        r"#{2,4}\s+(?P<method>[A-Z]+)\s+/(?P<path>[^\n]+)",
+        r"#{2,4}\s+`?(?P<method>[A-Z]+)`?\s+`?/(?P<path>[^\n`]+)",
         content,
     )
     for match in route_pattern_4:

@@ -133,7 +133,7 @@
             <el-form-item
               v-for="(value, key) in aiRecommendation"
               :key="key"
-              :label="key"
+              :label="String(key)"
             >
               <el-input
                 v-if="typeof value === 'string'"
@@ -228,12 +228,12 @@ const selectedAlternative = ref<string | undefined>(undefined)
 const modifyDrawerVisible = ref(false)
 const modifiedParams = ref<AIRecommendation>({})
 
-function getStringValue(key: string): string { return String(modifiedParams.value[key] ?? '') }
-function setStringValue(key: string, val: string) { modifiedParams.value[key] = val }
-function getNumberValue(key: string): number | undefined { const v = modifiedParams.value[key]; return typeof v === 'number' ? v : undefined }
-function setNumberValue(key: string, val: number | undefined) { if (val !== undefined) modifiedParams.value[key] = val }
-function getBoolValue(key: string): boolean { return !!modifiedParams.value[key] }
-function setBoolValue(key: string, val: boolean | string | number) { modifiedParams.value[key] = !!val }
+function getStringValue(key: string | number): string { return String(modifiedParams.value[key] ?? '') }
+function setStringValue(key: string | number, val: string) { modifiedParams.value[key] = val }
+function getNumberValue(key: string | number): number | undefined { const v = modifiedParams.value[key]; return typeof v === 'number' ? v : undefined }
+function setNumberValue(key: string | number, val: number | undefined) { if (val !== undefined) modifiedParams.value[key] = val }
+function getBoolValue(key: string | number): boolean { return !!modifiedParams.value[key] }
+function setBoolValue(key: string | number, val: boolean | string | number) { modifiedParams.value[key] = !!val }
 
 function formatRecommendation(rec: AIRecommendation): string {
   return JSON.stringify(rec, null, 2)

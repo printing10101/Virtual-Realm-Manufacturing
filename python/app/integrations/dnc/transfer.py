@@ -184,8 +184,8 @@ class DNCTransfer:
         except Exception as e:
             self._status = DNCStatus.ERROR
             duration = time.time() - start_time
-            error_msg = f"传输失败: {str(e)}"
-            logger.error(error_msg)
+            error_msg = "传输失败: 连接异常或发送中断，请检查机床连接"
+            logger.error("传输失败: %s", e, exc_info=True)
             
             return DNCResult(
                 success=False,
@@ -226,11 +226,12 @@ class DNCTransfer:
                 gcode = f.read()
             return self.send_gcode(gcode, target)
         except Exception as e:
+            logger.error("读取文件失败: %s", e, exc_info=True)
             return DNCResult(
                 success=False,
                 bytes_sent=0,
                 duration_seconds=0.0,
-                error_message=f"读取文件失败: {str(e)}"
+                error_message="读取文件失败: 文件不可读或权限不足"
             )
     
     def test_connection(self, target: DNCTarget) -> bool:
@@ -272,7 +273,8 @@ class DNCTransfer:
             self._socket.connect((target.host, target.port))
             logger.debug("TCP 连接已建立")
         except socket.error as e:
-            raise ConnectionError(f"TCP 连接失败: {str(e)}")
+            logger.warning("TCP connect failed: %s", e)
+            raise ConnectionError("TCP 连接失败: 无法连接到目标地址或网络不通") from e
     
     def _connect_serial(self, target: DNCTarget) -> None:
         """建立串口连接"""
@@ -317,7 +319,8 @@ class DNCTransfer:
                         target.host, target.baud_rate, self.config.flow_control,
                         self.config.data_bits, self.config.parity, self.config.stop_bits)
         except serial.SerialException as e:
-            raise ConnectionError(f"串口连接失败: {str(e)}")
+            logger.warning("Serial connect failed: %s", e)
+            raise ConnectionError("串口连接失败: 端口不可用、被占用或参数错误") from e
     
     def _send_tcp(
         self,
@@ -326,6 +329,11 @@ class DNCTransfer:
         total_bytes: Optional[int] = None,
     ) -> int:
         """通过 TCP 发送数据
+
+        .. note::
+            仅同步上下文使用：本方法使用 ``time.sleep`` 控制发送节流，
+            不应在 async 上下文中直接调用。如需 async 支持，请使用
+            ``asyncio.to_thread`` 包装或在调用方协程中 ``await asyncio.sleep``。
 
         Args:
             data: 待发送的数据
@@ -368,6 +376,11 @@ class DNCTransfer:
         total_bytes: Optional[int] = None,
     ) -> int:
         """通过串口发送数据
+
+        .. note::
+            仅同步上下文使用：本方法使用 ``time.sleep`` 控制发送节流，
+            不应在 async 上下文中直接调用。如需 async 支持，请使用
+            ``asyncio.to_thread`` 包装或在调用方协程中 ``await asyncio.sleep``。
 
         Args:
             data: 待发送的数据

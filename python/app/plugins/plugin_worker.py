@@ -6,6 +6,7 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -126,9 +127,16 @@ class PluginWorkerManager:
                 )
 
         info.status = WorkerStatus.STOPPED
-        logger.info(f"Worker stopped for plugin '{plugin_id}'")
+        logger.info("Worker stopped for plugin '%s'", plugin_id)
 
     def restart_worker(self, plugin_id: str) -> WorkerInfo:
+        """重启插件 worker。
+
+        .. note::
+            仅同步上下文使用：本方法使用 ``time.sleep`` 等待重启延迟，
+            不应在 async 上下文中直接调用。如需 async 支持，请用
+            ``asyncio.to_thread`` 包装。
+        """
         info = self._workers.get(plugin_id)
         if info is None:
             raise KeyError(f"Worker for plugin '{plugin_id}' not found")
@@ -252,14 +260,23 @@ class PluginWorkerManager:
             worker_script = Path(__file__).parent / "worker_process.py"
 
             if worker_script.exists():
-                result = subprocess.run(
-                    [sys.executable, str(worker_script)],
-                    env=env,
-                    cwd=config.plugin_path,
-                )
+                try:
+                    result = subprocess.run(
+                        [sys.executable, str(worker_script)],
+                        env=env,
+                        cwd=config.plugin_path,
+                        timeout=300,  # 5分钟超时，防止僵尸进程
+                        capture_output=True,
+                        text=True,
+                    )
+                except subprocess.TimeoutExpired:
+                    logger.error(
+                        "插件执行超时（300s）: %s", config.plugin_path
+                    )
+                    raise RuntimeError("插件执行超时（300s）")
 
                 if result.returncode != 0:
-                    logger.error(f"Worker process exited with code {result.returncode}")
+                    logger.error("Worker process exited with code %s", result.returncode)
             else:
                 self._run_worker_inline(config, port)
 
@@ -272,6 +289,12 @@ class PluginWorkerManager:
             raise
 
     def _run_worker_inline(self, config: WorkerConfig, port: int) -> None:
+        """内联运行插件 worker（同步线程上下文）。
+
+        .. note::
+            仅同步上下文使用：本方法在独立线程中运行，使用 ``time.sleep``
+            维持 worker 心跳循环，不应在 async 上下文中直接调用。
+        """
         from app.plugins.plugin_system import PluginLoader, PluginRegistry, PluginMetadata
 
         registry = PluginRegistry.get_instance()
@@ -284,18 +307,23 @@ class PluginWorkerManager:
             plugin_path=config.plugin_path,
         )
 
+        instance = None
+        stop_event = threading.Event()
+
         try:
             instance = loader.load_plugin(metadata)
 
             if hasattr(instance, "initialize"):
                 instance.initialize({})
 
-            while True:
+            # 修复 P1：原 while True 无退出条件，现通过 Event 支持优雅退出
+            while not stop_event.is_set():
                 time.sleep(1)
 
         except KeyboardInterrupt:
-            # 用户主动中断（Ctrl+C）是 worker 正常退出信号，静默处理
-            pass
+            # 用户主动中断（Ctrl+C）是 worker 正常退出信号，设置停止标志
+            stop_event.set()
         finally:
-            if hasattr(instance, "shutdown"):
+            # 修复 P1：instance 可能未定义（load_plugin 抛异常时），需判空
+            if instance is not None and hasattr(instance, "shutdown"):
                 instance.shutdown()

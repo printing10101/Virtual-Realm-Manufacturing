@@ -495,7 +495,11 @@ class GCodePreprocessor(BasePreprocessor):
                     try:
                         val = float(token[1:])
                     except ValueError as e:
-                        logger.debug(f"G代码 token '{token}' 数值解析失败，使用默认值 0.0: {e}")
+                        # P2-批次2 修复：改用 %s 懒求值。此处在嵌套 for 循环内，
+                        # G 代码 token 编码热路径，debug 关闭时避免字符串插值开销。
+                        logger.debug(
+                            "G代码 token %r 数值解析失败，使用默认值 0.0: %s", token, e
+                        )
                         val = 0.0
                     encoded[i, vocab[prefix]] = val
         return encoded

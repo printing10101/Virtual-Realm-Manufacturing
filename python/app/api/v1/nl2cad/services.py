@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 from typing import Any
 
 from app.ai.llm_client import BaseLLMClient, get_llm_client
@@ -356,13 +357,17 @@ class NL2CADService:
         return model_path, refined_params
 
 
-# Singleton instance
+# Singleton instance (双重检查锁，线程安全)
 _service_instance: NL2CADService | None = None
+_service_lock = threading.Lock()
 
 
 def get_nl2cad_service() -> NL2CADService:
     """Get or create NL2CAD service instance."""
     global _service_instance
-    if _service_instance is None:
-        _service_instance = NL2CADService()
+    if _service_instance is not None:
+        return _service_instance
+    with _service_lock:
+        if _service_instance is None:
+            _service_instance = NL2CADService()
     return _service_instance

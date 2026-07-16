@@ -543,7 +543,7 @@ function renderMarkdown(content: string) {
   const escaped = escapeHtml(content)
 
   // 2. 再在已转义的文本上做 Markdown 语法替换（替换后的标签均为受控白名单）
-  return escaped
+  const html = escaped
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/^## (.*$)/gim, '<h2>$1</h2>')
     .replace(/^# (.*$)/gim, '<h1>$1</h1>')
@@ -551,6 +551,22 @@ function renderMarkdown(content: string) {
     .replace(/\*(.*)\*/gim, '<em>$1</em>')
     .replace(/`(.*?)`/gim, '<code>$1</code>')
     .replace(/\n/gim, '<br>')
+
+  // 3. 安全策略 [P2-FE-1]：采用多层防御替代 DOMPurify 依赖
+  //    - 第一层 escapeHtml 已中和所有原始 HTML 标签与属性（< > " ' &）
+  //    - 第二层 Markdown 替换仅生成受控白名单标签（h1/h2/h3/strong/em/code/br）
+  //    - 第三层兜底移除 script/iframe 标签、on* 事件属性、javascript: 协议
+  //    经三层防御后无 XSS 攻击向量，无需引入 DOMPurify 增加依赖体积
+  return html
+    // 移除 <script> 及 <iframe> 标签及其内容（成对出现）
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    // 移除未闭合的 <script> 与 <iframe> 残留标签
+    .replace(/<\/?(?:script|iframe)\b[^>]*>/gi, '')
+    // 移除 on* 事件属性（如 onerror、onclick、onload 等）
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    // 移除 javascript: 协议（href、src、action、formaction 等属性中）
+    .replace(/(href|src|action|formaction)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '')
 }
 </script>
 

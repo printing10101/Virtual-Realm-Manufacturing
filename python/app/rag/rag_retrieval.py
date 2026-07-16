@@ -54,6 +54,7 @@ class QueryIntent(Enum):
     VIBRATION_WEAR = "vibration_wear"
     MATERIAL_COMPARE = "material_compare"
     CROSS_SOURCE = "cross_source"
+    SIGNAL_FUSION = "signal_fusion"
     GENERAL = "general"
 
 
@@ -112,7 +113,7 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
     ),
     QueryIntent.VIBRATION_WEAR: RetrievalRule(
         intent=QueryIntent.VIBRATION_WEAR,
-        source_filters=["uniwear-nuaa", "uniwear-phm2010", "bosch_cnc", "uniwear"],
+        source_filters=["uniwear-nuaa", "uniwear-phm2010", "bosch_cnc", "uniwear", "signal_fusion"],
         metadata_filters={"has_vibration": True},
         keyword_boost={
             "振动": 4.0,
@@ -148,7 +149,7 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
     ),
     QueryIntent.CROSS_SOURCE: RetrievalRule(
         intent=QueryIntent.CROSS_SOURCE,
-        source_filters=["bosch_cnc", "uniwear-nuaa", "uniwear-phm2010", "cross_source"],
+        source_filters=["bosch_cnc", "uniwear-nuaa", "uniwear-phm2010", "cross_source", "signal_fusion"],
         metadata_filters={},
         keyword_boost={
             "Bosch": 3.0,
@@ -162,6 +163,29 @@ RETRIEVAL_RULES: dict[QueryIntent, RetrievalRule] = {
         priority=1,
         pipeline_level="full",
         cluster_tag="cross_source",
+    ),
+    QueryIntent.SIGNAL_FUSION: RetrievalRule(
+        intent=QueryIntent.SIGNAL_FUSION,
+        source_filters=["signal_fusion"],
+        metadata_filters={},
+        keyword_boost={
+            "信号样本": 3.0,
+            "vibration": 3.0,
+            "cutting_force": 3.0,
+            "acoustic_emission": 3.0,
+            "温度": 2.5,
+            "电流": 2.5,
+            "RMS": 2.5,
+            "频谱": 2.0,
+            "峭度": 2.0,
+            "多模态": 2.5,
+            "融合": 2.0,
+        },
+        n_results=10,
+        priority=1,
+        pipeline_level="standard",
+        cluster_tag="signal_fusion",
+        use_entity_index=False,
     ),
     QueryIntent.GENERAL: RetrievalRule(
         intent=QueryIntent.GENERAL,
@@ -241,6 +265,20 @@ INTENT_KEYWORDS = {
         "两个数据集",
         "不同数据源",
     ],
+    QueryIntent.SIGNAL_FUSION: [
+        "信号样本",
+        "vibration",
+        "cutting_force",
+        "acoustic_emission",
+        "信号融合",
+        "多模态",
+        "峭度",
+        "频谱",
+        "RMS",
+        "声发射",
+        "振动信号",
+        "切削力信号",
+    ],
 }
 
 
@@ -255,6 +293,7 @@ _CLUSTER_TAG_FILTERS: dict[str, dict] = {
     "vibration_wear": {"has_vibration": True},
     "material_compare": {},   # 依赖 source_filters 即可
     "cross_source": {},       # 跨源检索不额外限制
+    "signal_fusion": {},      # signal_fusion source 已通过 source_filters 过滤
 }
 
 
@@ -416,8 +455,19 @@ class RagRetrievalEngine:
     - 集成查询改写、混合检索、重排序
     """
 
-    def __init__(self, knowledge_base):
+    def __init__(self, knowledge_base, signal_fusion_kb=None):
+        """初始化 RAG 检索引擎。
+
+        Args:
+            knowledge_base: KnowledgeBase 实例（ChromaDB 后端文档检索）
+            signal_fusion_kb: 可选的 SignalFusionKnowledgeBase 实例。
+                集成点 2：显式依赖注入，避免之前通过共享 VectorStore 单例的隐式耦合。
+                提供后，检索路径可路由到 signal_fusion source 的样本，
+                并支持 retrieve_from_signal_fusion() 直接委托检索。
+                未提供时降级为旧行为（仅靠 source_filter 触发 ChromaDB 检索）。
+        """
         self.kb = knowledge_base
+        self.signal_fusion_kb = signal_fusion_kb
         self.rules = RETRIEVAL_RULES
         # 预计算小写关键词，避免每次查询都转换
         self._intent_keywords_lower = {
@@ -735,7 +785,7 @@ class RagRetrievalEngine:
             for future in as_completed(future_to_source):
                 source = future_to_source[future]
                 try:
-                    source_results = future.result(timeout=30)
+                    source_results = future.result(timeout=RAG_SOURCE_QUERY_TIMEOUT_SEC)
                     for r in source_results:
                         r["_retrieval_source_filter"] = source
                     results.extend(source_results)
@@ -757,7 +807,8 @@ class RagRetrievalEngine:
     def retrieve_by_material(
         self, material: str, query: str, n_results: int = 5
     ) -> dict:
-        if material.upper() == "TC4" or "钛" in material:
+        # 学术诚信修复：统一子串匹配，原 material.upper()=="TC4" 精确匹配漏匹配"TC4钛合金"等
+        if "TC4" in material.upper() or "钛" in material:
             intent = QueryIntent.MATERIAL_WEAR
             override = "uniwear-nuaa"
         elif "HRC52" in material.upper() or "不锈钢" in material:
@@ -780,6 +831,102 @@ class RagRetrievalEngine:
             intent = QueryIntent.GENERAL
 
         return self.retrieve(query=query, intent=intent, n_results=n_results)
+
+    def retrieve_from_signal_fusion(
+        self,
+        features: list[float] | None = None,
+        signal_type: str | None = None,
+        machine_id: str | None = None,
+        material: str | None = None,
+        tool_id: int | None = None,
+        top_k: int = 10,
+        query: str | None = None,
+    ) -> dict:
+        """集成点 2：直接委托 SignalFusionKnowledgeBase 检索多源信号样本。
+
+        之前 RagRetrievalEngine 与 SignalFusionKnowledgeBase 通过共享
+        VectorStore 单例（同一 ``knowledge_base`` ChromaDB 集合）隐式耦合：
+        - 两者使用同一 VectorStore，但 RagRetrievalEngine 不知道后者存在；
+        - signal_fusion source 的样本对 RAG 检索完全不可见。
+
+        本方法通过显式依赖注入（构造时传入 signal_fusion_kb）打通两条路径：
+        1. 提供 9 维 features 时走 SignalFusionKnowledgeBase.retrieve_similar
+           （向量相似度检索，返回 SignalSample 列表）；
+        2. 仅提供 query 文本时，从 query 中提取信号相关实体（vibration/RMS 等），
+           再调用 retrieve_similar（features=None 时返回最近样本）。
+
+        Args:
+            features: 9 维信号特征向量（与 FeatureExtractor 对齐）
+            signal_type: 可选信号类型过滤
+                (vibration/cutting_force/temperature/acoustic_emission/current)
+            machine_id: 可选机床 ID 过滤
+            material: 可选材料过滤
+            tool_id: 可选刀具 ID 过滤
+            top_k: 返回前 K 个
+            query: 可选文本查询（用于日志与降级时走通用 RAG 检索）
+
+        Returns:
+            dict，含 samples（SignalSample.to_dict 列表）、source、query 等
+        """
+        # 降级路径：未注入 signal_fusion_kb 时走通用 RAG 检索
+        if self.signal_fusion_kb is None:
+            logger.debug(
+                "signal_fusion_kb 未注入，retrieve_from_signal_fusion 降级到通用 RAG 检索"
+            )
+            fallback = self.retrieve(
+                query=query or "signal_fusion",
+                intent=QueryIntent.SIGNAL_FUSION,
+                n_results=top_k,
+                override_source="signal_fusion",
+            )
+            return {
+                **fallback,
+                "degraded": True,
+                "degradation_reason": "signal_fusion_kb not injected",
+            }
+
+        # 显式依赖路径：委托给 SignalFusionKnowledgeBase
+        try:
+            # features 缺失时构造零向量占位（retrieve_similar 仍可基于 metadata 过滤返回样本）
+            query_features = features if features else [0.0] * 9
+            samples = self.signal_fusion_kb.retrieve_similar(
+                features=query_features,
+                signal_type=signal_type,
+                machine_id=machine_id,
+                material=material,
+                tool_id=tool_id,
+                top_k=top_k,
+            )
+        except (RuntimeError, OSError, ValueError, KeyError) as e:
+            logger.warning(
+                "SignalFusionKnowledgeBase.retrieve_similar 失败，降级到通用 RAG: %s",
+                e, exc_info=True,
+            )
+            fallback = self.retrieve(
+                query=query or "signal_fusion",
+                intent=QueryIntent.SIGNAL_FUSION,
+                n_results=top_k,
+                override_source="signal_fusion",
+            )
+            return {
+                **fallback,
+                "degraded": True,
+                "degradation_reason": f"retrieve_similar failed: {e}",
+            }
+
+        return {
+            "query": query or "",
+            "source": "signal_fusion",
+            "signal_type_filter": signal_type,
+            "machine_id_filter": machine_id,
+            "material_filter": material,
+            "tool_id_filter": tool_id,
+            "features_query_provided": features is not None,
+            "total_found": len(samples),
+            "results_returned": len(samples),
+            "samples": [s.to_dict() for s in samples],
+            "degraded": False,
+        }
 
     def retrieve_cross_source(
         self,
@@ -964,7 +1111,10 @@ class RagRetrievalEngine:
                 continue
 
             distance = r.get("distance", 1.0) or 1.0
-            semantic_score = 1.0 - min(distance, 1.0)
+            # 学术诚信修复：ChromaDB 使用 cosine 距离（distance ∈ [0,2]），
+            # 原 1.0 - min(distance, 1.0) 在 distance>1 时截断为 0，丢失区分度；
+            # 改为标准 cosine 归一化 1.0 - distance/2.0，映射 [0,2] → [1,0]
+            semantic_score = 1.0 - distance / 2.0
             score = semantic_score
             # 文档与元数据小写只计算一次
             doc_lower = r.get("document", "").lower()

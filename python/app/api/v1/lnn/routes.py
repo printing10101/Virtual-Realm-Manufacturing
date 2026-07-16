@@ -4,17 +4,21 @@ import os
 import uuid
 import asyncio
 import logging
+import threading
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
+import torch  # /device/info、/device/status、/device/clear-cache 端点需要
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
+from app.auth.permissions import require_permission
+from app.api.v1.auth import get_current_user
 from app.core.api_response import api_response
 from app.audit.audit_log import AIModule, UserDecision, OperationStatus
 from app.utils.ring_buffer import get_ring_log_buffer
@@ -30,6 +34,9 @@ from app.models.schemas import (
     LNNTrainDryRunResponse,
     TrainingPlanSummary,
     LNNBatchInferenceRequest,
+    LNNStreamPredictRequest,
+    LNNWindowedPredictRequest,
+    LNNStreamingConfig,
 )
 from app.tasks.task_manager import TaskType, TaskStatus
 from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
@@ -59,11 +66,9 @@ from app.api.v1.lnn.services import (
     _generate_prediction_reasoning,
     _generate_alternatives,
     _broadcast_error,
-    _run_training_task,
     _run_training_task_async,
     _broadcast_training_events,
     _run_quantization_task_v2,
-    _run_quantization_task,
     _format_size,
     run_batch_inference_v2,
     sse_event_generator,
@@ -116,13 +121,36 @@ def _validate_data_path(user_path: str) -> Path:
             project_root=_ALLOWED_DATA_BASE_DIRS[1],
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=safe_error_message(exc, fallback="请求参数无效", context="lnn.routes")) from exc
 
 
-router = APIRouter(prefix="/api/v1/lnn", tags=["LNN Models"])
+router = APIRouter(
+    prefix="/api/v1/lnn",
+    tags=["LNN Models"],
+    dependencies=[Depends(require_permission("lnn:read"))],
+)
 
-# 训练队列(模块级状态)
+# 训练队列(模块级状态) —— 修复 P0-10：添加 TTL 清理与线程安全锁
+# job_id -> {"cancel": asyncio.Event, "progress": asyncio.Queue, "created_at": datetime}
 _TRAINING_QUEUES: dict = {}
+_TRAINING_QUEUES_LOCK = threading.Lock()
+_TRAINING_QUEUE_TTL = timedelta(hours=1)
+
+
+def _cleanup_training_queues() -> None:
+    """清理超过 TTL 的训练队列，防止内存泄漏。
+
+    在添加新队列时顺便调用，惰性清理策略避免引入后台定时任务。
+    """
+    now = datetime.utcnow()
+    expired = [
+        job_id
+        for job_id, info in _TRAINING_QUEUES.items()
+        if now - info.get("created_at", now) > _TRAINING_QUEUE_TTL
+    ]
+    for job_id in expired:
+        _TRAINING_QUEUES.pop(job_id, None)
+        logger.info("清理过期训练队列: %s", job_id)
 
 
 def _log_task_exception(task: asyncio.Task, context: str) -> None:
@@ -137,7 +165,7 @@ def _log_task_exception(task: asyncio.Task, context: str) -> None:
         )
 
 
-@router.post("/predict")
+@router.post("/predict", dependencies=[Depends(require_permission("lnn:write"))])
 @limiter.limit("60/minute")
 async def predict_lnn(request: Request, body: LNNPredictRequest):
     try:
@@ -331,7 +359,7 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
         )
 
 
-@router.post("/train/dry_run")
+@router.post("/train/dry_run", dependencies=[Depends(require_permission("lnn:train"))])
 async def dry_run_training(request: LNNTrainDryRunRequest):
     try:
         # 修复 [B10]：对 data_path 做路径遍历校验，限制在允许的数据目录内
@@ -371,9 +399,14 @@ async def dry_run_training(request: LNNTrainDryRunRequest):
             )
         except ValueError as e:
             if "File too large" in str(e):
+                # 包装异常消息，避免直接回显内部错误细节
+                safe = safe_error_message(
+                    e, context="lnn.upload_data[file_too_large]", fallback="数据文件过大"
+                )
                 return error(
                     code=ErrorCode.INVALID_REQUEST,
-                    message=str(e),
+                    message=safe["message"],
+                    detail={"error_id": safe["error_id"]},
                 )
             raise
         if data.ndim == 1:
@@ -489,7 +522,7 @@ async def dry_run_training(request: LNNTrainDryRunRequest):
         )
 
 
-@router.post("/train")
+@router.post("/train", dependencies=[Depends(require_permission("lnn:train"))])
 @limiter.limit("5/hour")
 async def train_lnn(
     request: Request,
@@ -526,7 +559,13 @@ async def train_lnn(
 
         progress_q: asyncio.Queue = asyncio.Queue(maxsize=1024)
         cancel_evt = asyncio.Event()
-        _TRAINING_QUEUES[task_id] = {"cancel": cancel_evt, "progress": progress_q}
+        with _TRAINING_QUEUES_LOCK:
+            _cleanup_training_queues()  # 惰性清理过期队列
+            _TRAINING_QUEUES[task_id] = {
+                "cancel": cancel_evt,
+                "progress": progress_q,
+                "created_at": datetime.utcnow(),
+            }
 
         # 同步到 task_manager 的内部队列引用
         if not hasattr(task_manager, "_training_queues"):
@@ -623,7 +662,7 @@ async def get_model_info(model_name: str):
     return success(data=info_data, message="Model info retrieved successfully")
 
 
-@router.post("/models/{model_name}/validate")
+@router.post("/models/{model_name}/validate", dependencies=[Depends(require_permission("lnn:write"))])
 async def validate_model(model_name: str):
     try:
         entry = model_registry.registry.get(model_name)
@@ -751,7 +790,7 @@ async def get_cache_stats():
     )
 
 
-@router.delete("/cache/clear")
+@router.delete("/cache/clear", dependencies=[Depends(require_permission("lnn:write"))])
 @api_response
 async def clear_cache():
     """清空所有模型缓存"""
@@ -877,7 +916,7 @@ async def get_device_status_endpoint():
     )
 
 
-@router.post("/device/clear-cache")
+@router.post("/device/clear-cache", dependencies=[Depends(require_permission("lnn:write"))])
 @api_response
 async def clear_device_cache():
     """清空GPU缓存"""
@@ -895,7 +934,7 @@ async def clear_device_cache():
     )
 
 
-@router.get("/train/{task_id}/stream")
+@router.get("/train/{task_id}/stream", dependencies=[Depends(get_current_user)])
 async def stream_training_status(task_id: str):
     """SSE 端点,用于实时训练状态更新。"""
     record = await task_manager.get_task(task_id)
@@ -919,7 +958,7 @@ async def stream_training_status(task_id: str):
     )
 
 
-@router.post("/train/{task_id}/cancel")
+@router.post("/train/{task_id}/cancel", dependencies=[Depends(require_permission("lnn:train"))])
 async def cancel_training_task(task_id: str):
     """取消正在运行的训练任务。"""
     record = await task_manager.get_task(task_id)
@@ -949,7 +988,7 @@ async def cancel_training_task(task_id: str):
     )
 
 
-@router.post("/models/{model_name}/quantize")
+@router.post("/models/{model_name}/quantize", dependencies=[Depends(require_permission("lnn:write"))])
 @limiter.limit("10/hour")
 async def quantize_model(request: Request, model_name: str, body: LNNQuantizeRequest):
     """异步启动 INT8 量化任务,立即返回 job_id。"""
@@ -1039,7 +1078,7 @@ async def get_quantization_status(task_id: str):
     return success(data=payload, message="Quantization status retrieved")
 
 
-@router.post("/quantize/{task_id}/cancel")
+@router.post("/quantize/{task_id}/cancel", dependencies=[Depends(require_permission("lnn:write"))])
 @api_response
 async def cancel_quantization_task(task_id: str):
     """取消进行中的量化任务。"""
@@ -1127,9 +1166,13 @@ async def get_model_size(model_name: str):
         )
 
 
-@router.post("/batch-inference")
+@router.post("/batch-inference", dependencies=[Depends(require_permission("lnn:write"))])
+# P2-4-4 修复：批量推理消耗大量计算资源，需速率限制防止 DoS。
+# 限制为 10/hour（比单次 predict 的 60/minute 更严格，因批量任务资源消耗高）。
+@limiter.limit("10/hour")
 async def batch_inference(
-    request: LNNBatchInferenceRequest,
+    request: Request,
+    body: LNNBatchInferenceRequest,
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
     """异步启动批量推理,立即返回 job_id。"""
@@ -1137,9 +1180,9 @@ async def batch_inference(
         record = await task_manager.create_task(
             TaskType.LNN_BATCH_INFERENCE,
             {
-                "model_name": request.model_name,
-                "input_data": request.input_data,
-                "batch_size": request.batch_size,
+                "model_name": body.model_name,
+                "input_data": body.input_data,
+                "batch_size": body.batch_size,
             },
             idempotency_key=idempotency_key,
         )
@@ -1147,9 +1190,9 @@ async def batch_inference(
         async def batch_executor(cancel_evt, progress_updater):
             return await run_batch_inference_v2(
                 record.job_id,
-                request.model_name,
-                request.input_data,
-                request.batch_size,
+                body.model_name,
+                body.input_data,
+                body.batch_size,
                 cancel_evt,
                 progress_updater,
             )
@@ -1169,9 +1212,383 @@ async def batch_inference(
 
     except (ValueError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(
-            e, context=f"lnn.batch_inference_init[{request.model_name}]"
+            e, context=f"lnn.batch_inference_init[{body.model_name}]"
         )
         logger.warning("Batch inference init failed: %s", e)
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
+
+
+# ============================================================
+# 流式长时序推理（借鉴 lingbot-map GCT 五项核心思想）
+# ============================================================
+#
+# 本节暴露 HybridInferenceEngine 的 infer_stream / infer_windowed 能力为
+# HTTP 端点，使前端/外部服务可消费流式推理结果。引擎与 StreamingPredictor
+# 的实现在 app.ai.lnn.engine / app.ai.lnn.inference.streaming 中，本节仅
+# 做 HTTP 编排、输入校验、审计日志与错误安全。
+#
+# 设计要点：
+# 1. HybridInferenceEngine 作为模块级惰性单例，避免每次请求重建路由表；
+#    使用双重检查锁保证线程安全。
+# 2. StreamingPredictor 每次请求新建（内部隐状态缓存、锚点、轨迹记忆
+#    随请求隔离，避免跨请求状态污染）。
+# 3. 流式端点返回 NDJSON（application/x-ndjson），每行一帧结果，便于
+#    客户端增量消费；窗口化端点返回一次性 JSON 数组。
+# 4. 速率限制：流式 20/minute（单帧轻量），窗口化 10/hour（批量重负载）。
+
+_hybrid_engine: Optional[object] = None
+_hybrid_engine_lock = threading.Lock()
+
+
+def _get_hybrid_engine():
+    """惰性获取 HybridInferenceEngine 模块级单例。
+
+    使用双重检查锁（double-checked locking）保证线程安全。引擎以
+    ``enable_fusion=False`` 初始化，因为流式推理路径为单模型，无需
+    Dempster-Shafer 融合开销；融合能力保留给多模型 infer() 路径。
+
+    Returns:
+        HybridInferenceEngine 实例。
+
+    Raises:
+        ImportError: 当 app.ai.lnn.engine 不可导入时（torch 依赖缺失等）。
+    """
+    global _hybrid_engine
+    if _hybrid_engine is not None:
+        return _hybrid_engine
+    with _hybrid_engine_lock:
+        if _hybrid_engine is None:
+            # 惰性导入：避免在模块加载阶段触发 torch 导入链
+            from app.ai.lnn.engine import HybridInferenceEngine
+
+            _hybrid_engine = HybridInferenceEngine(enable_fusion=False)
+            logger.info("HybridInferenceEngine 流式推理单例已初始化")
+    return _hybrid_engine
+
+
+def _build_streaming_predictor(
+    model_name: str,
+    config: Optional[LNNStreamingConfig],
+):
+    """从 model_cache 获取 LNNPredictor 并构建 StreamingPredictor。
+
+    复用 /predict 端点的 model_cache 模式，使单次推理与流式推理共享同一份
+    模型权重与预处理器。StreamingPredictor 每次新建，保证隐状态隔离。
+
+    Args:
+        model_name: 已在 model_registry 注册的模型名称。
+        config: 来自请求体的流式配置，None 时使用 StreamingConfig 默认值。
+
+    Returns:
+        StreamingPredictor 实例。
+
+    Raises:
+        ValueError: 当模型未注册或配置无效时。
+        ImportError: 当 streaming 模块依赖缺失时。
+    """
+    from app.ai.lnn.inference.streaming import StreamingConfig, StreamingPredictor
+
+    predictor = model_cache.get(model_name)
+    if predictor is None:
+        predictor = LNNPredictor.from_registry(
+            registry=model_registry,
+            model_name=model_name,
+            use_amp=True,
+            auto_device=True,
+        )
+        model_cache.put(model_name, predictor)
+
+    streaming_config_kwargs = config.model_dump() if config is not None else {}
+    streaming_config = StreamingConfig(**streaming_config_kwargs)
+    return StreamingPredictor(predictor=predictor, config=streaming_config)
+
+
+def _inference_result_to_dict(result) -> dict:
+    """将 InferenceResult 序列化为 JSON 兼容的 dict。
+
+    处理 numpy 标量/数组、EngineType 枚举、以及 prediction 单元素列表
+    的展平（与 /predict 端点的响应格式保持一致）。
+
+    Args:
+        result: app.ai.lnn.core.InferenceResult 实例。
+
+    Returns:
+        JSON 可序列化的 dict。
+    """
+    prediction = result.prediction
+    if prediction is not None and hasattr(prediction, "tolist"):
+        prediction = prediction.tolist()
+    if isinstance(prediction, list) and len(prediction) == 1:
+        prediction = prediction[0]
+
+    engine_used = result.engine_used
+    if hasattr(engine_used, "value"):
+        engine_used = engine_used.value
+
+    return {
+        "prediction": prediction,
+        "confidence": result.confidence,
+        "engine_used": engine_used,
+        "model_used": result.model_used,
+        "processing_time_ms": result.processing_time_ms,
+        "metadata": result.metadata or {},
+        "evidence": result.evidence or [],
+        "uncertainty": result.uncertainty or {},
+    }
+
+
+def _validate_streaming_frames(frames: list) -> Optional[str]:
+    """校验流式推理的帧序列数据，返回错误消息或 None。
+
+    Args:
+        frames: 请求体中的 frames 字段（list[list[float]]）。
+
+    Returns:
+        校验失败时返回错误消息字符串，成功时返回 None。
+    """
+    if not frames:
+        return "frames 必须为非空列表"
+    for i, frame in enumerate(frames):
+        if not isinstance(frame, list) or not frame:
+            return f"第 {i} 帧数据无效：必须为非空列表"
+        if any(not isinstance(x, (int, float)) for x in frame):
+            return f"第 {i} 帧数据无效：必须为数值类型"
+    return None
+
+
+@router.post("/predict_stream", dependencies=[Depends(require_permission("lnn:write"))])
+@limiter.limit("20/minute")
+async def predict_stream(request: Request, body: LNNStreamPredictRequest):
+    """流式长时序推理（NDJSON 流式响应）。
+
+    借鉴 lingbot-map GCT 思想：关键帧缓存 + 锚点漂移修正 + 轨迹记忆约束，
+    适用于传感器实时采样流、长时序加工监控等场景。
+
+    响应体为 ``application/x-ndjson``，每行一个 JSON 对象，对应一帧推理结果。
+    每帧结果包含 prediction / confidence / metadata（含 is_keyframe、
+    anchor_drift、trajectory_deviation 等流式元信息）。
+    """
+    import json
+
+    try:
+        # 输入校验
+        err_msg = _validate_streaming_frames(body.frames)
+        if err_msg:
+            return error(
+                code=ErrorCode.INVALID_REQUEST,
+                message=err_msg,
+            )
+
+        # 模型存在性检查
+        entry = model_registry.registry.get(body.model_name)
+        if not entry:
+            return error(
+                code=ErrorCode.NOT_FOUND,
+                message=f"Model '{body.model_name}' not found",
+            )
+
+        # 构建流式预测器（每次新建，保证隐状态隔离）
+        try:
+            streaming_predictor = _build_streaming_predictor(body.model_name, body.config)
+        except (ValueError, KeyError, TypeError, RuntimeError, OSError, ImportError) as exc:
+            safe = safe_error_message(
+                exc,
+                context=f"lnn.predict_stream.build[{body.model_name}]",
+            )
+            logger.error("构建流式预测器失败: %s", exc, exc_info=True)
+            return error(
+                code=ErrorCode.INTERNAL_ERROR,
+                message=safe["message"],
+                detail=safe.get("detail"),
+            )
+
+        # 注册到混合引擎并执行流式推理
+        engine = _get_hybrid_engine()
+        engine.register_streaming_predictor(body.model_name, streaming_predictor)
+
+        # 审计日志（SOC 2 / ISO 27001 合规）
+        audit_log.log_decision(
+            ai_module=AIModule.LNN_PREDICT,
+            ai_recommendation={
+                "model_name": body.model_name,
+                "streaming": True,
+                "frame_count": len(body.frames),
+            },
+            user_decision=UserDecision.AUTO_EXECUTED,
+            final_execution={"frame_count": len(body.frames)},
+            operation_status=OperationStatus.SUCCESS,
+            input_parameters={
+                "model_name": body.model_name,
+                "frame_count": len(body.frames),
+                "config": body.config.model_dump() if body.config else None,
+            },
+            confidence=None,
+            reasoning="streaming_inference",
+        )
+
+        get_ring_log_buffer().append(
+            "ai_inference",
+            level="INFO",
+            message=f"Streaming inference started for model '{body.model_name}'",
+            data={
+                "model": body.model_name,
+                "frame_count": len(body.frames),
+                "streaming": True,
+            },
+        )
+
+        # NDJSON 流式响应：每帧一行 JSON
+        async def _ndjson_stream():
+            for result in engine.infer_stream(body.model_name, iter(body.frames)):
+                line = (
+                    json.dumps(
+                        _inference_result_to_dict(result),
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
+                yield line
+
+        return StreamingResponse(
+            _ndjson_stream(),
+            media_type="application/x-ndjson",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    except (ValueError, TypeError, OSError, RuntimeError, ImportError) as e:
+        safe = safe_error_message(e, context=f"lnn.predict_stream[{body.model_name}]")
+        logger.error("流式推理失败: %s", e, exc_info=True)
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail=safe.get("detail"),
+        )
+
+
+@router.post("/predict_windowed", dependencies=[Depends(require_permission("lnn:write"))])
+@limiter.limit("10/hour")
+async def predict_windowed(request: Request, body: LNNWindowedPredictRequest):
+    """窗口化超长序列推理（一次性 JSON 响应）。
+
+    对应 lingbot-map 的 windowed mode：将序列切分为多个窗口，窗口间通过
+    ``overlap_keyframes`` 传递隐状态，避免每次窗口都从零初始化。适用于
+    万帧以上跨工序连续切削监控、长时序颤振检测等场景。
+
+    响应体为标准 ``success()`` 包装，``data.results`` 为完整序列的推理结果列表。
+    """
+    try:
+        # 输入校验
+        err_msg = _validate_streaming_frames(body.frames)
+        if err_msg:
+            return error(
+                code=ErrorCode.INVALID_REQUEST,
+                message=err_msg,
+            )
+
+        # 模型存在性检查
+        entry = model_registry.registry.get(body.model_name)
+        if not entry:
+            return error(
+                code=ErrorCode.NOT_FOUND,
+                message=f"Model '{body.model_name}' not found",
+            )
+
+        # 构建流式预测器
+        try:
+            streaming_predictor = _build_streaming_predictor(body.model_name, body.config)
+        except (ValueError, KeyError, TypeError, RuntimeError, OSError, ImportError) as exc:
+            safe = safe_error_message(
+                exc,
+                context=f"lnn.predict_windowed.build[{body.model_name}]",
+            )
+            logger.error("构建流式预测器失败: %s", exc, exc_info=True)
+            return error(
+                code=ErrorCode.INTERNAL_ERROR,
+                message=safe["message"],
+                detail=safe.get("detail"),
+            )
+
+        # 注册到混合引擎并执行窗口化推理
+        engine = _get_hybrid_engine()
+        engine.register_streaming_predictor(body.model_name, streaming_predictor)
+
+        try:
+            results = engine.infer_windowed(
+                model_name=body.model_name,
+                data_list=body.frames,
+                window_size=body.window_size,
+                overlap_keyframes=body.overlap_keyframes,
+            )
+        except (ValueError, TypeError, RuntimeError, OSError) as exc:
+            safe = safe_error_message(
+                exc,
+                context=f"lnn.predict_windowed.infer[{body.model_name}]",
+            )
+            logger.error("窗口化推理失败: %s", exc, exc_info=True)
+            return error(
+                code=ErrorCode.INTERNAL_ERROR,
+                message=safe["message"],
+                detail=safe.get("detail"),
+            )
+
+        results_data = [_inference_result_to_dict(r) for r in results]
+
+        # 审计日志
+        audit_log.log_decision(
+            ai_module=AIModule.LNN_PREDICT,
+            ai_recommendation={
+                "model_name": body.model_name,
+                "streaming": True,
+                "windowed": True,
+                "frame_count": len(body.frames),
+                "window_size": body.window_size,
+                "overlap_keyframes": body.overlap_keyframes,
+            },
+            user_decision=UserDecision.AUTO_EXECUTED,
+            final_execution={"result_count": len(results_data)},
+            operation_status=OperationStatus.SUCCESS,
+            input_parameters={
+                "model_name": body.model_name,
+                "frame_count": len(body.frames),
+                "window_size": body.window_size,
+                "overlap_keyframes": body.overlap_keyframes,
+            },
+            confidence=None,
+            reasoning="windowed_inference",
+        )
+
+        get_ring_log_buffer().append(
+            "ai_inference",
+            level="INFO",
+            message=f"Windowed inference completed for model '{body.model_name}'",
+            data={
+                "model": body.model_name,
+                "frame_count": len(body.frames),
+                "result_count": len(results_data),
+                "windowed": True,
+            },
+        )
+
+        return success(
+            data={
+                "results": results_data,
+                "total_frames": len(results_data),
+                "model_name": body.model_name,
+            },
+            message="Windowed streaming inference completed",
+        )
+
+    except (ValueError, TypeError, OSError, RuntimeError, ImportError) as e:
+        safe = safe_error_message(e, context=f"lnn.predict_windowed[{body.model_name}]")
+        logger.error("窗口化推理失败: %s", e, exc_info=True)
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],

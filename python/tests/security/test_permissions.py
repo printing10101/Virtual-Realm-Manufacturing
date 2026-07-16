@@ -292,11 +292,68 @@ class TestPaperOnlyGuard:
         assert ok is False
         assert "UI confirmation" in msg
 
-    def test_live_mode_full_approval_passes(self, monkeypatch):
+    def test_live_mode_requires_supervisor_confirmation(self, monkeypatch):
+        """[F-P0-4] 实模式必须双因子确认：缺少班长确认应拒绝"""
         monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "true")
         guard = PaperOnlyGuard()
         ok, msg = guard.check_t_operation(
-            has_t_permission=True, ui_confirmed=True
+            has_t_permission=True,
+            ui_confirmed=True,
+            supervisor_confirmed=False,
+        )
+        assert ok is False
+        assert "Supervisor" in msg or "dual-factor" in msg
+
+    def test_live_mode_blocks_on_emergency_stop(self, monkeypatch):
+        """[F-P0-4] 急停触发时必须阻止执行"""
+        monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "true")
+        guard = PaperOnlyGuard()
+        ok, msg = guard.check_t_operation(
+            has_t_permission=True,
+            ui_confirmed=True,
+            supervisor_confirmed=True,
+            machine_safety_status={
+                "emergency_stop_active": True,
+                "guard_door_closed": True,
+                "light_curtain_clear": True,
+                "operator_present": True,
+            },
+        )
+        assert ok is False
+        assert "emergency stop" in msg.lower()
+
+    def test_live_mode_blocks_on_guard_door_open(self, monkeypatch):
+        """[F-P0-4] 防护门打开时必须阻止执行"""
+        monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "true")
+        guard = PaperOnlyGuard()
+        ok, msg = guard.check_t_operation(
+            has_t_permission=True,
+            ui_confirmed=True,
+            supervisor_confirmed=True,
+            machine_safety_status={
+                "emergency_stop_active": False,
+                "guard_door_closed": False,
+                "light_curtain_clear": True,
+                "operator_present": True,
+            },
+        )
+        assert ok is False
+        assert "Guard door" in msg
+
+    def test_live_mode_full_approval_passes(self, monkeypatch):
+        """[F-P0-4] 所有条件满足（含双因子 + 机床安全）才能通过"""
+        monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "true")
+        guard = PaperOnlyGuard()
+        ok, msg = guard.check_t_operation(
+            has_t_permission=True,
+            ui_confirmed=True,
+            supervisor_confirmed=True,
+            machine_safety_status={
+                "emergency_stop_active": False,
+                "guard_door_closed": True,
+                "light_curtain_clear": True,
+                "operator_present": True,
+            },
         )
         assert ok is True
         assert "approved" in msg.lower()
@@ -313,6 +370,22 @@ class TestPaperOnlyGuard:
             "machine": "M-01",
             "params": {"rpm": 1200},
         }
+
+    def test_simulate_t_operation_redacts_sensitive_fields(self, monkeypatch):
+        """[F-P0-4] NC 程序、API Key 等敏感字段必须脱敏"""
+        monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "false")
+        guard = PaperOnlyGuard()
+        result = guard.simulate_t_operation(
+            {
+                "machine": "M-01",
+                "nc_program": "G01 X100",
+                "api_key": "sk-secret",
+            }
+        )
+        assert result["status"] == "simulated"
+        assert result["operation"]["machine"] == "M-01"
+        assert result["operation"]["nc_program"] == "***REDACTED***"
+        assert result["operation"]["api_key"] == "***REDACTED***"
 
     def test_is_live_execution_allowed_reflects_env(self, monkeypatch):
         monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "false")

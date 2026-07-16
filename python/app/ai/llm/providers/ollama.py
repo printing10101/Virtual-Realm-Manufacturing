@@ -76,7 +76,15 @@ class OllamaProvider(LLMProvider):
         temperature: float = 0.7,
         model: str | None = None,
     ) -> dict[str, Any]:
-        """调用 Ollama /api/chat 端点。"""
+        """调用 Ollama /api/chat 端点。
+
+        Note:
+            ``think=False`` 关闭 qwen3 系列默认开启的思考模式。否则在
+            ``num_predict`` 较小时，所有 token 会被思考消耗，导致
+            ``content`` 为空字符串（影响 SHARP ReAct 循环、工艺理解
+            等所有结构化 JSON 输出场景）。对不支持思考模式的老模型
+            （如 llama3.2）该参数无影响。
+        """
         import time
 
         target_model = self._resolve_model(model)
@@ -84,6 +92,7 @@ class OllamaProvider(LLMProvider):
             "model": target_model,
             "messages": messages,
             "stream": False,
+            "think": False,
             "options": {
                 "temperature": temperature,
                 "num_predict": max_tokens,

@@ -186,7 +186,9 @@ class FeedbackUpdater:
             )
             
             updated_count += 1
-            logger.debug(f"Updated Process node {process_id}: sample_count={new_sample_count}")
+            # P2-批次2 修复：改用 %s 懒求值。批量节点更新循环内，
+            # debug 级别关闭时避免字符串插值开销。
+            logger.debug("Updated Process node %s: sample_count=%s", process_id, new_sample_count)
         
         return updated_count
     
@@ -238,7 +240,7 @@ class FeedbackUpdater:
                     "success_count": 1 if record.get("first_pass_acceptance", False) else 0
                 }
             )
-            logger.debug(f"Created new {edge_type} relationship: {tool_id} -> {material}")
+            logger.debug("Created new %s relationship: %s -> %s", edge_type, tool_id, material)
             return 1
         
         # 更新现有关系
@@ -438,10 +440,10 @@ class FeedbackUpdater:
         """
         try:
             result = self.graph_store.flush_to_repository()
-            logger.info(f"Graph flushed to repository: {result}")
+            logger.info("Graph flushed to repository: %s", result)
             return result
         except (OSError, RuntimeError) as e:
-            logger.error(f"Failed to flush graph to repository: {e}")
+            logger.error("Failed to flush graph to repository: %s", e)
             raise
 
 

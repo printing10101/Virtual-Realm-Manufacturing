@@ -20,6 +20,7 @@ from app.auth.permissions import require_permission
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
 from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file, sanitize_filename
+from app.utils.upload_security import validate_upload
 from app.step_import.step_parser import StepParser, StepParseError
 from app.step_import.step_converter import (
     StepConverter,
@@ -75,7 +76,13 @@ def _validate_step_file(file: UploadFile) -> None:
 
 
 def _read_file_content(file: UploadFile) -> bytes:
-    """同步读取上传文件内容。"""
+    """同步读取上传文件内容。
+
+    .. deprecated::
+        P0-12/P0-13 修复后，文件读取 + 校验统一由 ``validate_upload`` 异步完成。
+        本函数保留为兼容入口，但不再被主流程调用；新代码请直接使用
+        ``await validate_upload(file, ...)``。
+    """
     content = file.file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
@@ -260,34 +267,19 @@ async def import_step_file(
     except HTTPException as e:
         return error(code=ErrorCode.INVALID_REQUEST, message=e.detail, detail=e.detail)
 
+    # P0-12/P0-13 修复：使用 validate_upload 替代 asyncio.to_thread(_read_file_content, file)
+    # validate_upload 异步分块流式读取 + 大小限制 + magic bytes 签名校验，
+    # 避免原 ``file.file.read()`` 全量入内存导致 OOM/DoS。
     try:
-        content = await asyncio.to_thread(_read_file_content, file)
+        content = await validate_upload(
+            file,
+            max_size=MAX_FILE_SIZE,
+            allowed_extensions=ALLOWED_EXTENSIONS,
+            allowed_mimes={"application/step"},
+        )
     except HTTPException as e:
+        # validate_upload 抛出的 413/415/400 转为业务错误响应（保持原 API 响应格式）
         return error(code=ErrorCode.INVALID_REQUEST, message=e.detail)
-    except (OSError, ValueError, RuntimeError, TypeError) as e:
-        # 文件读取涉及磁盘IO与 multipart 解析，捕获核心错误；
-        # 使用 safe_error_message 避免直接 str(e) 暴露内部异常。
-        safe = safe_error_message(e, context="step_import.read_file")
-        logger.error(
-            "STEP 文件读取失败 | error_id=%s | exc=%s",
-            safe.get("error_id"),
-            e,
-            exc_info=True,
-        )
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=safe["message"],
-            detail=safe.get("detail"),
-        )
-    except (OSError, ValueError, RuntimeError, TypeError, KeyError) as e:
-        # 兜底：API 入口必须捕获所有异常以避免 5xx 直接抛给客户端
-        safe = safe_error_message(e, context="step_import.read_file_unexpected")
-        logger.exception("文件读取未预期错误 | error_id=%s", safe.get("error_id"))
-        return error(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=safe["message"],
-            detail=safe.get("detail"),
-        )
 
     temp_path = None
     try:

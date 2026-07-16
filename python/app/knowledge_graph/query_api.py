@@ -365,7 +365,7 @@ class KnowledgeGraphQueryAPI:
                 "query_type": query_type,
                 "count": 0,
                 "data": None,
-                "error": repr(e),
+                "error": "知识图谱查询失败，请检查参数或稍后重试",
             }
 
 

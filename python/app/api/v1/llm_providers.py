@@ -30,10 +30,14 @@ from app.ai.llm.router import (
     get_router,
 )
 from app.auth.permissions import require_permission
+from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/llm-providers", tags=["LLM Providers"])
+
+# 自动探测 LLM 服务的统一超时（秒）。detect_preview 与 detect_and_import 共享。
+LLM_DETECT_TIMEOUT_SEC: float = 30.0
 
 
 # ---------------------------------------------------------------------------
@@ -101,10 +105,10 @@ def _parse_provider_type(value: str) -> ProviderType:
     try:
         return ProviderType(value)
     except ValueError as e:
+        logger.info("不支持的 provider_type: %s", value)
         raise HTTPException(
             status_code=400,
-            detail=f"不支持的 provider_type: {value}。"
-            f"可选值: {[t.value for t in ProviderType]}",
+            detail="不支持的 provider_type",
         ) from e
 
 
@@ -115,9 +119,10 @@ def _parse_capabilities(values: list[str]) -> list[ProviderCapability]:
         try:
             result.append(ProviderCapability(v))
         except ValueError as e:
+            logger.info("不支持的能力标签: %s", v)
             raise HTTPException(
                 status_code=400,
-                detail=f"不支持的能力标签: {v}",
+                detail="不支持的能力标签",
             ) from e
     return result
 
@@ -256,12 +261,12 @@ async def detect_preview():
     detector = get_detector()
     try:
         results = await asyncio.wait_for(
-            detector.detect_all(), timeout=30.0
+            detector.detect_all(), timeout=LLM_DETECT_TIMEOUT_SEC
         )
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
-            detail="自动探测超时（30s），请检查本地服务状态",
+            detail=f"自动探测超时（{int(LLM_DETECT_TIMEOUT_SEC)}s），请检查本地服务状态",
         )
     return {
         "ok": True,
@@ -284,12 +289,12 @@ async def detect_and_import():
     detector = get_detector()
     try:
         results = await asyncio.wait_for(
-            detector.detect_all(), timeout=30.0
+            detector.detect_all(), timeout=LLM_DETECT_TIMEOUT_SEC
         )
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
-            detail="自动探测超时（30s）",
+            detail=f"自动探测超时（{int(LLM_DETECT_TIMEOUT_SEC)}s）",
         )
 
     configs = detector.generate_provider_configs(results)
@@ -356,7 +361,8 @@ async def get_provider(provider_id: str):
     registry = get_registry()
     config = registry.get_provider(provider_id)
     if config is None:
-        raise HTTPException(404, f"Provider 不存在: {provider_id}")
+        logger.info("Provider 不存在: %s", provider_id)
+        raise HTTPException(404, "Provider 不存在")
     return {"ok": True, "data": config.to_dict()}
 
 
@@ -366,20 +372,22 @@ async def list_provider_models(provider_id: str):
     registry = get_registry()
     instance = registry.get_provider_instance(provider_id)
     if instance is None:
+        logger.info("Provider 不存在或未启用: %s", provider_id)
         raise HTTPException(
             status_code=404,
-            detail=f"Provider 不存在或未启用: {provider_id}",
+            detail="Provider 不存在或未启用",
         )
     try:
         models = await instance.list_models()
     except Exception as e:
-        logger.warning(
-            "列出模型失败 (%s): %s", provider_id, e, exc_info=True
+        # [P0-18] 避免异常类型名泄露：502 错误仅返回通用提示 + error_id，
+        # safe_error_message 内部已 logger.exception 记录堆栈与 context
+        safe = safe_error_message(
+            e,
+            fallback="列出模型失败，请检查 Provider 服务状态",
+            context=f"llm_providers.list_models[{provider_id}]",
         )
-        raise HTTPException(
-            status_code=502,
-            detail=f"列出模型失败: {type(e).__name__}",
-        ) from e
+        raise HTTPException(status_code=502, detail=safe) from e
     return {"ok": True, "data": models, "count": len(models)}
 
 
@@ -388,9 +396,10 @@ async def health_check_provider(provider_id: str):
     registry = get_registry()
     instance = registry.get_provider_instance(provider_id)
     if instance is None:
+        logger.info("Provider 不存在或未启用: %s", provider_id)
         raise HTTPException(
             status_code=404,
-            detail=f"Provider 不存在或未启用: {provider_id}",
+            detail="Provider 不存在或未启用",
         )
     try:
         status = await instance.health_check()
@@ -429,9 +438,10 @@ async def create_provider(req: ProviderCreateRequest):
     registry = get_registry()
     # 检查是否已存在
     if registry.get_provider(req.provider_id) is not None:
+        logger.info("Provider 已存在: %s", req.provider_id)
         raise HTTPException(
             status_code=409,
-            detail=f"Provider 已存在: {req.provider_id}，请使用 PUT 更新",
+            detail="Provider 已存在，请使用 PUT 更新",
         )
     config = _build_config(req)
     registry.upsert_provider(config)
@@ -449,7 +459,8 @@ async def update_provider(
     registry = get_registry()
     existing = registry.get_provider(provider_id)
     if existing is None:
-        raise HTTPException(404, f"Provider 不存在: {provider_id}")
+        logger.info("Provider 不存在: %s", provider_id)
+        raise HTTPException(404, "Provider 不存在")
     # 防止通过 PUT 修改 provider_id 或 provider_type
     updated = _apply_update(existing, req)
     updated.provider_id = provider_id  # 强制保持一致
@@ -466,7 +477,8 @@ async def delete_provider(provider_id: str):
     registry = get_registry()
     deleted = registry.delete_provider(provider_id)
     if not deleted:
-        raise HTTPException(404, f"Provider 不存在: {provider_id}")
+        logger.info("Provider 不存在: %s", provider_id)
+        raise HTTPException(404, "Provider 不存在")
     return {"ok": True, "message": f"Provider 已删除: {provider_id}"}
 
 
@@ -479,9 +491,10 @@ async def activate_provider(provider_id: str):
     registry = get_registry()
     success = registry.set_active(provider_id)
     if not success:
+        logger.info("激活失败，Provider 不存在或未启用: %s", provider_id)
         raise HTTPException(
             status_code=400,
-            detail=f"激活失败：Provider 不存在或未启用: {provider_id}",
+            detail="Provider 不存在或未启用",
         )
     return {"ok": True, "message": f"已激活 Provider: {provider_id}"}
 
@@ -497,7 +510,8 @@ async def enable_provider(
     registry = get_registry()
     success = registry.set_enabled(provider_id, enabled)
     if not success:
-        raise HTTPException(404, f"Provider 不存在: {provider_id}")
+        logger.info("Provider 不存在: %s", provider_id)
+        raise HTTPException(404, "Provider 不存在")
     return {
         "ok": True,
         "message": f"Provider {provider_id} 已{'启用' if enabled else '禁用'}",
@@ -516,9 +530,10 @@ async def test_provider(
     registry = get_registry()
     instance = registry.get_provider_instance(provider_id)
     if instance is None:
+        logger.info("Provider 不存在或未启用: %s", provider_id)
         raise HTTPException(
             status_code=404,
-            detail=f"Provider 不存在或未启用: {provider_id}",
+            detail="Provider 不存在或未启用",
         )
 
     import time
@@ -536,11 +551,16 @@ async def test_provider(
         logger.warning(
             "Provider 测试失败 (%s): %s", provider_id, e, exc_info=True
         )
+        # 包装异常消息，避免直接回显内部错误细节
+        safe = safe_error_message(
+            e, context=f"llm_providers.test_provider[{provider_id}]", fallback="Provider 测试失败"
+        )
         return {
             "ok": False,
             "data": {
                 "error": type(e).__name__,
-                "message": str(e),
+                "message": safe["message"],
+                "error_id": safe["error_id"],
                 "elapsed_ms": round(elapsed_ms, 2),
             },
         }

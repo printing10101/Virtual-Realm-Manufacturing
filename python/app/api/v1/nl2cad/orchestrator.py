@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -10,6 +11,7 @@ from enum import Enum
 from app.api.v1.nl2cad.services import get_nl2cad_service
 from app.process_planning.pipeline import ProcessPlanningPipeline
 from app.process_planning.gcode_generator import GCodeGenerator
+from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +109,10 @@ class NL2NCPipelineOrchestrator:
             state.nc_code = nc_code
             logger.info("Stage 3 completed: %d chars of G-code", len(nc_code))
 
-            # Stage 4: NC → Simulation (placeholder for now)
+            # Stage 4: NC → Simulation（已集成真实 voxel 仿真模块，仿真精度取决于 voxel_size 参数）
             logger.info("Stage 4: Simulation verification")
             state.stage = PipelineStage.NC_TO_SIMULATION
-            
+
             simulation_result = await self._run_simulation(nc_code=nc_code)
             state.simulation_result = simulation_result
             logger.info("Stage 4 completed")
@@ -121,7 +123,12 @@ class NL2NCPipelineOrchestrator:
         except Exception as e:
             logger.error("Pipeline failed at stage %s: %s", state.stage, e, exc_info=True)
             state.stage = PipelineStage.FAILED
-            state.error = str(e)
+            # 包装异常消息，避免直接回显内部错误细节
+            safe = safe_error_message(
+                e, context="nl2cad.execute_full_pipeline", fallback="流水线执行失败"
+            )
+            state.error = safe["message"]
+            state.metadata["error_id"] = safe["error_id"]
             return state
 
     async def _generate_process_plan(
@@ -243,9 +250,14 @@ class NL2NCPipelineOrchestrator:
             }
         except Exception as e:
             logger.error("Simulation failed: %s", e, exc_info=True)
+            # 包装异常消息，避免直接回显内部错误细节
+            safe = safe_error_message(
+                e, context="nl2cad._run_simulation", fallback="仿真执行失败"
+            )
             return {
                 "status": "failed",
-                "error": str(e),
+                "error": safe["message"],
+                "error_id": safe["error_id"],
                 "nc_code_length": len(nc_code),
             }
 
@@ -303,17 +315,26 @@ class NL2NCPipelineOrchestrator:
         except Exception as e:
             logger.error("Refinement failed: %s", e, exc_info=True)
             state.stage = PipelineStage.FAILED
-            state.error = str(e)
+            # 包装异常消息，避免直接回显内部错误细节
+            safe = safe_error_message(
+                e, context="nl2cad.refine_and_regenerate", fallback="模型精修失败"
+            )
+            state.error = safe["message"]
+            state.metadata["error_id"] = safe["error_id"]
             return state
 
 
-# Singleton instance
+# Singleton instance (双重检查锁，线程安全)
 _orchestrator_instance: NL2NCPipelineOrchestrator | None = None
+_orchestrator_lock = threading.Lock()
 
 
 def get_nl2nc_orchestrator() -> NL2NCPipelineOrchestrator:
     """Get or create orchestrator instance."""
     global _orchestrator_instance
-    if _orchestrator_instance is None:
-        _orchestrator_instance = NL2NCPipelineOrchestrator()
+    if _orchestrator_instance is not None:
+        return _orchestrator_instance
+    with _orchestrator_lock:
+        if _orchestrator_instance is None:
+            _orchestrator_instance = NL2NCPipelineOrchestrator()
     return _orchestrator_instance

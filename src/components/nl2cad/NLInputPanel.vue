@@ -23,8 +23,8 @@
 
       <!-- 用户和AI消息 -->
       <template
-        v-for="(msg, index) in messages"
-        :key="index"
+        v-for="msg in messages"
+        :key="msg.id"
       >
         <!-- 用户消息 -->
         <div
@@ -351,6 +351,7 @@ import {
 import type { CADParams, CADFeature } from '@/types/nl2cad'
 
 interface Message {
+  id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
@@ -373,6 +374,12 @@ const userInput = ref('')
 const messages = ref<Message[]>([])
 const loading = ref(false)
 const now = new Date()
+
+// 消息唯一 id 生成器，用于 v-for key
+let messageIdCounter = 0
+function nextMessageId(): string {
+  return `msg-${++messageIdCounter}`
+}
 
 // 参数编辑
 const showParamDialog = ref(false)
@@ -427,6 +434,7 @@ async function handleSend() {
 
   // 添加用户消息
   messages.value.push({
+    id: nextMessageId(),
     role: 'user',
     content: text,
     timestamp: new Date(),
@@ -442,6 +450,7 @@ async function handleSend() {
 
     // 添加AI回复（参数卡片）
     messages.value.push({
+      id: nextMessageId(),
       role: 'assistant',
       content: '',
       timestamp: new Date(),
@@ -451,6 +460,7 @@ async function handleSend() {
   } catch (error) {
     console.error('Failed to extract params:', error)
     messages.value.push({
+      id: nextMessageId(),
       role: 'assistant',
       content: t('nlInputPanel.errorUnderstand'),
       timestamp: new Date(),
@@ -476,6 +486,7 @@ async function handleConfirmParams(params?: CADParams) {
 
     // 添加模型生成结果消息
     messages.value.push({
+      id: nextMessageId(),
       role: 'assistant',
       content: '',
       timestamp: new Date(),
@@ -490,6 +501,7 @@ async function handleConfirmParams(params?: CADParams) {
   } catch (error) {
     console.error('Failed to generate model:', error)
     messages.value.push({
+      id: nextMessageId(),
       role: 'assistant',
       content: t('nlInputPanel.errorGenerateFailed'),
       timestamp: new Date(),
@@ -503,7 +515,7 @@ async function handleConfirmParams(params?: CADParams) {
 
 function handleEditParams(params?: CADParams) {
   if (!params) return
-  editParams.value = JSON.parse(JSON.stringify(params))
+  editParams.value = structuredClone(params)
   showParamDialog.value = true
 }
 

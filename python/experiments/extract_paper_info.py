@@ -71,7 +71,7 @@ def extract_paper_info(docx_path):
     # 提取模型/方法
     models = []
     model_patterns = [
-        r'CT-LTC',
+        r'DL-LNN',
         r'LSTM',
         r'GRU',
         r'Transformer',

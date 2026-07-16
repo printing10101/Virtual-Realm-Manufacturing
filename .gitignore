@@ -84,6 +84,16 @@ coverage-reports/
 benchmarks/results/
 benchmarks/performance/history/
 
+# SHARP 调试探针（开发期临时文件，不应入库）
+python/_sharp_*.py
+python/_sharp_*.log
+python/_sharp_*.json
+
+# Playwright E2E 套件已在 v2.5 移除，相关产物不再入库
+e2e/
+playwright.config.ts
+tests/screenshots/
+
 # 测试生成的临时目录
 python/test_chroma_db/
 python/test_chroma_db_e2e/
@@ -115,6 +125,32 @@ test_traces/
 logs/
 *.log
 test_logs/
+
+# 散落日志（构建/运行时产生的根目录 .txt 日志，已被 logs/ 规范收纳）
+/build-log*.txt
+/lingjing-log*.txt
+
+# 第三方资源（仅本地参考，不入库）
+# awesome-design-md-main：73 个品牌 DESIGN.md 集合，仅在 frontend-design-master skill 被调用时使用
+# 用户可按需从 https://github.com/arthuroiang/awesome-design-md 克隆到 skills/ 目录
+skills/awesome-design-md-main/
+
+# Trae IDE 自动生成的会话计划文件（每次会话不同，不应入库）
+.trae/plans/
+
+# Trae IDE 内置技能子目录（IDE 自动同步生成，业务代码不消费；
+# SkillLoader 仅扫描 global/、projects/、agents/ 三个业务子目录）
+# 注：如这些文件已被 git 跟踪，需手动执行 `git rm --cached -r` 让 .gitignore 生效
+.trae/skills/frontend-design-master/
+.trae/skills/frontend-unified/
+.trae/skills/notion-workflow/
+.trae/skills/obsidian-workflow/
+.trae/skills/plan-workflow/
+.trae/skills/tdd-unified/
+.trae/skills/video-analysis-workflow/
+
+# Trae IDE 技能市场运行时数据（publish/download 产生的 .skz 包和 listings.json）
+.trae/skills/.marketplace/
 
 # ============================================================
 # 环境和配置（敏感信息，禁止提交）

@@ -6,12 +6,16 @@
 
 from __future__ import annotations
 
-from typing import Optional
+import logging
+from typing import Any, Optional
 
 from sqlalchemy import select, func, delete, or_
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.database.connection import get_sessionmaker
 from app.database.models import Document
+
+logger = logging.getLogger(__name__)
 
 
 # 所有合法的文档分类（用于 list_categories 确保零计数分类也返回）
@@ -101,17 +105,25 @@ async def get_document(doc_id: str) -> Optional[dict]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        stmt = select(Document).where(Document.id == doc_id)
-        doc = (await session.execute(stmt)).scalar_one_or_none()
-        if not doc:
-            return None
+        try:
+            stmt = select(Document).where(Document.id == doc_id)
+            doc = (await session.execute(stmt)).scalar_one_or_none()
+            if not doc:
+                return None
 
-        # 增加浏览量
-        doc.view_count = (doc.view_count or 0) + 1
-        await session.flush()
-        await session.commit()
+            # 增加浏览量
+            doc.view_count = (doc.view_count or 0) + 1
+            await session.commit()
 
-    return doc.to_dict()
+            return doc.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("获取文档失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("获取文档失败: %s", e, exc_info=True)
+            raise
 
 
 async def create_document(
@@ -126,23 +138,31 @@ async def create_document(
     """创建文档，返回新建文档 dict。"""
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        doc = Document(
-            title=title,
-            category=category,
-            version=version,
-            author=author,
-            content=content,
-            tags=tags or [],
-            status=status,
-        )
-        session.add(doc)
-        await session.flush()
-        await session.commit()
+        try:
+            doc = Document(
+                title=title,
+                category=category,
+                version=version,
+                author=author,
+                content=content,
+                tags=tags or [],
+                status=status,
+            )
+            session.add(doc)
+            await session.commit()
 
-    return doc.to_dict()
+            return doc.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("创建文档失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("创建文档失败: %s", e, exc_info=True)
+            raise
 
 
-async def update_document(doc_id: str, update_data: dict) -> Optional[dict]:
+async def update_document(doc_id: str, update_data: dict[str, Any]) -> Optional[dict[str, Any]]:
     """更新文档字段。
 
     Args:
@@ -154,18 +174,26 @@ async def update_document(doc_id: str, update_data: dict) -> Optional[dict]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        stmt = select(Document).where(Document.id == doc_id)
-        doc = (await session.execute(stmt)).scalar_one_or_none()
-        if not doc:
-            return None
+        try:
+            stmt = select(Document).where(Document.id == doc_id)
+            doc = (await session.execute(stmt)).scalar_one_or_none()
+            if not doc:
+                return None
 
-        for key, value in update_data.items():
-            setattr(doc, key, value)
+            for key, value in update_data.items():
+                setattr(doc, key, value)
 
-        await session.flush()
-        await session.commit()
+            await session.commit()
 
-    return doc.to_dict()
+            return doc.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("更新文档失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("更新文档失败: %s", e, exc_info=True)
+            raise
 
 
 async def delete_document(doc_id: str) -> Optional[bool]:
@@ -176,16 +204,25 @@ async def delete_document(doc_id: str) -> Optional[bool]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        stmt = select(Document).where(Document.id == doc_id)
-        doc = (await session.execute(stmt)).scalar_one_or_none()
-        if not doc:
-            return None
+        try:
+            stmt = select(Document).where(Document.id == doc_id)
+            doc = (await session.execute(stmt)).scalar_one_or_none()
+            if not doc:
+                return None
 
-        del_stmt = delete(Document).where(Document.id == doc_id)
-        await session.execute(del_stmt)
-        await session.commit()
+            del_stmt = delete(Document).where(Document.id == doc_id)
+            await session.execute(del_stmt)
+            await session.commit()
 
-    return True
+            return True
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("删除文档失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("删除文档失败: %s", e, exc_info=True)
+            raise
 
 
 async def seed_documents() -> dict:
@@ -283,9 +320,18 @@ async def seed_documents() -> dict:
             },
         ]
 
-        for dd in docs_seed:
-            session.add(Document(**dd))
+        try:
+            for dd in docs_seed:
+                session.add(Document(**dd))
 
-        await session.commit()
+            await session.commit()
 
-    return {"already_exists": False, "count": len(docs_seed)}
+            return {"already_exists": False, "count": len(docs_seed)}
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("填充知识库文档演示数据失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("填充知识库文档演示数据失败: %s", e, exc_info=True)
+            raise

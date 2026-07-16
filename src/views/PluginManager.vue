@@ -504,8 +504,12 @@ const handleUninstall = async (pluginId: string) => {
     })
     await pluginStore.uninstallPlugin(pluginId)
     ElMessage.success(t('pluginManager.msgUninstalled'))
-  } catch (_e) {
-    // Silently ignore uninstall errors
+  } catch (e: unknown) {
+    // ElMessageBox.confirm 取消时返回 'cancel' 字符串，属于正常用户行为，需与真实错误区分
+    const cancelled = e === 'cancel' || (e instanceof Error && e.message.includes('cancel'))
+    if (cancelled) return
+    console.error('[PluginManager] uninstallPlugin failed:', e)
+    ElMessage.error(t('pluginManager.msgUninstallFailed') || '卸载插件失败，请稍后重试')
   }
 }
 

@@ -1,8 +1,10 @@
 # 灵境制造系统运维手册
 
 **版本**: 2.5.0
-**最后更新**: 2026-06-26  
+**最后更新**: 2026-07-10  
 **维护团队**: 运维团队
+
+> **本文档已对齐 v2.5.0 架构**：健康端点统一为 `/api/health/ping`，数据库路径统一为 `./data/app.db`。
 
 ---
 
@@ -29,7 +31,7 @@
 - **前端**：Vue 3 + TypeScript + Vite
 - **后端**：FastAPI + Python 3.10+
 - **数据库**：SQLite（主数据库）+ Redis（缓存）
-- **AI 引擎**：LNN（逻辑神经网络）+ PyTorch
+- **AI 引擎**：LNN（液态神经网络）+ PyTorch
 - **部署**：Docker + Kubernetes（可选）
 
 ### 核心组件
@@ -65,8 +67,8 @@
 
 ```bash
 # 1. 克隆代码
-git clone https://github.com/your-org/lingjing-manufacturing.git
-cd lingjing-manufacturing
+git clone https://github.com/printing10101/Virtual-Realm-Manufacturing.git
+cd Virtual-Realm-Manufacturing
 
 # 2. 配置环境变量
 cp .env.example .env
@@ -77,7 +79,7 @@ docker-compose up -d
 
 # 4. 验证服务
 docker-compose ps
-curl http://localhost:8765/health
+curl http://localhost:8765/api/health/ping
 ```
 
 #### 方式二：直接部署
@@ -125,7 +127,7 @@ kubectl logs -f deployment/lingjing-api
 
 ```bash
 # 健康检查
-curl http://localhost:8765/health
+curl http://localhost:8765/api/health/ping
 
 # 预期响应
 {
@@ -142,29 +144,39 @@ curl http://localhost:8765/health
 
 ### 配置文件位置
 
-- **主配置**：`config/settings.yaml`
-- **环境配置**：`.env`
-- **数据库配置**：`config/database.yaml`
-- **LNN 配置**：`config/lnn_workflow.yaml`
+> **P0-19 修复说明**：原版本文档错误引用了 `config/settings.yaml`、`config/database.yaml`、`config/lnn_workflow.yaml` 等不存在的配置文件。实际配置机制遵循 12-Factor App 原则，主配置通过 `.env` 环境变量 + `python/app/config.py` 中的 dataclass 配置类管理，LNN 工作流配置位于 `python/config/lnn_workflow.yaml`。
+
+- **主配置模块**：`python/app/config.py`（dataclass 配置类，支持环境变量覆盖）
+- **环境变量配置**：`.env`（由 `.env.example` / `.env.sqlite.example` / `.env.ai-cn.example` 提供模板）
+- **LNN 工作流配置**：`python/config/lnn_workflow.yaml`
+- **工艺规则配置**：`config/safety_rules.yaml`、`config/postprocessor_config.yaml`、`config/data_pipeline.yaml`
 
 ### 关键配置项
 
 #### 数据库配置
 
-```yaml
-# config/database.yaml
-database:
-  type: sqlite
-  path: ./data/lingjing.db
-  wal_mode: true
-  cache_size: 10000
-  timeout: 30
+数据库通过 `.env` 中的 `DATABASE_URL` 环境变量配置，默认使用 SQLite + WAL 模式：
+
+```bash
+# .env
+DATABASE_URL=sqlite+aiosqlite:///./python/data/app.db
+DB_PATH=./data/app.db
+```
+
+对应的 `python/app/config.py` 中的 `DatabaseConfig` 类：
+
+```python
+@dataclass
+class DatabaseConfig:
+    cad_db_path: str       # CAD 任务库路径
+    model_library_path: str  # 模型库路径
+    db_url: str            # 主数据库连接 URL（默认 sqlite+aiosqlite）
 ```
 
 #### LNN 引擎配置
 
 ```yaml
-# config/lnn_workflow.yaml
+# python/config/lnn_workflow.yaml
 lnn:
   model_cache_size: 100
   inference_timeout: 30
@@ -175,29 +187,36 @@ lnn:
 
 #### 服务配置
 
-```yaml
-# config/settings.yaml
-server:
-  host: 0.0.0.0
-  port: 8765
-  workers: 4
-  log_level: info
-  
-security:
-  jwt_secret: ${JWT_SECRET}
-  token_expire_minutes: 60
-  cors_origins:
-    - http://localhost:3000
+服务通过 `.env` 环境变量配置，由 `python/app/config.py` 中的 `ServerConfig` / `SecurityConfig` 读取：
+
+```bash
+# .env
+SERVER_HOST=127.0.0.1
+SERVER_PORT=8765
+DEBUG=false
+
+# 安全配置
+LNN_JWT_SECRET=<your-strong-secret>
+LNN_REGISTRATION_CODE=<optional-invite-code>
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+CORS_ALLOW_CREDENTIALS=true
+ENVIRONMENT=production
 ```
 
 ### 环境变量
 
+完整的 `.env` 模板参见 `.env.example`（或 `.env.sqlite.example` / `.env.ai-cn.example`）。关键变量：
+
 ```bash
 # .env
-DATABASE_URL=sqlite:///./data/lingjing.db
-JWT_SECRET=your-secret-key
-REDIS_URL=redis://localhost:6379
+SERVER_HOST=127.0.0.1
+SERVER_PORT=8765
+DATABASE_URL=sqlite+aiosqlite:///./python/data/app.db
+LNN_JWT_SECRET=<your-strong-secret>
+ALLOWED_ORIGINS=http://localhost:3000
+ENVIRONMENT=production
 LOG_LEVEL=INFO
+LJ_ADMIN_INITIAL_PASSWORD=<initial-admin-password>
 ```
 
 ### 配置更新
@@ -315,18 +334,20 @@ grep "ERROR" logs/app.log | tail -20
 crontab -e
 
 # 添加备份任务（每天凌晨 2 点）
-0 2 * * * /path/to/backup.sh
+0 2 * * * /path/to/scripts/backup_postgres.sh
 ```
 
 ### 备份脚本
 
 ```bash
 #!/bin/bash
-# scripts/backup.sh
+# scripts/backup_postgres.sh
+# 注意：项目实际提供的备份脚本为 backup_postgres.sh（针对 PostgreSQL 部署）。
+# SQLite 部署可参考下方通用模板。
 
 BACKUP_DIR="/backup/lingjing"
 DATE=$(date +%Y%m%d_%H%M%S)
-DB_PATH="./data/lingjing.db"
+DB_PATH="./data/app.db"
 
 # 创建备份目录
 mkdir -p $BACKUP_DIR
@@ -348,7 +369,7 @@ aws s3 cp $BACKUP_DIR/lingjing_$DATE.db.gz s3://your-bucket/backups/
 
 ```bash
 # 备份数据库
-sqlite3 data/lingjing.db ".backup 'backup_$(date +%Y%m%d).db'"
+sqlite3 data/app.db ".backup 'backup_$(date +%Y%m%d).db'"
 
 # 备份配置文件
 tar -czf config_backup_$(date +%Y%m%d).tar.gz config/
@@ -364,17 +385,17 @@ tar -czf logs_backup_$(date +%Y%m%d).tar.gz logs/
 docker-compose stop
 
 # 2. 备份当前数据库（以防万一）
-cp data/lingjing.db data/lingjing.db.backup
+cp data/app.db data/app.db.backup
 
 # 3. 恢复数据库
 gunzip backup/lingjing_20240120_020000.db.gz
-cp backup/lingjing_20240120_020000.db data/lingjing.db
+cp backup/lingjing_20240120_020000.db data/app.db
 
 # 4. 启动服务
 docker-compose start
 
 # 5. 验证恢复
-curl http://localhost:8765/health
+curl http://localhost:8765/api/health/ping
 ```
 
 ### 备份验证
@@ -424,8 +445,8 @@ ps aux | grep uvicorn
 kill -9 <PID>
 
 # 或修改配置使用其他端口
-vim config/settings.yaml
-# 修改 port: 8001
+vim .env
+# 修改 SERVER_PORT=8001
 
 # 重启服务
 docker-compose restart
@@ -442,25 +463,25 @@ Error: unable to open database file
 **诊断**：
 ```bash
 # 检查数据库文件权限
-ls -lh data/lingjing.db
+ls -lh data/app.db
 
 # 检查磁盘空间
 df -h
 
 # 检查数据库完整性
-sqlite3 data/lingjing.db "PRAGMA integrity_check;"
+sqlite3 data/app.db "PRAGMA integrity_check;"
 ```
 
 **解决**：
 ```bash
 # 修复权限
-chmod 664 data/lingjing.db
+chmod 664 data/app.db
 
 # 清理磁盘空间
 rm -rf logs/*.log.gz
 
 # 恢复数据库（从备份）
-cp backup/latest.db data/lingjing.db
+cp backup/latest.db data/app.db
 ```
 
 #### 故障 3：LNN 引擎推理超时
@@ -474,7 +495,7 @@ Error: LNN inference timeout
 **诊断**：
 ```bash
 # 检查 LNN 引擎状态
-curl http://localhost:8765/health/lnn
+curl http://localhost:8765/api/health/ping
 
 # 检查模型加载情况
 curl http://localhost:8765/api/v1/lnn/models
@@ -492,7 +513,7 @@ docker-compose restart lnn-engine
 curl -X POST http://localhost:8765/api/v1/lnn/cache/clear
 
 # 调整超时配置
-vim config/lnn_workflow.yaml
+vim python/config/lnn_workflow.yaml
 # 增加 inference_timeout: 60
 ```
 
@@ -519,11 +540,11 @@ ps aux --sort=-%mem | head -10
 # 或优化配置
 
 # 减少 workers 数量
-vim config/settings.yaml
-# workers: 2
+vim .env
+# SERVER_WORKERS=2（如使用 docker-compose 部署）
 
 # 减少模型缓存大小
-vim config/lnn_workflow.yaml
+vim python/config/lnn_workflow.yaml
 # model_cache_size: 50
 
 # 重启服务
@@ -544,7 +565,7 @@ docker-compose restart
 tail -f logs/slow_queries.log
 
 # 检查数据库性能
-sqlite3 data/lingjing.db "EXPLAIN QUERY PLAN SELECT * FROM tasks;"
+sqlite3 data/app.db "EXPLAIN QUERY PLAN SELECT * FROM tasks;"
 
 # 检查系统负载
 top
@@ -553,14 +574,14 @@ top
 **解决**：
 ```bash
 # 优化数据库索引
-sqlite3 data/lingjing.db "CREATE INDEX idx_tasks_status ON tasks(status);"
+sqlite3 data/app.db "CREATE INDEX idx_tasks_status ON tasks(status);"
 
 # 清理历史数据
-sqlite3 data/lingjing.db "DELETE FROM logs WHERE created_at < date('now', '-90 days');"
+sqlite3 data/app.db "DELETE FROM logs WHERE created_at < date('now', '-90 days');"
 
 # 启用缓存
-vim config/settings.yaml
-# cache_enabled: true
+vim .env
+# CACHE_ENABLED=true
 ```
 
 ### 故障上报流程
@@ -618,42 +639,38 @@ vim config/settings.yaml
 
 ```bash
 # 分析慢查询
-sqlite3 data/lingjing.db "EXPLAIN QUERY PLAN SELECT * FROM tasks WHERE status='running';"
+sqlite3 data/app.db "EXPLAIN QUERY PLAN SELECT * FROM tasks WHERE status='running';"
 
 # 创建索引
-sqlite3 data/lingjing.db "CREATE INDEX idx_tasks_status ON tasks(status);"
-sqlite3 data/lingjing.db "CREATE INDEX idx_tasks_created ON tasks(created_at);"
+sqlite3 data/app.db "CREATE INDEX idx_tasks_status ON tasks(status);"
+sqlite3 data/app.db "CREATE INDEX idx_tasks_created ON tasks(created_at);"
 
 # 清理碎片
-sqlite3 data/lingjing.db "VACUUM;"
+sqlite3 data/app.db "VACUUM;"
 
 # 调整 PRAGMA
-sqlite3 data/lingjing.db "PRAGMA cache_size = 10000;"
-sqlite3 data/lingjing.db "PRAGMA journal_mode = WAL;"
+sqlite3 data/app.db "PRAGMA cache_size = 10000;"
+sqlite3 data/app.db "PRAGMA journal_mode = WAL;"
 ```
 
 ### 应用优化
 
-```yaml
-# config/settings.yaml
-server:
-  workers: 4  # 根据 CPU 核心数调整
-  worker_class: uvicorn.workers.UvicornWorker
-  
-cache:
-  enabled: true
-  backend: redis
-  ttl: 3600
-  
-compression:
-  enabled: true
-  min_size: 1024
+通过 `.env` 环境变量调整应用层配置（由 `python/app/config.py` 读取）：
+
+```bash
+# .env
+SERVER_WORKERS=4  # 根据 CPU 核心数调整
+CACHE_ENABLED=true
+CACHE_BACKEND=redis
+CACHE_TTL=3600
+COMPRESSION_ENABLED=true
+COMPRESSION_MIN_SIZE=1024
 ```
 
 ### LNN 引擎优化
 
 ```yaml
-# config/lnn_workflow.yaml
+# python/config/lnn_workflow.yaml
 lnn:
   batch_size: 32  # 增大批处理量
   model_cache_size: 100  # 增加缓存大小
@@ -668,7 +685,7 @@ lnn:
 curl http://localhost:8765/metrics
 
 # 使用 Apache Bench 压测
-ab -n 1000 -c 10 http://localhost:8765/health
+ab -n 1000 -c 10 http://localhost:8765/api/health/ping
 ```
 
 ---
@@ -744,19 +761,34 @@ curl http://localhost:8765/version
 
 ### Q2: 如何重置管理员密码？
 
+项目未提供独立的 CLI 脚本。管理员密码通过环境变量 `LJ_ADMIN_INITIAL_PASSWORD` 在初始化时设置，初始密码会被写入日志目录下的 `admin_initial_password.txt`（仅首次创建时）。
+
 ```bash
+# 方法 1：通过环境变量重新初始化（需先删除现有 admin 用户记录）
+# 适用于开发/测试环境
 cd python
-python scripts/reset_admin_password.py
+# 删除现有 admin 用户（SQLite）
+sqlite3 data/app.db "DELETE FROM users WHERE username='admin';"
+# 设置新密码并重启
+export LJ_ADMIN_INITIAL_PASSWORD=<new-strong-password>
+python start_server.py
+# 首次启动后，admin 账号会自动重建（must_change_password=true）
+
+# 方法 2：直接修改密码哈希（生产环境，需提前生成哈希）
+# 使用 Python REPL 生成 bcrypt 哈希
+python -c "from app.auth.security import hash_password; print(hash_password('<new-password>'))"
+# 然后更新数据库
+sqlite3 data/app.db "UPDATE users SET password_hash='<hash>', must_change_password=1 WHERE username='admin';"
 ```
 
 ### Q3: 如何清理历史数据？
 
 ```bash
 # 清理 90 天前的日志
-sqlite3 data/lingjing.db "DELETE FROM logs WHERE created_at < date('now', '-90 days');"
+sqlite3 data/app.db "DELETE FROM logs WHERE created_at < date('now', '-90 days');"
 
 # 清理已完成的任务
-sqlite3 data/lingjing.db "DELETE FROM tasks WHERE status='completed' AND completed_at < date('now', '-30 days');"
+sqlite3 data/app.db "DELETE FROM tasks WHERE status='completed' AND completed_at < date('now', '-30 days');"
 ```
 
 ### Q4: 如何扩容？
@@ -766,21 +798,21 @@ sqlite3 data/lingjing.db "DELETE FROM tasks WHERE status='completed' AND complet
 **水平扩容**：
 ```bash
 # 增加 workers 数量
-vim config/settings.yaml
-# workers: 8
+vim .env
+# SERVER_WORKERS=8
 
 # 或使用负载均衡
-# 部署多个实例，使用 Nginx 负载均衡
+# 部署多个实例，使用 Nginx 负载均衡（参考 deploy/nginx/nginx.conf）
 ```
 
 ### Q5: 如何迁移数据？
 
 ```bash
 # 导出数据库
-sqlite3 data/lingjing.db ".dump" > backup.sql
+sqlite3 data/app.db ".dump" > backup.sql
 
 # 在新服务器导入
-sqlite3 new_lingjing.db < backup.sql
+sqlite3 new_app.db < backup.sql
 ```
 
 ---
@@ -805,7 +837,7 @@ docker-compose restart        # 重启服务
 docker-compose logs -f        # 查看日志
 
 # 数据库操作
-sqlite3 data/lingjing.db      # 进入数据库
+sqlite3 data/app.db      # 进入数据库
 .backup backup.db             # 备份数据库
 .restore backup.db            # 恢复数据库
 
@@ -818,7 +850,7 @@ netstat -tlnp                 # 端口占用
 
 ### 相关文档
 
-- [部署指南](./deployment.md)
-- [备份恢复](./backup-recovery.md)
+- [部署指南](#部署指南)
+- [备份恢复](#备份与恢复)
 - [故障处理手册](./troubleshooting.md)
-- [安全加固指南](./security-hardening.md)
+- [安全维护](#安全维护)

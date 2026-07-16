@@ -299,32 +299,32 @@ ax.legend()
 ax.grid(True, alpha=0.3, axis='y')
 ax.set_ylim([0.94, 1.0])
 
-# 子图3: 各材料上的CT-LTC性能（LOMO）
+# 子图3: 各材料上的DL-LNN性能（LOMO）
 ax = axes[1, 0]
 materials = [k for k in cross_results['LOMO'].keys() if k != 'Average']
-ct_ltc_material_maes = [cross_results['LOMO'][mat]['CT-LTC']['MAE'] for mat in materials]
+ct_ltc_material_maes = [cross_results['LOMO'][mat]['DL-LNN']['MAE'] for mat in materials]
 
 bars = ax.bar(range(len(materials)), ct_ltc_material_maes, color='#45B7D1', alpha=0.7, edgecolor='black')
 ax.set_xticks(range(len(materials)))
 ax.set_xticklabels(materials, rotation=45, ha='right', fontsize=10)
 ax.set_ylabel('MAE', fontsize=12)
-ax.set_title('CT-LTC在各材料上的泛化性能 (LOMO)', fontsize=14, fontweight='bold')
+ax.set_title('DL-LNN在各材料上的泛化性能 (LOMO)', fontsize=14, fontweight='bold')
 ax.grid(True, alpha=0.3, axis='y')
 
 for bar, mae in zip(bars, ct_ltc_material_maes):
     ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
             f'{mae:.3f}', ha='center', va='bottom', fontsize=9)
 
-# 子图4: 各条件上的CT-LTC性能（LOCO）
+# 子图4: 各条件上的DL-LNN性能（LOCO）
 ax = axes[1, 1]
 conditions = [k for k in cross_results['LOCO'].keys() if k != 'Average']
-ct_ltc_condition_maes = [cross_results['LOCO'][cond]['CT-LTC']['MAE'] for cond in conditions]
+ct_ltc_condition_maes = [cross_results['LOCO'][cond]['DL-LNN']['MAE'] for cond in conditions]
 
 bars = ax.bar(range(len(conditions)), ct_ltc_condition_maes, color='#96CEB4', alpha=0.7, edgecolor='black')
 ax.set_xticks(range(len(conditions)))
 ax.set_xticklabels(conditions, rotation=45, ha='right', fontsize=10)
 ax.set_ylabel('MAE', fontsize=12)
-ax.set_title('CT-LTC在各工况上的泛化性能 (LOCO)', fontsize=14, fontweight='bold')
+ax.set_title('DL-LNN在各工况上的泛化性能 (LOCO)', fontsize=14, fontweight='bold')
 ax.grid(True, alpha=0.3, axis='y')
 
 for bar, mae in zip(bars, ct_ltc_condition_maes):
@@ -458,7 +458,7 @@ rand_r2s_std = [x['R2_std'] for x in random_baseline]
 
 # 子图1: MAE对比（带误差带）
 ax = axes[0, 0]
-ax.plot(data_ratios, al_maes, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='CT-LTC 主动学习')
+ax.plot(data_ratios, al_maes, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='DL-LNN 主动学习')
 ax.fill_between(data_ratios, 
                 [m - s for m, s in zip(rand_maes, rand_maes_std)],
                 [m + s for m, s in zip(rand_maes, rand_maes_std)],
@@ -475,7 +475,7 @@ ax.set_xticklabels([f'{int(r*100)}%' for r in data_ratios])
 
 # 子图2: R²对比
 ax = axes[0, 1]
-ax.plot(data_ratios, al_r2s, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='CT-LTC 主动学习')
+ax.plot(data_ratios, al_r2s, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='DL-LNN 主动学习')
 ax.fill_between(data_ratios, 
                 [r - s for r, s in zip(rand_r2s, rand_r2s_std)],
                 [r + s for r, s in zip(rand_r2s, rand_r2s_std)],
@@ -511,7 +511,7 @@ efficiency_data = []
 labels = []
 if al_efficiency:
     efficiency_data.append(al_efficiency * 100)
-    labels.append('CT-LTC\n主动学习')
+    labels.append('DL-LNN\n主动学习')
 if rand_efficiency:
     efficiency_data.append(rand_efficiency * 100)
     labels.append('随机采样')
@@ -544,7 +544,7 @@ x_imp = range(len(al_improvements))
 width_imp = 0.35
 
 bars1 = ax.bar([i - width_imp/2 for i in x_imp], al_improvements, width_imp, 
-               label='CT-LTC 主动学习', color='#FF6B6B', alpha=0.7)
+               label='DL-LNN 主动学习', color='#FF6B6B', alpha=0.7)
 bars2 = ax.bar([i + width_imp/2 for i in x_imp], rand_improvements, width_imp, 
                label='随机采样', color='#4ECDC4', alpha=0.7)
 

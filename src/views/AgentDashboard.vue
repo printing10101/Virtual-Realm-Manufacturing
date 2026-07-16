@@ -530,17 +530,10 @@ async function handleDeploy() {
   const valid = await deployFormRef.value?.validate().catch(() => false)
   if (!valid) return
 
-  deployLoading.value = true
-  try {
-    // TODO: 调用部署 API
-    ElMessage.success(t('agentDashboard.msgDeploySuccess', { name: deployForm.value.name }))
-    deployDialogVisible.value = false
-    deployForm.value = { name: '', type: '' }
-  } catch {
-    ElMessage.error(t('agentDashboard.msgDeployFailed'))
-  } finally {
-    deployLoading.value = false
-  }
+  // 占位实现：部署 API 尚未实现，避免误导用户为"已成功部署"
+  // 后端接口就绪后在此处调用 agentStore.deployAgent(deployForm.value) 并依据结果提示
+  console.warn('[AgentDashboard] deploy API not implemented yet, form data:', deployForm.value)
+  ElMessage.warning(t('agentDashboard.msgDeployNotImplemented') || '部署功能尚未实现，请等待后续版本')
 }
 
 /* ------------------------------------------------------------------ */

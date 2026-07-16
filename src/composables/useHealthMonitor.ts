@@ -138,8 +138,9 @@ export function useHealthMonitor() {
       healthStatus.redisHealthy = true
       healthStatus.prometheusHealthy = true
 
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // 健康指标聚合失败不阻塞轮询，仅记录便于排查
+      console.warn('[useHealthMonitor] refreshHealth aggregate failed:', e)
     } finally {
       healthLoading.value = false
     }

@@ -6,7 +6,7 @@
 1. 生成长序列（1000-5000步）的铣削信号
 2. 使用模型进行递推预测（autoregressive prediction）
 3. 分析预测误差随时间的变化趋势
-4. 对比CT-LTC与LSTM、Transformer的长时域稳定性
+4. 对比DL-LNN与LSTM、Transformer的长时域稳定性
 5. 评估指标：误差增长率、发散时间、长期R²
 """
 
@@ -23,7 +23,7 @@ from typing import Dict, List, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import ModelConfig
-from models import CTCTCWithPhysics, BaselineLSTM, BaselineTransformer
+from models import DLLNNWithPhysics, BaselineLSTM, BaselineTransformer
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -205,7 +205,7 @@ def run_long_term_prediction_experiment():
     print(f"使用设备: {device}")
     
     config = ModelConfig()
-    config.input_dim = 2
+    config.input_dim = 7  # 与 config.py 默认值及论文第3节声明的 7 维物理参数特征一致
     config.hidden_dim = 64
     config.num_layers = 3
     config.output_dim = 1
@@ -213,7 +213,7 @@ def run_long_term_prediction_experiment():
     
     # 实验参数
     sequence_lengths = [1000, 2000, 3000, 4000, 5000]
-    model_names = ["CT-LTC", "LSTM", "Transformer"]
+    model_names = ["DL-LNN", "LSTM", "Transformer"]
     
     results = {
         "timestamp": datetime.now().isoformat(),
@@ -237,8 +237,8 @@ def run_long_term_prediction_experiment():
     print("初始化模型...")
     models = {}
     
-    # CT-LTC
-    models["CT-LTC"] = CTCTCWithPhysics(
+    # DL-LNN
+    models["DL-LNN"] = DLLNNWithPhysics(
         input_dim=config.input_dim,
         hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,
@@ -266,7 +266,7 @@ def run_long_term_prediction_experiment():
     # 简单训练（仅用于演示）
     print("训练模型（简化版本）...")
     optimizer = torch.optim.Adam(
-        list(models["CT-LTC"].parameters()) + 
+        list(models["DL-LNN"].parameters()) + 
         list(models["LSTM"].parameters()) + 
         list(models["Transformer"].parameters()),
         lr=0.001
@@ -279,7 +279,7 @@ def run_long_term_prediction_experiment():
             for batch in train_loader:
                 x, y = batch[0].to(device), batch[1].to(device)
                 output = model(x)
-                # CTCTCWithPhysics 返回元组，其他模型返回单个张量
+                # DLLNNWithPhysics 返回元组，其他模型返回单个张量
                 pred = output[0] if isinstance(output, tuple) else output
                 if pred.shape != y.shape:
                     pred = pred.view_as(y)

@@ -15,9 +15,15 @@ from typing import Dict, List
 
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
+# 添加项目根目录（python/）到 path，用于导入 app 模块
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from app.ai.lnn.training.reproducibility import set_global_seed
 
 from config import ModelConfig
-from models import CTCTCWithPhysics
+from models import DLLNNWithPhysics
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -197,7 +203,7 @@ def run_active_learning_experiment():
         )
         
         # 创建并训练模型
-        model = CTCTCWithPhysics(
+        model = DLLNNWithPhysics(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
@@ -250,7 +256,7 @@ def run_active_learning_experiment():
                 val_ratio=0.15
             )
             
-            model = CTCTCWithPhysics(
+            model = DLLNNWithPhysics(
                 input_dim=config.input_dim,
                 hidden_dim=config.hidden_dim,
                 num_layers=config.num_layers,
@@ -320,4 +326,5 @@ def run_active_learning_experiment():
 
 
 if __name__ == "__main__":
+    set_global_seed(42)
     results = run_active_learning_experiment()

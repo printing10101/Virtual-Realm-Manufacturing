@@ -363,9 +363,9 @@ class CustomEvaluator(ModelEvaluator):
 
 ### C. 参考资料
 
-- [LNN训练器文档](../ai/lnn/training/README.md)
-- [任务系统文档](../tasks/README.md)
-- [模型注册服务文档](../services/README.md)
+- [Bayesian LNN 架构与训练指南](./bayesian-lnn-guide.md) - LNN 训练器实现细节
+- [主动学习触发器系统](./active-learning-triggers.md) - 不确定性场景识别
+- LNN 训练器源码：[`python/app/ai/lnn/training/trainer.py`](../../python/app/ai/lnn/training/trainer.py)
 
 ---
 

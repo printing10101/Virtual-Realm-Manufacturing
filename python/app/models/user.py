@@ -5,7 +5,7 @@ import os
 import json
 import threading
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 from pathlib import Path
 from pydantic import BaseModel, Field
 
@@ -42,6 +42,7 @@ class UserRecord:
         created_at: Optional[str] = None,
         last_login: Optional[str] = None,
         is_active: bool = True,
+        must_change_password: bool = False,
     ):
         self.username = username
         self.password_hash = password_hash
@@ -49,19 +50,37 @@ class UserRecord:
         self.created_at = created_at or datetime.now(timezone.utc).isoformat()
         self.last_login = last_login
         self.is_active = is_active
+        self.must_change_password = must_change_password
 
-    def to_dict(self) -> dict:
-        return {
+    def to_dict(self, include_sensitive: bool = False) -> dict:
+        """序列化用户记录。
+
+        Args:
+            include_sensitive: 是否包含敏感字段（如 password_hash）。
+                默认 False，确保密码哈希不会通过 to_dict() 泄露到 API 响应或日志。
+                仅在内部持久化（_save）等必须场景显式传 True。
+
+        Returns:
+            不含 password_hash 的用户字典（include_sensitive=False 时）。
+        """
+        data = {
             "username": self.username,
-            "password_hash": self.password_hash,
             "role": self.role,
             "created_at": self.created_at,
             "last_login": self.last_login,
             "is_active": self.is_active,
+            "must_change_password": self.must_change_password,
         }
+        if include_sensitive:
+            data["password_hash"] = self.password_hash
+        return data
+
+    def get_password_hash(self) -> str:
+        """获取密码哈希（仅供内部认证逻辑使用，不对外暴露）。"""
+        return self.password_hash
 
     @classmethod
-    def from_dict(cls, data: dict) -> "UserRecord":
+    def from_dict(cls, data: dict[str, Any]) -> "UserRecord":
         return cls(
             username=data["username"],
             password_hash=data["password_hash"],
@@ -69,6 +88,7 @@ class UserRecord:
             created_at=data.get("created_at"),
             last_login=data.get("last_login"),
             is_active=data.get("is_active", True),
+            must_change_password=data.get("must_change_password", False),
         )
 
 
@@ -93,14 +113,32 @@ class UserStore:
                 self._users = {}
 
     def _save(self):
-        data = {"users": [u.to_dict() for u in self._users.values()]}
+        # include_sensitive=True: 持久化必须保存 password_hash，否则重启后无法认证
+        data = {"users": [u.to_dict(include_sensitive=True) for u in self._users.values()]}
         self._file_path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+        # 安全要求：限制用户存储文件权限为 600（仅属主可读写），防止其他用户读取密码哈希
+        try:
+            os.chmod(self._file_path, 0o600)
+        except (OSError, PermissionError) as e:
+            # Windows 或某些文件系统不支持 chmod，记录告警但不阻断流程
+            logger.warning("Failed to chmod %s to 0o600: %s", self._file_path, e)
 
-    def create_user(self, username: str, password_hash: str, role: str = "user") -> UserRecord:
+    def create_user(
+        self,
+        username: str,
+        password_hash: str,
+        role: str = "user",
+        must_change_password: bool = False,
+    ) -> UserRecord:
         with self._lock:
             if username in self._users:
                 raise ValueError(f"User '{username}' already exists")
-            record = UserRecord(username=username, password_hash=password_hash, role=role)
+            record = UserRecord(
+                username=username,
+                password_hash=password_hash,
+                role=role,
+                must_change_password=must_change_password,
+            )
             self._users[username] = record
             self._save()
             return record

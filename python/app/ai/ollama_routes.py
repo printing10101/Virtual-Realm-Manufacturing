@@ -26,6 +26,9 @@ logger = logging.getLogger(__name__)
 # 如果设置了 OLLAMA_MODEL_PATH，将优先从该路径加载模型
 OLLAMA_MODEL_PATH = os.getenv("OLLAMA_MODEL_PATH")
 
+# Ollama 健康检查/状态查询的 HTTP 超时（秒）
+OLLAMA_HEALTH_TIMEOUT = 5
+
 router = APIRouter(prefix="/api/ollama", tags=["Ollama"])
 
 
@@ -33,7 +36,7 @@ router = APIRouter(prefix="/api/ollama", tags=["Ollama"])
 async def get_ollama_status() -> dict[str, Any]:
     """获取 Ollama 服务状态"""
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
+        async with httpx.AsyncClient(timeout=OLLAMA_HEALTH_TIMEOUT) as client:
             response = await client.get(f"{config.ai.ollama_base_url}/api/tags")
             if response.status_code == 200:
                 data = response.json()
@@ -80,7 +83,7 @@ async def get_ollama_status() -> dict[str, Any]:
 async def list_ollama_models() -> dict[str, Any]:
     """获取 Ollama 已安装模型列表"""
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
+        async with httpx.AsyncClient(timeout=OLLAMA_HEALTH_TIMEOUT) as client:
             response = await client.get(f"{config.ai.ollama_base_url}/api/tags")
             if response.status_code == 200:
                 data = response.json()

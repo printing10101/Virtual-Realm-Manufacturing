@@ -483,6 +483,12 @@
 </template>
 
 <script setup lang="ts">
+// TODO(P1-3): 巨型组件拆分 — 本文件 1087 行，应拆分为子组件/composable：
+//   - 工作区列表/网格 → WorkspaceGrid.vue
+//   - 项目卡片 → ProjectCard.vue
+//   - 创建/编辑弹窗 → ProjectDialog.vue
+//   - 数据获取逻辑 → useWorkspace.ts
+// 拆分时注意保持 props/emits 接口不变，逐模块迁移并验证。
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -597,11 +603,11 @@ function connectToJob(jobId: string) {
   sse.connect()
 }
 
-watch(() => sse.events, () => {
+watch(() => sse.events?.length, () => {
   if (lossChartCanvas.value) {
     drawLossChart()
   }
-}, { deep: true })
+})
 
 function drawLossChart() {
   const canvas = lossChartCanvas.value
@@ -920,8 +926,9 @@ async function recordAuditLog(
         reasoning: predictResponse.value?.reasoning || dryRunResult.value?.reasoning || null,
       },
     })
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    // 审计日志记录失败不应阻塞用户主流程，但需记录便于后续审计追溯
+    console.warn('[Workspace] recordAuditLog failed:', e)
   }
 }
 

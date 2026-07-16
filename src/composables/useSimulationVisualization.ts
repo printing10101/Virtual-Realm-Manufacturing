@@ -147,7 +147,12 @@ export function createTemperatureMaterial(
   const canvas = document.createElement('canvas')
   canvas.width = 256
   canvas.height = 1
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    // 现代浏览器中动态创建的 canvas 几乎不会失败，但 TypeScript 严格要求处理 null
+    console.warn('[useSimulationVisualization] createTemperatureMaterial: failed to acquire 2d context')
+    return new THREE.ShaderMaterial()
+  }
 
   for (let i = 0; i < 256; i++) {
     const value = minTemp + (maxTemp - minTemp) * (i / 255)
@@ -273,7 +278,12 @@ export function createColorLegend(
   const canvas = document.createElement('canvas')
   canvas.width = 256
   canvas.height = 32
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    // 现代浏览器中动态创建的 canvas 几乎不会失败，但 TypeScript 严格要求处理 null
+    console.warn('[useSimulationVisualization] createColorLegend: failed to acquire 2d context')
+    return group
+  }
 
   for (let i = 0; i < 256; i++) {
     const value = min + (max - min) * (i / 255)

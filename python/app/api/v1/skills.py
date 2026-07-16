@@ -11,7 +11,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.plugins.skill_loader import (
@@ -23,10 +23,15 @@ from app.plugins.skill_loader import (
 from app.plugins.skill_marketplace import get_marketplace
 from app.core.response import ErrorCode, success, error
 from app.core.safe_errors import safe_error_message
+from app.auth.permissions import require_permission
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/skills", tags=["skills"])
+router = APIRouter(
+    prefix="/api/v1/skills",
+    tags=["skills"],
+    dependencies=[Depends(require_permission("skills:read"))],
+)
 
 
 class SkillContentRequest(BaseModel):
@@ -76,7 +81,8 @@ def _parse_level(level_str: str) -> SkillLevel:
     }
     level = level_map.get(level_str.lower())
     if level is None:
-        raise HTTPException(status_code=400, detail=f"Invalid skill level: {level_str}")
+        logger.info("Invalid skill level: %s", level_str)
+        raise HTTPException(status_code=400, detail="Invalid skill level")
     return level
 
 
@@ -148,7 +154,7 @@ async def get_skill_stats():
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/create")
+@router.post("/create", dependencies=[Depends(require_permission("skills:write"))])
 async def create_skill(request: SkillContentRequest):
     try:
         level = _parse_level(request.level)
@@ -173,7 +179,7 @@ async def create_skill(request: SkillContentRequest):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.put("/{skill_id}")
+@router.put("/{skill_id}", dependencies=[Depends(require_permission("skills:write"))])
 async def update_skill(skill_id: str, request: SkillContentRequest):
     try:
         level = _parse_level(request.level)
@@ -197,7 +203,7 @@ async def update_skill(skill_id: str, request: SkillContentRequest):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.delete("/{skill_id}")
+@router.delete("/{skill_id}", dependencies=[Depends(require_permission("skills:write"))])
 async def delete_skill(skill_id: str):
     try:
         loader = get_skill_loader()
@@ -259,7 +265,7 @@ async def get_skill(skill_id: str):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/reload")
+@router.post("/reload", dependencies=[Depends(require_permission("skills:write"))])
 async def reload_skills(skill_id: Optional[str] = None):
     try:
         loader = get_skill_loader()
@@ -299,7 +305,7 @@ async def get_skill_versions(skill_id: str):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/export")
+@router.post("/export", dependencies=[Depends(require_permission("skills:write"))])
 async def export_skill(request: SkillExportRequest):
     try:
         loader = get_skill_loader()
@@ -315,7 +321,7 @@ async def export_skill(request: SkillExportRequest):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/import")
+@router.post("/import", dependencies=[Depends(require_permission("skills:write"))])
 async def import_skill(request: SkillImportRequest):
     try:
         level = _parse_level(request.level)
@@ -344,7 +350,7 @@ async def import_skill(request: SkillImportRequest):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/rate")
+@router.post("/rate", dependencies=[Depends(require_permission("skills:write"))])
 async def rate_skill(request: SkillRatingRequest):
     try:
         loader = get_skill_loader()
@@ -367,7 +373,7 @@ async def rate_skill(request: SkillRatingRequest):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/inject")
+@router.post("/inject", dependencies=[Depends(require_permission("skills:write"))])
 async def inject_skills_endpoint(
     task_type: str = Query(..., description="任务类型"),
     project_id: Optional[str] = Query(None, description="项目ID"),
@@ -424,7 +430,7 @@ async def marketplace_search(query: str = Query(..., description="搜索关键�
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/marketplace/publish")
+@router.post("/marketplace/publish", dependencies=[Depends(require_permission("skills:write"))])
 async def marketplace_publish(request: SkillPublishRequest):
     try:
         marketplace = get_marketplace()
@@ -441,7 +447,7 @@ async def marketplace_publish(request: SkillPublishRequest):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/marketplace/download")
+@router.post("/marketplace/download", dependencies=[Depends(require_permission("skills:write"))])
 async def marketplace_download(request: SkillDownloadRequest):
     try:
         level = _parse_level(request.target_level)
@@ -461,7 +467,7 @@ async def marketplace_download(request: SkillDownloadRequest):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/marketplace/rate")
+@router.post("/marketplace/rate", dependencies=[Depends(require_permission("skills:write"))])
 async def marketplace_rate(request: SkillMarketplaceRateRequest):
     try:
         marketplace = get_marketplace()
@@ -486,7 +492,7 @@ async def marketplace_rate(request: SkillMarketplaceRateRequest):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.delete("/marketplace/{skill_id}")
+@router.delete("/marketplace/{skill_id}", dependencies=[Depends(require_permission("skills:write"))])
 async def marketplace_unpublish(skill_id: str):
     try:
         marketplace = get_marketplace()

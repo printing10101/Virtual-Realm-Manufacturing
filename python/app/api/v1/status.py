@@ -18,6 +18,8 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from app.core.safe_errors import safe_error_message
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/status", tags=["status"])
@@ -37,7 +39,9 @@ def get_status() -> dict[str, Any]:
         out["components"]["research_bridge"] = UsageDataCollector.get_instance().health_check()
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.warning("research_bridge health check failed: %s", e)
-        out["components"]["research_bridge"] = {"error": repr(e)}
+        out["components"]["research_bridge"] = safe_error_message(
+            e, fallback="research_bridge 健康检查失败", context="status.research_bridge"
+        )
 
     # 2. feature flags
     try:
@@ -61,7 +65,9 @@ def get_status() -> dict[str, Any]:
         }
     except (ImportError, AttributeError, KeyError) as e:
         logger.warning("feature_flags check failed: %s", e)
-        out["components"]["feature_flags"] = {"error": repr(e)}
+        out["components"]["feature_flags"] = safe_error_message(
+            e, fallback="feature_flags 检查失败", context="status.feature_flags"
+        )
 
     # 3. postprocessors
     try:
@@ -73,7 +79,9 @@ def get_status() -> dict[str, Any]:
         }
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.warning("postprocessors check failed: %s", e)
-        out["components"]["postprocessors"] = {"error": repr(e)}
+        out["components"]["postprocessors"] = safe_error_message(
+            e, fallback="postprocessors 检查失败", context="status.postprocessors"
+        )
 
     # 4. knowledge graph
     try:
@@ -83,7 +91,9 @@ def get_status() -> dict[str, Any]:
         out["components"]["knowledge_graph"] = api.stats()
     except (ImportError, AttributeError, RuntimeError, OSError) as e:
         logger.warning("knowledge_graph check failed: %s", e)
-        out["components"]["knowledge_graph"] = {"error": repr(e)}
+        out["components"]["knowledge_graph"] = safe_error_message(
+            e, fallback="knowledge_graph 检查失败", context="status.knowledge_graph"
+        )
 
     # 5. environment flags
     out["env"] = {
@@ -106,7 +116,9 @@ def get_postprocessors() -> dict[str, Any]:
         }
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.warning("get_postprocessors failed: %s", e)
-        return {"error": repr(e)}
+        return safe_error_message(
+            e, fallback="postprocessors 列表查询失败", context="status.get_postprocessors"
+        )
 
 
 @router.get("/research-bridge")
@@ -119,7 +131,9 @@ def get_bridge() -> dict[str, Any]:
         return {"health": c.health_check(), "summary": c.summary()}
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.warning("get_bridge failed: %s", e)
-        return {"error": repr(e)}
+        return safe_error_message(
+            e, fallback="research_bridge 详情查询失败", context="status.get_bridge"
+        )
 
 
 __all__ = ["router"]

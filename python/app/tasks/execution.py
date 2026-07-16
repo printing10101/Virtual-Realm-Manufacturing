@@ -309,7 +309,7 @@ class SessionManager:
         # 验证列名是否在白名单中，防止 SQL 注入
         for key in updates.keys():
             if key not in self._ALLOWED_COLUMNS:
-                logger.warning(f"Attempted to update disallowed column: {key}")
+                logger.warning("Attempted to update disallowed column: %s", key)
                 continue
 
         set_clause = ", ".join(f"{k} = ?" for k in updates.keys() if k in self._ALLOWED_COLUMNS)
@@ -489,7 +489,7 @@ class TaskExecutor:
                 start_time=start_time,
                 end_time=time.time(),
                 duration_ms=duration_ms,
-                error_message=str(e),
+                error_message="任务执行失败: 内部错误，请联系管理员",
                 error_traceback=traceback.format_exc(),
             )
 
@@ -806,7 +806,7 @@ class ExecutionEngine:
                 start_time=time.time(),
                 end_time=time.time(),
                 duration_ms=0,
-                error_message=str(e),
+                error_message="任务执行失败: 内部错误，请联系管理员",
                 error_traceback=traceback.format_exc(),
             )
 

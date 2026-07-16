@@ -1,7 +1,7 @@
 # 故障处理手册
 
 **版本**: 1.0.0  
-**最后更新**: 2024-01-20  
+**最后更新**: 2026-07-10  
 **适用范围**: 灵境制造系统所有运维人员
 
 ---
@@ -125,7 +125,7 @@ docker-compose restart
 docker-compose ps
 
 # 健康检查
-curl http://localhost:8765/health
+curl http://localhost:8765/api/health/ping
 ```
 
 ---
@@ -142,18 +142,18 @@ sqlite3.OperationalError: database disk image is malformed
 **诊断步骤**：
 ```bash
 # 1. 检查数据库文件
-ls -lh data/lingjing.db
-ls -lh data/lingjing.db-wal
-ls -lh data/lingjing.db-shm
+ls -lh data/app.db
+ls -lh data/app.db-wal
+ls -lh data/app.db-shm
 
 # 2. 检查文件权限
-stat data/lingjing.db
+stat data/app.db
 
 # 3. 检查磁盘空间
 df -h
 
 # 4. 检查数据库完整性
-sqlite3 data/lingjing.db "PRAGMA integrity_check;"
+sqlite3 data/app.db "PRAGMA integrity_check;"
 
 # 5. 查看数据库日志
 tail -f logs/database.log
@@ -164,9 +164,9 @@ tail -f logs/database.log
 **方案 A：修复权限问题**
 ```bash
 # 修复文件权限
-chmod 664 data/lingjing.db
-chmod 664 data/lingjing.db-wal
-chmod 664 data/lingjing.db-shm
+chmod 664 data/app.db
+chmod 664 data/app.db-wal
+chmod 664 data/app.db-shm
 
 # 修复目录权限
 chmod 775 data/
@@ -181,10 +181,10 @@ docker-compose restart
 docker-compose stop
 
 # 删除锁文件（如果存在）
-rm -f data/lingjing.db.lock
+rm -f data/app.db.lock
 
 # 检查并修复 WAL 文件
-sqlite3 data/lingjing.db "PRAGMA wal_checkpoint(TRUNCATE);"
+sqlite3 data/app.db "PRAGMA wal_checkpoint(TRUNCATE);"
 
 # 启动服务
 docker-compose start
@@ -193,13 +193,13 @@ docker-compose start
 **方案 C：恢复数据库**
 ```bash
 # 1. 备份当前数据库
-cp data/lingjing.db data/lingjing.db.corrupted
+cp data/app.db data/app.db.corrupted
 
 # 2. 从备份恢复
-cp backup/latest.db data/lingjing.db
+cp backup/latest.db data/app.db
 
 # 3. 验证恢复
-sqlite3 data/lingjing.db "PRAGMA integrity_check;"
+sqlite3 data/app.db "PRAGMA integrity_check;"
 
 # 4. 重启服务
 docker-compose restart
@@ -208,23 +208,23 @@ docker-compose restart
 **方案 D：修复损坏的数据库**
 ```bash
 # 导出数据库
-sqlite3 data/lingjing.db ".dump" > backup.sql
+sqlite3 data/app.db ".dump" > backup.sql
 
 # 创建新数据库
-rm data/lingjing.db
-sqlite3 data/lingjing.db < backup.sql
+rm data/app.db
+sqlite3 data/app.db < backup.sql
 
 # 验证
-sqlite3 data/lingjing.db "PRAGMA integrity_check;"
+sqlite3 data/app.db "PRAGMA integrity_check;"
 ```
 
 **验证**：
 ```bash
 # 测试数据库连接
-curl http://localhost:8765/health
+curl http://localhost:8765/api/health/ping
 
 # 检查数据库状态
-sqlite3 data/lingjing.db "SELECT COUNT(*) FROM tasks;"
+sqlite3 data/app.db "SELECT COUNT(*) FROM tasks;"
 ```
 
 ---
@@ -241,7 +241,7 @@ Error: Model loading failed
 **诊断步骤**：
 ```bash
 # 1. 检查 LNN 引擎状态
-curl http://localhost:8765/health/lnn
+curl http://localhost:8765/api/health/ping
 
 # 2. 检查模型加载情况
 curl http://localhost:8765/api/v1/lnn/models
@@ -273,7 +273,7 @@ systemctl restart lingjing-lnn
 sleep 10
 
 # 验证
-curl http://localhost:8765/health/lnn
+curl http://localhost:8765/api/health/ping
 ```
 
 **方案 B：清理模型缓存**
@@ -425,7 +425,7 @@ watch -n 1 free -h
 docker-compose ps
 
 # 压力测试
-ab -n 100 -c 10 http://localhost:8765/health
+ab -n 100 -c 10 http://localhost:8765/api/health/ping
 ```
 
 ---
@@ -445,7 +445,7 @@ ab -n 100 -c 10 http://localhost:8765/health
 tail -f logs/slow_queries.log
 
 # 2. 检查数据库性能
-sqlite3 data/lingjing.db "EXPLAIN QUERY PLAN SELECT * FROM tasks;"
+sqlite3 data/app.db "EXPLAIN QUERY PLAN SELECT * FROM tasks;"
 
 # 3. 检查系统负载
 top
@@ -453,7 +453,7 @@ uptime
 
 # 4. 检查网络延迟
 ping localhost
-curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8765/health
+curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8765/api/health/ping
 
 # 5. 检查 API 响应时间
 curl -o /dev/null -s -w "Time: %{time_total}s\n" http://localhost:8765/api/v1/users
@@ -464,7 +464,7 @@ curl -o /dev/null -s -w "Time: %{time_total}s\n" http://localhost:8765/api/v1/us
 **方案 A：优化数据库查询**
 ```bash
 # 分析慢查询
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 .mode column
 .headers on
 EXPLAIN QUERY PLAN
@@ -472,7 +472,7 @@ SELECT * FROM tasks WHERE status='running' ORDER BY created_at DESC;
 EOF
 
 # 创建索引
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_created ON tasks(created_at);
 CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id);
@@ -502,13 +502,13 @@ docker-compose restart
 **方案 C：清理历史数据**
 ```bash
 # 清理旧日志
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 DELETE FROM logs WHERE created_at < date('now', '-90 days');
 VACUUM;
 EOF
 
 # 清理已完成任务
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 DELETE FROM tasks 
 WHERE status='completed' 
 AND completed_at < date('now', '-30 days');
@@ -532,11 +532,11 @@ docker-compose up -d --scale api=3
 ```bash
 # 测试响应时间
 for i in {1..10}; do
-  curl -o /dev/null -s -w "%{time_total}\n" http://localhost:8765/health
+  curl -o /dev/null -s -w "%{time_total}\n" http://localhost:8765/api/health/ping
 done
 
 # 压力测试
-ab -n 1000 -c 50 http://localhost:8765/health
+ab -n 1000 -c 50 http://localhost:8765/api/health/ping
 ```
 
 ---
@@ -560,7 +560,7 @@ tail -f logs/auth.log
 cat config/settings.yaml | grep jwt
 
 # 3. 检查用户数据库
-sqlite3 data/lingjing.db "SELECT * FROM users WHERE username='testuser';"
+sqlite3 data/app.db "SELECT * FROM users WHERE username='testuser';"
 
 # 4. 检查 Redis（如果使用）
 redis-cli ping
@@ -575,7 +575,7 @@ cd python
 python scripts/reset_admin_password.py
 
 # 或手动重置
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 UPDATE users 
 SET password_hash = '$2b$12$...' 
 WHERE username = 'admin';
@@ -601,7 +601,7 @@ docker-compose restart
 redis-cli keys "*token*" | xargs redis-cli del
 
 # 清理数据库中的过期 token
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 DELETE FROM tokens WHERE expires_at < datetime('now');
 EOF
 ```
@@ -684,7 +684,7 @@ find backup/ -name "*.db.gz" -mtime +30 -delete
 rm -rf /tmp/lingjing-*
 
 # 清理数据库历史数据
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 DELETE FROM logs WHERE created_at < date('now', '-90 days');
 VACUUM;
 EOF
@@ -743,13 +743,13 @@ iostat -x 1            # 磁盘 IO
 
 ```bash
 # API 测试
-curl -v http://localhost:8765/health
-ab -n 100 -c 10 http://localhost:8765/health
+curl -v http://localhost:8765/api/health/ping
+ab -n 100 -c 10 http://localhost:8765/api/health/ping
 
 # 数据库诊断
-sqlite3 data/lingjing.db "PRAGMA integrity_check;"
-sqlite3 data/lingjing.db ".tables"
-sqlite3 data/lingjing.db ".schema"
+sqlite3 data/app.db "PRAGMA integrity_check;"
+sqlite3 data/app.db ".tables"
+sqlite3 data/app.db ".schema"
 
 # 日志分析
 tail -f logs/app.log
@@ -765,7 +765,7 @@ python -m cProfile -s time script.py
 python -m memory_profiler script.py
 
 # 数据库性能分析
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 .timer on
 SELECT * FROM tasks WHERE status='running';
 EOF
@@ -907,7 +907,7 @@ docker-compose down            # 停止服务
 docker-compose up -d           # 启动服务
 
 # 数据库操作
-sqlite3 data/lingjing.db       # 进入数据库
+sqlite3 data/app.db       # 进入数据库
 .tables                        # 查看所有表
 .schema                        # 查看表结构
 PRAGMA integrity_check;        # 检查完整性
@@ -924,10 +924,8 @@ netstat -tlnp                  # 端口占用
 
 - [运维手册 README](./README.md)
 - [备份恢复指南](./backup-recovery.md)
-- [安全加固指南](./security-hardening.md)
-- [性能优化指南](./performance-optimization.md)
 
 ---
 
-**最后更新**: 2024-01-20  
+**最后更新**: 2026-07-10  
 **维护者**: 运维团队

@@ -9,6 +9,7 @@
     >
       <!-- 背景粒子效果 -->
       <div class="particles">
+        <!-- 静态列表，index 作为 key 可接受 -->
         <div
           v-for="i in 20"
           :key="i"
@@ -81,6 +82,7 @@
         <!-- 应用名称 -->
         <div class="app-brand">
           <h1 class="app-name">
+            <!-- 静态列表，index 作为 key 可接受 -->
             <span
               v-for="(char, i) in appNameChars"
               :key="i"

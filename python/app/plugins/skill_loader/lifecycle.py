@@ -15,6 +15,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# 文件监听线程的统一 join 超时（秒）。用于 stop() 清理路径，
+# 与 app.data.pipeline.loader.DEFAULT_THREAD_JOIN_TIMEOUT_SEC 保持一致。
+DEFAULT_THREAD_JOIN_TIMEOUT_SEC: float = 5.0
+
 
 class SkillFileWatcher:
     """技能文件监听器 - 检测文件变化并触发重新加载。"""
@@ -47,7 +51,7 @@ class SkillFileWatcher:
         self._running = False
         self._stop_event.set()
         if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=5.0)
+            self._thread.join(timeout=DEFAULT_THREAD_JOIN_TIMEOUT_SEC)
         logger.info("SkillFileWatcher stopped")
 
     def _watch_loop(self) -> None:

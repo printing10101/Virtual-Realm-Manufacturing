@@ -51,6 +51,7 @@
     >
       <h4>{{ $t('toolpathImport.preview', { count: previewLines.length }) }}</h4>
       <div class="preview-content">
+        <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
         <div
           v-for="(line, i) in previewLines"
           :key="i"

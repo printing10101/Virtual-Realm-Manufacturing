@@ -6,13 +6,30 @@ MTConnect 客户端实现
 - 主轴转速/进给速度监控
 - 加工状态跟踪
 - 报警信息获取
+
+工业安全合规依据：
+- IEC 62443-3-3 SR 7.2 网络可用性：通过指数退避重试与心跳探测保障通信可用性，
+  所有重试参数通过构造函数注入，禁止硬编码。
+- ISO 10218 安全联锁：NC 程序传输失败必须显式抛异常，禁止静默返回 False，
+  避免调用方误判传输成功而启动机床加工导致人员伤害。
 """
 
+import asyncio
 import logging
+import random
 import xml.etree.ElementTree as ET
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable
 from datetime import datetime
+
 import httpx
+
+from app.audit.audit_log import (
+    AuditLog,
+    AIModule,
+    UserDecision,
+    OperationStatus,
+)
+from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -22,21 +39,46 @@ class MTConnectClient:
     MTConnect 客户端
 
     用于连接 MTConnect Agent 并采集机床数据。
+
+    工业安全合规：
+        - 所有网络操作支持指数退避重试（IEC 62443-3-3 SR 7.2 网络可用性）
+        - NC 程序传输失败必须显式抛异常（ISO 10218 安全联锁）
+        - 重试参数通过构造函数注入，禁止硬编码
     """
 
-    def __init__(self, agent_url: str, device_name: str = "Device"):
+    def __init__(
+        self,
+        agent_url: str,
+        device_name: str = "Device",
+        max_retries: int = 3,
+        retry_backoff_base: float = 1.0,
+        retry_backoff_max: float = 60.0,
+        failure_callback: Optional[Callable] = None,
+        audit_log: Optional[AuditLog] = None,
+    ):
         """
         初始化 MTConnect 客户端
 
         Args:
             agent_url: MTConnect Agent URL，如 "http://192.168.1.100:5000"
             device_name: 设备名称
+            max_retries: 最大重试次数（默认 3）
+            retry_backoff_base: 指数退避基数（秒，默认 1.0）
+            retry_backoff_max: 最大退避时间（秒，默认 60.0）
+            failure_callback: 失败告警回调，签名 callback(operation_name, error, attempt)
+            audit_log: 审计日志记录器，为 None 时仅使用 logger
         """
         self.agent_url = agent_url.rstrip('/')
         self.device_name = device_name
         self.client: Optional[httpx.AsyncClient] = None
         self.connected = False
         self.sequence = 0
+        # 重试参数（IEC 62443-3-3 SR 7.2 网络可用性，禁止硬编码）
+        self.max_retries = max_retries
+        self.retry_backoff_base = retry_backoff_base
+        self.retry_backoff_max = retry_backoff_max
+        self.failure_callback = failure_callback
+        self.audit_log = audit_log
 
     async def __aenter__(self):
         """异步上下文管理器入口"""
@@ -47,34 +89,144 @@ class MTConnectClient:
         """异步上下文管理器出口"""
         await self.disconnect()
 
+    async def _retry_with_backoff(
+        self,
+        operation: Callable,
+        operation_name: str,
+    ) -> Any:
+        """
+        通用指数退避重试方法
+
+        - 指数退避：delay = min(backoff_base * (2 ** attempt), backoff_max)
+        - 添加 jitter（0-1 秒随机抖动，避免惊群）
+        - 每次失败记录 logger.warning
+        - 达到 max_retries 后调用 failure_callback 并抛出 RuntimeError
+        - 使用 asyncio.sleep 实现非阻塞退避
+
+        Args:
+            operation: 无参数的协程工厂（返回 awaitable 的可调用对象）
+            operation_name: 操作名称（用于日志）
+
+        Returns:
+            操作的成功返回值
+
+        Raises:
+            RuntimeError: 达到最大重试次数后仍失败
+        """
+        last_error: Optional[Exception] = None
+        # 总尝试次数 = 1 (初始) + max_retries (重试)
+        total_attempts = self.max_retries + 1
+        for attempt in range(total_attempts):
+            try:
+                return await operation()
+            except Exception as e:
+                last_error = e
+                if attempt >= self.max_retries:
+                    # 达到最大重试次数
+                    logger.error(
+                        "%s 失败，已达最大重试次数 %d: %s",
+                        operation_name, self.max_retries, e,
+                    )
+                    if self.failure_callback:
+                        try:
+                            self.failure_callback(operation_name, e, attempt + 1)
+                        except Exception as cb_err:
+                            logger.error(
+                                "failure_callback 执行失败: %s", cb_err
+                            )
+                    raise RuntimeError(
+                        f"{operation_name} 失败，已达最大重试次数 "
+                        f"{self.max_retries}: {e}"
+                    ) from e
+                # 指数退避 + jitter（避免惊群）
+                delay = min(
+                    self.retry_backoff_base * (2 ** attempt),
+                    self.retry_backoff_max,
+                )
+                jitter = random.uniform(0, 1.0)
+                wait_time = delay + jitter
+                logger.warning(
+                    "%s 第 %d/%d 次尝试失败: %s，%.2f 秒后重试",
+                    operation_name, attempt + 1, total_attempts, e, wait_time,
+                )
+                await asyncio.sleep(wait_time)
+        # 理论上不应到达
+        raise RuntimeError(f"{operation_name} 失败: {last_error}")
+
+    def _log_audit(
+        self,
+        operation: str,
+        status: OperationStatus,
+        program_name: Optional[str] = None,
+        error: Optional[str] = None,
+    ) -> None:
+        """记录审计日志（NC 程序传输尝试、失败、成功）"""
+        if not self.audit_log:
+            return
+        try:
+            self.audit_log.log_decision(
+                ai_module=AIModule.PROCESS_OPTIMIZE,
+                ai_recommendation={
+                    "operation": operation,
+                    "protocol": "mtconnect",
+                    "agent_url": self.agent_url,
+                    "program_name": program_name,
+                },
+                user_decision=UserDecision.AUTO_EXECUTED,
+                final_execution={
+                    "status": status.value,
+                    "error": error,
+                },
+                operation_status=status,
+                metadata={
+                    "component": "dnc.mtconnect_client",
+                    "operation": operation,
+                },
+            )
+        except Exception as audit_err:
+            logger.error("审计日志记录失败: %s", audit_err)
+
     async def connect(self) -> bool:
         """
-        连接到 MTConnect Agent
+        连接到 MTConnect Agent（带指数退避重试）
 
         Returns:
             连接成功返回 True
-        """
-        try:
-            self.client = httpx.AsyncClient(timeout=10.0)
-            # 测试连接
-            response = await self.client.get(f"{self.agent_url}/probe")
-            if response.status_code == 200:
-                self.connected = True
-                logger.info(f"MTConnect 连接成功: {self.agent_url}")
-                return True
-            else:
-                logger.error(f"MTConnect 连接失败: HTTP {response.status_code}")
-                await self.client.aclose()
-                self.client = None
-                return False
 
-        except Exception as e:
-            logger.error(f"MTConnect 连接失败: {e}")
+        Raises:
+            RuntimeError: 达到最大重试次数后仍失败（不静默返回 False）
+        """
+        async def _do_connect():
+            # 清理旧连接
             if self.client:
-                await self.client.aclose()
+                try:
+                    await self.client.aclose()
+                except Exception as close_err:
+                    # 工业连接重建期清理异常：记录 debug 日志便于排查资源泄漏，不阻塞重连
+                    logger.debug("MTConnect 旧连接 aclose 失败（重连清理）: %s", close_err)
                 self.client = None
+            self.client = httpx.AsyncClient(timeout=DEFAULT_MTCONNECT_HTTP_TIMEOUT_SEC)
+            response = await self.client.get(f"{self.agent_url}/probe")
+            if response.status_code != 200:
+                raise RuntimeError(
+                    f"MTConnect 连接失败: HTTP {response.status_code}"
+                )
+            self.connected = True
+            logger.info("MTConnect 连接成功: %s", self.agent_url)
+            return True
+
+        try:
+            return await self._retry_with_backoff(_do_connect, "MTConnect connect")
+        except RuntimeError:
+            # 清理资源
             self.connected = False
-            return False
+            if self.client:
+                try:
+                    await self.client.aclose()
+                except Exception as close_err:
+                    logger.debug("MTConnect client aclose failed during cleanup: %s", close_err)
+                self.client = None
+            raise
 
     async def disconnect(self):
         """断开连接"""
@@ -85,7 +237,7 @@ class MTConnectClient:
 
     async def get_current_status(self) -> Dict[str, Any]:
         """
-        获取当前机床状态
+        获取当前机床状态（网络异常时自动重试）
 
         Returns:
             包含机床状态信息的字典
@@ -93,20 +245,26 @@ class MTConnectClient:
         if not self.connected:
             return {"connected": False, "timestamp": datetime.now().isoformat()}
 
-        try:
+        async def _fetch_status():
+            if not self.client:
+                raise RuntimeError("MTConnect 客户端未初始化")
             response = await self.client.get(
                 f"{self.agent_url}/current",
                 params={"path": f"//Device[@name='{self.device_name}']"}
             )
-
             if response.status_code != 200:
-                return {"connected": False, "error": f"HTTP {response.status_code}"}
-
+                raise RuntimeError(f"HTTP {response.status_code}")
             return self._parse_current_response(response.text)
 
-        except Exception as e:
-            logger.error(f"获取 MTConnect 状态失败: {e}")
-            return {"connected": False, "error": str(e)}
+        try:
+            return await self._retry_with_backoff(
+                _fetch_status, "MTConnect get_current_status"
+            )
+        except RuntimeError as e:
+            logger.error("获取 MTConnect 状态失败: %s", e)
+            return safe_error_message(
+                e, fallback="MTConnect 状态查询失败", context="mtconnect.get_current_status"
+            )
 
     def _parse_current_response(self, xml_content: str) -> Dict[str, Any]:
         """解析 MTConnect Current 响应"""
@@ -140,7 +298,7 @@ class MTConnectClient:
                     status[key] = value
 
         except Exception as e:
-            logger.error(f"解析 MTConnect 响应失败: {e}")
+            logger.error("解析 MTConnect 响应失败: %s", e)
 
         return status
 
@@ -175,7 +333,7 @@ class MTConnectClient:
             return self._parse_alarms(response.text)
 
         except Exception as e:
-            logger.error(f"获取报警信息失败: {e}")
+            logger.error("获取报警信息失败: %s", e)
             return []
 
     def _parse_alarms(self, xml_content: str) -> list[Dict[str, Any]]:
@@ -192,7 +350,7 @@ class MTConnectClient:
                         "timestamp": datetime.now().isoformat(),
                     })
         except Exception as e:
-            logger.error(f"解析报警信息失败: {e}")
+            logger.error("解析报警信息失败: %s", e)
 
         return alarms
 
@@ -200,18 +358,53 @@ class MTConnectClient:
         """
         发送 NC 程序到机床（通过 MTConnect 命令）
 
-        注意：MTConnect 标准不直接支持程序传输，
-        实际实现需要机床厂商特定的扩展或配合其他协议。
+        工业安全合规（ISO 10218 安全联锁）：
+            MTConnect 标准不支持 NC 程序传输。禁止静默返回 False，
+            否则调用方可能误判传输成功而启动机床加工，导致人员伤害或设备损坏。
+            必须显式抛出 RuntimeError 让调用方感知失败。
 
         Args:
             program_content: NC 程序内容
             program_name: 程序名称
 
-        Returns:
-            发送成功返回 True
+        Raises:
+            RuntimeError: MTConnect 标准不支持 NC 程序传输
         """
-        logger.warning("MTConnect 标准不支持直接传输 NC 程序，建议使用 OPC UA 或厂商特定接口")
-        return False
+        # 审计日志：记录传输尝试（最终为失败）
+        self._log_audit(
+            operation="send_nc_program",
+            status=OperationStatus.FAILED,
+            program_name=program_name,
+            error="MTConnect standard does not support NC program transfer",
+        )
+
+        logger.error(
+            "MTConnect 标准不支持 NC 程序传输: %s (agent=%s)",
+            program_name, self.agent_url,
+        )
+        raise RuntimeError(
+            "MTConnect standard does not support NC program transfer; "
+            "use OPC UA or vendor-specific interface"
+        )
+
+    async def health_check(self) -> bool:
+        """
+        轻量级健康检查（探测 /probe 端点）
+
+        用于验证 MTConnect Agent 是否在线可用，不触发重试机制，
+        适合作为心跳/探活调用。
+
+        Returns:
+            连接可用返回 True，否则返回 False
+        """
+        try:
+            if not self.client:
+                return False
+            response = await self.client.get(f"{self.agent_url}/probe")
+            return response.status_code == 200
+        except Exception as e:
+            logger.debug("MTConnect 健康检查失败: %s", e)
+            return False
 
     def is_connected(self) -> bool:
         """返回连接状态"""

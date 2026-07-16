@@ -78,7 +78,7 @@ def create_application_form():
     cover_table = doc.add_table(rows=6, cols=2)
     cover_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     cover_data = [
-        ('项目名称', '延迟嵌入液态神经逻辑网络用于铣削颤振稳定性预测'),
+        ('项目名称', '延迟嵌入液态神经网络用于铣削颤振稳定性预测'),
         ('项目类别', '创新训练项目'),
         ('项目负责人', '（填写）'),
         ('所在学院', '（填写）'),
@@ -118,7 +118,7 @@ def create_application_form():
     info_table = doc.add_table(rows=8, cols=4)
     info_table.style = 'Table Grid'
     info_data = [
-        ['项目名称', '延迟嵌入液态神经逻辑网络用于铣削颤振稳定性预测', '项目英文名称', 'Delay-embedded Liquid Neural Network for Milling Chatter Stability Prediction'],
+        ['项目名称', '延迟嵌入液态神经网络用于铣削颤振稳定性预测', '项目英文名称', 'Delay-embedded Liquid Neural Network for Milling Chatter Stability Prediction'],
         ['所在学院', '', '联系电话', ''],
         ['项目负责人', '', '学号', ''],
         ['指导教师', '', '职称', ''],
@@ -170,7 +170,7 @@ def create_application_form():
     add_heading_custom(doc, '四、项目研究内容与技术路线', level=1)
     
     add_heading_custom(doc, '4.1 研究内容', level=2)
-    add_body_text(doc, '本项目提出延迟嵌入液态神经逻辑网络（DL-LNN），系统性地解决铣削颤振稳定性预测中的「小样本、跨工况、不可解释」三大痛点。主要研究内容包括：')
+    add_body_text(doc, '本项目提出延迟嵌入液态神经网络（DL-LNN），系统性地解决铣削颤振稳定性预测中的「小样本、跨工况、不可解释」三大痛点。主要研究内容包括：')
     add_body_text(doc, '（1）DL-LNN网络结构设计：在LTC主干网络中显式引入刀齿周期T构造延迟连接（受NPCDDE思想启发，首次用于铣削再生颤振动力学建模），结合Tlusty解析物理分支与门控融合机制，使网络天然契合「刀齿每转一圈形成再生」的连续时间机制。')
     add_body_text(doc, '（2）三层物理一致性损失函数设计：构建「数值层L_phys + 梯度层L_pcc（受gPINN思想启发）+ 频域层L_freq（本文提出）」的三层损失体系，从数值大小、曲线斜率、频谱能量三个维度联合约束预测SLD的物理一致性。')
     add_body_text(doc, '（3）三阶段训练策略与跨工况协议验证：提出「解析预训练 + 物理残差微调 + 主动学习」三阶段训练策略，在5个数据集上系统开展Leave-One-Material-Out（LOMO）与Leave-One-Condition-Out（LOCO）跨工况协议实验，并与8种主流基线方法进行对比。')
@@ -197,7 +197,7 @@ def create_application_form():
     # ===== 六、预期成果 =====
     add_heading_custom(doc, '六、预期成果', level=1)
     add_body_text(doc, '（1）学术论文：在Journal of Intelligent Manufacturing（IF≈5.9，JCR Q1）等国际权威期刊发表SCI论文1-2篇。')
-    add_body_text(doc, '（2）软件著作权：登记「延迟嵌入液态神经逻辑网络铣削颤振稳定性预测系统」软件著作权1项。')
+    add_body_text(doc, '（2）软件著作权：登记「延迟嵌入液态神经网络铣削颤振稳定性预测系统」软件著作权1项。')
     add_body_text(doc, '（3）发明专利：申请「基于延迟嵌入液态时间常数网络的铣削颤振稳定性预测方法」发明专利1项。')
     add_body_text(doc, '（4）软件系统：开发一套完整的DL-LNN铣削颤振稳定性预测软件系统，支持多材料、多工况的稳定性叶图生成与智能诊断。')
     add_body_text(doc, '（5）竞赛成果：参加大学生创新创业训练计划项目成果展示，争取获得优秀项目。')

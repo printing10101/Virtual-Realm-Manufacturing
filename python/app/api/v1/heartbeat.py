@@ -8,12 +8,18 @@ and execution monitoring.
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from app.auth.permissions import require_permission
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/heartbeat", tags=["heartbeat"])
+router = APIRouter(
+    prefix="/api/v1/heartbeat",
+    tags=["heartbeat"],
+    dependencies=[Depends(require_permission("heartbeat:read"))],
+)
 
 
 class CreateScheduledTaskRequest(BaseModel):
@@ -71,7 +77,7 @@ class ExecutionResultResponse(BaseModel):
     resource_usage: Dict[str, Any] = {}
 
 
-@router.post("/tasks", response_model=TaskResponse)
+@router.post("/tasks", response_model=TaskResponse, dependencies=[Depends(require_permission("heartbeat:write"))])
 async def create_scheduled_task(request: CreateScheduledTaskRequest):
     """创建调度任务"""
     from app.heartbeat.heartbeat import get_scheduler, ScheduledTask, ScheduleStatus
@@ -80,8 +86,9 @@ async def create_scheduled_task(request: CreateScheduledTaskRequest):
 
     existing = scheduler.wakeup_queue.get_task(request.task_id)
     if existing:
+        logger.info("Task already exists: %s", request.task_id)
         raise HTTPException(
-            status_code=409, detail=f"Task already exists: {request.task_id}"
+            status_code=409, detail="Task already exists"
         )
 
     task = ScheduledTask(
@@ -121,7 +128,8 @@ async def get_scheduled_task(task_id: str):
     task = scheduler.wakeup_queue.get_task(task_id)
 
     if task is None:
-        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+        logger.info("Task not found: %s", task_id)
+        raise HTTPException(status_code=404, detail="Task not found")
 
     return TaskResponse(
         task_id=task.task_id,
@@ -168,7 +176,7 @@ async def list_scheduled_tasks(
     ]
 
 
-@router.post("/tasks/{task_id}/trigger")
+@router.post("/tasks/{task_id}/trigger", dependencies=[Depends(require_permission("heartbeat:write"))])
 async def trigger_task_now(task_id: str):
     """立即触发任务执行"""
     from app.heartbeat.heartbeat import get_scheduler
@@ -179,10 +187,11 @@ async def trigger_task_now(task_id: str):
         scheduler.trigger_now(task_id)
         return {"status": "triggered", "task_id": task_id}
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+        logger.info("Task not found: %s", task_id)
+        raise HTTPException(status_code=404, detail="Task not found")
 
 
-@router.post("/tasks/{task_id}/pause")
+@router.post("/tasks/{task_id}/pause", dependencies=[Depends(require_permission("heartbeat:write"))])
 async def pause_task(task_id: str):
     """暂停任务"""
     from app.heartbeat.heartbeat import get_scheduler
@@ -191,13 +200,14 @@ async def pause_task(task_id: str):
     task = scheduler.wakeup_queue.get_task(task_id)
 
     if task is None:
-        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+        logger.info("Task not found: %s", task_id)
+        raise HTTPException(status_code=404, detail="Task not found")
 
     scheduler.pause_task(task_id)
     return {"status": "paused", "task_id": task_id}
 
 
-@router.post("/tasks/{task_id}/resume")
+@router.post("/tasks/{task_id}/resume", dependencies=[Depends(require_permission("heartbeat:write"))])
 async def resume_task(task_id: str):
     """恢复任务"""
     from app.heartbeat.heartbeat import get_scheduler
@@ -208,10 +218,11 @@ async def resume_task(task_id: str):
         scheduler.resume_task(task_id)
         return {"status": "resumed", "task_id": task_id}
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+        logger.info("Task not found: %s", task_id)
+        raise HTTPException(status_code=404, detail="Task not found")
 
 
-@router.delete("/tasks/{task_id}")
+@router.delete("/tasks/{task_id}", dependencies=[Depends(require_permission("heartbeat:write"))])
 async def delete_task(task_id: str):
     """删除任务"""
     from app.heartbeat.heartbeat import get_scheduler
@@ -220,13 +231,14 @@ async def delete_task(task_id: str):
     deleted = scheduler.wakeup_queue.delete_task(task_id)
 
     if not deleted:
-        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+        logger.info("Task not found: %s", task_id)
+        raise HTTPException(status_code=404, detail="Task not found")
 
     return {"status": "deleted", "task_id": task_id}
 
 
 @router.get("/tasks/{task_id}/history")
-async def get_task_history(task_id: str, limit: int = Query(50, ge=1, le=200)):
+async def get_task_history(task_id: str, limit: int = Query(50, ge=1, le=100)):
     """获取任务执行历史"""
     from app.heartbeat.heartbeat import get_scheduler
 
@@ -234,7 +246,8 @@ async def get_task_history(task_id: str, limit: int = Query(50, ge=1, le=200)):
     task = scheduler.wakeup_queue.get_task(task_id)
 
     if task is None:
-        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+        logger.info("Task not found: %s", task_id)
+        raise HTTPException(status_code=404, detail="Task not found")
 
     history = scheduler.wakeup_queue.get_task_history(task_id, limit)
     return {"task_id": task_id, "history": history}
@@ -258,7 +271,7 @@ async def check_budget(agent_id: str):
 
 
 @router.get("/budget/notifications")
-async def get_budget_notifications(agent_id: Optional[str] = None, limit: int = Query(50, ge=1, le=200)):
+async def get_budget_notifications(agent_id: Optional[str] = None, limit: int = Query(50, ge=1, le=100)):
     """获取预算通知"""
     from app.budget.budget import get_budget_manager
 
@@ -285,7 +298,7 @@ async def get_scheduler_stats():
     }
 
 
-@router.post("/recovery/orphaned")
+@router.post("/recovery/orphaned", dependencies=[Depends(require_permission("heartbeat:write"))])
 async def recover_orphaned_tasks():
     """手动触发孤立任务恢复"""
     from app.tasks.execution import get_execution_engine

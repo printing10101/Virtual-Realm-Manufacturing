@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from typing import Any, Dict, Optional
 
@@ -54,15 +55,23 @@ _marketplace_data: Dict[str, Any] = {
     "trending": [],
 }
 
+# 并发保护：模块级 _marketplace_data 在多请求间共享，所有读写操作必须
+# 通过此锁串行化，避免 downloads 计数器 read-modify-write 竞争以及
+# templates/subscriptions 列表并发 append 导致的数据错乱。
+_marketplace_lock = threading.Lock()
+
 
 @router.get("/trending")
 def get_trending():
     """Get trending templates based on adoption rate."""
-    trending = sorted(
-        _marketplace_data.get("templates", []),
-        key=lambda t: t.get("adoption_count", 0),
-        reverse=True,
-    )[:20]
+    with _marketplace_lock:
+        trending = sorted(
+            _marketplace_data.get("templates", []),
+            key=lambda t: t.get("adoption_count", 0),
+            reverse=True,
+        )[:20]
+        # 在锁内完成浅拷贝，避免返回后列表被其他线程修改
+        trending = list(trending)
     return success(data=trending)
 
 
@@ -89,13 +98,16 @@ def get_template_metrics(branch_id: str):
     )
     success_rate = success_count / max(total_experiments, 1)
 
+    with _marketplace_lock:
+        downloads_count = _marketplace_data.get("downloads", {}).get(branch_id, 0)
+
     return success(
         data={
             "branch_id": branch_id,
             "name": branch.name,
             "success_rate": round(success_rate, 4),
             "total_experiments": total_experiments,
-            "adoption_count": _marketplace_data.get("downloads", {}).get(branch_id, 0),
+            "adoption_count": downloads_count,
             "last_updated": branch.updated_at,
         }
     )
@@ -118,7 +130,8 @@ def publish_template(req: PublishRequest):
         "adoption_count": 0,
         "source_branch": branch.name,
     }
-    _marketplace_data["templates"].append(template_entry)
+    with _marketplace_lock:
+        _marketplace_data["templates"].append(template_entry)
     logger.info("Template published: id=%s, name=%s", req.branch_id, req.name)
     return success(data=template_entry)
 
@@ -131,18 +144,22 @@ def subscribe(req: SubscribeRequest):
         "category": req.category,
         "subscribed_at": time.time(),
     }
-    _marketplace_data["subscriptions"].append(subscription)
+    with _marketplace_lock:
+        _marketplace_data["subscriptions"].append(subscription)
     return success(data=subscription)
 
 
 @router.get("/subscriptions/{project_id}")
 def get_subscriptions(project_id: str):
     """Get subscriptions for a project."""
-    subs = [
-        s
-        for s in _marketplace_data.get("subscriptions", [])
-        if s["project_id"] == project_id
-    ]
+    with _marketplace_lock:
+        subs = [
+            s
+            for s in _marketplace_data.get("subscriptions", [])
+            if s["project_id"] == project_id
+        ]
+        # 拷贝以避免返回后列表被其他线程修改
+        subs = list(subs)
     return success(data=subs)
 
 
@@ -177,9 +194,12 @@ def export_template(branch_id: str, req: ExportRequest = None):
         ]
         export_data["experiments"] = [e.to_dict() for e in exps]
 
-    _marketplace_data["downloads"][branch_id] = (
-        _marketplace_data.get("downloads", {}).get(branch_id, 0) + 1
-    )
+    # downloads 计数器 read-modify-write 必须在锁内完成，避免并发请求
+    # 同时读取旧值导致计数丢失。这是本模块最关键的竞争点。
+    with _marketplace_lock:
+        _marketplace_data["downloads"][branch_id] = (
+            _marketplace_data.get("downloads", {}).get(branch_id, 0) + 1
+        )
 
     return success(data=export_data)
 

@@ -5,15 +5,23 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from app.auth.permissions import require_permission
+# P2-4-5 修复：引入共享速率限制器，NL2CAD 端点调用 LLM 生成 CAD/NC 代码，
+# 消耗大量推理资源，需速率限制防止 DoS。
+from app.middleware.rate_limiter import limiter
 from app.api.v1.nl2cad.services import get_nl2cad_service
 from app.api.v1.nl2cad.orchestrator import get_nl2nc_orchestrator, PipelineStage
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/nl2cad", tags=["NL2CAD"])
+router = APIRouter(
+    prefix="/api/v1/nl2cad",
+    tags=["NL2CAD"],
+    dependencies=[Depends(require_permission("nl2cad:read"))],
+)
 
 
 def _handle_service_exception(e: Exception, operation: str) -> None:
@@ -147,22 +155,25 @@ class FullPipelineResponse(BaseModel):
 
 
 @router.post("/generate", response_model=NL2CADResponse)
-async def generate_from_nl(request: NL2CADRequest) -> NL2CADResponse:
+# P2-4-5 修复：LLM 生成 3D 模型消耗大量推理资源，限制为 10/minute。
+@limiter.limit("10/minute")
+async def generate_from_nl(request: Request, body: NL2CADRequest) -> NL2CADResponse:
     """从自然语言描述生成3D模型。
 
     Args:
-        request: 包含描述和输出格式的请求
+        request: HTTP 请求对象（速率限制用）
+        body: 包含描述和输出格式的请求
 
     Returns:
         包含模型路径和参数的响应
     """
-    logger.info("Received NL2CAD generate request: %s", request.description[:100])
+    logger.info("Received NL2CAD generate request: %s", body.description[:100])
 
     try:
         service = get_nl2cad_service()
         model_path, params = await service.generate_model_from_nl(
-            description=request.description,
-            output_format=request.output_format,
+            description=body.description,
+            output_format=body.output_format,
         )
 
         return NL2CADResponse(
@@ -177,23 +188,26 @@ async def generate_from_nl(request: NL2CADRequest) -> NL2CADResponse:
 
 
 @router.post("/refine", response_model=RefineResponse)
-async def refine_model(request: RefineRequest) -> RefineResponse:
+# P2-4-5 修复：LLM 微调模型消耗推理资源，限制为 10/minute。
+@limiter.limit("10/minute")
+async def refine_model(request: Request, body: RefineRequest) -> RefineResponse:
     """根据用户指令微调3D模型。
 
     Args:
-        request: 包含当前参数和微调指令的请求
+        request: HTTP 请求对象（速率限制用）
+        body: 包含当前参数和微调指令的请求
 
     Returns:
         包含更新后模型路径和参数的响应
     """
-    logger.info("Received refine request: %s", request.instruction[:100])
+    logger.info("Received refine request: %s", body.instruction[:100])
 
     try:
         service = get_nl2cad_service()
         model_path, params = await service.refine_model(
-            current_params=request.current_params,
-            instruction=request.instruction,
-            output_format=request.output_format,
+            current_params=body.current_params,
+            instruction=body.instruction,
+            output_format=body.output_format,
         )
 
         return RefineResponse(model_path=model_path, params=params)
@@ -204,20 +218,23 @@ async def refine_model(request: RefineRequest) -> RefineResponse:
 
 
 @router.post("/extract-params", response_model=ExtractParamsResponse)
-async def extract_params(request: ExtractParamsRequest) -> ExtractParamsResponse:
+# P2-4-5 修复：LLM 提取参数消耗推理资源，限制为 10/minute。
+@limiter.limit("10/minute")
+async def extract_params(request: Request, body: ExtractParamsRequest) -> ExtractParamsResponse:
     """从自然语言描述中提取CAD参数（不生成模型）。
 
     Args:
-        request: 包含描述请求
+        request: HTTP 请求对象（速率限制用）
+        body: 包含描述请求
 
     Returns:
         包含提取参数的响应
     """
-    logger.info("Received extract params request: %s", request.description[:100])
+    logger.info("Received extract params request: %s", body.description[:100])
 
     try:
         service = get_nl2cad_service()
-        params = await service.extract_params_from_nl(description=request.description)
+        params = await service.extract_params_from_nl(description=body.description)
 
         return ExtractParamsResponse(
             params=params,
@@ -230,27 +247,30 @@ async def extract_params(request: ExtractParamsRequest) -> ExtractParamsResponse
 
 
 @router.post("/process-planning", response_model=ProcessPlanningResponse)
-async def generate_process_plan(request: ProcessPlanningRequest) -> ProcessPlanningResponse:
+# P2-4-5 修复：LLM 生成工艺规划消耗推理资源，限制为 10/minute。
+@limiter.limit("10/minute")
+async def generate_process_plan(request: Request, body: ProcessPlanningRequest) -> ProcessPlanningResponse:
     """根据CAD参数生成工艺规划。
 
     Args:
-        request: 包含CAD参数、材料、机床类型和精度等级的请求
+        request: HTTP 请求对象（速率限制用）
+        body: 包含CAD参数、材料、机床类型和精度等级的请求
 
     Returns:
         包含工艺规划结果的响应
     """
-    logger.info("Received process planning request for material: %s", request.material)
+    logger.info("Received process planning request for material: %s", body.material)
 
     try:
         orchestrator = get_nl2nc_orchestrator()
-        
+
         # 提取加工特征
-        features = orchestrator._extract_features_from_cad(request.cad_params)
-        
+        features = orchestrator._extract_features_from_cad(body.cad_params)
+
         # 生成工艺规划
         process_plan = await orchestrator._generate_process_plan(
-            cad_params=request.cad_params,
-            material=request.material,
+            cad_params=body.cad_params,
+            material=body.material,
         )
         
         return ProcessPlanningResponse(process_plan=process_plan)
@@ -261,24 +281,27 @@ async def generate_process_plan(request: ProcessPlanningRequest) -> ProcessPlann
 
 
 @router.post("/generate-nc", response_model=NCCodeResponse)
-async def generate_nc_code(request: NCCodeRequest) -> NCCodeResponse:
+# P2-4-5 修复：LLM 生成 NC 代码消耗推理资源，限制为 10/minute。
+@limiter.limit("10/minute")
+async def generate_nc_code(request: Request, body: NCCodeRequest) -> NCCodeResponse:
     """根据工艺规划生成NC代码。
 
     Args:
-        request: 包含工艺规划和机床类型的请求
+        request: HTTP 请求对象（速率限制用）
+        body: 包含工艺规划和机床类型的请求
 
     Returns:
         包含生成的NC代码的响应
     """
-    logger.info("Received NC code generation request for machine: %s", request.machine_type)
+    logger.info("Received NC code generation request for machine: %s", body.machine_type)
 
     try:
         orchestrator = get_nl2nc_orchestrator()
-        
+
         # 生成NC代码
         nc_code = orchestrator._generate_nc_code(
-            process_plan=request.process_plan,
-            machine_type=request.machine_type,
+            process_plan=body.process_plan,
+            machine_type=body.machine_type,
         )
         
         return NCCodeResponse(nc_code=nc_code)
@@ -289,25 +312,28 @@ async def generate_nc_code(request: NCCodeRequest) -> NCCodeResponse:
 
 
 @router.post("/full-pipeline", response_model=FullPipelineResponse)
-async def execute_full_pipeline(request: FullPipelineRequest) -> FullPipelineResponse:
+# P2-4-5 修复：完整流水线串联多个 LLM 调用，资源消耗最高，限制为 5/minute。
+@limiter.limit("5/minute")
+async def execute_full_pipeline(request: Request, body: FullPipelineRequest) -> FullPipelineResponse:
     """执行完整的NL-to-NC流程。
 
     Args:
-        request: 包含零件描述、机床类型和材料类型的请求
+        request: HTTP 请求对象（速率限制用）
+        body: 包含零件描述、机床类型和材料类型的请求
 
     Returns:
         包含完整流程结果的响应
     """
-    logger.info("Received full pipeline request: %s", request.description[:100])
+    logger.info("Received full pipeline request: %s", body.description[:100])
 
     try:
         orchestrator = get_nl2nc_orchestrator()
-        
+
         # 执行完整流程
         state = await orchestrator.execute_full_pipeline(
-            description=request.description,
-            machine_type=request.machine_type,
-            material=request.material,
+            description=body.description,
+            machine_type=body.machine_type,
+            material=body.material,
         )
         
         if state.stage == PipelineStage.FAILED:

@@ -14,14 +14,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from app.api.v1.auth import get_current_user
 from app.auth.permissions import require_permission
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
 from app.utils.utils import get_output_dir
+from app.utils.upload_security import validate_upload
 from app.database.rule_db import (
     get_rule_db,
     ProcessRule,
@@ -37,9 +39,19 @@ router = APIRouter(prefix="/api/rules", tags=["Process Rules"])
 
 RULE_EXPORT_DIR = get_output_dir("rules")
 
+# 默认查询条数上限（用于冲突检测等全量加载场景）
+DEFAULT_QUERY_LIMIT = 10000
+
 VALID_OPERATORS = {"=", "<", ">", "<=", ">=", "!="}
 VALID_LOGIC_OPERATORS = {"AND", "OR"}
 VALID_STATUSES = {"active", "inactive", "draft"}
+
+# [P0-16] sort_by 白名单：防止 SQL 注入（列名拼接）
+# 与 rule_db.list_rules 的 valid_sort 保持一致
+_ALLOWED_SORT_FIELDS = {
+    "name", "created_at", "updated_at", "priority", "status",
+}
+_ALLOWED_SORT_ORDERS = {"ASC", "DESC"}
 
 
 class ConditionItem(BaseModel):
@@ -169,7 +181,7 @@ def _run_conflict_check(rules_to_check: List[ProcessRule]) -> Optional[List[dict
         if conflicts:
             return [_conflict_report_to_dict(c) for c in conflicts]
     except (ValueError, TypeError, KeyError) as e:
-        logger.warning(f"冲突检测失败: {e}", exc_info=True)
+        logger.warning("冲突检测失败: %s", e, exc_info=True)
     return None
 
 
@@ -184,7 +196,7 @@ def _group_to_dict(group: RuleGroup, rule_count: int = 0) -> dict:
     }
 
 
-@router.post("/create")
+@router.post("/create", dependencies=[Depends(require_permission("rule:write"))])
 async def create_rule(request: RuleCreateRequest):
     err = _validate_rule_data(
         request.conditions, request.result, request.logic_operator
@@ -212,7 +224,7 @@ async def create_rule(request: RuleCreateRequest):
     created = db.create_rule(rule)
 
     # 执行冲突检测（仅警告，不阻塞保存）
-    all_rules = db.list_rules(status="active", limit=10000)
+    all_rules = db.list_rules(status="active", limit=DEFAULT_QUERY_LIMIT)
     warnings = _run_conflict_check(all_rules)
 
     response_data = _rule_to_dict(created)
@@ -222,7 +234,7 @@ async def create_rule(request: RuleCreateRequest):
     return success(data=response_data, message="规则创建成功")
 
 
-@router.get("/list")
+@router.get("/list", dependencies=[Depends(get_current_user)])
 async def list_rules(
     group_id: Optional[int] = Query(None, description="规则分组ID"),
     status: Optional[str] = Query(None, description="规则状态"),
@@ -232,6 +244,21 @@ async def list_rules(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页条数"),
 ):
+    # [P0-16] 白名单校验：防止 sort_by / sort_order 注入
+    if sort_by not in _ALLOWED_SORT_FIELDS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"不支持的排序字段: {sort_by}，"
+                f"允许: {', '.join(sorted(_ALLOWED_SORT_FIELDS))}"
+            ),
+        )
+    if sort_order.upper() not in _ALLOWED_SORT_ORDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的排序方向: {sort_order}，仅支持 ASC / DESC",
+        )
+
     db = get_rule_db()
 
     offset = (page - 1) * page_size
@@ -258,7 +285,7 @@ async def list_rules(
     )
 
 
-@router.get("/detail/{rule_id}")
+@router.get("/detail/{rule_id}", dependencies=[Depends(get_current_user)])
 async def get_rule(rule_id: int):
     db = get_rule_db()
     rule = db.get_rule(rule_id)
@@ -268,7 +295,7 @@ async def get_rule(rule_id: int):
     return success(data=_rule_to_dict(rule))
 
 
-@router.put("/update/{rule_id}")
+@router.put("/update/{rule_id}", dependencies=[Depends(require_permission("rule:write"))])
 async def update_rule(rule_id: int, request: RuleUpdateRequest):
     db = get_rule_db()
     existing = db.get_rule(rule_id)
@@ -326,7 +353,7 @@ async def update_rule(rule_id: int, request: RuleUpdateRequest):
         return error(ErrorCode.INTERNAL_ERROR, message="规则更新失败")
 
     # 执行冲突检测（仅警告，不阻塞保存）
-    all_rules = db.list_rules(status="active", limit=10000)
+    all_rules = db.list_rules(status="active", limit=DEFAULT_QUERY_LIMIT)
     warnings = _run_conflict_check(all_rules)
 
     response_data = _rule_to_dict(result)
@@ -336,7 +363,7 @@ async def update_rule(rule_id: int, request: RuleUpdateRequest):
     return success(data=response_data, message="规则更新成功")
 
 
-@router.delete("/delete/{rule_id}")
+@router.delete("/delete/{rule_id}", dependencies=[Depends(require_permission("rule:write"))])
 async def delete_rule(rule_id: int):
     db = get_rule_db()
     if not db.delete_rule(rule_id):
@@ -345,7 +372,7 @@ async def delete_rule(rule_id: int):
     return success(message="规则删除成功")
 
 
-@router.get("/groups/list")
+@router.get("/groups/list", dependencies=[Depends(get_current_user)])
 async def list_groups():
     db = get_rule_db()
     groups = db.list_groups()
@@ -358,7 +385,7 @@ async def list_groups():
     return success(data={"groups": result, "total": len(result)})
 
 
-@router.post("/groups/create")
+@router.post("/groups/create", dependencies=[Depends(require_permission("rule:write"))])
 async def create_group(request: GroupCreateRequest):
     if not request.name:
         return error(ErrorCode.INVALID_REQUEST, message="分组名称不能为空")
@@ -382,7 +409,7 @@ async def create_group(request: GroupCreateRequest):
     return success(data=_group_to_dict(created), message="分组创建成功")
 
 
-@router.put("/groups/update/{group_id}")
+@router.put("/groups/update/{group_id}", dependencies=[Depends(require_permission("rule:write"))])
 async def update_group(group_id: int, request: GroupUpdateRequest):
     db = get_rule_db()
     existing = db.get_group(group_id)
@@ -406,7 +433,7 @@ async def update_group(group_id: int, request: GroupUpdateRequest):
     return success(data=_group_to_dict(result), message="分组更新成功")
 
 
-@router.delete("/groups/delete/{group_id}")
+@router.delete("/groups/delete/{group_id}", dependencies=[Depends(require_permission("rule:write"))])
 async def delete_group(group_id: int):
     db = get_rule_db()
     count = db.get_group_rule_count(group_id)
@@ -422,22 +449,22 @@ async def delete_group(group_id: int):
     return success(message="分组删除成功")
 
 
-@router.post("/import")
+@router.post("/import", dependencies=[Depends(require_permission("rule:write"))])
 async def import_rules(file: UploadFile = File(...)):
-    if not file.filename or not file.filename.endswith(".json"):
-        return error(ErrorCode.INVALID_REQUEST, message="请上传JSON格式的规则文件")
-
-    content = await file.read()
-
-    # 文件大小校验（20MB）
-    max_size = 20 * 1024 * 1024
-    if len(content) > max_size:
-        return error(
-            ErrorCode.INVALID_REQUEST,
-            message=f"文件大小({len(content) / 1024 / 1024:.1f}MB)超过限制({max_size / 1024 / 1024:.0f}MB)",
+    # P0-12/P0-13 修复：使用 validate_upload 统一校验
+    # （扩展名 + magic bytes + 分块流式读取 + 大小限制）
+    # JSON 为文本类扩展名，validate_upload 会跳过 magic 校验仅做扩展名 + 大小校验
+    _RULE_IMPORT_MAX_SIZE = 20 * 1024 * 1024  # 20MB
+    try:
+        content = await validate_upload(
+            file,
+            max_size=_RULE_IMPORT_MAX_SIZE,
+            allowed_extensions={".json"},
+            allowed_mimes={"application/json"},
         )
-    if len(content) == 0:
-        return error(ErrorCode.INVALID_REQUEST, message="文件内容为空")
+    except HTTPException:
+        # validate_upload 抛出的 413/415/400 透传
+        raise
 
     try:
         json.loads(content)
@@ -464,7 +491,7 @@ async def import_rules(file: UploadFile = File(...)):
             message=message,
         )
     except (OSError, ValueError, KeyError, TypeError) as e:
-        logger.error(f"规则导入失败: {e}", exc_info=True)
+        logger.error("规则导入失败: %s", e, exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="rules.import", fallback="规则导入失败")
         return error(
@@ -474,7 +501,7 @@ async def import_rules(file: UploadFile = File(...)):
         )
 
 
-@router.get("/export")
+@router.get("/export", dependencies=[Depends(get_current_user)])
 async def export_rules():
     db = get_rule_db()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -488,7 +515,7 @@ async def export_rules():
             media_type="application/json",
         )
     except (OSError, ValueError, TypeError) as e:
-        logger.error(f"规则导出失败: {e}", exc_info=True)
+        logger.error("规则导出失败: %s", e, exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="rules.export", fallback="规则导出失败")
         return error(
@@ -505,7 +532,7 @@ async def backup_database():
         backup_path = db.backup_database()
         return success(data={"backup_path": backup_path}, message="数据库备份成功")
     except (OSError, RuntimeError, ValueError) as e:
-        logger.error(f"数据库备份失败: {e}", exc_info=True)
+        logger.error("数据库备份失败: %s", e, exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="rules.backup", fallback="数据库备份失败")
         return error(
@@ -515,7 +542,7 @@ async def backup_database():
         )
 
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(get_current_user)])
 async def get_stats():
     db = get_rule_db()
 
@@ -536,7 +563,7 @@ async def get_stats():
     )
 
 
-@router.get("/preview")
+@router.get("/preview", dependencies=[Depends(get_current_user)])
 async def preview_rule_text(
     conditions: str = Query(..., description="条件JSON数组"),
     logic_operator: str = Query("AND", description="逻辑运算符"),

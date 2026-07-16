@@ -1,7 +1,7 @@
 # API 文档
 
 > 灵境制造 LNN AI API 完整参考文档
-> **当前版本**：v2.0.0（与代码版本完全一致）
+> **当前版本**：v2.5.0（与代码版本完全一致）
 > **Base URL**：`http://localhost:8765`
 > **在线文档**：`http://localhost:8765/api/docs`（Swagger UI） | `http://localhost:8765/api/redoc`（ReDoc）
 > **OpenAPI JSON**：`http://localhost:8765/api/openapi.json`
@@ -13,7 +13,7 @@
 | [OpenAPI 规范](./openapi.json) | OpenAPI 3.0.3 完整机器可读规范（与代码同步） |
 | [请求/响应示例](./examples.md) | 各 API 端点的完整调用示例（正常 + 边界场景） |
 | [错误码说明](./error-codes.md) | 完整错误码体系（数值范围、描述、原因、建议） |
-| [通用 API 文档（合并版）](../API.md) | 旧版合并文档（保留以兼容旧链接） |
+| [通用 API 文档](../api-reference.md) | API 端点、请求/响应格式、认证流程总览 |
 
 ## 主要端点分组
 

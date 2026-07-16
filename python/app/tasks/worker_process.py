@@ -62,7 +62,12 @@ def _load_plugin() -> Any:
 
 
 def _start_health_server(port: int) -> socketserver.TCPServer:
-    """Start a minimal HTTP server that reports worker health status."""
+    """Start a minimal HTTP server that reports worker health status.
+
+    仅绑定 127.0.0.1：该端口仅供父进程 PluginWorkerManager 通过本机回环探测
+    子进程存活状态，无需暴露到外网，避免被远程探测或攻击。
+    """
+    bind_host = os.environ.get("PLUGIN_HEALTH_HOST", "127.0.0.1")
 
     class HealthHandler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
@@ -85,7 +90,7 @@ def _start_health_server(port: int) -> socketserver.TCPServer:
         def log_message(self, format, *args):
             logger.debug(format, *args)
 
-    server = socketserver.TCPServer(("0.0.0.0", port), HealthHandler)
+    server = socketserver.TCPServer((bind_host, port), HealthHandler)
     server.daemon_threads = True
     return server
 
@@ -97,6 +102,12 @@ def _signal_handler(signum: int, frame: Any) -> None:
 
 
 def main() -> None:
+    """插件 worker 进程入口（纯同步上下文）。
+
+    .. note::
+        仅同步上下文使用：本函数作为独立进程入口，使用 ``time.sleep``
+        维持主循环心跳，不存在 async 事件循环，无需改用 ``asyncio.sleep``。
+    """
     # Read environment
     state.plugin_id = os.environ.get("PLUGIN_ID", "unknown")
     state.plugin_port = int(os.environ.get("PLUGIN_PORT", "8080"))

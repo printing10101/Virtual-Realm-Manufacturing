@@ -18,20 +18,26 @@ class PCC_Loss(nn.Module):
     
     def __init__(
         self,
-        epsilon_phys: float = 0.05,
+        epsilon_phys: float = 0.1,
         lambda_phys: float = 0.5,
         lambda_pcc: float = 0.1
     ):
         """
         初始化PCC损失
-        
+
+        默认值与 config.py 的 ModelConfig 保持一致，确保未显式传参时
+        trainer 与论文报告的超参数一致（学术诚信要求）。
+
+        论文第3节声明：λ₁=1.0, λ₂=0.5, λ₃=0.1
+        （见 ACADEMIC_REVIEW_REPORT.md AR-01）
+
         Args:
-            epsilon_phys: 物理容忍阈值 (mm)
-            lambda_phys: 物理损失权重
-            lambda_pcc: 梯度一致性损失权重
+            epsilon_phys: 物理容忍阈值 (mm)，默认 0.1
+            lambda_phys: 物理损失权重 λ₂，默认 0.5
+            lambda_pcc: 梯度一致性损失权重 λ₃，默认 0.1
         """
         super().__init__()
-        
+
         self.epsilon_phys = epsilon_phys
         self.lambda_phys = lambda_phys
         self.lambda_pcc = lambda_pcc
@@ -42,91 +48,115 @@ class PCC_Loss(nn.Module):
         y_true: torch.Tensor,
         y_physics: torch.Tensor,
         x: torch.Tensor,
-        model: nn.Module
+        model: nn.Module,
+        y_physics_diff: Optional[torch.Tensor] = None
     ) -> Tuple[torch.Tensor, dict]:
         """
         计算PCC损失
-        
+
         Args:
             y_pred: 模型预测 [batch_size, output_dim]
             y_true: 真实标签 [batch_size, output_dim]
-            y_physics: 物理模型预测 [batch_size, output_dim]
+            y_physics: 物理模型预测（预计算值，用于 L_phys 数值约束）
+                      [batch_size, output_dim]
             x: 输入特征 [batch_size, input_dim]
             model: 神经网络模型
-        
+            y_physics_diff: 可微物理预测（依赖 x，用于 L_pcc 梯度一致性）
+                           [batch_size, output_dim]；若提供则真正实现论文公式
+                           L_pcc = ||∇_x y_pred - ∇_x y_physics_diff||²，
+                           否则降级为幅度约束（AR-05 修复前的旧行为）
+
         Returns:
             total_loss: 总损失
             loss_dict: 各项损失字典
         """
         # 数据损失 (MAE)
         loss_data = torch.mean(torch.abs(y_pred - y_true))
-        
-        # 物理损失 (数值层)
+
+        # 物理损失 (数值层) —— 使用预计算的精确 y_physics
         # L_phys = max(0, |y_pred - y_physics| - epsilon)
         phys_diff = torch.abs(y_pred - y_physics)
         loss_phys = torch.mean(torch.clamp(phys_diff - self.epsilon_phys, min=0.0))
-        
+
         # 梯度一致性损失 (梯度层)
-        loss_pcc = self._compute_gradient_loss(y_pred, y_physics, x, model)
-        
+        # 若提供可微 y_physics_diff，真正实现论文公式；否则降级为幅度约束
+        loss_pcc = self._compute_gradient_loss(y_pred, y_physics_diff, x, model)
+
         # 总损失
         total_loss = (
             1.0 * loss_data +
             self.lambda_phys * loss_phys +
             self.lambda_pcc * loss_pcc
         )
-        
+
         loss_dict = {
             'total': total_loss.item(),
             'data': loss_data.item(),
             'phys': loss_phys.item(),
             'pcc': loss_pcc.item()
         }
-        
+
         return total_loss, loss_dict
-    
+
     def _compute_gradient_loss(
         self,
         y_pred: torch.Tensor,
-        y_physics: torch.Tensor,
+        y_physics_diff: Optional[torch.Tensor],
         x: torch.Tensor,
         model: nn.Module
     ) -> torch.Tensor:
         """
-        计算梯度一致性损失
-        
+        计算梯度一致性损失（论文第3节方法描述的真正实现）
+
+        论文公式：L_pcc = ||∇_x y_pred - ∇_x y_physics||²
+
+        约束模型预测对输入的梯度方向与物理模型预测对输入的梯度方向一致，
+        保证 DL-LNN 学到的输入-输出映射在局部敏感度上与解析物理模型吻合。
+
         Args:
-            y_pred: 模型预测
-            y_physics: 物理模型预测
-            x: 输入特征
-            model: 神经网络模型
-        
+            y_pred: 模型预测 [batch_size, output_dim]
+            y_physics_diff: 可微物理预测 [batch_size, output_dim]，必须依赖 x
+                           若为 None，降级为幅度约束（不满足论文声明，仅向后兼容）
+            x: 输入特征 [batch_size, input_dim]，requires_grad=True
+            model: 神经网络模型（保留接口签名，本实现未使用）
+
         Returns:
-            梯度损失
+            梯度一致性损失（标量）
         """
-        batch_size = x.size(0)
-        
-        # 计算预测梯度（模型预测对输入的梯度）
+        # 预测对输入的梯度：∇_x y_pred
         grad_pred = autograd.grad(
             outputs=y_pred.sum(),
             inputs=x,
             create_graph=True,
-            retain_graph=True
+            retain_graph=True,
+            only_inputs=True,
         )[0]
-        
-        # 简化的物理约束：梯度应该与物理预测的相对大小一致
-        # 使用 y_physics 作为权重，而不是计算其梯度
-        # 物理意义：当物理预测值较大时，模型预测的梯度也应该较大
-        grad_magnitude = torch.norm(grad_pred, dim=1, keepdim=True)
-        physics_magnitude = torch.norm(y_physics, dim=1, keepdim=True)
-        
-        # 归一化
-        grad_magnitude_norm = grad_magnitude / (grad_magnitude.max() + 1e-8)
-        physics_magnitude_norm = physics_magnitude / (physics_magnitude.max() + 1e-8)
-        
-        # 梯度幅度与物理预测的一致性
-        loss_pcc = torch.mean(torch.abs(grad_magnitude_norm - physics_magnitude_norm))
-        
+
+        # 若未提供可微 y_physics，降级为幅度约束（AR-05 修复前的旧行为）
+        if y_physics_diff is None:
+            # 降级路径：使用预测梯度幅度作为正则（无物理方向约束）
+            # 注意：此路径不满足论文第3节"梯度方向一致性"声明
+            if grad_pred.dim() > 1:
+                loss_pcc = torch.mean(torch.norm(grad_pred, dim=1) ** 2)
+            else:
+                loss_pcc = torch.mean(grad_pred ** 2)
+            return loss_pcc
+
+        # 物理预测对输入的梯度：∇_x y_physics_diff
+        # y_physics_diff 必须是 x 的可微函数（DifferentiableTlustyPhysics 满足此条件）
+        grad_physics = autograd.grad(
+            outputs=y_physics_diff.sum(),
+            inputs=x,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True,
+        )[0]
+
+        # 论文公式：L_pcc = ||∇_x y_pred - ∇_x y_physics||²
+        # 逐元素差异的 L2 范数平方，对批次取均值
+        grad_diff = grad_pred - grad_physics
+        loss_pcc = torch.mean(grad_diff ** 2)
+
         return loss_pcc
 
 
@@ -134,8 +164,8 @@ class PhysicsLoss(nn.Module):
     """
     纯物理损失（无数值层）
     """
-    
-    def __init__(self, epsilon_phys: float = 0.05):
+
+    def __init__(self, epsilon_phys: float = 0.1):
         super().__init__()
         self.epsilon_phys = epsilon_phys
     
@@ -242,23 +272,25 @@ class CombinedLoss(nn.Module):
     组合损失函数
     结合回归损失和分类损失
     """
-    
+
     def __init__(
         self,
         lambda_reg: float = 1.0,
         lambda_cls: float = 0.5,
         lambda_phys: float = 0.5,
         lambda_pcc: float = 0.1,
-        epsilon_phys: float = 0.05
+        epsilon_phys: float = 0.1
     ):
         """
         初始化组合损失
-        
+
+        默认权重与 PCC_Loss / config.py 保持一致（AR-01）。
+
         Args:
             lambda_reg: 回归损失权重
             lambda_cls: 分类损失权重
-            lambda_phys: 物理损失权重
-            lambda_pcc: 梯度损失权重
+            lambda_phys: 物理损失权重 λ₂
+            lambda_pcc: 梯度损失权重 λ₃
             epsilon_phys: 物理阈值
         """
         super().__init__()
@@ -328,12 +360,13 @@ class CombinedLoss(nn.Module):
 if __name__ == "__main__":
     # 测试损失函数
     print("测试PCC损失...")
+
+    # 使用与 config.py 一致的默认权重（AR-01：λ₂=0.5, λ₃=0.1）
+    pcc_loss = PCC_Loss(epsilon_phys=0.1, lambda_phys=0.5, lambda_pcc=0.1)
     
-    pcc_loss = PCC_Loss(epsilon_phys=0.05, lambda_phys=0.5, lambda_pcc=0.1)
-    
-    # 创建测试数据
+    # 创建测试数据（使用与 config.py 一致的 7 维输入）
     batch_size = 32
-    input_dim = 2
+    input_dim = 7
     output_dim = 1
     
     x = torch.randn(batch_size, input_dim, requires_grad=True)

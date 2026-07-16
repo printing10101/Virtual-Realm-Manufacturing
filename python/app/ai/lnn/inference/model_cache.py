@@ -41,7 +41,7 @@ class ModelCache:
         self._cache_hits = 0
         self._cache_misses = 0
 
-        logger.info(f"ModelCache initialized with max_size={max_size}")
+        logger.info("ModelCache initialized with max_size=%s", max_size)
 
     def get(self, model_name: str) -> Optional[Any]:
         """

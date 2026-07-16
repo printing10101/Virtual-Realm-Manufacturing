@@ -16,6 +16,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# 刀具磨损阈值（单位：mm）
+WEAR_REPLACEMENT_THRESHOLD: float = 0.3  # 达到此值建议更换刀具
+WEAR_WARNING_THRESHOLD: float = 0.2  # 达到此值发出警告
+
+
 @dataclass
 class PredictionData:
     """模型预测数据"""
@@ -263,7 +268,7 @@ class PredictionExplainer:
             ))
 
         # 刀具磨损分析
-        if prediction.wear_pred > 0.3:
+        if prediction.wear_pred > WEAR_REPLACEMENT_THRESHOLD:
             sections.append(ExplanationSection(
                 "刀具磨损严重 - 需要立即处理",
                 f"预测刀具磨损量为 {prediction.wear_pred:.3f} mm，已达到或超过磨损极限。"
@@ -276,7 +281,7 @@ class PredictionExplainer:
                 risk_level = "high"
             else:
                 risk_level = "critical"
-        elif prediction.wear_pred > 0.2:
+        elif prediction.wear_pred > WEAR_WARNING_THRESHOLD:
             sections.append(ExplanationSection(
                 "刀具磨损需关注",
                 f"预测刀具磨损量为 {prediction.wear_pred:.3f} mm，接近磨损极限，"

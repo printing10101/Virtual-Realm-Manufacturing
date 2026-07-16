@@ -140,9 +140,9 @@ class CapabilityGatekeeper:
                     self._grants[plugin_id][cap] = grant
                     granted.append(grant)
                 else:
-                    logger.warning(f"Unknown capability '{cap}' for plugin '{plugin_id}'")
+                    logger.warning("Unknown capability '%s' for plugin '%s'", cap, plugin_id)
 
-        logger.info(f"Granted {len(granted)} capabilities to plugin '{plugin_id}'")
+        logger.info("Granted %s capabilities to plugin '%s'", len(granted), plugin_id)
         return granted
 
     def revoke_capabilities(self, plugin_id: str, capabilities: List[str]) -> None:
@@ -155,7 +155,7 @@ class CapabilityGatekeeper:
                 if not self._grants[plugin_id]:
                     self._grants.pop(plugin_id, None)
 
-        logger.info(f"Revoked capabilities from plugin '{plugin_id}'")
+        logger.info("Revoked capabilities from plugin '%s'", plugin_id)
 
     def has_capability(self, plugin_id: str, capability: str) -> bool:
         # 安全修复：保护 _grants 字典的并发读

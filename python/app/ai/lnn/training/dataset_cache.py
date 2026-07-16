@@ -192,7 +192,7 @@ class DatasetCache:
         """初始化缓存目录，自动创建所有父目录"""
         try:
             os.makedirs(self._cache_directory, exist_ok=True)
-            logger.debug(f"Cache directory ready: {self._cache_directory}")
+            logger.debug("Cache directory ready: %s", self._cache_directory)
         except PermissionError as e:
             raise PermissionError(f"无法创建缓存目录: {self._cache_directory}") from e
         except OSError as e:
@@ -280,7 +280,7 @@ class DatasetCache:
         abs_path = os.path.abspath(file_path)
 
         if not os.path.exists(abs_path):
-            logger.debug(f"Cache invalid: file not found: {abs_path}")
+            logger.debug("Cache invalid: file not found: %s", abs_path)
             return False
 
         try:
@@ -305,7 +305,7 @@ class DatasetCache:
             return True
 
         except OSError as e:
-            logger.warning(f"Cache validation failed: {e}")
+            logger.warning("Cache validation failed: %s", e)
             return False
 
     def get(
@@ -333,13 +333,13 @@ class DatasetCache:
 
             if force_refresh:
                 self._cache_misses += 1
-                logger.info(f"Cache miss (force refresh): {file_path}")
+                logger.info("Cache miss (force refresh): %s", file_path)
                 return None
 
             try:
                 cache_key, file_mtime, file_size = self.generate_cache_key(file_path)
             except (FileNotFoundError, OSError) as e:
-                logger.warning(f"Failed to generate cache key: {e}")
+                logger.warning("Failed to generate cache key: %s", e)
                 self._cache_misses += 1
                 return None
 
@@ -348,8 +348,10 @@ class DatasetCache:
                 memory_result = self._get_from_memory(cache_key)
                 if memory_result is not None:
                     self._cache_hits += 1
+                    # P2-批次2 修复：改用 %s 懒求值。缓存命中是热路径，
+                    # 每次训练 batch 加载都会触发，info 级别关闭时避免插值开销。
                     logger.info(
-                        f"Cache hit (memory): {file_path}, key={cache_key[:8]}..."
+                        "Cache hit (memory): %s, key=%s...", file_path, cache_key[:8]
                     )
                     return memory_result
 
@@ -359,13 +361,13 @@ class DatasetCache:
                 if disk_result is not None:
                     self._cache_hits += 1
                     logger.info(
-                        f"Cache hit (disk): {file_path}, key={cache_key[:8]}..."
+                        "Cache hit (disk): %s, key=%s...", file_path, cache_key[:8]
                     )
                     return disk_result
 
         with self._lock:
             self._cache_misses += 1
-            logger.info(f"Cache miss: {file_path}")
+            logger.info("Cache miss: %s", file_path)
             return None
 
     def _get_from_memory(
@@ -430,8 +432,11 @@ class DatasetCache:
                 )
                 try:
                     os.remove(cache_file)
-                except OSError:
-                    pass
+                except OSError as rm_err:
+                    # 删除失败不阻塞返回 None（已判定签名不匹配），
+                    # 记录便于排查：下次加载仍会触发签名校验失败
+                    logger.debug("Failed to remove tampered cache file %s: %s",
+                                 cache_file, rm_err)
                 return None
             entry_data = pickle.loads(payload)
 
@@ -502,7 +507,7 @@ class DatasetCache:
             try:
                 cache_key, file_mtime, file_size = self.generate_cache_key(file_path)
             except (FileNotFoundError, OSError) as e:
-                logger.error(f"Failed to generate cache key for put: {e}")
+                logger.error("Failed to generate cache key for put: %s", e)
                 raise
 
             memory_size = self._estimate_memory_size(data, labels)
@@ -621,7 +626,7 @@ class DatasetCache:
                 logger.error("Disk cache failed: no space left on device")
                 self._clear_disk_cache()
             else:
-                logger.error(f"Failed to save cache to disk: {e}")
+                logger.error("Failed to save cache to disk: %s", e)
         except (pickle.PickleError, ValueError, TypeError, AttributeError) as e:
             # 兜底捕获：磁盘缓存序列化可能因对象类型、属性访问等失败
             logger.error(
@@ -761,7 +766,7 @@ class DatasetCache:
                 freed += self._current_memory_usage
                 self._memory_cache.clear()
                 self._current_memory_usage = 0
-                logger.info(f"Memory cache cleared: {count} entries, {freed} bytes")
+                logger.info("Memory cache cleared: %s entries, %s bytes", count, freed)
 
             if level in ("global", "disk"):
                 disk_count = 0
@@ -877,7 +882,7 @@ class DatasetCache:
                     )
 
             if removed:
-                logger.info(f"Cache removed: {file_path}")
+                logger.info("Cache removed: %s", file_path)
 
             return removed
 

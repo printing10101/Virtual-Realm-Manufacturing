@@ -51,8 +51,9 @@ async function fetchBranches() {
       : buildApiPath(API_CONFIG.V1, '/templates/branches')
     const res = await http.get(url)
     if (res.data.code === 'SUCCESS') branches.value = res.data.data
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    // 辅助列表数据加载失败不弹窗，仅记录便于排查
+    console.warn('[BranchManager] fetchBranches failed:', e)
   } finally {
     loading.value = false
   }
@@ -62,8 +63,9 @@ async function createBranch() {
   let data: Record<string, unknown> = {}
   try {
     data = JSON.parse(branchDataInput.value || '{}')
-  } catch {
-    // JSON 解析失败，使用空对象
+  } catch (e: unknown) {
+    // JSON 解析失败，使用空对象，记录便于用户排查输入格式
+    console.warn('[BranchManager] createBranch JSON parse failed:', e)
     data = {}
   }
   try {
@@ -77,8 +79,10 @@ async function createBranch() {
     createForm.value = { name: '', base_branch: '', type: 'main', data: {} }
     branchDataInput.value = '{}'
     fetchBranches()
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    // 用户主动创建分支失败需明确反馈
+    console.error('[BranchManager] createBranch failed:', e)
+    ElMessage.error(t('branchManager.msgCreateFailed') || '创建分支失败，请稍后重试')
   }
 }
 
@@ -90,8 +94,10 @@ async function mergeBranch() {
     })
     mergeDialog.value = false
     fetchBranches()
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    // 用户主动合并分支失败需明确反馈
+    console.error('[BranchManager] mergeBranch failed:', e)
+    ElMessage.error(t('branchManager.msgMergeFailed') || '合并分支失败，请稍后重试')
   }
 }
 
@@ -109,10 +115,11 @@ async function deleteBranch(branchId: string, type: string) {
     await http.delete(`${API_CONFIG.V1}/templates/branches/${branchId}`)
     fetchBranches()
   } catch (e: unknown) {
-    // 用户取消对话框时不处理
-    if (e !== 'cancel') {
-      // 静默处理
-    }
+    // ElMessageBox.confirm 取消时返回 'cancel'，属于正常用户行为，需与真实错误区分
+    const cancelled = e === 'cancel' || (e instanceof Error && e.message.includes('cancel'))
+    if (cancelled) return
+    console.error('[BranchManager] deleteBranch failed:', e)
+    ElMessage.error(t('branchManager.msgDeleteFailed') || '删除分支失败，请稍后重试')
   }
 }
 

@@ -14,6 +14,7 @@ from sqlalchemy import (
     Integer,
     Float,
     DateTime,
+    Date,
     JSON,
     ForeignKey,
     Index,
@@ -401,7 +402,7 @@ class ProductionRecord(Base):
     __tablename__ = "production_records"
 
     id = Column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
-    date = Column(String(16), nullable=False, index=True, comment="日期 YYYY-MM-DD")
+    date = Column(Date, nullable=False, index=True, comment="日期")
     line_name = Column(String(32), nullable=False, index=True, comment="产线名称")
     planned_qty = Column(Integer, nullable=False, comment="计划产量")
     actual_qty = Column(Integer, nullable=False, comment="实际产量")
@@ -419,7 +420,7 @@ class ProductionRecord(Base):
     def to_dict(self) -> dict:
         return {
             "id": self.id,
-            "date": self.date,
+            "date": self.date.isoformat() if self.date else None,
             "line_name": self.line_name,
             "planned_qty": self.planned_qty,
             "actual_qty": self.actual_qty,
@@ -442,8 +443,8 @@ class WorkOrder(Base):
     completed_qty = Column(Integer, nullable=False, default=0, comment="已完成数量")
     status = Column(String(16), nullable=False, default="待开始", index=True, comment="状态: 进行中/已完成/待开始/已延期")
     priority = Column(String(16), nullable=False, default="中", comment="优先级: 紧急/高/中/低")
-    start_date = Column(String(16), nullable=True, comment="开始日期")
-    due_date = Column(String(16), nullable=True, comment="截止日期")
+    start_date = Column(Date, nullable=True, comment="开始日期")
+    due_date = Column(Date, nullable=True, comment="截止日期")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
     __table_args__ = (
@@ -459,8 +460,8 @@ class WorkOrder(Base):
             "completed_qty": self.completed_qty,
             "status": self.status,
             "priority": self.priority,
-            "start_date": self.start_date,
-            "due_date": self.due_date,
+            "start_date": self.start_date.isoformat() if self.start_date else None,
+            "due_date": self.due_date.isoformat() if self.due_date else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

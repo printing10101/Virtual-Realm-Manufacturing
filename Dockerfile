@@ -1,24 +1,38 @@
 # =============================================================================
 # Multi-stage Dockerfile for LNN Manufacturing AI Service
-# 国内部署优化版 - 使用阿里云/华为云镜像源
+# 镜像源可参数化（P0-13 修复）：默认使用国内镜像加速，海外/离线部署可通过 build-arg 覆盖
+#   docker build \
+#     --build-arg BASE_REGISTRY=docker.io/library \
+#     --build-arg PIP_INDEX_URL=https://pypi.org/simple/ \
+#     --build-arg PIP_TRUSTED_HOST= \
+#     -t lnn-api .
 # =============================================================================
 
 # ---- Stage 1: Builder - 安装构建依赖和编译 Python 包 ----
-# 国内镜像：使用华为云公共镜像仓库（也可替换为阿里云 ACR 地址）
-FROM swr.cn-north-4.myhuaweicloud.com/library/python:3.11-slim AS builder
+# P0-13 修复：基础镜像改为可参数化，默认国内镜像，海外部署可覆盖为 docker.io/library
+ARG BASE_REGISTRY=swr.cn-north-4.myhuaweicloud.com/library
+FROM ${BASE_REGISTRY}/python:3.11-slim AS builder
+
+# P0-13 修复：pip 源可参数化，默认阿里云镜像，海外部署可通过 --build-arg 覆盖
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ARG PIP_TRUSTED_HOST=mirrors.aliyun.com
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    PIP_INDEX_URL=${PIP_INDEX_URL} \
+    PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST}
 
 WORKDIR /build
 
-# 配置 pip 使用阿里云镜像源（国内必选）
+# 配置 pip 镜像源（使用 build-arg 注入的值，海外部署可覆盖）
 RUN mkdir -p /etc/pip && \
     echo "[global]" > /etc/pip/pip.conf && \
-    echo "index-url = https://mirrors.aliyun.com/pypi/simple/" >> /etc/pip/pip.conf && \
+    echo "index-url = ${PIP_INDEX_URL}" >> /etc/pip/pip.conf && \
     echo "[install]" >> /etc/pip/pip.conf && \
-    echo "trusted-host=mirrors.aliyun.com" >> /etc/pip/pip.conf
+    if [ -n "${PIP_TRUSTED_HOST}" ]; then \
+        echo "trusted-host=${PIP_TRUSTED_HOST}" >> /etc/pip/pip.conf; \
+    fi
 
 # 安装构建工具（仅在此阶段需要）
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -30,17 +44,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 先复制依赖文件，充分利用 Docker 缓存层
 COPY requirements.txt ./
 
-# 安装 Python 依赖到独立目录（使用阿里云镜像源）
-RUN pip install --no-cache-dir --prefix=/install \
-    -i https://mirrors.aliyun.com/pypi/simple/ \
-    --trusted-host mirrors.aliyun.com \
-    -r requirements.txt
+# 安装 Python 依赖到独立目录（pip 源由 PIP_INDEX_URL 环境变量控制）
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # 复制源代码
 COPY . .
 
-# ---- Stage 2: Runtime - 最小化运行时镜像（国内镜像） ----
-FROM swr.cn-north-4.myhuaweicloud.com/library/python:3.11-slim AS runtime
+# ---- Stage 2: Runtime - 最小化运行时镜像 ----
+# P0-13 修复：runtime 阶段也需要使用同一 BASE_REGISTRY ARG
+ARG BASE_REGISTRY=swr.cn-north-4.myhuaweicloud.com/library
+FROM ${BASE_REGISTRY}/python:3.11-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import os
+import re
 import logging
 import secrets
 import threading
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 from pathlib import Path
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,30 @@ logger = logging.getLogger(__name__)
 
 _MIN_SECRET_LENGTH = 32
 _GENERATE_SECRET_CMD = 'python -c "import secrets; print(secrets.token_urlsafe(32))"'
+
+# ============================================================
+# 占位符密钥黑名单
+# 防止应用以公开已知的占位符密钥启动（如 CHANGE_ME_IN_PRODUCTION_JWT_SECRET）。
+# 这些占位符在源码仓库中可见，攻击者可据此伪造管理员 JWT。
+# ============================================================
+
+# 已知占位符精确匹配集合（比较时大小写不敏感）
+_PLACEHOLDER_BLACKLIST = frozenset({
+    "change_me_in_production_jwt_secret",
+    "your_secret_here",
+    "replace_me",
+    "changeme",
+    "your-secret-key",
+    "default-secret",
+})
+
+# 占位符前缀/模式正则（大小写不敏感，从密钥头部匹配）
+_PLACEHOLDER_PATTERNS = (
+    re.compile(r"CHANGE_ME.*", re.IGNORECASE),
+    re.compile(r"PLACEHOLDER.*", re.IGNORECASE),
+    re.compile(r"YOUR_.*_HERE", re.IGNORECASE),
+    re.compile(r"REPLACE_ME.*", re.IGNORECASE),
+)
 
 
 def generate_secure_jwt_secret(length: int = 64) -> str:
@@ -46,6 +72,50 @@ def generate_secure_jwt_secret(length: int = 64) -> str:
     return secrets.token_urlsafe(length)
 
 
+def _is_production_env() -> bool:
+    """判断当前是否为生产环境。
+
+    依次检查项目使用的环境变量（LINGJING_ENV / APP_ENV / ENVIRONMENT），
+    默认按生产环境处理（安全优先）。TESTING=true 时视为非生产环境。
+    """
+    if os.environ.get("TESTING", "false").lower() == "true":
+        return False
+    env = (
+        os.environ.get("LINGJING_ENV")
+        or os.environ.get("APP_ENV")
+        or os.environ.get("ENVIRONMENT")
+        or "production"
+    )
+    return env.lower() == "production"
+
+
+def _check_secret_placeholder(secret: str) -> bool:
+    """检查密钥是否为已知的占位符。
+
+    匹配规则（大小写不敏感）:
+        1. 精确匹配黑名单中的占位符（如 CHANGE_ME_IN_PRODUCTION_JWT_SECRET）
+        2. 匹配占位符前缀正则（如 CHANGE_ME.* / PLACEHOLDER.* / REPLACE_ME.*）
+
+    Args:
+        secret: 待检查的密钥字符串。
+
+    Returns:
+        True 表示密钥匹配已知的占位符模式，False 表示未匹配。
+    """
+    secret_lower = secret.lower()
+
+    # 精确匹配黑名单
+    if secret_lower in _PLACEHOLDER_BLACKLIST:
+        return True
+
+    # 正则前缀模式匹配
+    for pattern in _PLACEHOLDER_PATTERNS:
+        if pattern.match(secret):
+            return True
+
+    return False
+
+
 def _validate_and_get_secret() -> str:
     """
     验证并获取 JWT 密钥。
@@ -54,7 +124,8 @@ def _validate_and_get_secret() -> str:
         1. 必须从环境变量 LNN_JWT_SECRET 读取密钥，无任何 fallback 机制
         2. 未设置环境变量时，抛出异常拒绝启动并提供密钥生成指导
         3. 密钥长度不足 32 字符时，抛出异常拒绝启动
-        4. 密钥缺乏随机性（如全相同字符、简单序列）时，输出警告并拒绝启动
+        4. 密钥为已知占位符时，生产环境拒绝启动，非生产环境告警
+        5. 密钥缺乏随机性（如全相同字符、简单序列）时，输出警告并拒绝启动
     """
     custom_secret = os.environ.get("LNN_JWT_SECRET")
 
@@ -75,6 +146,24 @@ def _validate_and_get_secret() -> str:
             f"请使用以下命令生成安全密钥：\n"
             f"    {_GENERATE_SECRET_CMD}"
         )
+
+    # 占位符黑名单检查：防止使用公开已知的占位符密钥
+    if _check_secret_placeholder(custom_secret):
+        if _is_production_env():
+            raise RuntimeError(
+                f"JWT 密钥安全检查失败：检测到已知的占位符密钥，生产环境禁止使用。\n"
+                f"占位符密钥在源码仓库中公开可见，攻击者可据此伪造管理员 JWT。\n"
+                f"请使用以下命令生成真正的随机密钥：\n"
+                f"    {_GENERATE_SECRET_CMD}\n"
+                f"然后将其设置为环境变量 LNN_JWT_SECRET。"
+            )
+        else:
+            # 非生产环境（开发/测试）：记录警告但允许继续，避免阻塞开发
+            logger.warning(
+                "JWT 密钥安全检查：检测到已知的占位符密钥模式。"
+                "当前为非生产环境，允许继续运行；"
+                "部署到生产环境前必须替换为真正的随机密钥。"
+            )
 
     # 随机性验证：检测明显不安全的密钥模式
     _check_secret_randomness(custom_secret)
@@ -168,14 +257,40 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    """创建 JWT access token（访问令牌）。
+
+    Args:
+        data: 待编码到 token 中的声明数据（如 ``{"sub": user_id}``）。
+        expires_delta: 自定义过期时长；未指定时使用
+            ``ACCESS_TOKEN_EXPIRE_MINUTES`` 默认值。
+
+    Returns:
+        编码后的 JWT 字符串。
+
+    Raises:
+        JWTError: 当 ``jwt.encode`` 内部出现编码失败时由 PyJWT 抛出。
+    """
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire, "type": "access"})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_refresh_token(data: dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    """创建 JWT refresh token（刷新令牌）。
+
+    Args:
+        data: 待编码到 token 中的声明数据（如 ``{"sub": user_id}``）。
+        expires_delta: 自定义过期时长；未指定时使用
+            ``REFRESH_TOKEN_EXPIRE_DAYS`` 默认值。
+
+    Returns:
+        编码后的 JWT 字符串。
+
+    Raises:
+        JWTError: 当 ``jwt.encode`` 内部出现编码失败时由 PyJWT 抛出。
+    """
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     to_encode.update({"exp": expire, "type": "refresh"})
@@ -186,7 +301,7 @@ def decode_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError as e:
-        logger.debug(f"JWT token 解码失败: {e}")
+        logger.debug("JWT token 解码失败: %s", e)
         return None
     # 修复：对载荷做严格类型校验，避免 None/非字符串 sub 通过验证
     # 导致下游用户标识处理出现 AttributeError 或 SQL 注入风险。

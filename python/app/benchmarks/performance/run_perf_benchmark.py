@@ -33,6 +33,9 @@ from app.benchmarks.performance.api_bench import APIPerfBenchmark  # noqa: E402
 from app.benchmarks.performance.database_bench import DatabasePerfBenchmark  # noqa: E402
 from app.benchmarks.performance.business_logic_bench import BusinessLogicPerfBenchmark  # noqa: E402
 from app.benchmarks.performance.concurrency_bench import ConcurrencyPerfBenchmark  # noqa: E402
+from app.benchmarks.performance.world_model_bench import WorldModelPerfBenchmark  # noqa: E402
+from app.benchmarks.performance.rl_agent_bench import RLAgentPerfBenchmark  # noqa: E402
+from app.benchmarks.performance.closed_loop_bench import ClosedLoopPerfBenchmark  # noqa: E402
 
 
 @dataclass
@@ -139,125 +142,231 @@ class PerformanceBenchmarkRunner:
         logger.info("性能基准测试")
         logger.info("=" * 60)
 
-        # [1/7] LNN推理性能测试
-        logger.info("\n[1/7] LNN推理性能测试...")
+        # [1/10] LNN推理性能测试
+        logger.info("\n[1/10] LNN推理性能测试...")
         lnn = LNNPerfBenchmark()
         lnn.setup()
         single = lnn.run_single_inference()
         for k, v in single.items():
             current_results[k] = v
-            logger.info(f"  {k}: {v}")
+            logger.info("  %s: %s", k, v)
 
         batch10 = lnn.run_batch_10_inference()
         for k, v in batch10.items():
             current_results[k] = v
-            logger.info(f"  {k}: {v}")
+            logger.info("  %s: %s", k, v)
 
         batch50 = lnn.run_batch_50_inference()
         for k, v in batch50.items():
             current_results[k] = v
-            logger.info(f"  {k}: {v}")
+            logger.info("  %s: %s", k, v)
 
         batch100 = lnn.run_batch_100_inference()
         for k, v in batch100.items():
             current_results[k] = v
-            logger.info(f"  {k}: {v}")
+            logger.info("  %s: %s", k, v)
 
         gpu = lnn.run_gpu_single_inference()
         if gpu:
             for k, v in gpu.items():
                 current_results[k] = v
-                logger.info(f"  {k}: {v}")
+                logger.info("  %s: %s", k, v)
         else:
             logger.info("  GPU: 不可用（跳过）")
 
         lnn_path = str(self.output_dir / f"lnn_inference_{timestamp}.json")
         lnn.save_results(lnn_path)
-        logger.info(f"  -> {lnn_path}")
+        logger.info("  -> %s", lnn_path)
 
-        # [2/7] NC代码生成全流程测试
-        logger.info("\n[2/7] NC代码生成全流程测试...")
+        # [2/10] NC代码生成全流程测试
+        logger.info("\n[2/10] NC代码生成全流程测试...")
         nc = NCGenerationBenchmark()
         nc.setup()
         pipeline = nc.run_full_pipeline(n_parts=3)
         for k, v in pipeline.items():
             if isinstance(v, (int, float)):
                 current_results[k] = v
-                logger.info(f"  {k}: {v}")
+                logger.info("  %s: %s", k, v)
             elif k == "bottlenecks" and v:
-                logger.info(f"  瓶颈分析: {v}")
+                logger.info("  瓶颈分析: %s", v)
             elif k == "threshold_violations" and v:
-                logger.info(f"  违规: {v}")
+                logger.info("  违规: %s", v)
 
         nc_path = str(self.output_dir / f"nc_generation_{timestamp}.json")
         nc.save_results(nc_path)
-        logger.info(f"  -> {nc_path}")
+        logger.info("  -> %s", nc_path)
 
-        # [3/7] 三视图解析性能测试
-        logger.info("\n[3/7] 三视图解析性能测试...")
+        # [3/10] 三视图解析性能测试
+        logger.info("\n[3/10] 三视图解析性能测试...")
         dp = DrawingParseBenchmark()
         dp.setup()
         parse_results = dp.run_parse(n_iterations=5)
         for k, v in parse_results.items():
             if isinstance(v, (int, float)):
                 current_results[k] = v
-                logger.info(f"  {k}: {v}")
+                logger.info("  %s: %s", k, v)
 
         dp_path = str(self.output_dir / f"drawing_parse_{timestamp}.json")
         dp.save_results(dp_path)
-        logger.info(f"  -> {dp_path}")
+        logger.info("  -> %s", dp_path)
 
-        # [4/7] API接口性能测试
-        logger.info("\n[4/7] API接口性能测试...")
+        # [4/10] API接口性能测试
+        logger.info("\n[4/10] API接口性能测试...")
         api = APIPerfBenchmark()
         api_results = api.run_all()
         for k, v in api_results.items():
             if isinstance(v, (int, float)):
                 current_results[k] = v
-                logger.info(f"  {k}: {v}")
+                logger.info("  %s: %s", k, v)
 
         api_path = str(self.output_dir / f"api_performance_{timestamp}.json")
         api.save_results(api_path)
-        logger.info(f"  -> {api_path}")
+        logger.info("  -> %s", api_path)
 
-        # [5/7] 数据库性能测试
-        logger.info("\n[5/7] 数据库性能测试...")
+        # [5/10] 数据库性能测试
+        logger.info("\n[5/10] 数据库性能测试...")
         db = DatabasePerfBenchmark()
         db_results = db.run_all()
         for k, v in db_results.items():
             if isinstance(v, (int, float)):
                 current_results[k] = v
-                logger.info(f"  {k}: {v}")
+                logger.info("  %s: %s", k, v)
 
         db_path = str(self.output_dir / f"database_performance_{timestamp}.json")
         db.save_results(db_path)
-        logger.info(f"  -> {db_path}")
+        logger.info("  -> %s", db_path)
 
-        # [6/7] 业务逻辑性能测试
-        logger.info("\n[6/7] 业务逻辑性能测试...")
+        # [6/10] 业务逻辑性能测试
+        logger.info("\n[6/10] 业务逻辑性能测试...")
         biz = BusinessLogicPerfBenchmark()
         biz_results = biz.run_all()
         for k, v in biz_results.items():
             if isinstance(v, (int, float)):
                 current_results[k] = v
-                logger.info(f"  {k}: {v}")
+                logger.info("  %s: %s", k, v)
 
         biz_path = str(self.output_dir / f"business_logic_performance_{timestamp}.json")
         biz.save_results(biz_path)
-        logger.info(f"  -> {biz_path}")
+        logger.info("  -> %s", biz_path)
 
-        # [7/7] 并发与压力测试
-        logger.info("\n[7/7] 并发与压力测试...")
+        # [7/10] 并发与压力测试
+        logger.info("\n[7/10] 并发与压力测试...")
         conc = ConcurrencyPerfBenchmark()
         conc_results = conc.run_all()
         for k, v in conc_results.items():
             if isinstance(v, (int, float)):
                 current_results[k] = v
-                logger.info(f"  {k}: {v}")
+                logger.info("  %s: %s", k, v)
 
         conc_path = str(self.output_dir / f"concurrency_performance_{timestamp}.json")
         conc.save_results(conc_path)
-        logger.info(f"  -> {conc_path}")
+        logger.info("  -> %s", conc_path)
+
+        # [8/10] 世界模型轨迹预测性能测试（阶段 8 新增）
+        logger.info("\n[8/10] 世界模型轨迹预测性能测试...")
+        wm = WorldModelPerfBenchmark()
+        wm.setup()
+        wm_single = wm.run_single_prediction()
+        for k, v in wm_single.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        wm_horizon = wm.run_horizon_scaling()
+        for k, v in wm_horizon.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        wm_batch = wm.run_batch_prediction()
+        for k, v in wm_batch.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        wm_plugin = wm.run_plugin_execute()
+        for k, v in wm_plugin.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        wm_cache = wm.run_model_cache_hit()
+        for k, v in wm_cache.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        wm_path = str(self.output_dir / f"world_model_{timestamp}.json")
+        wm.save_results(wm_path)
+        logger.info("  -> %s", wm_path)
+
+        # [9/10] RL agent 决策 + SafetyShield 性能测试（阶段 8 新增）
+        logger.info("\n[9/10] RL agent 决策 + SafetyShield 性能测试...")
+        rl = RLAgentPerfBenchmark()
+        rl.setup()
+        rl_single = rl.run_single_decision()
+        for k, v in rl_single.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        rl_shield = rl.run_safety_shield_filter()
+        for k, v in rl_shield.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        rl_batch = rl.run_batch_decisions()
+        for k, v in rl_batch.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        rl_cache = rl.run_policy_cache_hit()
+        for k, v in rl_cache.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        rl_violation = rl.run_safety_violation_rate()
+        for k, v in rl_violation.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        rl_path = str(self.output_dir / f"rl_agent_{timestamp}.json")
+        rl.save_results(rl_path)
+        logger.info("  -> %s", rl_path)
+
+        # [10/10] 闭环加工优化工作流端到端性能测试（阶段 8 新增）
+        logger.info("\n[10/10] 闭环加工优化工作流端到端性能测试...")
+        cl = ClosedLoopPerfBenchmark()
+        cl.setup()
+        cl_pipeline = cl.run_full_pipeline()
+        for k, v in cl_pipeline.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+            elif k == "cl_bottlenecks" and v:
+                logger.info("  闭环瓶颈: %s", v)
+            elif k == "cl_threshold_violations" and v:
+                logger.info("  闭环违规: %s", v)
+
+        cl_breakdown = cl.run_node_breakdown()
+        for k, v in cl_breakdown.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        cl_throughput = cl.run_throughput()
+        for k, v in cl_throughput.items():
+            if isinstance(v, (int, float)):
+                current_results[k] = v
+                logger.info("  %s: %s", k, v)
+
+        cl_path = str(self.output_dir / f"closed_loop_{timestamp}.json")
+        cl.save_results(cl_path)
+        logger.info("  -> %s", cl_path)
 
         # Save current results
         current_path = self.output_dir / f"current_results_{timestamp}.json"
@@ -285,7 +394,7 @@ class PerformanceBenchmarkRunner:
         report_path = self.output_dir / f"regression_report_{timestamp}.md"
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report.to_markdown())
-        logger.info(f"\n报告已保存: {report_path}")
+        logger.info("\n报告已保存: %s", report_path)
 
         report_json_path = self.output_dir / f"regression_report_{timestamp}.json"
         with open(report_json_path, "w", encoding="utf-8") as f:
@@ -310,7 +419,7 @@ def check_regression(
                 data = json.load(f)
             previous_results = data.get("results", {})
         except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as e:
-            logger.warning(f"读取历史性能数据失败: {e}，使用空数据")
+            logger.warning("读取历史性能数据失败: %s，使用空数据", e)
             previous_results = {}
 
     warning_pct = REGRESSION_THRESHOLDS["warning_pct"]

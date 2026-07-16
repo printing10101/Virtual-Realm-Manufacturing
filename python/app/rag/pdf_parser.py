@@ -58,54 +58,53 @@ def parse_pdf(file_path: str | Path) -> dict[str, Any]:
     try:
         result["file_size"] = file_path.stat().st_size
     except OSError as e:
-        logger.warning(f"无法获取文件大小: {e}")
+        logger.warning("无法获取文件大小: %s", e)
     
     # 解析PDF
     try:
         import fitz  # PyMuPDF
-        
-        logger.info(f"开始解析PDF文件: {file_path.name}")
-        
-        doc = fitz.open(str(file_path))
-        result["page_count"] = len(doc)
-        
-        all_text = []
-        all_tables = []
-        
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-            
-            # 提取文本
-            text = page.get_text()
-            if text.strip():
-                all_text.append(f"--- 第 {page_num + 1} 页 ---\n{text}")
-            
-            # 提取表格
-            tables = _extract_tables_from_page(page, page_num)
-            all_tables.extend(tables)
-        
-        doc.close()
-        
-        result["text"] = "\n\n".join(all_text)
-        result["tables"] = all_tables
-        result["status"] = "success"
-        
-        parse_time = (time.time() - start_time) * 1000
-        result["parse_time_ms"] = round(parse_time, 2)
-        
-        logger.info(
-            f"PDF解析完成: {file_path.name}, "
-            f"{result['page_count']}页, "
-            f"{len(all_tables)}个表格, "
-            f"耗时{parse_time:.0f}ms"
-        )
-        
+
+        logger.info("开始解析PDF文件: %s", file_path.name)
+
+        # P0-1 修复：使用 with 语句确保异常路径下文档句柄被释放
+        with fitz.open(str(file_path)) as doc:
+            result["page_count"] = len(doc)
+
+            all_text = []
+            all_tables = []
+
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+
+                # 提取文本
+                text = page.get_text()
+                if text.strip():
+                    all_text.append(f"--- 第 {page_num + 1} 页 ---\n{text}")
+
+                # 提取表格
+                tables = _extract_tables_from_page(page, page_num)
+                all_tables.extend(tables)
+
+            result["text"] = "\n\n".join(all_text)
+            result["tables"] = all_tables
+            result["status"] = "success"
+
+            parse_time = (time.time() - start_time) * 1000
+            result["parse_time_ms"] = round(parse_time, 2)
+
+            logger.info(
+                f"PDF解析完成: {file_path.name}, "
+                f"{result['page_count']}页, "
+                f"{len(all_tables)}个表格, "
+                f"耗时{parse_time:.0f}ms"
+            )
+
     except ImportError:
         error_msg = "PyMuPDF(fitz)库未安装，请运行: pip install pymupdf"
         logger.error(error_msg)
         result["error"] = error_msg
     except (OSError, ValueError, RuntimeError) as e:
-        error_msg = f"PDF解析失败: {str(e)}"
+        error_msg = "PDF解析失败: 文件格式错误或损坏，请检查文件"
         logger.exception(error_msg)
         result["error"] = error_msg
     
@@ -157,11 +156,11 @@ def _extract_tables_from_page(page: Any, page_num: int) -> list[dict[str, Any]]:
                 tables.append(table_info)
                 
             except (OSError, ValueError, TypeError, KeyError) as e:
-                logger.warning(f"提取第{page_num + 1}页第{idx + 1}个表格失败: {e}")
+                logger.warning("提取第%s页第%s个表格失败: %s", page_num + 1, idx + 1, e)
                 continue
         
     except (OSError, RuntimeError) as e:
-        logger.debug(f"第{page_num + 1}页表格提取失败: {e}")
+        logger.debug("第%s页表格提取失败: %s", page_num + 1, e)
     
     return tables
 
@@ -190,23 +189,22 @@ def parse_pdf_text_only(file_path: str | Path) -> dict[str, Any]:
     
     try:
         import fitz
-        
-        doc = fitz.open(str(file_path))
-        all_text = []
-        
-        for page in doc:
-            text = page.get_text()
-            if text.strip():
-                all_text.append(text)
-        
-        doc.close()
-        
-        result["text"] = "\n\n".join(all_text)
-        result["status"] = "success"
-        
+
+        # P0-1 修复：使用 with 语句确保异常路径下文档句柄被释放
+        with fitz.open(str(file_path)) as doc:
+            all_text = []
+
+            for page in doc:
+                text = page.get_text()
+                if text.strip():
+                    all_text.append(text)
+
+            result["text"] = "\n\n".join(all_text)
+            result["status"] = "success"
+
     except (OSError, ValueError, RuntimeError) as e:
-        result["error"] = str(e)
-        logger.exception(f"PDF文本提取失败: {e}")
+        result["error"] = "PDF文本提取失败: 文件格式错误或损坏，请检查文件"
+        logger.exception("PDF文本提取失败: %s", e)
     
     return result
 
@@ -227,21 +225,21 @@ if __name__ == "__main__":
     pdf_file = sys.argv[1]
     result = parse_pdf(pdf_file)
     
-    logger.info(f"\n解析状态: {result['status']}")
-    logger.info(f"文件名: {result['file_name']}")
-    logger.info(f"文件大小: {result['file_size']} bytes")
-    logger.info(f"页数: {result['page_count']}")
-    logger.info(f"表格数量: {len(result['tables'])}")
+    logger.info("\n解析状态: %s", result['status'])
+    logger.info("文件名: %s", result['file_name'])
+    logger.info("文件大小: %s bytes", result['file_size'])
+    logger.info("页数: %s", result['page_count'])
+    logger.info("表格数量: %s", len(result['tables']))
     logger.info(f"解析耗时: {result['parse_time_ms']:.2f}ms")
     
     if result['error']:
-        logger.error(f"错误: {result['error']}")
+        logger.error("错误: %s", result['error'])
     
     if result['tables']:
         logger.info("\n提取的表格:")
         for i, table in enumerate(result['tables'], 1):
-            logger.info(f"\n表格 {i} (第{table['page']}页):")
-            logger.info(f"  表头: {table['headers']}")
-            logger.info(f"  行数: {table['row_count']}")
+            logger.info("\n表格 %s (第%s页):", i, table['page'])
+            logger.info("  表头: %s", table['headers'])
+            logger.info("  行数: %s", table['row_count'])
             if table['rows']:
-                logger.info(f"  首行数据: {table['rows'][0]}")
+                logger.info("  首行数据: %s", table['rows'][0])

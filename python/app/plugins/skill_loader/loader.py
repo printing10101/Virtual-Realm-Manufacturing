@@ -383,7 +383,10 @@ class SkillLoader:
 
         dangerous_patterns = [
             (r"__import__\s*\(", "直接调用 __import__"),
-            (r"\bimport\b\s+(?!.*\b(?:os|sys|subprocess|ctypes|socket|shutil)\b)", "import 语句"),
+            # P1 安全修复：原负向预查 (?!...) 导致安全 import 被误报、危险 import 漏报。
+            # 改为正向匹配危险模块，仅阻断 import os/sys/subprocess/ctypes/socket/shutil。
+            # 防复发：禁止使用负向预查做安全审计，必须正向匹配危险项。
+            (r"\bimport\b\s+(?:os|sys|subprocess|ctypes|socket|shutil)\b", "import 危险模块"),
             (r"\bexec\s*\(", "exec() 调用"),
             (r"\beval\s*\(", "eval() 调用"),
             (r"\bcompile\s*\(", "compile() 调用"),
@@ -837,7 +840,7 @@ try:
 except (RuntimeError, ValueError, TypeError, OSError, NameError, AttributeError, KeyError) as e:
     sys.stdout.write(json.dumps({
         "status": "error",
-        "error": str(e),
+        "error": "skill 执行失败: 内部错误",
         "type": type(e).__name__,
     }))
     sys.exit(1)
@@ -848,12 +851,39 @@ except (RuntimeError, ValueError, TypeError, OSError, NameError, AttributeError,
         self.skill_id = skill_id
         self.timeout = timeout
         self._worker_path: Optional[str] = None
+        self._worker_dir: Optional[str] = None  # P1-3：保存临时目录以便主动清理
+
+    def cleanup(self) -> None:
+        """主动清理临时 worker 目录。
+
+        P1-3 修复：原实现仅依赖 atexit.register 在进程退出时清理，
+        但长运行服务进程不会频繁退出，导致 mkdtemp 创建的临时目录
+        在系统 temp 中堆积。应用 shutdown 或 SkillLoader 卸载时应
+        主动调用此方法释放资源。
+        """
+        if self._worker_dir is not None:
+            try:
+                shutil.rmtree(self._worker_dir, ignore_errors=True)
+            except OSError as exc:
+                logger.debug(
+                    "cleanup skill worker dir %s failed: %s",
+                    self._worker_dir,
+                    exc,
+                )
+            finally:
+                self._worker_dir = None
+                self._worker_path = None
 
     def _ensure_worker(self) -> str:
         if self._worker_path is not None and os.path.exists(self._worker_path):
             return self._worker_path
+        import atexit
         import tempfile
         tmp_dir = tempfile.mkdtemp(prefix="skill_worker_")
+        # 注册进程退出时清理，覆盖子进程超时/崩溃/JSON 解析失败等异常路径，
+        # 避免 mkdtemp 创建的临时目录在系统 temp 中无限堆积。
+        atexit.register(shutil.rmtree, tmp_dir, ignore_errors=True)
+        self._worker_dir = tmp_dir  # P1-3：记录目录供 cleanup() 主动清理
         self._worker_path = os.path.join(tmp_dir, "worker.py")
         try:
             with open(self._worker_path, "w", encoding="utf-8") as f:
@@ -862,6 +892,7 @@ except (RuntimeError, ValueError, TypeError, OSError, NameError, AttributeError,
             # 写入失败时清理临时目录，避免泄漏
             logger.error("Failed to write skill worker script to %s: %s", self._worker_path, e, exc_info=True)
             shutil.rmtree(tmp_dir, ignore_errors=True)
+            self._worker_dir = None
             self._worker_path = None
             raise
         return self._worker_path

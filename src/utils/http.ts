@@ -88,8 +88,9 @@ const http = axios.create({
 // 请求拦截器：自动携带 Authorization header
 http.interceptors.request.use(
   (config) => {
-    // 从 localStorage 恢复 token（兼容刷新页面后 token 丢失）
-    const stored = localStorage.getItem('auth_token')
+    // 安全修复：从 sessionStorage 读取 token（与 auth store 保持一致），
+    // 不再使用 localStorage，降低 XSS 凭证窃取风险。关闭标签页后自动失效。
+    const stored = sessionStorage.getItem('auth_token')
     const token = stored || ''
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -166,7 +167,15 @@ http.interceptors.response.use(
       const data = response.data || {}
 
       if (status === 401) {
-        // 桌面应用自动登录，401 不弹错误提示（避免初始化阶段干扰）
+        // 桌面应用：清除过期 token 和用户信息，触发重新登录
+        // 不弹错误提示，保持桌面应用体验
+        sessionStorage.removeItem('auth_token')
+        sessionStorage.removeItem('auth_user')
+        // 动态导入 auth store 避免循环依赖（http.ts 被 auth.ts 静态导入），
+        // 同步更新 auth store 的响应式状态，使 isAuthenticated 立即变为 false
+        import('@/stores/auth').then(({ useAuthStore }) => {
+          useAuthStore().logout()
+        })
         return Promise.reject(error)
       }
 

@@ -260,6 +260,7 @@ class StatePersistenceManager:
     async def _save_db(self, state: AgentState):
         if not self._db_session_factory:
             return
+        session = None
         try:
             session = await self._db_session_factory()
             json.dumps(state.to_dict(), ensure_ascii=False)
@@ -351,14 +352,36 @@ class StatePersistenceManager:
                     },
                 )
             await session.commit()
-            await session.close()
         except (OSError, RuntimeError, ValueError, KeyError) as e:
             # 数据库保存失败需要记录详细错误以便排查
+            if session is not None:
+                try:
+                    await session.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
             logger.error("DB save failed for agent %s: %s", state.agent_id, e, exc_info=True)
+        except Exception as e:
+            # 捕获 SQLAlchemyError 及其他数据库异常，显式 rollback
+            if session is not None:
+                try:
+                    await session.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
+            logger.error("DB save failed for agent %s: %s", state.agent_id, e, exc_info=True)
+        finally:
+            if session is not None:
+                try:
+                    await session.close()
+                except Exception:  # noqa: BLE001
+                    pass
 
     async def _load_db(self, agent_id: str) -> Optional[AgentState]:
         if not self._db_session_factory:
             return None
+        # P0-3 修复：session 必须在 finally 块中关闭，防止异常路径下 session 泄漏
+        # 导致连接池耗尽。原代码仅在成功路径调用 session.close()，一旦 execute/fetch
+        # 抛出异常，session 将泄漏至 GC 回收前。
+        session = None
         try:
             session = await self._db_session_factory()
             import sqlalchemy as sa
@@ -374,7 +397,6 @@ class StatePersistenceManager:
                 {"agent_id": agent_id},
             )
             row = result.fetchone()
-            await session.close()
             if not row:
                 return None
 
@@ -415,6 +437,14 @@ class StatePersistenceManager:
         except (OSError, RuntimeError, ValueError, KeyError, TypeError) as e:
             # 数据库加载失败时返回 None，让上层回退到其他存储层
             logger.error("DB load failed for agent %s: %s", agent_id, e, exc_info=True)
+        finally:
+            if session is not None:
+                try:
+                    await session.close()
+                except Exception as close_err:  # noqa: BLE001
+                    logger.warning(
+                        "Failed to close DB session in _load_db: %s", close_err
+                    )
         return None
 
     async def _save_checkpoint_files(self, state: AgentState):
@@ -490,6 +520,8 @@ class StatePersistenceManager:
                     "Failed to delete state from Redis: agent=%s error=%s", agent_id, e
                 )
         if self._db_session_factory:
+            # P0-3 修复：session 必须在 finally 块中关闭，防止异常路径下 session 泄漏
+            session = None
             try:
                 session = await self._db_session_factory()
                 import sqlalchemy as sa
@@ -499,13 +531,21 @@ class StatePersistenceManager:
                     {"agent_id": agent_id},
                 )
                 await session.commit()
-                await session.close()
             except (OSError, sa.exc.SQLAlchemyError, RuntimeError) as e:
                 # 数据库删除失败不应阻塞内存状态清理
                 logger.warning(
                     f"Failed to delete agent state from DB for {agent_id}: {e}",
                     exc_info=True,
                 )
+            finally:
+                if session is not None:
+                    try:
+                        await session.close()
+                    except Exception as close_err:  # noqa: BLE001
+                        logger.warning(
+                            "Failed to close DB session in delete_state: %s",
+                            close_err,
+                        )
         self._active_states.pop(agent_id, None)
         self._stop_heartbeat(agent_id)
         self._checkpoint_manager.cleanup_agent_checkpoints(agent_id, max_age_seconds=0)
@@ -683,6 +723,8 @@ class StatePersistenceManager:
                 }
                 for aid, s in self._active_states.items()
             ]
+        # P0-3 修复：session 必须在 finally 块中关闭，防止异常路径下 session 泄漏
+        session = None
         try:
             session = await self._db_session_factory()
             import sqlalchemy as sa
@@ -694,7 +736,6 @@ class StatePersistenceManager:
                 )
             )
             rows = result.fetchall()
-            await session.close()
             return [
                 {
                     "agent_id": r.agent_id,
@@ -722,6 +763,15 @@ class StatePersistenceManager:
                 }
                 for aid, s in self._active_states.items()
             ]
+        finally:
+            if session is not None:
+                try:
+                    await session.close()
+                except Exception as close_err:  # noqa: BLE001
+                    logger.warning(
+                        "Failed to close DB session in list_all_agent_states: %s",
+                        close_err,
+                    )
 
 
 class StateRecoveryManager:

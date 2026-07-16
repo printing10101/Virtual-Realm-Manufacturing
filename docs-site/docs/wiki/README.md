@@ -1,6 +1,6 @@
 # 灵境制造（Virtual-Realm-Manufacturing）Code Wiki
 
-> 版本：v2.0.0  
+> 版本：v2.5.0  
 > 仓库：printing10101/Virtual-Realm-Manufacturing  
 > 文档生成时间：2026-06-10
 

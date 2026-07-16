@@ -202,7 +202,7 @@ class SimulationIntegration:
                 result.status = "timeout"
                 result.error_message = f"仿真超时（>{self.timeout_seconds}秒）"
                 result.recommendation = "not_recommended"
-                logger.warning(f"仿真超时: material={material}, tool={tool}")
+                logger.warning("仿真超时: material=%s, tool=%s", material, tool)
 
             except (RuntimeError, ValueError, TypeError, OSError, KeyError) as e:
                 result.status = "failed"

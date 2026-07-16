@@ -12,8 +12,8 @@ import os
 from datetime import datetime
 
 
-class CTLTCModel(nn.Module):
-    """CT-LTC模型简化版本"""
+class DLLNNModel(nn.Module):
+    """DL-LNN模型简化版本"""
     def __init__(self, input_dim=10, hidden_dim=64, num_layers=3, output_dim=1, dt=0.01):
         super().__init__()
         self.input_dim = input_dim
@@ -240,7 +240,7 @@ def error_distribution_experiment():
     
     # 训练和评估各模型
     models = {
-        'CT-LTC': lambda: CTLTCModel(input_dim=X.shape[1], hidden_dim=64, num_layers=3),
+        'DL-LNN': lambda: DLLNNModel(input_dim=X.shape[1], hidden_dim=64, num_layers=3),
         'LSTM': lambda: LSTMModel(input_dim=X.shape[1], hidden_dim=64, num_layers=2),
         'GRU': lambda: GRUModel(input_dim=X.shape[1], hidden_dim=64, num_layers=2)
     }

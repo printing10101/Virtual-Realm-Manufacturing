@@ -21,7 +21,7 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: () => import('../views/Settings.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/about',
@@ -38,11 +38,13 @@ const router = createRouter({
       path: '/rule-editor',
       name: 'rule-editor',
       component: () => import('../views/RuleEditor.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/toolpath-editor',
       name: 'toolpath-editor',
       component: () => import('../components/toolpath-editor/ToolpathEditor.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/process-planning',
@@ -60,7 +62,7 @@ const router = createRouter({
       path: '/agent-dashboard',
       name: 'agent-dashboard',
       component: () => import('../views/AgentDashboard.vue'),
-      meta: { title: '代理状态监控' },
+      meta: { title: '代理状态监控', requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/agent-detail/:id',
@@ -72,7 +74,7 @@ const router = createRouter({
       path: '/branch-manager',
       name: 'branch-manager',
       component: () => import('../views/BranchManager.vue'),
-      meta: { title: '分支管理' },
+      meta: { title: '分支管理', requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/template-detail/:id',
@@ -96,13 +98,13 @@ const router = createRouter({
       path: '/plugin-manager',
       name: 'plugin-manager',
       component: () => import('../views/PluginManager.vue'),
-      meta: { title: '插件管理' },
+      meta: { title: '插件管理', requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/plugin-logs',
       name: 'plugin-logs',
       component: () => import('../views/PluginLogs.vue'),
-      meta: { title: '插件日志' },
+      meta: { title: '插件日志', requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/task-board',
@@ -111,16 +113,34 @@ const router = createRouter({
       meta: { title: '任务看板' },
     },
     {
+      path: '/workflow-panel',
+      name: 'workflow-panel',
+      component: () => import('../views/WorkflowPanel.vue'),
+      meta: { title: '工作流编排' },
+    },
+    {
+      path: '/snapshot-panel',
+      name: 'snapshot-panel',
+      component: () => import('../views/SnapshotPanel.vue'),
+      meta: { title: '实验快照' },
+    },
+    {
+      path: '/flywheel-dashboard',
+      name: 'flywheel-dashboard',
+      component: () => import('../components/FlywheelDashboard.vue'),
+      meta: { title: '数据飞轮', requiresAuth: true },
+    },
+    {
       path: '/cost-dashboard',
       name: 'cost-dashboard',
       component: () => import('../views/CostDashboard.vue'),
-      meta: { title: '成本仪表盘' },
+      meta: { title: '成本仪表盘', requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/approval-dashboard',
       name: 'approval-dashboard',
       component: () => import('../views/ApprovalDashboard.vue'),
-      meta: { title: '审批看板' },
+      meta: { title: '审批看板', requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/goals',
@@ -175,6 +195,24 @@ const router = createRouter({
       name: 'process-understanding',
       component: () => import('../views/ProcessUnderstanding.vue'),
       meta: { title: '工艺理解' },
+    },
+    {
+      path: '/world-model',
+      name: 'world-model',
+      component: () => import('../views/WorldModel.vue'),
+      meta: { title: '世界模型', requiresAuth: true },
+    },
+    {
+      path: '/rl-agent',
+      name: 'rl-agent',
+      component: () => import('../views/RLAgent.vue'),
+      meta: { title: 'RL 决策', requiresAuth: true },
+    },
+    {
+      path: '/explainability',
+      name: 'explainability',
+      component: () => import('../views/Explainability.vue'),
+      meta: { title: '可解释性', requiresAuth: true },
     },
     {
       path: '/:pathMatch(.*)*',

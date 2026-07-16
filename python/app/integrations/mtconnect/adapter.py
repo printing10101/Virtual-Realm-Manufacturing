@@ -42,6 +42,10 @@ from app.integrations._common import parse_tds_url
 
 logger = logging.getLogger(__name__)
 
+# MTConnect 异步 future 的统一等待超时（秒）。用于跨线程提交的协程结果回收，
+# 避免因事件循环阻塞导致采集线程长时间挂起。
+DEFAULT_MTCONNECT_FUTURE_TIMEOUT_SEC: float = 10.0
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -481,7 +485,7 @@ class MTConnectAdapter:
                     self._insert_async(client, insert, rows),
                     loop
                 )
-                return future.result(timeout=10.0)
+                return future.result(timeout=DEFAULT_MTCONNECT_FUTURE_TIMEOUT_SEC)
             except (RuntimeError, TimeoutError, Exception) as exc:
                 logger.error("Failed to persist rows in async context: %s", exc, exc_info=True)
                 return 0

@@ -3,7 +3,7 @@
 使用MC Dropout估计预测不确定性
 
 实验设计：
-1. 训练CT-LTC模型（启用Dropout）
+1. 训练DL-LNN模型（启用Dropout）
 2. 使用MC Dropout进行多次前向传播（100次）
 3. 计算预测的均值和标准差（不确定性）
 4. 分析不确定性与预测误差的关系
@@ -21,9 +21,16 @@ from typing import Dict, List, Tuple
 
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
+# 添加项目根目录（python/）到 path，用于导入 app 模块
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from app.ai.lnn.training.reproducibility import set_global_seed
+from app.ai.lnn.training.experiment_tracker import start_run, is_enabled
 
 from config import ModelConfig
-from models import CTCTCWithPhysics
+from models import DLLNNWithPhysics
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -339,10 +346,10 @@ def run_uncertainty_quantification_experiment():
     print(f"    测试集: {len(test_loader.dataset)} 样本")
     
     # ==================== 步骤2：训练模型 ====================
-    print("\n[2/4] 训练CT-LTC模型（dropout=0.2）...")
+    print("\n[2/4] 训练DL-LNN模型（dropout=0.2）...")
     
     # 创建模型（确保dropout启用）
-    model = CTCTCWithPhysics(
+    model = DLLNNWithPhysics(
         input_dim=config.input_dim,
         hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,
@@ -454,4 +461,6 @@ def run_uncertainty_quantification_experiment():
 
 
 if __name__ == "__main__":
-    results = run_uncertainty_quantification_experiment()
+    set_global_seed(42)
+    with start_run(experiment_name="exp18_uncertainty_quantification"):
+        results = run_uncertainty_quantification_experiment()

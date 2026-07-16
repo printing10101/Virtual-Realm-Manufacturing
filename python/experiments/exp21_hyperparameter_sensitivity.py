@@ -1,6 +1,6 @@
 """
 超参数灵敏度分析实验
-分析关键超参数对CT-LTC模型性能的影响
+分析关键超参数对DL-LNN模型性能的影响
 
 实验设计：
 1. 隐藏层维度 (hidden_dim): [32, 64, 128, 256]
@@ -24,7 +24,7 @@ from itertools import product
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import ModelConfig
-from models import CTCTCWithPhysics
+from models import DLLNNWithPhysics
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -216,8 +216,8 @@ def run_hyperparameter_sensitivity_experiment():
         torch.manual_seed(42)
         np.random.seed(42)
 
-        model = CTCTCWithPhysics(
-            input_dim=2,
+        model = DLLNNWithPhysics(
+            input_dim=7,
             hidden_dim=hidden_dim,
             num_layers=3,
             output_dim=1,
@@ -257,8 +257,8 @@ def run_hyperparameter_sensitivity_experiment():
         torch.manual_seed(42)
         np.random.seed(42)
 
-        model = CTCTCWithPhysics(
-            input_dim=2,
+        model = DLLNNWithPhysics(
+            input_dim=7,
             hidden_dim=128,
             num_layers=3,
             output_dim=1,
@@ -298,8 +298,8 @@ def run_hyperparameter_sensitivity_experiment():
         torch.manual_seed(42)
         np.random.seed(42)
 
-        model = CTCTCWithPhysics(
-            input_dim=2,
+        model = DLLNNWithPhysics(
+            input_dim=7,
             hidden_dim=128,
             num_layers=3,
             output_dim=1,
@@ -339,8 +339,8 @@ def run_hyperparameter_sensitivity_experiment():
         torch.manual_seed(42)
         np.random.seed(42)
 
-        model = CTCTCWithPhysics(
-            input_dim=2,
+        model = DLLNNWithPhysics(
+            input_dim=7,
             hidden_dim=128,
             num_layers=3,
             output_dim=1,

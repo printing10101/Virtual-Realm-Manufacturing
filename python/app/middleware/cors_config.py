@@ -142,6 +142,8 @@ PRODUCTION_ORIGINS: List[str] = []
 #: 以支持生产环境通过 HTTPS 访问 localhost 的场景（如反向代理终结 TLS）。
 #: 显式端口匹配可防止开放重定向式绕过，避免使用 ``https?://.*`` 这类过于
 #: 宽松的正则。  真实生产域名请通过 ``ALLOWED_ORIGINS`` 环境变量显式配置。
+#: P2-1-1 修复：使用 ``re.fullmatch`` 隐式锚定整个字符串，无需在正则末尾
+#: 显式添加 ``$``；模块级硬校验（line ~701）也期望无 ``$`` 的形式。
 PRODUCTION_ORIGIN_REGEX = r"https?://localhost(:\d+)?"
 
 
@@ -166,6 +168,33 @@ DEVELOPMENT_ORIGINS = [
 
 #: No regex needed in development — every allowed origin is enumerated above.
 DEVELOPMENT_ORIGIN_REGEX: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# CORS preflight cache duration (seconds)
+# ---------------------------------------------------------------------------
+# P2-1-3 修复：提取 max_age 为命名常量，消除 CorsSettings.__init__ 与
+# get_cors_config() 之间的 DRY 违反，避免魔法数字分散导致配置漂移。
+#: Development environment: shorter cache (1 hour) so developers see policy
+#: changes quickly without waiting for the browser preflight cache to expire.
+MAX_AGE_DEVELOPMENT: int = 3600
+
+#: Production environment: longer cache (10 minutes) to reduce preflight
+#: request volume while still allowing policy updates to propagate within
+#: a reasonable window.
+MAX_AGE_PRODUCTION: int = 600
+
+
+def _resolve_max_age(env: str) -> int:
+    """Return the CORS preflight cache duration for the given environment.
+
+    Args:
+        env: Environment name (``"development"`` or ``"production"``).
+
+    Returns:
+        The ``max_age`` value in seconds.
+    """
+    return MAX_AGE_DEVELOPMENT if env == "development" else MAX_AGE_PRODUCTION
 
 
 # ---------------------------------------------------------------------------
@@ -299,6 +328,16 @@ def validate_cors_config(
                 "allow_credentials=True."
             )
 
+    # P2-11 修复：allow_credentials=True 但 origins 为空且无 regex 时，
+    # 所有跨域请求将被拒绝——前端将无法连接。仅 WARNING 不 raise，
+    # 因为这可能是运维主动关闭 CORS 的意图（虽然不推荐）。
+    if allow_credentials and not allow_origins and origin_regex is None:
+        logger.warning(
+            "CORS 配置异常: allow_credentials=True 但 allow_origins 为空且 "
+            "未设置 allow_origin_regex。所有跨域请求将被拒绝，前端可能无法连接。"
+            "请通过 ALLOWED_ORIGINS 环境变量配置允许的来源，或设置 LINGJING_ENV=development。"
+        )
+
 
 def enforce_startup_security() -> None:
     """Run the full CORS security gate and abort the process on failure.
@@ -397,7 +436,8 @@ class CorsSettings:
 
         # --- CORS flags ---
         self.allow_credentials = True
-        self.max_age = 3600 if self._env == "development" else 600
+        # P2-1-3 修复：使用 _resolve_max_age 统一管理 max_age，消除魔法数字。
+        self.max_age = _resolve_max_age(self._env)
 
         # --- Startup validation ---
         validate_cors_config(
@@ -487,8 +527,9 @@ class CorsSettings:
         if origin in self._origins:
             return True
 
-        # Regex match
-        if self._origin_regex and re.match(self._origin_regex, origin):
+        # Regex match — P2-1-2 修复：使用 re.fullmatch 强制完整匹配，
+        # 防止 ``https://localhost.evil.com`` 等前缀绕过。
+        if self._origin_regex and re.fullmatch(self._origin_regex, origin):
             return True
 
         return False
@@ -541,7 +582,8 @@ def is_allowed_origin(origin: str, override_env: Optional[str] = None) -> bool:
 
     if origin in origins:
         return True
-    if origin_regex and re.match(origin_regex, origin):
+    # P2-1-2 修复：使用 re.fullmatch 强制完整匹配，防止前缀绕过。
+    if origin_regex and re.fullmatch(origin_regex, origin):
         return True
     return False
 
@@ -622,7 +664,8 @@ def get_cors_config(override_env: Optional[str] = None) -> dict:
             "X-Frame-Options",
             "X-XSS-Protection",
         ],
-        "max_age": 600 if env == "production" else 3600,
+        # P2-1-3 修复：使用 _resolve_max_age 统一管理 max_age，消除魔法数字。
+        "max_age": _resolve_max_age(env),
     }
 
 

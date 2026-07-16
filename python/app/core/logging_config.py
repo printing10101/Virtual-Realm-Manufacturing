@@ -31,6 +31,12 @@ DEFAULT_MAX_BYTES = 50 * MB
 DEFAULT_BACKUP_COUNT = 5
 DEFAULT_RETENTION_DAYS = 30
 
+# P0-12 修复：线程本地递归保护，防止 LogSanitizer 内部调用 logger 时
+# 再次触发 SensitiveDataFilter.filter 导致无限递归。
+# 使用 threading.local() 保证多线程下标志位隔离。
+_REENTRANCY_GUARD = threading.local()
+_REENTRANCY_GUARD.active = False
+
 
 class SensitiveDataFilter(logging.Filter):
     """日志脱敏过滤器
@@ -38,15 +44,26 @@ class SensitiveDataFilter(logging.Filter):
     优化：使用预编译的组合"哨兵"正则做一次快速扫描，仅在命中哨兵时
     才执行逐条替换，避免对绝大多数不含敏感信息的日志消息执行 9 次正则
     替换的开销。
+
+    P0-12 修复：集成 LogSanitizer 作为第二层脱敏，补充 SensitiveDataFilter
+    未覆盖的场景（工艺参数、文件路径、当前用户名、API 密钥模式等）。
+    LogSanitizer 失败不得阻断日志记录，全部异常被捕获并降级为仅使用
+    SensitiveDataFilter 自身的脱敏结果。
     """
 
     # 敏感信息模式（顺序保持稳定，便于阅读与维护）
     PATTERNS = [
         (re.compile(r'password["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'password=***'),
+        (re.compile(r'passwd["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'passwd=***'),
+        (re.compile(r'pwd["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'pwd=***'),
         (re.compile(r'token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'token=***'),
+        (re.compile(r'refresh[_-]?token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'refresh_token=***'),
         (re.compile(r'secret["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'secret=***'),
         (re.compile(r'api[_-]?key["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'api_key=***'),
+        (re.compile(r'access[_-]?key["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'access_key=***'),
         (re.compile(r'authorization["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'authorization=***'),
+        (re.compile(r'cookie["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'cookie=***'),
+        (re.compile(r'private[_-]?key["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'private_key=***'),
         # JWT token
         (re.compile(r'eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'), 'jwt=***'),
         # 邮箱
@@ -60,17 +77,114 @@ class SensitiveDataFilter(logging.Filter):
     # 组合哨兵：任一敏感关键字命中即触发逐条替换
     # 选择"出现概率极低但匹配廉价"的子串作为哨兵
     _SENTINEL = re.compile(
-        r'password|token|secret|api[_-]?key|authorization|eyJ|@|\d{17}|1[3-9]\d{9}',
+        r'password|passwd|pwd|token|refresh[_-]?token|secret|api[_-]?key|'
+        r'access[_-]?key|authorization|cookie|private[_-]?key|eyJ|@|\d{17}|1[3-9]\d{9}',
         re.IGNORECASE,
     )
 
+    def __init__(self) -> None:
+        super().__init__()
+        # P0-12 修复：延迟导入 LogSanitizer 避免循环依赖，初始化失败时降级为 None
+        # 日志记录仍由 SensitiveDataFilter 自身模式保证，LogSanitizer 仅作为补充层
+        self._log_sanitizer = None
+        try:
+            from app.core.log_sanitizer import sanitizer as _sanitizer_instance
+            self._log_sanitizer = _sanitizer_instance
+        except Exception as init_err:  # noqa: BLE001
+            # 初始化失败不阻断日志系统，记录到 stderr（此时日志系统可能未就绪）
+            import sys as _sys
+            _sys.stderr.write(
+                f"[SensitiveDataFilter] LogSanitizer init failed, "
+                f"degraded mode (process params/paths NOT sanitized): {init_err}\n"
+            )
+
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.msg
+        args = record.args
+
+        # P0-12 修复：递归保护 —— LogSanitizer 失败时若调用 logger.debug 会
+        # 再次触发本 filter，可能无限递归。使用线程本地标志位阻断重入。
+        if getattr(_REENTRANCY_GUARD, "active", False):
+            # 已在脱敏流程中，跳过 LogSanitizer 二次脱敏，直接放行
+            return True
+
+        # 若存在 args，先将 msg 与 args 合并为完整字符串再做脱敏，
+        # 确保参数化日志（如 logger.info("user %s login", password)）中的
+        # 敏感数据也被覆盖。合并失败时回退为分别脱敏 msg 与 args。
+        if args:
+            try:
+                if isinstance(args, dict):
+                    merged = str(msg) % args
+                else:
+                    merged = str(msg) % args
+                record.msg = merged
+                record.args = None
+                msg = merged
+            except (TypeError, ValueError, KeyError, IndexError):
+                # 格式化失败：分别脱敏 msg 与 args
+                pass
+
         if isinstance(msg, str) and self._SENTINEL.search(msg):
             for pattern, replacement in self.PATTERNS:
                 msg = pattern.sub(replacement, msg)
             record.msg = msg
+
+        # P0-12 修复：第二层脱敏 —— 委托 LogSanitizer 处理工艺参数、
+        # 文件路径、当前用户名等 SensitiveDataFilter 未覆盖的模式。
+        # 任何异常被捕获以保证日志记录不被阻断（脱敏失败优于日志丢失）。
+        if self._log_sanitizer is not None and isinstance(record.msg, str):
+            _REENTRANCY_GUARD.active = True
+            try:
+                record.msg = self._log_sanitizer.sanitize(record.msg)
+            except Exception:  # noqa: BLE001
+                # LogSanitizer 异常不得影响日志输出，降级为仅使用第一层脱敏。
+                # 不使用 logger.debug 记录此错误以避免递归；降级信息已通过
+                # __init__ 的 stderr 警告提示运维方。
+                pass
+            finally:
+                _REENTRANCY_GUARD.active = False
+
+        # 若 args 仍存在（合并失败），对 args 中的字符串逐一脱敏
+        if record.args:
+            if isinstance(record.args, tuple):
+                record.args = tuple(
+                    self._sanitize_text(a) if isinstance(a, str) else a
+                    for a in record.args
+                )
+            elif isinstance(record.args, dict):
+                record.args = {
+                    k: self._sanitize_text(v) if isinstance(v, str) else v
+                    for k, v in record.args.items()
+                }
+
         return True
+
+    def _sanitize_text(self, text: str) -> str:
+        """对单个字符串应用全部敏感词替换。"""
+        if not isinstance(text, str):
+            return text
+        if not self._SENTINEL.search(text):
+            # 即使哨兵未命中，仍交给 LogSanitizer 处理工艺参数/路径等模式
+            if self._log_sanitizer is not None and not getattr(_REENTRANCY_GUARD, "active", False):
+                _REENTRANCY_GUARD.active = True
+                try:
+                    return self._log_sanitizer.sanitize(text)
+                except Exception:  # noqa: BLE001
+                    return text
+                finally:
+                    _REENTRANCY_GUARD.active = False
+            return text
+        for pattern, replacement in self.PATTERNS:
+            text = pattern.sub(replacement, text)
+        if self._log_sanitizer is not None and not getattr(_REENTRANCY_GUARD, "active", False):
+            _REENTRANCY_GUARD.active = True
+            try:
+                text = self._log_sanitizer.sanitize(text)
+            except Exception:  # noqa: BLE001
+                pass
+            finally:
+                _REENTRANCY_GUARD.active = False
+        return text
 
 
 class RequestIdFilter(logging.Filter):
@@ -180,7 +294,7 @@ class _DailySizeRotatingHandler(logging.Handler):
                 self._stream.close()
             except (OSError, ValueError) as e:
                 # 流关闭失败时仅记录，置空引用避免重复关闭
-                logger.debug(f"Log stream close failed: {e}", exc_info=True)
+                logger.debug("Log stream close failed: %s", e, exc_info=True)
             self._stream = None
             self._current_file = None
 
@@ -235,7 +349,7 @@ class _DailySizeRotatingHandler(logging.Handler):
                     shutil.rmtree(item, ignore_errors=True)
         except FileNotFoundError as e:
             # 日志目录在清理过程中被并发删除是常见情况，记录后继续
-            logger.debug(f"Log root already removed during cleanup: {e}")
+            logger.debug("Log root already removed during cleanup: %s", e)
 
     def emit(self, record: logging.LogRecord):
         try:
@@ -344,27 +458,65 @@ def configure_logging(
         try:
             import sentry_sdk
             from sentry_sdk.integrations.logging import LoggingIntegration
-            
+
             sentry_dsn = os.getenv("SENTRY_DSN")
             if sentry_dsn:
+                # P2-2-1/P2-2-2 修复：添加 before_send 回调过滤敏感信息，
+                # 并显式设置 send_default_pii=False，防止 Sentry 自动采集
+                # 用户 IP、Cookie、Authorization 头等 PII，满足 GDPR/SOC 2 合规。
+                _sentry_sensitive_keys = frozenset({
+                    "password", "token", "secret", "api_key", "apikey",
+                    "authorization", "cookie", "refresh_token",
+                    "access_token", "private_key", "session_id",
+                })
+
+                def _sentry_scrub(obj):
+                    """递归脱敏 Sentry event 中的敏感字段。"""
+                    if isinstance(obj, dict):
+                        return {
+                            k: ("***" if k.lower() in _sentry_sensitive_keys else _sentry_scrub(v))
+                            for k, v in obj.items()
+                        }
+                    if isinstance(obj, list):
+                        return [_sentry_scrub(i) for i in obj]
+                    return obj
+
+                def _sentry_before_send(event, hint):  # noqa: ANN001
+                    """Sentry event 发送前过滤敏感信息。"""
+                    try:
+                        if "request" in event:
+                            event["request"] = _sentry_scrub(event["request"])
+                        if "extra" in event:
+                            event["extra"] = _sentry_scrub(event["extra"])
+                        if "contexts" in event:
+                            event["contexts"] = _sentry_scrub(event["contexts"])
+                    except Exception:  # noqa: BLE001
+                        # 脱敏失败不应阻断 event 上报，但记录到本地日志
+                        root_logger.warning("Sentry before_send scrub failed", exc_info=True)
+                    return event
+
                 sentry_sdk.init(
                     dsn=sentry_dsn,
                     integrations=[
                         LoggingIntegration(
-                            level=logging.INFO,
+                            # P2-2-3 修复：breadcrumb 级别从 INFO 提升到 WARNING，
+                            # 减少 Sentry 事件体积与配额消耗，仅保留警告及以上上下文。
+                            level=logging.WARNING,
                             event_level=logging.ERROR,
                         ),
                     ],
                     traces_sample_rate=0.1,
                     environment=os.getenv("APP_ENV", "production"),
+                    before_send=_sentry_before_send,
+                    send_default_pii=False,
                 )
-                root_logger.info("Sentry integration enabled")
+                root_logger.info("Sentry integration enabled (PII filtering active)")
             else:
                 root_logger.warning("Sentry enabled but SENTRY_DSN not set")
         except ImportError:
             root_logger.warning("sentry-sdk not installed, Sentry integration disabled")
         except Exception as e:
-            root_logger.error(f"Failed to initialize Sentry: {e}")
+            root_logger.error("Failed to initialize Sentry: %s", e, exc_info=True)
 
     root_logger.info(
         "Logging configured [level=%s format=%s]",
@@ -399,11 +551,87 @@ def shutdown_logging() -> None:
             logger.debug("QueueListener stop failed: %s", e, exc_info=True)
         try:
             delattr(root_logger, "_file_queue_listener")
-        except AttributeError:
-            pass
+        except AttributeError as del_attr:
+            # 属性不存在说明已被清理或从未设置，属于正常情况
+            logger.debug("_file_queue_listener already absent: %s", del_attr)
     # 刷新所有 handler，确保缓冲区写入
     for handler in root_logger.handlers:
         try:
             handler.flush()
-        except (OSError, ValueError, RuntimeError):
-            pass
+        except (OSError, ValueError, RuntimeError) as flush_err:
+            # shutdown 路径上 flush 失败不应阻塞，记录便于排查
+            logger.debug("Handler flush failed during shutdown: %s", flush_err)
+
+
+if __name__ == "__main__":
+    # 自测：验证参数化日志脱敏生效
+    print("=== SensitiveDataFilter 自测 ===")
+
+    f = SensitiveDataFilter()
+
+    # 1. 参数化日志（tuple args）—— 修复核心场景
+    record = logging.LogRecord(
+        name="test", level=logging.INFO, pathname=__file__, lineno=0,
+        msg="user %s login", args=("password=s3cr3t",), exc_info=None,
+    )
+    f.filter(record)
+    output = record.getMessage()
+    assert "s3cr3t" not in output, f"参数化日志脱敏失败: {output}"
+    assert "password=***" in output, f"脱敏标记缺失: {output}"
+    print(f"[OK] tuple 参数化脱敏: {output!r}")
+
+    # 2. dict 参数
+    record2 = logging.LogRecord(
+        name="test", level=logging.INFO, pathname=__file__, lineno=0,
+        msg="login token=%(token)s", args={"token": "tk_abc123def"}, exc_info=None,
+    )
+    f.filter(record2)
+    output2 = record2.getMessage()
+    assert "tk_abc123def" not in output2, f"dict 参数脱敏失败: {output2}"
+    print(f"[OK] dict 参数脱敏: {output2!r}")
+
+    # 3. 普通 msg 脱敏（无 args）
+    record3 = logging.LogRecord(
+        name="test", level=logging.INFO, pathname=__file__, lineno=0,
+        msg="db connect with password=hunter2 ok", args=None, exc_info=None,
+    )
+    f.filter(record3)
+    output3 = record3.getMessage()
+    assert "hunter2" not in output3, f"普通 msg 脱敏失败: {output3}"
+    print(f"[OK] 普通 msg 脱敏: {output3!r}")
+
+    # 4. 新增关键词覆盖验证
+    for kw in ("cookie=abc123", "private_key=PEMDATA", "access_key=AKIA123",
+               "refresh_token=rt_456", "passwd=p@ss", "pwd=short"):
+        rec = logging.LogRecord(
+            name="test", level=logging.INFO, pathname=__file__, lineno=0,
+            msg=f"config {kw}", args=None, exc_info=None,
+        )
+        f.filter(rec)
+        out = rec.getMessage()
+        value = kw.split("=", 1)[1]
+        assert value not in out, f"关键词 {kw!r} 脱敏失败: {out}"
+        print(f"[OK] 关键词脱敏: {kw!r} -> {out!r}")
+
+    # 5. 大小写不敏感验证
+    record5 = logging.LogRecord(
+        name="test", level=logging.INFO, pathname=__file__, lineno=0,
+        msg="PASSWORD=MySecret TOKEN=abc", args=None, exc_info=None,
+    )
+    f.filter(record5)
+    output5 = record5.getMessage()
+    assert "MySecret" not in output5, f"大小写不敏感脱敏失败: {output5}"
+    assert "abc" not in output5, f"TOKEN 大写脱敏失败: {output5}"
+    print(f"[OK] 大小写不敏感: {output5!r}")
+
+    # 6. 无敏感信息日志不受影响
+    record6 = logging.LogRecord(
+        name="test", level=logging.INFO, pathname=__file__, lineno=0,
+        msg="task %s completed in %d ms", args=("train_001", 300), exc_info=None,
+    )
+    f.filter(record6)
+    output6 = record6.getMessage()
+    assert output6 == "task train_001 completed in 300 ms", f"正常日志被篡改: {output6}"
+    print(f"[OK] 正常日志不受影响: {output6!r}")
+
+    print("=== 全部通过 ===")

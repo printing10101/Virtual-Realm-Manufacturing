@@ -2,7 +2,7 @@
 实验11: 可视化与结果分析脚本
 
 生成论文所需的所有图表:
-- 图2: SLD对比图(CT-LTC vs 基线 vs 真实)
+- 图2: SLD对比图(DL-LNN vs 基线 vs 真实)
 - 图3: 跨工况泛化热力图
 - 图4: 消融实验柱状图
 - 图5: 训练曲线
@@ -86,8 +86,8 @@ class ExperimentVisualizer:
             
             for idx, (model_name, pred_sld) in enumerate(predictions.items()):
                 color = colors[idx % len(colors)]
-                linestyle = '--' if 'CT-LTC' not in model_name else '-'
-                linewidth = 2.0 if 'CT-LTC' in model_name else 1.5
+                linestyle = '--' if 'DL-LNN' not in model_name else '-'
+                linewidth = 2.0 if 'DL-LNN' in model_name else 1.5
                 
                 ax.plot(spindle_speeds, pred_sld, linestyle=linestyle,
                        color=color, linewidth=linewidth, label=model_name,
@@ -362,7 +362,7 @@ class ExperimentVisualizer:
             row_data = [model.replace("_", " ")]
             for metric in metrics:
                 value = results[model][metric]
-                if model == "CT-LTC (Ours)":
+                if model == "DL-LNN (Ours)":
                     row_data.append(f"\\textbf{{{value:.3f}}}")
                 else:
                     row_data.append(f"{value:.3f}")

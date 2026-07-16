@@ -12,6 +12,13 @@ on:
   schedule:
     - cron: '0 6 * * 1'
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHONUNBUFFERED: '1'
   LNN_AUTH_ENABLED: 'false'
@@ -21,6 +28,10 @@ jobs:
     name: 全量性能基准测试
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # 该 job 需要 issues: write 以便在检测到严重性能回归时创建 GitHub Issue
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: 检出代码

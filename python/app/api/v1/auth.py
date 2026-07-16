@@ -24,11 +24,75 @@ from typing import Any
 from app.middleware.rate_limiter import limiter
 from app.core.request_id import get_request_id as _get_request_id
 from app.core.safe_errors import safe_error_message
+from app.audit.audit_log import get_audit_log, OperationStatus
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 security_scheme = HTTPBearer()
+
+
+def _extract_request_meta(request: Request) -> dict[str, str]:
+    """提取客户端请求元数据用于审计日志（已脱敏）。
+
+    P0-17 修复：登录/登出审计日志需要记录客户端 IP 和 User-Agent 以满足
+    FDA 21 CFR Part 11 §11.10(d) 访问控制事件追溯要求。本函数确保：
+    1. IP 优先取 X-Forwarded-For 首段（反向代理场景），回退到 client.host
+    2. User-Agent 截断至 200 字符防止日志膨胀
+    3. 不记录密码、token 等敏感字段
+    """
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded.split(",")[0].strip() if forwarded else (
+        request.client.host if request.client else "unknown"
+    )
+    user_agent = request.headers.get("User-Agent", "")[:200]
+    return {
+        "client_ip": client_ip,
+        "user_agent": user_agent,
+        "request_id": _get_request_id(),
+    }
+
+
+def _audit_auth_event(
+    event_type: str,
+    operation_status: OperationStatus,
+    username: str | None,
+    request: Request,
+    **extra_metadata: Any,
+) -> None:
+    """安全审计事件写入辅助函数（P0-17 修复）。
+
+    包装 get_audit_log().log_security_event，统一处理异常：
+    审计日志写入失败不应阻断业务流程（登录/登出仍需完成），
+    但必须记录 error 级别日志以便运维感知审计链异常。
+
+    Args:
+        event_type: 事件类型（"auth_login"/"auth_logout"/"auth_refresh"/
+            "auth_register"/"auth_login_failed" 等）
+        operation_status: OperationStatus.SUCCESS / FAILED
+        username: 目标用户名（登录失败时可能为请求体中的用户名）
+        request: FastAPI Request 对象，用于提取 IP/UA
+        **extra_metadata: 额外元数据（如失败原因 failure_reason）
+    """
+    try:
+        meta = _extract_request_meta(request)
+        meta.update(extra_metadata)
+        get_audit_log().log_security_event(
+            event_type=event_type,
+            operation_status=operation_status,
+            username=username,
+            input_parameters={"username": username} if username else {},
+            metadata=meta,
+        )
+    except Exception as audit_err:  # noqa: BLE001
+        # 审计日志失败不阻断业务，但必须告警
+        logger.error(
+            "[AUDIT] Failed to write auth audit log (type=%s, user=%s): %s",
+            event_type,
+            username,
+            audit_err,
+            exc_info=True,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -124,8 +188,18 @@ async def register(request: Request, body: UserCreate):
         hashed = hash_password(body.password)
         record = store.create_user(body.username, hashed)
         logger.info("User registered: %s", body.username)
+        # P0-17 修复：注册成功写入哈希链审计日志（FDA 21 CFR Part 11 §11.10(d)）
+        _audit_auth_event(
+            "auth_register",
+            OperationStatus.SUCCESS,
+            body.username,
+            request,
+        )
+        # P1-17 修复：register 成功响应格式与 login/refresh/logout 对齐，
+        # 使用 "code": 0 而非 "status": 200，避免前端需要为注册单独写解析逻辑。
+        # 同时补充 request_id 字段，与该端点的错误响应结构对称。
         return {
-            "status": status.HTTP_200_OK,
+            "code": 0,
             "message": "注册成功",
             "data": UserResponse(
                 username=record.username,
@@ -133,12 +207,22 @@ async def register(request: Request, body: UserCreate):
                 created_at=record.created_at,
                 last_login=record.last_login,
             ).model_dump(),
+            "request_id": _get_request_id(),
         }
     except ValueError as e:
         # 修复 [B27]：避免 str(e) 直接进入响应，泄露内部异常详情（如数据库错误、库版本等）
         # 使用 safe_error_message 包装，仅在 debug 模式下保留原始信息
-        safe = safe_error_message(e, context="auth.refresh_token", fallback="认证服务异常，请稍后重试")
-        logger.error("[auth.refresh_token] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        # P1-17 修复：修正 context 参数 copy-paste 错误（原为 "auth.refresh_token"）
+        safe = safe_error_message(e, context="auth.register", fallback="注册服务异常，请稍后重试")
+        logger.error("[auth.register] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        # P0-17 修复：注册失败也需写入审计日志
+        _audit_auth_event(
+            "auth_register",
+            OperationStatus.FAILED,
+            body.username,
+            request,
+            failure_reason="user_creation_error",
+        )
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={"code": 1009, "message": safe["message"], "request_id": _get_request_id(), "error_id": safe["error_id"]},
@@ -152,9 +236,25 @@ async def login(request: Request, body: UserLogin):
     user = store.get_user(body.username)
 
     if user is None or not user.is_active:
+        # P0-17 修复：登录失败写入哈希链审计日志（SOC 2 CC6.1）
+        _audit_auth_event(
+            "auth_login",
+            OperationStatus.FAILED,
+            body.username,
+            request,
+            failure_reason="user_not_found_or_inactive",
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
 
     if not verify_password(body.password, user.password_hash):
+        # P0-17 修复：密码错误写入审计日志
+        _audit_auth_event(
+            "auth_login",
+            OperationStatus.FAILED,
+            body.username,
+            request,
+            failure_reason="invalid_password",
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
 
     store.update_last_login(body.username)
@@ -164,6 +264,14 @@ async def login(request: Request, body: UserLogin):
     refresh_token = create_refresh_token({"sub": user.username, "jti": str(uuid.uuid4())})
 
     logger.info("User logged in: %s", body.username)
+    # P0-17 修复：登录成功写入哈希链审计日志（FDA 21 CFR Part 11 §11.10(d)）
+    _audit_auth_event(
+        "auth_login",
+        OperationStatus.SUCCESS,
+        body.username,
+        request,
+        role=user.role,
+    )
     return {
         "code": 0,
         "message": "登录成功",
@@ -205,12 +313,35 @@ async def refresh_token(request: Request, body: TokenRequest):
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用")
 
+    # P1-19 修复：refresh 时同步撤销旧 access token，避免旧 access token 在
+    # 过期前继续有效形成"令牌重叠窗口"。客户端应在 refresh 请求体中携带
+    # access_token 字段；未提供时仅撤销 refresh token（向后兼容）。
+    old_access_token_str = body.access_token
     ban_list.ban(refresh_token_str)
+    if old_access_token_str:
+        try:
+            ban_list.ban(old_access_token_str)
+        except Exception as exc:  # noqa: BLE001
+            # 撤销旧 access token 失败不应阻断 refresh 主流程（新令牌已签发），
+            # 但需记录 warning 以便运维感知黑名单写入异常。
+            logger.warning(
+                "[auth.refresh] 撤销旧 access token 失败（user=%s）: %s",
+                username,
+                exc,
+                exc_info=True,
+            )
     new_jti = str(uuid.uuid4())
     new_access = create_access_token({"sub": username, "role": user.role, "jti": new_jti})
     new_refresh = create_refresh_token({"sub": username, "jti": str(uuid.uuid4())})
 
     logger.info("Token refreshed for user: %s", username)
+    # P0-17 修复：令牌刷新成功写入审计日志
+    _audit_auth_event(
+        "auth_refresh",
+        OperationStatus.SUCCESS,
+        username,
+        request,
+    )
     return {
         "code": 0,
         "message": "Token刷新成功",
@@ -228,6 +359,22 @@ async def logout(request: Request, body: TokenRequest):
     access_token_str = body.access_token
     refresh_token_str = body.refresh_token
 
+    # 尝试从 access_token 解析用户名用于审计日志（登出前 token 可能已失效，
+    # 解析失败时 username 为 None，不影响登出业务流程）
+    logout_username: str | None = None
+    if access_token_str:
+        try:
+            payload = decode_token_strict(access_token_str, expected_type="access")
+            if payload is not None:
+                logout_username = payload.get("sub")
+        except Exception as exc:  # noqa: BLE001
+            # P1-5 修复：token 已失效或无效时无法解析用户名，仅记录匿名登出。
+            # 不得静默 pass——JWT 库异常可能暗示密钥配置错误或 token 格式篡改，
+            # debug 级日志便于安全审计回溯，但不影响登出主流程。
+            logger.debug(
+                "logout token 解析失败，匿名登出: %s", exc, exc_info=True
+            )
+
     ban_list = get_token_ban_list()
     if access_token_str:
         ban_list.ban(access_token_str)
@@ -235,6 +382,13 @@ async def logout(request: Request, body: TokenRequest):
         ban_list.ban(refresh_token_str)
 
     logger.info("User logged out")
+    # P0-17 修复：登出写入哈希链审计日志（FDA 21 CFR Part 11 §11.10(d)）
+    _audit_auth_event(
+        "auth_logout",
+        OperationStatus.SUCCESS,
+        logout_username,
+        request,
+    )
     return {"code": 0, "message": "登出成功"}
 
 

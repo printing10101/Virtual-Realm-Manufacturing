@@ -267,7 +267,18 @@ class BGEEmbedder:
 
 
 class GCodeEmbedder:
-    """G代码指令序列嵌入"""
+    """G代码指令序列嵌入（占位实现，未经训练）。
+
+    P1 学术诚信警告：
+        本嵌入矩阵为随机初始化的占位实现，未经过训练，不具备语义表示能力。
+        下游 RAG 检索/相似度计算基于此伪嵌入的结果不可信，禁止用于：
+        - 学术论文实验（项目目标期刊：Journal of Intelligent Manufacturing）
+        - 生产环境工艺决策
+        - 任何需要真实语义相似度的场景
+
+        生产环境必须替换为预训练 G-code 嵌入模型（如 sentence-transformers
+        或自定义训练的 embedding 模型），从磁盘加载预训练权重。
+    """
 
     def __init__(self, config: GCodeProcessorConfig, output_dim: Optional[int] = None):
         self.config = config
@@ -275,10 +286,16 @@ class GCodeEmbedder:
         self._vocab_size = 21
         self._projection = None
 
-        np.random.seed(42)
-        self._embeddings = np.random.randn(
-            self._vocab_size, self.output_dim
+        # P1 学术诚信修复：移除 np.random.seed(42) 全局污染（影响其他模块的随机性），
+        # 改用局部 Generator。注意：此嵌入矩阵仍为随机占位实现，见类 docstring 警告。
+        rng = np.random.default_rng(42)
+        self._embeddings = rng.standard_normal(
+            (self._vocab_size, self.output_dim)
         ).astype(np.float32) / np.sqrt(self.output_dim)
+        logger.warning(
+            "GCodeEmbedder 使用随机占位嵌入矩阵（未经训练），"
+            "下游 RAG 检索结果不可信，禁止用于生产或学术论文实验"
+        )
 
     def embed(self, encoded: np.ndarray) -> np.ndarray:
         """对解析后的G代码指令进行池化嵌入"""

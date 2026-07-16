@@ -23,6 +23,7 @@
           >
             <!-- 步骤指示器 -->
             <div class="tour-indicators">
+              <!-- 静态列表，index 作为 key 可接受 -->
               <span
                 v-for="(_, index) in steps"
                 :key="index"
@@ -267,8 +268,9 @@ function saveProgress() {
       currentStep: currentStepIndex.value,
       timestamp: Date.now()
     }))
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    // localStorage 配额超限或被禁用时仅记录日志，不影响引导流程
+    console.warn('[Tour] saveProgress: failed to write localStorage:', e)
   }
 }
 
@@ -282,8 +284,14 @@ function loadProgress(): number | null {
         return data.currentStep
       }
     }
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    // localStorage 数据损坏时清理脏数据并返回 null，避免后续每次启动都重复抛错
+    console.warn('[Tour] loadProgress: failed to parse localStorage, ignoring saved progress:', e)
+    try {
+      localStorage.removeItem(props.storageKey)
+    } catch {
+      /* localStorage 不可用时无可清理，忽略 */
+    }
   }
   return null
 }
@@ -291,8 +299,8 @@ function loadProgress(): number | null {
 function clearProgress() {
   try {
     localStorage.removeItem(props.storageKey)
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    console.warn('[Tour] clearProgress: failed to remove localStorage:', e)
   }
 }
 
@@ -309,13 +317,15 @@ function handleResize() {
 }
 
 // 生命周期
+let tourTimer: ReturnType<typeof setTimeout> | null = null
+
 onMounted(() => {
   window.addEventListener('resize', handleResize)
-  
+
   // 如果配置为自动开始，则启动引导
   if (props.autoStart) {
     // 延迟启动，确保页面完全加载
-    setTimeout(() => {
+    tourTimer = setTimeout(() => {
       start()
     }, 500)
   }
@@ -323,6 +333,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  if (tourTimer !== null) {
+    clearTimeout(tourTimer)
+    tourTimer = null
+  }
 })
 
 // 暴露方法

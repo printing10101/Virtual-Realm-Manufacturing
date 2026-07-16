@@ -64,9 +64,10 @@ def _load_model(device: str = "cpu") -> Any:
     checkpoint_path = os.path.join(_model_dir, "best_model.pt")
 
     if os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        # 安全修复 [P1-BE-2]：weights_only=True 防止 pickle 反序列化任意代码执行
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
         model.load_state_dict(checkpoint["model_state_dict"])
-        logger.info(f"已加载模型检查点: {checkpoint_path}")
+        logger.info("已加载模型检查点: %s", checkpoint_path)
     else:
         logger.warning(
             f"未找到模型检查点: {checkpoint_path}。"
@@ -190,7 +191,7 @@ def predict_cutting_force(
             "model_version": "pinn_v1.0",
         }
     except (RuntimeError, ValueError, TypeError) as e:
-        logger.warning(f"PINN 推理失败 ({e})，回退到 Kienzle 解析解")
+        logger.warning("PINN 推理失败 (%s)，回退到 Kienzle 解析解", e)
         return {
             "Fx": kienzle_result["Fx"],
             "Fy": kienzle_result["Fy"],

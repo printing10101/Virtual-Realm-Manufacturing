@@ -74,8 +74,8 @@ def generate_milling_data_with_features(num_samples=1500, seq_len=20):
     }
 
 
-class CTLTCModel(nn.Module):
-    """CT-LTC模型简化版"""
+class DLLNNModel(nn.Module):
+    """DL-LNN模型简化版"""
     def __init__(self, input_dim=8, hidden_dim=64, num_layers=3, output_dim=1):
         super().__init__()
         self.input_dim = input_dim
@@ -121,7 +121,7 @@ def train_and_evaluate(X_train, y_train, X_test, y_test, feature_indices=None, e
     X_test_t = torch.FloatTensor(X_test).to(device)
     y_test_t = torch.FloatTensor(y_test).to(device)
     
-    model = CTLTCModel(input_dim=X_train.shape[2]).to(device)
+    model = DLLNNModel(input_dim=X_train.shape[2]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.MSELoss()
     

@@ -11,7 +11,7 @@ import time
 from typing import Dict, List, Tuple
 from torch.utils.data import Dataset, DataLoader
 
-from models import CTLTCModel
+from models import DLLNNModel
 from data_generator import PHM2010Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -123,7 +123,7 @@ def evaluate_early_detection(
             batch_size, seq_len, input_dim = features.shape
             
             # 模型预测 - 处理序列输入
-            if hasattr(model, 'ltc_cells'):  # CT-LTC
+            if hasattr(model, 'ltc_cells'):  # DL-LNN
                 outputs_list = []
                 for t in range(seq_len):
                     x_t = features[:, t, :]
@@ -223,8 +223,8 @@ def run_experiment():
     # 创建模型
     print("\n创建模型...")
     models = {
-        "CT-LTC": CTLTCModel(
-            input_dim=2,
+        "DL-LNN": DLLNNModel(
+            input_dim=7,
             hidden_dim=64,
             num_layers=3,
             output_dim=1,
@@ -232,13 +232,13 @@ def run_experiment():
             dropout=0.2
         ),
         "LSTM": torch.nn.LSTM(
-            input_size=2,
+            input_size=7,
             hidden_size=64,
             num_layers=2,
             batch_first=True
         ),
         "GRU": torch.nn.GRU(
-            input_size=2,
+            input_size=7,
             hidden_size=64,
             num_layers=2,
             batch_first=True
@@ -266,8 +266,8 @@ def run_experiment():
                 # 处理序列输入
                 batch_size, seq_len, input_dim = features.shape
                 
-                if model_name == "CT-LTC":
-                    # CT-LTC 需要逐时间步处理
+                if model_name == "DL-LNN":
+                    # DL-LNN 需要逐时间步处理
                     outputs_list = []
                     for t in range(seq_len):
                         x_t = features[:, t, :]  # [batch, input_dim]

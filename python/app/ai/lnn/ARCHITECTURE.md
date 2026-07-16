@@ -1,6 +1,6 @@
 # 混合推理引擎系统 - 架构设计文档
 
-> **实现状态说明（2026-07-03 修订）**
+> **实现状态说明（2026-07-13 修订）**
 >
 > 本文档描述的是目标架构（target design）。当前代码库中的实现状态如下：
 >
@@ -9,17 +9,20 @@
 > | 核心数据模型（TaskInput/RoutingDecision/InferenceResult/FusionResult） | `core.py` | ✅ 完整实现 |
 > | LNN 模型（CFC/LTC/Hybrid） | `models/` | ✅ 完整实现 |
 > | 训练与推理 | `training/`、`inference/` | ✅ 完整实现 |
-> | `TaskRouter` | `router/task_router.py` | ⚠️ 实验性 stub（仅返回固定决策） |
-> | `DempsterShaferFusion` | `fusion.py` | ⚠️ 实验性 stub（仅做加权平均） |
-> | `HybridInferenceEngine` | `engine.py` | ⚠️ 实验性 stub（委托给上述 stub） |
+> | `TaskRouter` | `router/task_router.py` | ✅ 完整实现（混合规则 + 在线 ML 评分 + 贝叶斯收缩） |
+> | `DempsterShaferFusion` | `fusion.py` | ✅ 完整实现（Dempster 组合规则 + 冲突阈值回退 + 70/30 DS 加权混合） |
+> | `HybridInferenceEngine` | `engine.py` | ✅ 完整实现（真实多模型编排 + DS 融合 + 在线 outcome 反馈 + 流式扩展） |
+> | 流式长时序扩展（借鉴 lingbot-map GCT） | `inference/streaming.py` | ✅ 完整实现（分页隐状态 + 关键帧策略 + 锚点上下文 + 轨迹记忆 + 窗口化推理） |
 >
-> stub 组件的公共 API 与本文档契约一致，可在下游代码中安全导入；但其
-> 内部算法尚未实现，决策结果会带有 `"stub": True` 元数据标记。完整算法
-> 实现后，本文档无需修改公共 API 描述。
+> 所有组件的公共 API 与本文档契约一致，可在下游代码中安全导入；决策结果不再带
+> `"stub": True` 标记（`HybridInferenceEngine.get_engine_stats()` 显式输出
+> `stub_implementation: False`）。`engine.py` 还通过
+> `register_streaming_predictor` / `infer_stream` / `infer_windowed` 提供长时序
+> 加工流推理能力。
 
 ## 1. 系统概述
 
-混合推理引擎系统是一个高可用、可扩展、可维护的AI推理框架，整合了LNN（神经逻辑网络）、LLM（大语言模型）、Rule（规则引擎）和Hybrid（混合模式）四种推理引擎，通过智能任务路由和Dempster-Shafer证据理论结果融合，实现最优推理效果。
+混合推理引擎系统是一个高可用、可扩展、可维护的AI推理框架，整合了LNN（液态神经网络）、LLM（大语言模型）、Rule（规则引擎）和Hybrid（混合模式）四种推理引擎，通过智能任务路由和Dempster-Shafer证据理论结果融合，实现最优推理效果。
 
 ### 1.1 设计目标
 

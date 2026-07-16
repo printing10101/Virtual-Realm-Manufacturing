@@ -24,7 +24,6 @@ def _find_uniwear_csv() -> str:
     candidates = [
         os.path.join(proj, "python", "data", "uniwear", "uniwear.csv"),
         os.path.join(proj, "data", "uniwear", "uniwear.csv"),
-        os.path.join(proj, "uniwear-dataset-main", "data", "uniwear.csv"),
     ]
     for c in candidates:
         if os.path.exists(c):
@@ -34,7 +33,22 @@ def _find_uniwear_csv() -> str:
 
 def load_uniwear_data(
     path: str | None = None,
-) -> tuple[np.ndarray, np.ndarray, dict[str, Any], StandardScaler]:
+    random_seed: int = 42,
+    val_size: float = 0.10,
+    test_size: float = 0.10,
+) -> tuple[dict[str, tuple[np.ndarray, np.ndarray]], dict[str, Any], StandardScaler]:
+    """加载UniWear数据集并完成预处理与train/val/test划分。
+
+    为避免数据泄漏，先按 ``random_seed`` 划分 train/val/test，再仅用
+    训练集拟合 ``StandardScaler``，随后用该 scaler 转换验证集与测试集，
+    最后对标准化后的特征做 4σ 截断。
+
+    Returns:
+        splits: ``{"train": (X_train, y_train), "val": ..., "test": ...}``，
+                其中 X 已用训练集统计量标准化。
+        metadata: 数据集元信息（n_samples 为全量样本数）。
+        scaler: 仅在训练集上拟合好的 ``StandardScaler``，供推理时复用。
+    """
     if path is None:
         path = _find_uniwear_csv()
 
@@ -56,16 +70,40 @@ def load_uniwear_data(
     y = df[label_col].values.astype(np.float64)
     X = df.drop(columns=[label_col]).values.astype(np.float64)
 
+    feature_names = [c for c in df.columns if c != label_col]
+
+    # 先划分 train/val/test，再用训练集拟合 scaler，避免测试集统计量泄漏
+    raw_splits = split_dataset(
+        X,
+        y,
+        random_seed=random_seed,
+        val_size=val_size,
+        test_size=test_size,
+    )
+    X_train, y_train = raw_splits["train"]
+    X_val, y_val = raw_splits["val"]
+    X_test, y_test = raw_splits["test"]
+
     scaler = StandardScaler()
-    X = scaler.fit_transform(X)
+    X_train = scaler.fit_transform(X_train)
+    X_val = scaler.transform(X_val)
+    X_test = scaler.transform(X_test)
 
     # Handle extreme outliers by clipping to 4 sigma
-    X = np.clip(X, -4, 4)
+    X_train = np.clip(X_train, -4, 4)
+    X_val = np.clip(X_val, -4, 4)
+    X_test = np.clip(X_test, -4, 4)
+
+    splits = {
+        "train": (X_train, y_train),
+        "val": (X_val, y_val),
+        "test": (X_test, y_test),
+    }
 
     metadata = {
         "n_samples": X.shape[0],
         "n_features": X.shape[1],
-        "feature_names": [c for c in df.columns if c != label_col],
+        "feature_names": feature_names,
         "label_name": label_col,
         "label_mean": float(np.mean(y)),
         "label_std": float(np.std(y)),
@@ -73,7 +111,7 @@ def load_uniwear_data(
         "label_max": float(np.max(y)),
         "dataset": os.path.basename(path),
     }
-    return X, y, metadata, scaler
+    return splits, metadata, scaler
 
 
 def _find_label_column(df: pd.DataFrame) -> str:

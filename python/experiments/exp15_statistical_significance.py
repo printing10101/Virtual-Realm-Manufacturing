@@ -1,12 +1,12 @@
 """
 实验15：统计显著性检验
-验证CT-LTC模型性能差异的统计显著性
+验证DL-LNN模型性能差异的统计显著性
 
 实验设计：
 1. 对每个模型进行5次独立重复实验（不同随机种子）
 2. 记录每次实验的MAE, RMSE, R², PCC
 3. 计算各指标的均值和标准差
-4. 进行独立样本t检验（CT-LTC vs 其他模型）
+4. 进行独立样本t检验（DL-LNN vs 其他模型）
 5. 计算p值和置信区间（95%）
 6. 计算效应量（Cohen's d）
 """
@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import ModelConfig
 from models import (
-    CTLTCModel, CTCTCWithPhysics,
+    DLLNNModel, DLLNNWithPhysics,
     BaselineLSTM, BaselineTransformer, BaselinePINN, BaselineBPNN,
     BaselineCNN, BaselineGRU, BaselinegPINN, BaselinePeRCNN
 )
@@ -43,7 +43,7 @@ SEEDS = [42, 43, 44, 45, 46]
 NUM_TRIALS = len(SEEDS)
 
 # 参与对比的模型列表
-MODEL_NAMES = ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
+MODEL_NAMES = ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
 
 # 需要统计检验的指标
 METRIC_NAMES = ['MAE', 'RMSE', 'R2', 'PCC']
@@ -71,8 +71,8 @@ def create_model_by_name(name: str, config: ModelConfig, device: torch.device) -
         output_dim=config.output_dim,
     )
 
-    if name == 'CT-LTC':
-        model = CTCTCWithPhysics(
+    if name == 'DL-LNN':
+        model = DLLNNWithPhysics(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
@@ -307,7 +307,7 @@ def cohens_d(group1: np.ndarray, group2: np.ndarray) -> float:
     衡量两组样本均值差异的标准化度量
 
     Args:
-        group1: 第一组样本（CT-LTC的指标值）
+        group1: 第一组样本（DL-LNN的指标值）
         group2: 第二组样本（对比模型的指标值）
 
     Returns:
@@ -337,7 +337,7 @@ def independent_t_test(group1: np.ndarray, group2: np.ndarray) -> Dict[str, floa
     检验两组样本的均值是否存在显著差异
 
     Args:
-        group1: 第一组样本（CT-LTC的指标值）
+        group1: 第一组样本（DL-LNN的指标值）
         group2: 第二组样本（对比模型的指标值）
 
     Returns:
@@ -458,7 +458,7 @@ def run_statistical_significance_experiment():
     流程：
     1. 对每个种子运行一次完整实验（训练+评估所有模型）
     2. 汇总所有种子的指标，计算均值和标准差
-    3. 对每个指标进行CT-LTC vs 其他模型的t检验
+    3. 对每个指标进行DL-LNN vs 其他模型的t检验
     4. 保存结果到JSON文件
     """
     print("=" * 80)
@@ -541,22 +541,22 @@ def run_statistical_significance_experiment():
         print()
 
     # ----------------------------------------------------------
-    # 步骤3：t检验（CT-LTC vs 其他模型）
+    # 步骤3：t检验（DL-LNN vs 其他模型）
     # ----------------------------------------------------------
     print(f"\n{'='*80}")
-    print("[步骤3] 独立样本t检验 (CT-LTC vs 其他模型)...")
+    print("[步骤3] 独立样本t检验 (DL-LNN vs 其他模型)...")
     print(f"{'='*80}")
 
     # t_tests[comparison][metric_name] = {t_stat, p_value, significant, cohens_d, ...}
     t_tests: Dict[str, Dict[str, Dict]] = {}
 
-    ct_ltc_name = 'CT-LTC'
+    ct_ltc_name = 'DL-LNN'
 
     for other_model in MODEL_NAMES:
         if other_model == ct_ltc_name:
             continue
 
-        comparison_key = f"CT-LTC_vs_{other_model}"
+        comparison_key = f"DL-LNN_vs_{other_model}"
         t_tests[comparison_key] = {}
 
         print(f"\n  {comparison_key}:")

@@ -264,7 +264,7 @@ def detect_conflicts(rules: List[ProcessRule]) -> List[ConflictReport]:
     if not rules or len(rules) < 2:
         return []
 
-    logger.info(f"开始冲突检测，规则数量: {len(rules)}")
+    logger.info("开始冲突检测，规则数量: %s", len(rules))
 
     all_reports = []
 
@@ -282,5 +282,5 @@ def detect_conflicts(rules: List[ProcessRule]) -> List[ConflictReport]:
             seen_pairs.add(pair)
             unique_reports.append(report)
 
-    logger.info(f"冲突检测完成，发现 {len(unique_reports)} 个冲突")
+    logger.info("冲突检测完成，发现 %s 个冲突", len(unique_reports))
     return unique_reports

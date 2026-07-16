@@ -55,13 +55,49 @@ def write_state(args: argparse.Namespace, status: str, extra: dict | None = None
         print(f"[sidecar] 写入 state 文件失败: {exc}", file=sys.stderr)
 
 
+def _resolve_gstack_dir_to_absolute() -> str:
+    """P0-11/12 修复：在 chdir 到 _MEIPASS 之前，把相对 gstack_dir 解析为绝对路径。
+
+    问题：config.paths.gstack_dir 默认值是相对路径 ".lingjing/.gstack"。
+    PyInstaller 模式下 main() 会执行 os.chdir(sys._MEIPASS)，导致相对路径
+    实际指向 _MEIPASS/.lingjing/.gstack（临时解包目录，重启后丢失，且可能无写权限）。
+
+    本函数：
+    - 若 LNN_GSTACK_DIR 已设置为绝对路径，直接返回。
+    - 若为相对路径，以用户 home 目录为基准解析为绝对路径。
+    - 若未设置，使用默认值 ".lingjing/.gstack" 并以 home 目录解析。
+    返回绝对路径字符串。
+    """
+    raw = os.environ.get("LNN_GSTACK_DIR", ".lingjing/.gstack")
+    p = Path(raw).expanduser()
+    if not p.is_absolute():
+        # 相对路径：以用户 home 目录为基准解析，避免被 chdir(_MEIPASS) 漂移
+        home = Path.home()
+        p = (home / raw).resolve()
+    return str(p)
+
+
 def main() -> int:
     args = parse_args()
+
+    # P0-12 修复：在 chdir 到 _MEIPASS 之前，把 gstack_dir 解析为绝对路径，
+    # 避免 config.paths.gstack_dir 漂移到临时解包目录导致数据丢失。
+    # 同时同步 state_file 到 LNN_LOG_DIR/sidecar.json，与 Rust 端读取路径保持一致。
+    abs_gstack_dir = _resolve_gstack_dir_to_absolute()
+    os.environ["LNN_GSTACK_DIR"] = abs_gstack_dir
+    # 同步 state_file 到 LNN_LOG_DIR/sidecar.json（与 Rust 端 sidecar.rs start() 读取路径一致）
+    log_dir = os.environ.get("LNN_LOG_DIR")
+    if log_dir:
+        canonical_state_file = str(Path(log_dir) / "sidecar.json")
+        # 若用户未通过 --state-file 显式指定，则覆盖为 canonical 路径
+        if args.state_file != canonical_state_file:
+            args.state_file = canonical_state_file
 
     # 切换工作目录到打包时的资源目录
     bundle_dir = getattr(sys, "_MEIPASS", None)
     if bundle_dir:
         # 让 alembic/config 等相对路径文件可被找到
+        # 注意：chdir 只影响后续相对路径的资源文件查找，不影响 gstack_dir（已解析为绝对路径）
         os.chdir(bundle_dir)
 
     write_state(args, "starting")
@@ -84,6 +120,14 @@ def main() -> int:
     import secrets as _secrets
     if not os.environ.get("LNN_JWT_SECRET"):
         os.environ["LNN_JWT_SECRET"] = _secrets.token_urlsafe(32)
+
+    # P1-1 修复：桌面 sidecar 模式禁用 IdleAutoShutdown 中间件。
+    # 设计：30 分钟无请求自动关机的策略源于 SaaS 场景（节省云端资源），
+    # 但桌面用户随时可能回来使用，自动关机会导致频繁冷启动（PyInstaller 解包 +
+    # Python 启动 + FastAPI 初始化约 3-8 秒），严重损害用户体验。
+    # 由 sidecar_main 启动时显式设置 LNN_IDLE_AUTO_SHUTDOWN=false。
+    if not os.environ.get("LNN_IDLE_AUTO_SHUTDOWN"):
+        os.environ["LNN_IDLE_AUTO_SHUTDOWN"] = "false"
 
     # 注入 nlopt/casadi stub 模块（必须在导入 app.main 之前）
     # 原因：cadquery 2.7.0 将 nlopt/casadi 声明为硬依赖，

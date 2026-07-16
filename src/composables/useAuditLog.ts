@@ -1,4 +1,4 @@
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, type Ref } from 'vue'
 import http from '@/utils/http'
 import { triggerFileDownload } from '@/utils/download'
 import { formatTimestamp } from '@/utils/formatters'
@@ -74,14 +74,14 @@ export interface AuditLogPagination {
 }
 
 export interface UseAuditLogReturn {
-  auditLogs: ReturnType<typeof ref<AuditLogEntry[]>>
-  auditLogStatistics: ReturnType<typeof ref<AuditLogStatistics | null>>
-  loadingLogs: ReturnType<typeof ref<boolean>>
-  exporting: ReturnType<typeof ref<boolean>>
-  clearing: ReturnType<typeof ref<boolean>>
-  logSearchKeyword: ReturnType<typeof ref<string>>
-  logDetailVisible: ReturnType<typeof ref<boolean>>
-  selectedLog: ReturnType<typeof ref<AuditLogEntry | null>>
+  auditLogs: Ref<AuditLogEntry[]>
+  auditLogStatistics: Ref<AuditLogStatistics | null>
+  loadingLogs: Ref<boolean>
+  exporting: Ref<boolean>
+  clearing: Ref<boolean>
+  logSearchKeyword: Ref<string>
+  logDetailVisible: Ref<boolean>
+  selectedLog: Ref<AuditLogEntry | null>
   logFilters: AuditLogFilters
   logPagination: AuditLogPagination
   loadAuditLogs: () => Promise<void>
@@ -138,8 +138,10 @@ export function useAuditLog(): UseAuditLogReturn {
       const res = await http.post<{ data: AuditLogResponse }>(buildApiPath(API_CONFIG.USER_SOVEREIGNTY, '/audit-log/query'), params)
       auditLogs.value = res.data.data.logs
       logPagination.total = res.data.data.total
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // 审计日志加载失败属于用户可见操作，需给出反馈而非完全静默
+      console.warn('[useAuditLog] loadAuditLogs failed:', e)
+      ElMessage.error('审计日志加载失败，请稍后重试')
     } finally {
       loadingLogs.value = false
     }
@@ -159,8 +161,9 @@ export function useAuditLog(): UseAuditLogReturn {
       })
       auditLogs.value = res.data.data.logs
       logPagination.total = res.data.data.total
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      console.warn('[useAuditLog] searchLogs failed:', e)
+      ElMessage.error('审计日志搜索失败，请稍后重试')
     } finally {
       loadingLogs.value = false
     }
@@ -170,8 +173,9 @@ export function useAuditLog(): UseAuditLogReturn {
     try {
       const res = await http.get<{ data: AuditLogStatistics }>(buildApiPath(API_CONFIG.USER_SOVEREIGNTY, '/audit-log/statistics'))
       auditLogStatistics.value = res.data.data
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // 统计数据为辅助信息，加载失败不应阻塞主流程，但需记录便于排查
+      console.warn('[useAuditLog] loadStatistics failed:', e)
     }
   }
 
@@ -209,7 +213,11 @@ export function useAuditLog(): UseAuditLogReturn {
       loadAuditLogs()
       loadStatistics()
     } catch (e: unknown) {
-      // User cancelled or error
+      // ElMessageBox.confirm 取消时返回 'cancel' 字符串，属于正常用户行为，需与真实错误区分
+      const cancelled = e instanceof Error ? false : String(e).includes('cancel')
+      if (cancelled) return
+      console.warn('[useAuditLog] clearLogs failed:', e)
+      ElMessage.error('清空审计日志失败，请稍后重试')
     }
   }
 

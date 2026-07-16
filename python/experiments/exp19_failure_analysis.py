@@ -1,6 +1,6 @@
 """
 实验19：失败案例与边界分析
-分析CT-LTC模型预测失败的情况，识别模型失效模式
+分析DL-LNN模型预测失败的情况，识别模型失效模式
 """
 
 import sys
@@ -14,9 +14,15 @@ from typing import Dict, List, Tuple
 
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
+# 添加项目根目录（python/）到 path，用于导入 app 模块
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from app.ai.lnn.training.reproducibility import set_global_seed
 
 from config import ModelConfig
-from models import CTCTCWithPhysics
+from models import DLLNNWithPhysics
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -30,7 +36,7 @@ def train_model(
     num_epochs: int = 80
 ) -> torch.nn.Module:
     """
-    训练CT-LTC模型
+    训练DL-LNN模型
     
     Args:
         model: 待训练模型
@@ -541,7 +547,7 @@ def run_failure_analysis_experiment():
     运行失败案例分析实验
     
     实验步骤：
-    1. 训练CT-LTC模型
+    1. 训练DL-LNN模型
     2. 在测试集上进行预测
     3. 计算每个样本的误差
     4. 识别失败案例（误差最大的10%）
@@ -572,9 +578,9 @@ def run_failure_analysis_experiment():
     print(f"  验证集批次: {len(val_loader)}")
     print(f"  测试集批次: {len(test_loader)}")
     
-    # 创建并训练CT-LTC模型
-    print("\n[步骤2/6] 训练CT-LTC模型...")
-    model = CTCTCWithPhysics(
+    # 创建并训练DL-LNN模型
+    print("\n[步骤2/6] 训练DL-LNN模型...")
+    model = DLLNNWithPhysics(
         input_dim=config.input_dim,
         hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,
@@ -702,4 +708,5 @@ def run_failure_analysis_experiment():
 
 
 if __name__ == "__main__":
+    set_global_seed(42)
     results = run_failure_analysis_experiment()

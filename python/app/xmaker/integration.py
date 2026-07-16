@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -67,11 +68,15 @@ class XmakerIntegration:
     
     def __init__(
         self,
-        api_endpoint: str = "http://localhost:8080/api",
+        # 默认 endpoint 通过环境变量 XMAKER_API_ENDPOINT 覆盖；
+        # 统一使用 127.0.0.1（项目约定），避免 localhost 解析差异
+        api_endpoint: str = "",
         api_key: str = "",
         timeout_sec: float = 30.0,
         max_retries: int = 3,
     ):
+        if not api_endpoint:
+            api_endpoint = os.getenv("XMAKER_API_ENDPOINT", "http://127.0.0.1:8080/api")
         self.api_endpoint = api_endpoint.rstrip("/")
         self.api_key = api_key
         self.timeout_sec = timeout_sec
@@ -267,7 +272,7 @@ class XmakerIntegration:
             logger.error("G-code 上传失败: %s", e, exc_info=True)
             return UploadResult(
                 success=False,
-                error_message=str(e),
+                error_message="G-code 上传失败，请检查网络或机床连接",
                 upload_time_ms=latency_ms,
             )
     
@@ -337,7 +342,7 @@ class XmakerIntegration:
             logger.error("获取机床状态失败: machine_id=%s, error=%s", machine_id, e, exc_info=True)
             return MachineStatusInfo(
                 status=MachineStatus.OFFLINE,
-                error_message=str(e),
+                error_message="机床状态查询失败，请检查网络或机床连接",
             )
     
     def start_job(

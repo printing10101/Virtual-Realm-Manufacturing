@@ -89,8 +89,9 @@ export const useRuleStore = defineStore('rules', () => {
     try {
       const response = await http.get(buildApiPath(API_CONFIG.RULES, '/stats'))
       stats.value = response.data.data
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // 统计数据为辅助信息，加载失败不阻塞主流程，但需记录便于排查
+      console.warn('[rules] fetchStats failed:', e)
     }
   }
 

@@ -105,17 +105,23 @@ class TestMetrics:
 
 class TestDatasets:
     def test_load_uniwear_data(self):
-        X, y, meta, scaler = load_uniwear_data()
-        assert X.shape[0] > 0
-        assert X.shape[1] > 0
-        assert y.shape[0] == X.shape[0]
+        splits, meta, scaler = load_uniwear_data()
+        total = sum(s[0].shape[0] for s in splits.values())
+        assert total > 0
+        assert meta["n_features"] > 0
         assert "n_samples" in meta
         assert "n_features" in meta
         assert "label_name" in meta
-        assert meta["n_samples"] == X.shape[0]
+        assert meta["n_samples"] == total
+        # 各划分特征数一致
+        for key in ("train", "val", "test"):
+            assert splits[key][0].shape[1] == meta["n_features"]
+        # scaler 必须已拟合（仅用训练集拟合，避免数据泄漏）
+        assert hasattr(scaler, "mean_") and scaler.mean_ is not None
+        assert hasattr(scaler, "scale_") and scaler.scale_ is not None
 
     def test_split_dataset_sizes(self):
-        X, y, _, _ = load_uniwear_data()
+        X, y = _make_synthetic_data(500, 5)
         splits = split_dataset(X, y, random_seed=42)
         assert "train" in splits
         assert "val" in splits
@@ -126,7 +132,7 @@ class TestDatasets:
         assert 0.08 <= test_ratio <= 0.12
 
     def test_split_dataset_no_overlap(self):
-        X, y, _, _ = load_uniwear_data()
+        X, y = _make_synthetic_data(500, 5)
         splits = split_dataset(X, y, random_seed=42)
         X_train = splits["train"][0]
         X_test = splits["test"][0]
@@ -134,13 +140,13 @@ class TestDatasets:
         assert X_train.shape[1] == X_test.shape[1]
 
     def test_split_dataset_reproducible(self):
-        X, y, _, _ = load_uniwear_data()
+        X, y = _make_synthetic_data(500, 5)
         s1 = split_dataset(X, y, random_seed=42)
         s2 = split_dataset(X, y, random_seed=42)
         assert np.allclose(s1["test"][1], s2["test"][1])
 
     def test_sample_training_subset(self):
-        X, y, _, _ = load_uniwear_data()
+        X, y = _make_synthetic_data(500, 5)
         splits = split_dataset(X, y)
         X_sub, y_sub = sample_training_subset(
             splits["train"][0],
@@ -152,7 +158,7 @@ class TestDatasets:
         assert X_sub.shape[0] == expected_size
 
     def test_sample_training_subset_full(self):
-        X, y, _, _ = load_uniwear_data()
+        X, y = _make_synthetic_data(500, 5)
         splits = split_dataset(X, y)
         X_sub, y_sub = sample_training_subset(
             splits["train"][0],
@@ -162,7 +168,7 @@ class TestDatasets:
         assert X_sub.shape[0] == splits["train"][0].shape[0]
 
     def test_sample_training_subset_min(self):
-        X, y, _, _ = load_uniwear_data()
+        X, y = _make_synthetic_data(500, 5)
         splits = split_dataset(X, y)
         X_sub, y_sub = sample_training_subset(
             splits["train"][0],
@@ -301,16 +307,19 @@ class TestComputeAllMetrics:
 class TestIntegration:
     def test_full_pipeline_quick(self):
         """集成测试：快速验证完整流程（仅使用少量数据子集避免超时）"""
-        from app.benchmarks import load_uniwear_data, split_dataset
+        from app.benchmarks import load_uniwear_data
         from app.benchmarks.metrics import compute_all_metrics
 
-        # Use a small subset for fast integration testing
-        X_full, y_full, _, _ = load_uniwear_data()
-        X, y = X_full[:200], y_full[:200]
-
-        splits = split_dataset(X, y, random_seed=42)
-        X_test, y_test = splits["test"]
-        X_train, y_train = splits["train"]
+        # load_uniwear_data 已完成 train/val/test 划分与标准化（scaler 仅在
+        # 训练集上拟合，无数据泄漏）。这里仅取训练集前 200 样本与测试集前 100
+        # 样本做快速冒烟测试，避免重新混合划分导致的泄漏。
+        splits, _, _ = load_uniwear_data(random_seed=42)
+        X_train_full, y_train_full = splits["train"]
+        n_train = min(200, X_train_full.shape[0])
+        X_train, y_train = X_train_full[:n_train], y_train_full[:n_train]
+        X_test_full, y_test_full = splits["test"]
+        n_test = min(100, X_test_full.shape[0])
+        X_test, y_test = X_test_full[:n_test], y_test_full[:n_test]
 
         models_data = [
             ("XGBoost", XGBoostBaseline({"n_estimators": 10, "max_depth": 3})),

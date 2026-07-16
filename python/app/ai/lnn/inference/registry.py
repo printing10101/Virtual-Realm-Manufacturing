@@ -84,7 +84,7 @@ class ModelInfo:
             )
         if not self.model_type:
             raise ValueError(
-                "模型配置注册失败：'model_type' 字段不能为空。支持的模型类型包括：LNN（神经逻辑网络）、CTC（连续时间分类）、CFC（连续-离散混合模型）、LTC（液体时间常数网络）。请调用 GET /api/v1/lnn/models 查看支持的模型类型列表。"  # noqa: E501
+                "模型配置注册失败：'model_type' 字段不能为空。支持的模型类型包括：LNN（液态神经网络）、CTC（连续时间分类）、CFC（连续-离散混合模型）、LTC（液体时间常数网络）。请调用 GET /api/v1/lnn/models 查看支持的模型类型列表。"  # noqa: E501
             )
         if not self.model_path:
             raise ValueError(

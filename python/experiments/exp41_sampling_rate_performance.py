@@ -13,8 +13,8 @@ import os
 from datetime import datetime
 
 
-class CTLTCModel(nn.Module):
-    """CT-LTC模型简化版本"""
+class DLLNNModel(nn.Module):
+    """DL-LNN模型简化版本"""
     def __init__(self, input_dim=10, hidden_dim=64, num_layers=3, output_dim=1, dt=0.01):
         super().__init__()
         self.input_dim = input_dim
@@ -277,11 +277,11 @@ def sampling_rate_experiment():
         # 训练和评估各模型
         fs_results = {}
         
-        # CT-LTC
-        model = CTLTCModel(input_dim=X.shape[1], hidden_dim=64, num_layers=3)
+        # DL-LNN
+        model = DLLNNModel(input_dim=X.shape[1], hidden_dim=64, num_layers=3)
         metrics = train_and_evaluate(model, X_train, y_train, X_test, y_test, epochs=50)
-        fs_results['CT-LTC'] = metrics
-        print(f"    CT-LTC: MAE={metrics['mae']:.4f}, PCC={metrics['pcc']:.4f}")
+        fs_results['DL-LNN'] = metrics
+        print(f"    DL-LNN: MAE={metrics['mae']:.4f}, PCC={metrics['pcc']:.4f}")
         
         # LSTM
         model = LSTMModel(input_dim=X.shape[1], hidden_dim=64, num_layers=2)
@@ -307,7 +307,7 @@ def sampling_rate_experiment():
     print("\n[3] 分析采样率对性能的影响...")
     
     performance_trend = {}
-    for model_name in ['CT-LTC', 'LSTM', 'GRU']:
+    for model_name in ['DL-LNN', 'LSTM', 'GRU']:
         mae_values = []
         pcc_values = []
         
@@ -344,7 +344,7 @@ def sampling_rate_experiment():
     print("\n[4] 确定最优采样率...")
     
     optimal_sampling_rate = {}
-    for model_name in ['CT-LTC', 'LSTM', 'GRU']:
+    for model_name in ['DL-LNN', 'LSTM', 'GRU']:
         best_fs = None
         best_score = -1
         

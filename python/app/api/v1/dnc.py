@@ -25,6 +25,11 @@ from pydantic import BaseModel, Field
 from app.auth.permissions import require_permission
 
 from app.dnc.dnc_manager import dnc_manager, ProtocolType
+from app.dnc.unified_adapter import (
+    UnifiedDNCAdapter,
+    UnifiedMachineStatus,
+    discover_machines,
+)
 from app.core.response import success, error, ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -135,7 +140,9 @@ async def send_nc_program(req: NCSendRequest):
     # 验证文件存在
     program_path = Path(req.program_path)
     if not program_path.exists():
-        raise HTTPException(status_code=400, detail=f"文件不存在: {req.program_path}")
+        # 修复：避免向客户端回显服务器文件路径（可能泄露目录结构），改为通用提示，路径详情仅记日志
+        logger.warning("NC 程序文件不存在: machine_id=%s path=%s", req.machine_id, req.program_path)
+        raise HTTPException(status_code=400, detail="文件不存在，请检查路径后重试")
 
     program_name = req.program_name or program_path.stem
     ok = await dnc_manager.send_nc_program(req.machine_id, str(program_path), program_name)
@@ -153,7 +160,8 @@ async def get_machine_alarms(machine_id: str):
     """获取指定机床的当前报警信息。"""
     # 目前仅 MTConnect 支持报警查询
     if machine_id not in dnc_manager.connections:
-        raise HTTPException(status_code=404, detail=f"机床 {machine_id} 未连接")
+        logger.info("机床未连接: %s", machine_id)
+        raise HTTPException(status_code=404, detail="机床未连接")
 
     conn = dnc_manager.connections[machine_id]
     if conn["protocol"] == ProtocolType.MTCONNECT:
@@ -161,3 +169,115 @@ async def get_machine_alarms(machine_id: str):
         return success(data=alarms)
     else:
         return success(data=[], message="OPC UA 报警查询暂未实现")
+
+
+# ── 统一双协议适配器端点（落地 MachineMetrics Universal Connectivity） ─────
+
+# 全局统一适配器注册表（machine_id -> UnifiedDNCAdapter）
+_unified_adapters: dict[str, UnifiedDNCAdapter] = {}
+
+
+class AutoConnectRequest(BaseModel):
+    """自动探测连接请求。"""
+    machine_id: str = Field(..., description="机床唯一标识")
+    endpoints: list[str] = Field(
+        ...,
+        description="候选端点列表，按优先级排序",
+        examples=[["http://192.168.1.100:5000", "opc.tcp://192.168.1.100:4840"]],
+    )
+    username: Optional[str] = Field(None, description="OPC UA 用户名")
+    password: Optional[str] = Field(None, description="OPC UA 密码")
+    timeout: float = Field(5.0, gt=0, le=30, description="单端点连接超时")
+
+
+class DiscoverRequest(BaseModel):
+    """资产发现请求。"""
+    subnet: str = Field("192.168.1", description="子网前缀")
+    timeout: float = Field(0.3, gt=0, le=2, description="单端口扫描超时")
+
+
+@router.post("/unified/connect", summary="自动探测连接（双协议）")
+async def unified_auto_connect(req: AutoConnectRequest):
+    """自动探测可用协议并连接，支持故障切换。
+
+    候选端点按优先级尝试连接，第一个成功的作为主协议，
+    第二个成功的作为备用协议（故障切换用）。
+    """
+    adapter = UnifiedDNCAdapter(machine_id=req.machine_id)
+    result = await adapter.connect_auto(
+        endpoints=req.endpoints,
+        credentials={"username": req.username, "password": req.password},
+        timeout=req.timeout,
+    )
+    if result["primary_protocol"] is None:
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=result.get("error", "所有候选端点均无法连接"),
+        )
+    _unified_adapters[req.machine_id] = adapter
+    return success(data={
+        "machine_id": req.machine_id,
+        "primary_protocol": result["primary_protocol"],
+        "fallback_protocol": result["fallback_protocol"],
+        "connected": adapter.is_connected(),
+    })
+
+
+@router.get("/unified/{machine_id}/status", summary="获取统一状态")
+async def get_unified_status(machine_id: str):
+    """获取统一 schema 的机床状态（屏蔽协议差异）。"""
+    if machine_id not in _unified_adapters:
+        logger.info("机床未注册: %s", machine_id)
+        raise HTTPException(
+            status_code=404,
+            detail="机床未注册",
+        )
+    adapter = _unified_adapters[machine_id]
+    status = await adapter.get_status()
+    return success(data=status.to_dict())
+
+
+@router.post("/unified/discover", summary="扫描局域网内机床")
+async def discover_network_machines(req: DiscoverRequest):
+    """扫描子网内 MTConnect (5000) 与 OPC UA (4840) 端口。"""
+    discovered = await discover_machines(
+        subnet=req.subnet,
+        timeout=req.timeout,
+    )
+    return success(data={
+        "subnet": req.subnet,
+        "count": len(discovered),
+        "machines": discovered,
+    })
+
+
+@router.get("/unified/{machine_id}/info", summary="获取适配器运行信息")
+async def get_adapter_info(machine_id: str):
+    """获取统一适配器的运行信息（当前协议、故障切换次数等）。"""
+    if machine_id not in _unified_adapters:
+        logger.info("机床未注册: %s", machine_id)
+        raise HTTPException(
+            status_code=404,
+            detail="机床未注册",
+        )
+    adapter = _unified_adapters[machine_id]
+    return success(data={
+        "machine_id": machine_id,
+        "active_protocol": adapter.active_protocol,
+        "connected": adapter.is_connected(),
+        "failover_count": adapter.failover_count,
+    })
+
+
+@router.delete("/unified/{machine_id}", summary="断开统一适配器")
+async def disconnect_unified(machine_id: str):
+    """断开统一适配器并释放资源。"""
+    if machine_id not in _unified_adapters:
+        logger.info("机床未注册: %s", machine_id)
+        raise HTTPException(
+            status_code=404,
+            detail="机床未注册",
+        )
+    adapter = _unified_adapters.pop(machine_id)
+    await adapter.disconnect()
+    return success(data={"machine_id": machine_id, "status": "disconnected"})

@@ -16,6 +16,7 @@ from threading import Lock
 from typing import Any, Callable, Dict, List, Optional
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.tasks.task_manager import TaskStatus, TaskType
 from app.core.safe_errors import safe_error_message
@@ -29,6 +30,14 @@ from app.services.redis_client import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ============================================================
+# 任务系统默认配置（命名常量，便于统一调整与运维排查）
+# ============================================================
+# 默认单任务最大执行时长（秒）：训练任务通常 5-30 分钟，1 小时作为兜底上限
+DEFAULT_TASK_TIMEOUT_SECONDS = 3600
+# 默认最大重试次数：工业任务重试过多会放大副作用（如刀具磨损），3 次为安全上限
+DEFAULT_MAX_RETRIES = 3
 
 VALID_STATUS_TRANSITIONS = {
     TaskStatus.PENDING: {TaskStatus.QUEUED, TaskStatus.RUNNING, TaskStatus.CANCELLED},
@@ -129,9 +138,9 @@ class AsyncTaskManager:
         self._semaphore = asyncio.Semaphore(self._max_concurrent)
         self._started = False
         
-        # 任务超时和重试配置
-        self._task_timeout = 3600  # 默认1小时超时
-        self._max_retries = 3
+        # 任务超时和重试配置（命名常量提取，便于运维统一调整）
+        self._task_timeout = DEFAULT_TASK_TIMEOUT_SECONDS
+        self._max_retries = DEFAULT_MAX_RETRIES
 
     async def initialize(self, max_concurrent: int = 3):
         self._max_concurrent = max_concurrent
@@ -175,9 +184,13 @@ class AsyncTaskManager:
                     task.error = "Service restarted: task was running before shutdown"
                     task.completed_at = now
                     task.progress = task.progress or 0
-                await session.commit()
+                try:
+                    await session.commit()
+                except SQLAlchemyError:
+                    await session.rollback()
+                    raise
 
-        except (RuntimeError, OSError) as e:
+        except (RuntimeError, OSError, SQLAlchemyError) as e:
             logger.error("Task recovery failed: %s", e)
 
     async def requeue_orphan_tasks(
@@ -220,7 +233,11 @@ class AsyncTaskManager:
                     task.started_at = None
                     task.completed_at = None
                     requeued += 1
-                await session.commit()
+                try:
+                    await session.commit()
+                except SQLAlchemyError:
+                    await session.rollback()
+                    raise
                 if requeued:
                     logger.warning(
                         "requeue_orphan_tasks: 重置 %d 个 RUNNING→QUEUED (cutoff=%s)",
@@ -228,7 +245,7 @@ class AsyncTaskManager:
                         cutoff.isoformat(),
                     )
                 return requeued
-        except (RuntimeError, OSError) as e:
+        except (RuntimeError, OSError, SQLAlchemyError) as e:
             logger.error("requeue_orphan_tasks failed: %s", e)
             return 0
 
@@ -280,8 +297,12 @@ class AsyncTaskManager:
                         else None,
                     )
                     session.add(task_model)
-                await session.commit()
-        except (RuntimeError, OSError) as e:
+                try:
+                    await session.commit()
+                except SQLAlchemyError:
+                    await session.rollback()
+                    raise
+        except (RuntimeError, OSError, SQLAlchemyError) as e:
             logger.error("Failed to persist task %s to DB: %s", record.job_id, e)
 
     async def create_task(

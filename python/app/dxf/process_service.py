@@ -276,14 +276,14 @@ class DxfProcessService:
             return StageResult(
                 name="parse", success=False,
                 latency_ms=(time.time() - t0) * 1000,
-                error=str(e),
+                error="DXF 文件解析失败，请检查文件格式",
             )
         except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:  # noqa: BLE001
             logger.error("Unexpected DXF parse error: %s", e, exc_info=True)
             return StageResult(
                 name="parse", success=False,
                 latency_ms=(time.time() - t0) * 1000,
-                error=f"unexpected parse error: {e}",
+                error="DXF 解析遇到未知错误，请联系管理员",
             )
 
     def _run_features(self, path: Path, user_id: Optional[str]) -> StageResult:

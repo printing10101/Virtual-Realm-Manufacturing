@@ -26,6 +26,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from typing import Any, Optional
 
@@ -147,6 +148,28 @@ class GraphQueryRequest(BaseModel):
     )
 
 
+# P2-批次2 修复：query_type 白名单 + params 键名格式校验。
+# query_api.query() 内部通过 getattr(self, method_name) 分发，method_name 由
+# 固定 dict 映射决定，但 query_type 本身若不在白名单内会返回 count=0 的误导性
+# 响应。这里在入口层提前拒绝，返回 400 明确告知合法值。
+# params 键名限制为合法 Python 标识符（字母/数字/下划线，不以数字开头），
+# 防止注入特殊字符键名绕过下游方法签名校验。
+_VALID_QUERY_TYPES: frozenset[str] = frozenset(
+    {
+        "node",
+        "nodes_by_type",
+        "search_nodes",
+        "edges",
+        "neighbors",
+        "tools_for_material",
+        "materials_for_tool",
+        "process_chain",
+        "stats",
+    }
+)
+_PARAM_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
 # ---------------------------------------------------------------------------
 # 端点
 # ---------------------------------------------------------------------------
@@ -177,7 +200,8 @@ def get_node(node_id: str) -> dict[str, Any]:
             detail="knowledge graph temporarily unavailable",
         ) from exc
     if node is None:
-        raise HTTPException(status_code=404, detail=f"node not found: {node_id}")
+        logger.info("node not found: %s", node_id)
+        raise HTTPException(status_code=404, detail="Node not found")
     return node
 
 
@@ -243,8 +267,9 @@ def get_neighbors(
     try:
         api = _get_query_api()
         if not api.node(node_id):
+            logger.info("node not found: %s", node_id)
             raise HTTPException(
-                status_code=404, detail=f"node not found: {node_id}"
+                status_code=404, detail="Node not found"
             )
         neighbors = api.neighbors(
             node_id, max_hops=max_hops, limit=limit
@@ -274,14 +299,29 @@ def post_query(payload: GraphQueryRequest) -> dict[str, Any]:
     qt = payload.query_type
     if not qt:
         raise HTTPException(status_code=400, detail="query_type is required")
+    # P2-批次2 修复：query_type 白名单校验，拒绝未知值。
+    if qt not in _VALID_QUERY_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid query_type. Must be one of: {sorted(_VALID_QUERY_TYPES)}",
+        )
     params = payload.params or {}
+    # P2-批次2 修复：params 键名格式校验，防止注入特殊字符键名。
+    for key in params.keys():
+        if not isinstance(key, str) or not _PARAM_KEY_RE.match(key):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid param key: must be a valid Python identifier",
+            )
     try:
         return _get_query_api().query(qt, **params)
     except TypeError as exc:
         # 参数不匹配：返回 400 而非 500
+        # 修复：避免向客户端回显内部异常详情（query_type / 原始异常），改为通用提示，完整异常仅记日志
+        logger.exception("KG /query invalid params: query_type=%s", qt)
         raise HTTPException(
             status_code=400,
-            detail=f"invalid query params for '{qt}': {exc}",
+            detail="查询参数无效",
         ) from exc
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /query failed: %s", qt)
@@ -295,7 +335,7 @@ def post_query(payload: GraphQueryRequest) -> dict[str, Any]:
 def get_tools_for_material(
     material_id: str = Query(..., description="材料节点 ID"),
     min_confidence: float = Query(0.0, ge=0.0, le=1.0),
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=100),
 ) -> dict[str, Any]:
     """某材料适配的所有刀具。"""
     try:
@@ -315,7 +355,7 @@ def get_tools_for_material(
 def get_materials_for_tool(
     tool_id: str = Query(..., description="刀具节点 ID"),
     min_confidence: float = Query(0.0, ge=0.0, le=1.0),
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=100),
 ) -> dict[str, Any]:
     """某刀具能加工的所有材料。"""
     try:
@@ -340,8 +380,9 @@ def get_process_chain(
     try:
         api = _get_query_api()
         if not api.node(feature_id):
+            logger.info("node not found: %s", feature_id)
             raise HTTPException(
-                status_code=404, detail=f"node not found: {feature_id}"
+                status_code=404, detail="Node not found"
             )
         chain = api.process_chain(feature_id, max_hops=max_hops)
     except HTTPException:

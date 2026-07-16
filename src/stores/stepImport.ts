@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { ElMessage } from 'element-plus'
 import http from '@/utils/http'
 import { extractErrorMessage } from '@/utils/error-handler'
 import { API_CONFIG, buildApiPath } from '@/config/api'
@@ -144,7 +145,9 @@ export const useStepImportStore = defineStore('stepImport', () => {
       if (response.data.code === 0) {
         importHistory.value = response.data.data.history || []
       }
-    } catch {
+    } catch (e: unknown) {
+      // 历史记录加载失败时降级为空列表，但需记录便于排查
+      console.warn('[stepImport] fetchImportHistory failed:', e)
       importHistory.value = []
     } finally {
       historyLoading.value = false
@@ -155,16 +158,18 @@ export const useStepImportStore = defineStore('stepImport', () => {
     try {
       await http.delete(buildApiPath(API_CONFIG.IMPORT, `/step/history/${encodeURIComponent(fileName)}`))
       await fetchImportHistory()
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      console.warn('[stepImport] deleteHistoryFile failed:', e)
+      ElMessage.error('删除历史文件失败，请稍后重试')
     }
   }
 
   async function clearCache() {
     try {
       await http.delete(buildApiPath(API_CONFIG.IMPORT, '/step/cache'))
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      console.warn('[stepImport] clearCache failed:', e)
+      ElMessage.error('清理缓存失败，请稍后重试')
     }
   }
 

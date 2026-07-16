@@ -1,5 +1,5 @@
 """
-LNN (Logical Neural Network) Module
+LNN (Liquid Neural Network) Module
 
 This module provides a comprehensive LNN implementation including:
 - Multiple model architectures (CFC, LTC, Hybrid)
@@ -20,4 +20,4 @@ __all__ = [
     "HybridLNNModel",
 ]
 
-__version__ = "1.0.0"
+__version__ = "2.5.0"

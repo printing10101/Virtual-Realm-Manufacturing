@@ -67,23 +67,25 @@ class ChatterPredictor:
 
             if os.path.exists(checkpoint_path):
                 self.model = LTCModel(config)
-                checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+                # 安全修复 [P1-BE-1]：weights_only=True 防止 pickle 反序列化任意代码执行
+                # PyTorch >= 2.0 推荐方式；checkpoint 仅含 state_dict 张量，无需自定义类
+                checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
                 # 兼容两种 checkpoint 格式：直接 state_dict 或包装在键下
                 if "model_state_dict" in checkpoint:
                     self.model.load_state_dict(checkpoint["model_state_dict"])
                 else:
                     self.model.load_state_dict(checkpoint)
                 self.model.eval()
-                logger.info(f"已加载 LTC 颤振预测模型: {checkpoint_path}")
+                logger.info("已加载 LTC 颤振预测模型: %s", checkpoint_path)
             else:
-                logger.warning(f"未找到模型检查点: {checkpoint_path}，使用解析法回退")
+                logger.warning("未找到模型检查点: %s，使用解析法回退", checkpoint_path)
                 self.model = None
 
         except ImportError:
             logger.warning("PyTorch 未安装，使用解析法回退")
             self.model = None
         except (OSError, RuntimeError, ValueError, KeyError) as e:
-            logger.error(f"加载 LTC 模型失败: {e}")
+            logger.error("加载 LTC 模型失败: %s", e)
             self.model = None
     
     def _normalize_inputs(
@@ -141,9 +143,11 @@ class ChatterPredictor:
             (stable, limit_depth): 稳定性状态和极限切削深度
         """
         if self.model is None:
-            # 模型不可用，返回默认值
-            return True, 5.0
-        
+            # 模型不可用：返回负值标记，由上层调用解析法 compute_stability_limit
+            # 不再返回固定 5.0，避免误导调用方（如 NX Adaptive Milling 的稳定性约束）
+            logger.debug("LTC 模型不可用，调用方应回退到 compute_stability_limit 解析法")
+            return True, -1.0
+
         try:
             import torch
 
@@ -178,8 +182,8 @@ class ChatterPredictor:
             return bool(stable), limit_depth
 
         except (RuntimeError, ValueError, TypeError) as e:
-            logger.error(f"LTC 推理失败: {e}")
-            return True, 5.0
+            logger.error("LTC 推理失败: %s，调用方应回退到解析法", e)
+            return True, -1.0
 
 
 def predict_stability(
@@ -223,10 +227,11 @@ def predict_stability(
     
     # 尝试神经网络预测
     start_time = time.time()
-    
+    ltc_active = False
+
     try:
         predictor = ChatterPredictor()
-        
+
         if predictor.model is not None:
             stable, limit_depth = predictor.predict(
                 spindle_rpm=spindle_rpm,
@@ -236,37 +241,44 @@ def predict_stability(
                 tool_diameter=tool_params.diameter,
                 tool_k_s=tool_params.cutting_force_coeff,
             )
-            
-            inference_time = (time.time() - start_time) * 1000  # ms
-            
-            logger.info(f"神经网络推理完成，耗时: {inference_time:.2f} ms")
-            
-            return {
-                "stable": stable,
-                "limit_depth": limit_depth,
-                "method": "neural_network",
-                "inference_time_ms": inference_time,
-            }
+
+            # limit_depth < 0 表示 LTC 不可用或推理失败，需回退到解析法
+            if limit_depth > 0:
+                inference_time = (time.time() - start_time) * 1000  # ms
+                ltc_active = True
+                logger.info(f"神经网络推理完成，耗时: {inference_time:.2f} ms")
+
+                return {
+                    "stable": stable,
+                    "limit_depth": limit_depth,
+                    "method": "neural_network",
+                    "ltc_active": ltc_active,
+                    "inference_time_ms": inference_time,
+                }
+            else:
+                logger.info("LTC 模型不可用，回退到解析法 compute_stability_limit")
     except (RuntimeError, ValueError, OSError) as e:
-        logger.warning(f"神经网络预测失败: {e}，回退到解析法")
-    
+        logger.warning("神经网络预测失败: %s，回退到解析法", e)
+
     # 回退到解析法
     chatter_params = ChatterParams(
         spindle_rpm=spindle_rpm,
         machine=machine_params,
         tool=tool_params,
     )
-    
+
     limit_depth = compute_stability_limit(chatter_params)
-    
+
     # 稳定性判断：当前切深（假设为 2mm）是否小于极限切深
     assumed_depth = 2.0
     stable = assumed_depth < limit_depth
-    
+
     return {
         "stable": stable,
         "limit_depth": limit_depth,
         "method": "analytical",
+        "ltc_active": False,
+        "assumed_depth_for_stability": assumed_depth,
     }
 
 

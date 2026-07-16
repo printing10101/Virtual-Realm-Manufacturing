@@ -62,7 +62,7 @@ class ConcurrencyPerfBenchmark:
                     elapsed = future.result()
                     times.append(elapsed)
                 except Exception as e:
-                    logger.debug(f"线程任务失败: {e}")
+                    logger.debug("线程任务失败: %s", e)
 
         total_time = (time.perf_counter() - t0) * 1000
 
@@ -296,4 +296,4 @@ if __name__ == "__main__":
     results = bench.run_all()
     logger.info("\n并发与压力测试结果:")
     for k, v in results.items():
-        logger.info(f"  {k}: {v}")
+        logger.info("  %s: %s", k, v)

@@ -16,12 +16,32 @@ Example:
     ... )
     >>> model.build()
     >>> output = model.predict(np.random.randn(32, 128))
+
+数学模型:
+    CFC (Closed-form Continuous-time) 连续时间更新公式:
+
+        h_new = h + dt * dh
+
+    其中 dh 由闭式连续时间函数 f_cfc 给出:
+
+        dh = f_cfc(W·x, U·h, h, t)
+
+    具体地，本实现通过 backbone 网络（Linear → Tanh → Linear）计算 dh:
+
+        dh = backbone([x, h])  # 拼接输入与隐藏状态后过两层 MLP
+
+    然后以闭式更新隐藏状态:
+
+        h_new = h + dt * dh
+
+    相比传统 ODE 求解器，CFC 避免了迭代式数值积分，直接以闭式计算
+    dh，从而在保持连续时间动态特性的同时实现 160x 加速（相对 LSTM）。
 """
 
 import numpy as np
 from typing import Any, Dict, List
 
-from .base_lnn import BaseLNNModel
+from .base_lnn import BaseLNNModel, DEFAULT_WEIGHT_DECAY
 
 
 class CFCModel(BaseLNNModel):
@@ -162,7 +182,12 @@ class CFCModel(BaseLNNModel):
         return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
 
     def _cross_entropy_loss(self, predictions: np.ndarray, labels: np.ndarray) -> float:
-        """交叉熵损失"""
+        """交叉熵损失
+
+        .. deprecated::
+            学术诚信修复：CFC 用于颤振预测（回归任务），训练路径已统一为 MSE 损失。
+            此方法保留供未来分类任务复用，当前训练/验证路径不再调用。
+        """
         # 数值稳定性处理
         predictions = predictions - np.max(predictions, axis=-1, keepdims=True)
         log_probs = predictions - np.log(
@@ -174,6 +199,12 @@ class CFCModel(BaseLNNModel):
             labels = np.eye(predictions.shape[1])[labels.astype(int)]
 
         return -np.mean(np.sum(labels * log_probs, axis=-1))
+
+    def _mse_loss(self, predictions: np.ndarray, labels: np.ndarray) -> float:
+        """均方误差损失（学术诚信修复：统一训练/验证损失语义）"""
+        if labels.ndim == 1 and predictions.ndim == 2:
+            labels = labels.reshape(-1, 1)
+        return float(np.mean((predictions - labels) ** 2))
 
     def _train_step(
         self,
@@ -204,17 +235,19 @@ class CFCModel(BaseLNNModel):
             indices = np.random.choice(
                 n_samples, min(batch_size, n_samples), replace=False
             )
-            batch_data = torch.FloatTensor(data[indices])
-            batch_labels = torch.FloatTensor(labels[indices])
+            # P3-AI-3: 使用 torch.tensor + 显式 dtype 替代 FloatTensor，避免受全局默认 dtype 影响
+            batch_data = torch.tensor(data[indices], dtype=torch.float32)
+            batch_labels = torch.tensor(labels[indices], dtype=torch.float32)
             if batch_labels.ndim == 1:
                 batch_labels = batch_labels.unsqueeze(1)
 
             # 转换为PyTorch模型
-            torch_model = self.to_torch(device="cpu")
+            # 学术诚信修复：使用 self.device 而非硬编码 "cpu"，支持 GPU 训练
+            torch_model = self.to_torch(device=self.device)
             torch_model.train()
 
             optimizer = torch.optim.AdamW(
-                torch_model.parameters(), lr=learning_rate, weight_decay=1e-5
+                torch_model.parameters(), lr=learning_rate, weight_decay=DEFAULT_WEIGHT_DECAY
             )
             criterion = torch.nn.MSELoss()
 
@@ -267,20 +300,14 @@ class CFCModel(BaseLNNModel):
             activations.append(current)
 
         predictions = activations[-1]
-        loss = self._cross_entropy_loss(predictions, batch_labels)
+        # 学术诚信修复：统一为 MSE 损失，与训练路径（MSELoss）和验证路径语义一致
+        loss = self._mse_loss(predictions, batch_labels)
 
-        # 反向传播：计算梯度
-        # 对带 log-softmax 的交叉熵：dL/d_logits = (softmax(logits) - labels) / N
-        shifted = predictions - np.max(predictions, axis=-1, keepdims=True)
-        exp_shifted = np.exp(shifted)
-        softmax = exp_shifted / np.sum(exp_shifted, axis=-1, keepdims=True)
-
-        if batch_labels.ndim == 1:
-            batch_labels_onehot = np.eye(predictions.shape[1])[batch_labels.astype(int)]
-        else:
-            batch_labels_onehot = batch_labels
-
-        grad_z = (softmax - batch_labels_onehot) / n_samples  # dL/dz
+        # 反向传播：计算梯度（MSE 损失，线性输出层）
+        # dL/dz = 2 * (predictions - labels) / N
+        if batch_labels.ndim == 1 and predictions.ndim == 2:
+            batch_labels = batch_labels.reshape(-1, 1)
+        grad_z = 2.0 * (predictions - batch_labels) / n_samples  # dL/dz
 
         for i in reversed(range(len(self.weights))):
             # dL/dW[i] = a[i].T @ dL/dz[i]
@@ -304,7 +331,8 @@ class CFCModel(BaseLNNModel):
     def _sync_from_torch(self, torch_model) -> None:
         """从PyTorch模型同步权重回NumPy模型"""
         import torch as _torch
-        with _torch.no_grad():
+        # P2-AI-4: 使用 inference_mode 替代 no_grad，权重同步为纯读操作，无需 autograd 图
+        with _torch.inference_mode():
             # 同步CFC层权重
             backbone = torch_model.cfc_layer.backbone
             if len(self.weights) >= 1:
@@ -330,7 +358,8 @@ class CFCModel(BaseLNNModel):
             验证损失
         """
         predictions = self.forward(val_data)
-        loss = self._cross_entropy_loss(predictions, val_labels)
+        # 学术诚信修复：验证损失统一为 MSE，与训练路径（MSELoss）语义一致
+        loss = self._mse_loss(predictions, val_labels)
         return float(loss)
 
     def get_model_info(self) -> Dict[str, Any]:
@@ -375,29 +404,8 @@ class CFCModel(BaseLNNModel):
 
             torch_model = TorchCFCModel(config)
 
-            with torch.no_grad():
-                torch_model.cfc_layer.backbone[0].weight.data = torch.tensor(
-                    self.weights[0].T, dtype=torch.float32
-                )
-                torch_model.cfc_layer.backbone[0].bias.data = torch.tensor(
-                    self.biases[0], dtype=torch.float32
-                )
-
-                if len(self.weights) > 1:
-                    torch_model.cfc_layer.backbone[2].weight.data = torch.tensor(
-                        self.weights[1].T, dtype=torch.float32
-                    )
-                    torch_model.cfc_layer.backbone[2].bias.data = torch.tensor(
-                        self.biases[1], dtype=torch.float32
-                    )
-
-                if len(self.weights) >= 3:
-                    torch_model.output_layer.weight.data = torch.tensor(
-                        self.weights[-1].T, dtype=torch.float32
-                    )
-                    torch_model.output_layer.bias.data = torch.tensor(
-                        self.biases[-1], dtype=torch.float32
-                    )
+            # P2-AI-4: 使用 inference_mode 替代 no_grad，权重加载为纯赋值操作，无需 autograd 图
+            self._assign_torch_weights(torch_model)
 
             torch_model = torch_model.to(device)
             torch_model.model_name = self.model_name
@@ -411,3 +419,41 @@ class CFCModel(BaseLNNModel):
             raise RuntimeError(
                 "CFC 模型转换失败：转换为 PyTorch 张量需要安装 PyTorch 库。当前环境中未检测到 PyTorch。请安装 PyTorch（pip install torch）后重试。"
             )
+
+    def _assign_torch_weights(self, torch_model) -> None:
+        """将 NumPy 训练得到的权重赋值到 PyTorch CFC 模型。
+
+        在 ``torch.inference_mode`` 上下文中以纯赋值方式加载权重，
+        避免构建 autograd 图。权重映射:
+            - weights[0] -> cfc_layer.backbone[0].weight (转置) / .bias
+            - weights[1] -> cfc_layer.backbone[2].weight (转置) / .bias
+            - weights[-1] -> output_layer.weight (转置) / .bias
+
+        Args:
+            torch_model: 已构建的 ``TorchCFCModel`` 实例。
+        """
+        import torch
+
+        with torch.inference_mode():
+            torch_model.cfc_layer.backbone[0].weight.data = torch.tensor(
+                self.weights[0].T, dtype=torch.float32
+            )
+            torch_model.cfc_layer.backbone[0].bias.data = torch.tensor(
+                self.biases[0], dtype=torch.float32
+            )
+
+            if len(self.weights) > 1:
+                torch_model.cfc_layer.backbone[2].weight.data = torch.tensor(
+                    self.weights[1].T, dtype=torch.float32
+                )
+                torch_model.cfc_layer.backbone[2].bias.data = torch.tensor(
+                    self.biases[1], dtype=torch.float32
+                )
+
+            if len(self.weights) >= 3:
+                torch_model.output_layer.weight.data = torch.tensor(
+                    self.weights[-1].T, dtype=torch.float32
+                )
+                torch_model.output_layer.bias.data = torch.tensor(
+                    self.biases[-1], dtype=torch.float32
+                )

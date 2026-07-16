@@ -18,15 +18,18 @@ import os
 import tempfile
 import uuid
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from app.api.v1.auth import get_current_user
 from app.auth.permissions import require_permission
 from app.core.response import error, ErrorCode, success
 from app.core.safe_errors import safe_error_message
 from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file, validate_user_path
+from app.utils.upload_security import validate_upload
 from app.projects.project_store import (
     ProjectStore,
     ProjectManifest,
@@ -144,7 +147,7 @@ class ResourceUploadMeta(BaseModel):
         pattern="^(drawing|model|toolpath|simulation|postprocessor|extension)$",
         description="资源类型",
     )
-    metadata: dict = Field(default_factory=dict, description="额外元数据")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="额外元数据")
 
 
 # ============================================================
@@ -152,7 +155,7 @@ class ResourceUploadMeta(BaseModel):
 # ============================================================
 
 
-@router.post("/new")
+@router.post("/new", dependencies=[Depends(require_permission("project:write"))])
 async def create_project(request: ProjectMetadataRequest) -> dict:
     """创建新的空白工程。
 
@@ -189,7 +192,7 @@ async def create_project(request: ProjectMetadataRequest) -> dict:
         )
 
 
-@router.post("/open")
+@router.post("/open", dependencies=[Depends(get_current_user)])
 async def open_project(
     request: OpenRequest,
     background_tasks: BackgroundTasks,
@@ -254,9 +257,10 @@ async def open_project(
     except ValueError as e:
         if tmp_path:
             tmp_path.unlink(missing_ok=True)
+        logger.warning("Invalid project open request: %s", e)
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=str(e),
+            message="工程文件参数无效或路径校验失败",
             recoverable=True,
         )
     except (ValueError, TypeError, KeyError, OSError, IOError) as e:
@@ -327,7 +331,7 @@ async def save_project(
             message="工程保存成功",
         )
     except (OSError, ValueError, TypeError, KeyError) as e:
-        logger.error(f"保存工程失败: {e}", exc_info=True)
+        logger.error("保存工程失败: %s", e, exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.save", fallback="保存工程失败")
         return error(
@@ -385,7 +389,7 @@ async def save_as_project(
             message=f'工程另存为 "{Path(saved_path).name}" 成功',
         )
     except (OSError, ValueError, TypeError, KeyError) as e:
-        logger.error(f"另存为工程失败: {e}", exc_info=True)
+        logger.error("另存为工程失败: %s", e, exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.save_as", fallback="另存为工程失败")
         return error(
@@ -395,7 +399,7 @@ async def save_as_project(
         )
 
 
-@router.get("/list")
+@router.get("/list", dependencies=[Depends(get_current_user)])
 async def list_projects() -> dict:
     """列出所有工程文件。
 
@@ -412,7 +416,7 @@ async def list_projects() -> dict:
             message="OK",
         )
     except (OSError, ValueError, TypeError) as e:
-        logger.error(f"获取工程列表失败: {e}", exc_info=True)
+        logger.error("获取工程列表失败: %s", e, exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.list", fallback="获取工程列表失败")
         return error(
@@ -454,7 +458,7 @@ async def delete_project(
     except HTTPException:
         raise
     except (OSError, ValueError, TypeError) as e:
-        logger.error(f"删除工程失败: {e}", exc_info=True)
+        logger.error("删除工程失败: %s", e, exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.delete", fallback="删除工程失败")
         return error(
@@ -464,7 +468,7 @@ async def delete_project(
         )
 
 
-@router.get("/download/{project_name}")
+@router.get("/download/{project_name}", dependencies=[Depends(get_current_user)])
 async def download_project(project_name: str) -> FileResponse:
     """下载工程文件。
 
@@ -488,18 +492,35 @@ async def download_project(project_name: str) -> FileResponse:
 
 
 # 文件上传限制
-MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100MB
+# P0-12 修复：100MB 全量入内存 → 50MB 分块流式读取 + magic bytes 校验
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_UPLOAD_EXTENSIONS = {".step", ".stp", ".dxf", ".igs", ".iges", ".stl", ".obj"}
+# 各扩展名对应的允许 MIME 集合（由 upload_security.EXTENSION_TO_MIME 推导）
+_ALLOWED_UPLOAD_MIMES = {
+    "application/step", "application/iges", "application/dxf",
+    "application/sla", "application/octet-stream",
+}
 
 
 @router.post("/upload-resource")
 async def upload_resource(
     file: UploadFile,
     resource_type: str = Query(default="model"),
+    _perm: None = Depends(require_permission("project:write")),
 ) -> dict:
     """上传资源文件到临时目录。
 
     上传的文件将在保存工程时被打包进 .ljm 文件中。
+
+    修复 [P0-12]：
+    1. 添加 ``Depends(require_permission("project:write"))`` 强制认证 + 权限校验，
+       未登录调用方将得到 401，权限不足将得到 403。
+    2. 将 ``await file.read()`` 全量入内存改为 ``validate_upload`` 分块流式读取，
+       超过 50MB 立即中止并返回 413，避免 OOM/DoS。
+
+    修复 [P0-13]：
+    3. 通过 ``validate_upload`` 执行 magic bytes 签名校验，防止伪装的 PE/脚本文件
+       仅靠扩展名白名单绕过。
 
     Args:
         file: 上传的文件
@@ -516,21 +537,16 @@ async def upload_resource(
                 message="文件名不能为空",
             )
 
-        # 验证文件扩展名
-        ext = Path(file.filename).suffix.lower()
-        if ext not in ALLOWED_UPLOAD_EXTENSIONS:
-            return error(
-                code=ErrorCode.INVALID_REQUEST,
-                message=f"不支持的文件格式: {ext}。支持的格式: {', '.join(sorted(ALLOWED_UPLOAD_EXTENSIONS))}",
-            )
+        # P0-12/P0-13 修复：统一上传校验（扩展名 + magic bytes + 分块读取 + 大小限制）
+        # validate_upload 抛出 HTTPException(413/415/400)，由 except HTTPException 透传
+        content = await validate_upload(
+            file,
+            max_size=MAX_UPLOAD_SIZE,
+            allowed_extensions=ALLOWED_UPLOAD_EXTENSIONS,
+            allowed_mimes=_ALLOWED_UPLOAD_MIMES,
+        )
 
-        # 读取并验证文件大小
-        content = await file.read()
-        if len(content) > MAX_UPLOAD_SIZE:
-            return error(
-                code=ErrorCode.INVALID_REQUEST,
-                message=f"文件大小({len(content) / 1024 / 1024:.1f}MB)超过限制({MAX_UPLOAD_SIZE / 1024 / 1024:.0f}MB)",
-            )
+        ext = Path(file.filename).suffix.lower()
 
         # 生成安全的文件名（防止路径遍历）
         resource_id = f"res_{uuid.uuid4().hex[:12]}"
@@ -549,8 +565,11 @@ async def upload_resource(
             },
             message="资源上传成功",
         )
+    except HTTPException:
+        # validate_upload 抛出的 413/415/400 直接透传给客户端
+        raise
     except (OSError, ValueError, TypeError, KeyError) as e:
-        logger.error(f"资源上传失败: {e}", exc_info=True)
+        logger.error("资源上传失败: %s", e, exc_info=True)
         # 修复：避免 str(e) 直接进入响应
         safe = safe_error_message(e, context="projects.upload_resource", fallback="资源上传失败")
         return error(

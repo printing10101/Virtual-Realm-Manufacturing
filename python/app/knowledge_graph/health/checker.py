@@ -356,8 +356,9 @@ class HealthChecker:
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             return dt
-        except ValueError:
-            pass
+        except ValueError as iso_err:
+            # 所有格式均解析失败，记录最后一个解析异常便于排查，随后抛出统一错误
+            logger.debug("fromisoformat also failed for %r: %s", ts_str, iso_err)
 
         raise ValueError(f"Unable to parse timestamp: {ts_str!r}")
 

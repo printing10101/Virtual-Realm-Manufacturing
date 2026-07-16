@@ -1,6 +1,6 @@
 """
 实验三十一：与传统稳定性叶瓣图对比实验
-将CT-LTC预测结果与Tlusty理论模型的稳定性叶瓣图进行对比，验证模型的物理一致性
+将DL-LNN预测结果与Tlusty理论模型的稳定性叶瓣图进行对比，验证模型的物理一致性
 """
 
 import torch
@@ -10,7 +10,7 @@ import os
 import time
 from typing import Dict, List, Tuple
 
-from models import CTLTCModel
+from models import DLLNNModel
 from data_generator import TlustyAnalyticalModel
 
 
@@ -113,15 +113,15 @@ def main():
     a_lim_theory = lobe_data['a_lim_theory']
     stability_theory = lobe_data['stability_theory']
     
-    # 训练CT-LTC模型
-    print("训练CT-LTC模型...")
+    # 训练DL-LNN模型
+    print("训练DL-LNN模型...")
     from data_generator import SyntheticChatterDataset
     from torch.utils.data import DataLoader
     
     train_dataset = SyntheticChatterDataset(num_samples=5000, seed=42)
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     
-    model = CTLTCModel(input_dim=2, hidden_dim=64)
+    model = DLLNNModel(input_dim=7, hidden_dim=64)
     model = model.to(device)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)

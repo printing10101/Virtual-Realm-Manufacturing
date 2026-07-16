@@ -1,6 +1,22 @@
 // Vitest setup file for frontend test utilities and mocks.
 
 import { config } from '@vue/test-utils'
+import { vi } from 'vitest'
+
+// 全局 mock Tauri invoke（前端组件可能调用）
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(() => Promise.resolve({})),
+}))
+
+// 全局 mock window.matchMedia（Element Plus 依赖）
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+  }))
+}
 
 // Mock localStorage for happy-dom environment
 const localStorageMock = (() => {

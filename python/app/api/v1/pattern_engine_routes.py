@@ -34,7 +34,6 @@ class ExecutionRecordRequest(BaseModel):
     metrics: Dict[str, Any] = Field(
         default_factory=dict, description="Execution metrics"
     )
-    success: bool = Field(default=True, description="Whether execution succeeded")
 
 
 @router.get("")
@@ -65,7 +64,7 @@ def record_execution(req: ExecutionRecordRequest):
         elements=req.elements,
         conditions=req.conditions,
         metrics=req.metrics,
-        success=req.success,
+        success=True,
     )
     return success(data={"task_id": record.task_id})
 

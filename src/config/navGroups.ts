@@ -19,6 +19,8 @@ import {
   Reading,
   Setting,
   ChatDotRound,
+  Share,
+  Camera,
 } from '@element-plus/icons-vue'
 
 export interface NavItem {
@@ -52,6 +54,8 @@ export const navGroups: NavGroup[] = [
     items: [
       { path: '/material-management', label: '物料管理', icon: Folder },
       { path: '/task-board', label: '任务看板', icon: List },
+      { path: '/workflow-panel', label: '工作流编排', icon: Share },
+      { path: '/snapshot-panel', label: '实验快照', icon: Camera },
       { path: '/production-report', label: '生产报表', icon: Reading },
       { path: '/settings', label: '系统设置', icon: Setting },
     ],

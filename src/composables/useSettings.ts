@@ -5,9 +5,16 @@
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { invoke } from '@tauri-apps/api/core'
 import { setLocale, type SupportedLocale } from '@/i18n'
 import { formatTimestamp } from '@/utils/formatters'
+
+/**
+ * 判断当前是否运行在 Tauri 桌面应用环境中。
+ * 用于避免在 Web/测试环境静态导入 @tauri-apps/api 导致报错。
+ */
+function isTauriEnv(): boolean {
+  return typeof window !== 'undefined' && '__TAURI__' in window
+}
 
 /** 日志导出结果 */
 export interface LogExportResult {
@@ -88,6 +95,17 @@ export function useSettings(): UseSettingsReturn {
     }, 400)
 
     try {
+      // 安全修复：动态导入 @tauri-apps/api/core，避免在非 Tauri 环境（Web/测试）静态导入抛错
+      if (!isTauriEnv()) {
+        exportResult.value = {
+          success: false,
+          message: '日志导出仅在桌面应用环境可用',
+          outputPath: null,
+        }
+        ElMessage.error(t('settings.exportFailed'))
+        return
+      }
+      const { invoke } = await import('@tauri-apps/api/core')
       const result = await invoke<InvokeExportLogsResult>('export_logs_cmd', {
         days: exportDays,
       })

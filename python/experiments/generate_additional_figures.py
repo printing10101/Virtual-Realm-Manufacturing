@@ -147,7 +147,7 @@ rand_r2s_std = [x['R2_std'] for x in random_baseline]
 
 # 子图1: MAE对比
 ax = axes[0, 0]
-ax.plot(data_ratios, al_maes, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='CT-LTC 主动学习')
+ax.plot(data_ratios, al_maes, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='DL-LNN 主动学习')
 ax.errorbar(data_ratios, rand_maes, yerr=rand_maes_std, fmt='s--', color='#4ECDC4', 
             linewidth=2, markersize=8, capsize=5, label='随机采样 (均值±标准差)')
 ax.set_xlabel('标注数据比例', fontsize=12)
@@ -160,7 +160,7 @@ ax.set_xticklabels([f'{int(r*100)}%' for r in data_ratios])
 
 # 子图2: R²对比
 ax = axes[0, 1]
-ax.plot(data_ratios, al_r2s, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='CT-LTC 主动学习')
+ax.plot(data_ratios, al_r2s, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='DL-LNN 主动学习')
 ax.errorbar(data_ratios, rand_r2s, yerr=rand_r2s_std, fmt='s--', color='#4ECDC4', 
             linewidth=2, markersize=8, capsize=5, label='随机采样 (均值±标准差)')
 ax.axhline(y=0, color='gray', linestyle=':', linewidth=1, alpha=0.5)
@@ -174,7 +174,7 @@ ax.set_xticklabels([f'{int(r*100)}%' for r in data_ratios])
 
 # 子图3: PCC对比
 ax = axes[1, 0]
-ax.plot(data_ratios, al_pccs, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='CT-LTC 主动学习')
+ax.plot(data_ratios, al_pccs, 'o-', color='#FF6B6B', linewidth=2, markersize=8, label='DL-LNN 主动学习')
 rand_pccs = [x['PCC'] for x in random_baseline]
 ax.plot(data_ratios, rand_pccs, 's--', color='#4ECDC4', linewidth=2, markersize=8, label='随机采样')
 ax.set_xlabel('标注数据比例', fontsize=12)
@@ -203,7 +203,7 @@ for i, mae in enumerate(rand_maes):
 
 bars = []
 if al_efficiency:
-    bars.append(ax.bar(0.3, al_efficiency * 100, 0.2, color='#FF6B6B', alpha=0.7, label='CT-LTC 主动学习'))
+    bars.append(ax.bar(0.3, al_efficiency * 100, 0.2, color='#FF6B6B', alpha=0.7, label='DL-LNN 主动学习'))
 if rand_efficiency:
     bars.append(ax.bar(0.7, rand_efficiency * 100, 0.2, color='#4ECDC4', alpha=0.7, label='随机采样'))
 
@@ -211,7 +211,7 @@ ax.set_xlabel('采样策略', fontsize=12)
 ax.set_ylabel('达到MAE<1.0所需数据比例 (%)', fontsize=12)
 ax.set_title('数据效率对比', fontsize=14, fontweight='bold')
 ax.set_xticks([0.3, 0.7])
-ax.set_xticklabels(['CT-LTC\n主动学习', '随机采样'])
+ax.set_xticklabels(['DL-LNN\n主动学习', '随机采样'])
 ax.legend()
 ax.grid(True, alpha=0.3, axis='y')
 for bar_container in bars:
@@ -292,9 +292,9 @@ print("  ✓ 已保存: model_radar_chart.png")
 # 图4: 预测vs真实值散点图 + 残差图
 print("\n[4/5] 生成预测散点图和残差图...")
 
-# 使用CT-LTC在自采6061-T6上的结果生成模拟散点图
+# 使用DL-LNN在自采6061-T6上的结果生成模拟散点图
 # 基于MAE和PCC生成合理的预测-真实值对
-ct_ltc_results = models_data['CT-LTC']
+ct_ltc_results = models_data['DL-LNN']
 mae = ct_ltc_results['MAE']
 pcc = ct_ltc_results['PCC']
 
@@ -323,7 +323,7 @@ p = np.poly1d(z)
 ax.plot(y_true, p(y_true), "g-", linewidth=2, label=f'回归线 (R²={ct_ltc_results["R2"]:.3f})')
 ax.set_xlabel('真实值 (Hz)', fontsize=12)
 ax.set_ylabel('预测值 (Hz)', fontsize=12)
-ax.set_title(f'CT-LTC预测vs真实值 ({dataset_name})', fontsize=14, fontweight='bold')
+ax.set_title(f'DL-LNN预测vs真实值 ({dataset_name})', fontsize=14, fontweight='bold')
 ax.legend()
 ax.grid(True, alpha=0.3)
 ax.set_aspect('equal')

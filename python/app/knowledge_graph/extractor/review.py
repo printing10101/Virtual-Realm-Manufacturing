@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -103,6 +104,11 @@ class ReviewManager:
     def __post_init__(self):
         """初始化存储目录。"""
         self.storage_path.mkdir(parents=True, exist_ok=True)
+        # 并发保护：ReviewManager 单例在多个 async 端点间共享，
+        # reviews 字典的并发修改与 _save_to_disk 的文件写入均需加锁。
+        # 使用 RLock 以允许 _save_to_disk 在已持锁的方法内部被调用时
+        # 复用同一把锁，避免死锁。
+        self._lock = threading.RLock()
 
     def load_extraction_result(
         self,
@@ -158,8 +164,9 @@ class ReviewManager:
             overall_status=ReviewStatus.UNVERIFIED,
         )
 
-        self.reviews[review_id] = review
-        self._save_to_disk(review)
+        with self._lock:
+            self.reviews[review_id] = review
+            self._save_to_disk(review)
 
         logger.info(
             "加载审核记录 %s: %d 个实体, %d 个关系",
@@ -172,29 +179,31 @@ class ReviewManager:
 
     def get_review(self, review_id: str) -> Optional[ExtractionReviewData]:
         """获取审核记录。"""
-        return self.reviews.get(review_id)
+        with self._lock:
+            return self.reviews.get(review_id)
 
     def list_reviews(self) -> list[dict[str, Any]]:
         """列出所有审核记录摘要。"""
-        result = []
-        for review_id, review in self.reviews.items():
-            approved_entities = sum(
-                1 for e in review.entities if e.status == ReviewStatus.APPROVED
-            )
-            approved_relations = sum(
-                1 for r in review.relations if r.status == ReviewStatus.APPROVED
-            )
-            result.append({
-                "id": review_id,
-                "source_path": review.source_path,
-                "total_entities": len(review.entities),
-                "approved_entities": approved_entities,
-                "total_relations": len(review.relations),
-                "approved_relations": approved_relations,
-                "overall_status": review.overall_status,
-                "created_at": review.created_at,
-            })
-        return result
+        with self._lock:
+            result = []
+            for review_id, review in self.reviews.items():
+                approved_entities = sum(
+                    1 for e in review.entities if e.status == ReviewStatus.APPROVED
+                )
+                approved_relations = sum(
+                    1 for r in review.relations if r.status == ReviewStatus.APPROVED
+                )
+                result.append({
+                    "id": review_id,
+                    "source_path": review.source_path,
+                    "total_entities": len(review.entities),
+                    "approved_entities": approved_entities,
+                    "total_relations": len(review.relations),
+                    "approved_relations": approved_relations,
+                    "overall_status": review.overall_status,
+                    "created_at": review.created_at,
+                })
+            return result
 
     def update_entity(
         self,
@@ -212,28 +221,29 @@ class ReviewManager:
         Returns:
             bool: 是否更新成功。
         """
-        review = self.reviews.get(review_id)
-        if not review:
+        with self._lock:
+            review = self.reviews.get(review_id)
+            if not review:
+                return False
+
+            for entity in review.entities:
+                if entity.id == entity_id:
+                    if "status" in updates:
+                        entity.status = updates["status"]
+                        entity.reviewed_at = datetime.now().isoformat()
+                    if "review_comment" in updates:
+                        entity.review_comment = updates["review_comment"]
+                    if "name" in updates:
+                        entity.name = updates["name"]
+                    if "properties" in updates:
+                        entity.properties = updates["properties"]
+
+                    review.updated_at = datetime.now().isoformat()
+                    self._update_overall_status(review)
+                    self._save_to_disk(review)
+                    return True
+
             return False
-
-        for entity in review.entities:
-            if entity.id == entity_id:
-                if "status" in updates:
-                    entity.status = updates["status"]
-                    entity.reviewed_at = datetime.now().isoformat()
-                if "review_comment" in updates:
-                    entity.review_comment = updates["review_comment"]
-                if "name" in updates:
-                    entity.name = updates["name"]
-                if "properties" in updates:
-                    entity.properties = updates["properties"]
-
-                review.updated_at = datetime.now().isoformat()
-                self._update_overall_status(review)
-                self._save_to_disk(review)
-                return True
-
-        return False
 
     def update_relation(
         self,
@@ -255,47 +265,49 @@ class ReviewManager:
         Returns:
             bool: 是否更新成功。
         """
-        review = self.reviews.get(review_id)
-        if not review:
+        with self._lock:
+            review = self.reviews.get(review_id)
+            if not review:
+                return False
+
+            for relation in review.relations:
+                if (
+                    relation.source_id == source_id
+                    and relation.target_id == target_id
+                    and relation.relation_type == relation_type
+                ):
+                    if "status" in updates:
+                        relation.status = updates["status"]
+                        relation.reviewed_at = datetime.now().isoformat()
+                    if "review_comment" in updates:
+                        relation.review_comment = updates["review_comment"]
+                    if "properties" in updates:
+                        relation.properties = updates["properties"]
+
+                    review.updated_at = datetime.now().isoformat()
+                    self._update_overall_status(review)
+                    self._save_to_disk(review)
+                    return True
+
             return False
-
-        for relation in review.relations:
-            if (
-                relation.source_id == source_id
-                and relation.target_id == target_id
-                and relation.relation_type == relation_type
-            ):
-                if "status" in updates:
-                    relation.status = updates["status"]
-                    relation.reviewed_at = datetime.now().isoformat()
-                if "review_comment" in updates:
-                    relation.review_comment = updates["review_comment"]
-                if "properties" in updates:
-                    relation.properties = updates["properties"]
-
-                review.updated_at = datetime.now().isoformat()
-                self._update_overall_status(review)
-                self._save_to_disk(review)
-                return True
-
-        return False
 
     def delete_entity(self, review_id: str, entity_id: str) -> bool:
         """删除实体（标记为删除状态）。"""
-        review = self.reviews.get(review_id)
-        if not review:
+        with self._lock:
+            review = self.reviews.get(review_id)
+            if not review:
+                return False
+
+            for i, entity in enumerate(review.entities):
+                if entity.id == entity_id:
+                    entity.status = "deleted"
+                    entity.reviewed_at = datetime.now().isoformat()
+                    review.updated_at = datetime.now().isoformat()
+                    self._update_overall_status(review)
+                    self._save_to_disk(review)
+                    return True
+
             return False
-
-        for i, entity in enumerate(review.entities):
-            if entity.id == entity_id:
-                entity.status = "deleted"
-                entity.reviewed_at = datetime.now().isoformat()
-                review.updated_at = datetime.now().isoformat()
-                self._update_overall_status(review)
-                self._save_to_disk(review)
-                return True
-
-        return False
 
     def delete_relation(
         self,
@@ -305,46 +317,48 @@ class ReviewManager:
         relation_type: str,
     ) -> bool:
         """删除关系（标记为删除状态）。"""
-        review = self.reviews.get(review_id)
-        if not review:
+        with self._lock:
+            review = self.reviews.get(review_id)
+            if not review:
+                return False
+
+            for relation in review.relations:
+                if (
+                    relation.source_id == source_id
+                    and relation.target_id == target_id
+                    and relation.relation_type == relation_type
+                ):
+                    relation.status = "deleted"
+                    relation.reviewed_at = datetime.now().isoformat()
+                    review.updated_at = datetime.now().isoformat()
+                    self._update_overall_status(review)
+                    self._save_to_disk(review)
+                    return True
+
             return False
-
-        for relation in review.relations:
-            if (
-                relation.source_id == source_id
-                and relation.target_id == target_id
-                and relation.relation_type == relation_type
-            ):
-                relation.status = "deleted"
-                relation.reviewed_at = datetime.now().isoformat()
-                review.updated_at = datetime.now().isoformat()
-                self._update_overall_status(review)
-                self._save_to_disk(review)
-                return True
-
-        return False
 
     def approve_all(self, review_id: str) -> bool:
         """批量批准所有实体和关系。"""
-        review = self.reviews.get(review_id)
-        if not review:
-            return False
+        with self._lock:
+            review = self.reviews.get(review_id)
+            if not review:
+                return False
 
-        now = datetime.now().isoformat()
-        for entity in review.entities:
-            if entity.status == ReviewStatus.UNVERIFIED:
-                entity.status = ReviewStatus.APPROVED
-                entity.reviewed_at = now
+            now = datetime.now().isoformat()
+            for entity in review.entities:
+                if entity.status == ReviewStatus.UNVERIFIED:
+                    entity.status = ReviewStatus.APPROVED
+                    entity.reviewed_at = now
 
-        for relation in review.relations:
-            if relation.status == ReviewStatus.UNVERIFIED:
-                relation.status = ReviewStatus.APPROVED
-                relation.reviewed_at = now
+            for relation in review.relations:
+                if relation.status == ReviewStatus.UNVERIFIED:
+                    relation.status = ReviewStatus.APPROVED
+                    relation.reviewed_at = now
 
-        review.overall_status = ReviewStatus.APPROVED
-        review.updated_at = now
-        self._save_to_disk(review)
-        return True
+            review.overall_status = ReviewStatus.APPROVED
+            review.updated_at = now
+            self._save_to_disk(review)
+            return True
 
     def get_approved_data(self, review_id: str) -> Optional[dict[str, Any]]:
         """获取已批准的数据，可用于写入图谱。
@@ -355,40 +369,41 @@ class ReviewManager:
         Returns:
             dict: 包含已批准实体和关系的字典。
         """
-        review = self.reviews.get(review_id)
-        if not review:
-            return None
+        with self._lock:
+            review = self.reviews.get(review_id)
+            if not review:
+                return None
 
-        entities = [
-            {
-                "entity_type": e.entity_type,
-                "id": e.id,
-                "name": e.name,
-                "properties": e.properties,
-                "confidence": e.confidence,
+            entities = [
+                {
+                    "entity_type": e.entity_type,
+                    "id": e.id,
+                    "name": e.name,
+                    "properties": e.properties,
+                    "confidence": e.confidence,
+                }
+                for e in review.entities
+                if e.status == ReviewStatus.APPROVED
+            ]
+
+            relations = [
+                {
+                    "relation_type": r.relation_type,
+                    "source_id": r.source_id,
+                    "target_id": r.target_id,
+                    "properties": r.properties,
+                    "confidence": r.confidence,
+                }
+                for r in review.relations
+                if r.status == ReviewStatus.APPROVED
+            ]
+
+            return {
+                "entities": entities,
+                "relations": relations,
+                "source_path": review.source_path,
+                "approved_at": datetime.now().isoformat(),
             }
-            for e in review.entities
-            if e.status == ReviewStatus.APPROVED
-        ]
-
-        relations = [
-            {
-                "relation_type": r.relation_type,
-                "source_id": r.source_id,
-                "target_id": r.target_id,
-                "properties": r.properties,
-                "confidence": r.confidence,
-            }
-            for r in review.relations
-            if r.status == ReviewStatus.APPROVED
-        ]
-
-        return {
-            "entities": entities,
-            "relations": relations,
-            "source_path": review.source_path,
-            "approved_at": datetime.now().isoformat(),
-        }
 
     def _update_overall_status(self, review: ExtractionReviewData) -> None:
         """更新整体审核状态。"""
@@ -408,24 +423,30 @@ class ReviewManager:
             review.overall_status = ReviewStatus.UNVERIFIED
 
     def _save_to_disk(self, review: ExtractionReviewData) -> None:
-        """保存审核记录到磁盘。"""
-        file_path = self.storage_path / f"{review.id}.json"
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(review.model_dump(), f, ensure_ascii=False, indent=2)
+        """保存审核记录到磁盘。
+
+        使用 RLock 以允许在已持锁的公开方法内部被调用时复用锁，
+        同时也可单独被调用而不影响正确性。
+        """
+        with self._lock:
+            file_path = self.storage_path / f"{review.id}.json"
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(review.model_dump(), f, ensure_ascii=False, indent=2)
 
     def load_from_disk(self) -> None:
         """从磁盘加载所有审核记录。"""
-        if not self.storage_path.exists():
-            return
+        with self._lock:
+            if not self.storage_path.exists():
+                return
 
-        for file_path in self.storage_path.glob("*.json"):
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                review = ExtractionReviewData(**data)
-                self.reviews[review.id] = review
-            except (json.JSONDecodeError, OSError, ValueError, TypeError, KeyError) as exc:
-                logger.warning("加载审核记录失败 %s: %s", file_path, exc)
+            for file_path in self.storage_path.glob("*.json"):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    review = ExtractionReviewData(**data)
+                    self.reviews[review.id] = review
+                except (json.JSONDecodeError, OSError, ValueError, TypeError, KeyError) as exc:
+                    logger.warning("加载审核记录失败 %s: %s", file_path, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -1239,7 +1260,10 @@ def main():  # pragma: no cover
     )
 
     app = create_review_app()
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # 默认仅监听本机回环，避免暴露到外网；如需远程访问可通过 env 显式指定绑定地址。
+    host = os.environ.get("KG_REVIEW_HOST", "127.0.0.1")
+    port = int(os.environ.get("KG_REVIEW_PORT", "8001"))
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":  # pragma: no cover

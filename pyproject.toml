@@ -10,9 +10,11 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 # 与 .flake8 per-file-ignores 对齐
+# P2-7 修复：修正引用失效的文件路径
+#   - audit_log.py 实际路径为 python/app/audit/audit_log.py（非 python/app/core/audit_log.py）
+#   - verify_cache_performance.py 已删除，移除对应规则
 "python/app/ai/lnn/engine.py" = ["E203"]
 "python/app/ai/lnn/quantization/quantizer.py" = ["E203"]
 "python/app/cad/cadquery_gen.py" = ["E203"]
-"python/app/core/audit_log.py" = ["E203"]
-"python/scripts/verify_cache_performance.py" = ["E402"]
+"python/app/audit/audit_log.py" = ["E203"]
 "python/alembic/versions/be7e8d82d196_initial_schema.py" = ["E501", "W291"]

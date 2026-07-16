@@ -10,6 +10,7 @@ import numpy as np
 import time
 import json
 import logging
+import threading
 import psutil
 from typing import Any, Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass, field
@@ -128,6 +129,16 @@ class LNNPredictor:
         self.use_amp = use_amp and HAS_AMP
         self.auto_device = auto_device
 
+        # MC Dropout 并发保护锁：predict_mc_dropout 在切换 model.train(True)/eval()
+        # 期间必须独占访问模型状态，否则并发请求的 eval() 会关闭其他请求的 dropout。
+        # 使用 RLock（可重入锁）：predict_mc_dropout 内部可能间接调用其他也需要此锁的方法。
+        self._mc_lock = threading.RLock()
+
+        # 统计数据并发保护锁：_update_stats (写) 与 get_statistics/get_performance (读)
+        # 在多线程并发推理时会同时操作 self._stats 字典，缺少锁保护会导致计数丢失、
+        # 极值错乱、inference_times 列表竞争。使用独立 Lock 避免与 MC Dropout 锁耦合。
+        self._stats_lock = threading.Lock()
+
         self.device = self._select_device()
         if HAS_TORCH and hasattr(self.model, "to"):
             self.model.to(self.device)
@@ -171,6 +182,10 @@ class LNNPredictor:
     def _select_device(self) -> Any:
         """Automatically select best available device"""
         if not self.auto_device or not HAS_TORCH:
+            # 修复 P1: HAS_TORCH=False 时 torch 为 None，torch.device("cpu") 会抛 TypeError。
+            # 此时返回字符串 "cpu" 作为降级设备标识，下游无需构造 torch.device 对象即可工作。
+            if not HAS_TORCH:
+                return "cpu"
             return torch.device("cpu")
         if torch.cuda.is_available():
             return torch.device("cuda")
@@ -189,10 +204,12 @@ class LNNPredictor:
             Tuple of (processed features, metadata dict)
         """
         input_array = self._standardize_input(data)
-        if self.preprocessor.is_fitted:
-            preprocessed = self.preprocessor.transform(input_array)
-        else:
-            preprocessed = self.preprocessor.fit_transform(input_array)
+        if not self.preprocessor.is_fitted:
+            raise RuntimeError(
+                "预处理器未拟合，无法执行推理。请先训练模型或加载已训练的预处理器。"
+                "推理阶段禁止使用 fit_transform 以避免数据泄漏。"
+            )
+        preprocessed = self.preprocessor.transform(input_array)
         return preprocessed.features, {"input_shape": input_array.shape}
 
     def _postprocess(self, output: Any, hidden: Optional[Dict[str, Any]] = None) -> Any:
@@ -436,8 +453,372 @@ class LNNPredictor:
         for item in data_stream:
             yield self.predict(item, return_confidence=return_confidence)
 
+    def predict_mc_dropout(
+        self,
+        input_data: Any,
+        n_samples: int = 30,
+        dropout_override: Optional[float] = None,
+    ) -> "PredictionResult":
+        """Monte Carlo Dropout 不确定性量化（Bayesian LNN 近似）。
+
+        通过在推理阶段保持 dropout 激活并执行多次前向传播，得到预测分布的
+        样本集合，进而计算认知不确定性（epistemic uncertainty）。
+
+        Args:
+            input_data: 输入数据，与 :meth:`predict` 相同。
+            n_samples: 前向传播次数，建议 30~100。低于 1 视为 1。
+            dropout_override: 可选，临时覆盖 dropout 概率。None 时使用模型
+                当前配置。
+
+        Returns:
+            PredictionResult，其中：
+                - ``value`` 为样本均值；
+                - ``confidence`` 为 ``1 - std/|mean|``（裁剪到 [0,1]）；
+                - ``model_info["mc_std"]``、``mc_samples``、``mc_n_samples``
+                  记录真实标准差与样本数，供上层 API 透传。
+        """
+        # 临界区：整个 predict_mc_dropout 方法体在锁保护下执行，
+        # 确保 model.train(True)/eval() 模式切换和恢复是原子操作。
+        # 并发调用时，一个请求的 eval() 会关闭另一个请求的 dropout，
+        # 导致 MC Dropout 失效。RLock 可重入，不影响正常推理性能。
+        with self._mc_lock:
+            if n_samples < 1:
+                n_samples = 1
+
+            features, hidden = self._preprocess(input_data)
+
+            if not HAS_TORCH:
+                result = self.predict(input_data, return_confidence=True)
+                if isinstance(result, PredictionResult):
+                    result.model_info.setdefault("mc_n_samples", 1)
+                    result.model_info.setdefault("mc_std", 0.0)
+                    return result
+                return PredictionResult(
+                    value=result,
+                    confidence=0.0,
+                    inference_time=0.0,
+                    model_info={"mc_n_samples": 1, "mc_std": 0.0},
+                )
+
+            samples: List[Any] = []
+            original_dropout = getattr(self.model, "dropout_rate", None)
+            if dropout_override is not None and hasattr(self.model, "dropout_rate"):
+                try:
+                    self.model.dropout_rate = float(dropout_override)
+                except (AttributeError, TypeError, ValueError) as exc:
+                    logger.debug(
+                        "predict_mc_dropout: 无法覆盖 dropout: %s", exc
+                    )
+
+            was_training = getattr(self.model, "training", False)
+            try:
+                train_fn = getattr(self.model, "train", None)
+                if callable(train_fn):
+                    train_fn(True)
+                else:
+                    was_training = None
+            except (RuntimeError, AttributeError) as exc:
+                logger.debug("predict_mc_dropout: 切换 train 模式失败: %s", exc)
+                was_training = None
+
+            start_ts = time.perf_counter()
+            try:
+                for _ in range(n_samples):
+                    if isinstance(self.model, BaseLNNModel):
+                        output = self.model.predict(features)
+                    else:
+                        features_tensor = self._to_tensor(features)
+                        # 修复 P1: inference_mode 会禁用 dropout，导致 n_samples 次前向
+                        # 结果完全相同、std=0，MC Dropout 失效。改用 no_grad（不禁用 dropout），
+                        # 配合上方已设置的 model.train(True) 使 dropout 层保持激活。
+                        with torch.no_grad():
+                            output = self.model(features_tensor)
+                    if isinstance(output, torch.Tensor):
+                        output = output.detach().cpu().numpy()
+                    samples.append(np.asarray(output, dtype=float))
+            finally:
+                if was_training is not None:
+                    eval_fn = getattr(self.model, "eval", None)
+                    if callable(eval_fn):
+                        try:
+                            if was_training:
+                                self.model.train()
+                            else:
+                                self.model.eval()
+                        except (RuntimeError, AttributeError) as restore_err:
+                            # 训练/推理模式恢复失败不阻塞预测结果返回（已得到 samples），
+                            # 但记录便于排查：模型状态可能与预期不一致，影响后续推理
+                            logger.debug("Failed to restore model train/eval mode: %s",
+                                         restore_err, exc_info=True)
+                if original_dropout is not None and hasattr(self.model, "dropout_rate"):
+                    try:
+                        self.model.dropout_rate = original_dropout
+                    except (AttributeError, TypeError, ValueError) as dropout_err:
+                        # dropout_rate 恢复失败同样不阻塞，但需记录：后续推理可能
+                        # 仍处于 MC dropout 模式，导致确定性预测出现非确定性
+                        logger.debug("Failed to restore original dropout_rate: %s",
+                                     dropout_err, exc_info=True)
+
+            inference_time = (time.perf_counter() - start_ts) * 1000.0
+
+            try:
+                stacked = np.stack(samples, axis=0)
+                mean = np.mean(stacked, axis=0)
+                std = np.std(stacked, axis=0)
+            except (ValueError, TypeError) as exc:
+                logger.warning(
+                    "predict_mc_dropout: 样本堆叠失败，回退到首样本: %s", exc
+                )
+                mean = samples[0] if samples else np.array(0.0)
+                std = np.zeros_like(mean)
+
+            mean_value = self._maybe_inverse_transform(mean)
+            processed = self._postprocess(mean_value, hidden)
+
+            scalar_mean = float(np.mean(processed)) if isinstance(processed, np.ndarray) else float(processed)
+            scalar_std = float(np.mean(std)) if std.size else 0.0
+
+            mean_abs = abs(scalar_mean) if scalar_mean != 0 else 1.0
+            confidence = max(0.0, min(1.0, 1.0 - scalar_std / mean_abs))
+
+            mem_mb = self._get_memory_usage_mb()
+            self._update_stats(inference_time, mem_mb)
+            self._write_trace(inference_time, features.shape if hasattr(features, "shape") else (1,), success=True)
+
+            return PredictionResult(
+                value=processed,
+                confidence=confidence,
+                inference_time=inference_time,
+                model_info={
+                    "name": self.model_name,
+                    "device": str(self.device),
+                    "mc_n_samples": n_samples,
+                    "mc_std": scalar_std,
+                    "mc_mean": scalar_mean,
+                    "uncertainty_method": "mc_dropout",
+                },
+            )
+
+    def predict_with_intermediates(
+        self,
+        input_data: Any,
+        *,
+        capture_hidden: bool = True,
+        capture_gates: bool = True,
+    ) -> PredictionResult:
+        """非侵入式推理并捕获中间状态（隐状态 / 门控值 / 时间常数）.
+
+        对应 ADR-016（可解释性可视化）。本方法不修改主推理路径，
+        仅在标准前向后附加读取模型内部状态，供可解释性服务消费：
+        - 隐状态序列 → ``HiddenStateExplanation``（降维投影可视化）
+        - 门控值 / 时间常数 → ``GateDynamicsExplanation``（门控动力学曲线）
+
+        捕获策略
+        --------
+        1. **forward hook 模式**（首选）：若模型为 torch LTC 模型且暴露
+           ``ltc_cells`` 属性，注册 forward hook 捕获每个 cell 的输出，
+           得到逐层逐帧的隐状态序列。同时从 ``config.time_constant``
+           读取 ``dt``，计算 ``τ = 1/dt`` 作为时间常数。
+        2. **属性读取模式**（降级）：若模型暴露 ``hidden_state`` 属性但
+           无 ``ltc_cells``，直接读取前向后的 ``hidden_state``（单帧快照）。
+        3. **禁用模式**：torch 不可用或模型不暴露任何中间状态时，
+           ``intermediates`` 返回空字典，仅保证主推理结果正确。
+
+        线程安全
+        --------
+        使用 ``_mc_lock`` 保护（与 ``predict_mc_dropout`` 共享），避免
+        并发请求的 hook 注册/移除相互干扰。hook 句柄在 finally 块中
+        确保移除，防止泄漏。
+
+        Parameters
+        ----------
+        input_data : Any
+            输入数据（与 ``predict`` 接口一致）。
+        capture_hidden : bool
+            是否捕获隐状态序列（默认 True）。
+        capture_gates : bool
+            是否捕获门控值与时间常数（默认 True）。
+
+        Returns
+        -------
+        PredictionResult
+            标准预测结果，``model_info`` 中附加 ``intermediates`` 字段：
+            - ``hidden_states``: list[list[float]] 隐状态 [N, hidden_dim]
+            - ``gate_values``: list[list[float]] 门控值 [N, hidden_dim]
+            - ``time_constants``: list[list[float]] 时间常数 τ [N, hidden_dim]
+            - ``hidden_shape``: list[int] 原始隐状态形状
+            - ``capture_mode``: str 捕获模式（``hook`` / ``attribute`` / ``disabled``）
+
+        Notes
+        -----
+        - 本方法 **不更新** ``_stats`` 统计，避免与 ``predict`` 双重计数。
+        - 捕获失败时记录 warning 并返回空 intermediates，不抛异常。
+        """
+        start_time = time.perf_counter()
+
+        # _mc_lock 保护 hook 注册/移除与模型状态读取，避免并发干扰
+        with self._mc_lock:
+            intermediates: Dict[str, Any] = {
+                "hidden_states": [],
+                "gate_values": [],
+                "time_constants": [],
+                "hidden_shape": [],
+                "capture_mode": "disabled",
+            }
+
+            try:
+                features, hidden_meta = self._preprocess(input_data)
+            except (ValueError, TypeError, RuntimeError) as exc:
+                logger.warning(
+                    "predict_with_intermediates: 预处理失败，返回空 intermediates: %s",
+                    exc,
+                    exc_info=True,
+                )
+                inference_time = (time.perf_counter() - start_time) * 1000
+                return PredictionResult(
+                    value=None,
+                    confidence=0.0,
+                    inference_time=inference_time,
+                    model_info={
+                        "name": self.model_name,
+                        "device": str(self.device),
+                        "intermediates": intermediates,
+                        "intermediate_capture_error": str(exc),
+                    },
+                )
+
+            # ---- 捕获中间状态 ----
+            hook_handles: list[Any] = []
+            captured_hidden: list[np.ndarray] = []
+
+            if capture_hidden and HAS_TORCH:
+                # 尝试 forward hook 模式：注册到 ltc_cells
+                ltc_cells = getattr(self.model, "ltc_cells", None)
+                if ltc_cells is not None and isinstance(ltc_cells, (list, tuple)):
+                    for cell in ltc_cells:
+                        def _hook(module, inputs, output, _cell=cell):
+                            try:
+                                if isinstance(output, torch.Tensor):
+                                    captured_hidden.append(
+                                        output.detach().cpu().numpy()
+                                    )
+                            except (RuntimeError, ValueError, TypeError):
+                                pass
+
+                        handle = cell.register_forward_hook(_hook)
+                        hook_handles.append(handle)
+                    intermediates["capture_mode"] = "hook"
+
+            try:
+                # 执行标准前向
+                if isinstance(self.model, BaseLNNModel):
+                    output = self.model.predict(features)
+                else:
+                    features_tensor = self._to_tensor(features)
+                    with torch.no_grad():
+                        output = self.model(features_tensor)
+
+                processed_output = self._postprocess(output, hidden_meta)
+                if isinstance(processed_output, np.ndarray):
+                    processed_output = self._maybe_inverse_transform(processed_output)
+
+                # ---- 收集隐状态 ----
+                if capture_hidden:
+                    if captured_hidden:
+                        # hook 模式：逐层隐状态
+                        # 取最后一层的输出作为帧序列（[seq, batch, hidden] → [seq, hidden]）
+                        last_layer = captured_hidden[-1]
+                        if last_layer.ndim == 3:
+                            # [seq, batch, hidden] → [seq, hidden]（batch=1）
+                            hidden_seq = last_layer[:, 0, :]
+                        elif last_layer.ndim == 2:
+                            hidden_seq = last_layer
+                        else:
+                            hidden_seq = last_layer.reshape(1, -1)
+                        intermediates["hidden_states"] = hidden_seq.tolist()
+                        intermediates["hidden_shape"] = list(hidden_seq.shape)
+                    else:
+                        # 降级：属性读取模式
+                        last_hs = getattr(self.model, "hidden_state", None)
+                        if last_hs is not None:
+                            if HAS_TORCH and isinstance(last_hs, torch.Tensor):
+                                last_hs = last_hs.detach().cpu().numpy()
+                            # [num_layers, batch, hidden] → [num_layers, hidden]（batch=1）
+                            if isinstance(last_hs, np.ndarray):
+                                if last_hs.ndim == 3:
+                                    hs_seq = last_hs[:, 0, :]
+                                elif last_hs.ndim == 2:
+                                    hs_seq = last_hs
+                                else:
+                                    hs_seq = last_hs.reshape(1, -1)
+                                intermediates["hidden_states"] = hs_seq.tolist()
+                                intermediates["hidden_shape"] = list(hs_seq.shape)
+                                intermediates["capture_mode"] = "attribute"
+
+                # ---- 收集门控值与时间常数 ----
+                if capture_gates:
+                    config = getattr(self.model, "config", None)
+                    dt = getattr(config, "time_constant", None) if config else None
+                    if dt is not None:
+                        # 广播 dt 到 hidden_dim 维
+                        hidden_dim = (
+                            len(intermediates["hidden_states"][0])
+                            if intermediates["hidden_states"]
+                            else 1
+                        )
+                        gate_values = [float(dt)] * hidden_dim
+                        time_constants = [1.0 / float(dt) if float(dt) > 0 else 0.0] * hidden_dim
+                        # 广播到帧数
+                        n_frames = len(intermediates["hidden_states"]) or 1
+                        intermediates["gate_values"] = [gate_values] * n_frames
+                        intermediates["time_constants"] = [time_constants] * n_frames
+                        if intermediates["capture_mode"] == "disabled":
+                            intermediates["capture_mode"] = "attribute"
+
+            except (ValueError, TypeError, RuntimeError) as exc:
+                logger.warning(
+                    "predict_with_intermediates: 中间状态捕获失败: %s",
+                    exc,
+                    exc_info=True,
+                )
+                # 主推理已失败，返回错误结果
+                inference_time = (time.perf_counter() - start_time) * 1000
+                return PredictionResult(
+                    value=None,
+                    confidence=0.0,
+                    inference_time=inference_time,
+                    model_info={
+                        "name": self.model_name,
+                        "device": str(self.device),
+                        "intermediates": intermediates,
+                        "intermediate_capture_error": str(exc),
+                    },
+                )
+            finally:
+                # 确保 hook 移除，防止泄漏
+                for handle in hook_handles:
+                    try:
+                        handle.remove()
+                    except (RuntimeError, ValueError, AttributeError):
+                        pass
+
+            inference_time = (time.perf_counter() - start_time) * 1000
+            confidence = self._compute_confidence(output) if output is not None else 0.0
+
+            return PredictionResult(
+                value=processed_output,
+                confidence=confidence,
+                inference_time=inference_time,
+                model_info={
+                    "name": self.model_name,
+                    "device": str(self.device),
+                    "intermediates": intermediates,
+                },
+            )
+
     def get_statistics(self) -> Dict[str, Any]:
-        stats = self._stats.copy()
+        with self._stats_lock:
+            stats = self._stats.copy()
         total = stats["total_inferences"]
         stats["average_inference_time_ms"] = (
             stats["total_inference_time_ms"] / total if total > 0 else 0.0
@@ -448,29 +829,32 @@ class LNNPredictor:
         return stats
 
     def get_performance(self) -> Dict[str, Any]:
-        total = self._stats["total_inferences"]
-        times = (
-            sorted(self._stats["inference_times"])
-            if self._stats["inference_times"]
-            else []
-        )
-        n = len(times)
+        # 在锁内快照所有需要的字段并完成窗口重置写操作，
+        # 锁外完成 sorted 等较重计算以减少锁持有时间。
+        with self._stats_lock:
+            total = self._stats["total_inferences"]
+            times = sorted(self._stats["inference_times"])
+            total_inference_time_ms = self._stats["total_inference_time_ms"]
+            min_inference_time_ms = self._stats["min_inference_time_ms"]
+            max_inference_time_ms = self._stats["max_inference_time_ms"]
+            peak_memory_mb = self._stats["peak_memory_mb"]
+            window_start = self._stats["window_start"]
+            window_inferences = self._stats["window_inferences"]
 
-        avg_ms = (self._stats["total_inference_time_ms"] / total) if total > 0 else 0.0
+            now = time.perf_counter()
+            window_elapsed = now - window_start
+            throughput = (
+                window_inferences / window_elapsed if window_elapsed > 0 else 0.0
+            )
+            if window_elapsed > 60.0:
+                self._stats["window_start"] = now
+                self._stats["window_inferences"] = 0
+
+        n = len(times)
+        avg_ms = (total_inference_time_ms / total) if total > 0 else 0.0
         p50 = times[int(n * 0.50)] if n > 0 else 0.0
         p95 = times[min(int(n * 0.95), n - 1)] if n > 0 else 0.0
         p99 = times[min(int(n * 0.99), n - 1)] if n > 0 else 0.0
-
-        now = time.perf_counter()
-        window_elapsed = now - self._stats["window_start"]
-        throughput = (
-            self._stats["window_inferences"] / window_elapsed
-            if window_elapsed > 0
-            else 0.0
-        )
-        if window_elapsed > 60.0:
-            self._stats["window_start"] = now
-            self._stats["window_inferences"] = 0
 
         device_type = str(self.device)
         if HAS_TORCH and self.device.type == "cuda":
@@ -492,15 +876,15 @@ class LNNPredictor:
             "p95_inference_ms": round(p95, 4),
             "p99_inference_ms": round(p99, 4),
             "min_inference_ms": round(
-                self._stats["min_inference_time_ms"]
-                if self._stats["min_inference_time_ms"] != float("inf")
+                min_inference_time_ms
+                if min_inference_time_ms != float("inf")
                 else 0.0,
                 4,
             ),
-            "max_inference_ms": round(self._stats["max_inference_time_ms"], 4),
+            "max_inference_ms": round(max_inference_time_ms, 4),
             "throughput_inf_per_sec": round(throughput, 2),
             "current_memory_mb": round(self._get_memory_usage_mb(), 2),
-            "peak_memory_mb": round(self._stats["peak_memory_mb"], 2),
+            "peak_memory_mb": round(peak_memory_mb, 2),
             "sample_count_recent": n,
         }
 
@@ -567,21 +951,22 @@ class LNNPredictor:
         return process.memory_info().rss / (1024 * 1024)
 
     def _update_stats(self, inference_time_ms: float, memory_mb: float) -> None:
-        """Update inference statistics"""
-        self._stats["total_inferences"] += 1
-        self._stats["total_inference_time_ms"] += inference_time_ms
-        self._stats["max_inference_time_ms"] = max(
-            self._stats["max_inference_time_ms"], inference_time_ms
-        )
-        self._stats["min_inference_time_ms"] = min(
-            self._stats["min_inference_time_ms"], inference_time_ms
-        )
-        self._stats["peak_memory_mb"] = max(self._stats["peak_memory_mb"], memory_mb)
-        times = self._stats["inference_times"]
-        times.append(inference_time_ms)
-        if len(times) > self._max_recent_times:
-            self._stats["inference_times"] = times[-self._max_recent_times :]
-        self._stats["window_inferences"] += 1
+        """Update inference statistics (thread-safe)"""
+        with self._stats_lock:
+            self._stats["total_inferences"] += 1
+            self._stats["total_inference_time_ms"] += inference_time_ms
+            self._stats["max_inference_time_ms"] = max(
+                self._stats["max_inference_time_ms"], inference_time_ms
+            )
+            self._stats["min_inference_time_ms"] = min(
+                self._stats["min_inference_time_ms"], inference_time_ms
+            )
+            self._stats["peak_memory_mb"] = max(self._stats["peak_memory_mb"], memory_mb)
+            times = self._stats["inference_times"]
+            times.append(inference_time_ms)
+            if len(times) > self._max_recent_times:
+                self._stats["inference_times"] = times[-self._max_recent_times :]
+            self._stats["window_inferences"] += 1
 
     def _write_trace(
         self,

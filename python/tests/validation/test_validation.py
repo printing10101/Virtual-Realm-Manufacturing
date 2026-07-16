@@ -446,7 +446,7 @@ class TestGeometricValidator:
 
     def test_validate_stepped_shaft(self):
         v = self.make_validator()
-        report = v.validate_reconstruction("stepped_shaft")
+        report = v.validate_reconstruction("stepped_shaft", allow_mock_fallback=True)
         assert report.part_id == "stepped_shaft"
         assert report.part_name == "阶梯轴"
         assert report.metrics.feature_recall >= 0.0
@@ -456,7 +456,7 @@ class TestGeometricValidator:
 
     def test_validate_flange(self):
         v = self.make_validator()
-        report = v.validate_reconstruction("flange")
+        report = v.validate_reconstruction("flange", allow_mock_fallback=True)
         assert report.part_id == "flange"
         assert len(report.dimension_checks) > 0
         assert len(report.feature_checks) > 0
@@ -464,7 +464,7 @@ class TestGeometricValidator:
 
     def test_validate_bracket(self):
         v = self.make_validator()
-        report = v.validate_reconstruction("bracket")
+        report = v.validate_reconstruction("bracket", allow_mock_fallback=True)
         assert report.part_id == "bracket"
         assert report.metrics.feature_precision >= 0.0
 
@@ -490,7 +490,7 @@ class TestGeometricValidator:
 
     def test_report_json(self):
         v = self.make_validator()
-        report = v.validate_reconstruction("stepped_shaft")
+        report = v.validate_reconstruction("stepped_shaft", allow_mock_fallback=True)
         j = report.to_json()
         data = json.loads(j)
         assert data["part_id"] == "stepped_shaft"
@@ -498,7 +498,7 @@ class TestGeometricValidator:
 
     def test_report_to_dict(self):
         v = self.make_validator()
-        report = v.validate_reconstruction("flange")
+        report = v.validate_reconstruction("flange", allow_mock_fallback=True)
         d = report.to_dict()
         assert "dimension_checks" in d
         assert "feature_checks" in d
@@ -564,7 +564,7 @@ class TestHtmlReport:
 
     def test_generate_report_returns_html(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("stepped_shaft")
+        report = v.validate_reconstruction("stepped_shaft", allow_mock_fallback=True)
         html = v.generate_report(report)
         assert "<!DOCTYPE html>" in html
         assert "阶梯轴" in html
@@ -573,7 +573,7 @@ class TestHtmlReport:
 
     def test_report_contains_all_sections(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("flange")
+        report = v.validate_reconstruction("flange", allow_mock_fallback=True)
         html = v.generate_report(report)
         assert "综合指标概览" in html
         assert "特征交并比" in html
@@ -583,7 +583,7 @@ class TestHtmlReport:
 
     def test_report_saves_to_file(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("bracket")
+        report = v.validate_reconstruction("bracket", allow_mock_fallback=True)
         with tempfile.NamedTemporaryFile(
             suffix=".html", delete=False, mode="w", encoding="utf-8"
         ) as f:
@@ -601,7 +601,7 @@ class TestHtmlReport:
 
     def test_report_pass_visual(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("stepped_shaft")
+        report = v.validate_reconstruction("stepped_shaft", allow_mock_fallback=True)
         html = v.generate_report(report)
         assert "#4caf50" in html or "#f44336" in html
 
@@ -611,25 +611,25 @@ class TestHtmlReport:
             fail_on_feature_recall=0.999,
             fail_on_tolerance_compliance=99.9,
         )
-        report = v.validate_reconstruction("flange")
+        report = v.validate_reconstruction("flange", allow_mock_fallback=True)
         html = v.generate_report(report)
         assert len(html) > 0
 
     def test_report_contains_dimension_rows(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("flange")
+        report = v.validate_reconstruction("flange", allow_mock_fallback=True)
         html = v.generate_report(report)
         assert "OD" in html or "center_bore_dia" in html
 
     def test_report_contains_feature_rows(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("stepped_shaft")
+        report = v.validate_reconstruction("stepped_shaft", allow_mock_fallback=True)
         html = v.generate_report(report)
         assert "shaft_body_1" in html
 
     def test_report_print_friendly(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("bracket")
+        report = v.validate_reconstruction("bracket", allow_mock_fallback=True)
         html = v.generate_report(report)
         assert "@media print" in html
 
@@ -673,7 +673,7 @@ class TestBoundaryConditions:
     @pytest.mark.parametrize("part_id", ["stepped_shaft", "flange", "bracket"])
     def test_validation_duration_reasonable(self, part_id):
         v = GeometricValidator()
-        report = v.validate_reconstruction(part_id)
+        report = v.validate_reconstruction(part_id, allow_mock_fallback=True)
         assert report.validation_duration_seconds < 5.0, (
             f"{part_id} took {report.validation_duration_seconds}s"
         )
@@ -696,7 +696,7 @@ class TestIntegration:
 
     def test_full_validation_pipeline_stepped_shaft(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("stepped_shaft")
+        report = v.validate_reconstruction("stepped_shaft", allow_mock_fallback=True)
         assert report.metrics.feature_recall >= 0.0
         assert report.metrics.feature_precision >= 0.0
         assert report.metrics.topology_correctness >= 0.0
@@ -704,14 +704,14 @@ class TestIntegration:
 
     def test_full_validation_pipeline_flange(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("flange")
+        report = v.validate_reconstruction("flange", allow_mock_fallback=True)
         html = v.generate_report(report)
         assert report.part_name == "法兰盘"
         assert len(html) > 2000
 
     def test_full_validation_pipeline_bracket(self):
         v = GeometricValidator()
-        report = v.validate_reconstruction("bracket")
+        report = v.validate_reconstruction("bracket", allow_mock_fallback=True)
         assert report.part_name == "支架"
         json_str = report.to_json()
         assert len(json_str) > 100
@@ -722,7 +722,7 @@ class TestIntegration:
         v = GeometricValidator()
         start = time.perf_counter()
         for part_id in ["stepped_shaft", "flange", "bracket"]:
-            report = v.validate_reconstruction(part_id)
+            report = v.validate_reconstruction(part_id, allow_mock_fallback=True)
             assert report.overall_pass is not None
         elapsed = time.perf_counter() - start
         assert elapsed < 30.0, f"Full validation took {elapsed:.1f}s, expected < 30s"

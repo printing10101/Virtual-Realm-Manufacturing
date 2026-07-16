@@ -1,0 +1,2310 @@
+{
+  "total_routes": 388,
+  "with_response_model": 59,
+  "without_response_model": 329,
+  "findings_without": [
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\agent_gateway.py",
+      "line": 486,
+      "method": "GET",
+      "path": "/train/{job_id}/stream",
+      "function_name": "stream_training"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\collision_check.py",
+      "line": 156,
+      "method": "GET",
+      "path": "/collision-check/health",
+      "function_name": "collision_check_health"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 100,
+      "method": "GET",
+      "path": "/summary",
+      "function_name": "get_cost_summary"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 124,
+      "method": "GET",
+      "path": "/task/{task_id}",
+      "function_name": "get_task_costs"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 139,
+      "method": "GET",
+      "path": "/trend",
+      "function_name": "get_cost_trend"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 149,
+      "method": "GET",
+      "path": "/unit-prices",
+      "function_name": "get_unit_prices"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 155,
+      "method": "POST",
+      "path": "/unit-prices",
+      "function_name": "set_unit_price"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 175,
+      "method": "GET",
+      "path": "/policies",
+      "function_name": "get_budget_policies"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 188,
+      "method": "POST",
+      "path": "/policies",
+      "function_name": "set_budget_policy"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 213,
+      "method": "POST",
+      "path": "/adjust-budget",
+      "function_name": "adjust_budget"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 234,
+      "method": "GET",
+      "path": "/adjustment-history",
+      "function_name": "get_adjustment_history"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 241,
+      "method": "POST",
+      "path": "/check",
+      "function_name": "check_budget"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 258,
+      "method": "POST",
+      "path": "/check-cascade",
+      "function_name": "check_budget_cascade"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 278,
+      "method": "POST",
+      "path": "/enforce",
+      "function_name": "enforce_budget"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 305,
+      "method": "POST",
+      "path": "/reset",
+      "function_name": "reset_budget_period"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 324,
+      "method": "GET",
+      "path": "/alerts",
+      "function_name": "get_budget_alerts"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 336,
+      "method": "POST",
+      "path": "/alerts/{alert_id}/read",
+      "function_name": "mark_alert_read"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 343,
+      "method": "POST",
+      "path": "/alerts/read-all",
+      "function_name": "mark_all_alerts_read"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 350,
+      "method": "DELETE",
+      "path": "/alerts/{alert_id}",
+      "function_name": "delete_alert"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 357,
+      "method": "GET",
+      "path": "/suggestions",
+      "function_name": "get_optimization_suggestions"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 367,
+      "method": "GET",
+      "path": "/enforcement-log",
+      "function_name": "get_enforcement_log"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\cost_budget.py",
+      "line": 374,
+      "method": "GET",
+      "path": "/reset-log",
+      "function_name": "get_reset_log"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 84,
+      "method": "POST",
+      "path": "/machines",
+      "function_name": "connect_machine"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 104,
+      "method": "DELETE",
+      "path": "/machines/{machine_id}",
+      "function_name": "disconnect_machine"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 111,
+      "method": "GET",
+      "path": "/machines",
+      "function_name": "list_machines"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 118,
+      "method": "GET",
+      "path": "/machines/{machine_id}/status",
+      "function_name": "get_machine_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 127,
+      "method": "GET",
+      "path": "/status",
+      "function_name": "get_all_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 134,
+      "method": "POST",
+      "path": "/nc-program/send",
+      "function_name": "send_nc_program"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 157,
+      "method": "GET",
+      "path": "/machines/{machine_id}/alarms",
+      "function_name": "get_machine_alarms"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 197,
+      "method": "POST",
+      "path": "/unified/connect",
+      "function_name": "unified_auto_connect"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 224,
+      "method": "GET",
+      "path": "/unified/{machine_id}/status",
+      "function_name": "get_unified_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 237,
+      "method": "POST",
+      "path": "/unified/discover",
+      "function_name": "discover_network_machines"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 251,
+      "method": "GET",
+      "path": "/unified/{machine_id}/info",
+      "function_name": "get_adapter_info"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dnc.py",
+      "line": 268,
+      "method": "DELETE",
+      "path": "/unified/{machine_id}",
+      "function_name": "disconnect_unified"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\documents.py",
+      "line": 55,
+      "method": "GET",
+      "path": "/",
+      "function_name": "list_documents"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\documents.py",
+      "line": 78,
+      "method": "GET",
+      "path": "/categories/",
+      "function_name": "list_categories"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\documents.py",
+      "line": 89,
+      "method": "GET",
+      "path": "/{doc_id}",
+      "function_name": "get_document"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\documents.py",
+      "line": 103,
+      "method": "POST",
+      "path": "/",
+      "function_name": "create_document"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\documents.py",
+      "line": 122,
+      "method": "PUT",
+      "path": "/{doc_id}",
+      "function_name": "update_document"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\documents.py",
+      "line": 138,
+      "method": "DELETE",
+      "path": "/{doc_id}",
+      "function_name": "delete_document"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\documents.py",
+      "line": 152,
+      "method": "POST",
+      "path": "/seed",
+      "function_name": "seed_documents"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dxf_pipeline.py",
+      "line": 129,
+      "method": "POST",
+      "path": "/process",
+      "function_name": "process_dxf"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dxf_pipeline.py",
+      "line": 144,
+      "method": "POST",
+      "path": "/batch",
+      "function_name": "process_batch"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dxf_pipeline.py",
+      "line": 168,
+      "method": "POST",
+      "path": "/e2e-fixture",
+      "function_name": "e2e_fixture"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dynamic_adjustment.py",
+      "line": 231,
+      "method": "POST",
+      "path": "/decide",
+      "function_name": "decide_adjustment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dynamic_adjustment.py",
+      "line": 293,
+      "method": "POST",
+      "path": "/rewrite-nc",
+      "function_name": "rewrite_nc_code"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dynamic_adjustment.py",
+      "line": 357,
+      "method": "POST",
+      "path": "/closed-loop",
+      "function_name": "closed_loop_adjustment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dynamic_adjustment.py",
+      "line": 426,
+      "method": "POST",
+      "path": "/calibrate-wear",
+      "function_name": "calibrate_wear"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\dynamic_adjustment.py",
+      "line": 459,
+      "method": "GET",
+      "path": "/health",
+      "function_name": "health"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\equipment.py",
+      "line": 41,
+      "method": "GET",
+      "path": "<dynamic>",
+      "function_name": "list_equipment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\equipment.py",
+      "line": 58,
+      "method": "GET",
+      "path": "/stats/",
+      "function_name": "get_equipment_stats"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\equipment.py",
+      "line": 69,
+      "method": "GET",
+      "path": "/{equipment_id}",
+      "function_name": "get_equipment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\equipment.py",
+      "line": 83,
+      "method": "PUT",
+      "path": "/{equipment_id}",
+      "function_name": "update_equipment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\equipment.py",
+      "line": 107,
+      "method": "GET",
+      "path": "/alarms/",
+      "function_name": "list_alarms"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\equipment.py",
+      "line": 130,
+      "method": "PUT",
+      "path": "/alarms/{alarm_id}/status",
+      "function_name": "update_alarm_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\equipment.py",
+      "line": 150,
+      "method": "GET",
+      "path": "/maintenance/",
+      "function_name": "list_maintenance_plans"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\equipment.py",
+      "line": 171,
+      "method": "PUT",
+      "path": "/maintenance/{plan_id}",
+      "function_name": "update_maintenance_plan"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\equipment.py",
+      "line": 193,
+      "method": "POST",
+      "path": "/seed",
+      "function_name": "seed_equipment_data"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\flywheel.py",
+      "line": 123,
+      "method": "GET",
+      "path": "/metrics",
+      "function_name": "get_flywheel_metrics"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 128,
+      "method": "GET",
+      "path": "/goals/tree",
+      "function_name": "get_goal_tree"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 135,
+      "method": "GET",
+      "path": "/goals",
+      "function_name": "list_goals"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 147,
+      "method": "GET",
+      "path": "/goals/{goal_id}",
+      "function_name": "get_goal"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 156,
+      "method": "GET",
+      "path": "/goals/{goal_id}/chain",
+      "function_name": "get_goal_chain"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 163,
+      "method": "GET",
+      "path": "/goals/{goal_id}/children",
+      "function_name": "get_goal_children"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 173,
+      "method": "GET",
+      "path": "/goals/{goal_id}/progress",
+      "function_name": "get_goal_progress"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 182,
+      "method": "GET",
+      "path": "/goals/{goal_id}/history",
+      "function_name": "get_goal_history"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 194,
+      "method": "POST",
+      "path": "/goals",
+      "function_name": "create_goal"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 246,
+      "method": "PUT",
+      "path": "/goals/{goal_id}",
+      "function_name": "update_goal"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 283,
+      "method": "DELETE",
+      "path": "/goals/{goal_id}",
+      "function_name": "delete_goal"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 298,
+      "method": "POST",
+      "path": "/tasks",
+      "function_name": "create_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 372,
+      "method": "POST",
+      "path": "/tasks/{task_id}/status",
+      "function_name": "update_task_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 417,
+      "method": "GET",
+      "path": "/tasks/{task_id}/context",
+      "function_name": "get_task_context"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 430,
+      "method": "GET",
+      "path": "/tasks/{task_id}/alignment",
+      "function_name": "check_task_alignment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 459,
+      "method": "POST",
+      "path": "/scan",
+      "function_name": "run_alignment_scan"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 467,
+      "method": "GET",
+      "path": "/summary",
+      "function_name": "get_alignment_summary"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 475,
+      "method": "GET",
+      "path": "/progress/all",
+      "function_name": "get_all_progress"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\goal_alignment.py",
+      "line": 485,
+      "method": "POST",
+      "path": "/goals/{goal_id}/propagate",
+      "function_name": "propagate_goal_change"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 32,
+      "method": "GET",
+      "path": "/approval-requests",
+      "function_name": "list_approval_requests"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 57,
+      "method": "GET",
+      "path": "/approval-requests/{request_id}",
+      "function_name": "get_approval_request"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 76,
+      "method": "POST",
+      "path": "/approval-requests",
+      "function_name": "create_approval_request"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 131,
+      "method": "POST",
+      "path": "/approval-requests/{request_id}/assign",
+      "function_name": "assign_approver"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 152,
+      "method": "POST",
+      "path": "/approval-requests/{request_id}/decide",
+      "function_name": "make_decision"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 185,
+      "method": "POST",
+      "path": "/approval-requests/{request_id}/escalate",
+      "function_name": "escalate_request"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 197,
+      "method": "POST",
+      "path": "/approval-timeout-handler",
+      "function_name": "handle_approval_timeout"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 204,
+      "method": "GET",
+      "path": "/approval-requests/my",
+      "function_name": "get_my_approval_requests"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 215,
+      "method": "GET",
+      "path": "/approval-dashboard",
+      "function_name": "get_approval_dashboard"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 251,
+      "method": "POST",
+      "path": "/risk-assess",
+      "function_name": "assess_operation_risk"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 278,
+      "method": "GET",
+      "path": "/risk-categories",
+      "function_name": "get_risk_categories"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 305,
+      "method": "POST",
+      "path": "/emergency-override",
+      "function_name": "emergency_override"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 332,
+      "method": "POST",
+      "path": "/emergency-retroactive-approval",
+      "function_name": "complete_retroactive_approval"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 345,
+      "method": "GET",
+      "path": "/delegations",
+      "function_name": "get_delegations"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 372,
+      "method": "POST",
+      "path": "/delegations",
+      "function_name": "create_delegation"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 399,
+      "method": "GET",
+      "path": "/reports/governance",
+      "function_name": "get_governance_report"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\governance.py",
+      "line": 413,
+      "method": "GET",
+      "path": "/audit-log/export",
+      "function_name": "export_audit_log"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\health.py",
+      "line": 123,
+      "method": "GET",
+      "path": "/system",
+      "function_name": "system_health"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\health.py",
+      "line": 282,
+      "method": "GET",
+      "path": "/quick",
+      "function_name": "quick_health"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\health.py",
+      "line": 305,
+      "method": "GET",
+      "path": "/api/health",
+      "function_name": "main_health"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\health.py",
+      "line": 325,
+      "method": "GET",
+      "path": "/api/health/ping",
+      "function_name": "ping"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\heartbeat.py",
+      "line": 172,
+      "method": "POST",
+      "path": "/tasks/{task_id}/trigger",
+      "function_name": "trigger_task_now"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\heartbeat.py",
+      "line": 186,
+      "method": "POST",
+      "path": "/tasks/{task_id}/pause",
+      "function_name": "pause_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\heartbeat.py",
+      "line": 201,
+      "method": "POST",
+      "path": "/tasks/{task_id}/resume",
+      "function_name": "resume_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\heartbeat.py",
+      "line": 215,
+      "method": "DELETE",
+      "path": "/tasks/{task_id}",
+      "function_name": "delete_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\heartbeat.py",
+      "line": 229,
+      "method": "GET",
+      "path": "/tasks/{task_id}/history",
+      "function_name": "get_task_history"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\heartbeat.py",
+      "line": 261,
+      "method": "GET",
+      "path": "/budget/notifications",
+      "function_name": "get_budget_notifications"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\heartbeat.py",
+      "line": 272,
+      "method": "GET",
+      "path": "/stats",
+      "function_name": "get_scheduler_stats"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\heartbeat.py",
+      "line": 289,
+      "method": "POST",
+      "path": "/recovery/orphaned",
+      "function_name": "recover_orphaned_tasks"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\jobs.py",
+      "line": 31,
+      "method": "GET",
+      "path": "/{job_id}",
+      "function_name": "get_job"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\jobs.py",
+      "line": 45,
+      "method": "GET",
+      "path": "/{job_id}/progress",
+      "function_name": "get_job_progress"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\jobs.py",
+      "line": 65,
+      "method": "GET",
+      "path": "/{job_id}/stream",
+      "function_name": "stream_job_events"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\jobs.py",
+      "line": 108,
+      "method": "POST",
+      "path": "/{job_id}/cancel",
+      "function_name": "cancel_job"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\jobs.py",
+      "line": 123,
+      "method": "DELETE",
+      "path": "/{job_id}",
+      "function_name": "delete_job"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\jobs.py",
+      "line": 135,
+      "method": "GET",
+      "path": "<dynamic>",
+      "function_name": "list_jobs"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\jobs.py",
+      "line": 196,
+      "method": "GET",
+      "path": "/stats",
+      "function_name": "get_task_stats"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\knowledge_graph.py",
+      "line": 156,
+      "method": "GET",
+      "path": "/stats",
+      "function_name": "get_stats"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\knowledge_graph.py",
+      "line": 169,
+      "method": "GET",
+      "path": "/nodes/{node_id}",
+      "function_name": "get_node"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\knowledge_graph.py",
+      "line": 185,
+      "method": "GET",
+      "path": "/nodes",
+      "function_name": "list_nodes"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\knowledge_graph.py",
+      "line": 209,
+      "method": "GET",
+      "path": "/edges",
+      "function_name": "list_edges"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\knowledge_graph.py",
+      "line": 237,
+      "method": "GET",
+      "path": "/neighbors/{node_id}",
+      "function_name": "get_neighbors"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\knowledge_graph.py",
+      "line": 264,
+      "method": "POST",
+      "path": "/query",
+      "function_name": "post_query"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\knowledge_graph.py",
+      "line": 295,
+      "method": "GET",
+      "path": "/tools-for-material",
+      "function_name": "get_tools_for_material"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\knowledge_graph.py",
+      "line": 315,
+      "method": "GET",
+      "path": "/materials-for-tool",
+      "function_name": "get_materials_for_tool"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\knowledge_graph.py",
+      "line": 335,
+      "method": "GET",
+      "path": "/process-chain/{feature_id}",
+      "function_name": "get_process_chain"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 180,
+      "method": "GET",
+      "path": "<dynamic>",
+      "function_name": "list_providers"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 193,
+      "method": "GET",
+      "path": "/status",
+      "function_name": "get_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 199,
+      "method": "GET",
+      "path": "/active",
+      "function_name": "get_active_provider"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 213,
+      "method": "GET",
+      "path": "/types",
+      "function_name": "list_provider_types"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 244,
+      "method": "GET",
+      "path": "/capabilities",
+      "function_name": "list_capabilities"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 255,
+      "method": "GET",
+      "path": "/detect/preview",
+      "function_name": "detect_preview"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 279,
+      "method": "POST",
+      "path": "/detect/import",
+      "function_name": "detect_and_import"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 312,
+      "method": "GET",
+      "path": "/router/status",
+      "function_name": "get_router_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 322,
+      "method": "GET",
+      "path": "/router/strategies",
+      "function_name": "list_routing_strategies"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 356,
+      "method": "GET",
+      "path": "/{provider_id}",
+      "function_name": "get_provider"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 365,
+      "method": "GET",
+      "path": "/{provider_id}/models",
+      "function_name": "list_provider_models"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 388,
+      "method": "GET",
+      "path": "/{provider_id}/health",
+      "function_name": "health_check_provider"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 429,
+      "method": "POST",
+      "path": "<dynamic>",
+      "function_name": "create_provider"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 447,
+      "method": "PUT",
+      "path": "/{provider_id}",
+      "function_name": "update_provider"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 466,
+      "method": "DELETE",
+      "path": "/{provider_id}",
+      "function_name": "delete_provider"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 479,
+      "method": "POST",
+      "path": "/{provider_id}/activate",
+      "function_name": "activate_provider"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 495,
+      "method": "POST",
+      "path": "/{provider_id}/enable",
+      "function_name": "enable_provider"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\llm_providers.py",
+      "line": 513,
+      "method": "POST",
+      "path": "/{provider_id}/test",
+      "function_name": "test_provider"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn_uncertain.py",
+      "line": 46,
+      "method": "POST",
+      "path": "/predict-uncertain",
+      "function_name": "predict_uncertain"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\materials.py",
+      "line": 62,
+      "method": "GET",
+      "path": "/",
+      "function_name": "list_materials"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\materials.py",
+      "line": 81,
+      "method": "GET",
+      "path": "/stats/summary",
+      "function_name": "stats_summary"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\materials.py",
+      "line": 88,
+      "method": "GET",
+      "path": "/{material_id}",
+      "function_name": "get_material"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\materials.py",
+      "line": 97,
+      "method": "POST",
+      "path": "/",
+      "function_name": "create_material"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\materials.py",
+      "line": 104,
+      "method": "PUT",
+      "path": "/{material_id}",
+      "function_name": "update_material"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\materials.py",
+      "line": 115,
+      "method": "DELETE",
+      "path": "/{material_id}",
+      "function_name": "delete_material"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\materials.py",
+      "line": 128,
+      "method": "POST",
+      "path": "/seed",
+      "function_name": "seed_materials"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\pattern_engine_routes.py",
+      "line": 41,
+      "method": "GET",
+      "path": "<dynamic>",
+      "function_name": "list_patterns"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\pattern_engine_routes.py",
+      "line": 51,
+      "method": "GET",
+      "path": "/anti_patterns",
+      "function_name": "list_anti_patterns"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\pattern_engine_routes.py",
+      "line": 59,
+      "method": "POST",
+      "path": "/record",
+      "function_name": "record_execution"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\pattern_engine_routes.py",
+      "line": 74,
+      "method": "POST",
+      "path": "/analyze",
+      "function_name": "analyze_patterns"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\pattern_engine_routes.py",
+      "line": 87,
+      "method": "GET",
+      "path": "/{pattern_id}",
+      "function_name": "get_pattern"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\pattern_engine_routes.py",
+      "line": 98,
+      "method": "GET",
+      "path": "/{pattern_id}/suggestions",
+      "function_name": "get_pattern_suggestions"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 25,
+      "method": "GET",
+      "path": "/marketplace",
+      "function_name": "list_marketplace_plugins"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 42,
+      "method": "POST",
+      "path": "/marketplace/{plugin_id}/install",
+      "function_name": "install_marketplace_plugin"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 47,
+      "method": "GET",
+      "path": "<dynamic>",
+      "function_name": "list_installed_plugins"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 79,
+      "method": "GET",
+      "path": "/{plugin_id}",
+      "function_name": "get_plugin_detail"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 116,
+      "method": "POST",
+      "path": "/{plugin_id}/enable",
+      "function_name": "enable_plugin"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 133,
+      "method": "POST",
+      "path": "/{plugin_id}/disable",
+      "function_name": "disable_plugin"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 150,
+      "method": "POST",
+      "path": "/{plugin_id}/reload",
+      "function_name": "reload_plugin"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 167,
+      "method": "DELETE",
+      "path": "/{plugin_id}",
+      "function_name": "uninstall_plugin"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 184,
+      "method": "PUT",
+      "path": "/{plugin_id}/config",
+      "function_name": "update_plugin_config"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 208,
+      "method": "GET",
+      "path": "/{plugin_id}/dependencies",
+      "function_name": "get_plugin_dependencies"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 232,
+      "method": "GET",
+      "path": "/{plugin_id}/logs",
+      "function_name": "get_plugin_logs"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 247,
+      "method": "GET",
+      "path": "/{plugin_id}/capabilities",
+      "function_name": "get_plugin_capabilities"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 267,
+      "method": "PUT",
+      "path": "/{plugin_id}/capabilities/{capability}",
+      "function_name": "update_capability_grant"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 298,
+      "method": "GET",
+      "path": "/workers",
+      "function_name": "list_workers"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 313,
+      "method": "POST",
+      "path": "/workers/{plugin_id}/start",
+      "function_name": "start_worker"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 338,
+      "method": "POST",
+      "path": "/workers/{plugin_id}/stop",
+      "function_name": "stop_worker"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\plugins.py",
+      "line": 353,
+      "method": "GET",
+      "path": "/health",
+      "function_name": "health_check"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_explainer.py",
+      "line": 79,
+      "method": "POST",
+      "path": "/explain-process",
+      "function_name": "explain_process"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_explainer.py",
+      "line": 109,
+      "method": "POST",
+      "path": "/explain-nc",
+      "function_name": "explain_nc"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_explainer.py",
+      "line": 137,
+      "method": "POST",
+      "path": "/chat",
+      "function_name": "chat"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_explainer.py",
+      "line": 163,
+      "method": "POST",
+      "path": "/sessions",
+      "function_name": "create_session"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_explainer.py",
+      "line": 187,
+      "method": "GET",
+      "path": "/sessions/{session_id}",
+      "function_name": "get_session"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_explainer.py",
+      "line": 215,
+      "method": "DELETE",
+      "path": "/sessions/{session_id}",
+      "function_name": "clear_session"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_explainer.py",
+      "line": 238,
+      "method": "POST",
+      "path": "/cleanup",
+      "function_name": "cleanup_expired"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_routes.py",
+      "line": 61,
+      "method": "GET",
+      "path": "/",
+      "function_name": "list_process_routes"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_routes.py",
+      "line": 79,
+      "method": "GET",
+      "path": "/{route_id}",
+      "function_name": "get_process_route"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_routes.py",
+      "line": 93,
+      "method": "POST",
+      "path": "/",
+      "function_name": "create_process_route"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_routes.py",
+      "line": 112,
+      "method": "PUT",
+      "path": "/{route_id}",
+      "function_name": "update_process_route"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_routes.py",
+      "line": 132,
+      "method": "DELETE",
+      "path": "/{route_id}",
+      "function_name": "delete_process_route"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\process_routes.py",
+      "line": 146,
+      "method": "POST",
+      "path": "/seed",
+      "function_name": "seed_process_routes"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\production.py",
+      "line": 45,
+      "method": "GET",
+      "path": "/dashboard/",
+      "function_name": "get_dashboard"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\production.py",
+      "line": 56,
+      "method": "GET",
+      "path": "/records/",
+      "function_name": "list_production_records"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\production.py",
+      "line": 81,
+      "method": "GET",
+      "path": "/work-orders/",
+      "function_name": "list_work_orders"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\production.py",
+      "line": 99,
+      "method": "GET",
+      "path": "/work-orders/{wo_id}",
+      "function_name": "get_work_order"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\production.py",
+      "line": 112,
+      "method": "PUT",
+      "path": "/work-orders/{wo_id}",
+      "function_name": "update_work_order"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\production.py",
+      "line": 128,
+      "method": "GET",
+      "path": "/lines/",
+      "function_name": "get_production_lines"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\production.py",
+      "line": 139,
+      "method": "GET",
+      "path": "/stats/summary",
+      "function_name": "get_monthly_summary"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\production.py",
+      "line": 150,
+      "method": "POST",
+      "path": "/seed",
+      "function_name": "seed_production_data"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\quality.py",
+      "line": 42,
+      "method": "GET",
+      "path": "/",
+      "function_name": "list_quality_records"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\quality.py",
+      "line": 88,
+      "method": "POST",
+      "path": "/",
+      "function_name": "create_quality_record"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\quality.py",
+      "line": 105,
+      "method": "GET",
+      "path": "/stats/",
+      "function_name": "get_quality_stats"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\quality.py",
+      "line": 116,
+      "method": "GET",
+      "path": "/anomalies/",
+      "function_name": "list_anomalies"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\quality.py",
+      "line": 137,
+      "method": "POST",
+      "path": "/seed",
+      "function_name": "seed_quality_data"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\sharp.py",
+      "line": 281,
+      "method": "DELETE",
+      "path": "/trajectory",
+      "function_name": "clear_trajectories"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 178,
+      "method": "POST",
+      "path": "/samples",
+      "function_name": "register_sample"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 201,
+      "method": "POST",
+      "path": "/samples/batch",
+      "function_name": "register_samples_batch"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 224,
+      "method": "GET",
+      "path": "/samples",
+      "function_name": "list_samples"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 251,
+      "method": "GET",
+      "path": "/samples/by-type/{signal_type}",
+      "function_name": "list_by_type"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 281,
+      "method": "POST",
+      "path": "/retrieve",
+      "function_name": "retrieve_similar"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 313,
+      "method": "POST",
+      "path": "/fuse",
+      "function_name": "fuse_signals"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 358,
+      "method": "POST",
+      "path": "/correlate/wear",
+      "function_name": "correlate_wear"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 392,
+      "method": "POST",
+      "path": "/correlate/chatter",
+      "function_name": "correlate_chatter"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 429,
+      "method": "GET",
+      "path": "/stats",
+      "function_name": "stats"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 444,
+      "method": "DELETE",
+      "path": "/samples/{sample_id}",
+      "function_name": "delete_sample"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 463,
+      "method": "DELETE",
+      "path": "/samples/by-type/{signal_type}",
+      "function_name": "delete_by_type"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\signal_fusion_kb.py",
+      "line": 488,
+      "method": "GET",
+      "path": "/health",
+      "function_name": "health"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 84,
+      "method": "GET",
+      "path": "<dynamic>",
+      "function_name": "list_skills"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 136,
+      "method": "GET",
+      "path": "/stats",
+      "function_name": "get_skill_stats"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 152,
+      "method": "POST",
+      "path": "/create",
+      "function_name": "create_skill"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 177,
+      "method": "PUT",
+      "path": "/{skill_id}",
+      "function_name": "update_skill"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 201,
+      "method": "DELETE",
+      "path": "/{skill_id}",
+      "function_name": "delete_skill"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 224,
+      "method": "GET",
+      "path": "/{skill_id}",
+      "function_name": "get_skill"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 263,
+      "method": "POST",
+      "path": "/reload",
+      "function_name": "reload_skills"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 279,
+      "method": "GET",
+      "path": "/{skill_id}/versions",
+      "function_name": "get_skill_versions"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 303,
+      "method": "POST",
+      "path": "/export",
+      "function_name": "export_skill"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 319,
+      "method": "POST",
+      "path": "/import",
+      "function_name": "import_skill"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 348,
+      "method": "POST",
+      "path": "/rate",
+      "function_name": "rate_skill"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 371,
+      "method": "POST",
+      "path": "/inject",
+      "function_name": "inject_skills_endpoint"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 400,
+      "method": "GET",
+      "path": "/marketplace/list",
+      "function_name": "marketplace_list"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 414,
+      "method": "GET",
+      "path": "/marketplace/search",
+      "function_name": "marketplace_search"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 428,
+      "method": "POST",
+      "path": "/marketplace/publish",
+      "function_name": "marketplace_publish"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 445,
+      "method": "POST",
+      "path": "/marketplace/download",
+      "function_name": "marketplace_download"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 465,
+      "method": "POST",
+      "path": "/marketplace/rate",
+      "function_name": "marketplace_rate"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\skills.py",
+      "line": 490,
+      "method": "DELETE",
+      "path": "/marketplace/{skill_id}",
+      "function_name": "marketplace_unpublish"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\status.py",
+      "line": 27,
+      "method": "GET",
+      "path": "<dynamic>",
+      "function_name": "get_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\status.py",
+      "line": 97,
+      "method": "GET",
+      "path": "/postprocessors",
+      "function_name": "get_postprocessors"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\status.py",
+      "line": 113,
+      "method": "GET",
+      "path": "/research-bridge",
+      "function_name": "get_bridge"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 117,
+      "method": "POST",
+      "path": "/tasks",
+      "function_name": "register_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 155,
+      "method": "POST",
+      "path": "/checkout",
+      "function_name": "checkout_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 212,
+      "method": "POST",
+      "path": "/tasks/{task_id}/heartbeat",
+      "function_name": "heartbeat"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 236,
+      "method": "POST",
+      "path": "/tasks/{task_id}/complete",
+      "function_name": "complete_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 260,
+      "method": "POST",
+      "path": "/tasks/{task_id}/fail",
+      "function_name": "fail_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 285,
+      "method": "POST",
+      "path": "/tasks/{task_id}/abandon",
+      "function_name": "abandon_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 309,
+      "method": "GET",
+      "path": "/board",
+      "function_name": "get_task_board"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 316,
+      "method": "GET",
+      "path": "/locks",
+      "function_name": "list_locks"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 323,
+      "method": "DELETE",
+      "path": "/locks/{task_id}",
+      "function_name": "force_release_lock"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 365,
+      "method": "GET",
+      "path": "/tasks/{task_id}/history",
+      "function_name": "get_checkout_history"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 376,
+      "method": "GET",
+      "path": "/agents/{agent_id}/status",
+      "function_name": "get_agent_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 383,
+      "method": "POST",
+      "path": "/queue/enqueue",
+      "function_name": "enqueue_checkout"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 431,
+      "method": "POST",
+      "path": "/queue/process",
+      "function_name": "process_queue"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 450,
+      "method": "GET",
+      "path": "/queue",
+      "function_name": "get_queue_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\task_checkout.py",
+      "line": 457,
+      "method": "POST",
+      "path": "/cleanup",
+      "function_name": "cleanup_expired"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_ab_testing_routes.py",
+      "line": 41,
+      "method": "POST",
+      "path": "<dynamic>",
+      "function_name": "create_experiment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_ab_testing_routes.py",
+      "line": 54,
+      "method": "POST",
+      "path": "/record",
+      "function_name": "record_execution"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_ab_testing_routes.py",
+      "line": 70,
+      "method": "POST",
+      "path": "/assign",
+      "function_name": "assign_branch"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_ab_testing_routes.py",
+      "line": 81,
+      "method": "GET",
+      "path": "<dynamic>",
+      "function_name": "list_experiments"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_ab_testing_routes.py",
+      "line": 89,
+      "method": "GET",
+      "path": "/{experiment_id}",
+      "function_name": "get_experiment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_ab_testing_routes.py",
+      "line": 99,
+      "method": "POST",
+      "path": "/{experiment_id}/evaluate",
+      "function_name": "evaluate_experiment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_ab_testing_routes.py",
+      "line": 109,
+      "method": "POST",
+      "path": "/{experiment_id}/conclude",
+      "function_name": "conclude_experiment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_branching_routes.py",
+      "line": 39,
+      "method": "POST",
+      "path": "/",
+      "function_name": "create_branch"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_branching_routes.py",
+      "line": 53,
+      "method": "GET",
+      "path": "/",
+      "function_name": "list_branches"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_branching_routes.py",
+      "line": 62,
+      "method": "GET",
+      "path": "/{branch_id}",
+      "function_name": "get_branch"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_branching_routes.py",
+      "line": 73,
+      "method": "GET",
+      "path": "/{branch_id}/log",
+      "function_name": "get_commit_log"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_branching_routes.py",
+      "line": 84,
+      "method": "POST",
+      "path": "/merge",
+      "function_name": "merge_branch"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_branching_routes.py",
+      "line": 95,
+      "method": "PUT",
+      "path": "/{branch_id}",
+      "function_name": "update_branch"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_branching_routes.py",
+      "line": 107,
+      "method": "DELETE",
+      "path": "/{branch_id}",
+      "function_name": "delete_branch"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_evolution_routes.py",
+      "line": 35,
+      "method": "GET",
+      "path": "/suggestions",
+      "function_name": "list_suggestions"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_evolution_routes.py",
+      "line": 43,
+      "method": "POST",
+      "path": "/suggestions",
+      "function_name": "create_suggestion"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_evolution_routes.py",
+      "line": 55,
+      "method": "POST",
+      "path": "/suggestions/apply",
+      "function_name": "apply_suggestion"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_evolution_routes.py",
+      "line": 65,
+      "method": "POST",
+      "path": "/metrics",
+      "function_name": "update_metrics"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_evolution_routes.py",
+      "line": 73,
+      "method": "POST",
+      "path": "/triggers/evaluate",
+      "function_name": "evaluate_triggers"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_evolution_routes.py",
+      "line": 86,
+      "method": "GET",
+      "path": "/history",
+      "function_name": "get_history"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_market.py",
+      "line": 59,
+      "method": "GET",
+      "path": "/trending",
+      "function_name": "get_trending"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_market.py",
+      "line": 70,
+      "method": "GET",
+      "path": "/templates/{branch_id}/metrics",
+      "function_name": "get_template_metrics"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_market.py",
+      "line": 105,
+      "method": "POST",
+      "path": "/publish",
+      "function_name": "publish_template"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_market.py",
+      "line": 127,
+      "method": "POST",
+      "path": "/subscribe",
+      "function_name": "subscribe"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_market.py",
+      "line": 139,
+      "method": "GET",
+      "path": "/subscriptions/{project_id}",
+      "function_name": "get_subscriptions"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_market.py",
+      "line": 150,
+      "method": "POST",
+      "path": "/export/{branch_id}",
+      "function_name": "export_template"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_market.py",
+      "line": 188,
+      "method": "POST",
+      "path": "/import",
+      "function_name": "import_template"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_market.py",
+      "line": 211,
+      "method": "GET",
+      "path": "/sync/{branch_id}",
+      "function_name": "sync_changes"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_update_routes.py",
+      "line": 35,
+      "method": "GET",
+      "path": "/{project_id}",
+      "function_name": "get_notifications"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_update_routes.py",
+      "line": 46,
+      "method": "POST",
+      "path": "/scan",
+      "function_name": "scan_for_updates"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_update_routes.py",
+      "line": 59,
+      "method": "POST",
+      "path": "/apply/{notification_id}",
+      "function_name": "apply_update"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_update_routes.py",
+      "line": 69,
+      "method": "POST",
+      "path": "/dismiss/{notification_id}",
+      "function_name": "dismiss_notification"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\template_update_routes.py",
+      "line": 79,
+      "method": "GET",
+      "path": "/preview/{notification_id}",
+      "function_name": "preview_update"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\tools.py",
+      "line": 81,
+      "method": "GET",
+      "path": "/",
+      "function_name": "list_tools"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\tools.py",
+      "line": 96,
+      "method": "GET",
+      "path": "/stats/summary",
+      "function_name": "stats_summary"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\tools.py",
+      "line": 107,
+      "method": "GET",
+      "path": "/{tool_id}",
+      "function_name": "get_tool"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\tools.py",
+      "line": 120,
+      "method": "POST",
+      "path": "/",
+      "function_name": "create_tool"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\tools.py",
+      "line": 138,
+      "method": "PUT",
+      "path": "/{tool_id}",
+      "function_name": "update_tool"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\tools.py",
+      "line": 153,
+      "method": "DELETE",
+      "path": "/{tool_id}",
+      "function_name": "delete_tool"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\tools.py",
+      "line": 166,
+      "method": "POST",
+      "path": "/{tool_id}/wear",
+      "function_name": "update_tool_wear"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\tools.py",
+      "line": 187,
+      "method": "GET",
+      "path": "/{tool_id}/life-prediction",
+      "function_name": "tool_life_prediction"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\tools.py",
+      "line": 207,
+      "method": "POST",
+      "path": "/seed",
+      "function_name": "seed_tools"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\user_sovereignty.py",
+      "line": 37,
+      "method": "POST",
+      "path": "/predict",
+      "function_name": "predict_with_sovereignty"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\user_sovereignty.py",
+      "line": 401,
+      "method": "POST",
+      "path": "/audit-log/record",
+      "function_name": "record_user_decision"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\user_sovereignty.py",
+      "line": 554,
+      "method": "POST",
+      "path": "/audit-log/query",
+      "function_name": "query_audit_logs"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\user_sovereignty.py",
+      "line": 650,
+      "method": "POST",
+      "path": "/audit-log/search",
+      "function_name": "search_audit_logs"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\user_sovereignty.py",
+      "line": 741,
+      "method": "POST",
+      "path": "/audit-log/export",
+      "function_name": "export_audit_logs"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\user_sovereignty.py",
+      "line": 834,
+      "method": "GET",
+      "path": "/audit-log/statistics",
+      "function_name": "get_audit_log_statistics"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\user_sovereignty.py",
+      "line": 918,
+      "method": "DELETE",
+      "path": "/audit-log/clear",
+      "function_name": "clear_audit_logs"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\user_sovereignty.py",
+      "line": 1002,
+      "method": "GET",
+      "path": "/settings",
+      "function_name": "get_user_sovereignty_settings"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 92,
+      "method": "POST",
+      "path": "/predict",
+      "function_name": "predict_wear"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 125,
+      "method": "POST",
+      "path": "/remaining-life",
+      "function_name": "predict_remaining_life"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 161,
+      "method": "POST",
+      "path": "/suggest",
+      "function_name": "suggest_adjustment"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 194,
+      "method": "GET",
+      "path": "/models",
+      "function_name": "get_supported_models"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 231,
+      "method": "POST",
+      "path": "/threshold",
+      "function_name": "get_threshold"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 254,
+      "method": "POST",
+      "path": "/calibrate",
+      "function_name": "calibrate_prediction"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 284,
+      "method": "POST",
+      "path": "/calibrate-realtime",
+      "function_name": "calibrate_with_real_time_data"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 319,
+      "method": "POST",
+      "path": "/compensation",
+      "function_name": "get_compensation_suggestions"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 354,
+      "method": "POST",
+      "path": "/train-uniwear",
+      "function_name": "train_uniwear_model"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 380,
+      "method": "POST",
+      "path": "/predict-from-signals",
+      "function_name": "predict_wear_from_signal_features"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 406,
+      "method": "GET",
+      "path": "/cross-dataset-analysis",
+      "function_name": "get_cross_dataset_analysis"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\wear_prediction.py",
+      "line": 426,
+      "method": "GET",
+      "path": "/uniwear-materials",
+      "function_name": "get_uniwear_materials"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 147,
+      "method": "POST",
+      "path": "/predict",
+      "function_name": "predict_lnn"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 340,
+      "method": "POST",
+      "path": "/train/dry_run",
+      "function_name": "dry_run_training"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 504,
+      "method": "POST",
+      "path": "/train",
+      "function_name": "train_lnn"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 586,
+      "method": "GET",
+      "path": "/models",
+      "function_name": "list_lnn_models"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 609,
+      "method": "GET",
+      "path": "/models/{model_name}/info",
+      "function_name": "get_model_info"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 637,
+      "method": "POST",
+      "path": "/models/{model_name}/validate",
+      "function_name": "validate_model"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 686,
+      "method": "GET",
+      "path": "/health",
+      "function_name": "health_check"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 715,
+      "method": "GET",
+      "path": "/tasks",
+      "function_name": "list_training_tasks"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 744,
+      "method": "GET",
+      "path": "/cache/stats",
+      "function_name": "get_cache_stats"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 766,
+      "method": "DELETE",
+      "path": "/cache/clear",
+      "function_name": "clear_cache"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 782,
+      "method": "GET",
+      "path": "/performance",
+      "function_name": "get_performance"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 823,
+      "method": "GET",
+      "path": "/device/info",
+      "function_name": "get_device_info"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 854,
+      "method": "GET",
+      "path": "/device/status",
+      "function_name": "get_device_status_endpoint"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 892,
+      "method": "POST",
+      "path": "/device/clear-cache",
+      "function_name": "clear_device_cache"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 909,
+      "method": "GET",
+      "path": "/train/{task_id}/stream",
+      "function_name": "stream_training_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 933,
+      "method": "POST",
+      "path": "/train/{task_id}/cancel",
+      "function_name": "cancel_training_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 964,
+      "method": "POST",
+      "path": "/models/{model_name}/quantize",
+      "function_name": "quantize_model"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 1031,
+      "method": "GET",
+      "path": "/quantize/{task_id}/status",
+      "function_name": "get_quantization_status"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 1054,
+      "method": "POST",
+      "path": "/quantize/{task_id}/cancel",
+      "function_name": "cancel_quantization_task"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 1084,
+      "method": "GET",
+      "path": "/models/{model_name}/size",
+      "function_name": "get_model_size"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Desktop\\灵境制造（上线版）\\python\\app\\api\\v1\\lnn\\routes.py",
+      "line": 1141,
+      "method": "POST",
+      "path": "/batch-inference",
+      "function_name": "batch_inference"
+    }
+  ]
+}

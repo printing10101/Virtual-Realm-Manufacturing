@@ -1,6 +1,6 @@
 """
 跨数据集迁移学习实验
-验证CT-LTC模型在不同数据集间的迁移能力
+验证DL-LNN模型在不同数据集间的迁移能力
 
 实验设计：
 1. 在源数据集（PHM2010）上预训练模型
@@ -22,7 +22,7 @@ from typing import Dict, List, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import ModelConfig
-from models import CTCTCWithPhysics, BaselineLSTM, BaselineTransformer
+from models import DLLNNWithPhysics, BaselineLSTM, BaselineTransformer
 from data_generator import (
     PHM2010Dataset, Industrial6061T6Dataset, create_dataloaders
 )
@@ -224,7 +224,7 @@ def run_transfer_learning_experiment():
     torch.manual_seed(42)
     np.random.seed(42)
     
-    baseline_model = CTCTCWithPhysics(
+    baseline_model = DLLNNWithPhysics(
         input_dim=config.input_dim,
         hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,
@@ -266,7 +266,7 @@ def run_transfer_learning_experiment():
     torch.manual_seed(42)
     np.random.seed(42)
     
-    pretrained_model = CTCTCWithPhysics(
+    pretrained_model = DLLNNWithPhysics(
         input_dim=config.input_dim,
         hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,
@@ -326,7 +326,7 @@ def run_transfer_learning_experiment():
     np.random.seed(42)
     
     # 重新预训练
-    pretrained_model2 = CTCTCWithPhysics(
+    pretrained_model2 = DLLNNWithPhysics(
         input_dim=config.input_dim,
         hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,

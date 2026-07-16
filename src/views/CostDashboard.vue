@@ -437,6 +437,7 @@
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 import { Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import http from '@/utils/http'
 import { formatSecondsTimestamp } from '@/utils/formatters'
@@ -600,8 +601,9 @@ async function loadBudgetProgress() {
       tagType: statusTagType(p.status),
       statusLabel: formatStatusLabel(p.status),
     }))
-  } catch {
-    // 静默处理，用户界面已有 loading 状态
+  } catch (e: unknown) {
+    // 辅助统计数据加载失败不阻塞主流程，记录便于排查
+    console.warn('[CostDashboard] loadBudgetStatus failed:', e)
   }
 }
 
@@ -635,8 +637,8 @@ async function loadCostDistribution() {
         }],
       })
     }
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    console.warn('[CostDashboard] loadCostDistribution failed:', e)
   } finally {
     loading.value.pie = false
   }
@@ -675,8 +677,8 @@ async function loadCostByType() {
         ],
       })
     }
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    console.warn('[CostDashboard] loadCostByType failed:', e)
   } finally {
     loading.value.bar = false
   }
@@ -722,8 +724,8 @@ async function loadCostTrend() {
         ],
       })
     }
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    console.warn('[CostDashboard] loadCostTrend failed:', e)
   } finally {
     loading.value.trend = false
   }
@@ -737,8 +739,8 @@ async function loadAlerts() {
     const res = await http.get(buildApiPath(API_CONFIG.COST_BUDGET, '/alerts'), { params })
     if (!res.data?.ok) return
     alerts.value = res.data.data || []
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    console.warn('[CostDashboard] loadAlerts failed:', e)
   } finally {
     loading.value.alerts = false
   }
@@ -750,8 +752,8 @@ async function loadSuggestions() {
     const res = await http.get(buildApiPath(API_CONFIG.COST_BUDGET, '/suggestions'))
     if (!res.data?.ok) return
     suggestions.value = res.data.data || []
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    console.warn('[CostDashboard] loadSuggestions failed:', e)
   } finally {
     loading.value.suggestions = false
   }
@@ -762,8 +764,9 @@ async function markRead(id: number) {
     await http.post(buildApiPath(API_CONFIG.COST_BUDGET, `/alerts/${id}/read`))
     const alert = alerts.value.find((a) => a.id === id)
     if (alert) alert.is_read = 1
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    console.warn('[CostDashboard] markRead failed:', e)
+    ElMessage.error('标记已读失败，请稍后重试')
   }
 }
 
@@ -771,8 +774,9 @@ async function markAllRead() {
   try {
     await http.post(buildApiPath(API_CONFIG.COST_BUDGET, '/alerts/read-all'))
     alerts.value.forEach((a) => (a.is_read = 1))
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    console.warn('[CostDashboard] markAllRead failed:', e)
+    ElMessage.error('全部标记已读失败，请稍后重试')
   }
 }
 
@@ -780,8 +784,9 @@ async function deleteAlert(id: number) {
   try {
     await http.delete(buildApiPath(API_CONFIG.COST_BUDGET, `/alerts/${id}`))
     alerts.value = alerts.value.filter((a) => a.id !== id)
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    console.warn('[CostDashboard] deleteAlert failed:', e)
+    ElMessage.error('删除告警失败，请稍后重试')
   }
 }
 

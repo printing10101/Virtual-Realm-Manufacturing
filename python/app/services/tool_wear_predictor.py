@@ -13,6 +13,9 @@ from app.models.validation import (
     WearPhase,
 )
 
+# 默认刀具更换阈值（磨损量占比），超过此值建议更换刀具
+DEFAULT_REPLACEMENT_THRESHOLD = 0.3
+
 
 class MaterialParams:
     def __init__(
@@ -170,7 +173,7 @@ class ToolWearPredictor:
     def __init__(self):
         self.material_params = MATERIAL_PARAMS
         self.tool_params = TOOL_PARAMS
-        self.default_replacement_threshold = 0.3
+        self.default_replacement_threshold = DEFAULT_REPLACEMENT_THRESHOLD
         self._bosch_model: Optional[Any] = None
         self._bosch_scaler: Optional[Any] = None
         self._bosch_feature_loader: Optional[Any] = None

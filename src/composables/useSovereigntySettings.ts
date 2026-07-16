@@ -93,8 +93,14 @@ export function useSovereigntySettings() {
       try {
         const parsed = JSON.parse(saved)
         Object.assign(sovereigntySettings, parsed)
-      } catch {
-        // ignore parse errors
+      } catch (e: unknown) {
+        // localStorage 数据损坏时清理脏数据，避免后续每次启动都重复抛错
+        console.warn('[useSovereigntySettings] onMounted: failed to parse localStorage, ignoring saved settings:', e)
+        try {
+          localStorage.removeItem('ai_sovereignty_settings')
+        } catch {
+          /* localStorage 不可用时无可清理，忽略 */
+        }
       }
     }
   })

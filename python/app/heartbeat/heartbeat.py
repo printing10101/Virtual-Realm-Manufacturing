@@ -208,6 +208,16 @@ class WakeupQueue:
 
     def _init_schema(self) -> None:
         """初始化数据库模式"""
+        # [F-P0-6] 防复发：启用 WAL 模式，提高并发读写性能，防止读写阻塞导致心跳任务延迟。
+        # 同步模式设为 NORMAL（WAL 模式推荐配置），在性能与数据安全间取得平衡。
+        # foreign_keys=ON 保证外键约束生效，防止任务执行日志与主表数据不一致。
+        try:
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA synchronous=NORMAL")
+            self._conn.execute("PRAGMA foreign_keys=ON")
+        except sqlite3.Error as exc:
+            logger.warning("Failed to set PRAGMA for WakeupQueue: %s", exc)
+
         self._conn.executescript("""
             CREATE TABLE IF NOT EXISTS scheduled_tasks (
                 task_id TEXT PRIMARY KEY,
@@ -372,7 +382,7 @@ class WakeupQueue:
         # 验证列名是否在白名单中，防止 SQL 注入
         for key in updates.keys():
             if key not in self._ALLOWED_COLUMNS:
-                logger.warning(f"Attempted to update disallowed column: {key}")
+                logger.warning("Attempted to update disallowed column: %s", key)
                 continue
 
         set_clause = ", ".join(f"{k} = ?" for k in updates.keys() if k in self._ALLOWED_COLUMNS)
@@ -522,11 +532,14 @@ class WakeupQueue:
 
         return tasks
 
-    def close(self) -> None:
-        """关闭数据库连接"""
-        if self._conn:
-            self._conn.close()
-            logger.info("WakeupQueue connection closed")
+
+# [F-P0-6] 防复发说明：
+#   历史上本文件存在两个 WakeupQueue.close 方法定义（L202 正确版 + L535 错误版），
+#   Python 解释器会以后者为准，导致 close() 直接调用 sqlite3.Connection.close()
+#   而绕过连接池的 return_connection()，造成连接泄漏。
+#   现已删除错误的重复定义，统一使用 L202 的正确实现（归还连接到连接池）。
+#   防御性措施：在 __init__ 中通过 hasattr 检查避免重复初始化，并在 close 中
+#   设置 self._conn = None 防止重复关闭。
 
 
 class HeartbeatScheduler:

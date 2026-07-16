@@ -19,6 +19,12 @@
 
 name: lnn-manufacturing-lite
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 services:
   lnn-api:
     build:
@@ -27,7 +33,9 @@ services:
       target: runtime
     container_name: lnn-api-lite
     ports:
-      - "8765:8765"
+      # P1 安全修复：绑定到 127.0.0.1，避免端口直接暴露到 0.0.0.0 绕过 Nginx 防护。
+      # 外部访问应通过 Nginx 反向代理进入，容器端口仅在本地回环可见。
+      - "127.0.0.1:8765:8765"
     environment:
       - APP_ENV=${APP_ENV:-production}
       - PORT=${PORT:-8765}
@@ -47,6 +55,7 @@ services:
       - ./logs:/app/logs
     restart: unless-stopped
     # 单机模式无需依赖其他服务
+    logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8765/api/health/ping || exit 1"]
       interval: 15s

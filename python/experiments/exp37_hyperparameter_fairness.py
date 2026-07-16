@@ -13,7 +13,7 @@ from itertools import product
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from models import CTLTCModel
+from models import DLLNNModel
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'results')
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -159,7 +159,7 @@ def main():
     # 定义各模型的超参数搜索空间
     print("\n[2/5] 定义超参数搜索空间...")
     
-    # CT-LTC 搜索空间
+    # DL-LNN 搜索空间
     ctl_tc_grid = {
         'hidden_dim': [32, 64, 128],
         'num_layers': [1, 2, 3],
@@ -194,15 +194,15 @@ def main():
     
     search_results = {}
     
-    # CT-LTC
-    print("\n  搜索 CT-LTC 最优超参数...")
+    # DL-LNN
+    print("\n  搜索 DL-LNN 最优超参数...")
     def ctl_tc_fn(hidden_dim, num_layers, dt, lr):
-        return CTLTCModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim, dt=dt)
+        return DLLNNModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim, dt=dt)
     
     ctl_tc_all, ctl_tc_best, ctl_tc_best_mae = hyperparameter_search(
-        'CT-LTC', ctl_tc_fn, X_train, y_train, X_val, y_val, ctl_tc_grid
+        'DL-LNN', ctl_tc_fn, X_train, y_train, X_val, y_val, ctl_tc_grid
     )
-    search_results['CT-LTC'] = {
+    search_results['DL-LNN'] = {
         'search_space': {k: list(v) for k, v in ctl_tc_grid.items()},
         'all_results': ctl_tc_all,
         'best_params': ctl_tc_best,
@@ -265,7 +265,7 @@ def main():
     # 公平性分析
     print("\n[4/5] 公平性分析...")
     fairness_summary = {
-        'CT-LTC': {
+        'DL-LNN': {
             'best_val_mae': ctl_tc_best_mae,
             'best_params': ctl_tc_best,
             'num_configs_tested': len(ctl_tc_all),

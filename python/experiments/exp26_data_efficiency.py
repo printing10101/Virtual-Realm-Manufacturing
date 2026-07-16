@@ -1,6 +1,6 @@
 """
 实验二十六：数据量效率实验（Learning Curve）
-测试不同训练样本比例（10%/20%/50%/80%/100%）下的性能，验证CT-LTC在小样本场景下的优势
+测试不同训练样本比例（10%/20%/50%/80%/100%）下的性能，验证DL-LNN在小样本场景下的优势
 """
 
 import torch
@@ -11,7 +11,7 @@ import time
 from typing import Dict, List, Tuple
 from torch.utils.data import Dataset, DataLoader, Subset
 
-from models import CTLTCModel
+from models import DLLNNModel
 from data_generator import PHM2010Dataset, Industrial6061T6Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -188,9 +188,9 @@ def run_data_efficiency_experiment(
         test_loader = DataLoader(test_subset, batch_size=32, shuffle=False)
         
         # 创建模型
-        if model_name == "CT-LTC":
-            model = CTLTCModel(
-                input_dim=2,
+        if model_name == "DL-LNN":
+            model = DLLNNModel(
+                input_dim=7,
                 hidden_dim=64,
                 num_layers=3,
                 output_dim=1,
@@ -199,14 +199,14 @@ def run_data_efficiency_experiment(
             )
         elif model_name == "LSTM":
             model = torch.nn.LSTM(
-                input_size=2,
+                input_size=7,
                 hidden_size=64,
                 num_layers=2,
                 batch_first=True
             )
         elif model_name == "GRU":
             model = torch.nn.GRU(
-                input_size=2,
+                input_size=7,
                 hidden_size=64,
                 num_layers=2,
                 batch_first=True
@@ -249,7 +249,7 @@ def main():
     
     # 实验参数
     ratios = [0.1, 0.2, 0.5, 0.8, 1.0]
-    models = ["CT-LTC", "LSTM", "GRU"]
+    models = ["DL-LNN", "LSTM", "GRU"]
     
     # 数据集配置
     dataset_configs = {

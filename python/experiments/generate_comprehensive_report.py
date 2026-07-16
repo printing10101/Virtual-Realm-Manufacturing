@@ -1,5 +1,5 @@
 """
-CT-LTC 综合实验报告生成脚本
+DL-LNN 综合实验报告生成脚本
 生成包含12个实验的完整docx文档：5个核心实验 + 7个补充实验
 """
 
@@ -99,7 +99,7 @@ def write_exp1(doc):
     add_heading_styled(doc, '实验一 多数据集多模型主对比实验', level=1)
 
     add_heading_styled(doc, '1.1 实验目的', level=2)
-    add_para(doc, '在5个不同来源和特性的铣削数据集上，系统对比CT-LTC与8种主流深度学习模型（LSTM、GRU、Transformer、CNN、PINN、gPINN、PeRCNN、BPNN）的颤振预测性能，验证CT-LTC模型的综合优势。')
+    add_para(doc, '在5个不同来源和特性的铣削数据集上，系统对比DL-LNN与8种主流深度学习模型（LSTM、GRU、Transformer、CNN、PINN、gPINN、PeRCNN、BPNN）的颤振预测性能，验证DL-LNN模型的综合优势。')
 
     add_heading_styled(doc, '1.2 实验原理', level=2)
     add_para(doc, '颤振预测本质上是回归任务，目标是根据铣削过程的多维传感信号预测极限切削深度（a_lim）。本实验采用MAE、RMSE、R²、MAPE和PCC五个评价指标，从预测精度、拟合优度、相关性和工程误差四个维度全面评估模型性能。')
@@ -120,8 +120,8 @@ def write_exp1(doc):
         output_dim=config.output_dim,
     )
 
-    if name == 'CT-LTC':
-        model = CTCTCWithPhysics(
+    if name == 'DL-LNN':
+        model = DLLNNWithPhysics(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
@@ -200,14 +200,15 @@ def train_model(
 
     add_heading_styled(doc, '1.5 实验步骤', level=2)
     add_para(doc, '（1）对每个数据集进行标准化预处理，划分训练集/验证集/测试集（70%/15%/15%）；')
-    add_para(doc, '（2）对9种模型使用统一的超参数搜索策略，在验证集上选择最优超参数；')
+    add_para(doc, '（2）对13种模型（9种神经网络+4种传统ML基线）使用统一的超参数搜索策略，在验证集上选择最优超参数；')  # AR-04: 包含 SVR/RF/XGBoost/GP
     add_para(doc, '（3）每个模型在相同条件下训练至收敛，在测试集上评估五项指标；')
     add_para(doc, '（4）记录并对比各模型在各数据集上的性能表现。')
 
     add_heading_styled(doc, '1.6 实验结果', level=2)
     data = load_json('main_comparison_results.json')
     datasets = ['PHM2010', 'NUAA', 'NIST', 'Benchmark-1', '6061-T6']
-    models = ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
+    models = ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN',
+              'SVR', 'RF', 'XGBoost', 'GP']  # AR-04: 包含论文第4节声明的 4 个传统 ML 基线
 
     for ds in datasets:
         if ds not in data:
@@ -230,7 +231,7 @@ def train_model(
         doc.add_paragraph()
 
     add_heading_styled(doc, '1.7 结果分析', level=2)
-    add_para(doc, '实验结果表明：（1）CT-LTC在5个数据集中综合表现最优，尤其在PCC指标上显著领先，表明其预测值与真实值具有极高的线性相关性；（2）PINN和gPINN在NIST等物理特性明显的数据集上表现突出，说明物理约束对特定数据分布有效；（3）Transformer由于参数量大、注意力机制复杂，在小样本数据集上容易过拟合，表现不稳定；（4）CT-LTC在自采6061-T6工业数据集上保持了良好的泛化性能，验证了其工程适用性。')
+    add_para(doc, '实验结果表明：（1）DL-LNN在5个数据集中综合表现最优，尤其在PCC指标上显著领先，表明其预测值与真实值具有极高的线性相关性；（2）PINN和gPINN在NIST等物理特性明显的数据集上表现突出，说明物理约束对特定数据分布有效；（3）Transformer由于参数量大、注意力机制复杂，在小样本数据集上容易过拟合，表现不稳定；（4）DL-LNN在自采6061-T6工业数据集上保持了良好的泛化性能，验证了其工程适用性。')
 
 
 def write_exp2(doc):
@@ -292,7 +293,7 @@ def write_exp2(doc):
         
         # 训练并评估多个模型
         material_results = {}
-        for model_name in ['CT-LTC', 'LSTM', 'GRU', 'Transformer']:
+        for model_name in ['DL-LNN', 'LSTM', 'GRU', 'Transformer']:
             model = create_model_by_name(model_name, config, device)
             model = train_model(model, model_name, train_loader, test_loader, config, device)
             
@@ -328,7 +329,7 @@ def write_exp2(doc):
         
         # 训练并评估
         condition_results = {}
-        for model_name in ['CT-LTC', 'LSTM', 'GRU', 'Transformer']:
+        for model_name in ['DL-LNN', 'LSTM', 'GRU', 'Transformer']:
             model = create_model_by_name(model_name, config, device)
             model = train_model(model, model_name, train_loader, test_loader, config, device)
             metrics = evaluate_model(model, test_loader, device)
@@ -342,7 +343,7 @@ def write_exp2(doc):
     return results''')
 
     add_heading_styled(doc, '2.4 实验步骤', level=2)
-    add_para(doc, '（1）按LOMO协议划分数据：依次以每种材料为测试集，训练4种对比模型（CT-LTC、LSTM、GRU、Transformer）；')
+    add_para(doc, '（1）按LOMO协议划分数据：依次以每种材料为测试集，训练4种对比模型（DL-LNN、LSTM、GRU、Transformer）；')
     add_para(doc, '（2）按LOCO协议划分数据：依次以每种工况为测试集，训练并评估4种模型；')
     add_para(doc, '（3）计算各协议下每种材料/工况的MAE、RMSE、R²和PCC指标；')
     add_para(doc, '（4）计算平均性能，分析模型的跨工况泛化能力。')
@@ -356,7 +357,7 @@ def write_exp2(doc):
         if material in data['LOMO']:
             add_para(doc, f'材料：{material}', bold=True, indent=False)
             rows = []
-            for m in ['CT-LTC', 'LSTM', 'GRU', 'Transformer']:
+            for m in ['DL-LNN', 'LSTM', 'GRU', 'Transformer']:
                 d = data['LOMO'][material][m]
                 rows.append([m, f"{d['MAE']:.4f}", f"{d['RMSE']:.4f}", f"{d['R²']:.4f}", f"{d['PCC']:.4f}"])
             create_table(doc, headers, rows)
@@ -364,7 +365,7 @@ def write_exp2(doc):
 
     add_para(doc, '表：LOMO协议平均性能', bold=True, indent=False)
     rows = []
-    for m in ['CT-LTC', 'LSTM', 'GRU', 'Transformer']:
+    for m in ['DL-LNN', 'LSTM', 'GRU', 'Transformer']:
         d = data['LOMO']['Average'][m]
         rows.append([m, f"{d['MAE']:.4f}", f"{d['RMSE']:.4f}", f"{d['R²']:.4f}", f"{d['PCC']:.4f}"])
     create_table(doc, headers, rows)
@@ -372,17 +373,17 @@ def write_exp2(doc):
 
     add_para(doc, '表：LOCO协议平均性能', bold=True, indent=False)
     rows = []
-    for m in ['CT-LTC', 'LSTM', 'GRU', 'Transformer']:
+    for m in ['DL-LNN', 'LSTM', 'GRU', 'Transformer']:
         d = data['LOCO']['Average'][m]
         rows.append([m, f"{d['MAE']:.4f}", f"{d['RMSE']:.4f}", f"{d['R²']:.4f}", f"{d['PCC']:.4f}"])
     create_table(doc, headers, rows)
     doc.add_paragraph()
 
     add_heading_styled(doc, '2.6 结果分析', level=2)
-    add_para(doc, '（1）在LOMO协议下，CT-LTC的平均PCC达到0.9926，优于LSTM（0.9920）、GRU（0.9935）和Transformer（0.9598），表明其对新材料的泛化能力更强；')
-    add_para(doc, '（2）在LOCO协议下，CT-LTC的平均MAE为1.2934，与LSTM（1.2906）和GRU（1.2895）相当，但PCC最高（0.9954），说明预测值与真实值的线性相关性最好；')
+    add_para(doc, '（1）在LOMO协议下，DL-LNN的平均PCC达到0.9926，优于LSTM（0.9920）、GRU（0.9935）和Transformer（0.9598），表明其对新材料的泛化能力更强；')
+    add_para(doc, '（2）在LOCO协议下，DL-LNN的平均MAE为1.2934，与LSTM（1.2906）和GRU（1.2895）相当，但PCC最高（0.9954），说明预测值与真实值的线性相关性最好；')
     add_para(doc, '（3）Transformer在两种协议下均表现最差，R²值显著低于其他模型，说明其在跨工况场景下的泛化能力不足；')
-    add_para(doc, '（4）CT-LTC的物理约束机制使其在跨材料、跨工况条件下保持了更稳定的预测性能。')
+    add_para(doc, '（4）DL-LNN的物理约束机制使其在跨材料、跨工况条件下保持了更稳定的预测性能。')
 
 
 def write_exp3(doc):
@@ -390,7 +391,7 @@ def write_exp3(doc):
     add_heading_styled(doc, '实验三 消融实验', level=1)
 
     add_heading_styled(doc, '3.1 实验目的', level=2)
-    add_para(doc, '通过逐一移除或替换CT-LTC模型的核心组件，量化各组件对最终预测性能的贡献度，验证模型设计的合理性。')
+    add_para(doc, '通过逐一移除或替换DL-LNN模型的核心组件，量化各组件对最终预测性能的贡献度，验证模型设计的合理性。')
 
     add_heading_styled(doc, '3.2 实验原理', level=2)
     add_para(doc, '消融实验（Ablation Study）是深度学习模型分析的标准方法。通过控制变量法，依次移除以下组件：（1）PCC Loss（物理一致性损失）；（2）预训练阶段；（3）LTC核心替换为LSTM；（4）门控机制。比较各变体与完整模型的性能差异。')
@@ -413,7 +414,7 @@ def write_exp3(doc):
         运行消融实验
         
         实验变体:
-        1. Full Model (完整CT-LTC)
+        1. Full Model (完整DL-LNN)
         2. w/o PCC Loss (移除物理一致性损失)
         3. w/o Pre-train (移除解析预训练)
         4. LTC → LSTM (替换为离散时间网络)
@@ -428,8 +429,8 @@ def write_exp3(doc):
         
         ablation_results = {}
         
-        # 1. Full Model (完整CT-LTC)
-        trainer = CTCTCTrainer(self.config, self.device)
+        # 1. Full Model (完整DL-LNN)
+        trainer = DLLNNTrainer(self.config, self.device)
         trainer.train(train_loader, test_loader)
         full_metrics = trainer.evaluate(test_loader)
         ablation_results['Full Model'] = full_metrics
@@ -439,13 +440,13 @@ def write_exp3(doc):
         config_no_pcc.model.lambda_pcc = 0.0
         config_no_pcc.model.lambda_phys = 0.0
         
-        trainer_no_pcc = CTCTCTrainer(config_no_pcc, self.device)
+        trainer_no_pcc = DLLNNTrainer(config_no_pcc, self.device)
         trainer_no_pcc.train(train_loader, test_loader)
         no_pcc_metrics = trainer_no_pcc.evaluate(test_loader)
         ablation_results['w/o PCC Loss'] = no_pcc_metrics
         
         # 3. w/o Pre-train (移除解析预训练)
-        model_no_pretrain = CTCTCWithPhysics(
+        model_no_pretrain = DLLNNWithPhysics(
             input_dim=self.config.model.input_dim,
             hidden_dim=self.config.model.hidden_dim,
             num_layers=self.config.model.num_layers,
@@ -455,7 +456,7 @@ def write_exp3(doc):
         config_no_pretrain = ExperimentConfig()
         config_no_pretrain.model.num_epochs_stage1 = 0  # 跳过预训练
         
-        trainer_no_pretrain = CTCTCTrainer(config_no_pretrain, self.device)
+        trainer_no_pretrain = DLLNNTrainer(config_no_pretrain, self.device)
         trainer_no_pretrain.train(train_loader, test_loader)
         no_pretrain_metrics = trainer_no_pretrain.evaluate(test_loader)
         ablation_results['w/o Pre-train'] = no_pretrain_metrics
@@ -507,7 +508,7 @@ def write_exp4(doc):
     add_heading_styled(doc, '实验四 时间常数分析实验', level=1)
 
     add_heading_styled(doc, '4.1 实验目的', level=2)
-    add_para(doc, '分析CT-LTC网络各层学习到的时间常数τ的分布特征，验证其物理合理性和多尺度动态建模能力。')
+    add_para(doc, '分析DL-LNN网络各层学习到的时间常数τ的分布特征，验证其物理合理性和多尺度动态建模能力。')
 
     add_heading_styled(doc, '4.2 实验原理', level=2)
     add_para(doc, 'LTC（Liquid Time-Constant）网络的核心创新在于其时间常数τ是可学习的参数，而非固定值。τ决定了网络对输入信号的响应速度：较小的τ对应快速响应（捕捉高频颤振信号），较大的τ对应慢速响应（捕捉低频趋势）。通过分析τ的分布，可以理解网络学到的动态特性。')
@@ -518,7 +519,7 @@ import torch
 import numpy as np
 
 def analyze_time_constants(model, device):
-    """分析CT-LTC网络各层学习到的时间常数tau分布"""
+    """分析DL-LNN网络各层学习到的时间常数tau分布"""
     model.eval()
     results = {'layers': []}
     
@@ -552,7 +553,7 @@ def analyze_time_constants(model, device):
     return results''')
 
     add_heading_styled(doc, '4.4 实验步骤', level=2)
-    add_para(doc, '（1）加载训练好的CT-LTC模型，提取3个LTC层的时间常数τ；')
+    add_para(doc, '（1）加载训练好的DL-LNN模型，提取3个LTC层的时间常数τ；')
     add_para(doc, '（2）统计每层τ的均值、标准差、最小值、最大值和中位数；')
     add_para(doc, '（3）分析τ在不同层之间的分布差异；')
     add_para(doc, '（4）将τ分布与铣削过程的物理时间尺度进行对比分析。')
@@ -589,7 +590,7 @@ def write_exp5(doc):
     add_heading_styled(doc, '实验五 主动学习实验', level=1)
 
     add_heading_styled(doc, '5.1 实验目的', level=2)
-    add_para(doc, '评估CT-LTC模型在不同标注数据量下的性能变化，验证主动学习策略在减少标注成本方面的有效性。')
+    add_para(doc, '评估DL-LNN模型在不同标注数据量下的性能变化，验证主动学习策略在减少标注成本方面的有效性。')
 
     add_heading_styled(doc, '5.2 实验原理', level=2)
     add_para(doc, '主动学习通过选择最有信息量的样本进行标注，以最少的标注数据达到最优的模型性能。本实验对比主动学习策略与随机采样策略在不同数据比例（10%~100%）下的性能差异，评估标注效率。')
@@ -657,14 +658,14 @@ for ratio in data_ratios:
     train_loader, val_loader, test_loader = create_dataloaders(
         dataset_params={'num_samples': subset_size, 'noise_level': 0.08, 'seed': 46}
     )
-    model = CTCTCWithPhysics(...).to(device)
+    model = DLLNNWithPhysics(...).to(device)
     model = train_model_subset(model, train_loader, val_loader, device)
     metrics = evaluate_model(model, test_loader, device)''')
 
     add_heading_styled(doc, '5.4 实验步骤', level=2)
     add_para(doc, '（1）从10%到100%以10%为步长，依次增加标注数据量；')
     add_para(doc, '（2）对每个数据比例，分别使用主动学习策略和随机采样策略选择训练样本；')
-    add_para(doc, '（3）训练CT-LTC模型并在测试集上评估性能；')
+    add_para(doc, '（3）训练DL-LNN模型并在测试集上评估性能；')
     add_para(doc, '（4）绘制性能-数据量曲线，对比两种策略的效率差异。')
 
     add_heading_styled(doc, '5.5 实验结果', level=2)
@@ -696,7 +697,7 @@ def write_exp6(doc):
     add_heading_styled(doc, '实验六 噪声鲁棒性实验', level=1)
 
     add_heading_styled(doc, '6.1 实验目的', level=2)
-    add_para(doc, '评估各模型在不同噪声水平下的预测鲁棒性，验证CT-LTC在工业噪声环境中的可靠性。')
+    add_para(doc, '评估各模型在不同噪声水平下的预测鲁棒性，验证DL-LNN在工业噪声环境中的可靠性。')
 
     add_heading_styled(doc, '6.2 实验原理', level=2)
     add_para(doc, '工业现场的传感信号不可避免地受到各种噪声干扰。本实验通过向测试信号添加不同信噪比（SNR）的高斯噪声（0dB、5dB、10dB、15dB、20dB、25dB、30dB），评估模型在噪声条件下的性能退化程度。SNR越低，噪声越强。')
@@ -755,7 +756,7 @@ def create_noisy_test_loader(test_loader, snr_db, seed=42):
 
 # 噪声鲁棒性实验
 snr_levels = [0, 5, 10, 15, 20, 25, 30]  # dB
-model_names = ["CT-LTC", "LSTM", "Transformer", "PINN", "BPNN"]
+model_names = ["DL-LNN", "LSTM", "Transformer", "PINN", "BPNN"]
 
 for snr_db in snr_levels:
     noisy_test_loader = create_noisy_test_loader(test_loader, snr_db)
@@ -766,40 +767,40 @@ for snr_db in snr_levels:
 
     add_heading_styled(doc, '6.4 实验步骤', level=2)
     add_para(doc, '（1）对测试集信号分别添加SNR=0,5,10,15,20,25,30dB的高斯噪声；')
-    add_para(doc, '（2）在每种噪声水平下，使用5种模型（CT-LTC、LSTM、Transformer、PINN、BPNN）进行预测；')
+    add_para(doc, '（2）在每种噪声水平下，使用5种模型（DL-LNN、LSTM、Transformer、PINN、BPNN）进行预测；')
     add_para(doc, '（3）记录各模型在各SNR下的MAE、RMSE、R²和PCC；')
     add_para(doc, '（4）分析各模型的性能退化曲线。')
 
     add_heading_styled(doc, '6.5 实验结果', level=2)
     data = load_json('noise_robustness_results.json')
     add_para(doc, '表：不同SNR下各模型性能（MAE/RMSE/PCC）', bold=True, indent=False)
-    headers = ['SNR(dB)', 'CT-LTC MAE', 'LSTM MAE', 'Trans MAE', 'PINN MAE', 'BPNN MAE']
+    headers = ['SNR(dB)', 'DL-LNN MAE', 'LSTM MAE', 'Trans MAE', 'PINN MAE', 'BPNN MAE']
     rows = []
     for i, snr in enumerate(data['snr_levels']):
         row = [str(snr)]
-        for m in ['CT-LTC', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
+        for m in ['DL-LNN', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
             row.append(f"{data['results'][m][i]['MAE']:.4f}")
         rows.append(row)
     create_table(doc, headers, rows)
     doc.add_paragraph()
 
     add_para(doc, '表：不同SNR下各模型PCC对比', bold=True, indent=False)
-    headers2 = ['SNR(dB)', 'CT-LTC', 'LSTM', 'Transformer', 'PINN', 'BPNN']
+    headers2 = ['SNR(dB)', 'DL-LNN', 'LSTM', 'Transformer', 'PINN', 'BPNN']
     rows2 = []
     for i, snr in enumerate(data['snr_levels']):
         row = [str(snr)]
-        for m in ['CT-LTC', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
+        for m in ['DL-LNN', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
             row.append(f"{data['results'][m][i]['PCC']:.4f}")
         rows2.append(row)
     create_table(doc, headers2, rows2)
     doc.add_paragraph()
 
     add_heading_styled(doc, '6.6 结果分析', level=2)
-    add_para(doc, '（1）CT-LTC在所有SNR水平下均保持了极其稳定的性能，MAE变化范围仅为0.9661~0.9661，几乎不受噪声影响，展现了极强的噪声鲁棒性；')
+    add_para(doc, '（1）DL-LNN在所有SNR水平下均保持了极其稳定的性能，MAE变化范围仅为0.9661~0.9661，几乎不受噪声影响，展现了极强的噪声鲁棒性；')
     add_para(doc, '（2）LSTM在低SNR（0dB）时MAE为1.160，随SNR增加逐步下降至1.032，噪声敏感性较高；')
     add_para(doc, '（3）BPNN在0dB噪声下MAE高达1.736，但在高SNR下迅速收敛至0.969，说明其对噪声非常敏感但学习能力强；')
     add_para(doc, '（4）PINN在所有条件下表现稳定且优异，PCC始终在0.999以上，物理约束有效提升了噪声鲁棒性；')
-    add_para(doc, '（5）CT-LTC结合了LTC的连续时间特性和物理约束，在噪声鲁棒性方面综合表现最优。')
+    add_para(doc, '（5）DL-LNN结合了LTC的连续时间特性和物理约束，在噪声鲁棒性方面综合表现最优。')
 
 
 def write_exp7(doc):
@@ -872,7 +873,7 @@ def measure_inference_time(model, input_tensor, num_runs=100, device="cpu"):
     add_para(doc, '表：各模型计算效率对比', bold=True, indent=False)
     headers = ['模型', '参数量', 'FLOPs', '训练时间/epoch(s)', '推理时间(ms)', '内存(MB)']
     rows = []
-    for m in ['CT-LTC', 'LTC', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
+    for m in ['DL-LNN', 'LTC', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
         d = data['models'][m]
         rows.append([
             m,
@@ -886,11 +887,11 @@ def measure_inference_time(model, input_tensor, num_runs=100, device="cpu"):
     doc.add_paragraph()
 
     add_heading_styled(doc, '7.6 结果分析', level=2)
-    add_para(doc, '（1）CT-LTC参数量为107,908，与LTC（107,777）相当，远小于LSTM（340,097）和Transformer（406,145），模型紧凑；')
-    add_para(doc, '（2）CT-LTC的FLOPs为8,576，与LTC相同，远低于Transformer的795,008，计算效率优势明显；')
-    add_para(doc, '（3）CT-LTC推理时间为0.998ms，满足工业实时性要求（通常<10ms）；')
-    add_para(doc, '（4）PINN参数量最小（33,537），推理最快（0.250ms），但预测精度不及CT-LTC；')
-    add_para(doc, '（5）CT-LTC在精度和效率之间取得了最佳平衡：参数量仅为Transformer的26.6%，FLOPs仅为Transformer的1.08%，同时保持了最优的预测精度。')
+    add_para(doc, '（1）DL-LNN参数量为107,908，与LTC（107,777）相当，远小于LSTM（340,097）和Transformer（406,145），模型紧凑；')
+    add_para(doc, '（2）DL-LNN的FLOPs为8,576，与LTC相同，远低于Transformer的795,008，计算效率优势明显；')
+    add_para(doc, '（3）DL-LNN推理时间为0.998ms，满足工业实时性要求（通常<10ms）；')
+    add_para(doc, '（4）PINN参数量最小（33,537），推理最快（0.250ms），但预测精度不及DL-LNN；')
+    add_para(doc, '（5）DL-LNN在精度和效率之间取得了最佳平衡：参数量仅为Transformer的26.6%，FLOPs仅为Transformer的1.08%，同时保持了最优的预测精度。')
 
 
 def write_exp8(doc):
@@ -898,10 +899,10 @@ def write_exp8(doc):
     add_heading_styled(doc, '实验八 统计显著性检验实验', level=1)
 
     add_heading_styled(doc, '8.1 实验目的', level=2)
-    add_para(doc, '通过多次独立重复实验和统计检验，验证CT-LTC与其他模型性能差异的统计显著性，排除随机性因素的影响。')
+    add_para(doc, '通过多次独立重复实验和统计检验，验证DL-LNN与其他模型性能差异的统计显著性，排除随机性因素的影响。')
 
     add_heading_styled(doc, '8.2 实验原理', level=2)
-    add_para(doc, '采用Welch\'s t检验（不等方差t检验）比较CT-LTC与各对比模型的性能差异。计算t统计量和p值，当p<0.05时认为差异具有统计显著性。同时计算Cohen\'s d效应量和95%置信区间，量化差异的实际意义。')
+    add_para(doc, '采用Welch\'s t检验（不等方差t检验）比较DL-LNN与各对比模型的性能差异。计算t统计量和p值，当p<0.05时认为差异具有统计显著性。同时计算Cohen\'s d效应量和95%置信区间，量化差异的实际意义。')
 
     add_heading_styled(doc, '8.3 核心代码', level=2)
     add_code_block(doc, '''# 统计显著性检验核心代码 (exp15_statistical_significance.py)
@@ -909,7 +910,7 @@ import numpy as np
 from scipy import stats
 
 SEEDS = [42, 43, 44, 45, 46]  # 5次独立实验的随机种子
-MODEL_NAMES = ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
+MODEL_NAMES = ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
 METRIC_NAMES = ['MAE', 'RMSE', 'R2', 'PCC']
 
 def cohens_d(group1: np.ndarray, group2: np.ndarray) -> float:
@@ -938,12 +939,12 @@ def independent_t_test(group1: np.ndarray, group2: np.ndarray) -> dict:
         'ci_95': (mean_diff - t_critical*se, mean_diff + t_critical*se)
     }
 
-# 对每个指标进行CT-LTC vs 其他模型的t检验
+# 对每个指标进行DL-LNN vs 其他模型的t检验
 for other_model in MODEL_NAMES:
-    if other_model == 'CT-LTC':
+    if other_model == 'DL-LNN':
         continue
     for metric_name in METRIC_NAMES:
-        ct_values = np.array(results['CT-LTC'][metric_name]['values'])
+        ct_values = np.array(results['DL-LNN'][metric_name]['values'])
         other_values = np.array(results[other_model][metric_name]['values'])
         test_result = independent_t_test(ct_values, other_values)''')
 
@@ -951,14 +952,14 @@ for other_model in MODEL_NAMES:
     add_para(doc, '（1）使用5个不同随机种子（42~46）独立训练所有模型；')
     add_para(doc, '（2）记录每次实验的MAE、RMSE、R²和PCC；')
     add_para(doc, '（3）计算各模型各指标的均值和标准差；')
-    add_para(doc, '（4）对CT-LTC与各对比模型进行Welch\'s t检验，计算p值和Cohen\'s d。')
+    add_para(doc, '（4）对DL-LNN与各对比模型进行Welch\'s t检验，计算p值和Cohen\'s d。')
 
     add_heading_styled(doc, '8.5 实验结果', level=2)
     data = load_json('statistical_significance_results.json')
     add_para(doc, '表：各模型性能均值±标准差（5次独立实验）', bold=True, indent=False)
     headers = ['模型', 'MAE', 'RMSE', 'R²', 'PCC']
     rows = []
-    for m in ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']:
+    for m in ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']:
         d = data['results'][m]
         rows.append([
             m,
@@ -970,14 +971,14 @@ for other_model in MODEL_NAMES:
     create_table(doc, headers, rows)
     doc.add_paragraph()
 
-    add_para(doc, '表：CT-LTC vs 各模型 t检验结果（PCC指标）', bold=True, indent=False)
+    add_para(doc, '表：DL-LNN vs 各模型 t检验结果（PCC指标）', bold=True, indent=False)
     headers2 = ['对比', 't统计量', 'p值', 'Cohen\'s d', '显著性(α=0.05)']
     rows2 = []
-    for key in ['CT-LTC_vs_LSTM', 'CT-LTC_vs_GRU', 'CT-LTC_vs_Transformer', 'CT-LTC_vs_PINN', 'CT-LTC_vs_gPINN', 'CT-LTC_vs_BPNN']:
+    for key in ['DL-LNN_vs_LSTM', 'DL-LNN_vs_GRU', 'DL-LNN_vs_Transformer', 'DL-LNN_vs_PINN', 'DL-LNN_vs_gPINN', 'DL-LNN_vs_BPNN']:
         d = data['t_tests'][key]['PCC']
         sig = '是' if d['significant'] else '否'
         rows2.append([
-            key.replace('CT-LTC_vs_', ''),
+            key.replace('DL-LNN_vs_', ''),
             f"{d['t_stat']:.4f}",
             f"{d['p_value']:.4f}",
             f"{d['cohens_d']:.4f}",
@@ -987,9 +988,9 @@ for other_model in MODEL_NAMES:
     doc.add_paragraph()
 
     add_heading_styled(doc, '8.6 结果分析', level=2)
-    add_para(doc, '（1）在PCC指标上，CT-LTC与所有对比模型的差异均不具有统计显著性（p>0.05），说明各模型在相关性方面表现相当；')
-    add_para(doc, '（2）CT-LTC的PCC均值为0.9935，在所有模型中排名第二（仅次于gPINN的0.9940和PINN的0.9939），但标准差较小（0.0051），说明性能稳定；')
-    add_para(doc, '（3）CT-LTC vs PeRCNN的Cohen\'s d最大（0.827），属于大效应量，表明两者在实际应用中的差异具有实际意义；')
+    add_para(doc, '（1）在PCC指标上，DL-LNN与所有对比模型的差异均不具有统计显著性（p>0.05），说明各模型在相关性方面表现相当；')
+    add_para(doc, '（2）DL-LNN的PCC均值为0.9935，在所有模型中排名第二（仅次于gPINN的0.9940和PINN的0.9939），但标准差较小（0.0051），说明性能稳定；')
+    add_para(doc, '（3）DL-LNN vs PeRCNN的Cohen\'s d最大（0.827），属于大效应量，表明两者在实际应用中的差异具有实际意义；')
     add_para(doc, '（4）5次独立实验的标准差普遍较小（<0.04），说明所有模型的训练过程较为稳定。')
 
 
@@ -998,7 +999,7 @@ def write_exp9(doc):
     add_heading_styled(doc, '实验九 频域分析实验', level=1)
 
     add_heading_styled(doc, '9.1 实验目的', level=2)
-    add_para(doc, '从频域角度分析铣削信号的频谱特性和模型预测的频谱保真度，验证CT-LTC对颤振频率特征的捕捉能力。')
+    add_para(doc, '从频域角度分析铣削信号的频谱特性和模型预测的频谱保真度，验证DL-LNN对颤振频率特征的捕捉能力。')
 
     add_heading_styled(doc, '9.2 实验原理', level=2)
     add_para(doc, '铣削颤振在频域上表现为特定频率成分的异常增大。稳定切削信号以刀齿通过频率（f = n×z/60，n为主轴转速，z为齿数）及其谐波为主；颤振信号则在颤振频率处出现显著峰值。通过FFT分析，可以评估模型是否准确捕捉了这些频率特征。')
@@ -1052,7 +1053,7 @@ def compute_spectral_entropy(magnitudes, num_bins=100):
     add_heading_styled(doc, '9.4 实验步骤', level=2)
     add_para(doc, '（1）生成稳定切削和颤振状态的模拟信号，包含刀齿通过频率和颤振频率成分；')
     add_para(doc, '（2）对信号进行FFT变换，分析频谱特性；')
-    add_para(doc, '（3）使用CT-LTC模型对信号进行预测，对预测结果进行FFT分析；')
+    add_para(doc, '（3）使用DL-LNN模型对信号进行预测，对预测结果进行FFT分析；')
     add_para(doc, '（4）计算预测频谱与真实频谱的相似度和频率误差。')
 
     add_heading_styled(doc, '9.5 实验结果', level=2)
@@ -1082,7 +1083,7 @@ def compute_spectral_entropy(magnitudes, num_bins=100):
     add_heading_styled(doc, '9.6 结果分析', level=2)
     add_para(doc, '（1）稳定切削信号的主频率为400Hz（对应刀齿通过频率），颤振信号的主频率为850Hz，与设定的颤振频率一致；')
     add_para(doc, '（2）稳定信号和颤振信号的频谱熵相近（7.667 vs 7.684），说明两者在频率成分分布上差异不大，主要区别在于特定频率的幅值；')
-    add_para(doc, '（3）CT-LTC预测信号的频谱相似度高达0.9998，表明模型在频域上高度保真；')
+    add_para(doc, '（3）DL-LNN预测信号的频谱相似度高达0.9998，表明模型在频域上高度保真；')
     add_para(doc, '（4）频率误差为400Hz，主要源于模型对高频成分的相位偏移，但不影响整体频谱结构的准确性。')
 
 
@@ -1091,7 +1092,7 @@ def write_exp10(doc):
     add_heading_styled(doc, '实验十 模型可解释性分析实验', level=1)
 
     add_heading_styled(doc, '10.1 实验目的', level=2)
-    add_para(doc, '使用基于梯度的SHAP分析方法，量化各输入特征对CT-LTC预测结果的贡献度，揭示模型的决策机制。')
+    add_para(doc, '使用基于梯度的SHAP分析方法，量化各输入特征对DL-LNN预测结果的贡献度，揭示模型的决策机制。')
 
     add_heading_styled(doc, '10.2 实验原理', level=2)
     add_para(doc, 'SHAP（SHapley Additive exPlanations）基于合作博弈论中的Shapley值，为每个特征分配对预测结果的贡献度。本实验采用梯度近似方法计算SHAP值：对每个输入特征计算模型输出关于该特征的梯度绝对值，作为该特征的重要性度量。')
@@ -1173,7 +1174,7 @@ def analyze_feature_importance(model, test_loader, device, method="gradient"):
     return feature_importance''')
 
     add_heading_styled(doc, '10.4 实验步骤', level=2)
-    add_para(doc, '（1）加载训练好的CT-LTC模型和测试数据；')
+    add_para(doc, '（1）加载训练好的DL-LNN模型和测试数据；')
     add_para(doc, '（2）对每个输入特征（主轴转速、轴向切深），计算模型输出关于该特征的梯度；')
     add_para(doc, '（3）取梯度绝对值的均值作为SHAP值，衡量特征重要性；')
     add_para(doc, '（4）分析不同切深范围下的特征重要性变化。')
@@ -1194,7 +1195,7 @@ def analyze_feature_importance(model, test_loader, device, method="gradient"):
     add_heading_styled(doc, '10.6 结果分析', level=2)
     add_para(doc, '（1）主轴转速的SHAP值（0.000266）高于轴向切深（0.000174），表明主轴转速对颤振预测的影响更大，这与铣削物理理论一致——主轴转速直接决定了切削频率和稳定性叶瓣图的位置；')
     add_para(doc, '（2）两个特征的SHAP标准差均较小，说明特征重要性在不同样本上较为一致；')
-    add_para(doc, '（3）可解释性分析结果与Tlustý切削理论吻合，验证了CT-LTC模型学到了具有物理意义的特征表示，而非仅依赖统计相关性。')
+    add_para(doc, '（3）可解释性分析结果与Tlustý切削理论吻合，验证了DL-LNN模型学到了具有物理意义的特征表示，而非仅依赖统计相关性。')
 
 
 def write_exp11(doc):
@@ -1287,7 +1288,7 @@ def write_exp11(doc):
     add_heading_styled(doc, '11.6 结果分析', level=2)
     add_para(doc, '（1）不确定性-误差相关系数为-0.079，接近于零且为负值，说明当前MC Dropout的不确定性估计与预测误差之间没有正相关关系；')
     add_para(doc, '（2）从校准结果看，低不确定性组的平均误差（1.101）反而略高于高不确定性组（0.935），表明MC Dropout的不确定性估计需要进一步校准；')
-    add_para(doc, '（3）这一现象可能源于CT-LTC的连续时间动态特性与MC Dropout的离散采样假设不完全匹配；')
+    add_para(doc, '（3）这一现象可能源于DL-LNN的连续时间动态特性与MC Dropout的离散采样假设不完全匹配；')
     add_para(doc, '（4）未来工作可探索基于深度集成（Deep Ensemble）或贝叶斯LTC的不确定性量化方法，以获得更好的校准效果。')
 
 
@@ -1296,7 +1297,7 @@ def write_exp12(doc):
     add_heading_styled(doc, '实验十二 失败案例与边界分析实验', level=1)
 
     add_heading_styled(doc, '12.1 实验目的', level=2)
-    add_para(doc, '分析CT-LTC模型的预测失败案例和边界条件，识别模型的薄弱环节，为后续改进提供方向。')
+    add_para(doc, '分析DL-LNN模型的预测失败案例和边界条件，识别模型的薄弱环节，为后续改进提供方向。')
 
     add_heading_styled(doc, '12.2 实验原理', level=2)
     add_para(doc, '将预测误差最大的前10%样本定义为失败案例，分析其输入特征分布、工况条件和物理一致性。同时按主轴转速和轴向切深进行分箱分析，识别误差较高的参数区域。')
@@ -1412,7 +1413,7 @@ def write_exp13(doc):
     add_heading_styled(doc, '实验十三 长时域预测稳定性实验', level=1)
 
     add_heading_styled(doc, '13.1 实验目的', level=2)
-    add_para(doc, '评估模型在长时间序列递推预测中的稳定性，验证CT-LTC是否会出现误差发散，并与LSTM和Transformer进行对比。')
+    add_para(doc, '评估模型在长时间序列递推预测中的稳定性，验证DL-LNN是否会出现误差发散，并与LSTM和Transformer进行对比。')
 
     add_heading_styled(doc, '13.2 实验原理', level=2)
     add_para(doc, '长时域预测稳定性是工业实时监控的关键指标。本实验采用递推预测策略：将模型的预测输出作为下一步的输入，连续预测1000~5000个时间步。通过监测平均误差、最终误差、误差增长率和发散时间，评估模型的长期稳定性。')
@@ -1451,7 +1452,7 @@ def write_exp13(doc):
     return np.array(predictions)''')
 
     add_heading_styled(doc, '13.4 实验步骤', level=2)
-    add_para(doc, '（1）训练CT-LTC、LSTM、Transformer三种模型；')
+    add_para(doc, '（1）训练DL-LNN、LSTM、Transformer三种模型；')
     add_para(doc, '（2）采用递推预测策略，分别进行1000、2000、3000、4000、5000步的连续预测；')
     add_para(doc, '（3）每1000步记录一次分段误差，计算平均误差、最终误差和误差增长率；')
     add_para(doc, '（4）对比三种模型在不同序列长度下的稳定性表现。')
@@ -1476,7 +1477,7 @@ def write_exp13(doc):
 
     add_heading_styled(doc, '13.6 结果分析', level=2)
     add_para(doc, '（1）LSTM在所有序列长度下均保持了最低的平均误差（1000步：1.017，5000步：1.137），误差增长率稳定在0.0056~0.0059之间，展现了最优的长时域稳定性；')
-    add_para(doc, '（2）CT-LTC的平均误差略高于LSTM（1000步：1.840，5000步：1.960），但误差增长率（0.0055~0.0059）与LSTM相当，说明其长期稳定性良好；')
+    add_para(doc, '（2）DL-LNN的平均误差略高于LSTM（1000步：1.840，5000步：1.960），但误差增长率（0.0055~0.0059）与LSTM相当，说明其长期稳定性良好；')
     add_para(doc, '（3）Transformer的平均误差最高（1000步：5.414，5000步：5.294），且误差增长率为负值（-0.0056~-0.0058），表明其初始误差大但随时间略有收敛；')
     add_para(doc, '（4）三种模型均未出现误差发散（divergence_time=0），说明在5000步预测范围内均保持了数值稳定性。')
 
@@ -1486,7 +1487,7 @@ def write_exp14(doc):
     add_heading_styled(doc, '实验十四 超参数灵敏度分析实验', level=1)
 
     add_heading_styled(doc, '14.1 实验目的', level=2)
-    add_para(doc, '系统分析CT-LTC模型的四个关键超参数（隐藏层维度、学习率、时间常数dt、Dropout率）对预测性能的影响，确定最优超参数配置。')
+    add_para(doc, '系统分析DL-LNN模型的四个关键超参数（隐藏层维度、学习率、时间常数dt、Dropout率）对预测性能的影响，确定最优超参数配置。')
 
     add_heading_styled(doc, '14.2 实验原理', level=2)
     add_para(doc, '超参数灵敏度分析采用控制变量法：每次只改变一个超参数，保持其他参数不变，观察模型性能的变化。通过这种方式可以识别对性能影响最大的超参数，并确定其最优取值范围。')
@@ -1530,8 +1531,8 @@ def write_exp14(doc):
     print(f"\\n[步骤 3/5] 隐藏层维度分析...")
     for hidden_dim in hidden_dims:
         print(f"\\n  hidden_dim = {hidden_dim}")
-        model = CTCTCWithPhysics(
-            input_dim=2,
+        model = DLLNNWithPhysics(
+            input_dim=7,
             hidden_dim=hidden_dim,
             num_layers=3,
             output_dim=1,
@@ -1600,7 +1601,7 @@ def write_exp15(doc):
     add_heading_styled(doc, '实验十五 跨数据集迁移学习实验', level=1)
 
     add_heading_styled(doc, '15.1 实验目的', level=2)
-    add_para(doc, '验证CT-LTC模型从PHM2010公开数据集迁移到6061-T6工业数据集的能力，评估迁移学习策略的有效性。')
+    add_para(doc, '验证DL-LNN模型从PHM2010公开数据集迁移到6061-T6工业数据集的能力，评估迁移学习策略的有效性。')
 
     add_heading_styled(doc, '15.2 实验原理', level=2)
     add_para(doc, '迁移学习通过在源数据集上预训练模型，然后在目标数据集上微调，可以利用源数据集的丰富特征提升目标数据集上的性能。本实验对比四种策略：（1）直接在目标数据集上训练（基线）；（2）全参数微调；（3）冻结LTC层，微调其他层（部分微调）；（4）LSTM预训练+微调。')
@@ -1697,7 +1698,7 @@ def write_exp15(doc):
     return model''')
 
     add_heading_styled(doc, '15.4 实验步骤', level=2)
-    add_para(doc, '（1）在PHM2010数据集上预训练CT-LTC/LSTM模型；')
+    add_para(doc, '（1）在PHM2010数据集上预训练DL-LNN/LSTM模型；')
     add_para(doc, '（2）将预训练模型迁移到6061-T6数据集，采用不同微调策略；')
     add_para(doc, '（3）对比直接训练基线，计算各策略的MAE、RMSE、R²和PCC；')
     add_para(doc, '（4）分析迁移学习的性能提升/下降幅度。')
@@ -1733,10 +1734,10 @@ def write_exp16(doc):
     add_heading_styled(doc, '实验十六 物理解析模型与数据驱动模型对比实验', level=1)
 
     add_heading_styled(doc, '16.1 实验目的', level=2)
-    add_para(doc, '对比传统物理解析模型（Tlusty、Altintas）与数据驱动模型（CT-LTC、LSTM、PINN）在颤振预测任务上的性能差异，并探索物理-数据混合模型的可行性。')
+    add_para(doc, '对比传统物理解析模型（Tlusty、Altintas）与数据驱动模型（DL-LNN、LSTM、PINN）在颤振预测任务上的性能差异，并探索物理-数据混合模型的可行性。')
 
     add_heading_styled(doc, '16.2 实验原理', level=2)
-    add_para(doc, 'Tlusty模型基于再生颤振理论，通过解析公式计算极限切削深度；Altintas模型基于实验数据拟合经验公式。数据驱动模型（CT-LTC、LSTM、PINN）通过神经网络直接从数据中学习映射关系。混合模型将物理模型与数据驱动模型加权融合，试图结合两者的优势。')
+    add_para(doc, 'Tlusty模型基于再生颤振理论，通过解析公式计算极限切削深度；Altintas模型基于实验数据拟合经验公式。数据驱动模型（DL-LNN、LSTM、PINN）通过神经网络直接从数据中学习映射关系。混合模型将物理模型与数据驱动模型加权融合，试图结合两者的优势。')
 
     add_heading_styled(doc, '16.3 核心代码', level=2)
     add_code_block(doc, '''class TlustyModel:
@@ -1788,8 +1789,8 @@ class AltintasModel:
 
     add_heading_styled(doc, '16.4 实验步骤', level=2)
     add_para(doc, '（1）实现Tlusty解析模型和Altintas经验模型；')
-    add_para(doc, '（2）训练CT-LTC、LSTM、PINN三种数据驱动模型；')
-    add_para(doc, '（3）构建物理-数据混合模型：CT-LTC+Tlusty（α=0.3）和CT-LTC+Altintas（α=0.2）；')
+    add_para(doc, '（2）训练DL-LNN、LSTM、PINN三种数据驱动模型；')
+    add_para(doc, '（3）构建物理-数据混合模型：DL-LNN+Tlusty（α=0.3）和DL-LNN+Altintas（α=0.2）；')
     add_para(doc, '（4）在6061-T6测试集上对比所有模型的预测性能。')
 
     add_heading_styled(doc, '16.5 实验结果', level=2)
@@ -1819,8 +1820,8 @@ class AltintasModel:
 
     add_heading_styled(doc, '16.6 结果分析', level=2)
     add_para(doc, '（1）物理解析模型表现较差：Tlusty模型MAE=672.76，PCC=-32.63，完全不适用于当前数据集；Altintas模型MAE=17.98，PCC=0.097，略有相关性但精度不足；')
-    add_para(doc, '（2）数据驱动模型表现优异：CT-LTC（MAE=0.968，PCC=0.990）、LSTM（MAE=0.965，PCC=0.990）和PINN（MAE=0.964，PCC=0.999）均达到了高精度预测；')
-    add_para(doc, '（3）混合模型效果不一：CT-LTC+Altintas（α=0.2）的MAE=3.378，PCC=0.828，虽然优于纯物理模型，但远不如纯数据驱动模型；CT-LTC+Tlusty（α=0.3）的MAE=202.02，被Tlusty模型严重拖累；')
+    add_para(doc, '（2）数据驱动模型表现优异：DL-LNN（MAE=0.968，PCC=0.990）、LSTM（MAE=0.965，PCC=0.990）和PINN（MAE=0.964，PCC=0.999）均达到了高精度预测；')
+    add_para(doc, '（3）混合模型效果不一：DL-LNN+Altintas（α=0.2）的MAE=3.378，PCC=0.828，虽然优于纯物理模型，但远不如纯数据驱动模型；DL-LNN+Tlusty（α=0.3）的MAE=202.02，被Tlusty模型严重拖累；')
     add_para(doc, '（4）实验表明，在当前数据规模和任务复杂度下，纯数据驱动方法显著优于物理模型，混合策略需要更精细的融合机制（如自适应权重）才能发挥优势。')
 
 
@@ -1883,7 +1884,7 @@ def write_exp17(doc):
     }''')
 
     add_heading_styled(doc, '17.4 实验步骤', level=2)
-    add_para(doc, '（1）对5种模型（CT-LTC、LSTM、Transformer、PINN、BPNN）进行500次单样本推理，记录延迟统计；')
+    add_para(doc, '（1）对5种模型（DL-LNN、LSTM、Transformer、PINN、BPNN）进行500次单样本推理，记录延迟统计；')
     add_para(doc, '（2）对每种模型在batch_size=1/8/16/32/64/128下测量批量吞吐量；')
     add_para(doc, '（3）进行10秒连续推理流测试，记录总推理次数和每秒推理数；')
     add_para(doc, '（4）计算实时性评分（推理速度/目标速度）。')
@@ -1894,7 +1895,7 @@ def write_exp17(doc):
     add_para(doc, '表：单样本推理延迟统计（500次，单位：ms）', bold=True, indent=False)
     headers = ['模型', '均值', '标准差', 'P50', 'P95', 'P99', '最小值', '最大值']
     rows = []
-    for model_name in ['CT-LTC', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
+    for model_name in ['DL-LNN', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
         d = data['experiments']['latency_statistics'][model_name]
         rows.append([
             model_name,
@@ -1912,7 +1913,7 @@ def write_exp17(doc):
     add_para(doc, '表：连续推理流性能（10秒）', bold=True, indent=False)
     headers2 = ['模型', '总推理次数', '每秒推理数', '平均间隔(ms)']
     rows2 = []
-    for model_name in ['CT-LTC', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
+    for model_name in ['DL-LNN', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
         d = data['experiments']['continuous_inference'][model_name]
         rows2.append([
             model_name,
@@ -1926,17 +1927,17 @@ def write_exp17(doc):
     add_para(doc, '表：实时性评分', bold=True, indent=False)
     headers3 = ['模型', '实时性评分']
     rows3 = []
-    for model_name in ['CT-LTC', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
+    for model_name in ['DL-LNN', 'LSTM', 'Transformer', 'PINN', 'BPNN']:
         score = data['experiments']['realtime_score'][model_name]
         rows3.append([model_name, f"{score:.2f}"])
     create_table(doc, headers3, rows3)
     doc.add_paragraph()
 
     add_heading_styled(doc, '17.6 结果分析', level=2)
-    add_para(doc, '（1）PINN推理速度最快（均值0.259ms，P99=0.469ms），其次是BPNN（0.286ms）和LSTM（0.462ms），CT-LTC为1.005ms，Transformer最慢（1.442ms）；')
-    add_para(doc, '（2）CT-LTC的P99延迟为2.654ms，仍远低于工业实时监控的10ms要求，满足实时性需求；')
-    add_para(doc, '（3）在连续推理流测试中，PINN每秒可处理4001次推理，LSTM为2479次，CT-LTC为1061次，均远超工业监控的典型采样频率（通常<100Hz）；')
-    add_para(doc, '（4）CT-LTC的实时性评分为1227，虽低于PINN（38296）和BPNN（27901），但仍具有充足的实时性余量。')
+    add_para(doc, '（1）PINN推理速度最快（均值0.259ms，P99=0.469ms），其次是BPNN（0.286ms）和LSTM（0.462ms），DL-LNN为1.005ms，Transformer最慢（1.442ms）；')
+    add_para(doc, '（2）DL-LNN的P99延迟为2.654ms，仍远低于工业实时监控的10ms要求，满足实时性需求；')
+    add_para(doc, '（3）在连续推理流测试中，PINN每秒可处理4001次推理，LSTM为2479次，DL-LNN为1061次，均远超工业监控的典型采样频率（通常<100Hz）；')
+    add_para(doc, '（4）DL-LNN的实时性评分为1227，虽低于PINN（38296）和BPNN（27901），但仍具有充足的实时性余量。')
 
 
 def write_exp18(doc):
@@ -1967,7 +1968,7 @@ def write_exp18(doc):
             batch_size, seq_len, input_dim = features.shape
             
             # 模型预测 - 处理序列输入
-            if hasattr(model, 'ltc_cells'):  # CT-LTC
+            if hasattr(model, 'ltc_cells'):  # DL-LNN
                 outputs_list = []
                 for t in range(seq_len):
                     x_t = features[:, t, :]
@@ -2029,17 +2030,17 @@ def write_exp18(doc):
     add_para(doc, '（1）选择10个随机种子（42-51）；（2）对每个种子独立初始化模型并训练至收敛；（3）在测试集上评估MAE、RMSE、R²指标；（4）计算10次运行的均值、标准差、最小值、最大值和变异系数。')
     add_heading_styled(doc, '18.5 实验结果', level=2)
     data = load_json('reproducibility_results.json')
-    add_para(doc, '表：CT-LTC模型10次独立运行结果统计', bold=True, indent=False)
+    add_para(doc, '表：DL-LNN模型10次独立运行结果统计', bold=True, indent=False)
     headers = ['指标', '均值', '标准差', '最小值', '最大值', 'CV(%)']
     rows = []
     for metric in ['mae', 'rmse', 'r2']:
-        stats = data['results']['CT-LTC']['statistics'][metric]
+        stats = data['results']['DL-LNN']['statistics'][metric]
         rows.append([metric.upper(), f"{stats['mean']:.4f}", f"{stats['std']:.4f}", f"{stats['min']:.4f}", f"{stats['max']:.4f}", f"{stats['cv_pct']:.2f}"])
     create_table(doc, headers, rows)
     doc.add_paragraph()
     add_heading_styled(doc, '18.6 结果分析', level=2)
-    add_para(doc, '（1）CT-LTC在10次独立运行中MAE均值稳定，标准差小，变异系数CV<10%，表明训练结果稳定；')
-    add_para(doc, '（2）R²指标拟合优度高度一致；（3）LSTM和GRU的变异系数略高于CT-LTC，说明CT-LTC训练更稳定；')
+    add_para(doc, '（1）DL-LNN在10次独立运行中MAE均值稳定，标准差小，变异系数CV<10%，表明训练结果稳定；')
+    add_para(doc, '（2）R²指标拟合优度高度一致；（3）LSTM和GRU的变异系数略高于DL-LNN，说明DL-LNN训练更稳定；')
     add_para(doc, '（4）所有模型的CV均小于10%，表明实验结果具有良好的可复现性。')
 
 
@@ -2090,9 +2091,9 @@ def write_exp19(doc):
         test_loader = DataLoader(test_subset, batch_size=32, shuffle=False)
         
         # 创建模型
-        if model_name == "CT-LTC":
-            model = CTLTCModel(
-                input_dim=2,
+        if model_name == "DL-LNN":
+            model = DLLNNModel(
+                input_dim=7,
                 hidden_dim=64,
                 num_layers=3,
                 output_dim=1,
@@ -2101,14 +2102,14 @@ def write_exp19(doc):
             )
         elif model_name == "LSTM":
             model = torch.nn.LSTM(
-                input_size=2,
+                input_size=7,
                 hidden_size=64,
                 num_layers=2,
                 batch_first=True
             )
         elif model_name == "GRU":
             model = torch.nn.GRU(
-                input_size=2,
+                input_size=7,
                 hidden_size=64,
                 num_layers=2,
                 batch_first=True
@@ -2175,7 +2176,7 @@ def write_exp19(doc):
     add_para(doc, '（1）离线重训练策略在渐进漂移下性能退化最严重（Stage 4 MAE显著增加），因为无法适应分布变化；')
     add_para(doc, '（2）全参数微调策略在三种漂移类型下均表现出良好的适应能力，性能退化最小；')
     add_para(doc, '（3）在线增量学习在突变漂移下恢复较快，但在渐进漂移下需要更多样本才能稳定；')
-    add_para(doc, '（4）CT-LTC的连续时间特性使其在在线学习场景下具有天然优势，能够快速适应新的数据分布。')
+    add_para(doc, '（4）DL-LNN的连续时间特性使其在在线学习场景下具有天然优势，能够快速适应新的数据分布。')
 
 
 def write_exp20(doc):
@@ -2270,13 +2271,13 @@ def write_exp20(doc):
     add_heading_styled(doc, '20.5 实验结果', level=2)
     data = load_json('tool_wear_results.json')
     add_para(doc, '表：刀具磨损各阶段模型性能（MAE）', bold=True, indent=False)
-    headers = ['磨损阶段', 'CT-LTC', 'LSTM', 'GRU', '性能退化率(%)']
+    headers = ['磨损阶段', 'DL-LNN', 'LSTM', 'GRU', '性能退化率(%)']
     rows = []
     stage_map = {'new': '新刀', 'initial': '初期磨损', 'normal': '正常磨损', 'severe': '严重磨损', 'worn_out': '报废'}
-    # 获取CT-LTC新刀阶段MAE作为基准计算退化率
-    baseline_mae = data['results']['stage_independent']['new']['CT-LTC']['mae']
+    # 获取DL-LNN新刀阶段MAE作为基准计算退化率
+    baseline_mae = data['results']['stage_independent']['new']['DL-LNN']['mae']
     for stage, stage_name in stage_map.items():
-        ctl_tc = data['results']['stage_independent'][stage]['CT-LTC']['mae']
+        ctl_tc = data['results']['stage_independent'][stage]['DL-LNN']['mae']
         lstm = data['results']['stage_independent'][stage]['LSTM']['mae']
         gru = data['results']['stage_independent'][stage]['GRU']['mae']
         deg = ((ctl_tc - baseline_mae) / (baseline_mae + 1e-8)) * 100
@@ -2284,17 +2285,17 @@ def write_exp20(doc):
     create_table(doc, headers, rows)
     doc.add_paragraph()
     add_heading_styled(doc, '20.6 结果分析', level=2)
-    add_para(doc, '（1）CT-LTC全生命周期性能退化率低于LSTM和GRU，说明CT-LTC对刀具磨损更鲁棒；')
-    add_para(doc, '（2）所有模型在剧烈磨损阶段性能下降最明显；（3）CT-LTC的时间常数机制可自适应调整动态特性。')
+    add_para(doc, '（1）DL-LNN全生命周期性能退化率低于LSTM和GRU，说明DL-LNN对刀具磨损更鲁棒；')
+    add_para(doc, '（2）所有模型在剧烈磨损阶段性能下降最明显；（3）DL-LNN的时间常数机制可自适应调整动态特性。')
 
 
 def write_exp21(doc):
     """实验二十一：与传统稳定性叶瓣图对比实验"""
     add_heading_styled(doc, '实验二十一 与传统稳定性叶瓣图对比实验', level=1)
     add_heading_styled(doc, '21.1 实验目的', level=2)
-    add_para(doc, '将CT-LTC预测结果与Tlusty理论模型的稳定性叶瓣图进行对比，验证模型的物理一致性。')
+    add_para(doc, '将DL-LNN预测结果与Tlusty理论模型的稳定性叶瓣图进行对比，验证模型的物理一致性。')
     add_heading_styled(doc, '21.2 实验原理', level=2)
-    add_para(doc, '稳定性叶瓣图是切削参数选择的经典工具，由Tlusty解析模型给出稳定/不稳定边界。本实验使用CT-LTC预测极限切深，与理论叶瓣图对比，评估模型预测的物理合理性。')
+    add_para(doc, '稳定性叶瓣图是切削参数选择的经典工具，由Tlusty解析模型给出稳定/不稳定边界。本实验使用DL-LNN预测极限切深，与理论叶瓣图对比，评估模型预测的物理合理性。')
     add_heading_styled(doc, '21.3 核心代码', level=2)
     add_code_block(doc, '''def generate_stability_lobe_data(
     spindle_speed_range: Tuple[float, float] = (1000, 10000),
@@ -2373,10 +2374,10 @@ def predict_with_model(
     # 恢复为网格形状
     return predictions.reshape(speed_grid.shape)''')
     add_heading_styled(doc, '21.4 实验步骤', level=2)
-    add_para(doc, '（1）生成主轴转速-切深网格（50×30点）；（2）使用Tlusty模型计算理论极限切深和稳定性标签；（3）训练CT-LTC模型预测极限切深；（4）计算预测与理论的误差、稳定性分类准确率、混淆矩阵。')
+    add_para(doc, '（1）生成主轴转速-切深网格（50×30点）；（2）使用Tlusty模型计算理论极限切深和稳定性标签；（3）训练DL-LNN模型预测极限切深；（4）计算预测与理论的误差、稳定性分类准确率、混淆矩阵。')
     add_heading_styled(doc, '21.5 实验结果', level=2)
     data = load_json('stability_lobes_results.json')
-    add_para(doc, '表：CT-LTC与Tlusty理论对比指标', bold=True, indent=False)
+    add_para(doc, '表：DL-LNN与Tlusty理论对比指标', bold=True, indent=False)
     headers = ['指标', '数值']
     rows = [
         ['极限切深MAE(mm)', f"{data['metrics']['mae_a_lim']:.4f}"],
@@ -2398,10 +2399,10 @@ def predict_with_model(
     create_table(doc, headers2, rows2)
     doc.add_paragraph()
     add_heading_styled(doc, '21.6 结果分析', level=2)
-    add_para(doc, '（1）CT-LTC预测的极限切深与Tlusty理论具有较高一致性；')
+    add_para(doc, '（1）DL-LNN预测的极限切深与Tlusty理论具有较高一致性；')
     add_para(doc, '（2）稳定性分类准确率高，F1分数良好，表明模型能准确区分稳定/不稳定区域；')
     add_para(doc, '（3）边界区域准确率略低于整体，这是最难预测的区域；')
-    add_para(doc, '（4）不同转速区间性能差异不大，说明CT-LTC在全转速范围具有一致的物理合理性。')
+    add_para(doc, '（4）不同转速区间性能差异不大，说明DL-LNN在全转速范围具有一致的物理合理性。')
 
 
 def write_exp22(doc):
@@ -2465,7 +2466,7 @@ def write_exp22(doc):
 
 class MultiStepPredictor(torch.nn.Module):
     """多步预测模型"""
-    def __init__(self, input_dim: int = 2, hidden_dim: int = 64, ahead_steps: int = 5):
+    def __init__(self, input_dim: int = 7, hidden_dim: int = 64, ahead_steps: int = 5):
         super().__init__()
         self.ltc1 = torch.nn.Linear(input_dim, hidden_dim)
         self.ltc2 = torch.nn.Linear(hidden_dim, hidden_dim)
@@ -2573,13 +2574,13 @@ def write_exp23(doc):
     add_heading_styled(doc, '23.5 实验结果', level=2)
     data = load_json('cutting_parameter_robustness_results.json')
     add_para(doc, '表：不同切削工况下的模型性能（MAE）', bold=True, indent=False)
-    headers = ['工况', 'CT-LTC', 'LSTM', 'GRU', '性能退化(%)']
+    headers = ['工况', 'DL-LNN', 'LSTM', 'GRU', '性能退化(%)']
     rows = []
     cond_map = {'normal': '正常', 'high_speed': '高速', 'low_speed': '低速', 'high_depth': '大切深', 'low_depth': '小切深', 'combined_extreme': '组合极端'}
     # 获取正常工况下的基准MAE
-    baseline_ct_ltc = data['results']['normal_to_extreme']['normal']['CT-LTC']['mae']
+    baseline_ct_ltc = data['results']['normal_to_extreme']['normal']['DL-LNN']['mae']
     for condition, cond_name in cond_map.items():
-        ct_ltc = data['results']['normal_to_extreme'][condition]['CT-LTC']['mae']
+        ct_ltc = data['results']['normal_to_extreme'][condition]['DL-LNN']['mae']
         lstm = data['results']['normal_to_extreme'][condition]['LSTM']['mae']
         gru = data['results']['normal_to_extreme'][condition]['GRU']['mae']
         # 计算相对于正常工况的性能退化百分比
@@ -2588,9 +2589,9 @@ def write_exp23(doc):
     create_table(doc, headers, rows)
     doc.add_paragraph()
     add_heading_styled(doc, '23.6 结果分析', level=2)
-    add_para(doc, '（1）CT-LTC在极端工况下退化率低于LSTM和GRU；')
+    add_para(doc, '（1）DL-LNN在极端工况下退化率低于LSTM和GRU；')
     add_para(doc, '（2）高速工况下所有模型性能较好，低速和小切深工况挑战更大；')
-    add_para(doc, '（3）CT-LTC的连续时间特性和物理约束使其在极端工况下仍保持稳定。')
+    add_para(doc, '（3）DL-LNN的连续时间特性和物理约束使其在极端工况下仍保持稳定。')
 
 
 def write_exp24(doc):
@@ -2604,7 +2605,7 @@ def write_exp24(doc):
     add_code_block(doc, '''def quantize_model(model: torch.nn.Module, bits: int = 8) -> torch.nn.Module:
     """模型量化"""
     # 创建模型副本
-    quantized_model = CTLTCModel(
+    quantized_model = DLLNNModel(
         input_dim=model.input_dim,
         hidden_dim=model.hidden_dim,
         num_layers=model.num_layers,
@@ -2629,7 +2630,7 @@ def write_exp24(doc):
 def prune_model(model: torch.nn.Module, amount: float = 0.3) -> torch.nn.Module:
     """模型剪枝"""
     # 创建模型副本
-    pruned_model = CTLTCModel(
+    pruned_model = DLLNNModel(
         input_dim=model.input_dim,
         hidden_dim=model.hidden_dim,
         num_layers=model.num_layers,
@@ -2723,7 +2724,7 @@ def estimate_model_size(model: torch.nn.Module) -> float:
     add_heading_styled(doc, '24.6 结果分析', level=2)
     add_para(doc, '（1）30%剪枝后MAE退化仅4.01%，精度损失极小；')
     add_para(doc, '（2）量化和剪枝后推理延迟略有下降，吞吐量提升约6%；')
-    add_para(doc, '（3）CT-LTC模型参数量少（27,265），压缩后仍可满足边缘部署需求。')
+    add_para(doc, '（3）DL-LNN模型参数量少（27,265），压缩后仍可满足边缘部署需求。')
 
 
 def write_exp25(doc):
@@ -2819,7 +2820,7 @@ def generate_milling_data(num_samples=1000):
     add_para(doc, '表：误差分布区间分析（部分区间）', bold=True, indent=False)
     headers = ['区间索引', '范围', '样本数', 'MAE', 'RMSE', '最大误差']
     rows = []
-    for bin_data in data['results']['CT-LTC']['bin_analysis'][:5]:
+    for bin_data in data['results']['DL-LNN']['bin_analysis'][:5]:
         rows.append([
             str(bin_data['bin_index']),
             f"[{bin_data['range'][0]:.3f}, {bin_data['range'][1]:.3f}]",
@@ -2900,7 +2901,7 @@ def extract_features_from_signal(signal_data, window_size=100):
     headers = ['采样率(Hz)', '信号长度', '样本数', 'MAE', 'RMSE', 'R²', 'PCC']
     rows = []
     for rate_str, rate_data in data['results'].items():
-        metrics = rate_data['model_results']['CT-LTC']
+        metrics = rate_data['model_results']['DL-LNN']
         rows.append([
             rate_str,
             str(rate_data['signal_length']),
@@ -3117,7 +3118,7 @@ def train_and_evaluate(X_train, y_train, X_test, y_test, feature_indices=None, e
     X_test_t = torch.FloatTensor(X_test).to(device)
     y_test_t = torch.FloatTensor(y_test).to(device)
     
-    model = CTLTCModel(input_dim=X_train.shape[2]).to(device)
+    model = DLLNNModel(input_dim=X_train.shape[2]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.MSELoss()
     
@@ -3289,12 +3290,12 @@ def compute_statistics(fold_results):
     
     return stats''')
     add_heading_styled(doc, '29.4 实验步骤', level=2)
-    add_para(doc, '（1）使用5折交叉验证（K=5）；（2）对CT-LTC、LSTM、GRU三个模型分别进行交叉验证；（3）计算各模型在各折上的MAE、RMSE、R²、PCC；（4）计算均值、标准差、变异系数（CV）等统计指标。')
+    add_para(doc, '（1）使用5折交叉验证（K=5）；（2）对DL-LNN、LSTM、GRU三个模型分别进行交叉验证；（3）计算各模型在各折上的MAE、RMSE、R²、PCC；（4）计算均值、标准差、变异系数（CV）等统计指标。')
     add_heading_styled(doc, '29.5 实验结果', level=2)
     data = load_json('cross_validation_results.json')
-    add_para(doc, '表：CT-LTC 5折交叉验证结果', bold=True, indent=False)
+    add_para(doc, '表：DL-LNN 5折交叉验证结果', bold=True, indent=False)
     headers = ['Fold', 'MAE', 'RMSE', 'R²', 'PCC']
-    ctl_tc_folds = data['models']['CT-LTC']['fold_results']
+    ctl_tc_folds = data['models']['DL-LNN']['fold_results']
     rows = []
     for fold in ctl_tc_folds:
         rows.append([
@@ -3310,7 +3311,7 @@ def compute_statistics(fold_results):
     headers2 = ['模型', 'MAE均值±标准差', 'MAE变异系数', 'PCC均值±标准差', 'PCC变异系数', '稳定性得分']
     comparison = data['comparison']
     rows2 = []
-    for model_name in ['CT-LTC', 'LSTM', 'GRU']:
+    for model_name in ['DL-LNN', 'LSTM', 'GRU']:
         m = comparison[model_name]
         rows2.append([
             model_name,
@@ -3323,7 +3324,7 @@ def compute_statistics(fold_results):
     create_table(doc, headers2, rows2)
     doc.add_paragraph()
     add_heading_styled(doc, '29.6 结果分析', level=2)
-    add_para(doc, '（1）CT-LTC的MAE变异系数为0.073，表明模型稳定性良好；（2）GRU的稳定性得分最高（14.32），但MAE均值略优于CT-LTC；（3）CT-LTC的PCC变异系数最低（0.018），表明预测相关性最稳定；（4）交叉验证结果验证了模型性能的可靠性。')
+    add_para(doc, '（1）DL-LNN的MAE变异系数为0.073，表明模型稳定性良好；（2）GRU的稳定性得分最高（14.32），但MAE均值略优于DL-LNN；（3）DL-LNN的PCC变异系数最低（0.018），表明预测相关性最稳定；（4）交叉验证结果验证了模型性能的可靠性。')
 
 
 # ============================================================
@@ -3344,7 +3345,7 @@ def main():
         doc.add_paragraph()
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = title.add_run('CT-LTC颤振预测模型\n综合实验报告')
+    run = title.add_run('DL-LNN颤振预测模型\n综合实验报告')
     run.font.name = '黑体'
     run._element.rPr.rFonts.set(qn('w:eastAsia'), '黑体')
     run.font.size = Pt(28)
@@ -3409,7 +3410,7 @@ def main():
 
     # 实验总结
     add_heading_styled(doc, '实验总览', level=1)
-    add_para(doc, '本报告共包含24个实验，分为核心实验（5个）和补充实验（19个）两部分，从多个维度全面验证了CT-LTC模型在铣削颤振预测任务上的性能、鲁棒性、效率和可解释性。')
+    add_para(doc, '本报告共包含24个实验，分为核心实验（5个）和补充实验（19个）两部分，从多个维度全面验证了DL-LNN模型在铣削颤振预测任务上的性能、鲁棒性、效率和可解释性。')
     add_para(doc, '核心实验：', bold=True, indent=False)
     add_para(doc, '（1）主对比实验——5个数据集×9个模型的全面性能对比；')
     add_para(doc, '（2）跨工况泛化实验——LOMO/LOCO协议下的泛化能力验证；')
@@ -3427,12 +3428,12 @@ def main():
     add_para(doc, '（13）长时域预测稳定性实验——递推预测下的误差增长率和发散时间评估；')
     add_para(doc, '（14）超参数灵敏度分析实验——隐藏层维度、学习率、时间常数dt、Dropout率的影响；')
     add_para(doc, '（15）跨数据集迁移学习实验——预训练+微调策略的泛化能力验证；')
-    add_para(doc, '（16）物理解析模型对比实验——Tlusty模型、Altintas模型与CT-LTC的性能对比；')
+    add_para(doc, '（16）物理解析模型对比实验——Tlusty模型、Altintas模型与DL-LNN的性能对比；')
     add_para(doc, '（17）实时推理延迟与吞吐量实验——工业部署可行性评估。')
     add_para(doc, '（18）多次随机种子可复现性验证实验——10次独立训练的统计稳定性评估；')
     add_para(doc, '（19）在线自适应/增量学习实验——工况漂移场景下的持续学习能力；')
     add_para(doc, '（20）刀具磨损全生命周期实验——刀具从新刀到报废的预测稳定性；')
-    add_para(doc, '（21）与传统稳定性叶瓣图对比实验——CT-LTC预测与Tlusty理论模型对比；')
+    add_para(doc, '（21）与传统稳定性叶瓣图对比实验——DL-LNN预测与Tlusty理论模型对比；')
     add_para(doc, '（22）多步ahead预测实验——未来多时间步颤振趋势预测能力；')
     add_para(doc, '（23）不同切削参数组合鲁棒性实验——极端工况下的性能验证；')
     add_para(doc, '（24）模型压缩与边缘部署实验——量化、剪枝后的性能损失与边缘设备部署可行性。')
@@ -3506,30 +3507,30 @@ def main():
     # 总结
     doc.add_page_break()
     add_heading_styled(doc, '总结与展望', level=1)
-    add_para(doc, '通过29个系统性实验，本报告从以下维度全面验证了CT-LTC模型：')
-    add_para(doc, '（1）预测精度：在5个数据集上与8种模型对比，CT-LTC在PCC指标上综合最优；')
+    add_para(doc, '通过29个系统性实验，本报告从以下维度全面验证了DL-LNN模型：')
+    add_para(doc, '（1）预测精度：在5个数据集上与8种模型对比，DL-LNN在PCC指标上综合最优；')
     add_para(doc, '（2）泛化能力：LOMO/LOCO协议验证了跨材料、跨工况的泛化性能；')
     add_para(doc, '（3）模型设计：消融实验验证了各核心组件的贡献；')
     add_para(doc, '（4）物理合理性：时间常数分析揭示了网络学到的多尺度动态特性；')
     add_para(doc, '（5）数据效率：主动学习实验证明了在减少标注成本下的可行性；')
-    add_para(doc, '（6）鲁棒性：噪声实验表明CT-LTC在强噪声下仍保持稳定性能；')
-    add_para(doc, '（7）效率：计算效率分析证明CT-LTC满足工业实时性要求；')
+    add_para(doc, '（6）鲁棒性：噪声实验表明DL-LNN在强噪声下仍保持稳定性能；')
+    add_para(doc, '（7）效率：计算效率分析证明DL-LNN满足工业实时性要求；')
     add_para(doc, '（8）统计可靠性：统计检验验证了性能差异的显著性；')
     add_para(doc, '（9）频域特性：频域分析证明了模型对颤振频率特征的准确捕捉；')
     add_para(doc, '（10）可解释性：SHAP分析与物理理论吻合；')
     add_para(doc, '（11）不确定性：MC Dropout提供了初步的不确定性估计；')
     add_para(doc, '（12）失败分析：识别了高转速、低转速高切深等薄弱区域；')
-    add_para(doc, '（13）长时域稳定性：CT-LTC在递推预测中误差增长率最低；')
+    add_para(doc, '（13）长时域稳定性：DL-LNN在递推预测中误差增长率最低；')
     add_para(doc, '（14）超参数灵敏度：确定了最优超参数配置；')
     add_para(doc, '（15）迁移学习：预训练+微调策略显著提升了跨数据集泛化能力；')
     add_para(doc, '（16）物理融合：物理-数据混合模型结合了理论优势与数据驱动优势；')
-    add_para(doc, '（17）实时推理：CT-LTC推理延迟满足工业在线监测需求；')
+    add_para(doc, '（17）实时推理：DL-LNN推理延迟满足工业在线监测需求；')
     add_para(doc, '（18）可复现性：10次随机种子实验验证了训练结果的统计稳定性；')
     add_para(doc, '（19）在线自适应：微调策略有效应对工况漂移；')
     add_para(doc, '（20）刀具磨损：全生命周期实验证明模型在刀具退化条件下的稳定性；')
-    add_para(doc, '（21）叶瓣图对比：CT-LTC预测结果与Tlusty理论模型高度吻合；')
-    add_para(doc, '（22）多步预测：CT-LTC在未来多时间步预测中保持较高精度；')
-    add_para(doc, '（23）参数鲁棒性：极端切削参数组合下CT-LTC仍保持稳定；')
+    add_para(doc, '（21）叶瓣图对比：DL-LNN预测结果与Tlusty理论模型高度吻合；')
+    add_para(doc, '（22）多步预测：DL-LNN在未来多时间步预测中保持较高精度；')
+    add_para(doc, '（23）参数鲁棒性：极端切削参数组合下DL-LNN仍保持稳定；')
     add_para(doc, '（24）模型压缩：量化和剪枝后模型性能损失可控，边缘部署可行。')
     add_para(doc, '（25）误差分布：识别了模型的优势区间和劣势区间，为优化提供指导。')
     add_para(doc, '（26）采样率影响：确定了最优数据采集频率，指导实际部署。')
@@ -3540,7 +3541,7 @@ def main():
 
     # 保存
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    output_path = os.path.join(OUTPUT_DIR, 'CT-LTC综合实验报告.docx')
+    output_path = os.path.join(OUTPUT_DIR, 'DL-LNN综合实验报告.docx')
     doc.save(output_path)
     print(f'综合实验报告已生成：{output_path}')
     return output_path

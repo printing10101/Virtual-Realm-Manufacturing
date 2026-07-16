@@ -264,7 +264,7 @@ class YAMLConfigManager:
             self.config_path = path
             self._is_dirty = False
 
-            logger.info(f"Configuration loaded from {path}")
+            logger.info("Configuration loaded from %s", path)
 
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f"Failed to parse YAML config: {e}")
@@ -383,7 +383,7 @@ class YAMLConfigManager:
 
         self._is_dirty = True
         self._build_config_object()
-        logger.debug(f"Config updated: {section}.{key} = {value}")
+        logger.debug("Config updated: %s.%s = %s", section, key, value)
 
     def _validate_config_value(self, section: str, key: str, value: Any) -> None:
         """验证单个配置值的合法性"""
@@ -447,7 +447,7 @@ class YAMLConfigManager:
 
             self._is_dirty = False
             self._last_modified = datetime.now()
-            logger.info(f"Configuration saved to {target_path}")
+            logger.info("Configuration saved to %s", target_path)
 
         except IOError as e:
             raise IOError(
@@ -519,7 +519,7 @@ class YAMLConfigManager:
         self._raw_config["lnn"]["models"][model_name] = model_config
         self._is_dirty = True
         self._build_config_object()
-        logger.info(f"Model config added: {model_name}")
+        logger.info("Model config added: %s", model_name)
 
     def remove_model(self, model_name: str) -> bool:
         """
@@ -536,7 +536,7 @@ class YAMLConfigManager:
             del self._raw_config["lnn"]["models"][model_name]
             self._is_dirty = True
             self._build_config_object()
-            logger.info(f"Model config removed: {model_name}")
+            logger.info("Model config removed: %s", model_name)
             return True
         return False
 

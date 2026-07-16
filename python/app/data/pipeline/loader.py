@@ -110,7 +110,7 @@ class ParallelDataLoader:
     def stop_prefetch(self):
         self._stop_prefetch.set()
         if self._prefetch_thread is not None:
-            self._prefetch_thread.join(timeout=5.0)
+            self._prefetch_thread.join(timeout=DEFAULT_THREAD_JOIN_TIMEOUT_SEC)
 
     def iter_batches(
         self,

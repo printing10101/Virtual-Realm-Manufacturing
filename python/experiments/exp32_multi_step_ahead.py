@@ -11,7 +11,7 @@ import time
 from typing import Dict, List
 from torch.utils.data import Dataset, DataLoader
 
-from models import CTLTCModel
+from models import DLLNNModel
 from metrics import ChatterMetrics
 from data_generator import TlustyAnalyticalModel
 
@@ -82,7 +82,7 @@ class MultiStepDataset(Dataset):
 class MultiStepPredictor(torch.nn.Module):
     """多步预测模型"""
     
-    def __init__(self, input_dim: int = 2, hidden_dim: int = 64, ahead_steps: int = 5):
+    def __init__(self, input_dim: int = 7, hidden_dim: int = 64, ahead_steps: int = 5):
         super().__init__()
         self.ltc1 = torch.nn.Linear(input_dim, hidden_dim)
         self.ltc2 = torch.nn.Linear(hidden_dim, hidden_dim)
@@ -230,7 +230,7 @@ def main():
         test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
         
         # 训练和评估
-        model = MultiStepPredictor(input_dim=2, hidden_dim=64, ahead_steps=ahead_steps)
+        model = MultiStepPredictor(input_dim=7, hidden_dim=64, ahead_steps=ahead_steps)
         losses = train_multi_step(model, train_loader, num_epochs=80, device=device)
         
         # 评估

@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class ExtractedDocument:
     pages: list[DocumentPage] = field(default_factory=list)
     total_pages: int = 0
     extraction_method: str = ""
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def full_text(self) -> str:
@@ -375,7 +375,7 @@ def main():  # pragma: no cover
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        logger.info(f"已保存到 {args.output}")
+        logger.info("已保存到 %s", args.output)
     else:
         # CLI 输出到 stdout，使用 print 是合理的
         print(json.dumps(data, ensure_ascii=False, indent=2))

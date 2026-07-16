@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Optional, Sequence
 
 from sqlalchemy import and_, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.database.models.machining_record import (
@@ -137,10 +137,10 @@ class MachiningRecordRepository:
             try:
                 session.add(orm_obj)
                 session.commit()
-            except IntegrityError as exc:
+            except SQLAlchemyError as exc:
                 session.rollback()
                 logger.warning(
-                    "Integrity error on create MachiningRecord: %s", exc.orig
+                    "Database error on create MachiningRecord: %s", exc
                 )
                 raise
             session.refresh(orm_obj)
@@ -238,10 +238,10 @@ class MachiningRecordRepository:
                 return _orm_to_read(orm_obj)
             try:
                 session.commit()
-            except IntegrityError as exc:
+            except SQLAlchemyError as exc:
                 session.rollback()
                 logger.warning(
-                    "Integrity error on update MachiningRecord: %s", exc.orig
+                    "Database error on update MachiningRecord: %s", exc
                 )
                 raise
             session.refresh(orm_obj)
@@ -256,8 +256,15 @@ class MachiningRecordRepository:
             orm_obj = session.get(MachiningRecordORM, record_id)
             if orm_obj is None:
                 return False
-            session.delete(orm_obj)
-            session.commit()
+            try:
+                session.delete(orm_obj)
+                session.commit()
+            except SQLAlchemyError as exc:
+                session.rollback()
+                logger.warning(
+                    "Database error on delete MachiningRecord: %s", exc
+                )
+                raise
             return True
 
     # --------------------------------------------------------------- counting

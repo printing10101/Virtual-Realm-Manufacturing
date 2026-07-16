@@ -1,5 +1,5 @@
 """
-CT-LTC 实验配置文件
+DL-LNN 实验配置文件
 定义所有实验参数、数据集配置、模型超参数等
 """
 
@@ -36,24 +36,31 @@ class ModelConfig:
     ltc_tau_init: float = 0.1
     
     # 网络参数
-    input_dim: int = 2  # 简化版本：主轴转速 + 轴向切深
+    # input_dim=7 对应论文第3节声明的多维输入特征：
+    #   [主轴转速 n, 进给 f, 轴向切深 ap, 径向切宽 ae,
+    #    材料硬度 H, 刀具直径 D, 刀具齿数 z]
+    input_dim: int = 7
     hidden_dim: int = 128
     output_dim: int = 1
     num_layers: int = 3
     dropout: float = 0.2
-    
+
     # 训练参数
+    # epoch 数与论文第4节声明一致：Stage1=100（解析预训练）, Stage2=200（微调）
+    # 见 ACADEMIC_REVIEW_REPORT.md AR-01 / Route A 完整实验声明
     batch_size: int = 32
-    learning_rate: float = 1e-3  # 提高学习率加快收敛
+    learning_rate: float = 1e-3
     weight_decay: float = 1e-4
-    num_epochs_stage1: int = 150  # 增加阶段一epoch
-    num_epochs_stage2: int = 100  # 减少阶段二epoch避免过拟合
-    
-    # 物理损失权重 - 降低物理约束强度
+    num_epochs_stage1: int = 100
+    num_epochs_stage2: int = 200
+
+    # 物理损失权重（与 losses.py 默认值、论文第3节报告值保持一致）
+    # 三处来源必须一致以满足学术可复现性要求（见 ACADEMIC_REVIEW_REPORT.md AR-01）
+    # 论文声明：λ₁=1.0, λ₂=0.5, λ₃=0.1
     lambda_data: float = 1.0
-    lambda_phys: float = 0.1  # 从0.5降到0.1
-    lambda_pcc: float = 0.01  # 从0.1降到0.01
-    epsilon_phys: float = 0.1  # 从0.05增加到0.1，更宽松的约束
+    lambda_phys: float = 0.5
+    lambda_pcc: float = 0.1
+    epsilon_phys: float = 0.1
     
     # 设备
     device: str = "cuda"
@@ -77,10 +84,10 @@ class ExperimentConfig:
     # 模型配置
     model: ModelConfig = field(default_factory=ModelConfig)
     
-    # 基线方法
+    # 基线方法（AR-04：与 trainer.py SKLEARN_BASELINE_MODELS 和 run_experiment.py model_names 保持一致）
     baselines: List[str] = field(default_factory=lambda: [
-        "SVR", "RandomForest", "XGBoost", "BPNN",
-        "LSTM", "Transformer", "PINN", "GaussianProcess"
+        "SVR", "RF", "XGBoost", "GP",  # sklearn 基线
+        "BPNN", "LSTM", "Transformer", "PINN",  # PyTorch 基线
     ])
     
     # 评价指标

@@ -10,19 +10,27 @@
 
 from __future__ import annotations
 
+import asyncio
 import atexit
 import logging
 import sqlite3
 import threading
 import time
 import weakref
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import Optional, Generator
 
 from app.utils.utils import get_output_dir
 
 logger = logging.getLogger(__name__)
+
+# ============================================================
+# SQLite 连接配置（命名常量，便于统一调整与运维排查）
+# ============================================================
+# busy_timeout（毫秒）：当数据库被其他连接锁定时，当前连接等待解锁的最长时间。
+# 5 秒足够覆盖常规事务持锁时长；过短会导致 SQLITE_BUSY 错误，过长会让请求堆积。
+DEFAULT_BUSY_TIMEOUT_MS = 5000
 
 
 class SQLiteConnectionPool:
@@ -85,8 +93,8 @@ class SQLiteConnectionPool:
         )
         # 启用 WAL 模式以提高并发性能
         conn.execute("PRAGMA journal_mode=WAL")
-        # 设置 busy timeout
-        conn.execute("PRAGMA busy_timeout=5000")
+        # 设置 busy timeout（命名常量提取，便于运维统一调整）
+        conn.execute(f"PRAGMA busy_timeout={DEFAULT_BUSY_TIMEOUT_MS}")
         # 启用外键约束
         conn.execute("PRAGMA foreign_keys=ON")
 
@@ -129,7 +137,12 @@ class SQLiteConnectionPool:
 
     def get_connection(self) -> sqlite3.Connection:
         """
-        获取数据库连接
+        获取数据库连接（同步版本）
+
+        .. note::
+            同步版本仅在非 async 上下文使用，async 路径请用
+            :meth:`get_connection_async` 或 :meth:`async_get_connection`。
+            本方法在等待连接释放时使用 ``time.sleep``，会阻塞事件循环。
 
         Returns:
             SQLite 连接对象
@@ -151,6 +164,61 @@ class SQLiteConnectionPool:
         start_time = time.time()
         while time.time() - start_time < self.timeout:
             time.sleep(0.1)
+            conn = self._try_get_from_pool()
+            if conn is not None:
+                return conn
+
+        raise RuntimeError(
+            f"Failed to get SQLite connection from pool after {self.timeout}s"
+        )
+
+    async def async_get_connection(self) -> sqlite3.Connection:
+        """
+        异步获取数据库连接（用于 async 上下文）
+
+        使用场景：
+            在 FastAPI 异步路由 / 后台任务等 async 上下文中获取连接时使用。
+            轮询等待使用 ``await asyncio.sleep()``，不会阻塞事件循环。
+
+        与 :meth:`get_connection` 的区别：
+            - :meth:`get_connection` 使用 ``time.sleep``，会阻塞事件循环
+            - :meth:`async_get_connection` 使用 ``asyncio.sleep``，让出事件循环
+
+        Returns:
+            SQLite 连接对象
+
+        Raises:
+            RuntimeError: 无法获取连接时抛出
+        """
+        return await self.get_connection_async()
+
+    async def get_connection_async(self) -> sqlite3.Connection:
+        """
+        异步获取数据库连接（用于 async 上下文，推荐入口）
+
+        与 :meth:`async_get_connection` 等价，为命名一致性提供。
+        在等待连接释放时使用 ``await asyncio.sleep()``，不会阻塞事件循环。
+
+        Returns:
+            SQLite 连接对象
+
+        Raises:
+            RuntimeError: 无法获取连接时抛出
+        """
+        # 尝试从连接池获取（_try_get_from_pool已记录borrow时间）
+        conn = self._try_get_from_pool()
+        if conn is not None:
+            return conn
+
+        # 尝试创建新连接（_create_new_connection已记录borrow时间）
+        conn = self._create_new_connection()
+        if conn is not None:
+            return conn
+
+        # 等待连接释放：使用 asyncio.sleep 让出事件循环，避免阻塞其他协程
+        start_time = time.time()
+        while time.time() - start_time < self.timeout:
+            await asyncio.sleep(0.1)
             conn = self._try_get_from_pool()
             if conn is not None:
                 return conn
@@ -192,13 +260,34 @@ class SQLiteConnectionPool:
     @contextmanager
     def connection(self) -> Generator[sqlite3.Connection, None, None]:
         """
-        上下文管理器：自动获取和归还连接
+        上下文管理器：自动获取和归还连接（同步版本）
+
+        .. deprecated::
+            在 async 上下文中请使用 :meth:`async_connection`。
 
         Usage:
             with pool.connection() as conn:
                 conn.execute("SELECT * FROM table")
         """
         conn = self.get_connection()
+        try:
+            yield conn
+        except Exception as e:
+            logger.error("Error during connection usage: %s", e)
+            raise
+        finally:
+            self.return_connection(conn)
+
+    @asynccontextmanager
+    async def async_connection(self) -> "Generator[sqlite3.Connection, None, None]":
+        """
+        异步上下文管理器：自动获取和归还连接（不阻塞事件循环）
+
+        Usage:
+            async with pool.async_connection() as conn:
+                conn.execute("SELECT * FROM table")
+        """
+        conn = await self.async_get_connection()
         try:
             yield conn
         except Exception as e:

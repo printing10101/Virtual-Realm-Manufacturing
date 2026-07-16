@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import atexit
 import json
 import logging
 import struct
@@ -20,6 +21,37 @@ from PIL import Image, ImageFilter, ImageOps
 from app.cad.advanced_features import AdvancedFeatureBuilder
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# CadQuery 临时输出目录的进程级清理
+# ---------------------------------------------------------------------------
+# 历史问题：execute_and_export / generate_3d_model / generate_with_features
+# 三处使用固定名称的临时目录（cadquery_output / cadquery_models），产物文件
+# 永不回收，高频建模场景下数日内即可耗尽 /tmp 磁盘。
+# 修复策略：模块级维护已创建目录集合，atexit 退出时统一清理。
+# 不能使用 TemporaryDirectory 上下文管理器，因为返回的 output_path 会被
+# 后续步骤（NL2CAD pipeline / API 响应）读取，必须保留到进程退出。
+# ---------------------------------------------------------------------------
+_CADQUERY_TEMP_DIRS: set[Path] = set()
+
+
+def _cleanup_cadquery_temp_dirs() -> None:
+    """进程退出时清理所有 CadQuery 临时输出目录。"""
+    import shutil as _shutil
+    for d in list(_CADQUERY_TEMP_DIRS):
+        try:
+            _shutil.rmtree(d, ignore_errors=True)
+        except Exception as e:  # noqa: BLE001
+            logger.debug("Failed to cleanup cadquery temp dir %s: %s", d, e)
+
+
+atexit.register(_cleanup_cadquery_temp_dirs)
+
+
+def _register_cadquery_temp_dir(path: Path) -> None:
+    """注册一个 CadQuery 临时输出目录，供进程退出时清理。"""
+    _CADQUERY_TEMP_DIRS.add(path)
 
 
 # 安全修复：禁止访问的危险 dunder 属性，防止沙箱逃逸
@@ -228,6 +260,7 @@ class CadQueryGenerator:
 
         output_dir = Path(tempfile.gettempdir()) / "cadquery_output"
         output_dir.mkdir(parents=True, exist_ok=True)
+        _register_cadquery_temp_dir(output_dir)
 
         output_path = output_dir / f"{task_id}.{output_format}"
         export_func_map = {
@@ -267,6 +300,7 @@ class CadQueryGenerator:
             result = _build_solid(shape_type, dimensions, position)
             output_dir = Path(tempfile.gettempdir()) / "cadquery_models"
             output_dir.mkdir(parents=True, exist_ok=True)
+            _register_cadquery_temp_dir(output_dir)
             output_path = output_dir / f"model_{shape_type}.stl"
             cq.exporters.export(result, str(output_path))
             logger.info("3D model exported to %s", output_path)
@@ -311,6 +345,7 @@ class CadQueryGenerator:
 
         output_dir = Path(tempfile.gettempdir()) / "cadquery_models"
         output_dir.mkdir(parents=True, exist_ok=True)
+        _register_cadquery_temp_dir(output_dir)
         output_path = output_dir / f"model_{shape_type}_with_features.{output_format}"
         cq.exporters.export(base, str(output_path))
         logger.info("带特征的 3D 模型已导出: %s", output_path)

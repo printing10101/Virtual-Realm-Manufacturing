@@ -16,7 +16,7 @@
 
 ## 系统简介
 
-灵境制造（Lingjing Manufacturing）是一套基于神经逻辑网络（Liquid Neural Networks, LNN）的智能制造 AI 平台，面向 CNC 数控加工场景，提供从工件识别、工艺规划、切削参数智能推荐、刀轨仿真到 NC 代码后处理导出的全流程能力。系统具备：
+灵境制造（Lingjing Manufacturing）是一套基于液态神经网络（Liquid Neural Networks, LNN）的智能制造 AI 平台，面向 CNC 数控加工场景，提供从工件识别、工艺规划、切削参数智能推荐、刀轨仿真到 NC 代码后处理导出的全流程能力。系统具备：
 
 - **AI 推理引擎**：内置 LNN（CFC/LTC/Hybrid）多模型，支持切削力预测、刀具磨损预测
 - **工件导入**：支持 STEP、DXF、SVG、PNG 等多种工程图与三维模型格式

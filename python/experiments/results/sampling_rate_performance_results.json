@@ -18,7 +18,7 @@
       "num_features": 10,
       "num_samples": 200,
       "model_results": {
-        "CT-LTC": {
+        "DL-LNN": {
           "mae": 0.2417955994606018,
           "rmse": 0.27604082226753235,
           "r2": -0.02890882882624979,
@@ -44,7 +44,7 @@
       "num_features": 10,
       "num_samples": 200,
       "model_results": {
-        "CT-LTC": {
+        "DL-LNN": {
           "mae": 0.22047385573387146,
           "rmse": 0.2524877190589905,
           "r2": -0.08111955529557346,
@@ -70,7 +70,7 @@
       "num_features": 10,
       "num_samples": 80,
       "model_results": {
-        "CT-LTC": {
+        "DL-LNN": {
           "mae": 0.13448657095432281,
           "rmse": 0.156370609998703,
           "r2": -0.023694731834863925,
@@ -96,7 +96,7 @@
       "num_features": 10,
       "num_samples": 40,
       "model_results": {
-        "CT-LTC": {
+        "DL-LNN": {
           "mae": 0.09258639812469482,
           "rmse": 0.12608180940151215,
           "r2": -1.8279288276427517,
@@ -122,7 +122,7 @@
       "num_features": 10,
       "num_samples": 20,
       "model_results": {
-        "CT-LTC": {
+        "DL-LNN": {
           "mae": 0.13285529613494873,
           "rmse": 0.1438448578119278,
           "r2": -2.9913815051973027,
@@ -148,7 +148,7 @@
       "num_features": 10,
       "num_samples": 8,
       "model_results": {
-        "CT-LTC": {
+        "DL-LNN": {
           "mae": 0.09691095352172852,
           "rmse": 0.09731806069612503,
           "r2": -208.95365676496473,
@@ -174,7 +174,7 @@
       "num_features": 10,
       "num_samples": 4,
       "model_results": {
-        "CT-LTC": {
+        "DL-LNN": {
           "mae": 0.04628312587738037,
           "rmse": 0.04628312587738037,
           "r2": -214211.7836123109,
@@ -196,7 +196,7 @@
     }
   },
   "performance_trend": {
-    "CT-LTC": {
+    "DL-LNN": {
       "mae_values": [
         0.2417955994606018,
         0.22047385573387146,
@@ -264,7 +264,7 @@
     }
   },
   "optimal_sampling_rate": {
-    "CT-LTC": {
+    "DL-LNN": {
       "optimal_fs": 500,
       "score": 0.7239951535266183
     },

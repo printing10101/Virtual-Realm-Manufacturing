@@ -177,7 +177,7 @@ class PluginRegistry:
                     self._plugins_by_capability[cap] = []
                 self._plugins_by_capability[cap].append(metadata.id)
 
-            logger.info(f"Plugin registered: {metadata.id} v{metadata.version}")
+            logger.info("Plugin registered: %s v%s", metadata.id, metadata.version)
 
     def unregister(self, plugin_id: str) -> None:
         with self._lock:
@@ -197,7 +197,7 @@ class PluginRegistry:
             self._plugin_instances.pop(plugin_id, None)
             self._plugins.pop(plugin_id, None)
 
-            logger.info(f"Plugin unregistered: {plugin_id}")
+            logger.info("Plugin unregistered: %s", plugin_id)
 
     def get(self, plugin_id: str) -> Optional[PluginMetadata]:
         # 安全修复：保护 _plugins 字典的并发读
@@ -291,12 +291,12 @@ class PluginDiscovery:
         for directory in all_dirs:
             dir_path = Path(directory)
             if not dir_path.exists():
-                logger.warning(f"Plugin directory not found: {directory}")
+                logger.warning("Plugin directory not found: %s", directory)
                 continue
 
             discovered.extend(self._scan_directory(dir_path))
 
-        logger.info(f"Discovered {len(discovered)} plugins")
+        logger.info("Discovered %s plugins", len(discovered))
         return discovered
 
     def _scan_directory(self, directory: Path) -> List[PluginMetadata]:
@@ -314,7 +314,7 @@ class PluginDiscovery:
         plugin_json = plugin_dir / "plugin.json"
 
         if not plugin_json.exists():
-            logger.debug(f"No plugin.json found in {plugin_dir}")
+            logger.debug("No plugin.json found in %s", plugin_dir)
             return None
 
         try:
@@ -338,7 +338,7 @@ class PluginDiscovery:
             return metadata
 
         except (json.JSONDecodeError, KeyError, ValueError) as e:
-            logger.error(f"Failed to load plugin from {plugin_dir}: {e}")
+            logger.error("Failed to load plugin from %s: %s", plugin_dir, e)
             return None
 
     def _validate_metadata(self, data: Dict[str, Any], plugin_dir: Path) -> None:
@@ -492,7 +492,7 @@ class PluginLifecycleManager:
             instance.initialize(self._context)
 
         self._registry.update_status(plugin_id, PluginStatus.INITIALIZED)
-        logger.info(f"Plugin initialized: {plugin_id}")
+        logger.info("Plugin initialized: %s", plugin_id)
 
     def enable_plugin(self, plugin_id: str) -> None:
         metadata = self._registry.get(plugin_id)
@@ -500,7 +500,7 @@ class PluginLifecycleManager:
             raise KeyError(f"Plugin '{plugin_id}' not found")
 
         if metadata.status == PluginStatus.ENABLED:
-            logger.info(f"Plugin '{plugin_id}' is already enabled")
+            logger.info("Plugin '%s' is already enabled", plugin_id)
             return
 
         if metadata.status not in (
@@ -521,7 +521,7 @@ class PluginLifecycleManager:
             instance.on_enable()
 
         self._registry.update_status(plugin_id, PluginStatus.ENABLED)
-        logger.info(f"Plugin enabled: {plugin_id}")
+        logger.info("Plugin enabled: %s", plugin_id)
 
     def disable_plugin(self, plugin_id: str) -> None:
         metadata = self._registry.get(plugin_id)
@@ -529,7 +529,7 @@ class PluginLifecycleManager:
             raise KeyError(f"Plugin '{plugin_id}' not found")
 
         if metadata.status != PluginStatus.ENABLED:
-            logger.info(f"Plugin '{plugin_id}' is not enabled")
+            logger.info("Plugin '%s' is not enabled", plugin_id)
             return
 
         instance = self._registry.get_plugin_instance(plugin_id)
@@ -538,7 +538,7 @@ class PluginLifecycleManager:
             instance.on_disable()
 
         self._registry.update_status(plugin_id, PluginStatus.DISABLED)
-        logger.info(f"Plugin disabled: {plugin_id}")
+        logger.info("Plugin disabled: %s", plugin_id)
 
     def uninstall_plugin(self, plugin_id: str) -> None:
         metadata = self._registry.get(plugin_id)
@@ -562,7 +562,7 @@ class PluginLifecycleManager:
             shutil.rmtree(plugin_dir, ignore_errors=True)
 
         self._registry.unregister(plugin_id)
-        logger.info(f"Plugin uninstalled: {plugin_id}")
+        logger.info("Plugin uninstalled: %s", plugin_id)
 
     def discover_and_register_all(
         self, plugin_dirs: List[str], user_dirs: Optional[List[str]] = None
@@ -576,7 +576,7 @@ class PluginLifecycleManager:
                 self._registry.register(metadata)
                 count += 1
 
-        logger.info(f"Registered {count} new plugins")
+        logger.info("Registered %s new plugins", count)
         return count
 
     def initialize_all(self) -> int:
@@ -758,7 +758,7 @@ class _PluginSystemHolder:
             self._plugin_manager.initialize_all()
             self._plugin_manager.enable_all()
 
-            logger.info(f"Plugin system initialized with {count} plugins")
+            logger.info("Plugin system initialized with %s plugins", count)
             return self._plugin_manager
 
     def get_plugin_manager(self) -> PluginLifecycleManager:

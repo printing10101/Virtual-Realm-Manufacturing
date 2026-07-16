@@ -111,10 +111,12 @@ if [ ! -f ".env" ] && [ -f ".env.example" ]; then
 fi
 
 cd python
+# P0-7 修复：engine 与 init_db 定义在 app.database.models 模块中，
+# 非 app.database；且 init_db 为 async 函数，需用 asyncio.run 驱动。
 $PYTHON_CMD -c "
-from app.database import engine
-from app.models import Base
-Base.metadata.create_all(bind=engine)
+import asyncio
+from app.database.models import init_db
+asyncio.run(init_db())
 print('数据库初始化完成')
 " 2>/dev/null && info "数据库初始化完成" || warn "数据库初始化失败，请检查 .env 配置"
 cd "$SCRIPT_DIR"

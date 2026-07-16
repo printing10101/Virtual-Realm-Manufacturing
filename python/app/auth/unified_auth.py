@@ -28,9 +28,14 @@ from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional, TYPE_CHECKING
 
 from starlette.types import ASGIApp, Receive, Scope, Send
+
+if TYPE_CHECKING:
+    # 解决循环导入：仅在类型检查时导入具体类型，运行时使用延迟导入
+    from app.auth.security import TokenBanList as _TokenBanList
+    from app.agent.auth import AgentTokenStore as _AgentTokenStore
 
 logger = logging.getLogger(__name__)
 
@@ -216,8 +221,9 @@ def _decode_token_strict(token: str, expected_type: str = "access") -> Optional[
         return None
 
 
-def _get_token_ban_list():
+def _get_token_ban_list() -> Optional["_TokenBanList"]:
     """Get token ban list (from security module)."""
+    # 使用 TYPE_CHECKING 解决循环导入：运行时延迟导入，类型检查时可用具体类型
     try:
         from app.auth.security import get_token_ban_list
         return get_token_ban_list()
@@ -288,8 +294,9 @@ def _check_scope(token_scopes: list[str], required: PermissionLevel) -> bool:
     return token_max >= required_value
 
 
-def _get_agent_token_store():
+def _get_agent_token_store() -> "_AgentTokenStore":
     """Get agent token store singleton."""
+    # 使用 TYPE_CHECKING 解决循环导入：运行时延迟导入，类型检查时可用具体类型
     from app.agent.auth import agent_token_store
     return agent_token_store
 
@@ -829,20 +836,41 @@ class UnifiedAuthMiddleware:
                         "message": "Token metadata unavailable; access denied (fail-closed)",
                     },
                 )
-            token_level_str = metadata.get("level", "T")
+            # P1 安全修复：默认权限 fail-closed。
+            # 原代码默认 "T"（最高权限 PL.T=5），恶意/异常 token 可获取最高权限。
+            # 现改为默认 "R"（最低权限 PL.R=0），且解析失败时直接拒绝访问，
+            # 与 metadata=None 的 fail-closed 处理保持一致。防复发：禁止任何默认提升权限。
+            token_level_str = metadata.get("level", "R")
             try:
                 token_level = PL(token_level_str)
             except ValueError as e:
-                logger.warning(f"无效的 token 权限级别 '{token_level_str}'，使用默认级别 T: {e}")
-                token_level = PL.T
-
-            if not permission_checker.has_permission(token_level, path, method):
+                logger.warning("无效的 token 权限级别 '%s'，拒绝访问 (fail-closed): %s", token_level_str, e)
                 return lambda send: _send_json_response(
                     send,
                     403,
                     {
                         "error": "forbidden",
-                        "message": f"Insufficient permission: token has {token_level_str} level, endpoint requires {permission_checker.get_required_permission(method, path).value} level",  # noqa: E501
+                        "message": "Invalid token permission level; access denied (fail-closed)",
+                    },
+                )
+
+            if not permission_checker.has_permission(token_level, path, method):
+                # P1-16 修复：不得泄露内部权限模型（token 级别 + 端点所需级别），
+                # 否则攻击者可枚举所有端点绘制权限矩阵，精准定位提权路径。
+                # 详细级别信息仅写入服务端日志，客户端仅收到通用拒绝消息。
+                logger.warning(
+                    "LNN 权限不足: path=%s method=%s token_level=%s required=%s",
+                    path,
+                    method,
+                    token_level_str,
+                    permission_checker.get_required_permission(method, path).value,
+                )
+                return lambda send: _send_json_response(
+                    send,
+                    403,
+                    {
+                        "error": "forbidden",
+                        "message": "权限不足，拒绝访问",
                     },
                 )
         else:
@@ -959,7 +987,9 @@ class UnifiedAuthMiddleware:
                 401,
                 {
                     "error": "unauthorized",
-                    "message": "Missing or invalid Authorization header. Use Bearer lj_agent_xxxx token.",
+                    # P1-16 修复：不得泄露 token 命名约定（lj_agent_ 前缀），
+                    # 降低攻击者枚举成本。
+                    "message": "Missing or invalid Authorization header",
                 },
             )
 
@@ -1004,7 +1034,9 @@ class UnifiedAuthMiddleware:
                 429,
                 {
                     "error": "rate_limit_exceeded",
-                    "message": f"Rate limit exceeded. Max {agent_rate_limiter._max_rpm} requests per minute.",
+                    # P1-16 修复：不得泄露速率限制配置值（_max_rpm），
+                    # 否则攻击者可精确计算规避策略。同时不访问私有属性。
+                    "message": "请求过于频繁，请稍后重试",
                 },
             )
 
@@ -1026,7 +1058,9 @@ class UnifiedAuthMiddleware:
                 403,
                 {
                     "error": "forbidden",
-                    "message": f"Insufficient permission. Token scopes: {scopes}, required: {required_level.value}",
+                    # P1-16 修复：不得泄露 token 完整 scopes 列表和端点所需级别，
+                    # 否则攻击者可精准判断是否值得尝试提权。详细信息仅写入日志。
+                    "message": "权限不足，拒绝访问",
                 },
             )
 

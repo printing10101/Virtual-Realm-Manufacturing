@@ -1,4 +1,4 @@
-﻿"""
+"""
 Test Permissions Module
 
 Tests for:
@@ -294,12 +294,14 @@ class TestPaperOnlyGuard:
 
     def test_initialization_defaults_to_paper_only(self):
         guard = PaperOnlyGuard()
-        assert guard.live_execution_enabled is False
+        # [F-P0-4] 配置热刷新：不再启动时固化，通过 is_live_execution_allowed 实时读取
+        assert guard.is_live_execution_allowed() is False
 
     @patch.dict(os.environ, {"LNN_LIVE_EXECUTION_ENABLED": "true"})
     def test_initialization_with_live_execution_enabled(self):
         guard = PaperOnlyGuard()
-        assert guard.live_execution_enabled is True
+        # [F-P0-4] 配置热刷新：环境变量变更后立即生效
+        assert guard.is_live_execution_allowed() is True
 
     def test_is_live_execution_allowed_default(self):
         guard = PaperOnlyGuard()
@@ -337,10 +339,65 @@ class TestPaperOnlyGuard:
         assert "UI confirmation required" in message
 
     @patch.dict(os.environ, {"LNN_LIVE_EXECUTION_ENABLED": "true"})
-    def test_check_t_operation_all_conditions_met(self):
+    def test_check_t_operation_missing_supervisor_confirmation(self):
+        """[F-P0-4] 实模式必须双因子确认：缺少班长确认应拒绝"""
         guard = PaperOnlyGuard()
         allowed, message = guard.check_t_operation(
-            has_t_permission=True, ui_confirmed=True
+            has_t_permission=True,
+            ui_confirmed=True,
+            supervisor_confirmed=False,
+        )
+        assert allowed is False
+        assert "Supervisor" in message or "dual-factor" in message
+
+    @patch.dict(os.environ, {"LNN_LIVE_EXECUTION_ENABLED": "true"})
+    def test_check_t_operation_machine_safety_violation(self):
+        """[F-P0-4] 机床安全状态不满足时应拒绝执行"""
+        guard = PaperOnlyGuard()
+        # 急停触发
+        allowed, message = guard.check_t_operation(
+            has_t_permission=True,
+            ui_confirmed=True,
+            supervisor_confirmed=True,
+            machine_safety_status={
+                "emergency_stop_active": True,
+                "guard_door_closed": True,
+                "light_curtain_clear": True,
+                "operator_present": True,
+            },
+        )
+        assert allowed is False
+        assert "emergency stop" in message.lower()
+
+        # 防护门打开
+        allowed, message = guard.check_t_operation(
+            has_t_permission=True,
+            ui_confirmed=True,
+            supervisor_confirmed=True,
+            machine_safety_status={
+                "emergency_stop_active": False,
+                "guard_door_closed": False,
+                "light_curtain_clear": True,
+                "operator_present": True,
+            },
+        )
+        assert allowed is False
+        assert "Guard door" in message
+
+    @patch.dict(os.environ, {"LNN_LIVE_EXECUTION_ENABLED": "true"})
+    def test_check_t_operation_all_conditions_met(self):
+        """[F-P0-4] 所有条件满足（含双因子 + 机床安全）才能通过"""
+        guard = PaperOnlyGuard()
+        allowed, message = guard.check_t_operation(
+            has_t_permission=True,
+            ui_confirmed=True,
+            supervisor_confirmed=True,
+            machine_safety_status={
+                "emergency_stop_active": False,
+                "guard_door_closed": True,
+                "light_curtain_clear": True,
+                "operator_present": True,
+            },
         )
         assert allowed is True
         assert "approved" in message.lower()
@@ -352,7 +409,26 @@ class TestPaperOnlyGuard:
 
         assert result["status"] == "simulated"
         assert "Paper-Only mode" in result["message"]
-        assert result["operation"] == operation
+        # 非敏感字段应原样保留
+        assert result["operation"]["type"] == "machine_control"
+        assert result["operation"]["params"]["speed"] == 100
+
+    def test_simulate_t_operation_redacts_sensitive_fields(self):
+        """[F-P0-4] 敏感字段必须脱敏，不得明文写入返回结果或日志"""
+        guard = PaperOnlyGuard()
+        operation = {
+            "type": "machine_control",
+            "api_key": "sk-1234567890",
+            "nc_program": "G01 X100 Y200",
+            "password": "secret123",
+        }
+        result = guard.simulate_t_operation(operation)
+
+        assert result["status"] == "simulated"
+        assert result["operation"]["api_key"] == "***REDACTED***"
+        assert result["operation"]["nc_program"] == "***REDACTED***"
+        assert result["operation"]["password"] == "***REDACTED***"
+        assert result["operation"]["type"] == "machine_control"
 
 
 class TestPermissionCheckerEdgeCases:

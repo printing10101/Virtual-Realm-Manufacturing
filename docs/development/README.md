@@ -34,7 +34,7 @@
 | Web 框架 | FastAPI 0.115+ |
 | 异步运行时 | Uvicorn + asyncio |
 | ORM | SQLAlchemy 2.x（异步） |
-| 数据库 | PostgreSQL 15 / SQLite（开发） |
+| 数据库 | SQLite 3.x（WAL 模式，嵌入式零运维，选型依据见 ADR-003） |
 | 缓存/进度 | Redis 7 |
 | 向量库 | ChromaDB |
 | AI 推理 | ncps（LNN）、Ollama（LLM） |
@@ -47,20 +47,20 @@
 | 类别 | 技术 |
 |------|------|
 | 框架 | Vue 3.4+ + TypeScript 5.x |
-| 构建 | Vite 5 |
+| 构建 | Vite 6 |
 | 状态 | Pinia |
 | 路由 | Vue Router 4 |
 | UI | Element Plus + 自研组件 |
 | 3D | Three.js |
 | HTTP | axios + SSE（EventSource） |
 | 国际化 | vue-i18n |
-| 测试 | Vitest、Playwright |
+| 测试 | Vitest、@vue/test-utils |
 
 ### 2.3 桌面（Tauri）
 
 | 类别 | 技术 |
 |------|------|
-| 壳 | Tauri 1.x（Rust） |
+| 壳 | Tauri 2.x（Rust） |
 | Python Sidecar | subprocess + IPC |
 | 打包 | tauri-bundler（Windows MSI、macOS DMG、Linux AppImage） |
 
@@ -84,7 +84,7 @@
 ├── docs/                      # 本目录所属
 ├── deploy/                    # K8s / Prometheus
 ├── config/                    # 全局配置
-├── e2e/                       # Playwright E2E
+├── tests/                     # Vitest 前端组件测试
 ├── src-tauri/                 # Tauri Rust 桌面壳
 ├── .github/workflows/         # CI
 ├── docker-compose.yml

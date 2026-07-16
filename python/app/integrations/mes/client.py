@@ -384,7 +384,7 @@ class MESClient:
                     logger.error("工单同步请求失败 (已重试%d次): %s", max_retries, str(e))
                     return SyncResult(
                         success=False,
-                        message=f"请求失败: {str(e)}",
+                        message="请求失败: 网络错误，请联系管理员",
                         error_code="REQUEST_ERROR",
                     )
 
@@ -392,7 +392,7 @@ class MESClient:
                 logger.error("工单同步异常: %s", str(e), exc_info=True)
                 return SyncResult(
                     success=False,
-                    message=f"同步异常: {str(e)}",
+                    message="同步异常: 服务内部错误",
                     error_code="UNKNOWN_ERROR",
                 )
 
@@ -470,7 +470,7 @@ class MESClient:
             logger.error("生产数据上报请求失败: %s", str(e))
             return SyncResult(
                 success=False,
-                message=f"请求失败: {str(e)}",
+                message="请求失败: 网络错误，请联系管理员",
                 error_code="REQUEST_ERROR",
             )
 
@@ -478,7 +478,7 @@ class MESClient:
             logger.error("生产数据上报异常: %s", str(e), exc_info=True)
             return SyncResult(
                 success=False,
-                message=f"上报异常: {str(e)}",
+                message="上报异常: 服务内部错误",
                 error_code="UNKNOWN_ERROR",
             )
 
@@ -609,7 +609,7 @@ class MESClient:
             logger.error("质量数据上报请求失败: %s", str(e))
             return SyncResult(
                 success=False,
-                message=f"请求失败: {str(e)}",
+                message="请求失败: 网络错误，请联系管理员",
                 error_code="REQUEST_ERROR",
             )
 
@@ -617,7 +617,7 @@ class MESClient:
             logger.error("质量数据上报异常: %s", str(e), exc_info=True)
             return SyncResult(
                 success=False,
-                message=f"上报异常: {str(e)}",
+                message="上报异常: 服务内部错误",
                 error_code="UNKNOWN_ERROR",
             )
 

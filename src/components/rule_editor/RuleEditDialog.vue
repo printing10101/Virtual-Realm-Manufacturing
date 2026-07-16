@@ -599,8 +599,10 @@ async function handleSubmit() {
     }
     emit('saved')
     emit('update:visible', false)
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    // createRule/updateRule 已在 store 内通过 ElMessage.error 提示用户，
+    // 此处仅记录调用栈上下文便于排查，避免重复弹窗
+    console.warn('[RuleEditDialog] handleSubmit failed:', e)
   } finally {
     submitting.value = false
   }

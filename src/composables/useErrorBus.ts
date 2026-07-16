@@ -28,7 +28,7 @@ export interface ErrorDialogPayload {
   detail: string
   suggestion: string
   recoverable: boolean
-  adjusted_values?: Record<string, any>
+  adjusted_values?: Record<string, unknown>
   /** 关联的服务端错误 ID，便于跨端排查 */
   error_id?: string
 }
@@ -38,7 +38,7 @@ export interface ErrorDialogPayload {
  */
 export interface ErrorAcceptedPayload {
   id: string
-  adjusted_values: Record<string, any>
+  adjusted_values: Record<string, unknown>
 }
 
 /**
@@ -102,8 +102,9 @@ function _fanout<T>(set: Set<(p: T) => void>, payload: T): boolean {
   for (const h of set) {
     try {
       h(payload)
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // 单个处理器异常不应中断其他处理器分发，但需记录便于排查
+      console.warn('[useErrorBus] handler execution failed:', e)
     }
   }
   return true

@@ -110,23 +110,48 @@ class ValidationReport:
 class GeometricValidator:
     """3D重建几何精度验证器。"""
 
+    # ============================================================
+    # 默认质量判定阈值（命名常量，便于统一调参与合规审计）
+    # ============================================================
+    # 尺寸偏差上限（mm）：超过此值判定为不合格，工业典型值 0.05-0.2mm
+    DEFAULT_FAIL_ON_DIMENSION_DEVIATION = 0.1
+    # 特征召回率下限：低于此值判定为不合格，工业典型值 0.85-0.95
+    DEFAULT_FAIL_ON_FEATURE_RECALL = 0.90
+    # 公差符合度下限（%）：低于此值判定为不合格，工业典型值 90-98%
+    DEFAULT_FAIL_ON_TOLERANCE_COMPLIANCE = 95.0
+
     def __init__(
         self,
         dataset: BenchmarkDataset | None = None,
-        fail_on_dimension_deviation: float = 0.1,
-        fail_on_feature_recall: float = 0.90,
-        fail_on_tolerance_compliance: float = 95.0,
+        fail_on_dimension_deviation: float | None = None,
+        fail_on_feature_recall: float | None = None,
+        fail_on_tolerance_compliance: float | None = None,
     ) -> None:
         self.dataset = dataset or BenchmarkDataset()
-        self.fail_on_dimension_deviation = fail_on_dimension_deviation
-        self.fail_on_feature_recall = fail_on_feature_recall
-        self.fail_on_tolerance_compliance = fail_on_tolerance_compliance
+        # P2 硬编码修复：阈值默认值提取为模块级常量，便于统一调参与合规审计
+        self.fail_on_dimension_deviation = (
+            fail_on_dimension_deviation
+            if fail_on_dimension_deviation is not None
+            else self.DEFAULT_FAIL_ON_DIMENSION_DEVIATION
+        )
+        self.fail_on_feature_recall = (
+            fail_on_feature_recall
+            if fail_on_feature_recall is not None
+            else self.DEFAULT_FAIL_ON_FEATURE_RECALL
+        )
+        self.fail_on_tolerance_compliance = (
+            fail_on_tolerance_compliance
+            if fail_on_tolerance_compliance is not None
+            else self.DEFAULT_FAIL_ON_TOLERANCE_COMPLIANCE
+        )
 
     def validate_reconstruction(
         self,
         part_id: str,
         reconstructed_model: dict[str, Any] | None = None,
         input_views_path: str | None = None,
+        *,
+        allow_mock_fallback: bool = False,
     ) -> ValidationReport:
         start_time = time.perf_counter()
         warnings: list[str] = []
@@ -134,7 +159,24 @@ class GeometricValidator:
 
         metadata = self.dataset.load_metadata(part_id)
 
+        # P1 学术诚信修复：默认禁止 mock 数据降级。
+        # 早期实现用 random.seed(42) + random.uniform() 生成假尺寸/特征置信度，
+        # 导致几何精度验证结果完全不可信，违反学术诚信（项目目标期刊：Journal of
+        # Intelligent Manufacturing）。生产代码调用时必须传入真实 reconstructed_model，
+        # 缺失时显式抛 ValueError。测试代码可通过 allow_mock_fallback=True 显式开启
+        # mock 降级路径，但生产路径严格禁止。
         if reconstructed_model is None:
+            if not allow_mock_fallback:
+                raise ValueError(
+                    f"validate_reconstruction 缺少 reconstructed_model 参数："
+                    f"part_id={part_id}。几何精度验证必须基于真实重建模型，"
+                    f"禁止使用 mock 数据降级（学术诚信要求）。"
+                    f"如为测试用途，请显式传 allow_mock_fallback=True。"
+                )
+            warnings.append(
+                "使用 mock 重建模型进行验证（仅测试/演示用途，"
+                "结果不可信，禁止用于生产或学术论文）"
+            )
             reconstructed_model = self._mock_reconstructed_model(metadata)
 
         dim_checks = self.check_dimensions(reconstructed_model, metadata.dimensions)
@@ -608,6 +650,18 @@ tr:hover {{ background:#fafafa; }}
         return edges
 
     def _mock_reconstructed_model(self, metadata: PartMetadata) -> dict[str, Any]:
+        """生成 mock 重建模型（仅供测试与演示使用，禁止用于生产路径）。
+
+        P1 学术诚信修复说明：
+            早期 validate_reconstruction 在 reconstructed_model 缺失时自动调用本方法，
+            用 random.seed(42) + random.uniform() 生成假尺寸/特征置信度，
+            导致几何精度验证结果完全不可信，违反学术诚信
+            （项目目标期刊：Journal of Intelligent Manufacturing）。
+
+            现已改为 validate_reconstruction 默认禁止 mock 降级，
+            缺失 reconstructed_model 时抛 ValueError。本方法保留仅供测试代码
+            显式调用（通过 allow_mock_fallback=True 路径），生产代码禁止调用。
+        """
         import random
 
         random.seed(42)

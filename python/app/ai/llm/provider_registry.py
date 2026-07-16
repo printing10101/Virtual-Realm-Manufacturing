@@ -259,6 +259,30 @@ def create_provider(config: ProviderConfig) -> LLMProvider:
 # 默认 Provider 模板
 # ---------------------------------------------------------------------------
 
+# Provider 默认 base_url 模板。
+# 安全修复 [P1-BE-4]：提取为模块级常量，并支持环境变量覆盖。
+# - 本地服务使用 127.0.0.1（统一约定）
+# - 云服务允许通过 LLM_<PROVIDER>_BASE_URL 环境变量切换代理或兼容 API（如 Azure OpenAI）
+# - 与前端 src/utils/llmProviders.ts 的 PROVIDER_DEFAULT_BASE_URLS 保持同步
+_PROVIDER_DEFAULT_BASE_URLS: dict[str, str] = {
+    "ollama": "http://127.0.0.1:11434",
+    "lmstudio": "http://127.0.0.1:1234/v1",
+    "llamacpp": "http://127.0.0.1:8080/v1",
+    "vllm": "http://127.0.0.1:8000/v1",
+    "openai": "https://api.openai.com/v1",
+    "anthropic": "https://api.anthropic.com/v1",
+    "deepseek": "https://api.deepseek.com/v1",
+    "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "gemini": "https://generativelanguage.googleapis.com/v1beta",
+}
+
+
+def _provider_base_url(provider: str) -> str:
+    """读取 Provider 默认 base_url，优先环境变量 LLM_<PROVIDER>_BASE_URL。"""
+    env_key = f"LLM_{provider.upper()}_BASE_URL"
+    return os.getenv(env_key, _PROVIDER_DEFAULT_BASE_URLS.get(provider, ""))
+
+
 def _default_provider_templates() -> list[ProviderConfig]:
     """生成默认 Provider 模板（全部 disabled，等待用户配置）。"""
     return [
@@ -266,7 +290,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             provider_id="ollama-default",
             name="Ollama (本地)",
             provider_type=ProviderType.OLLAMA,
-            base_url="http://127.0.0.1:11434",
+            base_url=_provider_base_url("ollama"),
             default_model="qwen2.5-coder:7b",
             enabled=False,
             priority=10,
@@ -276,7 +300,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             provider_id="lmstudio-default",
             name="LM Studio (本地)",
             provider_type=ProviderType.LMSTUDIO,
-            base_url="http://127.0.0.1:1234/v1",
+            base_url=_provider_base_url("lmstudio"),
             default_model="",
             enabled=False,
             priority=9,
@@ -286,7 +310,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             provider_id="llamacpp-default",
             name="llama.cpp (本地)",
             provider_type=ProviderType.LLAMACPP,
-            base_url="http://127.0.0.1:8080/v1",
+            base_url=_provider_base_url("llamacpp"),
             default_model="",
             enabled=False,
             priority=8,
@@ -296,7 +320,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             provider_id="vllm-default",
             name="vLLM (本地)",
             provider_type=ProviderType.VLLM,
-            base_url="http://127.0.0.1:8000/v1",
+            base_url=_provider_base_url("vllm"),
             default_model="",
             enabled=False,
             priority=8,
@@ -306,7 +330,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             provider_id="openai-default",
             name="OpenAI (云端)",
             provider_type=ProviderType.OPENAI,
-            base_url="https://api.openai.com/v1",
+            base_url=_provider_base_url("openai"),
             default_model="gpt-4o-mini",
             enabled=False,
             priority=7,
@@ -319,7 +343,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             provider_id="anthropic-default",
             name="Anthropic Claude (云端)",
             provider_type=ProviderType.ANTHROPIC,
-            base_url="https://api.anthropic.com/v1",
+            base_url=_provider_base_url("anthropic"),
             default_model="claude-3-5-sonnet-20241022",
             enabled=False,
             priority=7,
@@ -332,7 +356,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             provider_id="deepseek-default",
             name="DeepSeek (云端)",
             provider_type=ProviderType.DEEPSEEK,
-            base_url="https://api.deepseek.com/v1",
+            base_url=_provider_base_url("deepseek"),
             default_model="deepseek-chat",
             enabled=False,
             priority=6,
@@ -342,7 +366,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             provider_id="qwen-default",
             name="通义千问 (云端)",
             provider_type=ProviderType.QWEN,
-            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            base_url=_provider_base_url("qwen"),
             default_model="qwen-plus",
             enabled=False,
             priority=6,
@@ -352,7 +376,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             provider_id="gemini-default",
             name="Google Gemini (云端)",
             provider_type=ProviderType.GEMINI,
-            base_url="https://generativelanguage.googleapis.com/v1beta",
+            base_url=_provider_base_url("gemini"),
             default_model="gemini-1.5-flash",
             enabled=False,
             priority=5,
@@ -374,6 +398,10 @@ def _default_provider_templates() -> list[ProviderConfig]:
 # ---------------------------------------------------------------------------
 # ProviderRegistry 单例
 # ---------------------------------------------------------------------------
+
+# SQLite 连接的统一锁等待超时（秒）。多处 sqlite3.connect 共享，避免出现锁等待不一致。
+DEFAULT_SQLITE_LOCK_TIMEOUT_SEC: float = 10.0
+
 
 class ProviderRegistry:
     """LLM Provider 注册表。
@@ -399,7 +427,7 @@ class ProviderRegistry:
 
     def _get_conn(self) -> sqlite3.Connection:
         """获取 SQLite 连接（每次新建，使用完关闭）。"""
-        conn = sqlite3.connect(str(self._db_path), timeout=10.0)
+        conn = sqlite3.connect(str(self._db_path), timeout=DEFAULT_SQLITE_LOCK_TIMEOUT_SEC)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")

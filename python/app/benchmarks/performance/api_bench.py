@@ -25,6 +25,11 @@ sys.path.insert(0, os.path.join(_THIS_DIR, "..", "..", ".."))
 class APIPerfBenchmark:
     """API接口性能基准测试。"""
 
+    # 测试专用凭据：从环境变量读取，避免硬编码密码泄露。
+    # 仅用于性能基准测试场景，生产环境必须通过正式认证流程获取 token。
+    _BENCH_USERNAME = os.environ.get("LJ_BENCH_USERNAME", "BENCH_USER_PLACEHOLDER")
+    _BENCH_PASSWORD = os.environ.get("LJ_BENCH_PASSWORD", "BENCH_PASSWORD_PLACEHOLDER")
+
     def __init__(self, base_url: str = "http://localhost:8000") -> None:
         self.base_url = base_url
         self._results: dict[str, Any] = {}
@@ -46,7 +51,7 @@ class APIPerfBenchmark:
         try:
             async with self._session.post(
                 f"{self.base_url}/api/v1/auth/login",
-                json={"username": "admin", "password": "admin123"},
+                json={"username": self._BENCH_USERNAME, "password": self._BENCH_PASSWORD},
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as resp:
                 if resp.status == 200:
@@ -54,9 +59,9 @@ class APIPerfBenchmark:
                     self._auth_token = data.get("access_token")
                     logger.info("认证成功")
                 else:
-                    logger.warning(f"认证失败: {resp.status}")
+                    logger.warning("认证失败: %s", resp.status)
         except Exception as e:
-            logger.warning(f"认证异常: {e}")
+            logger.warning("认证异常: %s", e)
 
     def _get_headers(self) -> dict[str, str]:
         """获取请求头。"""
@@ -81,7 +86,7 @@ class APIPerfBenchmark:
                     elapsed = (time.perf_counter() - t0) * 1000
                     times.append(elapsed)
             except Exception as e:
-                logger.debug(f"健康检查请求失败: {e}")
+                logger.debug("健康检查请求失败: %s", e)
 
         if not times:
             return {"health_check_ms": -1}
@@ -106,14 +111,14 @@ class APIPerfBenchmark:
             try:
                 async with self._session.post(
                     url,
-                    json={"username": "admin", "password": "admin123"},
+                    json={"username": self._BENCH_USERNAME, "password": self._BENCH_PASSWORD},
                     timeout=aiohttp.ClientTimeout(total=10),
                 ) as resp:
                     await resp.json()
                     elapsed = (time.perf_counter() - t0) * 1000
                     times.append(elapsed)
             except Exception as e:
-                logger.debug(f"认证请求失败: {e}")
+                logger.debug("认证请求失败: %s", e)
 
         if not times:
             return {"auth_login_ms": -1}
@@ -152,7 +157,7 @@ class APIPerfBenchmark:
                     elapsed = (time.perf_counter() - t0) * 1000
                     times.append(elapsed)
             except Exception as e:
-                logger.debug(f"数据查询请求失败: {e}")
+                logger.debug("数据查询请求失败: %s", e)
 
         if not times:
             return {"data_query_ms": -1}
@@ -259,4 +264,4 @@ if __name__ == "__main__":
     results = bench.run_all()
     logger.info("\nAPI性能测试结果:")
     for k, v in results.items():
-        logger.info(f"  {k}: {v}")
+        logger.info("  %s: %s", k, v)

@@ -332,8 +332,9 @@ watch(
 // ---------------------------------------------------------------------------
 
 function loadVoxelData(data: unknown): void {
-  // TODO: implement voxel grid rendering when simulation backend is ready
-  void data
+  // 占位实现：体素网格渲染待仿真后端就绪后实现
+  // 调用时记录告警，便于在运行时识别该路径被触发但未渲染
+  console.warn('[SimulationViewer] loadVoxelData not implemented yet, data ignored:', data)
 }
 
 // ---------------------------------------------------------------------------

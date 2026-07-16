@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -54,7 +54,7 @@ class SSEConnectionManager:
                 client_id=client_id,
             )
             self._clients[task_id][client_id] = client
-            logger.info(f"Client {client_id} subscribed to task {task_id}")
+            logger.info("Client %s subscribed to task %s", client_id, task_id)
             return client
 
     async def unsubscribe(self, task_id: str, client_id: str):
@@ -62,14 +62,14 @@ class SSEConnectionManager:
         async with self._lock:
             if task_id in self._clients and client_id in self._clients[task_id]:
                 del self._clients[task_id][client_id]
-                logger.info(f"Client {client_id} unsubscribed from task {task_id}")
+                logger.info("Client %s unsubscribed from task %s", client_id, task_id)
 
                 if not self._clients[task_id]:
                     del self._clients[task_id]
                     if task_id in self._cancel_events:
                         del self._cancel_events[task_id]
 
-    async def broadcast(self, task_id: str, event_type: str, data: dict):
+    async def broadcast(self, task_id: str, event_type: str, data: dict[str, Any]):
         """Broadcast an event to all clients subscribed to a task."""
         async with self._lock:
             if task_id not in self._clients:
@@ -84,14 +84,14 @@ class SSEConnectionManager:
                     client.last_activity = time.time()
                 except (asyncio.QueueFull, RuntimeError, AttributeError) as e:
                     # 队列满或客户端异常时标记为待移除，记录日志以便排查
-                    logger.warning(f"Failed to send SSE event to client {client_id}: {e}")
+                    logger.warning("Failed to send SSE event to client %s: %s", client_id, e)
                     clients_to_remove.append(client_id)
 
             for cid in clients_to_remove:
                 self._clients[task_id].pop(cid, None)
 
     async def send_to_client(
-        self, task_id: str, client_id: str, event_type: str, data: dict
+        self, task_id: str, client_id: str, event_type: str, data: dict[str, Any]
     ):
         """Send an event to a specific client."""
         async with self._lock:
@@ -103,7 +103,7 @@ class SSEConnectionManager:
             await client.queue.put(event)
             client.last_activity = time.time()
 
-    def _format_event(self, event_type: str, data: dict) -> str:
+    def _format_event(self, event_type: str, data: dict[str, Any]) -> str:
         """Format data as SSE event string."""
         return f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -112,7 +112,7 @@ class SSEConnectionManager:
         async with self._lock:
             if task_id in self._cancel_events:
                 self._cancel_events[task_id].set()
-                logger.info(f"Cancel signal sent for task {task_id}")
+                logger.info("Cancel signal sent for task %s", task_id)
 
     def get_cancel_event(self, task_id: str) -> Optional[asyncio.Event]:
         """Get the cancellation event for a task."""
@@ -127,7 +127,7 @@ class SSEConnectionManager:
                     client = self._clients[task_id][client_id]
                     if now - client.last_activity > self._timeout:
                         del self._clients[task_id][client_id]
-                        logger.info(f"Client {client_id} timed out for task {task_id}")
+                        logger.info("Client %s timed out for task %s", client_id, task_id)
 
                 if not self._clients[task_id]:
                     del self._clients[task_id]

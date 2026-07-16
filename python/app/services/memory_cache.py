@@ -63,6 +63,7 @@ class MemoryCache:
             try:
                 await self._cleanup_task
             except asyncio.CancelledError:
+                # 主动取消清理任务时 CancelledError 是预期行为，无需处理
                 pass
         self._data.clear()
         logger.info("MemoryCache stopped")

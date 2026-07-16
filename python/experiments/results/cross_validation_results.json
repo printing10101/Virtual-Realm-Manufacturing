@@ -8,7 +8,7 @@
   "epochs": 50,
   "learning_rate": 0.001,
   "models": {
-    "CT-LTC": {
+    "DL-LNN": {
       "fold_results": [
         {
           "fold": 1,
@@ -259,7 +259,7 @@
     }
   },
   "comparison": {
-    "CT-LTC": {
+    "DL-LNN": {
       "mae_mean": 0.12849502861499787,
       "mae_std": 0.009363484909912387,
       "mae_cv": 0.07287040037372686,

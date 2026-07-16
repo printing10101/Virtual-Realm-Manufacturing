@@ -5,24 +5,32 @@ module-level ``_test_manager`` global variable.  Tests can override the
 branch manager by using ``app.dependency_overrides[get_branch_manager]``.
 """
 
-from typing import Optional
+import logging
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.auth.permissions import require_permission
 from app.templates.template_branching import (
     TemplateBranchManager,
     get_branch_manager,
 )
 
-router = APIRouter(prefix="/api/v1/templates/branches", tags=["template-branching"])
+logger = logging.getLogger(__name__)
+
+router = APIRouter(
+    prefix="/api/v1/templates/branches",
+    tags=["template-branching"],
+    dependencies=[Depends(require_permission("template-branch:read"))],
+)
 
 
 class CreateBranchRequest(BaseModel):
     name: str
     base_branch: Optional[str] = None
-    data: dict = Field(default_factory=dict)
-    metadata: dict = Field(default_factory=dict)
+    data: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class MergeBranchRequest(BaseModel):
@@ -32,10 +40,10 @@ class MergeBranchRequest(BaseModel):
 
 
 class UpdateBranchRequest(BaseModel):
-    data: dict
+    data: dict[str, Any]
 
 
-@router.post("/", status_code=201)
+@router.post("/", status_code=201, dependencies=[Depends(require_permission("template-branch:write"))])
 async def create_branch(
     req: CreateBranchRequest,
     manager: TemplateBranchManager = Depends(get_branch_manager),
@@ -65,7 +73,8 @@ async def get_branch(
 ):
     branch = manager.get_branch(branch_id)
     if branch is None:
-        raise HTTPException(status_code=404, detail=f"Branch not found: {branch_id}")
+        logger.info("Branch not found: %s", branch_id)
+        raise HTTPException(status_code=404, detail="Branch not found")
     return {"branch": branch.to_dict()}
 
 
@@ -76,11 +85,12 @@ async def get_commit_log(
 ):
     branch = manager.get_branch(branch_id)
     if branch is None:
-        raise HTTPException(status_code=404, detail=f"Branch not found: {branch_id}")
+        logger.info("Branch not found: %s", branch_id)
+        raise HTTPException(status_code=404, detail="Branch not found")
     return {"commit_log": manager.get_commit_log(branch_id)}
 
 
-@router.post("/merge")
+@router.post("/merge", dependencies=[Depends(require_permission("template-branch:write"))])
 async def merge_branch(
     req: MergeBranchRequest,
     manager: TemplateBranchManager = Depends(get_branch_manager),
@@ -99,11 +109,12 @@ async def update_branch(
 ):
     result = manager.update_branch_data(branch_id, req.data)
     if result is None:
-        raise HTTPException(status_code=404, detail=f"Branch not found: {branch_id}")
+        logger.info("Branch not found: %s", branch_id)
+        raise HTTPException(status_code=404, detail="Branch not found")
     return {"branch": result.to_dict()}
 
 
-@router.delete("/{branch_id}")
+@router.delete("/{branch_id}", dependencies=[Depends(require_permission("template-branch:write"))])
 async def delete_branch(
     branch_id: str,
     manager: TemplateBranchManager = Depends(get_branch_manager),
@@ -111,8 +122,9 @@ async def delete_branch(
     try:
         success = manager.delete_branch(branch_id)
         if not success:
+            logger.info("Branch not found: %s", branch_id)
             raise HTTPException(
-                status_code=404, detail=f"Branch not found: {branch_id}"
+                status_code=404, detail="Branch not found"
             )
         return {"message": "Branch deleted"}
     except ValueError:

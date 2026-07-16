@@ -63,8 +63,8 @@ async def list_materials(
     category: Optional[str] = Query(None, description="按分类筛选"),
     status: Optional[str] = Query(None, description="按状态筛选"),
     keyword: Optional[str] = Query(None, description="搜索名称或编码"),
-    page: int = Query(1, ge=1, description="页码（从 1 开始）"),
-    page_size: int = Query(50, ge=1, le=500, description="每页条数（最大 500）"),
+    page: int = Query(1, ge=1, le=500, description="页码（从 1 开始）"),
+    page_size: int = Query(50, ge=1, le=100, description="每页条数（最大 500）"),
 ):
     """获取物料列表，支持分类、状态筛选、关键词搜索和分页。"""
     data = await materials_service.list_materials(

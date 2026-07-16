@@ -9,5 +9,5 @@ from .analyzer import CodeAnalyzer
 from .generator import TestGenerator
 from .runner import TestRunner
 
-__version__ = "1.0.0"
+__version__ = "2.5.0"
 __all__ = ["CodeAnalyzer", "TestGenerator", "TestRunner"]

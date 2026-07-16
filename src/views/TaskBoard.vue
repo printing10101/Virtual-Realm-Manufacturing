@@ -481,6 +481,12 @@
 </template>
 
 <script setup lang="ts">
+// TODO(P1-3): 巨型组件拆分 — 本文件 1100+ 行，应拆分为子组件/composable：
+//   - 任务卡片 → TaskCard.vue
+//   - 筛选/搜索栏 → TaskFilters.vue
+//   - 任务详情弹窗 → TaskDetailDialog.vue
+//   - 状态管理逻辑 → useTaskBoard.ts
+// 拆分时注意保持 props/emits 接口不变，逐模块迁移并验证。
 import { ref, reactive, computed, onMounted } from 'vue'
 import {
   Filter,

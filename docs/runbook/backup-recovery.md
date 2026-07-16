@@ -1,7 +1,7 @@
 # 备份与恢复指南
 
 **版本**: 1.0.0  
-**最后更新**: 2024-01-20  
+**最后更新**: 2026-07-10  
 **适用范围**: 灵境制造系统所有运维人员
 
 ---
@@ -39,8 +39,8 @@
 ### 备份范围
 
 **必须备份**：
-- ✅ SQLite 数据库文件（`data/lingjing.db`）
-- ✅ WAL 日志文件（`data/lingjing.db-wal`）
+- ✅ SQLite 数据库文件（`data/app.db`）
+- ✅ WAL 日志文件（`data/app.db-wal`）
 - ✅ 配置文件（`config/`）
 - ✅ 环境变量（`.env`）
 - ✅ AI 模型文件（`models/`）
@@ -74,7 +74,7 @@ set -e  # 遇到错误立即退出
 # 配置
 BACKUP_DIR="/backup/lingjing"
 DATE=$(date +%Y%m%d_%H%M%S)
-DB_PATH="./data/lingjing.db"
+DB_PATH="./data/app.db"
 CONFIG_DIR="./config"
 MODEL_DIR="./models"
 LOG_DIR="./logs"
@@ -177,7 +177,7 @@ set -e
 
 BACKUP_DIR="/backup/lingjing/wal"
 DATE=$(date +%Y%m%d_%H%M)
-DB_PATH="./data/lingjing.db"
+DB_PATH="./data/app.db"
 
 mkdir -p $BACKUP_DIR
 
@@ -207,7 +207,7 @@ fi
 docker-compose stop
 
 # 2. 备份数据库
-sqlite3 data/lingjing.db ".backup 'backup/lingjing_$(date +%Y%m%d_%H%M).db'"
+sqlite3 data/app.db ".backup 'backup/lingjing_$(date +%Y%m%d_%H%M).db'"
 gzip backup/lingjing_$(date +%Y%m%d_%H%M).db
 
 # 3. 备份配置文件
@@ -227,7 +227,7 @@ sqlite3 backup/lingjing_$(date +%Y%m%d_%H%M).db "PRAGMA integrity_check;"
 
 ```bash
 # 备份单个表
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 .mode csv
 .output backup/users_$(date +%Y%m%d).csv
 SELECT * FROM users;
@@ -235,17 +235,17 @@ SELECT * FROM users;
 EOF
 
 # 备份表结构
-sqlite3 data/lingjing.db ".schema users" > backup/users_schema.sql
+sqlite3 data/app.db ".schema users" > backup/users_schema.sql
 ```
 
 ### 导出为 SQL
 
 ```bash
 # 导出整个数据库为 SQL
-sqlite3 data/lingjing.db ".dump" > backup/lingjing_$(date +%Y%m%d).sql
+sqlite3 data/app.db ".dump" > backup/lingjing_$(date +%Y%m%d).sql
 
 # 导出特定表
-sqlite3 data/lingjing.db ".dump users" > backup/users_$(date +%Y%m%d).sql
+sqlite3 data/app.db ".dump users" > backup/users_$(date +%Y%m%d).sql
 ```
 
 ---
@@ -261,14 +261,14 @@ sqlite3 data/lingjing.db ".dump users" > backup/users_$(date +%Y%m%d).sql
 docker-compose stop
 
 # 2. 备份当前数据（以防万一）
-mv data/lingjing.db data/lingjing.db.backup.$(date +%Y%m%d_%H%M)
+mv data/app.db data/app.db.backup.$(date +%Y%m%d_%H%M)
 
 # 3. 恢复数据库
 gunzip backup/lingjing_20240120_020000.db.gz
-cp backup/lingjing_20240120_020000.db data/lingjing.db
+cp backup/lingjing_20240120_020000.db data/app.db
 
 # 4. 验证数据库完整性
-sqlite3 data/lingjing.db "PRAGMA integrity_check;"
+sqlite3 data/app.db "PRAGMA integrity_check;"
 # 预期输出：ok
 
 # 5. 恢复配置文件
@@ -281,8 +281,8 @@ tar -xzf backup/models_20240120_020000.tar.gz -C ./
 docker-compose start
 
 # 8. 验证恢复
-curl http://localhost:8765/health
-sqlite3 data/lingjing.db "SELECT COUNT(*) FROM users;"
+curl http://localhost:8765/api/health/ping
+sqlite3 data/app.db "SELECT COUNT(*) FROM users;"
 ```
 
 ### 时间点恢复
@@ -296,20 +296,20 @@ ls -lh backup/database/
 
 # 2. 恢复数据库
 gunzip backup/database/lingjing_20240120_020000.db.gz
-cp backup/database/lingjing_20240120_020000.db data/lingjing.db
+cp backup/database/lingjing_20240120_020000.db data/app.db
 
 # 3. 应用 WAL 日志（如果需要更精确的时间点）
 # 找到目标时间点的 WAL 备份
 ls -lh backup/wal/
 # 假设需要应用到 10:30 的 WAL
 gunzip backup/wal/lingjing_20240120_1030.wal.gz
-cp backup/wal/lingjing_20240120_1030.wal data/lingjing.db-wal
+cp backup/wal/lingjing_20240120_1030.wal data/app.db-wal
 
 # 4. 启动服务（会自动应用 WAL）
 docker-compose start
 
 # 5. 验证数据
-sqlite3 data/lingjing.db "SELECT MAX(created_at) FROM tasks;"
+sqlite3 data/app.db "SELECT MAX(created_at) FROM tasks;"
 ```
 
 ### 单表恢复
@@ -326,13 +326,13 @@ SELECT * FROM users;
 EOF
 
 # 2. 导入到当前数据库
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 .mode csv
 .import /tmp/users.csv users
 EOF
 
 # 或使用 SQL 恢复
-sqlite3 data/lingjing.db <<EOF
+sqlite3 data/app.db <<EOF
 ATTACH DATABASE 'backup/lingjing_20240120.db' AS backup_db;
 INSERT OR REPLACE INTO users SELECT * FROM backup_db.users;
 DETACH DATABASE backup_db;
@@ -350,10 +350,10 @@ aws s3 cp s3://your-bucket/backups/database/lingjing_20240120_020000.db.gz \
 gunzip backup/lingjing_20240120_020000.db.gz
 
 # 3. 恢复
-cp backup/lingjing_20240120_020000.db data/lingjing.db
+cp backup/lingjing_20240120_020000.db data/app.db
 
 # 4. 验证
-sqlite3 data/lingjing.db "PRAGMA integrity_check;"
+sqlite3 data/app.db "PRAGMA integrity_check;"
 ```
 
 ---
@@ -671,12 +671,12 @@ openssl enc -aes-256-cbc -d \
 
 ```bash
 # 数据库备份
-sqlite3 data/lingjing.db ".backup backup.db"
-sqlite3 data/lingjing.db ".dump" > backup.sql
+sqlite3 data/app.db ".backup backup.db"
+sqlite3 data/app.db ".dump" > backup.sql
 
 # 数据库恢复
-sqlite3 data/lingjing.db ".restore backup.db"
-sqlite3 data/lingjing.db < backup.sql
+sqlite3 data/app.db ".restore backup.db"
+sqlite3 data/app.db < backup.sql
 
 # 压缩备份
 gzip backup.db
@@ -698,9 +698,8 @@ sqlite3 backup.db "PRAGMA integrity_check;"
 
 - [运维手册 README](./README.md)
 - [故障处理手册](./troubleshooting.md)
-- [安全加固指南](./security-hardening.md)
 
 ---
 
-**最后更新**: 2024-01-20  
+**最后更新**: 2026-07-10  
 **维护者**: 运维团队

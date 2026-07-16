@@ -23,6 +23,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from typing import Any, Dict, List, Optional, Tuple, Union
+from contextlib import nullcontext
 import time
 import os
 import asyncio
@@ -33,6 +34,16 @@ from datetime import datetime
 from app.ai.lnn.training.device_manager import (
     check_gpu_memory_safe,
     clear_gpu_memory,
+)
+from app.ai.lnn.training.reproducibility import (
+    set_global_seed,
+    get_worker_init_fn,
+)
+from app.ai.lnn.training.experiment_tracker import (
+    start_run as mlflow_start_run,
+    log_params as mlflow_log_params,
+    log_metrics as mlflow_log_metrics,
+    log_model as mlflow_log_model,
 )
 
 logger = logging.getLogger(__name__)
@@ -83,6 +94,14 @@ class LNNTrainer:
         weight_decay: float = 1e-5,
         progress_callback: Optional[Any] = None,
         cancel_event: Optional[Any] = None,
+        seed: int = 42,
+        track_experiment: bool = True,
+        # ADR-005 阶段 2：实验快照集成（可选，None 时不启用）
+        snapshot_store: Optional[Any] = None,
+        dataset_versions: Optional[List[str]] = None,
+        model_uri: Optional[str] = None,
+        created_by: str = "system:trainer",
+        workflow_spec: Optional[Dict[str, Any]] = None,
     ):
         """
         初始化训练器
@@ -102,7 +121,32 @@ class LNNTrainer:
             use_amp: 是否启用自动混合精度训练
             progress_callback: 进度回调函数，每个epoch结束后调用
             cancel_event: asyncio.Event 用于接收取消信号
+            seed: 随机种子，用于确保实验可复现性 (默认42)
+            track_experiment: 是否启用 MLflow 实验追踪 (默认True)。
+                mlflow 未安装时自动降级为空操作，不影响训练流程。
+            snapshot_store: 可选的 ISnapshotStore 实例。提供后训练结束自动记录实验快照
+                （含 git_sha + 配置 + 数据版本 + 指标 + 环境），支持一键复现。
+            dataset_versions: 关联的数据集版本 URI 列表（dataset://<name>/<version>），
+                写入快照用于血缘追溯。
+            model_uri: 模型 URI（如 model://ltc/1.0.0），写入快照用于复现。
+            created_by: 快照创建者标识，默认 "system:trainer"。
+            workflow_spec: 可选的 WorkflowSpec dict，写入快照 config['workflow_spec']
+                以支持一键复现（reproduce 时反序列化为 WorkflowSpec 并启动新运行）。
         """
+        # 必须在任何随机操作之前调用，确保可复现性
+        self.seed = seed
+        set_global_seed(seed)
+
+        self.track_experiment = track_experiment
+
+        # ADR-005 阶段 2：实验快照集成参数
+        self.snapshot_store = snapshot_store
+        self.dataset_versions = list(dataset_versions) if dataset_versions else []
+        self.model_uri = model_uri or "model://unknown"
+        self.created_by = created_by
+        self.workflow_spec = workflow_spec
+        self._last_snapshot_id: Optional[str] = None
+
         self.model = model
         self.learning_rate = learning_rate
         self.optimizer_type = optimizer_type
@@ -135,7 +179,7 @@ class LNNTrainer:
         self.current_epoch = 0
         self.best_val_loss = float("inf")
         self.patience_counter = 0
-        self.training_history: Dict[str, List[float]] = {
+        self.training_history: Dict[str, Any] = {
             "train_loss": [],
             "val_loss": [],
             "train_accuracy": [],
@@ -143,6 +187,7 @@ class LNNTrainer:
             "train_r2": [],
             "val_r2": [],
             "learning_rate": [],
+            "seed": seed,
         }
 
         self.best_model_state: Optional[Dict[str, Any]] = None
@@ -343,7 +388,8 @@ class LNNTrainer:
         all_preds = []
         all_labels = []
 
-        with torch.no_grad():
+        # P2-AI-4: 使用 inference_mode 替代 no_grad，验证/评估阶段无需 autograd 图，更高效
+        with torch.inference_mode():
             for batch_X, batch_y in dataloader:
                 batch_X = batch_X.to(self.device)
                 batch_y = batch_y.to(self.device)
@@ -417,131 +463,191 @@ class LNNTrainer:
         Returns:
             训练历史
         """
+        # 学术诚信：在训练开始前设置随机种子，确保实验可复现
+        # 必须在任何随机操作（DataLoader迭代、权重初始化、dropout等）之前执行
+        set_global_seed(self.seed)
+
         epochs = epochs or self.epochs
 
-        train_size = len(train_loader.dataset)
-        val_size = len(val_loader.dataset)
+        # 学术诚信：集成 MLflow 实验追踪，记录超参数和每个 epoch 的指标
+        # mlflow 为软依赖，未安装时 start_run 降级为 no-op 上下文
+        # track_experiment=False 时完全不追踪（即使 mlflow 已安装）
+        run_name = f"seed{self.seed}_{self.optimizer_type}_lr{self.learning_rate}"
+        if self.track_experiment:
+            tracking_ctx = mlflow_start_run(
+                run_name=run_name,
+                experiment_name="lnn_training",
+            )
+        else:
+            tracking_ctx = nullcontext()
 
-        logger.info(
-            "Train: %d samples, Val: %d samples",
-            train_size,
-            val_size,
-        )
+        with tracking_ctx:
+            mlflow_log_params({
+                "learning_rate": self.learning_rate,
+                "optimizer_type": self.optimizer_type,
+                "loss_type": self.loss_type,
+                "batch_size": self.batch_size,
+                "epochs": epochs,
+                "seed": self.seed,
+                "early_stopping_patience": self.early_stopping_patience,
+                "gradient_clip_value": self.gradient_clip_value,
+                "lr_scheduler_type": self.lr_scheduler_type,
+                "lr_scheduler_params": str(self.lr_scheduler_params),
+                "weight_decay": self.weight_decay,
+                "device": str(self.device),
+                "use_amp": self.use_amp,
+            })
 
-        device_info = self.device.type.upper()
-        if self.device.type == "cuda":
-            gpu_index = self.device.index if self.device.index is not None else 0
-            device_info = (
-                f"CUDA:{gpu_index} ({torch.cuda.get_device_properties(gpu_index).name})"
+            train_size = len(train_loader.dataset)
+            val_size = len(val_loader.dataset)
+
+            logger.info(
+                "Train: %d samples, Val: %d samples",
+                train_size,
+                val_size,
             )
 
-        logger.info("Starting training for %s epochs...", epochs)
-        logger.info(
-            "Optimizer: %s, LR: %s, Loss: %s",
-            self.optimizer_type,
-            self.learning_rate,
-            self.loss_type,
-        )
-        logger.info(
-            "Device: %s | AMP: %s",
-            device_info,
-            "enabled" if self.use_amp else "disabled",
-        )
-
-        training_start = time.perf_counter()
-
-        for epoch in range(epochs):
-            self.current_epoch = epoch + 1
-
-            if self.cancel_event and self.cancel_event.is_set():
-                logger.info("Training cancelled at epoch %s", epoch + 1)
-                raise asyncio.CancelledError("Training cancelled by user")
-
-            epoch_start = time.perf_counter()
-            train_loss, train_acc, train_r2 = self.train_epoch(train_loader)
-            epoch_time = time.perf_counter() - epoch_start
-
-            val_loss, val_acc, val_r2 = self.validate(val_loader)
-
-            self.training_history["train_loss"].append(train_loss)
-            self.training_history["train_accuracy"].append(train_acc)
-            self.training_history["val_loss"].append(val_loss)
-            self.training_history["val_accuracy"].append(val_acc)
-            self.training_history["train_r2"].append(train_r2)
-            self.training_history["val_r2"].append(val_r2)
-            self.training_history["learning_rate"].append(
-                self.optimizer.param_groups[0]["lr"]
-            )
-
-            if self.progress_callback:
-                try:
-                    metrics = {
-                        "train_accuracy": round(train_acc, 4),
-                        "val_accuracy": round(val_acc, 4),
-                        "train_loss": round(train_loss, 4),
-                        "val_loss": round(val_loss, 4),
-                        "train_r2": round(train_r2, 4),
-                        "val_r2": round(val_r2, 4),
-                    }
-                    self.progress_callback(
-                        epoch=self.current_epoch,
-                        loss=val_loss,
-                        metrics=metrics,
-                    )
-                except (RuntimeError, ValueError, TypeError, AttributeError) as cb_err:
-                    # 进度回调失败不应中断训练主流程，记录警告
-                    logger.warning(
-                        f"Progress callback failed: {cb_err}", exc_info=True
-                    )
-
-            device_display = device_info
-            if self.device.type == "cuda" and epoch % 10 == 0:
+            device_info = self.device.type.upper()
+            if self.device.type == "cuda":
                 gpu_index = self.device.index if self.device.index is not None else 0
-                mem_used_mb = torch.cuda.memory_allocated(gpu_index) / (1024**2)
-                mem_reserved_mb = torch.cuda.memory_reserved(gpu_index) / (1024**2)
-                device_display = f"{device_info} | GPU Mem: {mem_used_mb:.0f}/{mem_reserved_mb:.0f}MB"
+                device_info = (
+                    f"CUDA:{gpu_index} ({torch.cuda.get_device_properties(gpu_index).name})"
+                )
 
-            log_msg = (
-                f"Epoch {epoch + 1}/{epochs} | "
-                f"Device: {device_display} | "
-                f"Train Loss: {train_loss:.4f}, Train R²: {train_r2:.4f} | "
-                f"Val Loss: {val_loss:.4f}, Val R²: {val_r2:.4f} | "
-                f"LR: {self.optimizer.param_groups[0]['lr']:.6f} | "
-                f"Time: {epoch_time:.2f}s"
+            logger.info("Starting training for %s epochs...", epochs)
+            logger.info(
+                "Optimizer: %s, LR: %s, Loss: %s",
+                self.optimizer_type,
+                self.learning_rate,
+                self.loss_type,
             )
-            logger.info(log_msg)
+            logger.info(
+                "Device: %s | AMP: %s",
+                device_info,
+                "enabled" if self.use_amp else "disabled",
+            )
 
-            self._step_lr_scheduler(val_loss)
+            training_start = time.perf_counter()
 
-            if val_loss < self.best_val_loss:
-                self.best_val_loss = val_loss
-                self.patience_counter = 0
-                self.best_model_state = self._save_model_state()
-            else:
-                self.patience_counter += 1
-                if self.patience_counter >= self.early_stopping_patience:
-                    logger.info("Early stopping at epoch %s", epoch + 1)
-                    break
+            for epoch in range(epochs):
+                self.current_epoch = epoch + 1
 
-            if self.device.type == "cuda" and not check_gpu_memory_safe(
-                threshold_percent=95.0
-            ):
-                logger.warning("GPU memory usage high, clearing cache")
-                clear_gpu_memory(self.device)
+                if self.cancel_event and self.cancel_event.is_set():
+                    logger.info("Training cancelled at epoch %s", epoch + 1)
+                    raise asyncio.CancelledError("Training cancelled by user")
 
-        if self.best_model_state is not None:
-            self._restore_model_state(self.best_model_state)
-            logger.info("Restored best model with val_loss: %.4f", self.best_val_loss)
+                epoch_start = time.perf_counter()
+                train_loss, train_acc, train_r2 = self.train_epoch(train_loader)
+                epoch_time = time.perf_counter() - epoch_start
 
-        total_training_time = time.perf_counter() - training_start
-        logger.info(
-            "Training completed in %.2fs (%.2fs/epoch)",
-            total_training_time,
-            total_training_time / epochs,
-        )
+                val_loss, val_acc, val_r2 = self.validate(val_loader)
 
-        self.model.is_trained = True
-        return self.training_history
+                self.training_history["train_loss"].append(train_loss)
+                self.training_history["train_accuracy"].append(train_acc)
+                self.training_history["val_loss"].append(val_loss)
+                self.training_history["val_accuracy"].append(val_acc)
+                self.training_history["train_r2"].append(train_r2)
+                self.training_history["val_r2"].append(val_r2)
+                self.training_history["learning_rate"].append(
+                    self.optimizer.param_groups[0]["lr"]
+                )
+
+                # 学术诚信：每个 epoch 的指标记录到 MLflow
+                mlflow_log_metrics({
+                    "train_loss": train_loss,
+                    "val_loss": val_loss,
+                    "train_accuracy": train_acc,
+                    "val_accuracy": val_acc,
+                    "train_r2": train_r2,
+                    "val_r2": val_r2,
+                    "learning_rate": self.optimizer.param_groups[0]["lr"],
+                }, step=epoch)
+
+                if self.progress_callback:
+                    try:
+                        metrics = {
+                            "train_accuracy": round(train_acc, 4),
+                            "val_accuracy": round(val_acc, 4),
+                            "train_loss": round(train_loss, 4),
+                            "val_loss": round(val_loss, 4),
+                            "train_r2": round(train_r2, 4),
+                            "val_r2": round(val_r2, 4),
+                        }
+                        self.progress_callback(
+                            epoch=self.current_epoch,
+                            loss=val_loss,
+                            metrics=metrics,
+                        )
+                    except (RuntimeError, ValueError, TypeError, AttributeError) as cb_err:
+                        # 进度回调失败不应中断训练主流程，记录警告
+                        logger.warning(
+                            f"Progress callback failed: {cb_err}", exc_info=True
+                        )
+
+                device_display = device_info
+                if self.device.type == "cuda" and epoch % 10 == 0:
+                    gpu_index = self.device.index if self.device.index is not None else 0
+                    mem_used_mb = torch.cuda.memory_allocated(gpu_index) / (1024**2)
+                    mem_reserved_mb = torch.cuda.memory_reserved(gpu_index) / (1024**2)
+                    device_display = f"{device_info} | GPU Mem: {mem_used_mb:.0f}/{mem_reserved_mb:.0f}MB"
+
+                log_msg = (
+                    f"Epoch {epoch + 1}/{epochs} | "
+                    f"Device: {device_display} | "
+                    f"Train Loss: {train_loss:.4f}, Train R²: {train_r2:.4f} | "
+                    f"Val Loss: {val_loss:.4f}, Val R²: {val_r2:.4f} | "
+                    f"LR: {self.optimizer.param_groups[0]['lr']:.6f} | "
+                    f"Time: {epoch_time:.2f}s"
+                )
+                logger.info(log_msg)
+
+                self._step_lr_scheduler(val_loss)
+
+                if val_loss < self.best_val_loss:
+                    self.best_val_loss = val_loss
+                    self.patience_counter = 0
+                    self.best_model_state = self._save_model_state()
+                else:
+                    self.patience_counter += 1
+                    if self.patience_counter >= self.early_stopping_patience:
+                        logger.info("Early stopping at epoch %s", epoch + 1)
+                        break
+
+                if self.device.type == "cuda" and not check_gpu_memory_safe(
+                    threshold_percent=95.0
+                ):
+                    logger.warning("GPU memory usage high, clearing cache")
+                    clear_gpu_memory(self.device)
+
+            if self.best_model_state is not None:
+                self._restore_model_state(self.best_model_state)
+                logger.info("Restored best model with val_loss: %.4f", self.best_val_loss)
+
+            total_training_time = time.perf_counter() - training_start
+            logger.info(
+                "Training completed in %.2fs (%.2fs/epoch)",
+                total_training_time,
+                total_training_time / epochs,
+            )
+
+            self.model.is_trained = True
+
+            # 学术诚信：记录最终模型和训练摘要到 MLflow
+            mlflow_log_model(self.model, artifact_path="model")
+            mlflow_log_metrics({
+                "best_val_loss": self.best_val_loss,
+                "total_training_time_s": total_training_time,
+                "total_epochs_run": self.current_epoch,
+            })
+
+            # ADR-005 阶段 2：训练结束自动记录实验快照（best-effort，失败不中断）
+            # 强制记录 git SHA + 数据版本 + 完整配置 + 指标 + 环境，支持一键复现
+            if self.snapshot_store is not None:
+                self._record_experiment_snapshot_sync(
+                    total_training_time=total_training_time
+                )
+
+            return self.training_history
 
     @staticmethod
     def _compute_r2(y_true: "np.ndarray", y_pred: "np.ndarray") -> float:
@@ -574,6 +680,167 @@ class LNNTrainer:
         """恢复模型状态"""
         self.model.load_state_dict(state["model_state_dict"])
         self.optimizer.load_state_dict(state["optimizer_state_dict"])
+
+    # ------------------------------------------------------------------
+    # ADR-005 阶段 2：实验快照集成
+    # ------------------------------------------------------------------
+
+    def _build_snapshot_config(self, total_training_time: float) -> Dict[str, Any]:
+        """组装实验快照的 config 字段（含完整训练配置 + workflow_spec）."""
+        config: Dict[str, Any] = {
+            "hyperparams": {
+                "learning_rate": self.learning_rate,
+                "optimizer_type": self.optimizer_type,
+                "loss_type": self.loss_type,
+                "batch_size": self.batch_size,
+                "epochs": self.epochs,
+                "early_stopping_patience": self.early_stopping_patience,
+                "gradient_clip_value": self.gradient_clip_value,
+                "lr_scheduler_type": self.lr_scheduler_type,
+                "lr_scheduler_params": self.lr_scheduler_params,
+                "weight_decay": self.weight_decay,
+                "use_amp": self.use_amp,
+                "device": str(self.device),
+            },
+            "seed": self.seed,
+            "total_training_time_s": float(total_training_time),
+            "training_history": {
+                k: list(v) if isinstance(v, list) else v
+                for k, v in self.training_history.items()
+            },
+        }
+        # workflow_spec 用于一键复现：reproduce 时反序列化为 WorkflowSpec 并启动新运行
+        if self.workflow_spec is not None:
+            config["workflow_spec"] = self.workflow_spec
+        return config
+
+    def _build_snapshot_metrics(self) -> Dict[str, float]:
+        """组装实验快照的 metrics 字段（best_val_loss + final metrics）."""
+        metrics: Dict[str, float] = {
+            "best_val_loss": float(self.best_val_loss),
+            "total_epochs_run": float(self.current_epoch),
+        }
+        # final 指标（若存在）
+        if self.training_history.get("val_loss"):
+            metrics["final_val_loss"] = float(self.training_history["val_loss"][-1])
+        if self.training_history.get("train_loss"):
+            metrics["final_train_loss"] = float(
+                self.training_history["train_loss"][-1]
+            )
+        if self.training_history.get("val_r2"):
+            metrics["final_val_r2"] = float(self.training_history["val_r2"][-1])
+        if self.training_history.get("train_r2"):
+            metrics["final_train_r2"] = float(
+                self.training_history["train_r2"][-1]
+            )
+        return metrics
+
+    def _record_experiment_snapshot_sync(self, total_training_time: float) -> None:
+        """训练结束后 best-effort 同步记录实验快照.
+
+        在 sync 上下文中调用 async snapshot_store.create()：
+            - 若当前线程已有运行中的事件循环，调度为 task（非阻塞，可能未完成就退出）
+            - 若无事件循环，用 asyncio.run 阻塞执行
+        失败不中断训练流程，仅记录 warning。
+        """
+        if self.snapshot_store is None:
+            return
+        try:
+            config = self._build_snapshot_config(total_training_time)
+            metrics = self._build_snapshot_metrics()
+            notes = (
+                f"LNN training: seed={self.seed}, optimizer={self.optimizer_type}, "
+                f"epochs_run={self.current_epoch}, best_val_loss={self.best_val_loss:.6f}"
+            )
+            coro = self.snapshot_store.create(
+                config=config,
+                dataset_versions=list(self.dataset_versions),
+                model_uri=self.model_uri,
+                metrics=metrics,
+                created_by=self.created_by,
+                notes=notes,
+            )
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop is not None and loop.is_running():
+                # 已有事件循环运行：调度为 task，不阻塞
+                future = asyncio.ensure_future(coro)
+                # 注册回调记录 snapshot_id
+                def _on_done(task: "asyncio.Task[Any]") -> None:
+                    try:
+                        result = task.result()
+                        self._last_snapshot_id = getattr(result, "snapshot_id", None)
+                        if self._last_snapshot_id:
+                            logger.info(
+                                "Experiment snapshot recorded: %s",
+                                self._last_snapshot_id,
+                            )
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning(
+                            "Snapshot creation task failed: %s", exc, exc_info=True
+                        )
+                future.add_done_callback(_on_done)
+            else:
+                # 无运行中的事件循环：用 asyncio.run 阻塞执行
+                result = asyncio.run(coro)
+                self._last_snapshot_id = getattr(result, "snapshot_id", None)
+                if self._last_snapshot_id:
+                    logger.info(
+                        "Experiment snapshot recorded: %s", self._last_snapshot_id
+                    )
+        except Exception as e:  # noqa: BLE001
+            # best-effort：快照记录失败不影响训练结果
+            logger.warning(
+                f"记录实验快照失败（不影响训练结果）: {e}", exc_info=True
+            )
+
+    async def record_experiment_snapshot(
+        self, total_training_time: Optional[float] = None
+    ) -> Optional[str]:
+        """显式记录实验快照（async 调用方使用）.
+
+        Args:
+            total_training_time: 训练总耗时（秒）。None 时用 current_epoch 估算。
+
+        Returns:
+            snapshot_id（成功）或 None（失败或未配置 snapshot_store）。
+        """
+        if self.snapshot_store is None:
+            return None
+        if total_training_time is None:
+            total_training_time = float(self.current_epoch)
+        try:
+            config = self._build_snapshot_config(total_training_time)
+            metrics = self._build_snapshot_metrics()
+            notes = (
+                f"LNN training (explicit): seed={self.seed}, "
+                f"optimizer={self.optimizer_type}, "
+                f"epochs_run={self.current_epoch}, "
+                f"best_val_loss={self.best_val_loss:.6f}"
+            )
+            snap = await self.snapshot_store.create(
+                config=config,
+                dataset_versions=list(self.dataset_versions),
+                model_uri=self.model_uri,
+                metrics=metrics,
+                created_by=self.created_by,
+                notes=notes,
+            )
+            self._last_snapshot_id = getattr(snap, "snapshot_id", None)
+            if self._last_snapshot_id:
+                logger.info(
+                    "Experiment snapshot recorded (async): %s",
+                    self._last_snapshot_id,
+                )
+            return self._last_snapshot_id
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                f"显式记录实验快照失败: {e}", exc_info=True
+            )
+            return None
 
     def save_checkpoint(
         self,
@@ -609,6 +876,10 @@ class LNNTrainer:
             "scaler_state_dict": self.scaler.state_dict()
             if self.scaler is not None
             else None,
+            # 学术诚信修复：保存学习率调度器状态，避免恢复训练时调度器重置
+            "lr_scheduler_state_dict": self.lr_scheduler.state_dict()
+            if self.lr_scheduler is not None
+            else None,
         }
 
         os.makedirs(
@@ -636,7 +907,16 @@ class LNNTrainer:
                 "3) 如需重新训练，请调用 POST /api/v1/lnn/models/train 启动新训练任务。"
             )
 
-        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
+        # 学术诚信修复：使用 weights_only=True 防止任意 pickle 反序列化（安全风险）
+        # 检查点仅含 state_dict 和基础类型，weights_only=True 足够；
+        # 对 PyTorch < 2.0 不支持该参数的情况，回退到默认加载。
+        try:
+            checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+        except TypeError:
+            # PyTorch < 2.0 不支持 weights_only 参数，此处无法启用该安全选项
+            # P2-AI-5: 风险权衡——旧版 PyTorch 无 weights_only 保护，反序列化风险由调用方
+            # 保证 path 来源可信（仅加载本框架训练保存的检查点）来缓解
+            checkpoint = torch.load(path, map_location=self.device)
 
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
@@ -648,6 +928,10 @@ class LNNTrainer:
 
         if self.scaler is not None and checkpoint.get("scaler_state_dict") is not None:
             self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
+
+        # 学术诚信修复：恢复学习率调度器状态，避免调度器重置导致学习率跳变
+        if self.lr_scheduler is not None and checkpoint.get("lr_scheduler_state_dict") is not None:
+            self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
 
         logger.info("Checkpoint loaded from %s", path)
         return checkpoint
@@ -673,7 +957,8 @@ class LNNTrainer:
         if hasattr(self.model, "reset"):
             self.model.reset()
 
-        with torch.no_grad():
+        # P2-AI-4: 使用 inference_mode 替代 no_grad，TorchScript trace 仅记录前向操作，无需 autograd 图
+        with torch.inference_mode():
             scripted = torch.jit.trace(self.model, example_input, check_trace=False)
 
         save_dir = os.path.dirname(save_path)

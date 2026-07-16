@@ -1,7 +1,7 @@
 """
 实验9: 跨工况泛化实验 (LOMO/LOCO协议)
 
-验证CT-LTC在跨材料、跨工况场景下的泛化能力
+验证DL-LNN在跨材料、跨工况场景下的泛化能力
 
 协议说明:
 - LOMO (Leave-One-Material-Out): 训练集含4种材料,测试集为第5种材料
@@ -9,7 +9,7 @@
 
 实验目标:
 - 验证连续时间建模对跨工况泛化的优势
-- 对比CT-LTC与离散时间网络的泛化性能差异
+- 对比DL-LNN与离散时间网络的泛化性能差异
 - 量化PCC Loss对物理一致性的贡献
 """
 
@@ -28,10 +28,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import ExperimentConfig
 from data_generator import IndustrialChatterDataset
-from models import CTCTCWithPhysics, BaselineLSTM, BaselineTransformer, BaselinePINN, BaselineBPNN, create_model
+from models import DLLNNWithPhysics, BaselineLSTM, BaselineTransformer, BaselinePINN, BaselineBPNN, create_model
 from losses import PCC_Loss
 from metrics import ChatterMetrics as Metrics
-from trainer import CTCTCTrainer, BaselineTrainer
+from trainer import DLLNNTrainer, BaselineTrainer
 
 
 class CrossConditionExperiment:
@@ -230,13 +230,13 @@ class CrossConditionExperiment:
         
         model_results = {}
         
-        # 1. CT-LTC (本文方法)
-        print("  训练 CT-LTC...")
+        # 1. DL-LNN (本文方法)
+        print("  训练 DL-LNN...")
         # 移除手动模型创建，使用trainer内部模型创建
-        trainer = CTCTCTrainer(self.config, self.device)
+        trainer = DLLNNTrainer(self.config, self.device)
         trainer.train(train_loader, test_loader)
         ct_ltc_metrics = trainer.evaluate(test_loader)
-        model_results['CT-LTC'] = ct_ltc_metrics
+        model_results['DL-LNN'] = ct_ltc_metrics
         
         # 2. LSTM
         print("  训练 LSTM...")

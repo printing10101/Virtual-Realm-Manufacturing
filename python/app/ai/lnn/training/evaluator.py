@@ -83,7 +83,8 @@ class LNNEvaluator:
         all_labels = []
         inference_times = []
 
-        with torch.no_grad():
+        # P2-AI-4: 使用 inference_mode 替代 no_grad，评估阶段无需 autograd 图，更高效
+        with torch.inference_mode():
             for batch_X, batch_y in dataloader:
                 batch_X = batch_X.to(self.device)
                 batch_y = batch_y.to(self.device)
@@ -458,8 +459,10 @@ class LNNEvaluator:
         """
         self.model.eval()
 
-        with torch.no_grad():
-            X_tensor = torch.FloatTensor(X_test).to(self.device)
+        # P2-AI-4: 使用 inference_mode 替代 no_grad，特征重要性评估无需 autograd 图
+        with torch.inference_mode():
+            # P3-AI-3: 使用 torch.tensor + 显式 dtype 替代 FloatTensor，避免受全局默认 dtype 影响
+            X_tensor = torch.tensor(X_test, dtype=torch.float32).to(self.device)
             baseline_output = self.model(X_tensor).cpu().numpy()
 
         baseline_score = self._compute_metric_score(baseline_output, metric)
@@ -473,8 +476,10 @@ class LNNEvaluator:
                 X_permuted = X_test.copy()
                 np.random.shuffle(X_permuted[:, feat_idx])
 
-                with torch.no_grad():
-                    X_tensor = torch.FloatTensor(X_permuted).to(self.device)
+                # P2-AI-4: 使用 inference_mode 替代 no_grad，特征重要性评估无需 autograd 图
+                with torch.inference_mode():
+                    # P3-AI-3: 使用 torch.tensor + 显式 dtype 替代 FloatTensor
+                    X_tensor = torch.tensor(X_permuted, dtype=torch.float32).to(self.device)
                     perm_output = self.model(X_tensor).cpu().numpy()
 
                 perm_score = self._compute_metric_score(perm_output, metric)
@@ -706,5 +711,5 @@ class LNNEvaluator:
         plt.close()
         plot_paths["performance"] = perf_path
 
-        logger.info(f"Evaluation plots saved to {output_dir}")
+        logger.info("Evaluation plots saved to %s", output_dir)
         return plot_paths

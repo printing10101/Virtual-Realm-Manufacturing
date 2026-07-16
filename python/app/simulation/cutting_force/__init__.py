@@ -23,6 +23,18 @@ from app.simulation.cutting_force.kienzle import (
     get_kienzle_coefficients,
     DEFAULT_MATERIAL_COEFFICIENTS,
 )
+from app.simulation.cutting_force.adaptive_milling import (
+    AdaptiveMillingParams,
+    AdaptiveMillingResult,
+    AdaptiveMillingSolver,
+    SegmentSolution,
+    DEFAULT_TARGET_FORCE_N,
+    DEFAULT_MAX_AXIAL_DEPTH_MM,
+    DEFAULT_MIN_AXIAL_DEPTH_MM,
+    DEFAULT_MAX_FZ_MM,
+    DEFAULT_MIN_FZ_MM,
+    DEFAULT_MAX_FEED_MM_PER_MIN,
+)
 
 # pinn / predictor / trainer 依赖 torch，桌面 MVP 排除 torch 时软降级
 try:
@@ -58,4 +70,15 @@ __all__ = [
     "predict_cutting_force",
     "predict_cutting_force_batch",
     "_HAS_TORCH",
+    # Adaptive Milling
+    "AdaptiveMillingParams",
+    "AdaptiveMillingResult",
+    "AdaptiveMillingSolver",
+    "SegmentSolution",
+    "DEFAULT_TARGET_FORCE_N",
+    "DEFAULT_MAX_AXIAL_DEPTH_MM",
+    "DEFAULT_MIN_AXIAL_DEPTH_MM",
+    "DEFAULT_MAX_FZ_MM",
+    "DEFAULT_MIN_FZ_MM",
+    "DEFAULT_MAX_FEED_MM_PER_MIN",
 ]
