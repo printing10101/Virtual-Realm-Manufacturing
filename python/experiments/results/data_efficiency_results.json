@@ -9,13 +9,13 @@
     1.0
   ],
   "models": [
-    "CT-LTC",
+    "DL-LNN",
     "LSTM",
     "GRU"
   ],
   "results": {
     "PHM2010": {
-      "CT-LTC": {
+      "DL-LNN": {
         "10%": {
           "num_samples": 200,
           "train_loss": 6.9635237693786625,
@@ -158,7 +158,7 @@
       }
     },
     "6061-T6": {
-      "CT-LTC": {
+      "DL-LNN": {
         "10%": {
           "num_samples": 50,
           "train_loss": 8.872695207595825,

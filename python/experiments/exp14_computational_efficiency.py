@@ -20,11 +20,17 @@ from typing import Dict, Any
 # 添加项目根目录到路径
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+# 添加项目根目录（python/）到 path，用于导入 app 模块
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from app.ai.lnn.training.reproducibility import set_global_seed
 
 from config import ModelConfig, ExperimentConfig
 from models import (
-    CTLTCModel,
-    CTCTCWithPhysics,
+    DLLNNModel,
+    DLLNNWithPhysics,
     BaselineLSTM,
     BaselineTransformer,
     BaselinePINN,
@@ -156,7 +162,7 @@ def measure_training_time(
 
             # 前向传播
             output = model(batch_features)
-            # CTCTCWithPhysics返回元组，取第一个元素
+            # DLLNNWithPhysics返回元组，取第一个元素
             if isinstance(output, tuple):
                 output = output[0]
 
@@ -297,8 +303,8 @@ def run_computational_efficiency_experiment():
 
     # 定义要对比的模型列表（仅包含create_model支持的模型）
     model_names = [
-        "CT-LTC",       # CTCTCWithPhysics（带物理分支的完整模型）
-        "LTC",          # CTLTCModel（纯LTC模型）
+        "DL-LNN",       # DLLNNWithPhysics（带物理分支的完整模型）
+        "LTC",          # DLLNNModel（纯LTC模型）
         "LSTM",         # 基线LSTM
         "Transformer",  # 基线Transformer
         "PINN",         # 基线PINN
@@ -423,4 +429,5 @@ def run_computational_efficiency_experiment():
 
 
 if __name__ == "__main__":
+    set_global_seed(42)
     run_computational_efficiency_experiment()

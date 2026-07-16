@@ -29,7 +29,10 @@ class LMStudioProvider(LLMProvider):
 
     DEFAULT_PORT = 1234
     DEFAULT_BASE_URL = "http://127.0.0.1:1234/v1"
-    DEFAULT_API_KEY = "lm-studio"
+    # LM Studio 本地占位 key（OpenAI 兼容接口需要 Authorization 头）。
+    # 这是 LM Studio 官方文档公开的占位字符串，非真实凭证，本地服务不校验此值。
+    # nosec B105: 跳过 bandit 硬编码密码字符串检查（此处为公开占位 key，非凭证）
+    DEFAULT_API_KEY = "lm-studio"  # nosec B105
 
     def __init__(self, config: ProviderConfig) -> None:
         # 如果未指定 base_url，使用默认本地地址

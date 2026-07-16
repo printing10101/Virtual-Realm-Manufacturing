@@ -13,6 +13,15 @@ from app.simulation.voxel_cutter.cutter import (
 )
 from app.simulation.voxel_cutter.models import VoxelSimulationResult, CollisionInfo
 from app.simulation.voxel_cutter.mesher import HAS_SKIMAGE, ToolModel, reconstruct_mesh
+from app.simulation.voxel_cutter.auto_diff import (
+    DEFAULT_GOUGE_REJECT_RATIO,
+    DEFAULT_GOUGE_WARN_RATIO,
+    DEFAULT_LEFTOVER_REJECT_RATIO,
+    DEFAULT_LEFTOVER_WARN_RATIO,
+    DiffRegion,
+    DiffResult,
+    GeometryDiffer,
+)
 
 __all__ = [
     "VoxelCutter",
@@ -29,4 +38,12 @@ __all__ = [
     "STL_RETRY_INTERVAL",
     "HAS_NUMBA",
     "HAS_SKIMAGE",
+    # Auto-Diff 几何比对
+    "GeometryDiffer",
+    "DiffResult",
+    "DiffRegion",
+    "DEFAULT_GOUGE_REJECT_RATIO",
+    "DEFAULT_GOUGE_WARN_RATIO",
+    "DEFAULT_LEFTOVER_REJECT_RATIO",
+    "DEFAULT_LEFTOVER_WARN_RATIO",
 ]

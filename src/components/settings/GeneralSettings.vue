@@ -165,6 +165,82 @@
 
           <el-divider />
 
+          <!-- [U-P0-2] 硬件档位配置分区 -->
+          <div class="form-section">
+            <div class="form-section__title">
+              <el-icon><Cpu /></el-icon>
+              <span>{{ $t('settings.hardwareTierConfig') }}</span>
+            </div>
+            <el-form-item :label="$t('settings.hardwareTier')">
+              <el-select
+                v-model="store.settings.hardwareTier"
+                style="width: 240px;"
+                @change="handleHardwareTierChange"
+              >
+                <el-option
+                  :label="$t('settings.hardwareTierMinimal')"
+                  value="minimal"
+                />
+                <el-option
+                  :label="$t('settings.hardwareTierStandard')"
+                  value="standard"
+                />
+                <el-option
+                  :label="$t('settings.hardwareTierHigh')"
+                  value="high"
+                />
+                <el-option
+                  :label="$t('settings.hardwareTierUltra')"
+                  value="ultra"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-alert
+                :title="hardwareTierDescription"
+                type="info"
+                :closable="false"
+                show-icon
+              />
+            </el-form-item>
+            <el-form-item :label="$t('settings.lightweightMode')">
+              <el-switch
+                v-model="store.settings.lightweightMode"
+                :disabled="store.settings.hardwareTier === 'minimal'"
+              />
+              <span class="form-hint">{{ $t('settings.lightweightModeDesc') }}</span>
+            </el-form-item>
+            <el-form-item v-if="store.settings.hardwareTier === 'minimal'">
+              <el-alert
+                :title="$t('settings.lightweightModeAutoEnabled')"
+                type="warning"
+                :closable="false"
+                show-icon
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button
+                size="small"
+                :loading="syncingEnv"
+                @click="handleSyncEnv"
+              >
+                <el-icon style="margin-right: 4px;"><Refresh /></el-icon>
+                {{ $t('settings.hardwareTierSyncEnv') }}
+              </el-button>
+              <span class="form-hint">{{ $t('settings.hardwareTierSyncEnvDesc') }}</span>
+            </el-form-item>
+            <el-form-item>
+              <el-alert
+                :title="$t('settings.hardwareTierChangeHint')"
+                type="warning"
+                :closable="false"
+                show-icon
+              />
+            </el-form-item>
+          </div>
+
+          <el-divider />
+
           <div class="form-section">
             <div class="form-section__title">
               <el-icon><Tools /></el-icon>
@@ -215,9 +291,12 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import { useSettingsStore } from '@/stores/settings'
 import { useVersionStore } from '@/stores/version'
 import { useSettings } from '@/composables/useSettings'
+import { useI18n } from 'vue-i18n'
 import {
   InfoFilled, Monitor, Cpu, Coin, Refresh,
   Setting, Connection, Tools, Check, RefreshLeft
@@ -226,6 +305,70 @@ import {
 const store = useSettingsStore()
 const versionStore = useVersionStore()
 const { currentLocale, handleLocaleChange } = useSettings()
+const { t } = useI18n()
+
+// [U-P0-2] 硬件档位相关状态与逻辑
+const syncingEnv = ref(false)
+
+const hardwareTierDescription = computed(() => {
+  const tier = store.settings.hardwareTier
+  switch (tier) {
+    case 'minimal': return t('settings.hardwareTierMinimalDesc')
+    case 'standard': return t('settings.hardwareTierStandardDesc')
+    case 'high': return t('settings.hardwareTierHighDesc')
+    case 'ultra': return t('settings.hardwareTierUltraDesc')
+    default: return ''
+  }
+})
+
+/**
+ * 硬件档位变更处理：
+ *  - minimal 档位自动启用轻量模式（与后端 HardwareTierConfig.__post_init__ 派生逻辑一致）
+ *  - 切换离开 minimal 时不清除 lightweightMode（用户可显式关闭）
+ */
+function handleHardwareTierChange(value: string) {
+  if (value === 'minimal') {
+    store.settings.lightweightMode = true
+  }
+  store.saveSettings()
+}
+
+/**
+ * 同步环境变量到 .env 文件：
+ *  由于 Tauri 端暂无写 .env 的 IPC 命令，此处采用降级方案——
+ *  弹出 ElMessageBox 展示要写入的环境变量内容，用户可复制手动粘贴到 .env 文件。
+ *  这样既不引入未实现的 IPC 调用，又保证用户能获得明确的配置指引。
+ */
+async function handleSyncEnv() {
+  syncingEnv.value = true
+  try {
+    const tier = store.settings.hardwareTier
+    const lightweight = store.settings.lightweightMode
+    // minimal 档位后端会自动派生 skip_ollama=true，其他档位根据 lightweight_mode 决定
+    const skipOllama = tier === 'minimal' || lightweight
+    const content = [
+      '# [U-P0-2] 硬件档位配置（由前端设置同步生成）',
+      `LNN_HARDWARE_TIER=${tier}`,
+      `LNN_LIGHTWEIGHT_MODE=${lightweight ? 'true' : 'false'}`,
+      `LNN_SKIP_OLLAMA=${skipOllama ? 'true' : 'false'}`,
+      `LNN_MAX_CONCURRENT_AI=${lightweight ? '1' : '2'}`,
+    ].join('\n')
+
+    await ElMessageBox.alert(
+      `<pre style="background:#f5f7fa;padding:12px;border-radius:4px;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-all;">${content}</pre>`,
+      t('settings.hardwareTierSyncEnvDesc'),
+      {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: t('common.confirm'),
+      }
+    )
+    ElMessage.success(t('settings.hardwareTierSyncSuccess'))
+  } catch {
+    // 用户取消弹窗时不显示错误
+  } finally {
+    syncingEnv.value = false
+  }
+}
 
 function refreshVersions() {
   versionStore.fetchVersionInfo()
@@ -320,6 +463,14 @@ function refreshVersions() {
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--bg-100);
+}
+
+/* [U-P0-2] 表单项内联提示文字 */
+.form-hint {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
 }
 
 .form-section__title .el-icon {

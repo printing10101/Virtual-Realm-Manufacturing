@@ -22,6 +22,9 @@ from app.ai.process_understanding.task_classifier import TaskType
 
 logger = logging.getLogger(__name__)
 
+# RAG 检索 top_k 兜底默认值（当 task_type 未命中 TASK_TYPE_DEFAULT_TOP_K 时使用）
+DEFAULT_RAG_TOP_K = 5
+
 
 class RetrievalStrategy(Enum):
     VECTOR = "vector"
@@ -110,10 +113,15 @@ def _get_rag_engine() -> Any:
             return _rag_engine_instance
         from app.rag.knowledge_base import get_knowledge_base
         from app.rag.rag_retrieval import RagRetrievalEngine
+        from app.rag.signal_fusion_kb import get_signal_fusion_kb
 
         kb = get_knowledge_base()
-        _rag_engine_instance = RagRetrievalEngine(knowledge_base=kb)
-        logger.info("KnowledgeRetriever: RagRetrievalEngine singleton initialized")
+        # 集成点 2：显式注入 signal_fusion_kb（与 app/rag/routes.py 保持一致）
+        _rag_engine_instance = RagRetrievalEngine(
+            knowledge_base=kb,
+            signal_fusion_kb=get_signal_fusion_kb(),
+        )
+        logger.info("KnowledgeRetriever: RagRetrievalEngine singleton initialized (signal_fusion_kb injected)")
     return _rag_engine_instance
 
 
@@ -160,7 +168,7 @@ class KnowledgeRetriever:
         start_time = time.perf_counter()
         self._total_queries += 1
 
-        actual_top_k = top_k or TASK_TYPE_DEFAULT_TOP_K.get(task_type, 5)
+        actual_top_k = top_k or TASK_TYPE_DEFAULT_TOP_K.get(task_type, DEFAULT_RAG_TOP_K)
         intent_value = TASK_TYPE_TO_QUERY_INTENT.get(task_type, "general")
         pipeline_level = TASK_TYPE_TO_PIPELINE_LEVEL.get(task_type, "standard")
 
@@ -286,7 +294,10 @@ class KnowledgeRetriever:
             vector_score = 0.0
             if distance is not None:
                 try:
-                    vector_score = 1.0 - min(float(distance), 1.0)
+                    # 学术诚信修复：ChromaDB 使用 cosine 距离（distance ∈ [0,2]），
+                    # 原 1.0 - min(distance, 1.0) 在 distance>1 时截断为 0，丢失区分度；
+                    # 改为标准 cosine 归一化 1.0 - distance/2.0
+                    vector_score = 1.0 - float(distance) / 2.0
                 except (TypeError, ValueError):
                     vector_score = 0.0
 

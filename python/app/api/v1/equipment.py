@@ -19,6 +19,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission, require_role
 from app.core.response import ErrorCode, error, success
@@ -34,14 +35,60 @@ router = APIRouter(
 
 
 # ---------------------------------------------------------------------------
+# [P1] Pydantic 请求模型替换 body: dict 弱验证
+# service 层已有白名单校验，此处添加 schema 用于：
+#   1. 自动生成 OpenAPI 文档，前端可类型推导
+#   2. 请求阶段即拒绝非法字段（422），而非等到 service 层
+#   3. 统一 API 契约
+# ---------------------------------------------------------------------------
+
+class EquipmentUpdateRequest(BaseModel):
+    """更新设备状态和指标的请求体（白名单字段）。
+
+    与 service 层 ``_EQUIPMENT_ALLOWED_FIELDS`` 保持一致。
+    所有字段可选，至少传一个。
+    """
+
+    status: Optional[str] = Field(None, description="设备状态: 运行中/待机/维护中/故障")
+    temperature: Optional[float] = Field(None, description="温度")
+    vibration: Optional[float] = Field(None, description="振动")
+    rpm: Optional[float] = Field(None, description="转速")
+    power: Optional[float] = Field(None, description="功率")
+
+
+class AlarmStatusUpdateRequest(BaseModel):
+    """更新告警状态的请求体。
+
+    status 必须为 ``_ALARM_VALID_STATUSES`` 之一（service 层二次校验）。
+    """
+
+    status: str = Field(..., description="告警状态: 未处理/已确认/已解决")
+
+
+class MaintenancePlanUpdateRequest(BaseModel):
+    """更新维护计划的请求体（白名单字段）。
+
+    与 service 层 ``_MAINTENANCE_ALLOWED_FIELDS`` 保持一致。
+    所有字段可选，至少传一个。
+    """
+
+    title: Optional[str] = Field(None, description="计划标题")
+    type: Optional[str] = Field(None, description="计划类型")
+    frequency: Optional[str] = Field(None, description="维护频率")
+    last_date: Optional[str] = Field(None, description="上次维护日期")
+    next_date: Optional[str] = Field(None, description="下次维护日期")
+    status: Optional[str] = Field(None, description="计划状态")
+
+
+# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
 @router.get("")
 async def list_equipment(
     status: Optional[str] = Query(None, description="按状态过滤: 运行中/待机/维护中/故障"),
-    page: int = Query(1, ge=1, description="页码（从 1 开始）"),
-    page_size: int = Query(50, ge=1, le=500, description="每页条数（最大 500）"),
+    page: int = Query(1, ge=1, le=500, description="页码（从 1 开始）"),
+    page_size: int = Query(50, ge=1, le=100, description="每页条数（最大 500）"),
 ):
     """获取设备列表，可按状态过滤并分页。"""
     try:
@@ -80,10 +127,12 @@ async def get_equipment(equipment_id: str):
 
 
 @router.put("/{equipment_id}")
-async def update_equipment(equipment_id: str, body: dict):
+async def update_equipment(equipment_id: str, body: EquipmentUpdateRequest):
     """更新设备状态和指标。"""
+    # 仅取客户端实际提供的字段，转换为 service 层期望的 dict
+    update_dict = body.model_dump(exclude_unset=True)
     try:
-        data = await equipment_service.update_equipment(equipment_id, body)
+        data = await equipment_service.update_equipment(equipment_id, update_dict)
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
     except ValueError as exc:
@@ -92,10 +141,8 @@ async def update_equipment(equipment_id: str, body: dict):
     if data is None:
         return error(code=ErrorCode.NOT_FOUND, message=f"设备 '{equipment_id}' 未找到")
 
-    # data 自带更新后的字段；这里需要重新计算 updated 列表以保持原消息格式
-    # （service 已返回完整 dict，但消息中的字段列表需另传，这里从 body 推导）
-    allowed_fields = {"status", "temperature", "vibration", "rpm", "power"}
-    updated = [k for k in body.keys() if k in allowed_fields]
+    # schema 已约束字段白名单，update_dict 的键即为有效更新字段
+    updated = list(update_dict.keys())
     return success(data=data, message=f"设备已更新: {', '.join(updated)}")
 
 
@@ -108,8 +155,8 @@ async def list_alarms(
     equipment_id: Optional[str] = Query(None, description="按设备ID过滤"),
     status: Optional[str] = Query(None, description="按状态过滤: 未处理/已确认/已解决"),
     severity: Optional[str] = Query(None, description="按严重程度过滤: 紧急/警告/提示"),
-    page: int = Query(1, ge=1, description="页码（从 1 开始）"),
-    page_size: int = Query(50, ge=1, le=500, description="每页条数（最大 500）"),
+    page: int = Query(1, ge=1, le=500, description="页码（从 1 开始）"),
+    page_size: int = Query(50, ge=1, le=100, description="每页条数（最大 500）"),
 ):
     """获取告警列表，支持多条件过滤和分页。"""
     try:
@@ -127,10 +174,12 @@ async def list_alarms(
 
 
 @router.put("/alarms/{alarm_id}/status")
-async def update_alarm_status(alarm_id: str, body: dict):
+async def update_alarm_status(alarm_id: str, body: AlarmStatusUpdateRequest):
     """更新告警状态。"""
+    # 转换为 service 层期望的 dict（保持向后兼容）
+    update_dict = body.model_dump(exclude_unset=True)
     try:
-        data = await equipment_service.update_alarm_status(alarm_id, body)
+        data = await equipment_service.update_alarm_status(alarm_id, update_dict)
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
     except ValueError as exc:
@@ -150,8 +199,8 @@ async def update_alarm_status(alarm_id: str, body: dict):
 async def list_maintenance_plans(
     equipment_id: Optional[str] = Query(None, description="按设备ID过滤"),
     status: Optional[str] = Query(None, description="按状态过滤"),
-    page: int = Query(1, ge=1, description="页码（从 1 开始）"),
-    page_size: int = Query(50, ge=1, le=500, description="每页条数（最大 500）"),
+    page: int = Query(1, ge=1, le=500, description="页码（从 1 开始）"),
+    page_size: int = Query(50, ge=1, le=100, description="每页条数（最大 500）"),
 ):
     """获取维护计划列表，支持过滤和分页。"""
     try:
@@ -168,10 +217,12 @@ async def list_maintenance_plans(
 
 
 @router.put("/maintenance/{plan_id}")
-async def update_maintenance_plan(plan_id: str, body: dict):
+async def update_maintenance_plan(plan_id: str, body: MaintenancePlanUpdateRequest):
     """更新维护计划。"""
+    # 仅取客户端实际提供的字段，转换为 service 层期望的 dict
+    update_dict = body.model_dump(exclude_unset=True)
     try:
-        data = await equipment_service.update_maintenance_plan(plan_id, body)
+        data = await equipment_service.update_maintenance_plan(plan_id, update_dict)
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
     except ValueError as exc:
@@ -180,8 +231,8 @@ async def update_maintenance_plan(plan_id: str, body: dict):
     if data is None:
         return error(code=ErrorCode.NOT_FOUND, message=f"维护计划 '{plan_id}' 未找到")
 
-    allowed_fields = {"title", "type", "frequency", "last_date", "next_date", "status"}
-    updated = [k for k in body.keys() if k in allowed_fields]
+    # schema 已约束字段白名单，update_dict 的键即为有效更新字段
+    updated = list(update_dict.keys())
     return success(data=data, message=f"维护计划已更新: {', '.join(updated)}")
 
 

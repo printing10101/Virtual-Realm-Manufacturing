@@ -28,6 +28,9 @@ from app.models.governance import (
 
 logger = logging.getLogger(__name__)
 
+# 默认预算阈值，超过此值的资源请求会被标记为 B_TYPE 风险
+DEFAULT_BUDGET_THRESHOLD = 1000.0
+
 
 class OperationCategory(str, Enum):
     """操作分类"""
@@ -228,7 +231,7 @@ class HighRiskOperationIdentifier:
 
     def __init__(self, risk_scorer: Optional[RiskScorer] = None):
         self._risk_scorer = risk_scorer or RiskScorer()
-        self._budget_threshold = 1000.0
+        self._budget_threshold = DEFAULT_BUDGET_THRESHOLD
         self._sensitive_data_patterns: List[str] = []
 
     def set_budget_threshold(self, threshold: float) -> None:

@@ -13,7 +13,7 @@
 
 修订范围：
     - docs/大创赛/论文实验/DL-LNN论文_数据修正版_仿真数据说明版.docx
-    - docs/大创赛/论文实验/CT-LTC综合实验报告.docx
+    - docs/大创赛/论文实验/DL-LNN综合实验报告.docx
 
 备份策略：
     修改前自动备份原始文件为 *.docx.bak
@@ -34,7 +34,7 @@ _PAPERS_DIR = _PROJECT_ROOT / "docs" / "大创赛" / "论文实验"
 
 _PAPER_FILES = [
     _PAPERS_DIR / "DL-LNN论文_数据修正版_仿真数据说明版.docx",
-    _PAPERS_DIR / "CT-LTC综合实验报告.docx",
+    _PAPERS_DIR / "DL-LNN综合实验报告.docx",
 ]
 
 # 通用的文本替换规则（应用于两篇论文的所有段落）

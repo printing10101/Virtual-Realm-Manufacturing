@@ -1,4 +1,4 @@
-﻿"""Functional tests for Template Branching System."""
+"""Functional tests for Template Branching System."""
 
 import os
 import shutil
@@ -224,17 +224,21 @@ def test_startup_initialization():
     db_path = os.path.join(tmpdir, "test.db")
     json_dir = os.path.join(tmpdir, "branches")
 
+    # P2-1 修复：用 try/finally 保护资源，防止 assert 失败导致
+    # sqlite 连接、manager、tmpdir 泄漏。
     manager = init_template_branching(db_path=db_path, json_dir=json_dir)
+    conn = None
+    try:
+        same = get_branch_manager()
+        assert same is manager
 
-    same = get_branch_manager()
-    assert same is manager
-
-    conn = sqlite3.connect(db_path)
-    cursor = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='template_branches'"
-    )
-    assert cursor.fetchone() is not None
-    conn.close()
-
-    manager.close()
-    shutil.rmtree(tmpdir)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='template_branches'"
+        )
+        assert cursor.fetchone() is not None
+    finally:
+        if conn is not None:
+            conn.close()
+        manager.close()
+        shutil.rmtree(tmpdir, ignore_errors=True)

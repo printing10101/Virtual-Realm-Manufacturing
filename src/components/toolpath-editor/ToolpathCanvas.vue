@@ -97,7 +97,6 @@ watch(
   () => {
     redrawSegments()
   },
-  { deep: true },
 )
 
 function initScene() {

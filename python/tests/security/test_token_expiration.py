@@ -19,7 +19,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from jose import jwt as jose_jwt
+import jwt
 
 from app.auth import security as security_module
 from app.auth.security import (
@@ -85,7 +85,7 @@ class TestSecretGeneration:
 class TestTokenIssuance:
     def test_access_token_contains_exp_and_type(self):
         token = create_access_token({"sub": "u1"})
-        payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         assert payload.get("type") == "access"
         assert "exp" in payload
         # 过期时间应当在未来
@@ -93,13 +93,13 @@ class TestTokenIssuance:
 
     def test_refresh_token_contains_type_refresh(self):
         token = create_refresh_token({"sub": "u1"})
-        payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         assert payload.get("type") == "refresh"
 
     def test_custom_expires_delta(self):
         delta = timedelta(minutes=1)
         token = create_access_token({"sub": "u1"}, expires_delta=delta)
-        payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         # 过期时间应在 (now, now+2min) 之间
         now = int(time.time())
         assert now < payload["exp"] <= now + 120
@@ -135,7 +135,7 @@ class TestTokenExpiration:
         )
         # 把系统时间向后拨 1 小时（jose 内部使用 datetime.utcnow，monkeypatch 比较难）
         datetime.now(timezone.utc) + timedelta(hours=1)
-        expired = jose_jwt.encode(
+        expired = jwt.encode(
             {
                 "sub": "u1",
                 "type": "access",
@@ -157,7 +157,7 @@ class TestTokenExpiration:
 
     def test_decode_token_strict_rejects_missing_sub(self):
         # 没有 sub 的 token 即使类型正确也应当被严格模式拒绝
-        token = jose_jwt.encode(
+        token = jwt.encode(
             {
                 "type": "access",
                 "exp": int(time.time()) + 60,

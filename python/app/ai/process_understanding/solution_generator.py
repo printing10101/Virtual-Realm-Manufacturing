@@ -21,6 +21,9 @@ from app.ai.process_understanding.knowledge_retriever import (
 
 logger = logging.getLogger(__name__)
 
+# 工艺方案生成时 RAG 检索的默认文档数量
+DEFAULT_SOLUTION_TOP_K = 8
+
 
 @dataclass
 class ProcessStep:
@@ -212,7 +215,7 @@ class SolutionGenerator:
         retrieval_result = await retriever.retrieve(
             query=search_query,
             task_type=TaskType.SOLUTION_GENERATION,
-            top_k=8,
+            top_k=DEFAULT_SOLUTION_TOP_K,
         )
         knowledge_text = self._format_knowledge(retrieval_result.documents)
         if additional_context:

@@ -15,7 +15,7 @@ from sklearn.metrics import silhouette_score
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from models import CTLTCModel
+from models import DLLNNModel
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'results')
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -162,7 +162,7 @@ def main():
     output_dim = 2  # 二分类
     
     models_config = {
-        'CT-LTC': CTLTCModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim, dt=0.01),
+        'DL-LNN': DLLNNModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim, dt=0.01),
         'LSTM': LSTMModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim),
         'GRU': GRUModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim),
     }

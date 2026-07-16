@@ -728,11 +728,12 @@ class TaskCheckoutManager:
                 message=f"Lock force-released by {admin_id}, task returned to pending",
             )
         except LockNotFoundError as e:
+            logger.warning("Lock not found for force-release: task_id=%s err=%s", task_id, e)
             return CheckoutResult(
                 status=CheckoutStatus.FAILED,
                 task_id=task_id,
                 agent_id="",
-                message=str(e),
+                message="锁不存在或已过期，无法强制释放",
                 failure_reason=CheckoutFailureReason.LOCK_EXISTS,
             )
 

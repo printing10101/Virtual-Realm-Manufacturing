@@ -46,7 +46,7 @@
 
       <div
         v-if="store.detecting"
-        v-loading="true"
+        v-loading="store.detecting"
         class="detect-loading"
         :element-loading-text="t('settings.autoDetect.scanningText')"
       />

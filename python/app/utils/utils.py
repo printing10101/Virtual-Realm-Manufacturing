@@ -407,14 +407,30 @@ class MetricsCollector:
         self._lnn_prediction_count: dict[str, dict[str, int]] = {}
         self._agent_requests_total: dict[str, dict[str, int]] = {}
         self._active_training_tasks = 0
+        # P0-14/15 修复：http_requests_total 必须按 status 分类，否则告警规则
+        # rate(http_requests_total{status=~"5.."}[5m]) 永远无数据，HighErrorRate
+        # 告警形同虚设。原实现仅记录 method="total" 单一序列，不满足 Prometheus
+        # 可观测性要求。
+        self._http_requests_by_status: dict[str, int] = {}
 
-    def record(self, path: str, elapsed: float):
+    def record(self, path: str, elapsed: float, status_code: int | None = None):
+        """记录一次 HTTP 请求。
+
+        P0-14/15 修复：新增 status_code 参数，按状态码族（2xx/4xx/5xx）分类
+        计入 _http_requests_by_status，使 HighErrorRate 告警规则可正常工作。
+        """
         with self._lock:
             self._request_count += 1
             latencies = self._request_latency.setdefault(path, [])
             latencies.append(elapsed)
             if len(latencies) > self._max_latency_entries:
                 latencies[:] = latencies[-self._max_latency_entries :]
+            if status_code is not None:
+                # 按状态码族分组（200/404/500 等），与告警规则 status=~"5.." 匹配
+                status_key = str(status_code)
+                self._http_requests_by_status[status_key] = (
+                    self._http_requests_by_status.get(status_key, 0) + 1
+                )
 
     def record_lnn_inference(self, model_name: str, duration_sec: float):
         with self._lock:
@@ -514,12 +530,24 @@ class MetricsCollector:
             "",
             "# HELP http_requests_total Total number of HTTP requests",
             "# TYPE http_requests_total counter",
-            f'http_requests_total{{method="total"}} {self._request_count}',
-            "",
-            "# HELP http_request_duration_seconds HTTP request duration in seconds",
-            "# TYPE http_request_duration_seconds histogram",
         ]
         with self._lock:
+            # P0-14/15 修复：按 status 标签输出，使告警规则
+            # rate(http_requests_total{status=~"5.."}[5m]) 可正常工作。
+            # 同时保留 method="total" 汇总序列，兼容既有查询。
+            lines.append(
+                f'http_requests_total{{method="total"}} {self._request_count}'
+            )
+            for status_key, count in sorted(self._http_requests_by_status.items()):
+                lines.append(
+                    f'http_requests_total{{status="{status_key}"}} {count}'
+                )
+            lines.append("")
+
+            lines.append(
+                "# HELP http_request_duration_seconds HTTP request duration in seconds"
+            )
+            lines.append("# TYPE http_request_duration_seconds histogram")
             # 使用完整分位数桶输出，支持 PromQL histogram_quantile 计算 p50/p90/p95/p99
             lines.extend(
                 self._format_histogram(

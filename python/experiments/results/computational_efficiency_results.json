@@ -7,7 +7,7 @@
   "train_epochs": 10,
   "inference_runs": 100,
   "models": {
-    "CT-LTC": {
+    "DL-LNN": {
       "parameters": 107908,
       "flops": 8576,
       "train_time_per_epoch": 0.0713,

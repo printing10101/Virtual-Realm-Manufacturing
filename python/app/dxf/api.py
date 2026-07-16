@@ -10,19 +10,21 @@ import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from app.api.v1.auth import get_current_user
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
 from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file, sanitize_filename
+from app.utils.upload_security import validate_upload
 from app.dxf.dxf_parser import DxfParser
 from app.dxf.feature_extractor import FeatureExtractor
 from app.dxf.dxf_to_model import DxfToModelConverter
 from app.dxf.pipeline import DxfProcessPipeline
 from app.process_planning.gcode_generator import GCodeGenerator
-from app.xmaker_integration import XmakerIntegration
+from app.xmaker.integration import XmakerIntegration
 
 logger = logging.getLogger(__name__)
 
@@ -95,15 +97,18 @@ def _validate_dxf_file(file: UploadFile) -> None:
         )
 
 
-def _save_upload(file: UploadFile) -> Path:
-    """保存上传文件到临时目录并返回路径。"""
-    content = file.file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"文件大小({len(content) / 1024 / 1024:.1f}MB)"
-                   f"超过限制({MAX_FILE_SIZE / 1024 / 1024:.0f}MB)。",
-        )
+async def _save_upload(file: UploadFile) -> Path:
+    """保存上传文件到临时目录并返回路径。
+
+    P0-12/P0-13 修复：使用 ``validate_upload`` 分块流式读取 + 大小限制 +
+    magic bytes 签名校验，替代原 ``file.file.read()`` 全量入内存。
+    """
+    content = await validate_upload(
+        file,
+        max_size=MAX_FILE_SIZE,
+        allowed_extensions=ALLOWED_EXTENSIONS,
+        allowed_mimes={"application/dxf"},
+    )
 
     temp_path = TEMP_DIR / f"{uuid.uuid4().hex}_{file.filename}"
     temp_path.write_bytes(content)
@@ -111,14 +116,17 @@ def _save_upload(file: UploadFile) -> Path:
 
 
 @router.post("/parse", response_model=dict)
-async def parse_dxf(file: UploadFile = File(...)):
+async def parse_dxf(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
     """解析DXF文件，提取几何实体和尺寸标注。
 
     上传DXF文件，返回提取的直线、圆、圆弧、文字和尺寸标注列表。
     支持AutoCAD R12至2021版本的DXF格式。
     """
     _validate_dxf_file(file)
-    temp_path = _save_upload(file)
+    temp_path = await _save_upload(file)
 
     try:
         result = _dxf_parser.parse(temp_path)
@@ -194,14 +202,17 @@ async def parse_dxf(file: UploadFile = File(...)):
 
 
 @router.post("/features", response_model=dict)
-async def extract_features(file: UploadFile = File(...)):
+async def extract_features(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
     """从DXF文件中提取加工特征。
 
     上传DXF文件，返回孔特征和平面特征列表。
     包含孔径、位置、深度等参数信息。
     """
     _validate_dxf_file(file)
-    temp_path = _save_upload(file)
+    temp_path = await _save_upload(file)
 
     try:
         parse_result = _dxf_parser.parse(temp_path)
@@ -236,6 +247,7 @@ async def run_dxf_pipeline(
     controller_type: str = Form(default="fanuc_0i"),
     part_type: str = Form(default="general"),
     safe_z: float = Form(default=50.0),
+    current_user: dict = Depends(get_current_user),
 ):
     """执行完整的DXF端到端处理流水线。
 
@@ -243,7 +255,7 @@ async def run_dxf_pipeline(
     返回包含G代码的完整处理结果。
     """
     _validate_dxf_file(file)
-    temp_path = _save_upload(file)
+    temp_path = await _save_upload(file)
 
     try:
         result = _pipeline.run(
@@ -279,13 +291,14 @@ async def run_dxf_pipeline(
 @router.post("/model/stl", response_model=dict)
 async def convert_to_stl(
     file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
 ):
     """将DXF文件转换为STL 3D模型。
 
     上传DXF文件，返回生成的STL模型文件。
     """
     _validate_dxf_file(file)
-    temp_path = _save_upload(file)
+    temp_path = await _save_upload(file)
 
     try:
         parse_result = _dxf_parser.parse(temp_path)
@@ -339,7 +352,10 @@ def _sanitize_filename(file_name: str) -> str:
 
 
 @router.get("/model/download/{file_name}")
-async def download_model(file_name: str):
+async def download_model(
+    file_name: str,
+    current_user: dict = Depends(get_current_user),
+):
     """下载生成的3D模型文件。
 
     [路径遍历修复] 增加了双重路径验证：
@@ -377,10 +393,13 @@ async def download_model(file_name: str):
 
 
 @router.post("/validate", response_model=dict)
-async def validate_dxf(file: UploadFile = File(...)):
+async def validate_dxf(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
     """验证DXF文件格式和内容。"""
     _validate_dxf_file(file)
-    temp_path = _save_upload(file)
+    temp_path = await _save_upload(file)
 
     try:
         result = _dxf_parser.parse(temp_path)
@@ -439,6 +458,7 @@ async def generate_xm100_gcode(
     part_type: str = Form(default="general"),
     enable_five_axis: bool = Form(default=True),
     strategy: str = Form(default="lead_angle"),
+    current_user: dict = Depends(get_current_user),
 ):
     """为 XM-100 五轴机床生成 G 代码。
 
@@ -446,7 +466,7 @@ async def generate_xm100_gcode(
     支持三种五轴策略：lead_angle（引导角）、tilt_angle（倾斜角）、interpolation（插值）。
     """
     _validate_dxf_file(file)
-    temp_path = _save_upload(file)
+    temp_path = await _save_upload(file)
 
     try:
         # 解析 DXF
@@ -514,6 +534,7 @@ async def generate_xm100_gcode(
 async def upload_to_xmaker(
     file: UploadFile = File(...),
     job_name: str = Form(default=""),
+    current_user: dict = Depends(get_current_user),
 ):
     """上传 G 代码到 Xmaker 平台。
 
@@ -529,15 +550,14 @@ async def upload_to_xmaker(
             detail=f"不支持的文件格式: {ext}。请上传 .gcode/.nc/.tap 格式文件。",
         )
 
-    # 文件大小校验（50MB）
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"文件大小({len(content) / 1024 / 1024:.1f}MB)超过限制({MAX_FILE_SIZE / 1024 / 1024:.0f}MB)。",
-        )
-    if len(content) == 0:
-        raise HTTPException(status_code=400, detail="文件内容为空")
+    # P0-12/P0-13 修复：使用 validate_upload 分块流式读取 + 大小限制 + magic bytes 校验
+    # gcode/nc/tap 为文本类扩展名，validate_upload 会跳过 magic 校验仅做扩展名 + 大小校验
+    content = await validate_upload(
+        file,
+        max_size=MAX_FILE_SIZE,
+        allowed_extensions={".gcode", ".nc", ".tap"},
+        allowed_mimes={"text/plain"},
+    )
 
     # 写入临时文件
     temp_path = TEMP_DIR / f"{uuid.uuid4().hex}_{file.filename}"
@@ -560,6 +580,9 @@ async def upload_to_xmaker(
             "file_url": upload_result.file_url,
             "upload_time_ms": upload_result.upload_time_ms,
         })
+    except HTTPException:
+        # validate_upload 抛出的 413/415/400 透传
+        raise
     except (OSError, RuntimeError, TimeoutError, ValueError, TypeError) as e:
         # 上传涉及文件 I/O 和网络请求
         logger.error("XM-100 上传失败: %s", e, exc_info=True)
@@ -582,7 +605,10 @@ async def upload_to_xmaker(
 
 
 @router.get("/xm100/status", response_model=dict)
-async def get_xm100_status(machine_id: str = "default"):
+async def get_xm100_status(
+    machine_id: str = "default",
+    current_user: dict = Depends(get_current_user),
+):
     """获取 XM-100 机床状态。
 
     查询指定机床的实时状态，包括加工进度、剩余时间、错误信息等。

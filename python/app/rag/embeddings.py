@@ -19,7 +19,7 @@ import hashlib
 import logging
 import os
 import threading
-from typing import Sequence
+from typing import Any, Sequence
 
 # 设置 HuggingFace 中国镜像，加速模型下载
 # 可通过环境变量 HF_ENDPOINT 覆盖，默认为 https://hf-mirror.com
@@ -115,9 +115,19 @@ class EmbeddingService:
             logger.info("Loading embedding model: %s", self._model_name)
             from sentence_transformers import SentenceTransformer
 
+            # 设备选择：默认 auto（cuda:0 优先），可通过 EMBEDDING_DEVICE 环境变量覆盖
+            # 设为 "cpu" 时强制使用 CPU，避免与 Ollama 等 GPU 进程内存竞争导致 segfault
+            # （案例：qwen3:14b 占用 ~9GB 显存后，bge-small-zh 在 cuda:0 加载时 segfault）
+            device = os.getenv("EMBEDDING_DEVICE", "").strip() or None
+            logger.info("Embedding device: %s (EMBEDDING_DEVICE=%r)",
+                        device or "auto", os.getenv("EMBEDDING_DEVICE"))
+
             try:
                 # 优先从 HuggingFace 镜像站下载（通过 HF_ENDPOINT 环境变量控制）
-                self._model = SentenceTransformer(self._model_name)
+                if device:
+                    self._model = SentenceTransformer(self._model_name, device=device)
+                else:
+                    self._model = SentenceTransformer(self._model_name)
             except Exception as download_err:
                 # 下载失败时尝试从本地缓存加载
                 logger.warning(
@@ -126,8 +136,13 @@ class EmbeddingService:
                     download_err,
                 )
                 try:
+                    cache_kwargs: dict[str, Any] = {
+                        "cache_folder": "./models/embedding_cache",
+                    }
+                    if device:
+                        cache_kwargs["device"] = device
                     self._model = SentenceTransformer(
-                        self._model_name, cache_folder="./models/embedding_cache"
+                        self._model_name, **cache_kwargs
                     )
                 except Exception as cache_err:
                     logger.error(

@@ -125,7 +125,7 @@ class FeedbackLoopPipeline:
         
         # 去重检查
         if record_id in self._processed_record_ids:
-            logger.info(f"Record {record_id} already processed, skipping")
+            logger.info("Record %s already processed, skipping", record_id)
             return {
                 "success": True,
                 "task_id": None,
@@ -135,7 +135,7 @@ class FeedbackLoopPipeline:
         
         # 检查训练数据湖是否已存在
         if self.training_data_lake.check_record_exists(record_id):
-            logger.info(f"Record {record_id} already exists in training data lake, skipping")
+            logger.info("Record %s already exists in training data lake, skipping", record_id)
             self._processed_record_ids.add(record_id)
             return {
                 "success": True,
@@ -148,7 +148,7 @@ class FeedbackLoopPipeline:
         task = FeedbackTask(record)
         self._task_queue.append(task)
         
-        logger.info(f"Task {task.task_id} created for record {record_id}")
+        logger.info("Task %s created for record %s", task.task_id, record_id)
         
         # 异步处理任务
         result = await self._process_task(task)
@@ -182,7 +182,7 @@ class FeedbackLoopPipeline:
             task.processed_at = datetime.now()
             self._processed_record_ids.add(record_id)
             
-            logger.info(f"Task {task.task_id} completed successfully")
+            logger.info("Task %s completed successfully", task.task_id)
             
             return {
                 "success": True,
@@ -196,7 +196,7 @@ class FeedbackLoopPipeline:
             
         except (OSError, ValueError, TypeError, KeyError, RuntimeError) as e:
             task.retry_count += 1
-            task.error_message = str(e)
+            task.error_message = "任务执行失败: 内部错误，请联系管理员"
             
             logger.error(
                 f"Task {task.task_id} failed (retry {task.retry_count}/{task.max_retries}): {e}"
@@ -204,12 +204,12 @@ class FeedbackLoopPipeline:
             
             # 重试机制
             if task.retry_count < task.max_retries:
-                logger.info(f"Retrying task {task.task_id}...")
+                logger.info("Retrying task %s...", task.task_id)
                 await asyncio.sleep(0.1 * (2 ** task.retry_count))  # 指数退避
                 return await self._process_task(task)
             else:
                 task.status = "failed"
-                logger.error(f"Task {task.task_id} failed after {task.max_retries} retries")
+                logger.error("Task %s failed after %s retries", task.task_id, task.max_retries)
                 raise FeedbackLoopError(
                     f"Task {task.task_id} failed after {task.max_retries} retries: {e}"
                 ) from e
@@ -278,12 +278,12 @@ class FeedbackLoopPipeline:
                     await self._process_task(task)
                     processed += 1
                 except (OSError, ValueError, TypeError, KeyError, RuntimeError) as e:
-                    logger.error(f"Task {task.task_id} failed: {e}")
+                    logger.error("Task %s failed: %s", task.task_id, e)
                     failed += 1
         finally:
             self._processing = False
         
-        logger.info(f"Queue processing completed: {processed} processed, {failed} failed")
+        logger.info("Queue processing completed: %s processed, %s failed", processed, failed)
         return {"processed": processed, "failed": failed}
     
     def get_queue_status(self) -> dict[str, Any]:

@@ -46,7 +46,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # 阻断后续任何依赖 ``app.api.v1.auth`` 的测试。这里在 conftest 入口补齐默认值。
 # ---------------------------------------------------------------------------
 if not os.environ.get("LNN_JWT_SECRET"):
-    os.environ["LNN_JWT_SECRET"] = "test_conftest_default_secret_value_min_32chars_safe"
+    # P2-13 修复：使用 secrets.token_hex 动态生成测试密钥，避免硬编码已知密钥。
+    # 硬编码密钥提交到版本控制后，若测试环境意外暴露（CI 日志泄露、外部访问），
+    # 攻击者可用此已知密钥伪造 JWT。动态生成确保每次测试运行使用不同密钥。
+    import secrets as _secrets
+    os.environ["LNN_JWT_SECRET"] = _secrets.token_hex(32)
 
 
 # ---------------------------------------------------------------------------

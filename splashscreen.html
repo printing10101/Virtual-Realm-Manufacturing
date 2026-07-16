@@ -4,6 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>灵境制造 - 启动中</title>
+  <!-- CSP 兜底：与 index.html 保持一致，确保 splashscreen 的 IPC 调用（retry_launch_step、launch-progress）不被阻止 -->
+  <!--
+    CSP 指令说明（P0 安全修复 / P1 收紧）：
+    - default-src 'self'                   : 默认仅允许同源资源，收紧兜底策略
+    - script-src 'self' 'unsafe-inline'    : 移除 'unsafe-eval'（XSS 防护）；保留 'unsafe-inline' 因为本页内联脚本依赖
+                                             TODO: 后续批次应引入 nonce 机制替换 'unsafe-inline'
+    - connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*
+                                           : 保留 ipc: 和 http://ipc.localhost（Tauri 2 IPC 通信硬约束）；
+                                             localhost/127.0.0.1 用于后端健康检查
+                                             （已移除 https://api.openai.com https://api.anthropic.com
+                                              https://api.deepseek.com https://generativelanguage.googleapis.com
+                                              https://*.aliyuncs.com —— 这些 LLM API 由后端 FastAPI 代理调用，
+                                              splashscreen 启动阶段无需任何外部 API 访问，
+                                              CSP 白名单冗余且增加 XSS 数据外泄风险）
+    - img-src 'self' data: blob: https:    : 允许同源、data URI、blob URL 和 HTTPS 图片
+    - font-src 'self' data:                : 允许同源和 data URI 字体
+    - style-src 'self' 'unsafe-inline'     : CSS 内联通常必要（动画样式等），保留 'unsafe-inline'
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';" />
   <style>
     * {
       margin: 0;
@@ -221,6 +240,38 @@
       margin-top: 8px;
       display: none;
       animation: fadeIn 0.5s ease;
+    }
+
+    /* 跳过等待按钮：与 slow-warning 一同在 8 秒后显示，点击调用 close_splashscreen */
+    .btn-skip {
+      margin-top: 12px;
+      padding: 6px 18px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      color: #e6a23c;
+      background: transparent;
+      border: 1px solid rgba(230, 162, 60, 0.55);
+      border-radius: 5px;
+      cursor: pointer;
+      display: none;
+      animation: fadeIn 0.5s ease;
+      transition: all 0.25s ease;
+    }
+
+    .btn-skip:hover {
+      background: rgba(230, 162, 60, 0.12);
+      border-color: #e6a23c;
+      color: #f0b860;
+    }
+
+    .btn-skip:focus-visible {
+      outline: 2px solid #e6a23c;
+      outline-offset: 2px;
+    }
+
+    .btn-skip:active {
+      background: rgba(230, 162, 60, 0.2);
     }
 
     .error-section {
@@ -541,6 +592,7 @@
 
     <p class="elapsed-time" id="elapsedTime" aria-live="off">已用时 0 秒</p>
     <p class="slow-warning" id="slowWarning" role="alert">启动较慢，请检查配置或网络环境</p>
+    <button class="btn-skip" id="btnSkip" type="button" aria-label="跳过启动等待">跳过等待</button>
   </main>
 
   <div class="log-modal-overlay" id="logModalOverlay" role="dialog" aria-modal="true" aria-label="启动日志">
@@ -705,6 +757,7 @@
       var statusIcon = document.getElementById('statusIcon');
       var elapsedTime = document.getElementById('elapsedTime');
       var slowWarning = document.getElementById('slowWarning');
+      var btnSkip = document.getElementById('btnSkip');
       var errorSection = document.getElementById('errorSection');
       var errorMessage = document.getElementById('errorMessage');
       var errorDetail = document.getElementById('errorDetail');
@@ -1003,6 +1056,11 @@
       btnCloseLog.addEventListener('click', hideLogModal);
       btnExportLog.addEventListener('click', exportLog);
       btnCopyLog.addEventListener('click', copyLog);
+      if (btnSkip) {
+        btnSkip.addEventListener('click', function () {
+          forceCloseSplashscreen('SKIP');
+        });
+      }
 
       logModalOverlay.addEventListener('click', function (e) {
         if (e.target === logModalOverlay) hideLogModal();
@@ -1024,6 +1082,49 @@
       startSimulatedProgress();
 
       appendLog('[START] Splashscreen initialized at ' + new Date().toISOString());
+
+      // ============================================================
+      // 超时兜底：作为 Rust 端 10 秒兜底的双重保险
+      // ============================================================
+      // Rust 端 lib.rs 会在 10 秒后强制 show main + close splashscreen。
+      // 此处 12 秒再调一次 close_splashscreen IPC，覆盖 Rust 兜底失效的极端场景
+      // （如 tokio runtime 调度异常）。如果 Rust 兜底已关闭窗口，本回调自动失效。
+      function forceCloseSplashscreen(reason) {
+        if (completed) return;
+        var tag = reason || 'TIMEOUT';
+        var msg = tag === 'TIMEOUT'
+          ? '12 秒到达，splashscreen 主动调用 close_splashscreen'
+          : '用户主动跳过启动等待';
+        appendLog('[' + tag + '] ' + msg);
+        try {
+          if (window.__TAURI__ && window.__TAURI__.core) {
+            window.__TAURI__.core.invoke('close_splashscreen').catch(function (err) {
+              appendLog('[' + tag + '] close_splashscreen 调用失败: ' + err);
+            });
+          } else if (window.__TAURI_INTERNALS__) {
+            // Tauri 2 内部协议兜底
+            window.__TAURI_INTERNALS__.invoke('close_splashscreen');
+          }
+        } catch (e) {
+          appendLog('[' + tag + '] invoke 异常: ' + e);
+        }
+      }
+      // P0-10 修复：与 Rust 侧 lib.rs 中 10 秒超时保持一致，原为 12000ms
+      setTimeout(forceCloseSplashscreen, 10000);
+
+      // 6 秒后显示"启动较慢"提示与跳过按钮，避免用户以为卡死
+      // P0-10 修复：从 8000ms 调整为 6000ms，保证在 10s 兜底前可点击
+      setTimeout(function () {
+        if (completed) return;
+        var slowWarn = document.querySelector('.slow-warning');
+        if (slowWarn) {
+          slowWarn.style.display = 'block';
+          slowWarn.textContent = '首次启动需初始化后端服务，请稍候…';
+        }
+        if (btnSkip) {
+          btnSkip.style.display = 'inline-block';
+        }
+      }, 6000);
     })();
   </script>
 </body>

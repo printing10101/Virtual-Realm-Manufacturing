@@ -58,13 +58,13 @@ def parse_excel(file_path: str | Path) -> dict[str, Any]:
     try:
         result["file_size"] = file_path.stat().st_size
     except OSError as e:
-        logger.warning(f"无法获取文件大小: {e}")
+        logger.warning("无法获取文件大小: %s", e)
     
     # 解析Excel
     try:
         import openpyxl
         
-        logger.info(f"开始解析Excel文件: {file_path.name}")
+        logger.info("开始解析Excel文件: %s", file_path.name)
         
         wb = openpyxl.load_workbook(str(file_path), data_only=True)
         result["sheet_count"] = len(wb.sheetnames)
@@ -102,7 +102,7 @@ def parse_excel(file_path: str | Path) -> dict[str, Any]:
         logger.error(error_msg)
         result["error"] = error_msg
     except (OSError, ValueError, TypeError, KeyError) as e:
-        error_msg = f"Excel解析失败: {str(e)}"
+        error_msg = "Excel解析失败: 文件格式错误或损坏，请检查文件"
         logger.exception(error_msg)
         result["error"] = error_msg
     
@@ -155,7 +155,7 @@ def _extract_table_from_sheet(
         return table_info
         
     except (OSError, ValueError, TypeError, KeyError) as e:
-        logger.warning(f"提取工作表'{sheet_name}'失败: {e}")
+        logger.warning("提取工作表'%s'失败: %s", sheet_name, e)
         return None
 
 
@@ -194,7 +194,7 @@ def parse_csv(file_path: str | Path) -> dict[str, Any]:
     try:
         import csv
         
-        logger.info(f"开始解析CSV文件: {file_path.name}")
+        logger.info("开始解析CSV文件: %s", file_path.name)
         
         with open(file_path, 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
@@ -230,7 +230,7 @@ def parse_csv(file_path: str | Path) -> dict[str, Any]:
         )
         
     except (OSError, UnicodeDecodeError, ValueError) as e:
-        error_msg = f"CSV解析失败: {str(e)}"
+        error_msg = "CSV解析失败: 文件格式错误或编码问题，请检查文件"
         logger.exception(error_msg)
         result["error"] = error_msg
     
@@ -257,22 +257,22 @@ if __name__ == "__main__":
     else:
         result = parse_excel(excel_file)
     
-    logger.info(f"\n解析状态: {result['status']}")
-    logger.info(f"文件名: {result['file_name']}")
-    logger.info(f"文件大小: {result['file_size']} bytes")
-    logger.info(f"工作表数量: {result['sheet_count']}")
-    logger.info(f"表格数量: {len(result['tables'])}")
-    logger.info(f"数据行数: {len(result['rows'])}")
+    logger.info("\n解析状态: %s", result['status'])
+    logger.info("文件名: %s", result['file_name'])
+    logger.info("文件大小: %s bytes", result['file_size'])
+    logger.info("工作表数量: %s", result['sheet_count'])
+    logger.info("表格数量: %s", len(result['tables']))
+    logger.info("数据行数: %s", len(result['rows']))
     logger.info(f"解析耗时: {result['parse_time_ms']:.2f}ms")
     
     if result['error']:
-        logger.error(f"错误: {result['error']}")
+        logger.error("错误: %s", result['error'])
     
     if result['tables']:
         logger.info("\n提取的表格:")
         for i, table in enumerate(result['tables'], 1):
-            logger.info(f"\n表格 {i} ({table['sheet_name']}):")
-            logger.info(f"  表头: {table['headers']}")
-            logger.info(f"  行数: {table['row_count']}")
+            logger.info("\n表格 %s (%s):", i, table['sheet_name'])
+            logger.info("  表头: %s", table['headers'])
+            logger.info("  行数: %s", table['row_count'])
             if table['rows']:
-                logger.info(f"  首行数据: {table['rows'][0]}")
+                logger.info("  首行数据: %s", table['rows'][0])

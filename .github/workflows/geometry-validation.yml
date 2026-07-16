@@ -24,6 +24,13 @@ on:
       - 'python/tests/validation/**'
       - '.github/workflows/geometry-validation.yml'
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHONUNBUFFERED: '1'
   LNN_AUTH_ENABLED: 'false'

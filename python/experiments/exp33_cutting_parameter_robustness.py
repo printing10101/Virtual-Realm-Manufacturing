@@ -11,7 +11,7 @@ import time
 from typing import Dict, List
 from torch.utils.data import Dataset, DataLoader
 
-from models import CTLTCModel
+from models import DLLNNModel
 from metrics import ChatterMetrics
 from data_generator import TlustyAnalyticalModel
 
@@ -109,12 +109,12 @@ def train_and_evaluate(
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
     
     # 初始化模型
-    if model_name == "CT-LTC":
-        model = CTLTCModel(input_dim=2, hidden_dim=64)
+    if model_name == "DL-LNN":
+        model = DLLNNModel(input_dim=7, hidden_dim=64)
     elif model_name == "LSTM":
-        model = torch.nn.LSTM(input_size=2, hidden_size=64, num_layers=2, batch_first=True)
+        model = torch.nn.LSTM(input_size=7, hidden_size=64, num_layers=2, batch_first=True)
     else:  # GRU
-        model = torch.nn.GRU(input_size=2, hidden_size=64, num_layers=2, batch_first=True)
+        model = torch.nn.GRU(input_size=7, hidden_size=64, num_layers=2, batch_first=True)
     
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
@@ -198,7 +198,7 @@ def main():
         "combined_extreme": "组合极端"
     }
     
-    models = ["CT-LTC", "LSTM", "GRU"]
+    models = ["DL-LNN", "LSTM", "GRU"]
     
     all_results = {}
     

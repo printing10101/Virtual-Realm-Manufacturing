@@ -3,7 +3,7 @@
   "experiment": "多次随机种子可复现性验证实验",
   "num_seeds": 10,
   "results": {
-    "CT-LTC": {
+    "DL-LNN": {
       "seeds": [
         42,
         43,

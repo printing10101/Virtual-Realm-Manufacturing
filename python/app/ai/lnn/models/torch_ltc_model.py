@@ -61,9 +61,9 @@ class LTCCell(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
 
-        self.W = nn.Parameter(torch.Tensor(hidden_size, input_size))
-        self.U = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
-        self.bias = nn.Parameter(torch.Tensor(hidden_size))
+        self.W = nn.Parameter(torch.empty(hidden_size, input_size, dtype=torch.float32))
+        self.U = nn.Parameter(torch.empty(hidden_size, hidden_size, dtype=torch.float32))
+        self.bias = nn.Parameter(torch.empty(hidden_size, dtype=torch.float32))
 
         self.tau = nn.Parameter(torch.ones(hidden_size))
 

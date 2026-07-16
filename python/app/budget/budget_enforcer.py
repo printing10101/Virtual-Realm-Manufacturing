@@ -867,7 +867,7 @@ class BudgetEnforcer:
             self.close()
         except (sqlite3.ProgrammingError, AttributeError) as e:
             # 析构时数据库连接已关闭或对象处于无效状态属于正常 GC 路径
-            logger.debug(f"Cleanup during deallocation skipped: {e}")
+            logger.debug("Cleanup during deallocation skipped: %s", e)
 
 
 class CostOptimizer:

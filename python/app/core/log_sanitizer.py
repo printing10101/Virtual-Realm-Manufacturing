@@ -185,7 +185,7 @@ class LogSanitizer:
             "message": "Internal server error",
         }
 
-    def _sanitize_dict(self, data: dict) -> dict:
+    def _sanitize_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         sanitized = {}
         for key, value in data.items():
             if self._is_process_param_key(key):

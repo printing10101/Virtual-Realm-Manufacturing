@@ -9,7 +9,7 @@
  * 同时订阅 'sidecar://state' 事件，接收后端状态变化推送。
  */
 
-import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
+import { reactive, ref, onMounted, type Ref } from 'vue'
 
 export type BackendStatusKind =
   | 'idle'
@@ -45,19 +45,28 @@ const DEFAULT_STATE: BackendState = {
 /**
  * 检测当前是否运行在 Tauri 容器内
  */
+// Tauri 注入到 window 的内部 API 标记，无官方类型定义，使用结构化类型而非 any
+interface TauriInternalsWindow extends Window {
+  __TAURI_INTERNALS__?: unknown
+}
+
 export function isTauriEnv(): boolean {
-  return typeof window !== 'undefined' && Boolean((window as any).__TAURI_INTERNALS__)
+  // 仅检测内部标记是否存在，不调用任何内部方法，无副作用
+  return (
+    typeof window !== 'undefined' &&
+    Boolean((window as TauriInternalsWindow).__TAURI_INTERNALS__)
+  )
 }
 
 /**
  * 异步导入 @tauri-apps/api/core invoke，避免在非 Tauri 环境下导入失败
  */
-async function tauriInvoke<T = any>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+async function tauriInvoke<T = unknown>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const mod = await import('@tauri-apps/api/core')
   return mod.invoke<T>(cmd, args)
 }
 
-async function tauriListen<T = any>(
+async function tauriListen<T = unknown>(
   event: string,
   handler: (payload: T) => void,
 ): Promise<() => void> {
@@ -66,11 +75,43 @@ async function tauriListen<T = any>(
   return un
 }
 
+/**
+ * useBackendStatus 返回值契约。
+ *
+ * 显式声明返回类型，避免调用方依赖推断结果，便于后续重构内部实现而不破坏 API。
+ */
+export interface UseBackendStatusReturn {
+  state: BackendState
+  loading: Ref<boolean>
+  tauriMode: Ref<boolean>
+  refresh: () => Promise<void>
+  start: () => Promise<void>
+  stop: () => Promise<void>
+  restart: () => Promise<void>
+  ping: () => Promise<boolean>
+}
+
+// ---------------------------------------------------------------------------
+// 模块级单例状态
+//
+// 设计说明：后端 sidecar 状态是应用级全局状态，应在整个应用生命周期内共享，
+// 而非随组件挂载/卸载反复创建销毁。因此采用模块级单例模式：
+// - `_state`：跨组件共享的响应式状态，所有调用 useBackendStatus 的组件访问同一实例
+// - `_unlisten`：Tauri 事件监听器卸载函数，应用生命周期内只注册一次
+// - `_initialized`：确保监听器只被首个使用此 composable 的组件注册一次
+//
+// 不在 onBeforeUnmount 中清理监听器的原因：
+//   后端状态推送需要持续接收，即使当前没有组件展示状态（例如后台保活场景）。
+//   应用关闭时 Tauri 运行时会自动清理所有事件监听器，无需手动 dispose。
+//
+// HMR 注意：开发环境热更新时模块状态会被重置，旧监听器可能残留。
+//   这仅影响开发环境，生产构建不会触发 HMR。
+// ---------------------------------------------------------------------------
 let _state: ReturnType<typeof reactive<BackendState>> | null = null
 const _unlisten: Array<() => void> = []
 let _initialized = false
 
-export function useBackendStatus() {
+export function useBackendStatus(): UseBackendStatusReturn {
   if (!_state) {
     _state = reactive<BackendState>({ ...DEFAULT_STATE })
   }
@@ -87,8 +128,9 @@ export function useBackendStatus() {
     try {
       const next = await tauriInvoke<BackendState>('get_backend_state')
       Object.assign(_state!, next)
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // 后台状态刷新失败不应阻塞 UI，记录便于排查；UI 层可通过 state.status 感知异常
+      console.warn('[useBackendStatus] refresh failed:', e)
     }
   }
 
@@ -114,8 +156,9 @@ export function useBackendStatus() {
     try {
       const next = await tauriInvoke<BackendState>('stop_backend')
       Object.assign(_state!, next)
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // stop 由 UI 层主动触发，失败时记录并保留状态，由调用方决定是否提示用户
+      console.warn('[useBackendStatus] stop failed:', e)
     } finally {
       loading.value = false
     }
@@ -169,13 +212,10 @@ export function useBackendStatus() {
           if (_state) _state.last_error = msg
         })
         _unlisten.push(offState, offTerm, offError)
-      } catch {
-        // 静默处理
+      } catch (e: unknown) {
+        // 监听器注册失败会导致后续状态丢失，必须记录以便排查
+        console.error('[useBackendStatus] listener setup failed:', e)
       }
-    })
-
-    onBeforeUnmount(() => {
-      // 全局单例：不卸载监听器，确保跨组件状态一致
     })
   }
 

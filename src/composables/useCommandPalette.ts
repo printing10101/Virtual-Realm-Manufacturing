@@ -4,6 +4,7 @@
  */
 
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ElMessage } from 'element-plus'
 
 /** 命令类型 */
 export interface Command {
@@ -175,8 +176,10 @@ export function useCommandPalette(config: CommandPaletteConfig = {}) {
       await command.action()
       recordUsage(command.id)
       close()
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // 命令执行失败属于用户主动操作，必须给出反馈，否则用户会误以为已执行
+      console.warn('[useCommandPalette] executeCommand failed:', command.id, e)
+      ElMessage.error(`命令执行失败：${command.name}`)
     }
   }
 
@@ -226,8 +229,9 @@ export function useCommandPalette(config: CommandPaletteConfig = {}) {
       
       const dataToSave = Object.fromEntries(sortedEntries)
       localStorage.setItem(mergedConfig.storageKey!, JSON.stringify(dataToSave))
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // localStorage 写入失败（如配额超限、隐私模式）不影响核心功能，记录便于排查
+      console.warn('[useCommandPalette] saveUsageData failed:', e)
     }
   }
 
@@ -237,8 +241,11 @@ export function useCommandPalette(config: CommandPaletteConfig = {}) {
       if (raw) {
         usageData.value = JSON.parse(raw)
       }
-    } catch {
-      // 静默处理
+    } catch (e: unknown) {
+      // localStorage 读取失败（数据损坏）时清空避免反复报错，记录便于排查
+      console.warn('[useCommandPalette] loadUsageData failed, reset usage data:', e)
+      try { localStorage.removeItem(mergedConfig.storageKey!) } catch { /* 二次失败忽略 */ }
+      usageData.value = {}
     }
   }
 

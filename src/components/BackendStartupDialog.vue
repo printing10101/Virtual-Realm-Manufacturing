@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { useBackendStatus } from '@/composables/useBackendStatus'
@@ -38,6 +38,52 @@ const errorTitle = computed(() => {
   return t('backendStartup.starting')
 })
 
+// 启动等待计时器：超过 10 秒后显示"跳过等待"按钮，避免永久卡死
+const elapsedSeconds = ref(0)
+let timer: ReturnType<typeof setInterval> | null = null
+
+function startTimer() {
+  stopTimer()
+  elapsedSeconds.value = 0
+  timer = setInterval(() => {
+    elapsedSeconds.value += 1
+  }, 1000)
+}
+
+function stopTimer() {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+}
+
+// 超过 10 秒后允许跳过（关闭对话框）
+const canSkip = computed(() => isStarting.value && elapsedSeconds.value >= 10)
+
+watch(
+  () => props.modelValue,
+  (v) => {
+    if (v && isStarting.value) startTimer()
+    else stopTimer()
+  },
+)
+
+watch(
+  () => state.status,
+  (s) => {
+    if (s === 'starting') startTimer()
+    else stopTimer()
+  },
+)
+
+onMounted(() => {
+  if (props.modelValue && isStarting.value) startTimer()
+})
+
+onUnmounted(() => {
+  stopTimer()
+})
+
 function onRetry() {
   restart().then(() => {
     if (state.status !== 'failed' && state.status !== 'crashed') {
@@ -54,15 +100,24 @@ function onClose() {
 function onStop() {
   stop()
 }
+
+function onSkip() {
+  // 跳过等待：停止后端并关闭对话框，让用户能进入主界面
+  // stop 失败时记录便于排查，但不阻塞对话框关闭（用户已明确要求跳过）
+  stop().catch((e: unknown) => {
+    console.warn('[BackendStartupDialog] stop backend on skip failed:', e)
+  })
+  visible.value = false
+}
 </script>
 
 <template>
   <el-dialog
     v-model="visible"
     :title="errorTitle"
-    :show-close="!isStarting"
+    :show-close="canSkip || !isStarting"
     :close-on-click-modal="false"
-    :close-on-press-escape="false"
+    :close-on-press-escape="canSkip"
     width="480px"
     align-center
     append-to-body
@@ -114,6 +169,12 @@ function onStop() {
 
     <template #footer>
       <template v-if="isStarting">
+        <el-button
+          v-if="canSkip"
+          @click="onSkip"
+        >
+          {{ t('backendStartup.skip') || '跳过等待' }}
+        </el-button>
         <el-button
           :loading="true"
           type="info"

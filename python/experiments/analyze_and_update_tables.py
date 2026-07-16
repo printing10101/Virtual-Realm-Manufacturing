@@ -100,7 +100,7 @@ def update_table2(doc, main_results):
     
     # 准备数据
     datasets = ['PHM2010', 'NUAA', 'NIST', 'Benchmark-1', '自采6061-T6']
-    models = ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
+    models = ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
     
     print(f"\n表格结构: {len(table2.rows)} 行 × {len(table2.columns)} 列")
     print(f"预期结构: 6 行 × 10 列 (1行表头 + 5行数据)")

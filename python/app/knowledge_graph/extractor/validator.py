@@ -142,7 +142,7 @@ class ExtractionValidator:
         if report.overall_valid:
             logger.info("验证通过")
         else:
-            logger.info(f"准确率: {report.accuracy_score}%")
+            logger.info("准确率: %s%%", report.accuracy_score)
     """
 
     def validate(self, extraction_result: dict[str, Any]) -> ValidationReport:

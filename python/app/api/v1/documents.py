@@ -56,7 +56,7 @@ async def list_documents(
     category: Optional[str] = Query(None, description="分类筛选"),
     status: Optional[str] = Query(None, description="状态筛选"),
     keyword: Optional[str] = Query(None, description="关键词搜索"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     """获取文档列表，支持按分类、状态、关键词筛选。"""

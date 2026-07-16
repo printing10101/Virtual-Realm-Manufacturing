@@ -26,6 +26,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# AdamW 优化器默认权重衰减系数（L2 正则化）
+DEFAULT_WEIGHT_DECAY: float = 1e-5
+
+
 class BaseLNNModel(ABC):
     """Abstract base class defining the LNN model contract.
 
@@ -197,6 +201,7 @@ class BaseLNNModel(ABC):
         epochs: int = 100,
         batch_size: int = 32,
         learning_rate: float = 0.001,
+        seed: int = 42,
         **kwargs,
     ) -> Dict[str, List[float]]:
         """
@@ -213,10 +218,18 @@ class BaseLNNModel(ABC):
             epochs: 训练轮数
             batch_size: 批次大小
             learning_rate: 学习率
+            seed: 随机种子，确保训练可复现（默认42）
 
         Returns:
             训练历史记录
         """
+        # 学术诚信：训练前设置全局随机种子，确保实验可复现
+        # 必须在 DataLoader 创建、权重初始化、np.random.choice 等随机操作之前调用
+        # 延迟导入避免 models ↔ training 循环依赖
+        from app.ai.lnn.training.reproducibility import set_global_seed
+
+        set_global_seed(seed)
+
         self.build()
 
         try:
@@ -248,7 +261,7 @@ class BaseLNNModel(ABC):
             optimizer = torch.optim.AdamW(
                 torch_model.parameters(),
                 lr=learning_rate,
-                weight_decay=1e-5,
+                weight_decay=DEFAULT_WEIGHT_DECAY,
             )
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer, T_max=epochs, eta_min=1e-6
@@ -283,7 +296,8 @@ class BaseLNNModel(ABC):
                 if val_loader is not None:
                     torch_model.eval()
                     val_loss = 0.0
-                    with torch.no_grad():
+                    # P2-AI-4: 使用 inference_mode 替代 no_grad，推理更高效（不记录 autograd 图）
+                    with torch.inference_mode():
                         for batch_X, batch_y in val_loader:
                             outputs = torch_model(batch_X)
                             if isinstance(outputs, tuple):

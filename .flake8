@@ -18,6 +18,5 @@ per-file-ignores =
     python/app/ai/lnn/engine.py:E203
     python/app/ai/lnn/quantization/quantizer.py:E203
     python/app/cad/cadquery_gen.py:E203
-    python/app/core/audit_log.py:E203
-    python/scripts/verify_cache_performance.py:E402
+    python/app/audit/audit_log.py:E203
     python/alembic/versions/be7e8d82d196_initial_schema.py:E122,E128,E501,W291

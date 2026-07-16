@@ -8,17 +8,17 @@
   - 数据集数量: 5
   - 数据集: PHM2010, NUAA, NIST, Benchmark-1, 自采6061-T6
   - 模型数量: 9
-  - 模型: CT-LTC, LSTM, GRU, Transformer, CNN, PINN, gPINN, PeRCNN, BPNN
+  - 模型: DL-LNN, LSTM, GRU, Transformer, CNN, PINN, gPINN, PeRCNN, BPNN
   - 评估指标: MAE, RMSE, R2, MAPE, PCC
 
 ✓ 跨条件泛化实验: 已完成
   - LOMO (Leave-One-Material-Out):
     · 材料数量: 6
     · 材料: 6061-T6, 7075-T6, 2024-T3, 304SS, Ti6Al4V...
-    · 模型: CT-LTC, LSTM, GRU, Transformer
+    · 模型: DL-LNN, LSTM, GRU, Transformer
   - LOCO (Leave-One-Condition-Out):
     · 条件数量: 7
-    · 模型: CT-LTC, LSTM, GRU, Transformer
+    · 模型: DL-LNN, LSTM, GRU, Transformer
 
 ✓ 消融实验: 已完成
   - 配置数量: 5

@@ -439,6 +439,11 @@ function disposeViewer() {
     })
     lod = null
   }
+  if (axesHelperRef) {
+    axesHelperRef.geometry?.dispose()
+    ;(axesHelperRef.material as THREE.Material)?.dispose?.()
+    axesHelperRef = null
+  }
 
   if (canvasContainer.value) {
     canvasContainer.value.innerHTML = ''
@@ -449,6 +454,11 @@ watch(() => props.modelUrl, (newUrl) => {
   if (newUrl && threeScene) {
     loadModel(newUrl)
   }
+})
+
+// 组件卸载时释放 Three.js 资源，避免 GPU 内存泄漏
+onBeforeUnmount(() => {
+  disposeViewer()
 })
 </script>
 

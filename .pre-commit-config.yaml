@@ -21,10 +21,19 @@ repos:
     hooks:
       - id: version-check
         name: Version Consistency Check
-        entry: node version-sync.cjs --dry-run
+        entry: python scripts/version_sync.py --check
         language: system
         pass_filenames: false
         always_run: true
+        stages: [pre-commit]
+      # E-P0-1 防复发：新增 API 路由必须声明 response_model
+      # 使用基准对比模式，仅对新增遗漏路由失败，历史遗漏不阻塞开发
+      - id: response-model-check
+        name: Response Model Coverage Check (E-P0-1)
+        entry: python scripts/check_response_model.py --baseline .ci_baseline_response_model.json
+        language: system
+        pass_filenames: false
+        files: ^python/app/api/.*\.py$
         stages: [pre-commit]
       - id: pytest
         name: Run Pytest

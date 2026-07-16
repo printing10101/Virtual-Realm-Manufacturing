@@ -166,8 +166,8 @@
 
 - [SQLite 官方文档](https://www.sqlite.org/docs.html)
 - [Alembic 迁移指南](../python/docs/ALEMBIC_MIGRATION.md)
-- [数据库 Schema 设计](../docs/development/database-schema.md)
-- [备份与恢复指南](../docs/runbook/backup-recovery.md)
+- [综合技术文档](../01-综合技术文档.md)
+- [备份与恢复指南](../runbook/backup-recovery.md)
 
 ## 变更记录
 

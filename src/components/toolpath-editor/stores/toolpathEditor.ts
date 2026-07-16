@@ -60,7 +60,7 @@ export const useToolpathEditorStore = defineStore('toolpathEditor', () => {
       isDeleted: false,
     }))
     segments.value = converted
-    originalSegments.value = JSON.parse(JSON.stringify(converted))
+    originalSegments.value = structuredClone(converted)
     history.clear()
     _syncHistoryState()
     selectedSegmentId.value = null
@@ -74,7 +74,7 @@ export const useToolpathEditorStore = defineStore('toolpathEditor', () => {
         return { success: false, message: 'No valid G-code commands found' }
       }
       segments.value = parsed
-      originalSegments.value = JSON.parse(JSON.stringify(parsed))
+      originalSegments.value = structuredClone(parsed)
       history.clear()
       _syncHistoryState()
       selectedSegmentId.value = null

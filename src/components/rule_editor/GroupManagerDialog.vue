@@ -159,8 +159,10 @@ async function handleCreate() {
     groupDesc.value = ''
     isEditing.value = false
     emit('saved')
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    // createGroup/updateGroup 已在 store 内通过 ElMessage.error 提示用户，
+    // 此处仅记录调用栈上下文便于排查，避免重复弹窗
+    console.warn('[GroupManagerDialog] handleSave failed:', e)
   }
 }
 

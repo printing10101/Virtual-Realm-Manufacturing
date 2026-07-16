@@ -23,6 +23,60 @@ DEFAULT_PERSIST_DIR = os.path.join(
     os.path.dirname(__file__), "..", "..", "data", "chroma_db"
 )
 
+# ============================================================
+# HNSW 索引调优参数（参考 ChromaDB 官方文档与 HNSW 论文最佳实践）
+# ============================================================
+# 这些参数显著影响向量检索的召回率、索引构建质量和查询延迟。
+# 默认值经过中等规模知识库（1万~100万向量）场景调优，可通过环境变量覆盖。
+#
+# 参考：
+#   - HNSW 论文: Malkov & Yashunin, "Efficient and robust approximate nearest
+#     neighbor search using Hierarchical Navigable Small World graphs" (2018)
+#   - ChromaDB 文档: https://docs.trychroma.com/usage-guide#changing-the-distance-method
+#
+# M (每层最大连接数):
+#   - 控制图的度数，影响索引大小与召回率的平衡
+#   - 默认 16，取 32 适合中等规模知识库，召回率更优
+#   - 增大 M 提升召回但增加内存和索引构建时间
+#
+# ef_construction (构建时搜索宽度):
+#   - 控制索引构建时的搜索范围，影响索引质量
+#   - 默认 100，取 200 显著提升索引质量，构建略慢但值得
+#   - 建议为 M 的 5~10 倍
+#
+# ef_search (查询时搜索宽度):
+#   - 控制查询时的搜索范围，直接影响召回率
+#   - 默认 10（偏低），取 100 显著提升召回率
+#   - 增大 ef_search 提升召回但增加查询延迟
+#
+# num_threads (构建并行线程数):
+#   - 索引构建并行度，4 适合多数服务器 CPU
+DEFAULT_HNSW_M = int(os.environ.get("RAG_HNSW_M", "32"))
+DEFAULT_HNSW_EF_CONSTRUCTION = int(
+    os.environ.get("RAG_HNSW_EF_CONSTRUCTION", "200")
+)
+DEFAULT_HNSW_EF_SEARCH = int(os.environ.get("RAG_HNSW_EF_SEARCH", "100"))
+DEFAULT_HNSW_NUM_THREADS = int(os.environ.get("RAG_HNSW_NUM_THREADS", "4"))
+DEFAULT_HNSW_SPACE = os.environ.get("RAG_HNSW_SPACE", "cosine")
+
+
+def _build_hnsw_metadata() -> dict[str, Any]:
+    """构建 ChromaDB collection 的 HNSW metadata 配置。
+
+    ChromaDB 通过 collection metadata 中以 ``hnsw:`` 为前缀的键来传递
+    HNSW 参数（见 ChromaDB ``get_or_create_collection`` 文档）。
+
+    Returns:
+        可直接传给 ``get_or_create_collection(metadata=...)`` 的字典。
+    """
+    return {
+        "hnsw:space": DEFAULT_HNSW_SPACE,  # 距离度量：cosine / l2 / ip
+        "hnsw:M": DEFAULT_HNSW_M,  # 每层最大连接数
+        "hnsw:ef_construction": DEFAULT_HNSW_EF_CONSTRUCTION,  # 构建时搜索宽度
+        "hnsw:ef_search": DEFAULT_HNSW_EF_SEARCH,  # 查询时搜索宽度
+        "hnsw:num_threads": DEFAULT_HNSW_NUM_THREADS,  # 构建并行线程数
+    }
+
 
 class VectorStore:
     """ChromaDB-backed vector store with collection management and search."""
@@ -44,26 +98,46 @@ class VectorStore:
     def _ensure_client(self):
         if self._client is not None:
             return
-        import chromadb
+        try:
+            import chromadb
 
-        os.makedirs(self._persist_directory, exist_ok=True)
-        self._client = chromadb.PersistentClient(path=self._persist_directory)
-        logger.info(
-            "ChromaDB client initialized: %s", self._persist_directory
-        )
+            os.makedirs(self._persist_directory, exist_ok=True)
+            self._client = chromadb.PersistentClient(path=self._persist_directory)
+            logger.info(
+                "ChromaDB client initialized: %s", self._persist_directory
+            )
+        except ImportError:
+            logger.warning(
+                "ChromaDB 未安装，RAG 向量存储不可用。请安装 chromadb 以启用持久化向量检索。"
+            )
+            self._client = None
+            raise RuntimeError(
+                "ChromaDB 未安装，RAG 功能无法启动。请安装 chromadb（pip install chromadb）后重试。"
+            )
+        except Exception as e:
+            logger.error(
+                "ChromaDB 初始化失败: %s", e, exc_info=True
+            )
+            self._client = None
+            raise RuntimeError(f"向量存储初始化失败: {e}") from e
 
     def _ensure_collection(self):
         self._ensure_client()
         if self._collection is not None:
             return
+        # HNSW 调优参数通过 collection metadata 传入（键以 "hnsw:" 为前缀）
+        # 参数选取依据见模块顶部注释；支持通过环境变量覆盖
         self._collection = self._client.get_or_create_collection(
             name=self._collection_name,
-            metadata={"hnsw:space": "cosine"},
+            metadata=_build_hnsw_metadata(),
         )
         logger.info(
-            "ChromaDB collection ready: %s (count=%d)",
+            "ChromaDB collection ready: %s (count=%d, M=%d, ef_construction=%d, ef_search=%d)",
             self._collection_name,
             self._collection.count(),
+            DEFAULT_HNSW_M,
+            DEFAULT_HNSW_EF_CONSTRUCTION,
+            DEFAULT_HNSW_EF_SEARCH,
         )
 
     def add(
@@ -222,6 +296,42 @@ class VectorStore:
             "persist_directory": self._persist_directory,
             "persist_size_bytes": persist_size,
         }
+
+    def close(self) -> None:
+        """显式关闭 ChromaDB 客户端，释放底层 SQLite/DuckDB 资源。
+
+        必要性：
+            PersistentClient 内部持有 SQLite 句柄和 DuckDB 引擎，未显式关闭
+            可能导致 WAL 未 checkpoint、内存索引未 flush、Windows 文件句柄
+            锁定（下次启动 PersistentClient 重建失败）。
+
+        幂等性：
+            多次调用安全；已关闭后再次调用为 no-op。
+
+        异常处理：
+            关闭过程中的任何异常被捕获并记录 warning，不向上抛出，避免
+            阻断 FastAPI shutdown 流程。
+        """
+        try:
+            if self._collection is not None:
+                self._collection = None
+            if self._client is not None:
+                # ChromaDB 不同版本提供 close()/reset()/stop() 之一，按优先级尝试
+                close_fn = (
+                    getattr(self._client, "close", None)
+                    or getattr(self._client, "stop", None)
+                )
+                if close_fn is not None:
+                    try:
+                        close_fn()
+                    except Exception as e:  # noqa: BLE001
+                        logger.warning(
+                            "ChromaDB close() raised: %s", e, exc_info=True
+                        )
+                self._client = None
+            logger.info("ChromaDB PersistentClient closed")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Failed to close ChromaDB client: %s", e, exc_info=True)
 
 
 # ---------------------------------------------------------------------------

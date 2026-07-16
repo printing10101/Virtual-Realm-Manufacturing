@@ -79,11 +79,16 @@ class MetricDefinitionsResponse(BaseModel):
     description="返回所有关键飞轮指标，包含加工记录数、模型质量、用户采纳率、不确定性均值和回灌延迟。",
 )
 async def get_flywheel_status() -> FlywheelStatusResponse:
-    """获取飞轮当前状态。"""
+    """获取飞轮当前状态。
+
+    p4-4c: 改为调用异步方法 ``collect_current_metrics_async`` 与
+    ``generate_weekly_report_async``，从真实数据源（IDatasetStore /
+    ISnapshotStore）采集指标。无数据源时返回零值（兼容旧调用方）。
+    """
     try:
         collector = get_flywheel_collector()
-        metrics = collector.collect_current_metrics()
-        report = collector.generate_weekly_report()
+        metrics = await collector.collect_current_metrics_async()
+        report = await collector.generate_weekly_report_async()
         health_score = report.get("summary", {}).get("health_score", 0)
         health_status = report.get("summary", {}).get("health_status", "unknown")
 
@@ -123,11 +128,15 @@ async def get_flywheel_status() -> FlywheelStatusResponse:
 async def get_flywheel_metrics(
     days: int = Query(default=7, ge=1, le=90, description="历史数据天数范围（1-90）"),
 ) -> dict[str, Any]:
-    """获取飞轮指标详情。"""
+    """获取飞轮指标详情。
+
+    p4-4c: 改为调用异步方法 ``collect_current_metrics_async`` 与
+    ``get_historical_metrics_async``，从真实数据源采集。
+    """
     try:
         collector = get_flywheel_collector()
-        current = collector.collect_current_metrics()
-        historical = collector.get_historical_metrics(days=days)
+        current = await collector.collect_current_metrics_async()
+        historical = await collector.get_historical_metrics_async(days=days)
 
         return {
             "current": current.to_dict(),
@@ -155,10 +164,13 @@ async def generate_weekly_report(
     save: bool = Query(default=False, description="是否同时保存报告到文件"),
     output_dir: str = Query(default="reports", description="报告保存目录"),
 ) -> dict[str, Any]:
-    """生成每周飞轮报告。"""
+    """生成每周飞轮报告。
+
+    p4-4c: 改为调用异步方法 ``generate_weekly_report_async``，从真实数据源采集。
+    """
     try:
         collector = get_flywheel_collector()
-        report = collector.generate_weekly_report()
+        report = await collector.generate_weekly_report_async()
 
         if save:
             filepath = save_report_to_file(report, output_dir)

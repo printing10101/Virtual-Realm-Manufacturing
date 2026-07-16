@@ -97,8 +97,14 @@ export function useEventSource(jobId: string | Ref<string>, options: UseEventSou
     }
 
     const eventTypes = ['queued', 'started', 'progress', 'complete', 'failed', 'cancelled', 'done'] as const
+    const source = eventSource
+    if (!source) {
+      // eventSource 未初始化（理论上不会发生），记录后跳过避免运行时崩溃
+      console.warn('[useEventSource] eventSource is null when registering listeners')
+      return
+    }
     eventTypes.forEach(eventType => {
-      eventSource!.addEventListener(eventType, (event: MessageEvent) => {
+      source.addEventListener(eventType, (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data) as SSEEventData
           const sseEvent: SSEEvent = {
@@ -108,8 +114,9 @@ export function useEventSource(jobId: string | Ref<string>, options: UseEventSou
           }
           events.value.push(sseEvent)
           handleEvent(sseEvent)
-        } catch {
-          // 静默处理
+        } catch (e: unknown) {
+          // SSE 事件解析失败通常为协议异常或非预期数据，记录便于排查但不应断开连接
+          console.warn('[useEventSource] event parse failed for', eventType, e)
         }
       })
     })

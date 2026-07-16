@@ -59,7 +59,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-DEFAULT_AGENT_URL = "http://demo.mtconnect.org:80"
+# 默认 MTConnect Agent URL。
+# 安全修复 [P1-BE-3]：移除硬编码外部 demo 服务，避免生产环境误连公网导致工艺数据泄露。
+# 开发测试时可通过环境变量 MTCONNECT_AGENT_URL 指向 demo.mtconnect.org；
+# 生产环境必须配置内网 Agent URL，启动时 CollectorConfig 会校验非空。
+DEFAULT_AGENT_URL = os.getenv("MTCONNECT_AGENT_URL", "")
 DEFAULT_FLUSH_INTERVAL = 5.0  # seconds
 DEFAULT_BATCH_SIZE = 100      # records per flush
 DEFAULT_RETRY_BACKOFF = 2.0
@@ -429,6 +433,8 @@ class MachiningCollector:
                         self._stop_event.wait(), timeout=self.config.sample_interval
                     )
                 except asyncio.TimeoutError:
+                    # 超时是预期行为：wait_for(stop_event.wait(), timeout=X) 用作"可中断睡眠"，
+                    # 超时表示睡眠完成，无需任何处理；stop 事件触发时提前唤醒走正常流程
                     pass
         except asyncio.CancelledError:  # pragma: no cover
             logger.info("Collector[%s] run loop cancelled", self._job_id)
@@ -540,6 +546,8 @@ class MachiningCollector:
                     # 若 stop 事件被触发，则中断重试
                     return 0
                 except asyncio.TimeoutError:
+                    # 超时是预期行为：wait_for(stop_event.wait(), timeout=X) 用作"可中断睡眠"，
+                    # 超时表示睡眠完成，无需任何处理；stop 事件触发时提前唤醒走正常流程
                     pass
                 backoff = min(backoff * 2, 30.0)
         return 0
@@ -590,6 +598,8 @@ class MachiningCollector:
                     )
                     return 0
                 except asyncio.TimeoutError:
+                    # 超时是预期行为：wait_for(stop_event.wait(), timeout=X) 用作"可中断睡眠"，
+                    # 超时表示睡眠完成，无需任何处理；stop 事件触发时提前唤醒走正常流程
                     pass
                 backoff = min(backoff * 2, 30.0)
         return 0

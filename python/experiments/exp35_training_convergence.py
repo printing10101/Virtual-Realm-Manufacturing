@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from models import CTLTCModel
+from models import DLLNNModel
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'results')
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -164,7 +164,7 @@ def main():
     epochs = 50
     
     models_config = {
-        'CT-LTC': lambda: CTLTCModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim, dt=0.01),
+        'DL-LNN': lambda: DLLNNModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim, dt=0.01),
         'LSTM': lambda: LSTMModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim),
         'GRU': lambda: GRUModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim),
     }
@@ -192,14 +192,14 @@ def main():
         print(f"    过拟合比率: {analysis['overfit_ratio']:.4f}")
     
     # 生成收敛速度对比数据（不同学习率下的表现）
-    print("\n[3/4] 分析不同学习率对CT-LTC收敛的影响...")
+    print("\n[3/4] 分析不同学习率对DL-LNN收敛的影响...")
     lr_sweep_results = {}
     for lr in [0.0001, 0.0005, 0.001, 0.005, 0.01]:
         print(f"  学习率 = {lr}...")
-        model = CTLTCModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim, dt=0.01)
+        model = DLLNNModel(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim, dt=0.01)
         train_losses, val_losses = train_model(
             model, X_train, y_train, X_val, y_val, 
-            epochs=epochs, lr=lr, model_name=f"CT-LTC_lr{lr}"
+            epochs=epochs, lr=lr, model_name=f"DL-LNN_lr{lr}"
         )
         analysis = analyze_convergence(train_losses, val_losses)
         lr_sweep_results[str(lr)] = {

@@ -66,7 +66,7 @@ class CFCLayer(nn.Module):
             nn.Linear(hidden_size, hidden_size),
         )
 
-        self.dt = nn.Parameter(torch.tensor(dt), requires_grad=False)
+        self.dt = nn.Parameter(torch.tensor(dt, dtype=torch.float32), requires_grad=False)
 
         self._init_weights()
 

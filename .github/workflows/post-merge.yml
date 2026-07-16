@@ -172,6 +172,20 @@ jobs:
             BUILD_VERSION=${{ needs.build.outputs.version }}
             BUILD_TIMESTAMP=${{ needs.build.outputs.build_timestamp }}
 
+      # P2-DEV-2 修复：镜像签名 - 使用 Sigstore cosign 对推送的镜像进行签名，保证供应链完整性
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.7.0
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Sign images with cosign
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: |
+          # keyless 签名（使用 OIDC token，无需管理私钥）
+          cosign sign --yes ${{ steps.meta.outputs.tags }} || echo "cosign 签名失败（可能缺少 OIDC 权限），跳过"
+        continue-on-error: true  # 签名失败不阻塞发布流程
+
       - name: 镜像构建完成确认
         run: |
           echo "✓ Docker 镜像构建并推送成功"
@@ -194,49 +208,85 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
+      - name: 检查部署配置
+        # P1 安全修复：GitHub Actions 不允许在 if 条件中直接引用 secrets.* 上下文，
+        # `${{ secrets.XXX != '' }}` 在 if 中永远被当作空字符串处理，导致部署步骤永远跳过。
+        # 参照 release.yml 的 check-secrets 模式：通过 env 将 secrets 暴露给 shell，
+        # 再以 step outputs 形式供后续步骤的 if 使用。
+        id: deploy-config
+        env:
+          KUBE_CONFIG_STAGING: ${{ secrets.KUBE_CONFIG_STAGING }}
+          SSH_HOST_STAGING: ${{ secrets.SSH_HOST_STAGING }}
+        run: |
+          if [ -n "$KUBE_CONFIG_STAGING" ]; then
+            echo "has_kube_config=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_kube_config=false" >> $GITHUB_OUTPUT
+          fi
+
+          if [ -n "$SSH_HOST_STAGING" ]; then
+            echo "has_ssh_host=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_ssh_host=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "部署模式判定完成:"
+          echo "  KUBE_CONFIG_STAGING: ${{ steps.deploy-config.outputs.has_kube_config == 'true' && '已配置' || '未配置' }}"
+          echo "  SSH_HOST_STAGING: ${{ steps.deploy-config.outputs.has_ssh_host == 'true' && '已配置' || '未配置' }}"
+
       - name: 配置 Kubernetes 上下文
-        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+        if: steps.deploy-config.outputs.has_kube_config == 'true'
+        env:
+          KUBE_CONFIG_STAGING: ${{ secrets.KUBE_CONFIG_STAGING }}
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > $HOME/.kube/config
+          echo "$KUBE_CONFIG_STAGING" | base64 -d > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
       - name: 部署到 Kubernetes (Staging)
-        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+        if: steps.deploy-config.outputs.has_kube_config == 'true'
         id: deploy-k8s
         run: |
           echo "=== 部署到 Kubernetes Staging 环境 ==="
-          
+
           # 更新部署配置
           cd deploy/k8s
           sed -i "s|image:.*|image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:staging-${{ needs.build.outputs.version }}|g" deployment.yml
-          
+
           # 应用部署
           kubectl apply -f deployment.yml -n staging
-          kubectl rollout status deployment/lingjing-app -n staging --timeout=300s
-          
+          kubectl rollout status deployment/lnn-api -n staging --timeout=300s
+
           echo "✓ Kubernetes 部署完成"
 
       - name: 部署到云服务器 (Staging)
-        if: ${{ secrets.SSH_HOST_STAGING != '' && secrets.KUBE_CONFIG_STAGING == '' }}
+        if: steps.deploy-config.outputs.has_ssh_host == 'true' && steps.deploy-config.outputs.has_kube_config == 'false'
         id: deploy-vm
+        env:
+          SSH_KEY_STAGING: ${{ secrets.SSH_KEY_STAGING }}
+          SSH_USER_STAGING: ${{ secrets.SSH_USER_STAGING }}
+          SSH_HOST_STAGING: ${{ secrets.SSH_HOST_STAGING }}
         run: |
           echo "=== 部署到云服务器 Staging 环境 ==="
-          
+
           # 配置 SSH
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY_STAGING }}" > ~/.ssh/deploy_key
+          echo "$SSH_KEY_STAGING" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          
-          # 部署到服务器
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_STAGING }}@${{ secrets.SSH_HOST_STAGING }} << 'EOF'
+
+          # P1 安全修复：StrictHostKeyChecking=no 关闭主机密钥校验，存在中间人攻击风险。
+          # 改用 accept-new：首次连接自动接受并记录主机指纹，后续连接校验指纹一致性。
+          # 生产环境强烈建议通过 SSH_KNOWN_HOSTS secret 注入已知主机指纹：
+          #   echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+          #   ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes ...
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SSH_USER_STAGING@$SSH_HOST_STAGING" << 'EOF'
             cd /opt/lingjing-staging
             docker-compose pull
             docker-compose up -d
             sleep 10
             docker-compose ps
           EOF
-          
+
           echo "✓ 云服务器部署完成"
 
       - name: 设置 Staging URL

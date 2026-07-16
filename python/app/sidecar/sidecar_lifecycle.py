@@ -43,7 +43,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
             try:
                 self.check_idle_and_shutdown()
             except (RuntimeError, OSError) as e:
-                logger.error(f"Error in idle checker: {e}")
+                logger.error("Error in idle checker: %s", e)
             await asyncio.sleep(self._check_interval)
 
     async def dispatch(self, request: Request, call_next):
@@ -51,7 +51,17 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
         if self._checker_task is None:
             await self.start_idle_checker()
 
-        if request.url.path != "/health":
+        # P1-10 修复：原代码仅排除 /health，但实际健康探针路径为
+        # /api/health 和 /api/health/ping。K8s 探针每 10-30s 访问探针端点，
+        # 被误计为"用户活动"导致空闲关停永不触发。此处覆盖所有探针路径，
+        # 确保仅真实业务请求才重置空闲计时器。
+        _HEALTH_PROBE_PATHS = frozenset({
+            "/health",
+            "/api/health",
+            "/api/health/ping",
+            "/api/v1/health/quick",
+        })
+        if request.url.path not in _HEALTH_PROBE_PATHS:
             self.last_activity_time = time.time()
         else:
             if self._shutdown_initiated:
@@ -94,7 +104,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
             cache.clear()
             logger.info("Model cache cleared")
         except (ImportError, OSError, RuntimeError) as e:
-            logger.warning(f"Failed to clear model cache: {e}")
+            logger.warning("Failed to clear model cache: %s", e)
 
         try:
             import gc
@@ -102,7 +112,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
             gc.collect()
             logger.info("Garbage collection completed")
         except (RuntimeError, OSError) as e:
-            logger.warning(f"Garbage collection failed: {e}")
+            logger.warning("Garbage collection failed: %s", e)
 
         logger.info("Resource cleanup completed")
 
@@ -114,9 +124,9 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
             state_path = Path(self.state_file_path)
             if state_path.exists():
                 state_path.unlink()
-                logger.info(f"State file removed: {state_path}")
+                logger.info("State file removed: %s", state_path)
         except (OSError, PermissionError) as e:
-            logger.warning(f"Failed to remove state file: {e}")
+            logger.warning("Failed to remove state file: %s", e)
 
     def _trigger_shutdown(self):
         logger.info("Triggering application shutdown...")
@@ -131,7 +141,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
                 t = threading.Thread(target=self._send_shutdown_signal, daemon=True)
                 t.start()
             except (RuntimeError, OSError) as e:
-                logger.error(f"Failed to trigger shutdown: {e}")
+                logger.error("Failed to trigger shutdown: %s", e)
 
     def _send_shutdown_signal(self):
         try:
@@ -140,7 +150,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
             else:
                 os.kill(os.getpid(), signal.SIGTERM)
         except (OSError, ProcessLookupError, PermissionError) as e:
-            logger.error(f"Failed to send shutdown signal: {e}")
+            logger.error("Failed to send shutdown signal: %s", e)
 
 
 class GracefulShutdownHandler:
@@ -173,7 +183,7 @@ class GracefulShutdownHandler:
 
         self._shutting_down = True
         signal_name = signal.Signals(signum).name
-        logger.info(f"Received {signal_name} signal, initiating graceful shutdown...")
+        logger.info("Received %s signal, initiating graceful shutdown...", signal_name)
 
         self._update_status_file("shutting_down")
 
@@ -196,12 +206,25 @@ class GracefulShutdownHandler:
         logger.info("Completing in-flight requests...")
         await asyncio.sleep(1.0)
 
+        # P0-7 修复：先调用 FastAPI shutdown_event 中的清理逻辑，
+        # 确保 ring_log / sse_manager / AsyncTaskManager / Redis / DB / ChromaDB
+        # 等资源按正常 shutdown 流程释放，避免 os._exit(0) 绕过清理导致
+        # Windows 文件句柄锁定、SQLite WAL 未 checkpoint 等问题。
+        try:
+            from app.main import shutdown_event
+            await shutdown_event()
+            logger.info("FastAPI shutdown_event completed")
+        except Exception as e:  # noqa: BLE001
+            logger.error("shutdown_event failed: %s", e, exc_info=True)
+
         self._cleanup_all_resources()
 
         self._update_status_file("stopped")
         self._remove_state_file()
 
         logger.info("Graceful shutdown completed")
+        # 保留 os._exit(0) 确保 sidecar 立即退出，避免 sidecar.json 残留；
+        # 此时 shutdown_event 已执行，资源已释放。
         os._exit(0)
 
     def _cleanup_all_resources(self):
@@ -214,7 +237,7 @@ class GracefulShutdownHandler:
             cache.clear()
             logger.info("Model cache cleared")
         except (ImportError, OSError, RuntimeError) as e:
-            logger.warning(f"Failed to clear model cache: {e}")
+            logger.warning("Failed to clear model cache: %s", e)
 
         try:
             import gc
@@ -222,7 +245,7 @@ class GracefulShutdownHandler:
             gc.collect()
             logger.info("Garbage collection completed")
         except (RuntimeError, OSError) as e:
-            logger.warning(f"Garbage collection failed: {e}")
+            logger.warning("Garbage collection failed: %s", e)
 
         logger.info("All resources cleaned up")
 
@@ -242,9 +265,9 @@ class GracefulShutdownHandler:
                 state["updated_at"] = datetime.now().isoformat()
                 with open(state_path, "w", encoding="utf-8") as f:
                     json.dump(state, f, indent=2)
-                logger.info(f"State file updated: status={status}")
+                logger.info("State file updated: status=%s", status)
         except (OSError, json.JSONDecodeError, ValueError) as e:
-            logger.warning(f"Failed to update status file: {e}")
+            logger.warning("Failed to update status file: %s", e)
 
     def _remove_state_file(self):
         if not self.state_file_path:
@@ -254,9 +277,9 @@ class GracefulShutdownHandler:
             state_path = Path(self.state_file_path)
             if state_path.exists():
                 state_path.unlink()
-                logger.info(f"State file removed: {state_path}")
+                logger.info("State file removed: %s", state_path)
         except (OSError, PermissionError) as e:
-            logger.warning(f"Failed to remove state file: {e}")
+            logger.warning("Failed to remove state file: %s", e)
 
     def _handle_atexit(self):
         if not self._shutting_down:

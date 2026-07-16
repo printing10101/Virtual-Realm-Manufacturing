@@ -11,7 +11,7 @@ import time
 from typing import Dict, List, Tuple
 from torch.utils.data import Dataset, DataLoader
 
-from models import CTLTCModel
+from models import DLLNNModel
 from metrics import ChatterMetrics
 from data_generator import TlustyAnalyticalModel
 
@@ -236,7 +236,7 @@ def main():
                 train_subset = torch.utils.data.Subset(dataset, stage_indices)
                 train_loader = DataLoader(train_subset, batch_size=32, shuffle=True)
                 
-                model = CTLTCModel(input_dim=3, hidden_dim=64)
+                model = DLLNNModel(input_dim=3, hidden_dim=64)
                 train_model(model, train_loader, num_epochs=50, device=device)
                 
                 # 在所有阶段测试
@@ -261,7 +261,7 @@ def main():
                 train_subset = torch.utils.data.Subset(dataset, stage_indices)
                 train_loader = DataLoader(train_subset, batch_size=32, shuffle=True)
                 
-                model = CTLTCModel(input_dim=3, hidden_dim=64)
+                model = DLLNNModel(input_dim=3, hidden_dim=64)
                 train_model(model, train_loader, num_epochs=50, device=device, lr=0.001)
                 
                 stage_results = {}
@@ -310,7 +310,7 @@ def main():
                     
                     if model is None or stage_idx == 0:
                         # 第一阶段或重新初始化
-                        model = CTLTCModel(input_dim=3, hidden_dim=64)
+                        model = DLLNNModel(input_dim=3, hidden_dim=64)
                         train_model(model, train_loader, num_epochs=50, device=device, lr=0.001)
                     else:
                         # 后续阶段：在线更新

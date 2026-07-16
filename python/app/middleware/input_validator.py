@@ -14,6 +14,26 @@ from typing import Any, Optional, Sequence
 _DEFAULT_ROOT_NAMES: tuple[str, str] = ("LNN_DATA_DIR", "LNN_OUTPUT_DIR", "LNN_UPLOAD_DIR")
 _DEFAULT_FALLBACK_DIRS: tuple[str, ...] = ("data", "output", "uploads")
 
+# P2-5-4 修复：提取校验阈值魔法数字为命名常量，便于统一管理与调整
+# 切削参数上限（单位见各注释）
+MAX_CUTTING_SPEED: float = 10_000.0      # m/min
+MAX_FEED_RATE: float = 50.0              # mm/r
+MAX_DEPTH_OF_CUT: float = 100.0          # mm
+# 预测时长上限：24 小时 = 86400 秒
+MAX_PREDICTION_HORIZON_SECONDS: float = 86_400.0
+# 模型名称长度上限
+MAX_MODEL_NAME_LENGTH: int = 64
+# 训练参数上限
+MAX_EPOCHS: int = 10_000
+MAX_BATCH_SIZE: int = 512
+MAX_LEARNING_RATE: float = 1.0
+MAX_VALIDATION_SPLIT: float = 0.5
+# 字符串长度上限
+MAX_SANITIZE_LENGTH: int = 256
+MAX_RAG_QUERY_LENGTH: int = 2000
+MAX_MATERIAL_NAME_LENGTH: int = 100
+MAX_GENERIC_TEXT_LENGTH: int = 4000
+
 
 def _resolve_allowed_roots(
     extra_roots: Optional[Sequence[str]] = None,
@@ -59,16 +79,16 @@ def validate_cutting_parameters(
     errors = []
     if cutting_speed <= 0:
         errors.append("切削速度必须大于0")
-    elif cutting_speed > 10000:
-        errors.append("切削速度不能超过10000 m/min")
+    elif cutting_speed > MAX_CUTTING_SPEED:
+        errors.append(f"切削速度不能超过{int(MAX_CUTTING_SPEED)} m/min")
     if feed_rate <= 0:
         errors.append("进给量必须大于0")
-    elif feed_rate > 50:
-        errors.append("进给量不能超过50 mm/r")
+    elif feed_rate > MAX_FEED_RATE:
+        errors.append(f"进给量不能超过{int(MAX_FEED_RATE)} mm/r")
     if depth_of_cut <= 0:
         errors.append("切削深度必须大于0")
-    elif depth_of_cut > 100:
-        errors.append("切削深度不能超过100 mm")
+    elif depth_of_cut > MAX_DEPTH_OF_CUT:
+        errors.append(f"切削深度不能超过{int(MAX_DEPTH_OF_CUT)} mm")
     return errors
 
 
@@ -76,7 +96,7 @@ def validate_prediction_horizon(horizon: float) -> list[str]:
     errors = []
     if horizon <= 0:
         errors.append("预测时长必须大于0")
-    elif horizon > 86400:
+    elif horizon > MAX_PREDICTION_HORIZON_SECONDS:
         errors.append("预测时长不能超过24小时")
     return errors
 
@@ -93,27 +113,27 @@ def validate_training_params(
     errors = []
     if not model_name or not model_name.strip():
         errors.append("模型名称不能为空")
-    elif not re.match(r"^[a-zA-Z0-9_\-]{1,64}$", model_name):
-        errors.append("模型名称只能包含字母、数字、下划线和连字符，长度1-64")
+    elif not re.match(rf"^[a-zA-Z0-9_\-]{{1,{MAX_MODEL_NAME_LENGTH}}}$", model_name):
+        errors.append(f"模型名称只能包含字母、数字、下划线和连字符，长度1-{MAX_MODEL_NAME_LENGTH}")
     if not dataset_path:
         errors.append("数据集路径不能为空")
     elif not os.path.exists(dataset_path):
         errors.append(f"数据集路径不存在: {dataset_path}")
-    if epochs <= 0 or epochs > 10000:
-        errors.append("训练轮数必须在1-10000之间")
-    if batch_size <= 0 or batch_size > 512:
-        errors.append("批量大小必须在1-512之间")
-    if learning_rate <= 0 or learning_rate > 1.0:
+    if epochs <= 0 or epochs > MAX_EPOCHS:
+        errors.append(f"训练轮数必须在1-{MAX_EPOCHS}之间")
+    if batch_size <= 0 or batch_size > MAX_BATCH_SIZE:
+        errors.append(f"批量大小必须在1-{MAX_BATCH_SIZE}之间")
+    if learning_rate <= 0 or learning_rate > MAX_LEARNING_RATE:
         errors.append("学习率必须在0-1之间")
-    if not 0.0 <= validation_split <= 0.5:
-        errors.append("验证集比例必须在0.0-0.5之间")
+    if not 0.0 <= validation_split <= MAX_VALIDATION_SPLIT:
+        errors.append(f"验证集比例必须在0.0-{MAX_VALIDATION_SPLIT}之间")
     valid_types = {"CFC", "LTC", "HYBRID", "cnn", "CNN"}
     if model_type.upper() not in valid_types:
         errors.append(f"不支持的模型类型: {model_type}")
     return errors
 
 
-def sanitize_string(value: str, max_length: int = 256) -> str:
+def sanitize_string(value: str, max_length: int = MAX_SANITIZE_LENGTH) -> str:
     return value.strip()[:max_length]
 
 
@@ -121,8 +141,8 @@ def validate_rag_query(query: str) -> list[str]:
     errors = []
     if not query or not query.strip():
         errors.append("查询文本不能为空")
-    elif len(query) > 2000:
-        errors.append("查询文本不能超过2000个字符")
+    elif len(query) > MAX_RAG_QUERY_LENGTH:
+        errors.append(f"查询文本不能超过{MAX_RAG_QUERY_LENGTH}个字符")
     return errors
 
 
@@ -130,8 +150,8 @@ def validate_material_name(material: str) -> list[str]:
     errors = []
     if not material or not material.strip():
         errors.append("材料名称不能为空")
-    elif len(material) > 100:
-        errors.append("材料名称不能超过100个字符")
+    elif len(material) > MAX_MATERIAL_NAME_LENGTH:
+        errors.append(f"材料名称不能超过{MAX_MATERIAL_NAME_LENGTH}个字符")
     return errors
 
 
@@ -247,7 +267,7 @@ class ValidationErrorDetail:
 def validate_and_clean(
     value: Any,
     field_name: str = "value",
-    max_length: int = 4000,
+    max_length: int = MAX_GENERIC_TEXT_LENGTH,
 ) -> tuple[Any, ValidationErrorDetail | None]:
     """通用文本清洗与基础校验。
 
@@ -304,10 +324,10 @@ class MaterialValidator:
                 message="材料名称不能为空",
                 code="empty_value",
             )
-        if len(stripped) > 100:
+        if len(stripped) > MAX_MATERIAL_NAME_LENGTH:
             return ValidationErrorDetail(
                 field="material",
-                message="材料名称不能超过 100 个字符",
+                message=f"材料名称不能超过 {MAX_MATERIAL_NAME_LENGTH} 个字符",
                 code="value_too_long",
             )
         if _FORBIDDEN_MATERIAL_CHARS.search(stripped):

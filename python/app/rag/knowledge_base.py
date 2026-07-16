@@ -27,6 +27,9 @@ DEFAULT_KNOWLEDGE_JSON_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "data", "knowledge", "default_knowledge.json"
 )
 
+# 默认查询条数上限（用于 list_documents 等接口的全量加载场景）
+DEFAULT_QUERY_LIMIT = 10000
+
 
 class CollectionProxy:
     """Proxy object that mimics ChromaDB collection API for the KnowledgeStore."""
@@ -229,7 +232,7 @@ class KnowledgeStore:
         return result
 
     def get_all(self) -> list[dict[str, Any]]:
-        return self._vs.list_documents(limit=10000)
+        return self._vs.list_documents(limit=DEFAULT_QUERY_LIMIT)
 
     def get_by_id(self, doc_id: str) -> dict[str, Any] | None:
         result = self._vs.get(ids=[doc_id], limit=1)
@@ -261,7 +264,7 @@ class KnowledgeStore:
         # 先获取该 source 下所有 doc_id，用于清理 entity 索引
         docs_to_clean: list[str] = []
         try:
-            all_docs = self._vs.list_documents(limit=10000)
+            all_docs = self._vs.list_documents(limit=DEFAULT_QUERY_LIMIT)
             docs_to_clean = [
                 d["id"] for d in all_docs
                 if d.get("metadata", {}).get("source") == source

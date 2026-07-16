@@ -26,30 +26,27 @@ logger = logging.getLogger(__name__)
 def _run_async(coro):
     """在同步上下文中安全运行协程。
 
-    - 无运行中的事件循环：直接 asyncio.run
-    - 已有事件循环（如 FastAPI 上下文）：在新线程中运行，避免冲突
+    - 无运行中的事件循环：直接 ``asyncio.run``
+    - 已有事件循环（如 FastAPI async 路由内）：抛 ``RuntimeError``，
+      提示调用方改为 ``await``。
+
+    修复 P0-7：原实现在检测到事件循环时新建线程执行协程，高并发下
+    线程数线性增长导致 OOM，且 ``thread.join()`` 会阻塞当前协程。
+    现改为直接抛异常，由调用方捕获后降级（规则改写 / HyDE 返回 None）。
+
+    注意：调用方（``_get_llm_client`` / ``rewrite_query`` /
+    ``generate_hyde_document``）均已捕获 ``Exception`` 并降级处理，
+    因此在 async 上下文中调用会安全降级而非崩溃。
     """
     try:
         asyncio.get_running_loop()
-        # 已有运行中的事件循环，在新线程中执行
-        result_holder: list[Any] = []
-        error_holder: list[BaseException] = []
-
-        def _runner():
-            try:
-                result_holder.append(asyncio.run(coro))
-            except BaseException as e:  # noqa: BLE001
-                error_holder.append(e)
-
-        thread = threading.Thread(target=_runner, daemon=True)
-        thread.start()
-        thread.join()
-        if error_holder:
-            raise error_holder[0]
-        return result_holder[0] if result_holder else None
     except RuntimeError:
-        # 无运行中的事件循环
+        # 无运行中的事件循环，安全使用 asyncio.run
         return asyncio.run(coro)
+    # 有运行中的事件循环，调用方应直接 await 协程
+    raise RuntimeError(
+        "_run_async 不能在异步上下文中调用，请直接 await 协程或使用 asyncio.create_task"
+    )
 
 # 功能开关
 ENABLE_QUERY_REWRITE = os.getenv("ENABLE_QUERY_REWRITE", "1") == "1"

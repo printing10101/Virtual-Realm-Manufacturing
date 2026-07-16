@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -26,8 +27,8 @@ class WorkOrderUpdate(BaseModel):
     completed_qty: Optional[int] = None
     status: Optional[str] = None
     priority: Optional[str] = None
-    start_date: Optional[str] = None
-    due_date: Optional[str] = None
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
 
 
 # ---------------------------------------------------------------------------
@@ -54,11 +55,11 @@ async def get_dashboard():
 
 @router.get("/records/")
 async def list_production_records(
-    date_from: Optional[str] = Query(None, description="起始日期"),
-    date_to: Optional[str] = Query(None, description="结束日期"),
+    date_from: Optional[date] = Query(None, description="起始日期"),
+    date_to: Optional[date] = Query(None, description="结束日期"),
     line_name: Optional[str] = Query(None, description="产线名称"),
     shift: Optional[str] = Query(None, description="班次"),
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     """获取生产记录列表，支持按日期范围、产线、班次筛选。"""
@@ -81,7 +82,7 @@ async def list_production_records(
 async def list_work_orders(
     status: Optional[str] = Query(None),
     priority: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     """获取工单列表，支持按状态、优先级筛选。"""

@@ -11,12 +11,14 @@ import time
 import uuid
 import logging
 import threading
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
+from app.auth.permissions import require_permission
 from app.goals.goal_chain_store import get_goal_chain_store
 from app.goals.goal_alignment import GoalAlignmentChecker, GoalAlignmentError
 from app.models.goals import (
@@ -32,7 +34,35 @@ from app.models.tasks import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/goal-alignment", tags=["Goal Alignment"])
+router = APIRouter(
+    prefix="/api/v1/goal-alignment",
+    tags=["Goal Alignment"],
+    dependencies=[Depends(require_permission("goal:read"))],
+)
+
+
+# ---------------------------------------------------------------------------
+# Pydantic 请求模型替换 data: dict 弱验证
+# 参考 cost_budget.py 的 B13 修复模式：FastAPI 端点接收强类型模型而非裸 dict
+# ---------------------------------------------------------------------------
+
+class GoalCreateRequest(BaseModel):
+    """目标对齐创建请求模型。
+
+    字段对应 ``create_goal`` 端点原本从 ``data: dict`` 读取的键：
+    level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
+    因此这里仅做基础字符串校验，避免重复实现枚举错误处理逻辑。
+    """
+
+    level: str = Field(default="task", description="目标层级: mission/strategic_goal/project/task")
+    status: str = Field(
+        default="not_started",
+        description="目标状态: not_started/in_progress/completed/cancelled",
+    )
+    id: Optional[str] = Field(default=None, description="目标ID（不传则自动生成）")
+    name: str = Field(default="", description="目标名称")
+    description: str = Field(default="", description="目标描述")
+    parent_id: Optional[str] = Field(default=None, description="父目标ID（非 mission 必填）")
 
 
 class _AlignmentCheckerHolder:
@@ -149,7 +179,7 @@ async def get_goal_progress(
 
 
 @router.get("/goals/{goal_id}/history")
-async def get_goal_history(goal_id: str, limit: int = Query(50, ge=1, le=200)):
+async def get_goal_history(goal_id: str, limit: int = Query(50, ge=1, le=100)):
     store = get_goal_chain_store()
     goal = store.get_goal(goal_id)
     if goal is None:
@@ -160,8 +190,11 @@ async def get_goal_history(goal_id: str, limit: int = Query(50, ge=1, le=200)):
     )
 
 
-@router.post("/goals")
-async def create_goal(data: dict):
+@router.post("/goals", dependencies=[Depends(require_permission("goal:write"))])
+async def create_goal(request: GoalCreateRequest):
+    # 将 Pydantic 模型转为 dict 以复用下方既有的 dict 访问逻辑，
+    # 字段级校验已由 GoalCreateRequest 完成。
+    data: dict[str, Any] = request.model_dump()
     store = get_goal_chain_store()
 
     try:
@@ -209,10 +242,10 @@ async def create_goal(data: dict):
     return success(data=goal.to_dict(), message="Goal created")
 
 
-@router.put("/goals/{goal_id}")
+@router.put("/goals/{goal_id}", dependencies=[Depends(require_permission("goal:write"))])
 async def update_goal(
     goal_id: str,
-    data: dict,
+    data: dict[str, Any],
     checker: GoalAlignmentChecker = Depends(get_alignment_checker),
 ):
     store = get_goal_chain_store()
@@ -246,7 +279,7 @@ async def update_goal(
     return success(data=goal.to_dict(), message="Goal updated")
 
 
-@router.delete("/goals/{goal_id}")
+@router.delete("/goals/{goal_id}", dependencies=[Depends(require_permission("goal:write"))])
 async def delete_goal(goal_id: str):
     store = get_goal_chain_store()
     goal = store.get_goal(goal_id)
@@ -261,9 +294,9 @@ async def delete_goal(goal_id: str):
     return success(message="Goal deleted")
 
 
-@router.post("/tasks")
+@router.post("/tasks", dependencies=[Depends(require_permission("goal:write"))])
 async def create_task(
-    data: dict,
+    data: dict[str, Any],
     checker: GoalAlignmentChecker = Depends(get_alignment_checker),
 ):
     store = get_goal_chain_store()
@@ -335,10 +368,10 @@ async def create_task(
     )
 
 
-@router.post("/tasks/{task_id}/status")
+@router.post("/tasks/{task_id}/status", dependencies=[Depends(require_permission("goal:write"))])
 async def update_task_status(
     task_id: str,
-    data: dict,
+    data: dict[str, Any],
     checker: GoalAlignmentChecker = Depends(get_alignment_checker),
 ):
     try:
@@ -422,7 +455,7 @@ async def check_task_alignment(
         )
 
 
-@router.post("/scan")
+@router.post("/scan", dependencies=[Depends(require_permission("goal:write"))])
 async def run_alignment_scan(
     checker: GoalAlignmentChecker = Depends(get_alignment_checker),
 ):
@@ -448,7 +481,7 @@ async def get_all_progress(
     )
 
 
-@router.post("/goals/{goal_id}/propagate")
+@router.post("/goals/{goal_id}/propagate", dependencies=[Depends(require_permission("goal:write"))])
 async def propagate_goal_change(
     goal_id: str,
     checker: GoalAlignmentChecker = Depends(get_alignment_checker),

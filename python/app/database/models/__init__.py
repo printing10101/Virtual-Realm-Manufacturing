@@ -24,6 +24,43 @@ from app.database.models.training_task import (
     RolePermission,
     init_db,
 )
+from app.database.models.workflow import (
+    WorkflowRun,
+    WorkflowRunNode,
+)
+from app.database.models.workflow_template import (
+    WorkflowTemplate,
+    WorkflowTemplateVersion,
+)
+from app.database.models.project_sync import (
+    ProjectRepo,
+    ProjectResourceRef,
+    ProjectSyncRecord,
+)
+from app.database.models.resource_card import (
+    DatasetReadme,
+    ModelArtifact,
+)
+from app.database.models.project_package import (
+    ProjectExport,
+    ProjectImport,
+)
+from app.database.models.dataset import (
+    Dataset,
+    DatasetVersion,
+    LineageRecord,
+    ExperimentSnapshot,
+)
+from app.database.models.explainability import (
+    ExplanationRecord,
+    ExplanationComparison,
+)
+# 世界模型 + RL Agent（ADR-017 阶段 8 p8）
+from app.database.models.world_model import WorldModelVersionORM
+from app.database.models.rl_agent import (
+    RLAgentPolicyVersionORM,
+    RLAgentTrainingRunORM,
+)
 
 __all__ = [
     "Base",
@@ -46,4 +83,25 @@ __all__ = [
     "Permission",
     "RolePermission",
     "init_db",
+    "WorkflowRun",
+    "WorkflowRunNode",
+    "WorkflowTemplate",
+    "WorkflowTemplateVersion",
+    "Dataset",
+    "DatasetVersion",
+    "LineageRecord",
+    "ExperimentSnapshot",
+    # 资源卡片（ADR-012）
+    "ModelArtifact",
+    "DatasetReadme",
+    # 项目导入导出（ADR-015）
+    "ProjectExport",
+    "ProjectImport",
+    # 可解释性可视化（ADR-016 阶段 7 p7）
+    "ExplanationRecord",
+    "ExplanationComparison",
+    # 世界模型 + RL Agent（ADR-017 阶段 8 p8）
+    "WorldModelVersionORM",
+    "RLAgentPolicyVersionORM",
+    "RLAgentTrainingRunORM",
 ]

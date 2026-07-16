@@ -111,7 +111,7 @@ class DatabasePerfBenchmark:
         if cursor.fetchone()[0] >= n_records:
             return
 
-        logger.info(f"  填充 {n_records} 条测试数据...")
+        logger.info("  填充 %s 条测试数据...", n_records)
         batch_size = 1000
         base_time = time.time()
 
@@ -337,4 +337,4 @@ if __name__ == "__main__":
     results = bench.run_all()
     logger.info("\n数据库性能测试结果:")
     for k, v in results.items():
-        logger.info(f"  {k}: {v}")
+        logger.info("  %s: %s", k, v)

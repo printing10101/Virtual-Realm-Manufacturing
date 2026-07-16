@@ -4,6 +4,10 @@ Revision ID: be7e8d82d196
 Revises: 
 Create Date: 2026-05-19 23:06:13.803530
 
+本迁移同时支持SQLite和PostgreSQL，避免使用数据库专属语法。
+所有表和索引均通过 Alembic 标准 API（op.create_table / op.create_index）创建，
+自动适配不同数据库方言。对于需要幂等性的场景（表可能已存在于旧版本数据库），
+使用 sqlalchemy.inspect 检测表是否存在，而非依赖 SQLite 专属的 IF NOT EXISTS 语法。
 """
 from typing import Sequence, Union
 
@@ -83,35 +87,43 @@ def upgrade() -> None:
         batch_op.create_index('idx_role_permissions_role', ['role_id'], unique=False)
 
     # Create rule_groups and rules tables (for fresh database rebuild)
-    # These tables already existed in the previous codebase; IF NOT EXISTS ensures idempotency
-    op.execute("""
-        CREATE TABLE IF NOT EXISTS rule_groups (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            description TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+    # These tables already existed in the previous codebase; 使用 inspect 检测表是否存在
+    # 以确保幂等性，替代 SQLite 专属的 IF NOT EXISTS 语法，兼容 PostgreSQL。
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    if not inspector.has_table('rule_groups'):
+        op.create_table(
+            'rule_groups',
+            sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column('name', sa.String(), nullable=False),
+            sa.Column('description', sa.Text(), nullable=False, server_default=sa.text("''")),
+            sa.Column('created_at', sa.String(), nullable=False),
+            sa.Column('updated_at', sa.String(), nullable=False),
+            sa.PrimaryKeyConstraint('id'),
+            sa.UniqueConstraint('name', name='uq_rule_groups_name'),
         )
-    """)
-    op.execute("""
-        CREATE TABLE IF NOT EXISTS rules (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT NOT NULL DEFAULT '',
-            group_id INTEGER,
-            conditions_json TEXT NOT NULL,
-            logic_operator TEXT NOT NULL DEFAULT 'AND',
-            result_json TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'active',
-            priority INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (group_id) REFERENCES rule_groups(id) ON DELETE SET NULL
+
+    if not inspector.has_table('rules'):
+        op.create_table(
+            'rules',
+            sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column('name', sa.String(), nullable=False),
+            sa.Column('description', sa.Text(), nullable=False, server_default=sa.text("''")),
+            sa.Column('group_id', sa.Integer(), nullable=True),
+            sa.Column('conditions_json', sa.Text(), nullable=False),
+            sa.Column('logic_operator', sa.String(), nullable=False, server_default=sa.text("'AND'")),
+            sa.Column('result_json', sa.Text(), nullable=False),
+            sa.Column('status', sa.String(), nullable=False, server_default=sa.text("'active'")),
+            sa.Column('priority', sa.Integer(), nullable=False, server_default=sa.text('0')),
+            sa.Column('created_at', sa.String(), nullable=False),
+            sa.Column('updated_at', sa.String(), nullable=False),
+            sa.ForeignKeyConstraint(['group_id'], ['rule_groups.id'], ondelete='SET NULL'),
+            sa.PrimaryKeyConstraint('id'),
         )
-    """)
-    op.execute("CREATE INDEX IF NOT EXISTS idx_rules_group_id ON rules(group_id)")
-    op.execute("CREATE INDEX IF NOT EXISTS idx_rules_status ON rules(status)")
-    op.execute("CREATE INDEX IF NOT EXISTS idx_rules_name ON rules(name)")
+        op.create_index('idx_rules_group_id', 'rules', ['group_id'], unique=False)
+        op.create_index('idx_rules_status', 'rules', ['status'], unique=False)
+        op.create_index('idx_rules_name', 'rules', ['name'], unique=False)
 
     # ### end Alembic commands ###
 
@@ -144,7 +156,14 @@ def downgrade() -> None:
     op.drop_table('permissions')
 
     # Drop rule_groups and rules tables (for downgrade)
-    op.execute("DROP TABLE IF EXISTS rules")
-    op.execute("DROP TABLE IF EXISTS rule_groups")
+    # 使用 inspect 检测表是否存在，替代 SQLite 专属的 DROP TABLE IF EXISTS 语法
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    # 先删 rules（含外键引用），再删 rule_groups
+    if inspector.has_table('rules'):
+        op.drop_table('rules')
+    if inspector.has_table('rule_groups'):
+        op.drop_table('rule_groups')
 
     # ### end Alembic commands ###

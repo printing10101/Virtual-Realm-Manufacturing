@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="灵境制造 - 智能制造平台" />
     <title>灵境制造</title>
+    <!-- CSP 兜底：Tauri 2 在生产模式下会用 tauri.conf.json 的 csp 替换此 meta，
+         但若 Tauri CSP 注入失败，此 meta 作为兜底生效，确保 ipc: 和 http://ipc.localhost 可用。 -->
+    <!--
+      CSP 指令说明（P0 安全修复 / P1 收紧）：
+      - default-src 'self' data: blob:       : 默认仅允许同源 + data/blob URI，收紧兜底策略
+                                                （移除冗余的 https://*.aliyuncs.com https://*.taosdata.com
+                                                 通配符——前端无直接外部资源加载，且通配符过宽存在 C2 风险）
+      - script-src 'self' 'unsafe-inline'    : 移除 'unsafe-eval'（XSS 防护）；保留 'unsafe-inline' 因为 Vue 3 内联脚本
+                                               和诊断脚本依赖（index.html 中的 boot 诊断脚本为内联 <script>）
+                                               TODO: 后续批次应引入 nonce 机制替换 'unsafe-inline'
+      - connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*
+                                             : 保留 ipc: 和 http://ipc.localhost（Tauri 2 IPC 通信硬约束）；
+                                               localhost/127.0.0.1 用于后端健康检查
+                                               （已移除 https://api.openai.com https://api.anthropic.com
+                                                https://api.deepseek.com https://generativelanguage.googleapis.com
+                                                https://*.aliyuncs.com —— 这些 LLM API 由后端 FastAPI 代理调用，
+                                                前端只通过 /api/v1/llm-providers/{id}/test 发起本地请求，
+                                                CSP 白名单冗余且增加 XSS 数据外泄风险）
+      - img-src 'self' data: blob: https:    : 允许同源、data URI、blob URL 和 HTTPS 图片
+      - font-src 'self' data:                : 允许同源和 data URI 字体
+      - style-src 'self' 'unsafe-inline'     : CSS 内联通常必要（Element Plus 主题覆盖等），保留 'unsafe-inline'
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';" />
     <!-- DNS 预解析（Tauri 桌面环境下 localhost 走回环，无实际 DNS 解析，保留以兼容 Web 模式） -->
     <link rel="dns-prefetch" href="//localhost" />
     <!-- 预连接后端源（仅 Web 模式生效，Tauri 模式下走 IPC 不影响） -->
@@ -62,6 +85,16 @@
             msg = String(err);
           }
           var safeMsg = String(msg).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          // 读取运行时 head 中的 CSP meta（用于诊断 Tauri CSP 注入是否正确）
+          var headHtml = '';
+          try {
+            headHtml = (document.head && document.head.outerHTML) ? document.head.outerHTML : '';
+            headHtml = headHtml.substring(0, 1500);
+          } catch (e) { headHtml = '<read failed: ' + e + '>'; }
+          var safeHead = headHtml.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          // 检测 ipc.localhost 是否在 CSP 中
+          var hasIpcCsp = headHtml.indexOf('ipc.localhost') !== -1;
+          var cspStatus = hasIpcCsp ? 'OK (ipc.localhost present)' : 'MISSING (ipc.localhost NOT in CSP)';
           var html =
             '<div style="position:fixed;inset:0;background:#1e1e1e;color:#ff5555;font-family:Consolas,monospace;font-size:13px;padding:20px;z-index:2147483647;overflow:auto;white-space:pre-wrap;">' +
               '<h2 style="color:#ff9900;margin:0 0 12px;">[致命错误] ' + stage + '</h2>' +
@@ -72,6 +105,11 @@
               '<div style="color:#888;">Time: ' + new Date().toISOString() + '</div>' +
               '<div style="color:#888;">Boot: ' + (Date.now() - bootStart) + 'ms</div>' +
               '<div style="color:#888;">Errors: ' + errors.length + '</div>' +
+              '<div style="color:' + (hasIpcCsp ? '#00ff00' : '#ff5555') + ';">CSP: ' + cspStatus + '</div>' +
+              '<hr style="border:0;border-top:1px solid #444;margin:16px 0;" />' +
+              '<h3 style="color:#ff9900;margin:0 0 8px;">document.head outerHTML (前1500字符):</h3>' +
+              '<pre style="color:#9cdcfe;margin-top:0;font-size:11px;max-height:300px;overflow:auto;">' + safeHead + '</pre>' +
+              '<hr style="border:0;border-top:1px solid #444;margin:16px 0;" />' +
               '<pre style="color:#aaa;margin-top:12px;font-size:11px;">' + errors.map(function (e) { return e.stage + ': ' + e.msg; }).join('\n') + '</pre>' +
             '</div>';
           var app = document.getElementById('app');

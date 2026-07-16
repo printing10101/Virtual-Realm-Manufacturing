@@ -1,7 +1,7 @@
 """
 制造安全约束规则库
 
-定义机床、刀具、工艺三级安全约束规则，支持YAML配置加载、规则验证、
+定义机床、刀具、工艺、物理安全四级安全约束规则，支持YAML配置加载、规则验证、
 条件评估和动作执行。四级优先级：P0（人员安全）> P1（设备安全）>
 P2（产品质量）> P3（效率优化）。
 
@@ -9,6 +9,19 @@ P2（产品质量）> P3（效率优化）。
 - M系列: 机床安全约束（速度、温度、振动、进给限制）
 - T系列: 刀具安全约束（磨损、断刀、寿命）
 - P系列: 工艺约束（切削参数、公差、过切检测）
+- S系列: 物理安全约束（急停、防护门、光幕、操作员在场、双手按钮、安全垫）
+        [F-P0-3 新增]
+
+物理安全信号依据:
+- IEC 62443-3-3 SR 7.2（可用性 / 安全功能完整性）
+- ISO 10218（工业机器人安全要求）
+- ISO 13849-1（机械安全控制系统相关部件）
+
+防复发约束:
+- S系列规则 priority 必须为 P0，不可由 AI 优化降级
+- e_stop / hold 动作必须由人工复位，不可自动恢复
+- known_fields 需与 config/safety_rules.yaml 的 known_fields 声明保持同步
+- 新增 action type 必须同时在 VALID_ACTION_TYPES 和 YAML action_types 中声明
 """
 
 from __future__ import annotations
@@ -63,6 +76,8 @@ class ActionType(str, Enum):
     STOP = "stop"                   # 立即停机
     PAUSE_AND_ALERT = "pause_and_alert"  # 暂停+报警
     FORCE_CHANGE = "force_change"   # 强制更换（如换刀）
+    E_STOP = "e_stop"               # 急停（物理安全回路联锁）[F-P0-3]
+    HOLD = "hold"                   # 保持当前状态等待人工干预 [F-P0-3]
 
 
 class RuleCategory(str, Enum):
@@ -70,6 +85,7 @@ class RuleCategory(str, Enum):
     MACHINE = "M"    # 机床
     TOOL = "T"       # 刀具
     PROCESS = "P"    # 工艺
+    SAFETY = "S"     # 物理安全 [F-P0-3]
 
 
 VALID_OPERATORS = {"<", ">", "<=", ">=", "==", "!="}
@@ -237,6 +253,7 @@ def validate_rules(rules: List[SafetyRule]) -> List[ValidationError]:
     完整规则验证，包含:
     - 语法检查（rule_id格式、必填字段）
     - 条件字段存在性检查
+    - 动作类型合法性检查 [F-P0-3]
     - 优先级循环依赖检查
     - 动作目标有效性检查
     """
@@ -247,6 +264,7 @@ def validate_rules(rules: List[SafetyRule]) -> List[ValidationError]:
 
     errors.extend(_check_syntax(rules))
     errors.extend(_check_field_existence(rules))
+    errors.extend(_check_action_type(rules))
     errors.extend(_check_priority_dependency(rules))
     errors.extend(_check_action_target_validity(rules))
     return errors
@@ -301,11 +319,16 @@ def _check_field_existence(rules: List[SafetyRule]) -> List[ValidationError]:
     errors = []
 
     known_fields = {
+        # 机床状态
         "spindle_speed", "spindle_temperature", "vibration_rms",
         "feed_rate", "max_feed_rate", "max_spindle_speed",
+        # 刀具状态
         "tool_wear", "acoustic_emission", "tool_life_used",
         "tool_rated_life", "cutting_force", "material_force_limit",
         "dimension_deviation", "tolerance_band", "overcut_detected",
+        # 物理安全信号 [F-P0-3] - IEC 62443 / ISO 10218 合规
+        "emergency_stop_active", "guard_door_open", "light_curtain_broken",
+        "operator_present", "two_hand_button_engaged", "safety_mat_occupied",
     }
 
     for rule in rules:
@@ -323,6 +346,30 @@ def _check_field_existence(rules: List[SafetyRule]) -> List[ValidationError]:
                 f"未知动作目标字段: '{target}'"
             ))
 
+    return errors
+
+
+# 合法动作类型枚举集合 [F-P0-3]
+# 需与 config/safety_rules.yaml 的 action_types 声明保持同步
+VALID_ACTION_TYPES = {
+    "override", "alert_and_override", "stop", "force_change",
+    "pause_and_alert", "e_stop", "hold",
+}
+
+
+def _check_action_type(rules: List[SafetyRule]) -> List[ValidationError]:
+    """校验 action.type 是否为合法枚举值 [F-P0-3]。"""
+    errors = []
+    for rule in rules:
+        # RuleAction.action_type 为 ActionType(str, Enum)；
+        # 取 .value 得到字符串再做集合校验，避免依赖枚举成员身份
+        atype = rule.action.action_type
+        atype_str = atype.value if isinstance(atype, ActionType) else str(atype)
+        if atype_str and atype_str not in VALID_ACTION_TYPES:
+            errors.append(ValidationError(
+                rule.rule_id, "action.type",
+                f"未知动作类型: '{atype_str}'，合法类型: {sorted(VALID_ACTION_TYPES)}"
+            ))
     return errors
 
 
@@ -538,9 +585,9 @@ class SafetyRuleEngine:
         errors = engine.load_rules(rules)
         if errors:
             for e in errors:
-                logger.warning(f"规则验证错误 [{e.rule_id}] {e.field}: {e.message}")
+                logger.warning("规则验证错误 [%s] %s: %s", e.rule_id, e.field, e.message)
 
-        logger.info(f"安全规则引擎加载完成: {len(rules)} 条规则")
+        logger.info("安全规则引擎加载完成: %s 条规则", len(rules))
         return engine
 
     def evaluate(

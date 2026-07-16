@@ -9,7 +9,7 @@ LNN（Liquid / Logic Neural Network）混合推理引擎，将 **LNN（CFC/LTC/H
 ### 5.1.1 引擎枚举
 ```python
 class EngineType(str, Enum):
-    LNN = "LNN"          # 神经逻辑网络
+    LNN = "LNN"          # 液态神经网络
     LLM = "LLM"          # 大语言模型
     HYBRID = "Hybrid"    # 混合引擎
     RULE = "Rule"        # 规则引擎
@@ -195,19 +195,13 @@ class FusionResult:
 - 状态机（`app/models/agent_state.py`）
 - 网关 API：`/api/v1/agent_gateway`
 
-## 5.13 3D 表征学习 `app/ai/ijepa_3d/`
-
-> 预留模块（I-JEPA 3D 方向）
-- `config.py / dataset.py / model.py / losses.py / masking.py / predictor.py / trainer.py / inference.py`
-- 脚本入口：`python/scripts/train_ijepa_3d.py`、`infer_ijepa_3d.py`
-
-## 5.14 工艺理解 `app/ai/process_understanding/`
+## 5.13 工艺理解 `app/ai/process_understanding/`
 
 > 工艺图理解模块（识别工艺图中的符号、尺寸、注释）
 - 路由：`app/ai/process_understanding/routes.py`
 - 主入口：`/api/v1/process_understanding/*`
 
-## 5.15 训练与推理的关键工程点
+## 5.14 训练与推理的关键工程点
 
 | 关键点 | 说明 |
 |--------|------|

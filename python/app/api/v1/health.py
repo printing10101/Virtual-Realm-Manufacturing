@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import json
 import logging
 import platform
 import sys
@@ -24,6 +25,9 @@ router = APIRouter(prefix="/api/v1/health", tags=["Health Check"])
 simple_health_router = APIRouter(tags=["Health Check"])
 
 APP_START = time.time()
+
+# 健康检查 HTTP 请求超时（秒），用于 Ollama 等外部服务状态探测
+HEALTH_CHECK_TIMEOUT = 5
 
 
 def _get_python_info() -> dict[str, Any]:
@@ -51,7 +55,7 @@ def _get_package_versions() -> dict[str, str]:
 
 async def _get_ollama_status() -> dict[str, Any]:
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
+        async with httpx.AsyncClient(timeout=HEALTH_CHECK_TIMEOUT) as client:
             response = await client.get(f"{config.ai.ollama_base_url}/api/tags")
             if response.status_code == 200:
                 data = response.json()
@@ -302,16 +306,45 @@ async def quick_health():
 async def main_health():
     """主健康检查端点 — 返回统一格式的健康状态。
 
-    返回格式: {"status": "ok", "version": "x.x.x", "timestamp": "..."}
-    - status: 固定为 "ok"，表示服务进程已就绪
+    P1-13 修复：主健康端点必须检查关键依赖（DB）连通性，
+    否则 K8s readinessProbe 在 DB 不可达时仍返回 ok，导致流量
+    被路由到无法服务的实例。轻量 DB ping 失败时：
+    - status 降级为 "degraded"
+    - HTTP 状态码返回 503（Service Unavailable），确保 K8s
+      readinessProbe 正确将 Pod 标记为 NotReady，停止路由流量
+    - response body 仍包含完整状态信息，供监控系统告警使用
+
+    返回格式: {"status": "ok"|"degraded", "version": "x.x.x", "timestamp": "..."}
+    - status: "ok" 表示 DB 可达；"degraded" 表示 DB 不可达
     - version: 动态获取的应用版本号（来自 app.version）
     - timestamp: ISO 8601 格式（UTC）的当前时间戳
     """
-    return {
-        "status": "ok",
+    from fastapi import Response
+
+    # P1-13：轻量 DB 连通性检查（仅 SELECT 1）
+    # check_db_health 返回 dict：{"status": "healthy"|"unhealthy"|"disabled", ...}
+    # - "healthy"：DB 可达
+    # - "disabled"：DB_URL 未配置（桌面模式可能不使用 DB，视为 ok）
+    # - "unhealthy"：DB 不可达
+    db_ok = False
+    try:
+        db_status = await check_db_health()
+        db_ok = db_status.get("status") in ("healthy", "disabled")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("主健康检查 DB ping 失败: %s", exc, exc_info=True)
+
+    body = {
+        "status": "ok" if db_ok else "degraded",
         "version": PY_VERSION,
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "dependencies": {"database": "ok" if db_ok else "error"},
     }
+    # P1-13：DB 不可达时返回 503，确保 K8s readinessProbe 将 Pod 标记为 NotReady
+    return Response(
+        content=json.dumps(body),
+        media_type="application/json",
+        status_code=200 if db_ok else 503,
+    )
 
 
 @simple_health_router.get(

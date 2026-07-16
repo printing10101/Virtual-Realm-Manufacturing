@@ -20,7 +20,7 @@
   ],
   "data_models": [
     {
-      "model": "CT-LTC",
+      "model": "DL-LNN",
       "description": "连续时间LTC网络（本方法）",
       "MAE": 0.967953,
       "RMSE": 1.266139,
@@ -46,16 +46,16 @@
   ],
   "hybrid_models": [
     {
-      "model": "CT-LTC + Tlusty",
-      "description": "CT-LTC与Tlusty模型加权融合（α=0.3）",
+      "model": "DL-LNN + Tlusty",
+      "description": "DL-LNN与Tlusty模型加权融合（α=0.3）",
       "MAE": 202.024826,
       "RMSE": 248.733723,
       "R2": -40568.195312,
       "PCC": -9.097405
     },
     {
-      "model": "CT-LTC + Altintas",
-      "description": "CT-LTC与Altintas模型加权融合（α=0.2）",
+      "model": "DL-LNN + Altintas",
+      "description": "DL-LNN与Altintas模型加权融合（α=0.2）",
       "MAE": 3.378057,
       "RMSE": 3.594716,
       "R2": -7.473369,

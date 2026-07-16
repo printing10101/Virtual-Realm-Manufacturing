@@ -7,6 +7,8 @@ Endpoints for approval workflow, risk assessment, emergency override, and govern
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
+import logging
+import re
 import time
 
 from app.budget.approval_workflow import (
@@ -21,7 +23,19 @@ from app.models.governance import (
 )
 from app.auth.permissions import require_permission
 
-router = APIRouter(prefix="/api/v1/governance", tags=["Governance & Approval"])
+logger = logging.getLogger(__name__)
+
+# P2-批次2 修复：operation_type 正则白名单。
+# risk_identifier.assess_risk 基于关键字子串匹配（如 "machine" in operation_type），
+# 因此不能用 Literal 枚举；但需防止空字符串、超长字符串、注入特殊字符。
+# 允许字母、数字、下划线、连字符，长度 1-100。
+_OPERATION_TYPE_RE = re.compile(r"^[A-Za-z0-9_-]{1,100}$")
+
+router = APIRouter(
+    prefix="/api/v1/governance",
+    tags=["Governance & Approval"],
+    dependencies=[Depends(require_permission("governance:read"))],
+)
 
 
 @router.get("/approval-requests")
@@ -30,7 +44,7 @@ async def list_approval_requests(
         None, description="筛选状态: pending/under_review/approved/rejected/escalated"
     ),
     requester: Optional[str] = Query(None, description="请求人"),
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):
     engine = get_approval_engine()
@@ -40,7 +54,8 @@ async def list_approval_requests(
             status_enum = ApprovalStatus(status)
             requests = engine.get_requests_by_status(status_enum, limit, offset)
         except ValueError:
-            raise HTTPException(400, f"Invalid status: {status}")
+            logger.info("Invalid status: %s", status)
+            raise HTTPException(400, "Invalid status")
     elif requester:
         requests = engine.get_requests_by_requester(requester, limit, offset)
     else:
@@ -54,22 +69,37 @@ async def get_approval_request(request_id: str):
     engine = get_approval_engine()
     request = engine.get_request(request_id)
     if request is None:
-        raise HTTPException(404, f"Approval request not found: {request_id}")
+        logger.info("Approval request not found: %s", request_id)
+        raise HTTPException(404, "Approval request not found")
     return {"ok": True, "data": request.to_dict()}
 
 
-@router.post("/approval-requests")
-async def create_approval_request(data: dict):
+class CreateApprovalRequest(BaseModel):
+    """创建审批请求模型。"""
+
+    task_id: str = Field(..., description="任务 ID")
+    requester: str = Field(..., description="请求人")
+    context: dict = Field(default_factory=dict, description="上下文")
+    # P2-批次2 修复：budget_amount 添加 ge=0 约束，防止负数预算绕过审批阈值。
+    budget_amount: float = Field(default=0.0, ge=0.0, description="预算金额（必须 >=0）")
+    agent_role: str = Field(default="engineer", description="代理角色")
+
+
+@router.post("/approval-requests", dependencies=[Depends(require_permission("governance:write"))])
+async def create_approval_request(data: CreateApprovalRequest):
     engine = get_approval_engine()
     risk_identifier = get_risk_identifier()
 
     try:
-        task_id = data["task_id"]
-        requester = data["requester"]
-        context = data.get("context", {})
+        task_id = data.task_id
+        requester = data.requester
+        context = data.context
         operation_type = context.get("operation_type", "unknown")
-        budget_amount = float(data.get("budget_amount", 0))
-        agent_role = AgentRole(data.get("agent_role", "engineer"))
+        # P2-批次2 修复：operation_type 正则校验，防止空字符串/注入特殊字符。
+        if not _OPERATION_TYPE_RE.match(str(operation_type)):
+            raise HTTPException(400, "Invalid operation_type in context")
+        budget_amount = float(data.budget_amount)
+        agent_role = AgentRole(data.agent_role)
 
         assessment = risk_identifier.assess_risk(
             operation_id=f"OP-{int(time.time())}",
@@ -107,36 +137,52 @@ async def create_approval_request(data: dict):
         raise HTTPException(400, "Invalid request data")
 
 
-@router.post("/approval-requests/{request_id}/assign")
-async def assign_approver(request_id: str, data: dict):
+class AssignApproverRequest(BaseModel):
+    """指派审批人请求模型。"""
+
+    approver_id: Optional[str] = Field(default=None, description="审批人 ID")
+
+
+@router.post("/approval-requests/{request_id}/assign", dependencies=[Depends(require_permission("governance:write"))])
+async def assign_approver(request_id: str, data: AssignApproverRequest):
     engine = get_approval_engine()
-    approver_id = data.get("approver_id")
+    approver_id = data.approver_id
     if not approver_id:
         raise HTTPException(400, "approver_id is required")
 
     request = engine.assign_approver(request_id, approver_id)
     if request is None:
-        raise HTTPException(404, f"Approval request not found: {request_id}")
+        logger.info("Approval request not found: %s", request_id)
+        raise HTTPException(404, "Approval request not found")
     return {"ok": True, "data": request.to_dict()}
 
 
-@router.post("/approval-requests/{request_id}/decide")
-async def make_decision(request_id: str, data: dict):
+class MakeDecisionRequest(BaseModel):
+    """审批决策请求模型。"""
+
+    approver_id: str = Field(..., description="审批人 ID")
+    decision: str = Field(..., description="决策: approved/rejected/escalated/request_info")
+    comment: str = Field(default="", description="备注")
+
+
+@router.post("/approval-requests/{request_id}/decide", dependencies=[Depends(require_permission("governance:write"))])
+async def make_decision(request_id: str, data: MakeDecisionRequest):
     engine = get_approval_engine()
 
     try:
-        approver_id = data["approver_id"]
-        decision = data["decision"]
+        approver_id = data.approver_id
+        decision = data.decision
         if decision not in ("approved", "rejected", "escalated", "request_info"):
             raise HTTPException(
                 400,
                 "Invalid decision. Must be: approved/rejected/escalated/request_info",
             )
 
-        comment = data.get("comment", "")
+        comment = data.comment
         request = engine.make_decision(request_id, approver_id, decision, comment)
         if request is None:
-            raise HTTPException(404, f"Approval request not found: {request_id}")
+            logger.info("Approval request not found: %s", request_id)
+            raise HTTPException(404, "Approval request not found")
 
         return {"ok": True, "data": request.to_dict()}
     except HTTPException:
@@ -146,19 +192,27 @@ async def make_decision(request_id: str, data: dict):
         raise HTTPException(400, "Invalid decision data")
 
 
-@router.post("/approval-requests/{request_id}/escalate")
-async def escalate_request(request_id: str, data: dict):
+class EscalateRequest(BaseModel):
+    """审批升级请求模型。"""
+
+    escalator_id: str = Field(default="system", description="升级操作人 ID")
+    reason: str = Field(default="", description="升级原因")
+
+
+@router.post("/approval-requests/{request_id}/escalate", dependencies=[Depends(require_permission("governance:write"))])
+async def escalate_request(request_id: str, data: EscalateRequest):
     engine = get_approval_engine()
-    escalator_id = data.get("escalator_id", "system")
-    reason = data.get("reason", "")
+    escalator_id = data.escalator_id
+    reason = data.reason
 
     request = engine.escalate_request(request_id, escalator_id, reason)
     if request is None:
-        raise HTTPException(404, f"Approval request not found: {request_id}")
+        logger.info("Approval request not found: %s", request_id)
+        raise HTTPException(404, "Approval request not found")
     return {"ok": True, "data": request.to_dict()}
 
 
-@router.post("/approval-timeout-handler")
+@router.post("/approval-timeout-handler", dependencies=[Depends(require_permission("governance:write"))])
 async def handle_approval_timeout():
     engine = get_approval_engine()
     handled_count = engine.handle_timeout()
@@ -168,7 +222,7 @@ async def handle_approval_timeout():
 @router.get("/approval-requests/my")
 async def get_my_approval_requests(
     approver_id: str = Query(..., description="审批人ID"),
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):
     engine = get_approval_engine()
@@ -202,16 +256,35 @@ async def get_approval_dashboard():
     }
 
 
-@router.post("/risk-assess")
-async def assess_operation_risk(data: dict):
+class AssessRiskRequest(BaseModel):
+    """风险评估请求模型。"""
+
+    operation_id: Optional[str] = Field(default=None, description="操作 ID（None 自动生成）")
+    # P2-批次2 修复：operation_type 添加正则约束，防止空字符串/注入特殊字符。
+    # 使用 pattern 而非 Literal，因为 risk_identifier 基于关键字子串匹配。
+    operation_type: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        pattern=r"^[A-Za-z0-9_-]+$",
+        description="操作类型（仅允许字母、数字、下划线、连字符）",
+    )
+    context: dict = Field(default_factory=dict, description="上下文")
+    requester_role: str = Field(default="engineer", description="请求人角色")
+    # P2-批次2 修复：budget_amount 添加 ge=0 约束，防止负数预算绕过风险评估。
+    budget_amount: float = Field(default=0.0, ge=0.0, description="预算金额（必须 >=0）")
+
+
+@router.post("/risk-assess", dependencies=[Depends(require_permission("governance:write"))])
+async def assess_operation_risk(data: AssessRiskRequest):
     risk_identifier = get_risk_identifier()
 
     try:
-        operation_id = data.get("operation_id", f"OP-{int(time.time())}")
-        operation_type = data["operation_type"]
-        context = data.get("context", {})
-        requester_role = AgentRole(data.get("requester_role", "engineer"))
-        budget_amount = float(data.get("budget_amount", 0))
+        operation_id = data.operation_id or f"OP-{int(time.time())}"
+        operation_type = data.operation_type
+        context = data.context
+        requester_role = AgentRole(data.requester_role)
+        budget_amount = float(data.budget_amount)
 
         assessment = risk_identifier.assess_risk(
             operation_id=operation_id,
@@ -277,16 +350,23 @@ async def emergency_override(request: EmergencyOverrideRequest):
         raise HTTPException(400, "Invalid emergency override data")
 
 
-@router.post("/emergency-retroactive-approval")
-async def complete_retroactive_approval(data: dict):
+class CompleteRetroactiveRequest(BaseModel):
+    """完成事后审批请求模型。"""
+
+    emergency_id: Optional[str] = Field(default=None, description="紧急操作 ID")
+
+
+@router.post("/emergency-retroactive-approval", dependencies=[Depends(require_permission("governance:write"))])
+async def complete_retroactive_approval(data: CompleteRetroactiveRequest):
     engine = get_approval_engine()
-    emergency_id = data.get("emergency_id")
+    emergency_id = data.emergency_id
     if not emergency_id:
         raise HTTPException(400, "emergency_id is required")
 
     success = engine.complete_retroactive_approval(emergency_id)
     if not success:
-        raise HTTPException(404, f"Emergency operation not found: {emergency_id}")
+        logger.info("Emergency operation not found: %s", emergency_id)
+        raise HTTPException(404, "Emergency operation not found")
     return {"ok": True, "message": "Retroactive approval completed"}
 
 
@@ -307,16 +387,26 @@ async def get_delegations(user_id: str = Query(..., description="用户ID")):
     }
 
 
-@router.post("/delegations")
-async def create_delegation(data: dict):
+class CreateDelegationRequest(BaseModel):
+    """创建委托请求模型。"""
+
+    delegator_id: str = Field(..., description="委托人 ID")
+    delegate_id: str = Field(..., description="被委托人 ID")
+    start_time: float = Field(..., description="开始时间（Unix 时间戳）")
+    end_time: float = Field(..., description="结束时间（Unix 时间戳）")
+    reason: str = Field(default="", description="委托原因")
+
+
+@router.post("/delegations", dependencies=[Depends(require_permission("governance:write"))])
+async def create_delegation(data: CreateDelegationRequest):
     engine = get_approval_engine()
 
     try:
-        delegator_id = data["delegator_id"]
-        delegate_id = data["delegate_id"]
-        start_time = float(data["start_time"])
-        end_time = float(data["end_time"])
-        reason = data.get("reason", "")
+        delegator_id = data.delegator_id
+        delegate_id = data.delegate_id
+        start_time = float(data.start_time)
+        end_time = float(data.end_time)
+        reason = data.reason
 
         delegation = engine.delegate_approval(
             delegator_id=delegator_id,

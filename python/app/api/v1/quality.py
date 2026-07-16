@@ -44,7 +44,7 @@ async def list_quality_records(
     result: Optional[str] = Query(None, description="检验结果"),
     date_from: Optional[str] = Query(None, description="起始日期 YYYY-MM-DD"),
     date_to: Optional[str] = Query(None, description="结束日期 YYYY-MM-DD"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     """获取质量检验记录列表，支持按类型、结果、日期范围筛选。"""
@@ -116,7 +116,7 @@ async def get_quality_stats():
 async def list_anomalies(
     anomaly_type: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     """获取质量异常列表。"""

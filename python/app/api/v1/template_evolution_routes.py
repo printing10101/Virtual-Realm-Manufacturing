@@ -5,15 +5,20 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from app.auth.permissions import require_permission
 from app.templates.template_evolution import get_evolution_engine
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/templates/evolution", tags=["evolution"])
+router = APIRouter(
+    prefix="/api/v1/templates/evolution",
+    tags=["evolution"],
+    dependencies=[Depends(require_permission("template-evolution:read"))],
+)
 
 
 class MetricsUpdateRequest(BaseModel):
@@ -39,7 +44,7 @@ def list_suggestions(status_filter: Optional[str] = None):
     return success(data=[s.to_dict() for s in suggestions])
 
 
-@router.post("/suggestions")
+@router.post("/suggestions", dependencies=[Depends(require_permission("template-evolution:write"))])
 def create_suggestion(req: CreateSuggestionRequest):
     """Create a new evolution suggestion."""
     engine = get_evolution_engine()
@@ -51,7 +56,7 @@ def create_suggestion(req: CreateSuggestionRequest):
     return success(data=suggestion.to_dict())
 
 
-@router.post("/suggestions/apply")
+@router.post("/suggestions/apply", dependencies=[Depends(require_permission("template-evolution:write"))])
 def apply_suggestion(req: ApplySuggestionRequest):
     """Apply an evolution suggestion to a branch."""
     engine = get_evolution_engine()
@@ -61,7 +66,7 @@ def apply_suggestion(req: ApplySuggestionRequest):
     return success(data=result.to_dict())
 
 
-@router.post("/metrics")
+@router.post("/metrics", dependencies=[Depends(require_permission("template-evolution:write"))])
 def update_metrics(req: MetricsUpdateRequest):
     """Update metrics for trigger evaluation."""
     engine = get_evolution_engine()
@@ -69,7 +74,7 @@ def update_metrics(req: MetricsUpdateRequest):
     return success(data={"updated": len(req.metrics)})
 
 
-@router.post("/triggers/evaluate")
+@router.post("/triggers/evaluate", dependencies=[Depends(require_permission("template-evolution:write"))])
 def evaluate_triggers():
     """Evaluate all evolution triggers."""
     engine = get_evolution_engine()

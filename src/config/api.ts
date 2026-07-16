@@ -67,6 +67,15 @@ export const API_CONFIG = {
   /** 任务作业流 */
   JOBS: '/api/v1/jobs',
 
+  /** DAG 工作流编排（ADR-005 阶段 1） */
+  WORKFLOWS: '/api/v1/workflows',
+
+  /** 数据集 / 版本 / 血缘（ADR-005 阶段 2） */
+  DATASETS: '/api/v1/datasets',
+
+  /** 实验快照 / 一键复现（ADR-005 阶段 2） */
+  SNAPSHOTS: '/api/v1/snapshots',
+
   /** 推理服务 */
   REASONING: '/api/v1/reasoning',
 
@@ -96,6 +105,30 @@ export const API_CONFIG = {
 
   /** 工艺理解与知识问答（基于 LLM 的工艺咨询/故障诊断/方案生成） */
   PROCESS_UNDERSTANDING: '/api/process-understanding',
+
+  /** 数据飞轮（ADR-005 阶段 4：反馈闭环 + 模型热更新） */
+  FLYWHEEL: '/api/v1/flywheel',
+
+  /** 工作流模板市场（ADR-010 阶段 6 p6-1：发布 / 列表 / 搜索 / 下载 / 评分 / 下架） */
+  WORKFLOW_TEMPLATES: '/api/v1/workflow-templates',
+
+  /** 项目级 Git 同步（ADR-011 阶段 6 p6-2：项目 / 资源引用 / commit/push/pull/clone / 同步记录） */
+  PROJECT_SYNC: '/api/v1/project-sync',
+
+  /** 资源卡片（ADR-012 阶段 6 p6-3：模型产物 + 数据集 README + 卡片聚合 + lineage 摘要） */
+  RESOURCE_CARDS: '/api/v1/resource-cards',
+
+  /** 项目导入导出（ADR-015 阶段 6 p6-4：.lomo 包格式导出/导入/校验/预览 + 记录列表） */
+  PROJECT_PACKAGES: '/api/v1/project-packages',
+
+  /** 可解释性可视化（ADR-016 阶段 7 p7：隐状态投影 + 门控动力学 + 反事实 + 置信度 + 对比） */
+  EXPLAINABILITY: '/api/v1/explainability',
+
+  /** 世界模型（ADR-017 阶段 8 p8：轨迹预测 + 版本管理） */
+  WORLD_MODEL: '/api/v1/world-model',
+
+  /** RL Agent（ADR-017 阶段 8 p8：决策推理 + 训练控制） */
+  RL_AGENT: '/api/v1/rl-agent',
 } as const
 
 /**

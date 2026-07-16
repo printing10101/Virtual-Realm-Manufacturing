@@ -11,6 +11,7 @@ factories (see :func:`get_db`, :func:`get_db_sessionmaker`,
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
 import threading
@@ -23,9 +24,24 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy import text
+from sqlalchemy import event, text
+from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
+
+# P1-2 修复：通过 contextvar 让 get_db() 在 yield 时知道当前请求方法，
+# 从而对 GET / HEAD / OPTIONS 请求跳过 commit。
+_current_request_method: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "_current_request_method", default="")
+
+
+def set_request_method(method: str) -> contextvars.Token:
+    """由 RequestIdMiddleware / 最外层 ASGI 中间件调用，记录当前请求方法。
+
+    返回 Token 以便在请求结束时 reset_contextvar。
+    """
+    return _current_request_method.set(method.upper() if method else "")
 
 
 def _resolve_db_url() -> str:
@@ -105,11 +121,27 @@ class _DatabaseSingletons:
                     "pool_pre_ping": True,
                 })
             self._engine = create_async_engine(config.async_url, **engine_kwargs)
-            logger.info(
-                "Database engine created: pool_size=%d max_overflow=%d",
-                config.pool_size,
-                config.max_overflow,
-            )
+            # P1-3 修复：SQLite PRAGMA 优化（WAL 模式 + foreign_keys + busy_timeout）
+            # - journal_mode=WAL：并发读不阻塞写，桌面单用户场景显著降低锁冲突
+            # - foreign_keys=ON：默认开启外键约束（SQLAlchemy ORM 假设外键生效）
+            # - busy_timeout=5000ms：写锁竞争时等待 5s 而非立即抛 SQLITE_BUSY
+            if config.async_url.startswith("sqlite"):
+                @event.listens_for(self._engine.sync_engine, "connect")
+                def _set_sqlite_pragma(dbapi_conn, _connection_record):
+                    cursor = dbapi_conn.cursor()
+                    try:
+                        cursor.execute("PRAGMA journal_mode=WAL")
+                        cursor.execute("PRAGMA foreign_keys=ON")
+                        cursor.execute("PRAGMA busy_timeout=5000")
+                    finally:
+                        cursor.close()
+                logger.info("SQLite PRAGMA enabled: journal_mode=WAL, foreign_keys=ON, busy_timeout=5000")
+            else:
+                logger.info(
+                    "Database engine created: pool_size=%d max_overflow=%d",
+                    config.pool_size,
+                    config.max_overflow,
+                )
             return self._engine
 
     def get_sessionmaker(self) -> Optional[async_sessionmaker]:
@@ -235,18 +267,42 @@ async def get_db() -> AsyncSession:
         async def list_items(session: AsyncSession = Depends(get_db)):
             result = await session.execute(...)
 
+    P1-2 修复：GET / HEAD / OPTIONS 请求按语义应当只读，不自动 commit。
+    - 只读请求：仅 rollback 释放事务（即使有 pending 修改也不持久化，符合最小惊讶原则）
+    - 写请求（POST/PUT/PATCH/DELETE）：成功时 commit，失败时 rollback
+
     Raises:
         RuntimeError: 数据库未配置（``DB_URL`` 为空）。
     """
     sessionmaker = _singletons.get_sessionmaker()
     if sessionmaker is None:
         raise RuntimeError("Database not configured")
+    # 通过 contextvar / 全局状态获取当前请求方法
+    # FastAPI 中 request.method 可通过 inspect stack 获取，但更可靠的方式是
+    # 在此处使用 contextvar。此处简化：直接判断是否在请求上下文中。
+    request_method = _current_request_method.get()
+    is_readonly = request_method in ("GET", "HEAD", "OPTIONS")
     async with sessionmaker() as session:
         try:
             yield session
+        except HTTPException:
+            # P0-14 修复：HTTP 异常由业务层主动抛出（如正常的 4xx/5xx 响应），
+            # 为避免误持久化未完成的事务，统一 rollback 后重新抛出。
+            await session.rollback()
+            raise
+        except SQLAlchemyError as e:
+            # P0-14 修复：数据库异常（IntegrityError/OperationalError 等）必须 rollback，
+            # 否则会进入 else 分支触发 commit 导致脏数据持久化。
+            await session.rollback()
+            logger.error("Database session error, rolled back: %s", e, exc_info=True)
+            raise
         except (RuntimeError, OSError, ValueError) as e:
             await session.rollback()
             logger.error("Database session error, rolled back: %s", e, exc_info=True)
             raise
         else:
-            await session.commit()
+            if is_readonly:
+                # P1-2：GET 请求不 commit，仅 rollback 释放事务
+                await session.rollback()
+            else:
+                await session.commit()

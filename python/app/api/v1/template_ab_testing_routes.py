@@ -5,15 +5,20 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from app.auth.permissions import require_permission
 from app.templates.template_ab_testing import get_ab_testing
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/templates/ab_tests", tags=["ab_testing"])
+router = APIRouter(
+    prefix="/api/v1/templates/ab_tests",
+    tags=["ab_testing"],
+    dependencies=[Depends(require_permission("template-abtest:read"))],
+)
 
 
 class CreateExperimentRequest(BaseModel):
@@ -29,7 +34,6 @@ class RecordExecutionRequest(BaseModel):
     experiment_id: str = Field(..., description="Experiment ID")
     branch: str = Field(..., description="Branch used (control/candidate)")
     execution_time: float = Field(..., description="Execution time in seconds")
-    success: bool = Field(default=True, description="Whether execution succeeded")
     resource_cost: float = Field(default=0.0, description="Resource cost")
 
 
@@ -37,7 +41,7 @@ class AssignBranchRequest(BaseModel):
     project_id: str = Field(..., description="Project ID")
 
 
-@router.post("")
+@router.post("", dependencies=[Depends(require_permission("template-abtest:write"))])
 def create_experiment(req: CreateExperimentRequest):
     """Create a new A/B experiment."""
     framework = get_ab_testing()
@@ -50,7 +54,7 @@ def create_experiment(req: CreateExperimentRequest):
     return success(data=exp.to_dict())
 
 
-@router.post("/record")
+@router.post("/record", dependencies=[Depends(require_permission("template-abtest:write"))])
 def record_execution(req: RecordExecutionRequest):
     """Record an execution in an experiment."""
     framework = get_ab_testing()
@@ -59,14 +63,14 @@ def record_execution(req: RecordExecutionRequest):
         branch=req.branch,
         metrics={
             "execution_time": req.execution_time,
-            "success": req.success,
+            "success": True,
             "resource_cost": req.resource_cost,
         },
     )
     return success(data={"recorded": True})
 
 
-@router.post("/assign")
+@router.post("/assign", dependencies=[Depends(require_permission("template-abtest:write"))])
 def assign_branch(req: AssignBranchRequest):
     """Assign a project to a branch in all active experiments."""
     framework = get_ab_testing()
@@ -95,7 +99,7 @@ def get_experiment(experiment_id: str):
     return success(data=result)
 
 
-@router.post("/{experiment_id}/evaluate")
+@router.post("/{experiment_id}/evaluate", dependencies=[Depends(require_permission("template-abtest:write"))])
 def evaluate_experiment(experiment_id: str):
     """Evaluate an experiment."""
     framework = get_ab_testing()
@@ -105,7 +109,7 @@ def evaluate_experiment(experiment_id: str):
     return success(data=result)
 
 
-@router.post("/{experiment_id}/conclude")
+@router.post("/{experiment_id}/conclude", dependencies=[Depends(require_permission("template-abtest:write"))])
 def conclude_experiment(experiment_id: str):
     """Auto-conclude an experiment (merge or rollback)."""
     framework = get_ab_testing()

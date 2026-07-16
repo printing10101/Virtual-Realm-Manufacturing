@@ -19,8 +19,35 @@ from app.core.request_id import get_request_id
 
 logger = logging.getLogger(__name__)
 
-# Shared rate limiter instance (in-memory, keyed by client IP)
-limiter = Limiter(key_func=get_remote_address)
+# P2-4-2 修复：提取魔法数字为模块级常量
+_DEFAULT_RETRY_WINDOW_SECONDS = 60
+
+# P2-4-1 修复：自定义 key 函数处理 X-Forwarded-For，支持反向代理场景。
+# slowapi 默认的 get_remote_address 直接读取 request.client.host（TCP 对端），
+# 在 Nginx/CDN/负载均衡后所有请求 IP 相同，限速失效且可被伪造 X-Forwarded-For 绕过。
+# 此函数取 X-Forwarded-For 首段（最原始客户端），回退到 connection IP。
+# 注意：必须配合可信代理配置（Nginx 设置 X-Real-IP），否则攻击者可伪造该头。
+
+
+def _get_real_client_ip(request: Request) -> str:
+    """从 X-Forwarded-For 提取真实客户端 IP，回退到 connection IP。
+
+    取 X-Forwarded-For 首段（最原始的客户端 IP）。若头不存在则回退到
+    ``request.client.host``。返回 "unknown" 仅在 client 信息完全缺失时。
+    """
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        # 取第一个 IP（最原始的客户端），strip 防止首尾空格干扰
+        first_ip = forwarded_for.split(",")[0].strip()
+        if first_ip:
+            return first_ip
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+# Shared rate limiter instance (in-memory, keyed by real client IP)
+limiter = Limiter(key_func=_get_real_client_ip)
 
 
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
@@ -32,7 +59,8 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONRe
     detail = str(exc.detail) if exc.detail else ""
 
     # 从 slowapi 的 detail 信息中提取限制窗口大小（如 "5 per 1 minute"）
-    retry_window_seconds = 60  # 默认回退值
+    # P2-4-2 修复：使用模块级常量替代魔法数字
+    retry_window_seconds = _DEFAULT_RETRY_WINDOW_SECONDS
     match = re.search(r"per\s+(\d+)\s+(second|minute|hour)", detail, re.IGNORECASE)
     if match:
         amount = int(match.group(1))
@@ -61,7 +89,9 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONRe
     return JSONResponse(
         status_code=429,
         content={
-            "error": message,
+            # P1-18 修复：移除冗余 "error" 字段——它与 "message" 值相同且语义冲突
+            # （unified_auth 中 error 是 snake_case 标识，这里是中文消息）。
+            # 全局标准格式（response.py error_response）不含 error 字段。
             "message": message,
             "code": 1007,
             "request_id": get_request_id(),

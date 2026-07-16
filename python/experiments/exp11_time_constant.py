@@ -1,6 +1,6 @@
 """
 时间常数分析实验
-分析CT-LTC网络学习到的时间常数τ分布
+分析DL-LNN网络学习到的时间常数τ分布
 生成论文表6所需数据
 """
 
@@ -14,9 +14,16 @@ from typing import Dict, List
 
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
+# 添加项目根目录（python/）到 path，用于导入 app 模块
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from app.ai.lnn.training.reproducibility import set_global_seed
+from app.ai.lnn.training.experiment_tracker import start_run, is_enabled
 
 from config import ModelConfig
-from models import CTCTCWithPhysics
+from models import DLLNNWithPhysics
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 
 
@@ -45,8 +52,8 @@ def analyze_time_constants():
     )
     
     # 创建并训练模型
-    print("\n[2/3] 训练CT-LTC模型...")
-    model = CTCTCWithPhysics(
+    print("\n[2/3] 训练DL-LNN模型...")
+    model = DLLNNWithPhysics(
         input_dim=config.input_dim,
         hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,
@@ -195,4 +202,6 @@ def analyze_time_constants():
 
 
 if __name__ == "__main__":
-    results = analyze_time_constants()
+    set_global_seed(42)
+    with start_run(experiment_name="exp11_time_constant"):
+        results = analyze_time_constants()

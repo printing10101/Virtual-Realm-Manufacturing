@@ -639,7 +639,7 @@ Content-Type: application/json
         lines = [
             "## LNN 模型 API",
             "",
-            "LNN（Logical Neural Network）模型管理接口，支持模型预测、训练、量化等功能。",
+            "LNN（Liquid Neural Network）模型管理接口，支持模型预测、训练、量化等功能。",
             "",
         ]
 

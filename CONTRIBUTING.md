@@ -19,7 +19,7 @@
 - [测试](#测试)
   - [前端单元测试](#前端单元测试)
   - [Python 单元测试](#python-单元测试)
-  - [E2E 测试](#e2e-测试)
+  - [前端组件测试](#前端组件测试)
 - [PR 规范](#pr-规范)
 - [Bug 报告](#bug-报告)
 - [项目结构说明](#项目结构说明)
@@ -338,23 +338,23 @@ tests/
 
 > **覆盖率要求**：核心模块（`core/`、`database/`、`validation/`、`process_planning/`）代码覆盖率应 >= 90%。
 
-### E2E 测试
+### 前端组件测试
 
 ```bash
-# 安装 Playwright 浏览器（首次运行前）
-npx playwright install chromium
-
-# 运行所有 E2E 测试
-npx playwright test
+# 运行所有前端组件测试（Vitest）
+npx vitest run
 
 # 运行指定测试文件
-npx playwright test e2e/app-navigation.spec.ts
+npx vitest run tests/ExampleGallery.spec.ts
 
-# 查看测试报告
-npx playwright show-report
+# 交互式 watch 模式
+npx vitest
+
+# 查看测试覆盖率
+npx vitest run --coverage
 ```
 
-E2E 测试使用 **Playwright** 模拟真实用户操作。测试文件位于 `e2e/` 目录。
+前端测试基于 **Vitest**，测试文件位于 `tests/` 目录下（`*.spec.ts`）。
 
 ---
 
@@ -396,7 +396,7 @@ Fixes #123 或 Resolves #123
 ## 测试
 - [ ] 已通过所有单元测试
 - [ ] 已添加新的测试用例
-- [ ] 已通过 E2E 测试（如有需要）
+- [ ] 已通过前端组件测试（如有需要）
 
 ## 截图/录屏（如适用）
 ```
@@ -521,7 +521,7 @@ Virtual-Realm-Manufacturing/
 │   └── benchmarks/               # 基准实验报告
 │
 ├── config/                       # 运行时配置文件
-├── e2e/                          # Playwright E2E 测试
+├── tests/                        # Vitest 前端组件测试 + benchmark 基线
 ├── .github/workflows/            # GitHub Actions CI/CD
 ├── requirements.txt              # Python 依赖
 ├── package.json                  # 前端依赖与脚本
@@ -532,4 +532,9 @@ Virtual-Realm-Manufacturing/
 
 ## 许可证
 
-本项目采用 **MIT 许可证**。参与贡献即表示您同意将您的代码以相同许可证授权。详见 [LICENSE](LICENSE) 文件。
+本项目采用 **Apache License 2.0** 许可证。参与贡献即表示您同意将您的代码以相同许可证授权,并授予相应的专利使用权。详见 [LICENSE](LICENSE) 文件。
+
+- **商业使用**:允许,无需额外授权
+- **修改与分发**:允许,需保留版权与许可证声明
+- **专利授权**:贡献者自动授予必要的专利使用权
+- **商标使用**:本许可证不授予商标使用权

@@ -178,7 +178,7 @@ class LNNPerfBenchmark:
             self._results.update(result)
             return result
         except (RuntimeError, OSError, ValueError, TypeError) as e:
-            logger.warning(f"GPU推理测试失败: {e}，返回 None")
+            logger.warning("GPU推理测试失败: %s，返回 None", e)
             return None
 
     def get_all_results(self) -> dict[str, Any]:

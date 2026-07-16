@@ -121,7 +121,12 @@ class MultiModalFusion:
 
 class CrossModalAttentionFusion:
     """
-    交叉模态注意力融合
+    交叉模态注意力融合（权重未经训练，占位实现）
+
+    P1 学术诚信警告：
+        本模块的投影权重为随机初始化，未经过训练，融合结果不具备物理意义。
+        生产环境或学术论文实验必须从训练 checkpoint 加载权重，否则跨模态
+        融合结果不可信（项目目标期刊：Journal of Intelligent Manufacturing）。
 
     使用注意力机制学习各模态特征的权重，支持多头注意力。
     """
@@ -135,20 +140,28 @@ class CrossModalAttentionFusion:
         self._output_proj = None
         self._initialized = False
 
-        np.random.seed(42)
+        # P1 学术诚信修复：移除 np.random.seed(42) 全局污染（影响其他模块的随机性），
+        # 改用局部 Generator。注意：权重仍为随机初始化，见类 docstring 警告。
+        self._rng = np.random.default_rng(42)
 
     def _init_weights(self, input_dims: Dict[str, int]):
-        """初始化投影权重"""
+        """初始化投影权重（随机占位，未经训练）"""
         d_k = self.target_dim // self.n_heads
         self._projections = {}
         for modality, in_dim in input_dims.items():
-            proj_k = np.random.randn(in_dim, d_k) / np.sqrt(in_dim)
-            proj_v = np.random.randn(in_dim, d_k) / np.sqrt(in_dim)
-            proj_q = np.random.randn(in_dim, d_k) / np.sqrt(in_dim)
+            proj_k = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
+            proj_v = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
+            proj_q = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
             self._projections[modality] = (proj_q, proj_k, proj_v)
 
-        self._output_proj = np.random.randn(self.n_heads * d_k, self.target_dim) / np.sqrt(self.n_heads * d_k)
+        self._output_proj = self._rng.standard_normal(
+            (self.n_heads * d_k, self.target_dim)
+        ) / np.sqrt(self.n_heads * d_k)
         self._initialized = True
+        logger.warning(
+            "CrossModalAttentionFusion 使用随机占位权重（未经训练），"
+            "融合结果不具备物理意义，禁止用于生产或学术论文实验"
+        )
 
     def _attention(self, q: np.ndarray, k: np.ndarray, v: np.ndarray) -> np.ndarray:
         """缩放点积注意力"""

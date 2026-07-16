@@ -5,15 +5,20 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from app.auth.permissions import require_permission
 from app.templates.template_update_service import get_update_service
 from app.core.response import success, error
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/templates/updates", tags=["updates"])
+router = APIRouter(
+    prefix="/api/v1/templates/updates",
+    tags=["updates"],
+    dependencies=[Depends(require_permission("template-update:read"))],
+)
 
 
 class CreateNotificationRequest(BaseModel):
@@ -42,7 +47,7 @@ def get_notifications(
     return success(data=[n.to_dict() for n in notifs])
 
 
-@router.post("/scan")
+@router.post("/scan", dependencies=[Depends(require_permission("template-update:write"))])
 def scan_for_updates(req: ScanUpdatesRequest):
     """Scan for applicable updates for a project."""
     service = get_update_service()
@@ -55,7 +60,7 @@ def scan_for_updates(req: ScanUpdatesRequest):
     )
 
 
-@router.post("/apply/{notification_id}")
+@router.post("/apply/{notification_id}", dependencies=[Depends(require_permission("template-update:write"))])
 def apply_update(notification_id: str):
     """Apply an update notification."""
     service = get_update_service()
@@ -65,7 +70,7 @@ def apply_update(notification_id: str):
     return success(data=result.to_dict())
 
 
-@router.post("/dismiss/{notification_id}")
+@router.post("/dismiss/{notification_id}", dependencies=[Depends(require_permission("template-update:write"))])
 def dismiss_notification(notification_id: str):
     """Dismiss an update notification."""
     service = get_update_service()

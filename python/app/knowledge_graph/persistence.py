@@ -194,6 +194,11 @@ class GraphPersistence:
                 session.rollback()
                 logger.error("flush_to_repository failed: %s", exc)
                 raise
+            except Exception as exc:
+                # 捕获 SQLAlchemyError 等数据库异常，显式 rollback
+                session.rollback()
+                logger.error("flush_to_repository DB error: %s", exc)
+                raise
 
         logger.info(
             "flush_to_repository: wrote %d nodes, %d edges",

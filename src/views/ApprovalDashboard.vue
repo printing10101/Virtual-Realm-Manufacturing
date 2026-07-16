@@ -697,7 +697,7 @@ function getRiskTagType(score: number): 'primary' | 'success' | 'warning' | 'inf
   return 'success'
 }
 
-function formatContext(context: Record<string, any>): string {
+function formatContext(context: Record<string, unknown>): string {
   try {
     return JSON.stringify(context, null, 2)
   } catch {

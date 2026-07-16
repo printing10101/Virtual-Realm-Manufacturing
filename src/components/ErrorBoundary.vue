@@ -69,8 +69,22 @@ function goHome() {
 }
 
 function reportError(err: Error) {
-  // TODO: 集成错误监控服务（如 Sentry）
-  console.warn('Error reporting not configured:', err.message)
+  // 本地化错误日志：项目原则要求核心数据本地化，错误日志先写入浏览器控制台
+  // 与 localStorage 历史记录，便于用户排查；未来可在此处接入远程监控服务
+  console.error('[ErrorBoundary] uncaught error:', err)
+  try {
+    const key = 'error_boundary_history'
+    const max = 20
+    const list: unknown[] = JSON.parse(localStorage.getItem(key) || '[]')
+    list.unshift({
+      message: err.message,
+      stack: err.stack?.slice(0, 2000),
+      time: new Date().toISOString(),
+    })
+    localStorage.setItem(key, JSON.stringify(list.slice(0, max)))
+  } catch {
+    // localStorage 不可用（隐私模式等）时静默忽略
+  }
 }
 </script>
 
@@ -80,7 +94,7 @@ function reportError(err: Error) {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-300) 100%);
   padding: 20px;
 }
 
@@ -94,20 +108,20 @@ function reportError(err: Error) {
 }
 
 .error-icon {
-  color: #f56c6c;
+  color: var(--error);
   margin-bottom: 24px;
 }
 
 h2 {
   margin: 0 0 16px;
-  color: #303133;
+  color: var(--text-primary);
   font-size: 24px;
   font-weight: 600;
 }
 
 .error-message {
   margin: 0 0 32px;
-  color: #606266;
+  color: var(--text-secondary);
   font-size: 16px;
   line-height: 1.6;
 }
@@ -126,21 +140,21 @@ h2 {
 
 .error-details summary {
   cursor: pointer;
-  color: #909399;
+  color: var(--text-tertiary);
   font-size: 14px;
   margin-bottom: 12px;
   user-select: none;
 }
 
 .error-details pre {
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   padding: 16px;
   overflow-x: auto;
   font-size: 12px;
   line-height: 1.5;
-  color: #606266;
+  color: var(--text-secondary);
   max-height: 300px;
 }
 </style>

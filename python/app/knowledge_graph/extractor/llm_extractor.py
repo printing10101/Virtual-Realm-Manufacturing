@@ -114,8 +114,8 @@ class LLMExtractor:
 
         extractor = LLMExtractor(llm_client=client)
         result = await extractor.extract("path/to/document.pdf")
-        logger.info(f"提取了 {len(result.entities)} 个实体")
-        logger.info(f"提取了 {len(result.relations)} 个关系")
+        logger.info("提取了 %s 个实体", len(result.entities))
+        logger.info("提取了 %s 个关系", len(result.relations))
 
     Args:
         llm_client: LLM 客户端实例。

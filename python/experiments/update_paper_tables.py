@@ -38,13 +38,13 @@ def format_table2_data(main_results):
     # MAE表格
     print("\nMAE (Mean Absolute Error):")
     print("-" * 130)
-    header = f"{'Dataset':<15}" + "".join([f"{name:<13}" for name in ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']])
+    header = f"{'Dataset':<15}" + "".join([f"{name:<13}" for name in ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']])
     print(header)
     print("-" * 130)
     
     for dataset_name in ['PHM2010', 'NUAA', 'NIST', 'Benchmark-1', '自采6061-T6']:
         row = f"{dataset_name:<15}"
-        for model_name in ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']:
+        for model_name in ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']:
             if dataset_name in main_results and model_name in main_results[dataset_name]:
                 mae = main_results[dataset_name][model_name]['MAE']
                 row += f"{mae:<13.4f}"
@@ -61,7 +61,7 @@ def format_table2_data(main_results):
     
     for dataset_name in ['PHM2010', 'NUAA', 'NIST', 'Benchmark-1', '自采6061-T6']:
         row = f"{dataset_name:<15}"
-        for model_name in ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']:
+        for model_name in ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']:
             if dataset_name in main_results and model_name in main_results[dataset_name]:
                 r2 = main_results[dataset_name][model_name]['R2']
                 row += f"{r2:<13.4f}"
@@ -78,7 +78,7 @@ def format_table2_data(main_results):
     
     for dataset_name in ['PHM2010', 'NUAA', 'NIST', 'Benchmark-1', '自采6061-T6']:
         row = f"{dataset_name:<15}"
-        for model_name in ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']:
+        for model_name in ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']:
             if dataset_name in main_results and model_name in main_results[dataset_name]:
                 pcc = main_results[dataset_name][model_name]['PCC']
                 row += f"{pcc:<13.4f}"
@@ -192,7 +192,7 @@ def update_table2(table, main_results):
     
     # 填充数据
     datasets = ['PHM2010', 'NUAA', 'NIST', 'Benchmark-1', '自采6061-T6']
-    models = ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
+    models = ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
     
     for i, dataset in enumerate(datasets):
         if i + 1 < len(table.rows):

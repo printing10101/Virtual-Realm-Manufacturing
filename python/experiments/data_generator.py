@@ -83,54 +83,132 @@ class TlustyAnalyticalModel:
     def compute_limiting_depth(
         self,
         spindle_speed: np.ndarray,
-        num_lobes: int = 10
+        num_lobes: int = 10,
+        hardness: Optional[np.ndarray] = None,
+        tool_diameter: Optional[np.ndarray] = None,
+        num_teeth: Optional[np.ndarray] = None,
+        feed_rate: Optional[np.ndarray] = None,
+        radial_depth: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """
-        计算极限切深 a_lim
-        
+        """计算极限切深 a_lim（真实叶瓣机制 + 多物理参数耦合）。
+
+        物理：稳定性叶图 SLD 的"叶瓣"来自颤振频率 f_c 与主轴转速 n 的耦合：
+            f_c = j · n / 60  (j = 叶瓣数 = 1, 2, ..., num_lobes)
+        对每个转速 n，选择使 a_lim 最小的正叶瓣（最危险叶瓣）。
+
+        多物理参数耦合（使 7 维输入特征均有物理意义）：
+            - 材料硬度 H → 切削力系数 Ks_eff = Ks_base · (H / 200)^0.8
+              （更硬材料 → 更大 Ks → 更小 a_lim）
+            - 刀具直径 D → 刚度 k_eff = k_base · (D / 10)^2，模态质量
+              m_eff = m_base · (D / 10)^2（悬臂梁模型，更粗刀具更硬也更重）
+            - 齿数 z → 有效切削力 Ks_eff *= z / 4（更多齿单转切削力更大）
+            - 径向切宽 ae → 方向因子 μ = 0.5 · (1 + ae / 8)
+              （更大径向接合 → 方向因子更大 → a_lim 更小）
+            - 每齿进给 f → 切屑变薄效应 Ks_eff *= (1 + 0.15·(f-0.25)/0.25)
+              （偏离标称进给时切削力系数显著变化，非线性耦合）
+
         Args:
             spindle_speed: 主轴转速数组 (rpm)
-            num_lobes: 叶瓣数
-        
+            num_lobes: 考虑的最大叶瓣数
+            hardness: 材料硬度数组 (HB)，默认 None 使用基准值 200
+            tool_diameter: 刀具直径数组 (mm)，默认 None 使用基准值 10
+            num_teeth: 齿数数组，默认 None 使用基准值 4
+            feed_rate: 每齿进给量数组 (mm/tooth)，默认 None 使用基准值 0.25
+            radial_depth: 径向切宽数组 (mm)，默认 None 使用基准值 4
+
         Returns:
-            极限切深数组 (mm)
+            极限切深数组 (mm)，具有真实叶瓣波动与多参数耦合
         """
-        Ks = self.cutting_force_coeff * 1e6  # 转换为 N/m²
-        
-        # 计算固有频率
-        omega_n = np.sqrt(self.stiffness / self.modal_mass)
-        f_n = omega_n / (2 * np.pi)
-        
-        # 计算颤振频率（考虑叶瓣效应）
-        # 简化：使用固有频率作为颤振频率
-        omega_c = omega_n
-        
-        # 计算相位角（对每个主轴转速）
-        epsilon = 2 * np.pi * f_n * 60 / spindle_speed
-        
-        # 计算频率响应（在颤振频率处）
-        G = self.frequency_response(omega_c)
-        
-        # 计算极限切深（考虑相位角的影响）
-        # 标准Tlusty公式：a_lim = -1 / (2 * Ks * Re(G) * (1 - cos(epsilon)))
-        # 简化版本：使用平均值
-        real_G = np.real(G)
-        
-        # 避免除零：如果Re(G)接近零，使用一个小值
-        real_G = np.where(np.abs(real_G) < 1e-10, 1e-10, real_G)
-        
-        a_lim_base = -1 / (2 * Ks * real_G)
-        
-        # 考虑相位角调制（简化处理）
-        modulation = 1.0 / (1.0 + 0.1 * np.abs(np.sin(epsilon)))
-        a_lim = a_lim_base * modulation
-        
-        # 转换为 mm
-        a_lim = a_lim * 1000
-        
-        # 确保结果在合理范围内（0.01mm 到 20mm）
-        a_lim = np.clip(np.abs(a_lim), 0.01, 20.0)
-        
+        # 基础物理参数
+        k_base = self.stiffness
+        m_base = self.modal_mass
+        c_base = self.damping
+        Ks_base = self.cutting_force_coeff * 1e6  # N/m²
+
+        spindle_speed = np.atleast_1d(np.asarray(spindle_speed, dtype=float))
+        N = len(spindle_speed)
+
+        # 默认参数（基准值，保持向后兼容）
+        if hardness is None:
+            hardness = np.full(N, 200.0)
+        else:
+            hardness = np.atleast_1d(np.asarray(hardness, dtype=float))
+        if tool_diameter is None:
+            tool_diameter = np.full(N, 10.0)
+        else:
+            tool_diameter = np.atleast_1d(np.asarray(tool_diameter, dtype=float))
+        if num_teeth is None:
+            num_teeth = np.full(N, 4.0)
+        else:
+            num_teeth = np.atleast_1d(np.asarray(num_teeth, dtype=float))
+        if feed_rate is None:
+            feed_rate = np.full(N, 0.25)
+        else:
+            feed_rate = np.atleast_1d(np.asarray(feed_rate, dtype=float))
+        if radial_depth is None:
+            radial_depth = np.full(N, 4.0)
+        else:
+            radial_depth = np.atleast_1d(np.asarray(radial_depth, dtype=float))
+
+        # 多物理参数耦合（向量化计算）
+        # 1. 硬度 H → Ks（更硬材料切削力系数更大）
+        Ks_eff = Ks_base * (hardness / 200.0) ** 0.8
+        # 2. 齿数 z → 有效切削力（更多齿单转切削力更大）
+        Ks_eff = Ks_eff * (num_teeth / 4.0)
+        # 3. 进给 f → 切屑变薄非线性效应（系数 0.15 体现高进给时切屑变薄显著）
+        Ks_eff = Ks_eff * (1.0 + 0.15 * (feed_rate - 0.25) / 0.25)
+        # 4. 刀具直径 D → 刚度与模态质量（悬臂梁 k∝D²·I，简化为 D²）
+        D_ratio = (tool_diameter / 10.0) ** 2
+        k_eff = k_base * D_ratio
+        m_eff = m_base * D_ratio
+        # 阻尼系数 c = 2·ζ·sqrt(k·m)，ζ 不变时 c ∝ D²
+        c_eff = c_base * D_ratio
+        # 5. 径向切宽 ae → 方向因子 μ（更大径向接合 → 更大方向因子）
+        mu_dir = 0.5 * (1.0 + radial_depth / 8.0)
+
+        a_lim = np.empty(N)
+
+        for idx in range(N):
+            n_rpm = spindle_speed[idx]
+            if n_rpm <= 0:
+                a_lim[idx] = 20.0
+                continue
+
+            k_i = k_eff[idx]
+            m_i = m_eff[idx]
+            c_i = c_eff[idx]
+            Ks_i = Ks_eff[idx]
+            mu_i = mu_dir[idx]
+
+            best_a = None
+            for j in range(1, num_lobes + 1):
+                f_c = j * n_rpm / 60.0
+                omega_c = 2 * np.pi * f_c
+                # 复频率响应 G(jω) = 1/(k - mω² + jcω) 的实部
+                denom_real = k_i - m_i * omega_c ** 2
+                denom_imag = c_i * omega_c
+                real_G = denom_real / (denom_real ** 2 + denom_imag ** 2)
+
+                if abs(real_G) < 1e-12:
+                    continue
+
+                # Tlusty: a_lim = -1 / (2 · Ks · μ · Re(G))，仅 Re(G)<0 时为正
+                a_val = -1.0 / (2.0 * Ks_i * mu_i * real_G)
+                if a_val <= 0:
+                    continue
+
+                # 选最小正 a_lim（最危险叶瓣）
+                if best_a is None or a_val < best_a:
+                    best_a = a_val
+
+            if best_a is None:
+                best_a = 20.0
+
+            # m → mm
+            a_lim[idx] = best_a * 1000.0
+
+        # 合理范围限制（0.1 mm - 20 mm，保留叶瓣波动）
+        a_lim = np.clip(a_lim, 0.1, 20.0)
         return a_lim
     
     def compute_stability(
@@ -153,6 +231,47 @@ class TlustyAnalyticalModel:
         return stability
 
 
+def build_physics_features_7d(
+    spindle_speed: np.ndarray,
+    feed_rate: np.ndarray,
+    axial_depth: np.ndarray,
+    radial_depth: np.ndarray,
+    hardness: np.ndarray,
+    tool_diameter: np.ndarray,
+    num_teeth: np.ndarray,
+) -> np.ndarray:
+    """构造 7 维物理参数特征（论文第3节声明的输入特征向量）。
+
+    特征顺序与 config.py 的 input_dim=7 严格对齐：
+        [主轴转速 n, 进给 f, 轴向切深 ap, 径向切宽 ae,
+         材料硬度 H, 刀具直径 D, 刀具齿数 z]
+
+    所有特征均归一化至 ~[0, 1] 范围，使用典型量级作为分母。
+
+    Args:
+        spindle_speed: 主轴转速 (rpm)
+        feed_rate: 每齿进给量 (mm/tooth)
+        axial_depth: 轴向切深 (mm)
+        radial_depth: 径向切宽 (mm)
+        hardness: 材料硬度 (HB)
+        tool_diameter: 刀具直径 (mm)
+        num_teeth: 刀具齿数
+
+    Returns:
+        形状 [N, 7] 的 float32 特征矩阵
+    """
+    features = np.column_stack([
+        spindle_speed / 10000.0,   # n
+        feed_rate / 0.5,           # f
+        axial_depth / 10.0,        # ap
+        radial_depth / 8.0,        # ae
+        hardness / 200.0,          # H
+        tool_diameter / 20.0,      # D
+        num_teeth.astype(float) / 6.0,  # z
+    ])
+    return features.astype(np.float32)
+
+
 class SyntheticChatterDataset(Dataset):
     """
     合成颤振数据集
@@ -164,6 +283,14 @@ class SyntheticChatterDataset(Dataset):
         num_samples: int = 10000,
         spindle_speed_range: Tuple[float, float] = (1000, 10000),
         axial_depth_range: Tuple[float, float] = (0.1, 10.0),
+        feed_rate_range: Tuple[float, float] = (0.05, 0.5),       # 进给 f (mm/tooth)
+        radial_depth_range: Tuple[float, float] = (0.5, 8.0),      # 径向切宽 ae (mm)
+        material_hardness: float = 95.0,                           # 材料硬度 H (HB)，单值模式
+        tool_diameter: float = 10.0,                               # 刀具直径 D (mm)，单值模式
+        num_teeth: int = 4,                                        # 刀具齿数 z，单值模式
+        hardness_range: Optional[Tuple[float, float]] = (80.0, 200.0),   # 多材料场景宽范围
+        tool_diameter_range: Optional[Tuple[float, float]] = (6.0, 16.0), # 多刀具场景宽范围
+        num_teeth_range: Optional[Tuple[int, int]] = (2, 6),             # 多齿数场景宽范围
         machine_id: str = "vmc_850",
         tool_id: str = "endmill_d10",
         noise_level: float = 0.02,
@@ -171,11 +298,19 @@ class SyntheticChatterDataset(Dataset):
     ):
         """
         初始化合成数据集
-        
+
         Args:
             num_samples: 样本数量
             spindle_speed_range: 主轴转速范围 (rpm)
             axial_depth_range: 轴向切深范围 (mm)
+            feed_rate_range: 每齿进给量范围 (mm/tooth)
+            radial_depth_range: 径向切宽范围 (mm)
+            material_hardness: 材料硬度 (HB)，单值模式（ hardness_range 为 None 时使用）
+            tool_diameter: 刀具直径 (mm)，单值模式（ tool_diameter_range 为 None 时使用）
+            num_teeth: 刀具齿数，单值模式（ num_teeth_range 为 None 时使用）
+            hardness_range: 材料硬度宽范围 (HB)，默认 (80, 200) 体现多材料场景
+            tool_diameter_range: 刀具直径宽范围 (mm)，默认 (6, 16) 体现多刀具场景
+            num_teeth_range: 刀具齿数宽范围，默认 (2, 6) 体现多齿数场景
             machine_id: 机床ID
             tool_id: 刀具ID
             noise_level: 噪声水平
@@ -185,54 +320,113 @@ class SyntheticChatterDataset(Dataset):
         self.num_samples = num_samples
         self.spindle_speed_range = spindle_speed_range
         self.axial_depth_range = axial_depth_range
+        self.feed_rate_range = feed_rate_range
+        self.radial_depth_range = radial_depth_range
+        self.material_hardness = material_hardness
+        self.tool_diameter = tool_diameter
+        self.num_teeth = num_teeth
+        self.hardness_range = hardness_range
+        self.tool_diameter_range = tool_diameter_range
+        self.num_teeth_range = num_teeth_range
         self.machine_id = machine_id
         self.tool_id = tool_id
         self.noise_level = noise_level
-        
+
         np.random.seed(seed)
-        
+
         # 生成数据
         self.data = self._generate_data()
     
     def _generate_data(self) -> Dict[str, np.ndarray]:
-        """生成合成数据"""
-        # 随机采样参数
+        """生成合成数据（7 维物理参数特征，多物理参数耦合）"""
+        # 随机采样加工参数
         spindle_speed = np.random.uniform(
             self.spindle_speed_range[0],
             self.spindle_speed_range[1],
             self.num_samples
         )
-        
+
         axial_depth = np.random.uniform(
             self.axial_depth_range[0],
             self.axial_depth_range[1],
             self.num_samples
         )
-        
-        # 使用Tlusty模型计算
+
+        # 多维物理参数（论文第3节声明的 7 维输入特征）
+        feed_rate = np.random.uniform(
+            self.feed_rate_range[0],
+            self.feed_rate_range[1],
+            self.num_samples
+        )
+        radial_depth = np.random.uniform(
+            self.radial_depth_range[0],
+            self.radial_depth_range[1],
+            self.num_samples
+        )
+
+        # 材料硬度：宽范围采样（多材料场景）或单值+噪声（同材料场景）
+        if self.hardness_range is not None:
+            hardness = np.random.uniform(
+                self.hardness_range[0], self.hardness_range[1], self.num_samples
+            )
+        else:
+            hardness = self.material_hardness + np.random.randn(self.num_samples) * 2.0
+
+        # 刀具直径：宽范围采样（多刀具场景）或单值+磨损噪声
+        if self.tool_diameter_range is not None:
+            tool_diameter = np.random.uniform(
+                self.tool_diameter_range[0], self.tool_diameter_range[1], self.num_samples
+            )
+        else:
+            tool_diameter = self.tool_diameter + np.random.randn(self.num_samples) * 0.05
+
+        # 刀具齿数：宽范围采样（多齿数场景）或常数
+        if self.num_teeth_range is not None:
+            num_teeth_arr = np.random.randint(
+                self.num_teeth_range[0], self.num_teeth_range[1] + 1, self.num_samples
+            ).astype(float)
+        else:
+            num_teeth_arr = np.full(self.num_samples, float(self.num_teeth))
+
+        # 使用Tlusty模型计算（多物理参数耦合：H→Ks, D→k/m, z→Ks_eff, ae→μ, f→chip thinning）
         tlusty_model = TlustyAnalyticalModel()
-        
-        # 计算极限切深
-        a_lim = tlusty_model.compute_limiting_depth(spindle_speed)
-        
+
+        # 计算极限切深（传入所有物理参数，使 7 维特征均有物理意义）
+        a_lim = tlusty_model.compute_limiting_depth(
+            spindle_speed,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth_arr,
+            feed_rate=feed_rate,
+            radial_depth=radial_depth,
+        )
+
         # 计算稳定性标签
         stability = (axial_depth > a_lim).astype(int)
-        
+
         # 添加噪声
         a_lim_noisy = a_lim * (1 + np.random.randn(self.num_samples) * self.noise_level)
         a_lim_noisy = np.maximum(a_lim_noisy, 0.01)  # 确保正值
-        
-        # 构造输入特征
-        # 简化版本：仅使用主轴转速和轴向切深
-        features = np.column_stack([
-            spindle_speed / 10000,  # 归一化
-            axial_depth / 10        # 归一化
-        ])
-        
+
+        # 构造 7 维输入特征（归一化至合理范围）
+        # 特征顺序: [主轴转速 n, 进给 f, 轴向切深 ap, 径向切宽 ae,
+        #            材料硬度 H, 刀具直径 D, 刀具齿数 z]
+        features = build_physics_features_7d(
+            spindle_speed=spindle_speed,
+            feed_rate=feed_rate,
+            axial_depth=axial_depth,
+            radial_depth=radial_depth,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth_arr,
+        )
+
         return {
             'features': features.astype(np.float32),
             'spindle_speed': spindle_speed.astype(np.float32),
             'axial_depth': axial_depth.astype(np.float32),
+            'feed_rate': feed_rate.astype(np.float32),
+            'radial_depth': radial_depth.astype(np.float32),
             'a_lim': a_lim_noisy.astype(np.float32),
             'stability': stability.astype(np.int64),
             'a_lim_clean': a_lim.astype(np.float32)
@@ -276,13 +470,18 @@ class PHM2010Dataset(Dataset):
         标注此数据派生关系，避免误导读者认为使用了 PHM2010 原始颤振标签。
 
     特征维度：
-        6 维（与 predictor.py 中 ChatterPredictor 的 input_size=6 对齐）：
+        7 维（与 config.py 的 ModelConfig.input_dim=7 对齐）：
           - force_rms：合力 RMS（归一化）
           - vibration_rms：合振动 RMS（归一化）
           - ae_rms：声发射 RMS（归一化）
           - force_std：合力标准差（归一化）
           - vibration_std：合振动标准差（归一化）
           - tool_wear_norm：刀具磨损值（归一化到 [0, 1]）
+          - vibration_kurtosis：合振动峭度（归一化，表征冲击/颤振能量）
+
+        注：PHM2010 使用真实信号派生的统计特征，与合成数据集的 7 维物理参数
+        （n, f, ap, ae, H, D, z）语义不同但维度一致，确保模型架构可统一。
+        论文中应明确区分两种特征表示。
 
     输出：
         __getitem__ 返回 (features, a_lim, a_lim_physics) 三元组
@@ -462,13 +661,13 @@ class PHM2010Dataset(Dataset):
         }
 
     def _extract_window_features(self, window) -> Optional[np.ndarray]:
-        """从信号窗口提取 6 维统计特征（归一化）。
+        """从信号窗口提取 7 维统计特征（归一化）。
 
         Args:
             window: 包含信号列的 DataFrame 切片
 
         Returns:
-            6 维特征向量（float32），如无法提取返回 None
+            7 维特征向量（float32），如无法提取返回 None
         """
         try:
             # 合力 RMS
@@ -482,7 +681,7 @@ class PHM2010Dataset(Dataset):
             else:
                 return None
 
-            # 合振动 RMS
+            # 合振动 RMS + 峭度
             vib_cols = [
                 c for c in ["vibration_x", "vibration_y", "vibration_z"]
                 if c in window.columns
@@ -493,6 +692,13 @@ class PHM2010Dataset(Dataset):
                 )
                 vib_rms = float(np.sqrt(np.mean(vib_mag ** 2)))
                 vib_std = float(np.std(vib_mag))
+                # 振动峭度：表征冲击/颤振能量（峭度越高，冲击越强烈）
+                # 峭度 = E[(X-μ)^4] / σ^4，正常振动 ~3，颤振时显著增大
+                vib_mean = float(np.mean(vib_mag))
+                vib_kurt = float(
+                    np.mean((vib_mag - vib_mean) ** 4)
+                    / (np.var(vib_mag) + 1e-8) ** 2
+                )
             else:
                 return None
 
@@ -518,6 +724,7 @@ class PHM2010Dataset(Dataset):
                 force_std / 10.0,         # 合力标准差归一化
                 vib_std / 5.0,            # 合振动标准差归一化
                 min(tw / 200.0, 1.0),     # 刀具磨损归一化到 [0, 1]
+                min(vib_kurt / 20.0, 1.0),  # 振动峭度归一化（典型范围 3-15）
             ], dtype=np.float32)
 
             # 处理可能的 NaN/Inf
@@ -553,14 +760,18 @@ class PHM2010Dataset(Dataset):
         a_lim = a_lim_clean * (1 + np.random.randn(self.num_samples) * self.noise_level)
         a_lim = np.maximum(a_lim, 0.01)
 
-        # 6 维合成特征（与真实实现特征维度一致）
+        # 7 维合成特征（与真实实现特征维度一致）
+        # 占位值用于回退场景，不可用于论文实验
+        placeholder_zeros = np.zeros_like(spindle_speed)
+        placeholder_kurtosis = np.full_like(spindle_speed, 3.0 / 20.0)  # 正态分布峭度=3
         features = np.column_stack([
             spindle_speed / 9000.0,
-            np.zeros_like(spindle_speed),  # 占位：vibration_rms
-            np.zeros_like(spindle_speed),  # 占位：ae_rms
-            np.zeros_like(spindle_speed),  # 占位：force_std
-            np.zeros_like(spindle_speed),  # 占位：vib_std
-            np.zeros_like(spindle_speed),  # 占位：tool_wear
+            placeholder_zeros,             # 占位：vibration_rms
+            placeholder_zeros,             # 占位：ae_rms
+            placeholder_zeros,             # 占位：force_std
+            placeholder_zeros,             # 占位：vib_std
+            placeholder_zeros,             # 占位：tool_wear
+            placeholder_kurtosis,          # 占位：vibration_kurtosis（正态分布≈3）
         ]).astype(np.float32)
 
         stability = (axial_depth > a_lim).astype(np.int64)
@@ -612,29 +823,48 @@ class NUAADataset(Dataset):
         self.data = self._generate_data()
     
     def _generate_data(self) -> Dict[str, np.ndarray]:
-        """生成NUAA风格数据"""
+        """生成NUAA风格数据（7 维物理参数特征）"""
         spindle_speed = np.random.uniform(2500, 8500, self.num_samples)
         axial_depth = np.random.uniform(0.3, 6.0, self.num_samples)
-        
+        feed_rate = np.random.uniform(0.08, 0.4, self.num_samples)
+        radial_depth = np.random.uniform(1.0, 6.0, self.num_samples)
+        # NUAA 数据集典型材料为铝合金 7075-T6，硬度 ~150 HB
+        hardness = np.full(self.num_samples, 150.0) + np.random.randn(self.num_samples) * 3.0
+        tool_diameter = np.full(self.num_samples, 12.0) + np.random.randn(self.num_samples) * 0.05
+        num_teeth = np.full(self.num_samples, 4.0)
+
         tlusty_model = TlustyAnalyticalModel(
             stiffness=1.1e6,
             modal_mass=110.0,
             damping_ratio=0.055
         )
-        
-        a_lim_clean = tlusty_model.compute_limiting_depth(spindle_speed)
+
+        # 多物理参数耦合：传入所有物理参数，使 7 维特征均有物理意义
+        a_lim_clean = tlusty_model.compute_limiting_depth(
+            spindle_speed,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+            feed_rate=feed_rate,
+            radial_depth=radial_depth,
+        )
         a_lim = a_lim_clean * (1 + np.random.randn(self.num_samples) * self.noise_level)
         a_lim = np.maximum(a_lim, 0.01)
-        
+
         stability = (axial_depth > a_lim).astype(int)
-        
-        features = np.column_stack([
-            spindle_speed / 10000,
-            axial_depth / 10
-        ])
-        
+
+        features = build_physics_features_7d(
+            spindle_speed=spindle_speed,
+            feed_rate=feed_rate,
+            axial_depth=axial_depth,
+            radial_depth=radial_depth,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+        )
+
         return {
-            'features': features.astype(np.float32),
+            'features': features,
             'spindle_speed': spindle_speed.astype(np.float32),
             'axial_depth': axial_depth.astype(np.float32),
             'a_lim': a_lim.astype(np.float32),
@@ -678,29 +908,48 @@ class NISTDataset(Dataset):
         self.data = self._generate_data()
     
     def _generate_data(self) -> Dict[str, np.ndarray]:
-        """生成NIST风格数据"""
+        """生成NIST风格数据（7 维物理参数特征）"""
         spindle_speed = np.random.uniform(2000, 7000, self.num_samples)
         axial_depth = np.random.uniform(0.2, 5.0, self.num_samples)
-        
+        feed_rate = np.random.uniform(0.05, 0.3, self.num_samples)
+        radial_depth = np.random.uniform(0.5, 5.0, self.num_samples)
+        # NIST 数据集典型材料为 AISI 1045 钢，硬度 ~180 HB
+        hardness = np.full(self.num_samples, 180.0) + np.random.randn(self.num_samples) * 4.0
+        tool_diameter = np.full(self.num_samples, 10.0) + np.random.randn(self.num_samples) * 0.05
+        num_teeth = np.full(self.num_samples, 4.0)
+
         tlusty_model = TlustyAnalyticalModel(
             stiffness=0.9e6,
             modal_mass=95.0,
             damping_ratio=0.048
         )
-        
-        a_lim_clean = tlusty_model.compute_limiting_depth(spindle_speed)
+
+        # 多物理参数耦合：传入所有物理参数，使 7 维特征均有物理意义
+        a_lim_clean = tlusty_model.compute_limiting_depth(
+            spindle_speed,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+            feed_rate=feed_rate,
+            radial_depth=radial_depth,
+        )
         a_lim = a_lim_clean * (1 + np.random.randn(self.num_samples) * self.noise_level)
         a_lim = np.maximum(a_lim, 0.01)
-        
+
         stability = (axial_depth > a_lim).astype(int)
-        
-        features = np.column_stack([
-            spindle_speed / 10000,
-            axial_depth / 10
-        ])
-        
+
+        features = build_physics_features_7d(
+            spindle_speed=spindle_speed,
+            feed_rate=feed_rate,
+            axial_depth=axial_depth,
+            radial_depth=radial_depth,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+        )
+
         return {
-            'features': features.astype(np.float32),
+            'features': features,
             'spindle_speed': spindle_speed.astype(np.float32),
             'axial_depth': axial_depth.astype(np.float32),
             'a_lim': a_lim.astype(np.float32),
@@ -744,29 +993,48 @@ class Benchmark1Dataset(Dataset):
         self.data = self._generate_data()
     
     def _generate_data(self) -> Dict[str, np.ndarray]:
-        """生成Benchmark-1风格数据"""
+        """生成Benchmark-1风格数据（7 维物理参数特征）"""
         spindle_speed = np.random.uniform(3500, 9500, self.num_samples)
         axial_depth = np.random.uniform(0.4, 7.0, self.num_samples)
-        
+        feed_rate = np.random.uniform(0.1, 0.5, self.num_samples)
+        radial_depth = np.random.uniform(1.5, 7.0, self.num_samples)
+        # Benchmark-1 典型材料为 45 钢，硬度 ~200 HB
+        hardness = np.full(self.num_samples, 200.0) + np.random.randn(self.num_samples) * 4.0
+        tool_diameter = np.full(self.num_samples, 16.0) + np.random.randn(self.num_samples) * 0.08
+        num_teeth = np.full(self.num_samples, 4.0)
+
         tlusty_model = TlustyAnalyticalModel(
             stiffness=1.15e6,
             modal_mass=115.0,
             damping_ratio=0.052
         )
-        
-        a_lim_clean = tlusty_model.compute_limiting_depth(spindle_speed)
+
+        # 多物理参数耦合：传入所有物理参数，使 7 维特征均有物理意义
+        a_lim_clean = tlusty_model.compute_limiting_depth(
+            spindle_speed,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+            feed_rate=feed_rate,
+            radial_depth=radial_depth,
+        )
         a_lim = a_lim_clean * (1 + np.random.randn(self.num_samples) * self.noise_level)
         a_lim = np.maximum(a_lim, 0.01)
-        
+
         stability = (axial_depth > a_lim).astype(int)
-        
-        features = np.column_stack([
-            spindle_speed / 10000,
-            axial_depth / 10
-        ])
-        
+
+        features = build_physics_features_7d(
+            spindle_speed=spindle_speed,
+            feed_rate=feed_rate,
+            axial_depth=axial_depth,
+            radial_depth=radial_depth,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+        )
+
         return {
-            'features': features.astype(np.float32),
+            'features': features,
             'spindle_speed': spindle_speed.astype(np.float32),
             'axial_depth': axial_depth.astype(np.float32),
             'a_lim': a_lim.astype(np.float32),
@@ -811,30 +1079,49 @@ class Industrial6061T6Dataset(Dataset):
         self.data = self._generate_data()
     
     def _generate_data(self) -> Dict[str, np.ndarray]:
-        """生成自采6061-T6风格数据"""
+        """生成自采6061-T6风格数据（7 维物理参数特征）"""
         # 工业数据范围更窄，更符合实际
         spindle_speed = np.random.uniform(2000, 8000, self.num_samples)
         axial_depth = np.random.uniform(0.5, 5.0, self.num_samples)
-        
+        feed_rate = np.random.uniform(0.05, 0.3, self.num_samples)
+        radial_depth = np.random.uniform(1.0, 5.0, self.num_samples)
+        # 6061-T6 铝合金硬度 ~95 HB
+        hardness = np.full(self.num_samples, 95.0) + np.random.randn(self.num_samples) * 2.0
+        tool_diameter = np.full(self.num_samples, 10.0) + np.random.randn(self.num_samples) * 0.05
+        num_teeth = np.full(self.num_samples, 4.0)
+
         tlusty_model = TlustyAnalyticalModel(
             stiffness=1.0e6,
             modal_mass=100.0,
             damping_ratio=0.05
         )
-        
-        a_lim_clean = tlusty_model.compute_limiting_depth(spindle_speed)
+
+        # 多物理参数耦合：传入所有物理参数，使 7 维特征均有物理意义
+        a_lim_clean = tlusty_model.compute_limiting_depth(
+            spindle_speed,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+            feed_rate=feed_rate,
+            radial_depth=radial_depth,
+        )
         a_lim = a_lim_clean * (1 + np.random.randn(self.num_samples) * self.noise_level)
         a_lim = np.maximum(a_lim, 0.01)
-        
+
         stability = (axial_depth > a_lim).astype(int)
-        
-        features = np.column_stack([
-            spindle_speed / 10000,
-            axial_depth / 10
-        ])
-        
+
+        features = build_physics_features_7d(
+            spindle_speed=spindle_speed,
+            feed_rate=feed_rate,
+            axial_depth=axial_depth,
+            radial_depth=radial_depth,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+        )
+
         return {
-            'features': features.astype(np.float32),
+            'features': features,
             'spindle_speed': spindle_speed.astype(np.float32),
             'axial_depth': axial_depth.astype(np.float32),
             'a_lim': a_lim.astype(np.float32),
@@ -878,26 +1165,47 @@ class IndustrialChatterDataset(Dataset):
         self.data = self._generate_mock_data()
     
     def _generate_mock_data(self) -> Dict[str, np.ndarray]:
-        """生成模拟工业数据"""
+        """生成模拟工业数据（7 维物理参数特征，多物理参数耦合）"""
         spindle_speed = np.random.uniform(2000, 8000, self.num_samples)
         axial_depth = np.random.uniform(0.5, 5.0, self.num_samples)
-        
+        feed_rate = np.random.uniform(0.05, 0.3, self.num_samples)
+        radial_depth = np.random.uniform(1.0, 5.0, self.num_samples)
+        # 6061-T6 铝合金硬度 ~95 HB（窄范围，体现同材料工业场景）
+        hardness = np.full(self.num_samples, 95.0) + np.random.randn(self.num_samples) * 2.0
+        # 同一刀具，直径带磨损微小变化
+        tool_diameter = np.full(self.num_samples, 10.0) + np.random.randn(self.num_samples) * 0.05
+        # 固定 4 齿刀具
+        num_teeth = np.full(self.num_samples, 4.0)
+
         tlusty_model = TlustyAnalyticalModel()
-        a_lim_clean = tlusty_model.compute_limiting_depth(spindle_speed)
-        
+        # 多物理参数耦合：传入所有物理参数，使 7 维特征均有物理意义
+        a_lim_clean = tlusty_model.compute_limiting_depth(
+            spindle_speed,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+            feed_rate=feed_rate,
+            radial_depth=radial_depth,
+        )
+
         noise_level = 0.08
         a_lim = a_lim_clean * (1 + np.random.randn(self.num_samples) * noise_level)
         a_lim = np.maximum(a_lim, 0.01)
-        
+
         stability = (axial_depth > a_lim).astype(int)
-        
-        features = np.column_stack([
-            spindle_speed / 10000,
-            axial_depth / 10
-        ])
-        
+
+        features = build_physics_features_7d(
+            spindle_speed=spindle_speed,
+            feed_rate=feed_rate,
+            axial_depth=axial_depth,
+            radial_depth=radial_depth,
+            hardness=hardness,
+            tool_diameter=tool_diameter,
+            num_teeth=num_teeth,
+        )
+
         return {
-            'features': features.astype(np.float32),
+            'features': features,
             'spindle_speed': spindle_speed.astype(np.float32),
             'axial_depth': axial_depth.astype(np.float32),
             'a_lim': a_lim.astype(np.float32),

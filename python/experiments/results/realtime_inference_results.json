@@ -4,7 +4,7 @@
   "input_dim": 2,
   "experiments": {
     "latency_statistics": {
-      "CT-LTC": {
+      "DL-LNN": {
         "mean_ms": 1.0048,
         "std_ms": 0.307,
         "min_ms": 0.7679,
@@ -56,7 +56,7 @@
       }
     },
     "batch_throughput": {
-      "CT-LTC": {
+      "DL-LNN": {
         "1": {
           "throughput_samples_per_sec": 1079.92,
           "avg_latency_per_sample_ms": 0.926,
@@ -248,7 +248,7 @@
       }
     },
     "continuous_inference": {
-      "CT-LTC": {
+      "DL-LNN": {
         "total_inferences": 10612,
         "actual_duration_sec": 10.0,
         "inferences_per_second": 1061.2,
@@ -290,7 +290,7 @@
       }
     },
     "realtime_score": {
-      "CT-LTC": 1227.37,
+      "DL-LNN": 1227.37,
       "LSTM": 10780.04,
       "Transformer": 1649.34,
       "PINN": 38296.33,

@@ -129,14 +129,14 @@ fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 datasets = [k for k in main_results.keys() if not k.startswith('_')]
 models_all = list(main_results[datasets[0]].keys())
 
-# 子图1: 各数据集上CT-LTC的MAE
+# 子图1: 各数据集上DL-LNN的MAE
 ax = axes[0, 0]
-ct_ltc_maes = [main_results[ds]['CT-LTC']['MAE'] for ds in datasets]
+ct_ltc_maes = [main_results[ds]['DL-LNN']['MAE'] for ds in datasets]
 colors_ds = plt.cm.Set2(np.linspace(0, 1, len(datasets)))
 bars = ax.bar(range(len(datasets)), ct_ltc_maes, color=colors_ds, alpha=0.7, edgecolor='black')
 ax.set_xlabel('数据集', fontsize=12)
 ax.set_ylabel('MAE', fontsize=12)
-ax.set_title('CT-LTC在各数据集上的MAE', fontsize=14, fontweight='bold')
+ax.set_title('DL-LNN在各数据集上的MAE', fontsize=14, fontweight='bold')
 ax.set_xticks(range(len(datasets)))
 ax.set_xticklabels(datasets, rotation=15, ha='right')
 ax.grid(True, alpha=0.3, axis='y')
@@ -176,7 +176,7 @@ for bar, val in zip(bars, avg_ranks_sorted):
 ax = axes[1, 0]
 x = np.arange(len(datasets))
 width = 0.15
-selected_models = ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'PINN']
+selected_models = ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'PINN']
 colors_sel = plt.cm.Set1(np.linspace(0, 1, len(selected_models)))
 
 for i, model in enumerate(selected_models):
@@ -436,7 +436,7 @@ rand_r2s = [x['R2'] for x in random_baseline]
 
 # 子图1: 学习曲线对比
 ax = axes[0, 0]
-ax.plot(data_ratios, al_maes, 'o-', color='#FF6B6B', linewidth=2.5, markersize=10, label='CT-LTC 主动学习')
+ax.plot(data_ratios, al_maes, 'o-', color='#FF6B6B', linewidth=2.5, markersize=10, label='DL-LNN 主动学习')
 ax.plot(data_ratios, rand_maes, 's--', color='#4ECDC4', linewidth=2.5, markersize=10, label='随机采样')
 ax.set_xlabel('标注数据比例', fontsize=12)
 ax.set_ylabel('MAE', fontsize=12)
@@ -464,7 +464,7 @@ for bar, val in zip(bars, improvement):
 
 # 子图3: R²对比
 ax = axes[1, 0]
-ax.plot(data_ratios, al_r2s, 'o-', color='#FF6B6B', linewidth=2.5, markersize=10, label='CT-LTC 主动学习')
+ax.plot(data_ratios, al_r2s, 'o-', color='#FF6B6B', linewidth=2.5, markersize=10, label='DL-LNN 主动学习')
 ax.plot(data_ratios, rand_r2s, 's--', color='#4ECDC4', linewidth=2.5, markersize=10, label='随机采样')
 ax.axhline(y=0, color='gray', linestyle=':', linewidth=1, alpha=0.5)
 ax.set_xlabel('标注数据比例', fontsize=12)
@@ -494,7 +494,7 @@ efficiency_data = []
 labels = []
 if al_efficiency:
     efficiency_data.append(al_efficiency)
-    labels.append(f'CT-LTC\n主动学习\n({al_efficiency:.0f}%)')
+    labels.append(f'DL-LNN\n主动学习\n({al_efficiency:.0f}%)')
 if rand_efficiency:
     efficiency_data.append(rand_efficiency)
     labels.append(f'随机采样\n({rand_efficiency:.0f}%)')

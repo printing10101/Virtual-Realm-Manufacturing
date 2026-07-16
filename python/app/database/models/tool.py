@@ -6,9 +6,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import Column, String, Integer, Float, DateTime, Text
+from sqlalchemy import Column, String, Integer, Float, DateTime, Text, text
 from sqlalchemy.orm import relationship
 
 from app.database.models.machining_record import Base
@@ -149,16 +149,16 @@ class Tool(Base):
 
     # 时间戳
     created_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=False,
-        default=datetime.utcnow,
+        server_default=text("CURRENT_TIMESTAMP"),
         comment="创建时间",
     )
     updated_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
         comment="更新时间",
     )
 

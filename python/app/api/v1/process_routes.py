@@ -61,7 +61,7 @@ router = APIRouter(
 async def list_process_routes(
     status: Optional[str] = Query(None, description="状态筛选"),
     part_type: Optional[str] = Query(None, description="零件类型筛选"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     """获取工艺路线列表，支持按状态、零件类型筛选。"""

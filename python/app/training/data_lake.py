@@ -53,7 +53,7 @@ class TrainingDataLake:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         
-        logger.info(f"TrainingDataLake initialized: {self.storage_dir}")
+        logger.info("TrainingDataLake initialized: %s", self.storage_dir)
     
     def _get_today_file(self) -> Path:
         """获取今天的训练数据文件路径"""
@@ -85,9 +85,9 @@ class TrainingDataLake:
                         if record_id:
                             record_ids.add(record_id)
                     except json.JSONDecodeError as e:
-                        logger.warning(f"Failed to parse line in {file_path}: {e}")
+                        logger.warning("Failed to parse line in %s: %s", file_path, e)
         except (OSError, ValueError, TypeError, KeyError) as e:
-            logger.error(f"Failed to load record IDs from {file_path}: {e}", exc_info=True)
+            logger.error("Failed to load record IDs from %s: %s", file_path, e, exc_info=True)
         
         return record_ids
     
@@ -112,17 +112,17 @@ class TrainingDataLake:
         # 检查是否已存在
         existing_ids = self._load_existing_record_ids(file_path)
         if record_id in existing_ids:
-            logger.info(f"Training sample {record_id} already exists, skipping")
+            logger.info("Training sample %s already exists, skipping", record_id)
             return False
         
         # 追加写入
         try:
             with open(file_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(sample, ensure_ascii=False) + "\n")
-            logger.info(f"Training sample {record_id} written to {file_path}")
+            logger.info("Training sample %s written to %s", record_id, file_path)
             return True
         except (OSError, TypeError, ValueError) as e:
-            logger.error(f"Failed to write training sample {record_id}: {e}", exc_info=True)
+            logger.error("Failed to write training sample %s: %s", record_id, e, exc_info=True)
             raise
     
     def write_training_samples(self, samples: list[dict[str, Any]]) -> dict[str, int]:
@@ -144,10 +144,10 @@ class TrainingDataLake:
                 else:
                     skipped += 1
             except (OSError, TypeError, ValueError) as e:
-                logger.error(f"Failed to write sample: {e}", exc_info=True)
+                logger.error("Failed to write sample: %s", e, exc_info=True)
                 raise
         
-        logger.info(f"Batch write completed: {written} written, {skipped} skipped")
+        logger.info("Batch write completed: %s written, %s skipped", written, skipped)
         return {"written": written, "skipped": skipped}
     
     def load_training_samples(
@@ -202,9 +202,9 @@ class TrainingDataLake:
                         sample = json.loads(line)
                         samples.append(sample)
                     except json.JSONDecodeError as e:
-                        logger.warning(f"Failed to parse line in {file_path}: {e}")
+                        logger.warning("Failed to parse line in %s: %s", file_path, e)
         except (OSError, ValueError, TypeError, KeyError) as e:
-            logger.error(f"Failed to load samples from {file_path}: {e}", exc_info=True)
+            logger.error("Failed to load samples from %s: %s", file_path, e, exc_info=True)
         
         return samples
     

@@ -367,6 +367,193 @@ class TestValueFormatting:
         assert tdengine_client._format_value(_Custom()) == "'x'"
 
 
+class TestIdentifierValidation:
+    """P2-3-3 修复：标识符白名单校验单元测试，防止 SQL 注入。
+
+    纯函数测试：不依赖 TDengine 服务连接。
+    """
+
+    def test_valid_simple_names(self) -> None:
+        """合法标识符：字母开头，后接字母/数字/下划线。"""
+        for name in ("sensor_01", "A", "_test", "machine_id", "vibration_2024"):
+            # 不抛出异常即通过
+            tdengine_client._validate_identifier(name, "table")
+
+    def test_valid_single_char(self) -> None:
+        """单字符合法标识符。"""
+        tdengine_client._validate_identifier("a", "database")
+        tdengine_client._validate_identifier("Z", "table")
+        tdengine_client._validate_identifier("_", "column")
+
+    def test_valid_max_length_63(self) -> None:
+        """长度上限 63（1 个首字符 + 62 个后续字符）。"""
+        name = "a" + "b" * 62  # 总长 63
+        assert len(name) == 63
+        tdengine_client._validate_identifier(name, "table")
+
+    def test_invalid_starts_with_digit(self) -> None:
+        """非法：数字开头。"""
+        with pytest.raises(ValueError, match="Invalid table identifier"):
+            tdengine_client._validate_identifier("1abc", "table")
+
+    def test_invalid_contains_space(self) -> None:
+        """非法：包含空格。"""
+        with pytest.raises(ValueError, match="Invalid database identifier"):
+            tdengine_client._validate_identifier("a b c", "database")
+
+    def test_invalid_contains_special_chars(self) -> None:
+        """非法：包含 SQL 注入特殊字符。"""
+        injection_attempts = [
+            "'; DROP TABLE--",
+            "sensor; DROP TABLE users--",
+            "table_name'",
+            "name\" OR 1=1",
+            "a;b",
+            "a--b",
+            "col/*comment*/",
+            "a`b",
+        ]
+        for evil in injection_attempts:
+            with pytest.raises(ValueError, match="Invalid .* identifier"):
+                tdengine_client._validate_identifier(evil, "column")
+
+    def test_invalid_too_long(self) -> None:
+        """非法：长度超过 63。"""
+        name = "a" * 64  # 64 字符，超长
+        with pytest.raises(ValueError, match="Invalid table identifier"):
+            tdengine_client._validate_identifier(name, "table")
+
+    def test_invalid_empty_string(self) -> None:
+        """非法：空字符串。"""
+        with pytest.raises(ValueError, match="Invalid database identifier"):
+            tdengine_client._validate_identifier("", "database")
+
+    def test_invalid_non_string_type(self) -> None:
+        """非法：非字符串类型（None/int/list）。"""
+        for bad in (None, 123, ["sensor"], {"name": "x"}):
+            with pytest.raises(ValueError, match="Invalid column identifier"):
+                tdengine_client._validate_identifier(bad, "column")  # type: ignore[arg-type]
+
+    def test_invalid_contains_hyphen(self) -> None:
+        """非法：连字符（-）不在白名单内。"""
+        with pytest.raises(ValueError, match="Invalid table identifier"):
+            tdengine_client._validate_identifier("my-table", "table")
+
+    def test_invalid_contains_dot(self) -> None:
+        """非法：点号（用于 db.table 复合标识符需调用方拆分）。"""
+        with pytest.raises(ValueError, match="Invalid table identifier"):
+            tdengine_client._validate_identifier("db.table", "table")
+
+
+class TestTimestampLiteralValidation:
+    """P2-3-3 修复：时间字面量白名单校验单元测试，防止通过时间戳注入 SQL。
+
+    纯函数测试：不依赖 TDengine 服务连接。
+    """
+
+    def test_valid_null(self) -> None:
+        """合法：NULL 字面量。"""
+        assert tdengine_client._validate_timestamp_literal("NULL") == "NULL"
+
+    def test_valid_pure_digit_milliseconds(self) -> None:
+        """合法：纯数字毫秒时间戳。"""
+        for ts in ("0", "1700000000000", "1", "9999999999999"):
+            assert tdengine_client._validate_timestamp_literal(ts) == ts
+
+    def test_valid_quoted_full_datetime(self) -> None:
+        """合法：单引号包裹的完整日期时间字符串。"""
+        ts = "'2024-01-01 00:00:00.000000'"
+        assert tdengine_client._validate_timestamp_literal(ts) == ts
+
+    def test_valid_quoted_datetime_no_microseconds(self) -> None:
+        """合法：单引号包裹的日期时间（无微秒）。"""
+        ts = "'2024-01-01 00:00:00'"
+        assert tdengine_client._validate_timestamp_literal(ts) == ts
+
+    def test_valid_quoted_date_only(self) -> None:
+        """合法：单引号包裹的纯日期。"""
+        ts = "'2024-01-01'"
+        assert tdengine_client._validate_timestamp_literal(ts) == ts
+
+    def test_valid_quoted_datetime_with_t_separator(self) -> None:
+        """合法：ISO 8601 风格的 T 分隔符。"""
+        ts = "'2024-01-01T00:00:00'"
+        assert tdengine_client._validate_timestamp_literal(ts) == ts
+
+    def test_valid_quoted_datetime_with_partial_microseconds(self) -> None:
+        """合法：微秒位数少于 6 位（.3 / .30 / .300 等均允许）。"""
+        for ts in (
+            "'2024-01-01 00:00:00.1'",
+            "'2024-01-01 00:00:00.12'",
+            "'2024-01-01 00:00:00.123'",
+            "'2024-01-01 00:00:00.123456'",
+        ):
+            assert tdengine_client._validate_timestamp_literal(ts) == ts
+
+    def test_invalid_unquoted_date_string(self) -> None:
+        """非法：未加引号的日期字符串。"""
+        with pytest.raises(ValueError, match="Invalid timestamp literal"):
+            tdengine_client._validate_timestamp_literal("2024-01-01 00:00:00")
+
+    def test_invalid_sql_injection_attempt(self) -> None:
+        """非法：SQL 注入尝试。"""
+        injection_attempts = [
+            "'; DROP TABLE--",
+            "' OR 1=1--",
+            "'; DELETE FROM sensor WHERE '1'='1",
+            "NULL; DROP TABLE x",
+            "1700000000000; DROP TABLE",
+        ]
+        for evil in injection_attempts:
+            with pytest.raises(ValueError, match="Invalid timestamp literal"):
+                tdengine_client._validate_timestamp_literal(evil)
+
+    def test_invalid_negative_number(self) -> None:
+        """非法：负数（纯数字正则不允许负号）。"""
+        with pytest.raises(ValueError, match="Invalid timestamp literal"):
+            tdengine_client._validate_timestamp_literal("-1")
+
+    def test_invalid_float_string(self) -> None:
+        """非法：浮点数字符串（纯数字正则不允许小数点）。"""
+        with pytest.raises(ValueError, match="Invalid timestamp literal"):
+            tdengine_client._validate_timestamp_literal("1700000000000.5")
+
+    def test_invalid_malformed_date(self) -> None:
+        """非法：日期格式错误（正则只校验格式，不校验语义）。
+
+        注意：``'2024-13-01 00:00:00'`` 虽然月份 13 语义非法，但正则 ``\\d{2}``
+        仍匹配，因此会**通过**校验——语义校验由 TDengine 服务端完成。
+        这里仅测试格式层面的拒绝。
+        """
+        for ts in (
+            "'2024-1-1 00:00:00'",     # 月份/日 单位数（正则要求 2 位）
+            "'24-01-01 00:00:00'",     # 年份仅 2 位（正则要求 4 位）
+            "'2024/01/01 00:00:00'",   # 斜杠分隔符（正则要求连字符）
+            "'2024-01-01 25:00:00'",   # 小时 25 同样匹配 \d{2}，但格式合法——此条用于对照
+        ):
+            if ts == "'2024-01-01 25:00:00'":
+                # 对照组：格式合法（语义由 TDengine 校验）
+                assert tdengine_client._validate_timestamp_literal(ts) == ts
+            else:
+                with pytest.raises(ValueError, match="Invalid timestamp literal"):
+                    tdengine_client._validate_timestamp_literal(ts)
+
+    def test_invalid_unmatched_quotes(self) -> None:
+        """非法：引号不匹配。"""
+        for ts in (
+            "'2024-01-01 00:00:00",   # 缺右引号
+            "2024-01-01 00:00:00'",   # 缺左引号
+            "''2024-01-01''",         # 双引号
+        ):
+            with pytest.raises(ValueError, match="Invalid timestamp literal"):
+                tdengine_client._validate_timestamp_literal(ts)
+
+    def test_invalid_empty_string(self) -> None:
+        """非法：空字符串。"""
+        with pytest.raises(ValueError, match="Invalid timestamp literal"):
+            tdengine_client._validate_timestamp_literal("")
+
+
 # ---------------------------------------------------------------------------
 # 集成测试执行时间 sanity check
 # ---------------------------------------------------------------------------

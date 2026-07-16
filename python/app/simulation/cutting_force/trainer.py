@@ -29,6 +29,10 @@ from app.simulation.cutting_force.pinn import (
     CuttingForcePINN,
     PINNLoss,
 )
+from app.ai.lnn.training.reproducibility import (
+    set_global_seed,
+    get_worker_init_fn,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +134,12 @@ class CuttingForceTrainer:
         batch_size: int = 64,
         device: str = "cpu",
         save_dir: Optional[str] = None,
+        seed: int = 42,
     ) -> None:
+        # 必须在任何随机操作之前调用，确保可复现性
+        self.seed = seed
+        set_global_seed(seed)
+
         self.device = torch.device(device)
         self.epochs = epochs
         self.batch_size = batch_size
@@ -181,17 +190,23 @@ class CuttingForceTrainer:
             )
 
         train_loader = DataLoader(
-            train_dataset, batch_size=self.batch_size, shuffle=True
+            train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            worker_init_fn=get_worker_init_fn(self.seed),
         )
         val_loader = DataLoader(
-            val_dataset, batch_size=self.batch_size, shuffle=False
+            val_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            worker_init_fn=get_worker_init_fn(self.seed),
         )
 
         logger.info(f"模型参数量: {self.model.count_parameters():,}")
-        logger.info(f"训练样本数: {len(train_dataset)}")
-        logger.info(f"验证样本数: {len(val_dataset)}")
-        logger.info(f"训练轮数: {self.epochs}")
-        logger.info(f"设备: {self.device}")
+        logger.info("训练样本数: %s", len(train_dataset))
+        logger.info("验证样本数: %s", len(val_dataset))
+        logger.info("训练轮数: %s", self.epochs)
+        logger.info("设备: %s", self.device)
 
         best_val_loss = float("inf")
 
@@ -283,12 +298,16 @@ def main() -> None:
     parser.add_argument("--samples", type=int, default=5000, help="训练样本数")
     parser.add_argument("--material", type=str, default="45steel", help="材料名称")
     parser.add_argument("--device", type=str, default="cpu", help="设备")
+    parser.add_argument("--seed", type=int, default=42, help="随机种子")
     args = parser.parse_args()
 
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+
+    # 训练入口设置全局种子，确保实验可复现
+    set_global_seed(args.seed)
 
     model = CuttingForcePINN()
     trainer = CuttingForceTrainer(
@@ -298,6 +317,7 @@ def main() -> None:
         epochs=args.epochs,
         batch_size=args.batch_size,
         device=args.device,
+        seed=args.seed,
     )
 
     train_ds = SyntheticCuttingForceDataset(

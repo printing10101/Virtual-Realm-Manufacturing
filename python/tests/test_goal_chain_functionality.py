@@ -1,4 +1,4 @@
-﻿"""
+"""
 Goal Chain Functionality Test Suite
 
 Comprehensive tests covering:
@@ -16,6 +16,7 @@ import os
 import sys
 import time
 import uuid
+import shutil
 import pytest
 import tempfile
 
@@ -41,12 +42,9 @@ def temp_db():
     tmpdir = tempfile.mkdtemp()
     db_path = os.path.join(tmpdir, "goal_chain_test.db")
     yield db_path
-    try:
-        if os.path.exists(db_path):
-            os.unlink(db_path)
-        os.rmdir(tmpdir)
-    except Exception:
-        pass
+    # P2-1 修复：改用 shutil.rmtree 递归清理，防止 db WAL/-shm 附属文件导致 rmdir 失败。
+    # 消除 except Exception: pass 静默吞错。
+    shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 @pytest.fixture

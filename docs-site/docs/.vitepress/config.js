@@ -118,6 +118,11 @@ export default defineConfig({
           text: '更新日志',
           items: [
             { text: '概述', link: '/changelog/概述' },
+            { text: 'v2.5.0', link: '/changelog/v2.5.0' },
+            { text: 'v2.4.0', link: '/changelog/v2.4.0' },
+            { text: 'v2.3.0', link: '/changelog/v2.3.0' },
+            { text: 'v2.2.1', link: '/changelog/v2.2.1' },
+            { text: 'v2.1.0', link: '/changelog/v2.1.0' },
             { text: 'v2.0.0', link: '/changelog/v2.0.0' },
             { text: 'v1.12.1', link: '/changelog/v1.12.1' },
             { text: 'v1.12.0', link: '/changelog/v1.12.0' },
@@ -129,11 +134,11 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/your-org/virtual-realm-manufacturing' }
+      { icon: 'github', link: 'https://github.com/printing10101/Virtual-Realm-Manufacturing' }
     ],
 
     footer: {
-      message: '基于 MIT 许可证发布',
+      message: '基于 Apache 2.0 许可证发布',
       copyright: 'Copyright © 2024-2026 灵境制造团队'
     },
 
@@ -159,7 +164,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/your-org/virtual-realm-manufacturing/edit/main/docs-site/docs/:path',
+      pattern: 'https://github.com/printing10101/Virtual-Realm-Manufacturing/edit/main/docs-site/docs/:path',
       text: '在 GitHub 上编辑此页'
     },
 

@@ -27,11 +27,12 @@ from typing import Optional
 
 from app.utils.utils import sanitize_filename, validate_user_path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.api.v1.auth import get_current_user
 from app.config import config
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
@@ -43,6 +44,8 @@ from app.simulation.voxel_cutter import (
     VoxelCutter,
     VoxelSimulationResult,
     ToolModel,
+    GeometryDiffer,
+    DiffResult,
 )
 from app.simulation.toolpath_parser import ToolpathParser, ToolpathSegment
 
@@ -461,6 +464,7 @@ def _default_stock_stl() -> Path:
 @router.post("/run")
 async def run_simulation(
     request: SimulationRequest,
+    current_user: dict = Depends(get_current_user),
 ) -> dict:
     """Run voxel cutting simulation synchronously.
 
@@ -560,6 +564,7 @@ async def run_simulation(
 @router.post("/run/async")
 async def run_simulation_async(
     request: SimulationRequest,
+    current_user: dict = Depends(get_current_user),
 ) -> dict:
     """Start voxel cutting simulation asynchronously.
 
@@ -634,7 +639,10 @@ async def run_simulation_async(
 
 
 @router.get("/status/{task_id}")
-async def get_simulation_status(task_id: str) -> dict:
+async def get_simulation_status(
+    task_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
     """Query simulation task status and results.
 
     Args:
@@ -683,7 +691,10 @@ def _sanitize_filename(file_name: str) -> str:
 
 
 @router.get("/output/{filename}")
-async def get_simulation_output(filename: str) -> Response:
+async def get_simulation_output(
+    filename: str,
+    current_user: dict = Depends(get_current_user),
+) -> Response:
     """Serve simulation output STL file.
 
     Args:
@@ -729,6 +740,7 @@ async def get_simulation_output(filename: str) -> Response:
 async def get_simulation_history(
     project_id: Optional[str] = Query(default=None, description="Filter by project ID."),
     limit: int = Query(default=50, ge=1, le=200, description="Maximum number of records."),
+    current_user: dict = Depends(get_current_user),
 ) -> dict:
     """Query simulation history records.
 
@@ -778,7 +790,10 @@ async def get_simulation_history(
 
 
 @router.delete("/result/{task_id}")
-async def delete_simulation_result(task_id: str) -> dict:
+async def delete_simulation_result(
+    task_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
     """Delete a simulation result from cache and disk.
 
     Removes the in-memory result entry and deletes the associated
@@ -836,7 +851,10 @@ class ConflictCheckRequest(BaseModel):
 
 
 @router.post("/check-conflict")
-async def check_tool_slot_conflict(request: ConflictCheckRequest) -> dict:
+async def check_tool_slot_conflict(
+    request: ConflictCheckRequest,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
     """Check tool-slot diameter compatibility.
 
     Validates whether the specified tool can physically fit within
@@ -931,6 +949,7 @@ class ExportAnimationRequest(BaseModel):
 @router.post("/export-animation")
 async def export_simulation_animation(
     request: ExportAnimationRequest,
+    current_user: dict = Depends(get_current_user),
 ) -> StreamingResponse:
     """Export simulation animation as GIF or MP4.
 
@@ -1076,5 +1095,185 @@ async def export_simulation_animation(
         logger.exception("Animation export failed: %s", e)
         raise HTTPException(
             status_code=400,
-            detail=f"Animation generation failed: {str(e)}",
+            detail="动画生成失败，请检查参数或稍后重试",
         ) from e
+
+
+# =============================================================================
+# Auto-Diff 几何比对（VERICUT 式残料 / 过切检测）
+# =============================================================================
+
+# 比对结果缓存（task_id -> DiffResult），与 _in_memory_store 同生命周期
+_diff_result_store: dict[str, DiffResult] = {}
+
+
+class AutoDiffCompareRequest(BaseModel):
+    """Auto-Diff 几何比对请求。
+
+    Attributes:
+        design_stl_path: 设计模型（目标工件）STL 路径，须位于允许目录内。
+        actual_stl_path: 仿真切削结果 STL 路径（VoxelCutter 输出）。
+        voxel_size: 体素分辨率（mm），默认 0.5，越小越精确但越慢。
+        export_diff_stl: 是否导出偏差可视化 STL，默认 True。
+        gouge_warn_ratio: 过切告警阈值（体积占比），可选覆盖默认值。
+        gouge_reject_ratio: 过切拒收阈值（体积占比），可选覆盖默认值。
+        leftover_warn_ratio: 残料告警阈值（体积占比），可选覆盖默认值。
+        leftover_reject_ratio: 残料拒收阈值（体积占比），可选覆盖默认值。
+    """
+
+    design_stl_path: str = Field(
+        ...,
+        description="设计模型 STL 路径（须位于允许目录内）。",
+    )
+    actual_stl_path: str = Field(
+        ...,
+        description="仿真结果 STL 路径（须位于允许目录内）。",
+    )
+    voxel_size: float = Field(
+        default=0.5,
+        ge=0.1,
+        le=5.0,
+        description="体素分辨率（mm），越小越精确但越慢。",
+    )
+    export_diff_stl: bool = Field(
+        default=True,
+        description="是否导出偏差可视化 STL。",
+    )
+    gouge_warn_ratio: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="过切告警阈值（体积占比），留空使用默认 0.0001。",
+    )
+    gouge_reject_ratio: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="过切拒收阈值（体积占比），留空使用默认 0.001。",
+    )
+    leftover_warn_ratio: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="残料告警阈值（体积占比），留空使用默认 0.01。",
+    )
+    leftover_reject_ratio: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="残料拒收阈值（体积占比），留空使用默认 0.05。",
+    )
+
+
+@router.post("/auto-diff/compare")
+async def auto_diff_compare(
+    request: AutoDiffCompareRequest,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """比对设计模型与仿真切削结果，识别过切与残料。
+
+    竞品对标：VERICUT Auto-Diff。接受设计 STL 与仿真结果 STL，
+    体素化后逐体素异或，输出过切/残料体积、质心、最大深度、
+    verdict（accept/warning/reject）以及偏差可视化 STL。
+
+    Args:
+        request: 比对请求参数。
+
+    Returns:
+        标准 API 响应，data 字段为 DiffResult 序列化结果。
+    """
+    # 路径校验：防止路径遍历
+    try:
+        design_path = _validate_user_path(
+            request.design_stl_path, "design_stl_path"
+        )
+        actual_path = _validate_user_path(
+            request.actual_stl_path, "actual_stl_path"
+        )
+    except HTTPException as exc:
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=str(exc.detail),
+            recoverable=True,
+        )
+
+    if not design_path.exists():
+        return error(
+            code=ErrorCode.FILE_NOT_FOUND,
+            message=f"设计 STL 文件不存在: {design_path}",
+            recoverable=True,
+        )
+    if not actual_path.exists():
+        return error(
+            code=ErrorCode.FILE_NOT_FOUND,
+            message=f"仿真结果 STL 文件不存在: {actual_path}",
+            recoverable=True,
+        )
+
+    # 构造 GeometryDiffer 实例（仅在调用时创建，避免 import 期开销）
+    differ_kwargs: dict[str, Any] = {
+        "voxel_size": request.voxel_size,
+    }
+    if request.gouge_warn_ratio is not None:
+        differ_kwargs["gouge_warn_ratio"] = request.gouge_warn_ratio
+    if request.gouge_reject_ratio is not None:
+        differ_kwargs["gouge_reject_ratio"] = request.gouge_reject_ratio
+    if request.leftover_warn_ratio is not None:
+        differ_kwargs["leftover_warn_ratio"] = request.leftover_warn_ratio
+    if request.leftover_reject_ratio is not None:
+        differ_kwargs["leftover_reject_ratio"] = request.leftover_reject_ratio
+
+    try:
+        differ = GeometryDiffer(**differ_kwargs)
+        result = await asyncio.to_thread(
+            differ.compare,
+            design_path,
+            actual_path,
+            OUTPUT_DIR,
+            None,
+            request.export_diff_stl,
+        )
+    except (ValueError, TypeError, OSError, RuntimeError) as exc:
+        safe = safe_error_message(exc, context="auto_diff.compare")
+        logger.exception("Auto-Diff 比对失败: %s", exc)
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")},
+            recoverable=True,
+        )
+
+    # 缓存结果
+    _diff_result_store[result.task_id] = result
+    # 限制缓存大小（保留最近 50 条）
+    if len(_diff_result_store) > 50:
+        oldest = next(iter(_diff_result_store))
+        _diff_result_store.pop(oldest, None)
+
+    return success(
+        data=result.to_dict(),
+        message=f"几何比对完成，判定：{result.verdict}",
+    )
+
+
+@router.get("/auto-diff/{task_id}")
+async def get_auto_diff_result(
+    task_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """按 task_id 查询 Auto-Diff 比对结果。
+
+    Args:
+        task_id: 比对任务 ID。
+
+    Returns:
+        标准 API 响应，data 字段为 DiffResult 序列化结果。
+    """
+    result = _diff_result_store.get(task_id)
+    if result is None:
+        return error(
+            code=ErrorCode.NOT_FOUND,
+            message=f"未找到比对结果：{task_id}",
+            recoverable=False,
+        )
+    return success(data=result.to_dict(), message="OK")

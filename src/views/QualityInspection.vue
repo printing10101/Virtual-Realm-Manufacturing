@@ -206,8 +206,9 @@ async function fetchStats() {
     if (res.data.code === 0 && res.data.data) {
       statsData.value = res.data.data
     }
-  } catch {
-    // 统计加载失败不影响记录列表
+  } catch (e: unknown) {
+    // 统计加载失败不影响记录列表，但需记录便于排查
+    console.warn('[QualityInspection] fetchStats failed:', e)
   }
 }
 

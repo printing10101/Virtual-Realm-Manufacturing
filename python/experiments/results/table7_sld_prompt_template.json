@@ -32,7 +32,7 @@
   ],
   "real_query": {
     "user": "n = 5,500 r/min（SLD 实验网格中点工况）；ap 待评估，请基于 DL-LNN 推理给出稳定性判定与极限切深。。",
-    "assistant": "根据 DL-LNN 在 SLD 网格上的预测，参考极限切深 a_lim ≈ 19.50 mm （模型与 Tlusty 理论 a_lim 的 MAE = 0.496 mm） 在 PHM2010 真实数据集上 CT-LTC 的 MAE = 0.793 mm，RMSE = 0.987 mm 跨工况平均 PCC = 0.9966（LOCO 评估） 建议：将 ap 控制在 16.58 mm 以内（保留 15% 安全裕量）。",
+    "assistant": "根据 DL-LNN 在 SLD 网格上的预测，参考极限切深 a_lim ≈ 19.50 mm （模型与 Tlusty 理论 a_lim 的 MAE = 0.496 mm） 在 PHM2010 真实数据集上 DL-LNN 的 MAE = 0.793 mm，RMSE = 0.987 mm 跨工况平均 PCC = 0.9966（LOCO 评估） 建议：将 ap 控制在 16.58 mm 以内（保留 15% 安全裕量）。",
     "data_source": "real_experiment_results"
   }
 }

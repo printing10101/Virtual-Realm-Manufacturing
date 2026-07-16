@@ -35,6 +35,11 @@ from app.integrations._common import parse_tds_url
 
 logger = logging.getLogger(__name__)
 
+# 后台事件循环线程的统一 join 超时（秒）。
+# 与 app.data.pipeline.loader.DEFAULT_THREAD_JOIN_TIMEOUT_SEC 保持一致，
+# 任一处调整需同步更新另一处，避免不同模块关停策略不一致。
+DEFAULT_THREAD_JOIN_TIMEOUT_SEC: float = 5.0
+
 # Common network/IO exception types for OPC UA communication
 _NETWORK_EXCEPTIONS = (ConnectionError, OSError, TimeoutError)
 
@@ -354,7 +359,7 @@ class OPCUAAdapter:
                 if self._loop and self._loop.is_running():
                     self._loop.call_soon_threadsafe(self._loop.stop)
                 if hasattr(self, '_loop_thread') and self._loop_thread.is_alive():
-                    self._loop_thread.join(timeout=2.0)
+                    self._loop_thread.join(timeout=DEFAULT_THREAD_JOIN_TIMEOUT_SEC)
                 self._loop = None
 
     def run(
@@ -436,7 +441,18 @@ class OPCUAAdapter:
                     break
 
         # Always flush at the end so the last partial batch is not lost.
-        self.flush()
+        try:
+            self.flush()
+        finally:
+            # P1-1 修复：run() 退出后必须 disconnect，否则 OPC UA 连接、订阅、
+            # 后台 event loop 线程将持续泄漏。stop() 仅请求退出，资源清理由
+            # 此处 finally 保证——无论循环因 stop()、deadline 还是异常退出。
+            try:
+                self.disconnect()
+            except Exception as exc:
+                logger.warning(
+                    "disconnect failed during run() cleanup: %s", exc, exc_info=True
+                )
         logger.info(
             "Subscription stopped. ingested=%d, errors=%d",
             self.ingested_count,
@@ -469,7 +485,12 @@ class OPCUAAdapter:
 
     def _attempt_reconnect(self) -> bool:
         """Attempt to reconnect to the OPC UA server.
-        
+
+        .. note::
+            仅同步上下文使用：本方法使用 ``time.sleep`` 阻塞等待，
+            不应在 async 上下文中直接调用。订阅循环运行在同步线程中，
+            故此处使用同步 sleep 是安全的。
+
         Returns:
             bool: True if reconnection succeeded, False otherwise
         """

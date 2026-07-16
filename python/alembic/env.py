@@ -16,7 +16,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 config = context.config
 
 # Override sqlalchemy.url with environment variable if set
-env_db_url = os.environ.get("DB_URL")
+# P1 修复：同时支持 DB_URL 和 DATABASE_URL。原代码仅读 DB_URL，
+# 但 config.py 和运维惯例用 DATABASE_URL，可能导致迁移连错库。
+# 防复发：环境变量回退链必须覆盖所有运维命名约定。
+env_db_url = os.environ.get("DB_URL") or os.environ.get("DATABASE_URL")
 if env_db_url:
     config.set_main_option("sqlalchemy.url", env_db_url)
 

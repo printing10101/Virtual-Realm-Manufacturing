@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
@@ -8,6 +8,8 @@ from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
 from app.services.tool_wear_predictor import ToolWearPredictor
+# P2-4-5 修复：引入共享速率限制器，磨损预测/训练端点消耗计算资源，需速率限制防止 DoS。
+from app.middleware.rate_limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -89,17 +91,19 @@ class CompensationRequest(BaseModel):
 
 
 @router.post("/predict")
-async def predict_wear(request: WearPredictRequest):
+# P2-4-5 修复：磨损曲线预测消耗数值计算资源，限制为 60/minute。
+@limiter.limit("60/minute")
+async def predict_wear(request: Request, body: WearPredictRequest):
     try:
         params = {
-            "cutting_speed": request.cutting_speed,
-            "feed_rate": request.feed_rate,
-            "depth_of_cut": request.depth_of_cut,
-            "material_type": request.material_type,
-            "tool_type": request.tool_type,
-            "current_wear": request.current_wear,
-            "time_step": request.time_step,
-            "max_time": request.max_time,
+            "cutting_speed": body.cutting_speed,
+            "feed_rate": body.feed_rate,
+            "depth_of_cut": body.depth_of_cut,
+            "material_type": body.material_type,
+            "tool_type": body.tool_type,
+            "current_wear": body.current_wear,
+            "time_step": body.time_step,
+            "max_time": body.max_time,
         }
         curve = predictor.predict_wear_curve(params)
         return success(
@@ -122,21 +126,23 @@ async def predict_wear(request: WearPredictRequest):
 
 
 @router.post("/remaining-life")
-async def predict_remaining_life(request: RemainingLifeRequest):
+# P2-4-5 修复：剩余寿命预测消耗数值计算资源，限制为 60/minute。
+@limiter.limit("60/minute")
+async def predict_remaining_life(request: Request, body: RemainingLifeRequest):
     try:
         params = {
-            "cutting_speed": request.cutting_speed,
-            "feed_rate": request.feed_rate,
-            "depth_of_cut": request.depth_of_cut,
-            "material_type": request.material_type,
-            "tool_type": request.tool_type,
+            "cutting_speed": body.cutting_speed,
+            "feed_rate": body.feed_rate,
+            "depth_of_cut": body.depth_of_cut,
+            "material_type": body.material_type,
+            "tool_type": body.tool_type,
         }
-        remaining = predictor.predict_remaining_life(request.current_wear, params)
-        threshold = predictor.get_replacement_threshold(request.material_type)
+        remaining = predictor.predict_remaining_life(body.current_wear, params)
+        threshold = predictor.get_replacement_threshold(body.material_type)
         return success(
             data={
                 "remaining_life": remaining,
-                "current_wear": request.current_wear,
+                "current_wear": body.current_wear,
                 "replacement_threshold": threshold,
             },
             message="Remaining life predicted successfully",
@@ -158,18 +164,20 @@ async def predict_remaining_life(request: RemainingLifeRequest):
 
 
 @router.post("/suggest")
-async def suggest_adjustment(request: SuggestRequest):
+# P2-4-5 修复：参数建议涉及 Taylor 公式计算，限制为 60/minute。
+@limiter.limit("60/minute")
+async def suggest_adjustment(request: Request, body: SuggestRequest):
     try:
         current_params = {
-            "cutting_speed": request.cutting_speed,
-            "feed_rate": request.feed_rate,
-            "depth_of_cut": request.depth_of_cut,
-            "coolant_flow": request.coolant_flow,
-            "material_type": request.material_type,
-            "tool_type": request.tool_type,
+            "cutting_speed": body.cutting_speed,
+            "feed_rate": body.feed_rate,
+            "depth_of_cut": body.depth_of_cut,
+            "coolant_flow": body.coolant_flow,
+            "material_type": body.material_type,
+            "tool_type": body.tool_type,
         }
         suggestion = predictor.suggest_parameter_adjustment(
-            request.current_wear, request.remaining_life, current_params
+            body.current_wear, body.remaining_life, current_params
         )
         return success(
             data=suggestion.to_dict(), message="Adjustment suggestions generated"
@@ -191,7 +199,9 @@ async def suggest_adjustment(request: SuggestRequest):
 
 
 @router.get("/models")
-async def get_supported_models():
+# P2-4-5 修复：查询端点添加速率限制防止滥用，限制为 120/minute。
+@limiter.limit("120/minute")
+async def get_supported_models(request: Request):
     try:
         models = predictor.get_supported_models()
         materials = {
@@ -228,7 +238,9 @@ async def get_supported_models():
 
 
 @router.post("/threshold")
-async def get_threshold(material_type: str = "default"):
+# P2-4-5 修复：查询端点添加速率限制防止滥用，限制为 120/minute。
+@limiter.limit("120/minute")
+async def get_threshold(request: Request, material_type: str = "default"):
     try:
         threshold = predictor.get_replacement_threshold(material_type)
         return success(
@@ -251,17 +263,19 @@ async def get_threshold(material_type: str = "default"):
 
 
 @router.post("/calibrate")
-async def calibrate_prediction(request: CalibrateRequest):
+# P2-4-5 修复：标定涉及磨损曲线预测，限制为 60/minute。
+@limiter.limit("60/minute")
+async def calibrate_prediction(request: Request, body: CalibrateRequest):
     try:
         params = {
-            "cutting_speed": request.cutting_speed,
-            "feed_rate": request.feed_rate,
-            "depth_of_cut": request.depth_of_cut,
-            "material_type": request.material_type,
-            "tool_type": request.tool_type,
+            "cutting_speed": body.cutting_speed,
+            "feed_rate": body.feed_rate,
+            "depth_of_cut": body.depth_of_cut,
+            "material_type": body.material_type,
+            "tool_type": body.tool_type,
         }
         result = predictor.calibrate_with_measurement(
-            request.measured_wear, request.elapsed_time, params
+            body.measured_wear, body.elapsed_time, params
         )
         return success(data=result, message="Prediction calibrated successfully")
     except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
@@ -281,19 +295,21 @@ async def calibrate_prediction(request: CalibrateRequest):
 
 
 @router.post("/calibrate-realtime")
-async def calibrate_with_real_time_data(request: RealTimeCalibrateRequest):
+# P2-4-5 修复：实时校正涉及 EWMA 融合计算，限制为 60/minute。
+@limiter.limit("60/minute")
+async def calibrate_with_real_time_data(request: Request, body: RealTimeCalibrateRequest):
     try:
         params = {
-            "cutting_speed": request.cutting_speed,
-            "feed_rate": request.feed_rate,
-            "depth_of_cut": request.depth_of_cut,
-            "material_type": request.material_type,
-            "tool_type": request.tool_type,
+            "cutting_speed": body.cutting_speed,
+            "feed_rate": body.feed_rate,
+            "depth_of_cut": body.depth_of_cut,
+            "material_type": body.material_type,
+            "tool_type": body.tool_type,
         }
         result = predictor.calibrate_with_real_time_data(
-            real_time_wear=request.real_time_wear,
-            sensor_features=request.sensor_features,
-            elapsed_time=request.elapsed_time,
+            real_time_wear=body.real_time_wear,
+            sensor_features=body.sensor_features,
+            elapsed_time=body.elapsed_time,
             input_parameters=params,
         )
         return success(
@@ -316,20 +332,22 @@ async def calibrate_with_real_time_data(request: RealTimeCalibrateRequest):
 
 
 @router.post("/compensation")
-async def get_compensation_suggestions(request: CompensationRequest):
+# P2-4-5 修复：补偿建议涉及 Taylor 公式计算，限制为 60/minute。
+@limiter.limit("60/minute")
+async def get_compensation_suggestions(request: Request, body: CompensationRequest):
     try:
         params = {
-            "cutting_speed": request.cutting_speed,
-            "feed_rate": request.feed_rate,
-            "depth_of_cut": request.depth_of_cut,
-            "material_type": request.material_type,
-            "tool_type": request.tool_type,
-            "tool_diameter": request.tool_diameter,
+            "cutting_speed": body.cutting_speed,
+            "feed_rate": body.feed_rate,
+            "depth_of_cut": body.depth_of_cut,
+            "material_type": body.material_type,
+            "tool_type": body.tool_type,
+            "tool_diameter": body.tool_diameter,
         }
         result = predictor.get_compensation_recommendations(
-            current_wear=request.current_wear,
+            current_wear=body.current_wear,
             input_parameters=params,
-            machine_capabilities=request.machine_capabilities,
+            machine_capabilities=body.machine_capabilities,
         )
         return success(
             data=result, message="Compensation suggestions generated successfully"
@@ -351,7 +369,10 @@ async def get_compensation_suggestions(request: CompensationRequest):
 
 
 @router.post("/train-uniwear")
+# P2-4-5 修复：模型训练消耗大量计算资源，限制为 5/hour。
+@limiter.limit("5/hour")
 async def train_uniwear_model(
+    request: Request,
     data_dir: str = "python/data/uniwear",
     model_type: str = "random_forest",
 ):
@@ -377,7 +398,10 @@ async def train_uniwear_model(
 
 
 @router.post("/predict-from-signals")
+# P2-4-5 修复：信号特征预测涉及模型推理，限制为 60/minute。
+@limiter.limit("60/minute")
 async def predict_wear_from_signal_features(
+    request: Request,
     features: dict[str, float],
     material: str = "tc4",
 ):
@@ -403,7 +427,9 @@ async def predict_wear_from_signal_features(
 
 
 @router.get("/cross-dataset-analysis")
-async def get_cross_dataset_analysis():
+# P2-4-5 修复：查询端点添加速率限制防止滥用，限制为 120/minute。
+@limiter.limit("120/minute")
+async def get_cross_dataset_analysis(request: Request):
     try:
         analysis = predictor.cross_dataset_analysis()
         return success(data=analysis, message="Cross-dataset analysis completed")
@@ -423,7 +449,9 @@ async def get_cross_dataset_analysis():
 
 
 @router.get("/uniwear-materials")
-async def get_uniwear_materials():
+# P2-4-5 修复：查询端点添加速率限制防止滥用，限制为 120/minute。
+@limiter.limit("120/minute")
+async def get_uniwear_materials(request: Request):
     try:
         materials = predictor.get_uniwear_material_params()
         return success(data=materials, message="Uniwear material parameters retrieved")

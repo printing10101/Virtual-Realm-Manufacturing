@@ -14,8 +14,8 @@ import os
 from datetime import datetime
 
 
-class CTLTCModel(nn.Module):
-    """CT-LTC模型简化版本"""
+class DLLNNModel(nn.Module):
+    """DL-LNN模型简化版本"""
     def __init__(self, input_dim=10, hidden_dim=64, num_layers=3, output_dim=1, dt=0.01):
         super().__init__()
         self.input_dim = input_dim
@@ -358,11 +358,11 @@ def signal_decomposition_experiment():
     print("\n[实验1] 原始信号预测...")
     original_results = {}
     
-    # CT-LTC
-    model = CTLTCModel(input_dim=X_original.shape[1], hidden_dim=64, num_layers=3)
+    # DL-LNN
+    model = DLLNNModel(input_dim=X_original.shape[1], hidden_dim=64, num_layers=3)
     metrics = train_and_evaluate(model, X_train_orig, y_train, X_test_orig, y_test)
-    original_results['CT-LTC'] = metrics
-    print(f"  CT-LTC: MAE={metrics['mae']:.4f}, PCC={metrics['pcc']:.4f}")
+    original_results['DL-LNN'] = metrics
+    print(f"  DL-LNN: MAE={metrics['mae']:.4f}, PCC={metrics['pcc']:.4f}")
     
     # LSTM
     model = LSTMModel(input_dim=X_original.shape[1], hidden_dim=64, num_layers=2)
@@ -383,10 +383,10 @@ def signal_decomposition_experiment():
     
     # 切削力分量
     cf_results = {}
-    model = CTLTCModel(input_dim=X_cutting_force.shape[1], hidden_dim=64, num_layers=3)
+    model = DLLNNModel(input_dim=X_cutting_force.shape[1], hidden_dim=64, num_layers=3)
     metrics = train_and_evaluate(model, X_train_cf, y_train, X_test_cf, y_test)
-    cf_results['CT-LTC'] = metrics
-    print(f"  切削力 - CT-LTC: MAE={metrics['mae']:.4f}")
+    cf_results['DL-LNN'] = metrics
+    print(f"  切削力 - DL-LNN: MAE={metrics['mae']:.4f}")
     
     model = LSTMModel(input_dim=X_cutting_force.shape[1], hidden_dim=64, num_layers=2)
     metrics = train_and_evaluate(model, X_train_cf, y_train, X_test_cf, y_test)
@@ -400,10 +400,10 @@ def signal_decomposition_experiment():
     
     # 颤振分量
     ch_results = {}
-    model = CTLTCModel(input_dim=X_chatter.shape[1], hidden_dim=64, num_layers=3)
+    model = DLLNNModel(input_dim=X_chatter.shape[1], hidden_dim=64, num_layers=3)
     metrics = train_and_evaluate(model, X_train_ch, y_train, X_test_ch, y_test)
-    ch_results['CT-LTC'] = metrics
-    print(f"  颤振 - CT-LTC: MAE={metrics['mae']:.4f}")
+    ch_results['DL-LNN'] = metrics
+    print(f"  颤振 - DL-LNN: MAE={metrics['mae']:.4f}")
     
     model = LSTMModel(input_dim=X_chatter.shape[1], hidden_dim=64, num_layers=2)
     metrics = train_and_evaluate(model, X_train_ch, y_train, X_test_ch, y_test)
@@ -417,10 +417,10 @@ def signal_decomposition_experiment():
     
     # 噪声分量
     n_results = {}
-    model = CTLTCModel(input_dim=X_noise.shape[1], hidden_dim=64, num_layers=3)
+    model = DLLNNModel(input_dim=X_noise.shape[1], hidden_dim=64, num_layers=3)
     metrics = train_and_evaluate(model, X_train_n, y_train, X_test_n, y_test)
-    n_results['CT-LTC'] = metrics
-    print(f"  噪声 - CT-LTC: MAE={metrics['mae']:.4f}")
+    n_results['DL-LNN'] = metrics
+    print(f"  噪声 - DL-LNN: MAE={metrics['mae']:.4f}")
     
     model = LSTMModel(input_dim=X_noise.shape[1], hidden_dim=64, num_layers=2)
     metrics = train_and_evaluate(model, X_train_n, y_train, X_test_n, y_test)
@@ -440,42 +440,42 @@ def signal_decomposition_experiment():
     X_test_cf_ch = X_cf_ch[val_idx:]
     
     combined_results = {}
-    model = CTLTCModel(input_dim=X_cf_ch.shape[1], hidden_dim=64, num_layers=3)
+    model = DLLNNModel(input_dim=X_cf_ch.shape[1], hidden_dim=64, num_layers=3)
     metrics = train_and_evaluate(model, X_train_cf_ch, y_train, X_test_cf_ch, y_test)
-    combined_results['cutting_force+chatter'] = {'CT-LTC': metrics}
-    print(f"  切削力+颤振 - CT-LTC: MAE={metrics['mae']:.4f}")
+    combined_results['cutting_force+chatter'] = {'DL-LNN': metrics}
+    print(f"  切削力+颤振 - DL-LNN: MAE={metrics['mae']:.4f}")
     
     # 切削力 + 噪声
     X_cf_n = np.concatenate([X_cutting_force, X_noise], axis=1)
     X_train_cf_n = X_cf_n[:train_idx]
     X_test_cf_n = X_cf_n[val_idx:]
     
-    model = CTLTCModel(input_dim=X_cf_n.shape[1], hidden_dim=64, num_layers=3)
+    model = DLLNNModel(input_dim=X_cf_n.shape[1], hidden_dim=64, num_layers=3)
     metrics = train_and_evaluate(model, X_train_cf_n, y_train, X_test_cf_n, y_test)
-    combined_results['cutting_force+noise'] = {'CT-LTC': metrics}
-    print(f"  切削力+噪声 - CT-LTC: MAE={metrics['mae']:.4f}")
+    combined_results['cutting_force+noise'] = {'DL-LNN': metrics}
+    print(f"  切削力+噪声 - DL-LNN: MAE={metrics['mae']:.4f}")
     
     # 颤振 + 噪声
     X_ch_n = np.concatenate([X_chatter, X_noise], axis=1)
     X_train_ch_n = X_ch_n[:train_idx]
     X_test_ch_n = X_ch_n[val_idx:]
     
-    model = CTLTCModel(input_dim=X_ch_n.shape[1], hidden_dim=64, num_layers=3)
+    model = DLLNNModel(input_dim=X_ch_n.shape[1], hidden_dim=64, num_layers=3)
     metrics = train_and_evaluate(model, X_train_ch_n, y_train, X_test_ch_n, y_test)
-    combined_results['chatter+noise'] = {'CT-LTC': metrics}
-    print(f"  颤振+噪声 - CT-LTC: MAE={metrics['mae']:.4f}")
+    combined_results['chatter+noise'] = {'DL-LNN': metrics}
+    print(f"  颤振+噪声 - DL-LNN: MAE={metrics['mae']:.4f}")
     
     results['results']['combined_analysis'] = combined_results
     
     # 计算各分量的贡献度
     print("\n[4] 计算分量贡献度...")
-    baseline_mae = original_results['CT-LTC']['mae']
+    baseline_mae = original_results['DL-LNN']['mae']
     
     contribution_analysis = {
-        'cutting_force_contribution': (baseline_mae - cf_results['CT-LTC']['mae']) / baseline_mae * 100,
-        'chatter_contribution': (baseline_mae - ch_results['CT-LTC']['mae']) / baseline_mae * 100,
-        'noise_contribution': (baseline_mae - n_results['CT-LTC']['mae']) / baseline_mae * 100,
-        'synergy_cf_ch': (baseline_mae - combined_results['cutting_force+chatter']['CT-LTC']['mae']) / baseline_mae * 100
+        'cutting_force_contribution': (baseline_mae - cf_results['DL-LNN']['mae']) / baseline_mae * 100,
+        'chatter_contribution': (baseline_mae - ch_results['DL-LNN']['mae']) / baseline_mae * 100,
+        'noise_contribution': (baseline_mae - n_results['DL-LNN']['mae']) / baseline_mae * 100,
+        'synergy_cf_ch': (baseline_mae - combined_results['cutting_force+chatter']['DL-LNN']['mae']) / baseline_mae * 100
     }
     
     results['contribution_analysis'] = contribution_analysis

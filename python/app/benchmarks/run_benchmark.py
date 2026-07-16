@@ -26,7 +26,6 @@ import numpy as np  # noqa: E402
 from app.benchmarks.datasets import (  # noqa: E402
     load_uniwear_data,
     sample_training_subset,
-    split_dataset,
 )
 from app.benchmarks.metrics import (  # noqa: E402
     compute_all_metrics,
@@ -35,6 +34,12 @@ from app.benchmarks.models.xgboost_baseline import XGBoostBaseline  # noqa: E402
 from app.benchmarks.models.rf_baseline import RFBaseline  # noqa: E402
 from app.benchmarks.models.svm_baseline import SVMBaseline  # noqa: E402
 from app.benchmarks.models.mlp_baseline import MLPBaseline  # noqa: E402
+from app.ai.lnn.training.reproducibility import set_global_seed  # noqa: E402
+from app.ai.lnn.training.experiment_tracker import (  # noqa: E402
+    start_run as mlflow_start_run,
+    log_params as mlflow_log_params,
+    log_metrics as mlflow_log_metrics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,15 +115,14 @@ class BenchmarkRunner:
             sample_fractions = [0.1, 0.3, 0.5, 0.7, 1.0]
 
         logger.info("加载UniWear数据集...")
-        X, y, metadata, _scaler = load_uniwear_data()
-        logger.info(f"  样本数: {metadata['n_samples']}, 特征数: {metadata['n_features']}")
+        splits, metadata, _scaler = load_uniwear_data(random_seed=self.random_seed)
+        logger.info("  样本数: %s, 特征数: %s", metadata['n_samples'], metadata['n_features'])
         logger.info(
             f"  标签: {metadata['label_name']}, "
             f"均值={metadata['label_mean']:.3f}, "
             f"范围=[{metadata['label_min']:.3f}, {metadata['label_max']:.3f}]"
         )
 
-        splits = split_dataset(X, y, random_seed=self.random_seed)
         X_test, y_test = splits["test"]
         logger.info(
             f"  训练: {splits['train'][0].shape[0]}, "
@@ -127,17 +131,17 @@ class BenchmarkRunner:
         )
 
         models = {
-            "XGBoost": (XGBoostBaseline, {}),
-            "RandomForest": (RFBaseline, {}),
+            "XGBoost": (XGBoostBaseline, {"random_state": self.random_seed}),
+            "RandomForest": (RFBaseline, {"random_state": self.random_seed}),
             "SVR": (SVMBaseline, {}),
-            "MLP": (MLPBaseline, {}),
+            "MLP": (MLPBaseline, {"random_state": self.random_seed}),
         }
 
         for fraction in sample_fractions:
             frac_label = f"{fraction:.0%}" if fraction < 1.0 else "100%"
-            logger.info(f"\n{'=' * 60}")
-            logger.info(f"样本比例: {frac_label} ({int(X.shape[0] * fraction)} 样本)")
-            logger.info(f"{'=' * 60}")
+            logger.info("\n%s", '=' * 60)
+            logger.info("  样本比例: %s (%s 样本)", frac_label, int(metadata['n_samples'] * fraction))
+            logger.info("%s", '=' * 60)
 
             for model_name, (model_cls, model_config) in models.items():
                 for run_id in range(1, self.n_runs + 1):
@@ -165,6 +169,32 @@ class BenchmarkRunner:
                         y_test,
                         fraction,
                     )
+
+                    # 学术诚信：每次实验运行记录到 MLflow，审稿人可验证每个指标
+                    # mlflow 为软依赖，未安装时 start_run 降级为 no-op 上下文
+                    run_name = f"{model_name}_run{run_id}_frac{fraction}"
+                    with mlflow_start_run(
+                        run_name=run_name, experiment_name="benchmark"
+                    ):
+                        mlflow_log_params({
+                            "model_name": model_name,
+                            "run_id": run_id,
+                            "sample_fraction": fraction,
+                            "random_seed": seed,
+                            "n_train_samples": int(X_tr.shape[0]),
+                            "n_test_samples": int(X_test.shape[0]),
+                        })
+                        mlflow_log_metrics({
+                            "mae": result.mae,
+                            "rmse": result.rmse,
+                            "r2": result.r2,
+                            "mape": result.mape,
+                            "inference_time_ms": result.inference_time_ms,
+                            "model_size_mb": result.model_size_mb,
+                            "training_time_s": result.training_time_s,
+                            "params_count": result.params_count,
+                        })
+
                     self._all_results.append(result)
                     logger.info(f"RMSE={result.rmse:.4f}, R2={result.r2:.4f}")
 
@@ -263,7 +293,7 @@ class BenchmarkRunner:
                         "params_count": r.params_count,
                     }
                 )
-        logger.info(f"\n结果已保存: {csv_path}")
+        logger.info("\n结果已保存: %s", csv_path)
 
     def _compute_summary(
         self,
@@ -436,7 +466,7 @@ class BenchmarkRunner:
         fig.savefig(out_dir / "model_size.png", dpi=150)
         plt.close(fig)
 
-        logger.info(f"图表已保存至: {out_dir}")
+        logger.info("图表已保存至: %s", out_dir)
 
     def _generate_report(self, metadata: dict[str, Any]) -> None:
         summaries = self._compute_summary(1.0)
@@ -553,7 +583,7 @@ class BenchmarkRunner:
 
         with open(report_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
-        logger.info(f"报告已生成: {report_path}")
+        logger.info("报告已生成: %s", report_path)
 
     def _build_summary(self) -> dict[str, Any]:
         summaries = self._compute_summary(1.0)
@@ -575,12 +605,14 @@ class BenchmarkRunner:
 
 
 def main():
+    # 设置全局随机种子，确保实验可复现
+    set_global_seed(42)
     runner = BenchmarkRunner(n_runs=3)
     summary = runner.run(sample_fractions=[0.1, 0.3, 0.5, 0.7, 1.0])
     logger.info("\n" + "=" * 60)
     logger.info("实验概要:")
     for r in summary["results"]:
-        logger.info(f"  {r['model']}: RMSE={r['rmse_mean']}, R²={r['r2_mean']}")
+        logger.info("  %s: RMSE=%s, R²=%s", r['model'], r['rmse_mean'], r['r2_mean'])
 
 
 if __name__ == "__main__":

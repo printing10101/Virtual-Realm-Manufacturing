@@ -9,12 +9,14 @@ import os
 import threading
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, UploadFile, File, Form
 
+from app.api.v1.auth import get_current_user
 from app.auth.permissions import require_permission
 from app.core.safe_errors import safe_error_message
 from app.rag.knowledge_base import get_knowledge_base
 from app.rag.vector_store import get_vector_store
+from app.utils.upload_security import validate_upload
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +47,15 @@ def _get_rag_engine():
         if _rag_engine_instance is not None:
             return _rag_engine_instance
         from app.rag.rag_retrieval import RagRetrievalEngine
+        from app.rag.signal_fusion_kb import get_signal_fusion_kb
 
-        _rag_engine_instance = RagRetrievalEngine(knowledge_base=kb)
-        logger.info("RagRetrievalEngine singleton initialized")
+        # 集成点 2：显式注入 signal_fusion_kb，打通 RagRetrievalEngine ↔
+        # SignalFusionKnowledgeBase（之前仅通过共享 VectorStore 单例隐式耦合）
+        _rag_engine_instance = RagRetrievalEngine(
+            knowledge_base=kb,
+            signal_fusion_kb=get_signal_fusion_kb(),
+        )
+        logger.info("RagRetrievalEngine singleton initialized (signal_fusion_kb injected)")
     return _rag_engine_instance
 
 
@@ -92,7 +100,7 @@ def _raise_internal(
     raise HTTPException(status_code=status_code, detail=detail, headers=headers)
 
 
-@router.get("/query")
+@router.get("/query", dependencies=[Depends(get_current_user)])
 async def query_knowledge(
     q: str = Query(..., description="查询文本"),
     n_results: int = Query(5, ge=1, le=50, description="返回结果数量"),
@@ -170,7 +178,7 @@ async def query_knowledge(
         _raise_internal(e, context="rag.query", fallback="知识库查询失败")
 
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(get_current_user)])
 async def get_stats():
     try:
         return kb.get_stats()
@@ -179,7 +187,7 @@ async def get_stats():
         _raise_internal(e, context="rag.stats", fallback="获取知识库状态失败")
 
 
-@router.post("/add")
+@router.post("/add", dependencies=[Depends(require_permission("rag:write"))])
 async def add_knowledge(request: dict[str, Any]):
     try:
         document = request.get("document", "")
@@ -195,7 +203,7 @@ async def add_knowledge(request: dict[str, Any]):
         _raise_internal(e, context="rag.add", fallback="添加知识失败")
 
 
-@router.delete("/{doc_id}")
+@router.delete("/{doc_id}", dependencies=[Depends(require_permission("rag:write"))])
 async def delete_knowledge(doc_id: str):
     try:
         deleted = kb.delete(doc_id)
@@ -209,7 +217,7 @@ async def delete_knowledge(doc_id: str):
         _raise_internal(e, context="rag.delete", fallback="删除知识失败")
 
 
-@router.get("/list")
+@router.get("/list", dependencies=[Depends(get_current_user)])
 async def list_documents(limit: int = Query(50, ge=1, le=500)):
     try:
         return {"documents": kb.list_documents(limit=limit)}
@@ -219,7 +227,7 @@ async def list_documents(limit: int = Query(50, ge=1, le=500)):
         _raise_internal(e, context="rag.list", fallback="获取文档列表失败")
 
 
-@router.post("/load/default")
+@router.post("/load/default", dependencies=[Depends(require_permission("rag:write"))])
 async def load_default_knowledge():
     try:
         count = kb.load_default_knowledge()
@@ -230,7 +238,7 @@ async def load_default_knowledge():
         _raise_internal(e, context="rag.load_default", fallback="加载默认知识失败")
 
 
-@router.post("/load/json")
+@router.post("/load/json", dependencies=[Depends(require_permission("rag:write"))])
 async def load_rag_json():
     try:
         stats = kb.load_rag_json_knowledge()
@@ -241,7 +249,7 @@ async def load_rag_json():
         _raise_internal(e, context="rag.load_json", fallback="加载JSON知识失败")
 
 
-@router.get("/search")
+@router.get("/search", dependencies=[Depends(get_current_user)])
 async def search_by_source(
     source: str = Query(..., description="知识来源"),
     query: str = Query("", description="可选搜索查询"),
@@ -256,7 +264,7 @@ async def search_by_source(
         _raise_internal(e, context="rag.search", fallback="搜索失败")
 
 
-@router.delete("/source/{source}")
+@router.delete("/source/{source}", dependencies=[Depends(require_permission("rag:write"))])
 async def delete_by_source(source: str):
     try:
         count = kb.delete_by_source(source)
@@ -267,7 +275,7 @@ async def delete_by_source(source: str):
         _raise_internal(e, context="rag.delete_by_source", fallback="删除失败")
 
 
-@router.post("/import/file")
+@router.post("/import/file", dependencies=[Depends(require_permission("rag:write"))])
 async def import_document(
     file: UploadFile = File(...),
     chunk_size: int = Form(400, ge=100, le=10000),
@@ -275,23 +283,27 @@ async def import_document(
 ):
     try:
         from app.rag.document_importer import DocumentImportService
-        from app.utils.utils import validate_file_upload, UploadValidationError
 
         import tempfile
 
-        # 读取内容后统一校验（类型、大小、文件名）
-        content = await file.read()
+        # P0-12/P0-13 修复：使用 validate_upload 统一校验
+        # （扩展名 + magic bytes + 分块流式读取 + 大小限制）
+        # 替代原 ``await file.read()`` 全量入内存 + 事后校验的模式
         _ALLOWED_RAG_EXTENSIONS = {
             ".txt", ".pdf", ".docx", ".doc", ".md",
             ".json", ".csv", ".html", ".xml", ".rtf",
         }
-        try:
-            validate_file_upload(
-                file.filename, len(content), _ALLOWED_RAG_EXTENSIONS,
-                max_size_bytes=50 * 1024 * 1024,
-            )
-        except UploadValidationError as ve:
-            raise HTTPException(status_code=400, detail=str(ve))
+        _ALLOWED_RAG_MIMES = {
+            "text/plain", "text/csv", "application/json",
+            "application/pdf", "application/zip",  # docx 为 zip 容器
+            "application/octet-stream",  # doc/html/xml/rtf 无固定签名
+        }
+        content = await validate_upload(
+            file,
+            max_size=50 * 1024 * 1024,
+            allowed_extensions=_ALLOWED_RAG_EXTENSIONS,
+            allowed_mimes=_ALLOWED_RAG_MIMES,
+        )
 
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=os.path.splitext(file.filename or "doc.txt")[1]
@@ -309,6 +321,9 @@ async def import_document(
             return result
         finally:
             os.unlink(tmp_path)
+    except HTTPException:
+        # validate_upload 抛出的 413/415/400 透传
+        raise
     except (OSError, ValueError, UnicodeDecodeError, RuntimeError) as e:
         # 捕获文档导入异常：临时文件 IO、文本解析、embedding 推理、ChromaDB 写入
         logger.exception("Failed to import document")
@@ -343,7 +358,7 @@ async def import_backup(backup_dir: str = Query(..., description="备份目录�
         _raise_internal(e, context="rag.backup_import", fallback="备份导入失败")
 
 
-@router.post("/maintenance/optimize")
+@router.post("/maintenance/optimize", dependencies=[Depends(require_permission("rag:write"))])
 async def optimize_index():
     try:
         vs = get_vector_store()
@@ -355,7 +370,7 @@ async def optimize_index():
         _raise_internal(e, context="rag.optimize", fallback="索引优化失败")
 
 
-@router.post("/maintenance/cleanup")
+@router.post("/maintenance/cleanup", dependencies=[Depends(require_permission("rag:write"))])
 async def cleanup_orphaned():
     try:
         vs = get_vector_store()
@@ -381,7 +396,7 @@ async def cleanup_orphaned():
 # ---------------------------------------------------------------------------
 
 
-@router.get("/v2/enhancement/status")
+@router.get("/v2/enhancement/status", dependencies=[Depends(get_current_user)])
 async def get_enhancement_status():
     """获取 RAG 增强模块的实时状态与性能指标。
 
@@ -399,7 +414,7 @@ async def get_enhancement_status():
         )
 
 
-@router.get("/v2/cache/stats")
+@router.get("/v2/cache/stats", dependencies=[Depends(get_current_user)])
 async def get_cache_stats():
     """获取检索结果 LRU 缓存的命中统计。
 
@@ -413,7 +428,7 @@ async def get_cache_stats():
         _raise_internal(e, context="rag.v2.cache_stats", fallback="获取缓存统计失败")
 
 
-@router.delete("/v2/cache")
+@router.delete("/v2/cache", dependencies=[Depends(require_permission("rag:write"))])
 async def clear_cache():
     """清空检索结果 LRU 缓存。
 
@@ -428,7 +443,49 @@ async def clear_cache():
         _raise_internal(e, context="rag.v2.cache_clear", fallback="清空缓存失败")
 
 
-@router.post("/v2/evaluation")
+@router.post("/v2/signal-fusion/retrieve", dependencies=[Depends(require_permission("rag:write"))])
+async def retrieve_from_signal_fusion(
+    payload: dict = Body(...),
+):
+    """集成点 2：通过 RagRetrievalEngine 委托 SignalFusionKnowledgeBase 检索。
+
+    请求体字段（全部可选，但至少需要 features 或 query 之一）::
+
+        {
+          "features": [0.12, 0.45, ...],   # 9 维特征向量
+          "signal_type": "vibration",       # 可选过滤
+          "machine_id": "vmc_850",          # 可选过滤
+          "material": "aluminum_6061",      # 可选过滤
+          "tool_id": 3,                     # 可选过滤
+          "top_k": 10,
+          "query": "振动信号样本"            # 可选文本（降级时使用）
+        }
+
+    Returns:
+        samples 列表（SignalSample.to_dict），含 degraded 标记
+        （True 表示 signal_fusion_kb 未注入或检索失败，已降级到通用 RAG）
+    """
+    try:
+        engine = _get_rag_engine()
+        result = engine.retrieve_from_signal_fusion(
+            features=payload.get("features"),
+            signal_type=payload.get("signal_type"),
+            machine_id=payload.get("machine_id"),
+            material=payload.get("material"),
+            tool_id=payload.get("tool_id"),
+            top_k=int(payload.get("top_k", 10)),
+            query=payload.get("query"),
+        )
+        return result
+    except (RuntimeError, OSError, ValueError, TypeError) as e:
+        logger.exception("Signal fusion retrieval failed")
+        _raise_internal(
+            e, context="rag.v2.signal_fusion.retrieve",
+            fallback="信号融合检索失败",
+        )
+
+
+@router.post("/v2/evaluation", dependencies=[Depends(require_permission("rag:write"))])
 def run_evaluation(
     top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
     category: str | None = Query(None, description="仅评估指定类别"),
@@ -459,7 +516,7 @@ def run_evaluation(
         _raise_internal(e, context="rag.v2.evaluation", fallback="评估运行失败")
 
 
-@router.post("/v2/ablation")
+@router.post("/v2/ablation", dependencies=[Depends(require_permission("rag:write"))])
 def run_ablation_study(
     top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
     category: str | None = Query(None, description="仅评估指定类别"),
@@ -494,7 +551,7 @@ def run_ablation_study(
         _raise_internal(e, context="rag.v2.ablation", fallback="消融研究运行失败")
 
 
-@router.post("/v2/comparison")
+@router.post("/v2/comparison", dependencies=[Depends(require_permission("rag:write"))])
 def generate_comparison_report(
     top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
     category: str | None = Query(None, description="仅评估指定类别"),
@@ -529,4 +586,287 @@ def generate_comparison_report(
         logger.exception("Comparison report generation failed")
         _raise_internal(
             e, context="rag.v2.comparison", fallback="对比报告生成失败"
+        )
+
+
+# ===========================================================================
+# 工艺决策四元组 API（CAMWorks TechDB 思路落地）
+# ===========================================================================
+# 落地竞品分析识别的核心补强点：Feature → Process → Tool → Parameter 四元组建模。
+# 通过 chunk_ids 字段与 EntityIndex 互查，实现 quadruple → 原始文档溯源。
+
+
+def _get_process_index():
+    """懒加载工艺四元组索引单例。
+
+    集成点 4：注入 ``knowledge_base`` 以启用 ``get_related_documents()``
+    的完整文档反查能力（EntityIndex 已在 ``get_process_quadruple_index()``
+    内部默认注入）。
+    """
+    from app.rag.process_quadruple import (
+        get_process_quadruple_index,
+        seed_default_quadruples,
+    )
+
+    index = get_process_quadruple_index(knowledge_base=kb)
+    # 首次访问时自动注入默认知识库（仅当索引为空）
+    if index.get_stats()["total_quadruples"] == 0:
+        try:
+            seeded = seed_default_quadruples(index)
+            logger.info("已注入 %d 条默认工艺四元组", seeded)
+        except (ValueError, KeyError, RuntimeError) as e:
+            logger.warning("注入默认工艺四元组失败: %s", e)
+    return index
+
+
+@router.post("/process/recommend", dependencies=[Depends(require_permission("rag:write"))])
+async def recommend_process(request: dict[str, Any]):
+    """根据加工特征推荐工艺方案（CAMWorks TechDB 式自动决策）。
+
+    请求体：
+        {
+            "feature": "pocket",         # 加工特征
+            "material": "aluminum",      # 工件材料（可选，默认 general）
+            "top_k": 5                   # 返回前 K 条（可选，默认 5）
+        }
+
+    返回按 confidence 降序排列的推荐方案，每项含完整四元组 + 评分。
+    """
+    try:
+        feature = (request.get("feature") or "").strip()
+        if not feature:
+            raise HTTPException(status_code=400, detail="feature 不能为空")
+        material = (request.get("material") or "general").strip()
+        top_k = int(request.get("top_k", 5))
+        if not 1 <= top_k <= 50:
+            raise HTTPException(status_code=400, detail="top_k 必须在 [1, 50]")
+
+        index = _get_process_index()
+        recommendations = index.recommend_process(
+            feature=feature, material=material, top_k=top_k,
+        )
+        return {
+            "feature": feature.lower(),
+            "material": material.lower(),
+            "count": len(recommendations),
+            "recommendations": recommendations,
+        }
+    except HTTPException:
+        raise
+    except (ValueError, TypeError, RuntimeError) as e:
+        logger.exception("Failed to recommend process")
+        _raise_internal(e, context="rag.process.recommend", fallback="工艺推荐失败")
+
+
+@router.post("/process/similar", dependencies=[Depends(require_permission("rag:write"))])
+async def find_similar_quadruples(request: dict[str, Any]):
+    """查找相似工艺记录（3 层匹配：精确 / 同特征 / 材料迁移）。
+
+    请求体：
+        {
+            "feature": "pocket",
+            "material": "aluminum",
+            "top_k": 10
+        }
+    """
+    try:
+        feature = (request.get("feature") or "").strip()
+        if not feature:
+            raise HTTPException(status_code=400, detail="feature 不能为空")
+        material = (request.get("material") or "general").strip()
+        top_k = int(request.get("top_k", 10))
+        if not 1 <= top_k <= 100:
+            raise HTTPException(status_code=400, detail="top_k 必须在 [1, 100]")
+
+        index = _get_process_index()
+        results = index.find_similar(
+            feature=feature, material=material, top_k=top_k,
+        )
+        return {
+            "feature": feature.lower(),
+            "material": material.lower(),
+            "count": len(results),
+            "results": results,
+        }
+    except HTTPException:
+        raise
+    except (ValueError, TypeError, RuntimeError) as e:
+        logger.exception("Failed to find similar quadruples")
+        _raise_internal(e, context="rag.process.similar", fallback="相似工艺查询失败")
+
+
+@router.post("/process/add", dependencies=[Depends(require_permission("rag:write"))])
+async def add_process_quadruple(request: dict[str, Any]):
+    """添加工艺四元组到索引。
+
+    请求体示例：
+        {
+            "feature": "pocket",
+            "process": "rough_mill",
+            "tool": "endmill_d10",
+            "parameters": {
+                "spindle_rpm": 6000,
+                "feed_rate_mm_per_min": 800,
+                "depth_of_cut_mm": 2.0,
+                "width_of_cut_mm": 5.0
+            },
+            "material": "aluminum",
+            "confidence": 0.9,
+            "source": "experiment",
+            "chunk_ids": ["chunk_001"],
+            "tags": ["hsm"]
+        }
+    """
+    try:
+        from app.rag.process_quadruple import ProcessQuadruple
+
+        required = ["feature", "process", "tool", "parameters"]
+        for k in required:
+            if not request.get(k):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"缺少必填字段: {k}",
+                )
+
+        quad = ProcessQuadruple.from_dict(request)
+        index = _get_process_index()
+        index.add(quad)
+        return {
+            "added": True,
+            "quadruple": quad.to_dict(),
+            "stats": index.get_stats(),
+        }
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.warning("Invalid process quadruple: %s", e)
+        raise HTTPException(status_code=400, detail="工艺四元组参数无效或格式错误") from e
+    except (TypeError, KeyError, RuntimeError) as e:
+        logger.exception("Failed to add process quadruple")
+        _raise_internal(e, context="rag.process.add", fallback="添加工艺四元组失败")
+
+
+@router.get("/process/features", dependencies=[Depends(get_current_user)])
+async def list_features():
+    """列出所有已建模的特征类型。"""
+    try:
+        index = _get_process_index()
+        features = index.get_features()
+        return {"features": features, "count": len(features)}
+    except (RuntimeError, OSError) as e:
+        logger.exception("Failed to list features")
+        _raise_internal(e, context="rag.process.features", fallback="获取特征列表失败")
+
+
+@router.get("/process/{feature}/processes", dependencies=[Depends(get_current_user)])
+async def get_processes_for_feature(feature: str):
+    """获取指定特征对应的所有工艺方法。"""
+    try:
+        index = _get_process_index()
+        processes = index.get_processes_for_feature(feature)
+        return {
+            "feature": feature.lower(),
+            "processes": processes,
+            "count": len(processes),
+        }
+    except (RuntimeError, OSError) as e:
+        logger.exception("Failed to get processes for feature")
+        _raise_internal(
+            e, context="rag.process.processes", fallback="获取工艺方法列表失败"
+        )
+
+
+@router.get("/process/stats", dependencies=[Depends(get_current_user)])
+async def get_process_stats():
+    """获取工艺四元组索引统计信息。"""
+    try:
+        index = _get_process_index()
+        return index.get_stats()
+    except (RuntimeError, OSError) as e:
+        logger.exception("Failed to get process stats")
+        _raise_internal(e, context="rag.process.stats", fallback="获取工艺索引统计失败")
+
+
+@router.post("/process/seed", dependencies=[Depends(require_permission("rag:write"))])
+async def seed_default_process_knowledge():
+    """注入默认工艺知识库（覆盖常见特征的典型工艺方案）。
+
+    包含 12 条默认四元组，覆盖 pocket/slot/hole/thread/profile/face/chamfer
+    等特征，以及 aluminum/steel/titanium 三种材料。
+    """
+    try:
+        from app.rag.process_quadruple import seed_default_quadruples
+
+        index = _get_process_index()
+        # 先清空再注入，避免重复
+        before = index.get_stats()["total_quadruples"]
+        count = seed_default_quadruples(index)
+        index.flush(force=True)
+        return {
+            "seeded": count,
+            "before_total": before,
+            "after_total": index.get_stats()["total_quadruples"],
+            "message": f"已注入 {count} 条默认工艺四元组",
+        }
+    except (RuntimeError, OSError, ValueError) as e:
+        logger.exception("Failed to seed default process knowledge")
+        _raise_internal(e, context="rag.process.seed", fallback="注入默认知识失败")
+
+
+@router.post("/process/flush", dependencies=[Depends(require_permission("rag:write"))])
+async def flush_process_index():
+    """强制将工艺四元组索引落盘。"""
+    try:
+        index = _get_process_index()
+        ok = index.flush(force=True)
+        return {"flushed": ok, "stats": index.get_stats()}
+    except (RuntimeError, OSError) as e:
+        logger.exception("Failed to flush process index")
+        _raise_internal(e, context="rag.process.flush", fallback="落盘失败")
+
+
+@router.post("/process/related-documents", dependencies=[Depends(require_permission("rag:write"))])
+async def get_related_documents(request: dict[str, Any]):
+    """集成点 4：通过 chunk_ids + EntityIndex 反向查询原始文档。
+
+    请求体：
+        {
+            "feature": "pocket",          # 加工特征
+            "material": "aluminum",       # 可选工件材料过滤
+            "top_k": 10,                  # 可选，默认 10
+            "include_documents": true     # 可选，默认 true（拉取完整文档内容）
+        }
+
+    返回：
+        - chunk_ids_direct: 四元组直接关联的 chunk_ids
+        - chunk_ids_extended: 通过 EntityIndex 扩展查找的 chunk_ids
+        - chunk_ids_all: 合并去重后的全部 chunk_ids
+        - documents: 完整文档内容列表（include_documents=true 时）
+        - entity_index_injected / knowledge_base_injected: 软依赖注入状态
+    """
+    try:
+        feature = (request.get("feature") or "").strip()
+        if not feature:
+            raise HTTPException(status_code=400, detail="feature 不能为空")
+        material = (request.get("material") or "").strip() or None
+        top_k = int(request.get("top_k", 10))
+        if not 1 <= top_k <= 100:
+            raise HTTPException(status_code=400, detail="top_k 必须在 [1, 100]")
+        include_documents = bool(request.get("include_documents", True))
+
+        index = _get_process_index()
+        result = index.get_related_documents(
+            feature=feature,
+            material=material,
+            top_k=top_k,
+            include_documents=include_documents,
+        )
+        return result
+    except HTTPException:
+        raise
+    except (ValueError, TypeError, RuntimeError) as e:
+        logger.exception("Failed to get related documents")
+        _raise_internal(
+            e, context="rag.process.related_documents",
+            fallback="关联文档查询失败",
         )

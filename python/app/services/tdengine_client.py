@@ -67,8 +67,9 @@ class TDengineConfig:
         default_factory=lambda: int(os.environ.get("TDENGINE_CONNECT_TIMEOUT", "10"))
     )
     health_url: str = field(
+        # 统一使用 127.0.0.1（项目约定），避免 localhost 解析差异
         default_factory=lambda: os.environ.get(
-            "TDENGINE_HEALTH_URL", "http://localhost:6041/api/health"
+            "TDENGINE_HEALTH_URL", "http://127.0.0.1:6041/api/health"
         )
     )
 
@@ -420,6 +421,10 @@ async def query_time_range(
         return []
     start = _format_value(start_ts)
     end = _format_value(end_ts)
+    # P2-3-1 修复：对 _format_value 输出做二次校验，确保时间字面量仅为
+    # 纯数字（毫秒时间戳）或符合 ISO 时间格式，防止通过时间戳参数注入 SQL。
+    start = _validate_timestamp_literal(start)
+    end = _validate_timestamp_literal(end)
     # columns 参数允许传入 "*" 或列名列表，但需限制为白名单字符
     # 防止通过 columns 参数注入
     if not _re.match(r"^[A-Za-z_*][A-Za-z0-9_*,\s]*$", columns):
@@ -501,6 +506,43 @@ def _format_value(value: Any) -> str:
     if isinstance(value, str):
         return "'" + value.replace("'", "''") + "'"
     return "'" + str(value).replace("'", "''") + "'"
+
+
+# P2-3-1 修复：时间字面量白名单校验，防止通过时间戳参数注入 SQL。
+# 合法时间字面量格式：
+#   - "NULL"（空值）
+#   - 纯数字（毫秒时间戳，如 "1700000000000"）
+#   - 单引号包裹的 ISO 时间字符串（如 "'2024-01-01 00:00:00.000000'"）
+_TIMESTAMP_DIGIT_RE = _re.compile(r"^\d+$")
+_TIMESTAMP_QUOTED_RE = _re.compile(
+    r"^'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(\.\d+)?)?'$"
+)
+
+
+def _validate_timestamp_literal(val: str) -> str:
+    """校验 _format_value 输出是否为合法的时间字面量。
+
+    防止通过 start_ts/end_ts 参数注入 SQL。仅接受以下格式：
+    1. ``NULL``（空值）
+    2. 纯数字（毫秒时间戳）
+    3. 单引号包裹的 ``YYYY-MM-DD HH:MM:SS[.ffffff]`` 时间字符串
+
+    Args:
+        val: _format_value 的输出字符串。
+
+    Returns:
+        校验通过则原样返回 val。
+
+    Raises:
+        ValueError: 当 val 不匹配任何合法时间字面量格式时。
+    """
+    if val == "NULL":
+        return val
+    if _TIMESTAMP_DIGIT_RE.match(val):
+        return val
+    if _TIMESTAMP_QUOTED_RE.match(val):
+        return val
+    raise ValueError(f"Invalid timestamp literal (potential SQL injection): {val!r}")
 
 
 def _coerce(value: Any) -> Any:

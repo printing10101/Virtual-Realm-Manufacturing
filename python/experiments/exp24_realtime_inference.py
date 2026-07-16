@@ -225,7 +225,7 @@ def run_realtime_inference_experiment():
     model_config = config.model
     
     # 定义要测试的模型
-    model_names = ["CT-LTC", "LSTM", "Transformer", "PINN", "BPNN"]
+    model_names = ["DL-LNN", "LSTM", "Transformer", "PINN", "BPNN"]
     
     # 定义要测试的批量大小
     batch_sizes = [1, 8, 16, 32, 64, 128]

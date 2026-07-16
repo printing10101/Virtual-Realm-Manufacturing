@@ -7,6 +7,7 @@ Endpoints for cost tracking, budget enforcement, alerts, and optimization sugges
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
+import logging
 
 from app.budget.budget_enforcer import (
     get_budget_enforcer,
@@ -23,6 +24,8 @@ from app.models.budget import (
     BudgetPolicy,
 )
 from app.auth.permissions import require_permission
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/cost-budget",
@@ -108,7 +111,8 @@ async def get_cost_summary(
     try:
         dim = CostDimension(dimension)
     except ValueError:
-        raise HTTPException(400, f"Invalid dimension: {dimension}")
+        logger.info("Invalid dimension: %s", dimension)
+        raise HTTPException(400, "Invalid dimension")
 
     tracker = get_cost_tracker()
 
@@ -163,7 +167,8 @@ async def set_unit_price(payload: SetUnitPriceRequest):
         "data_transfer_per_mb",
     ]
     if key not in valid_keys:
-        raise HTTPException(400, f"Invalid key. Must be one of: {valid_keys}")
+        logger.info("Invalid key: %s", key)
+        raise HTTPException(400, "Invalid key")
 
     tracker = get_cost_tracker()
     tracker.set_unit_price(key, value)
@@ -231,7 +236,7 @@ async def adjust_budget(payload: AdjustBudgetRequest):
 
 
 @router.get("/adjustment-history")
-async def get_adjustment_history(limit: int = Query(50, ge=1, le=200)):
+async def get_adjustment_history(limit: int = Query(50, ge=1, le=100)):
     tracker = get_cost_tracker()
     history = tracker.get_budget_adjustments(limit)
     return {"ok": True, "data": history}
@@ -266,7 +271,8 @@ async def check_budget_cascade(payload: CheckBudgetCascadeRequest):
     try:
         resource_type = ResourceType(resource_type_str)
     except ValueError:
-        raise HTTPException(400, f"Invalid resource_type: {resource_type_str}")
+        logger.info("Invalid resource_type: %s", resource_type_str)
+        raise HTTPException(400, "Invalid resource_type")
 
     result = enforcer.check_budget_cascade(
         agent_id, project_id, resource_type, planned_usage
@@ -324,7 +330,7 @@ async def reset_budget_period(payload: ResetBudgetPeriodRequest):
 async def get_budget_alerts(
     status: Optional[str] = Query(None, description="筛选状态: warning/exceeded"),
     unread_only: bool = Query(False, description="仅未读"),
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):
     enforcer = get_budget_enforcer()
@@ -364,14 +370,14 @@ async def get_optimization_suggestions():
 
 
 @router.get("/enforcement-log")
-async def get_enforcement_log(limit: int = Query(100, ge=1, le=500)):
+async def get_enforcement_log(limit: int = Query(100, ge=1, le=100)):
     enforcer = get_budget_enforcer()
     log_entries = enforcer.get_enforcement_log(limit)
     return {"ok": True, "data": log_entries}
 
 
 @router.get("/reset-log")
-async def get_reset_log(limit: int = Query(100, ge=1, le=500)):
+async def get_reset_log(limit: int = Query(100, ge=1, le=100)):
     enforcer = get_budget_enforcer()
     log_entries = enforcer.get_reset_log(limit)
     return {"ok": True, "data": log_entries}

@@ -18,14 +18,18 @@ from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/plugins", tags=["plugins"])
+router = APIRouter(
+    prefix="/api/v1/plugins",
+    tags=["plugins"],
+    dependencies=[Depends(require_permission("plugin:read"))],
+)
 
 
 @router.get("/marketplace")
 def list_marketplace_plugins(
     query: Optional[str] = Query(None, description="Search query"),
     plugin_type: Optional[str] = Query(None, description="Filter by type"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=500),
     page_size: int = Query(20, ge=1, le=100),
 ):
     return success(
@@ -38,7 +42,7 @@ def list_marketplace_plugins(
     )
 
 
-@router.post("/marketplace/{plugin_id}/install")
+@router.post("/marketplace/{plugin_id}/install", dependencies=[Depends(require_permission("plugin:config:update"))])
 def install_marketplace_plugin(plugin_id: str):
     return success(data={"message": f"Plugin '{plugin_id}' installation started"})
 
@@ -112,7 +116,7 @@ def get_plugin_detail(plugin_id: str):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/{plugin_id}/enable")
+@router.post("/{plugin_id}/enable", dependencies=[Depends(require_permission("plugin:config:update"))])
 def enable_plugin(plugin_id: str):
     try:
         manager = get_plugin_manager()
@@ -129,7 +133,7 @@ def enable_plugin(plugin_id: str):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/{plugin_id}/disable")
+@router.post("/{plugin_id}/disable", dependencies=[Depends(require_permission("plugin:config:update"))])
 def disable_plugin(plugin_id: str):
     try:
         manager = get_plugin_manager()
@@ -146,7 +150,7 @@ def disable_plugin(plugin_id: str):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/{plugin_id}/reload")
+@router.post("/{plugin_id}/reload", dependencies=[Depends(require_permission("plugin:config:update"))])
 def reload_plugin(plugin_id: str):
     try:
         manager = get_plugin_manager()
@@ -163,7 +167,7 @@ def reload_plugin(plugin_id: str):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.delete("/{plugin_id}")
+@router.delete("/{plugin_id}", dependencies=[Depends(require_permission("plugin:config:update"))])
 def uninstall_plugin(plugin_id: str):
     try:
         manager = get_plugin_manager()
@@ -232,7 +236,7 @@ def get_plugin_dependencies(plugin_id: str):
 def get_plugin_logs(
     plugin_id: str,
     level: Optional[str] = Query(None, description="Filter by log level"),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):
     return success(
@@ -309,7 +313,7 @@ def list_workers():
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/workers/{plugin_id}/start")
+@router.post("/workers/{plugin_id}/start", dependencies=[Depends(require_permission("plugin:config:update"))])
 def start_worker(plugin_id: str):
     try:
         manager = get_plugin_manager()
@@ -334,7 +338,7 @@ def start_worker(plugin_id: str):
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-@router.post("/workers/{plugin_id}/stop")
+@router.post("/workers/{plugin_id}/stop", dependencies=[Depends(require_permission("plugin:config:update"))])
 def stop_worker(plugin_id: str):
     try:
         worker_mgr = PluginWorkerManager.get_instance()

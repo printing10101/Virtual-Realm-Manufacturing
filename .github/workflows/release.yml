@@ -25,6 +25,10 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   PYTHON_VERSION: '3.10'
   NODE_VERSION: '18'
@@ -311,6 +315,19 @@ jobs:
           build-args: |
             BUILD_VERSION=${{ needs.prepare-release.outputs.version }}
 
+      # P2-DEV-2 修复：镜像签名 - 使用 Sigstore cosign 对推送的镜像进行签名，保证供应链完整性
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.7.0
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Sign images with cosign
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: |
+          # keyless 签名（使用 OIDC token，无需管理私钥）
+          cosign sign --yes ${{ steps.meta.outputs.tags }} || { echo "cosign 签名失败（可能缺少 OIDC 权限）"; exit 1; }
+
       - name: 镜像推送完成确认
         run: |
           echo "✓ Docker 发布镜像构建并推送成功"
@@ -333,40 +350,82 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
+      - name: 检查部署配置
+        # CI-F3 修复：GitHub Actions 不允许在 if 条件中直接引用 secrets.* 上下文。
+        # 通过 env 将 secrets 暴露给 shell，再以 step outputs 形式供后续步骤的 if 使用。
+        id: deploy-config
+        env:
+          KUBE_CONFIG_PRODUCTION: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
+          SSH_HOST_PRODUCTION: ${{ secrets.SSH_HOST_PRODUCTION }}
+        run: |
+          if [ -n "$KUBE_CONFIG_PRODUCTION" ]; then
+            echo "has_kube_config=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_kube_config=false" >> $GITHUB_OUTPUT
+          fi
+
+          if [ -n "$SSH_HOST_PRODUCTION" ]; then
+            echo "has_ssh_host=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_ssh_host=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "部署模式判定完成:"
+          echo "  KUBE_CONFIG_PRODUCTION: ${{ steps.deploy-config.outputs.has_kube_config == 'true' && '已配置' || '未配置' }}"
+          echo "  SSH_HOST_PRODUCTION: ${{ steps.deploy-config.outputs.has_ssh_host == 'true' && '已配置' || '未配置' }}"
+
       - name: 配置 Kubernetes 上下文
-        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        if: steps.deploy-config.outputs.has_kube_config == 'true'
+        env:
+          KUBE_CONFIG_PRODUCTION: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+          echo "$KUBE_CONFIG_PRODUCTION" | base64 -d > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
       - name: 部署到 Kubernetes (Production)
-        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        if: steps.deploy-config.outputs.has_kube_config == 'true'
         id: deploy-k8s
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE_PRODUCTION || 'production' }}
         run: |
           echo "=== 部署到 Kubernetes 生产环境 ==="
           VERSION="${{ needs.prepare-release.outputs.version }}"
-          
+
+          echo "目标 namespace: $KUBE_NAMESPACE"
+
           cd deploy/k8s
           sed -i "s|image:.*|image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:v${VERSION}|g" deployment.yml
-          
-          kubectl apply -f deployment.yml -n production
-          kubectl rollout status deployment/lingjing-app -n production --timeout=600s
-          
+
+          # CI-F3 修复：namespace 变量化，避免硬编码 'production' 导致多环境冲突。
+          # 先尝试创建 namespace（幂等操作，已存在时忽略错误），再应用部署清单。
+          kubectl create namespace "$KUBE_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f deployment.yml -n "$KUBE_NAMESPACE"
+          kubectl rollout status deployment/lnn-api -n "$KUBE_NAMESPACE" --timeout=600s
+
           echo "✓ Kubernetes 生产环境部署完成"
 
       - name: 部署到云服务器 (Production)
-        if: ${{ secrets.SSH_HOST_PRODUCTION != '' && secrets.KUBE_CONFIG_PRODUCTION == '' }}
+        if: steps.deploy-config.outputs.has_ssh_host == 'true' && steps.deploy-config.outputs.has_kube_config == 'false'
         id: deploy-vm
+        env:
+          SSH_KEY_PRODUCTION: ${{ secrets.SSH_KEY_PRODUCTION }}
+          SSH_USER_PRODUCTION: ${{ secrets.SSH_USER_PRODUCTION }}
+          SSH_HOST_PRODUCTION: ${{ secrets.SSH_HOST_PRODUCTION }}
         run: |
           echo "=== 部署到云服务器生产环境 ==="
           VERSION="${{ needs.prepare-release.outputs.version }}"
-          
+
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY_PRODUCTION }}" > ~/.ssh/deploy_key
+          echo "$SSH_KEY_PRODUCTION" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PRODUCTION }}@${{ secrets.SSH_HOST_PRODUCTION }} << EOF
+
+          # P1 安全修复：StrictHostKeyChecking=no 关闭主机密钥校验，存在中间人攻击风险。
+          # 改用 accept-new：首次连接自动接受并记录主机指纹，后续连接校验指纹一致性。
+          # 生产环境强烈建议通过 SSH_KNOWN_HOSTS secret 注入已知主机指纹：
+          #   echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+          #   ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes ...
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SSH_USER_PRODUCTION@$SSH_HOST_PRODUCTION" << EOF
             cd /opt/lingjing-production
             export IMAGE_TAG=v${VERSION}
             docker-compose pull
@@ -374,7 +433,7 @@ jobs:
             sleep 15
             docker-compose ps
           EOF
-          
+
           echo "✓ 云服务器生产环境部署完成"
 
       - name: 设置生产环境 URL
@@ -385,30 +444,45 @@ jobs:
           echo "Production URL: ${PRODUCTION_URL}"
 
       - name: 生产环境健康检查
+        id: health-check
         run: |
           echo "=== 执行生产环境健康检查 ==="
           PRODUCTION_URL="${{ steps.deploy.outputs.production_url }}"
-          
+
           sleep 30
-          
+
           MAX_RETRIES=15
           RETRY_COUNT=0
-          
+
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${PRODUCTION_URL}/api/health/ping" || echo "000")
-            
+
             if [ "$HTTP_CODE" = "200" ]; then
               echo "✓ 生产环境健康检查通过 (HTTP ${HTTP_CODE})"
               exit 0
             fi
-            
+
             RETRY_COUNT=$((RETRY_COUNT + 1))
             echo "健康检查重试 ${RETRY_COUNT}/${MAX_RETRIES} (HTTP ${HTTP_CODE})"
             sleep 15
           done
-          
+
           echo "❌ 生产环境健康检查失败"
           exit 1
+
+      - name: Kubernetes 回滚 (健康检查失败时)
+        # P1 修复：发布失败无自动回滚，可能导致生产环境运行不健康版本。
+        # 健康检查失败且使用 K8s 部署时，自动执行 kubectl rollout undo 回滚到上一个稳定版本。
+        if: failure() && steps.deploy-config.outputs.has_kube_config == 'true'
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE_PRODUCTION || 'production' }}
+        run: |
+          echo "=== 执行 Kubernetes 回滚 ==="
+          echo "❌ 健康检查失败，开始回滚 deployment/lnn-api"
+          kubectl rollout undo deployment/lnn-api -n "$KUBE_NAMESPACE"
+          kubectl rollout status deployment/lnn-api -n "$KUBE_NAMESPACE" --timeout=300s
+          echo "✓ 已回滚到上一个稳定版本"
+          echo "::error::生产环境部署后健康检查失败，已自动回滚。请检查镜像版本并重试。"
 
   # ============================================
   # Job 6: 创建 GitHub Release

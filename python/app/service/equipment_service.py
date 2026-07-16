@@ -7,14 +7,18 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import case, func, select
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.database.connection import get_engine, get_sessionmaker
 from app.database.models import Base, Equipment, EquipmentAlarm, MaintenancePlan
+
+logger = logging.getLogger(__name__)
 
 
 # 允许更新的设备字段白名单
@@ -124,27 +128,36 @@ async def update_equipment(equipment_id: str, body: dict) -> Optional[dict]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        equip = (
-            await session.execute(
-                select(Equipment).where(Equipment.id == equipment_id)
-            )
-        ).scalar_one_or_none()
-        if not equip:
-            return None
+        try:
+            equip = (
+                await session.execute(
+                    select(Equipment).where(Equipment.id == equipment_id)
+                )
+            ).scalar_one_or_none()
+            if not equip:
+                return None
 
-        updated = []
-        for key, value in body.items():
-            if key in _EQUIPMENT_ALLOWED_FIELDS:
-                setattr(equip, key, value)
-                updated.append(key)
+            updated = []
+            for key, value in body.items():
+                if key in _EQUIPMENT_ALLOWED_FIELDS:
+                    setattr(equip, key, value)
+                    updated.append(key)
 
-        if not updated:
-            raise ValueError("没有有效的更新字段")
+            if not updated:
+                raise ValueError("没有有效的更新字段")
 
-        equip.updated_at = datetime.utcnow()
-        await session.commit()
+            equip.updated_at = datetime.now(timezone.utc)
+            await session.commit()
 
-        return equip.to_dict()
+            return equip.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("更新设备失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("更新设备失败: %s", e, exc_info=True)
+            raise
 
 
 async def list_alarms(
@@ -193,22 +206,31 @@ async def update_alarm_status(alarm_id: str, body: dict) -> Optional[dict]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        alarm = (
-            await session.execute(
-                select(EquipmentAlarm).where(EquipmentAlarm.id == alarm_id)
-            )
-        ).scalar_one_or_none()
-        if not alarm:
-            return None
+        try:
+            alarm = (
+                await session.execute(
+                    select(EquipmentAlarm).where(EquipmentAlarm.id == alarm_id)
+                )
+            ).scalar_one_or_none()
+            if not alarm:
+                return None
 
-        new_status = body.get("status")
-        if not new_status or new_status not in _ALARM_VALID_STATUSES:
-            raise ValueError(f"无效状态，可选值: {_ALARM_VALID_STATUSES}")
+            new_status = body.get("status")
+            if not new_status or new_status not in _ALARM_VALID_STATUSES:
+                raise ValueError(f"无效状态，可选值: {_ALARM_VALID_STATUSES}")
 
-        alarm.status = new_status
-        await session.commit()
+            alarm.status = new_status
+            await session.commit()
 
-        return alarm.to_dict()
+            return alarm.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("更新告警状态失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("更新告警状态失败: %s", e, exc_info=True)
+            raise
 
 
 async def list_maintenance_plans(
@@ -250,28 +272,37 @@ async def update_maintenance_plan(plan_id: str, body: dict) -> Optional[dict]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        plan = (
-            await session.execute(
-                select(MaintenancePlan).where(MaintenancePlan.id == plan_id)
-            )
-        ).scalar_one_or_none()
-        if not plan:
-            return None
+        try:
+            plan = (
+                await session.execute(
+                    select(MaintenancePlan).where(MaintenancePlan.id == plan_id)
+                )
+            ).scalar_one_or_none()
+            if not plan:
+                return None
 
-        updated = []
-        for key, value in body.items():
-            if key in _MAINTENANCE_ALLOWED_FIELDS:
-                if key in ("last_date", "next_date") and isinstance(value, str):
-                    value = datetime.fromisoformat(value)
-                setattr(plan, key, value)
-                updated.append(key)
+            updated = []
+            for key, value in body.items():
+                if key in _MAINTENANCE_ALLOWED_FIELDS:
+                    if key in ("last_date", "next_date") and isinstance(value, str):
+                        value = datetime.fromisoformat(value)
+                    setattr(plan, key, value)
+                    updated.append(key)
 
-        if not updated:
-            raise ValueError("没有有效的更新字段")
+            if not updated:
+                raise ValueError("没有有效的更新字段")
 
-        await session.commit()
+            await session.commit()
 
-        return plan.to_dict()
+            return plan.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("更新维护计划失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("更新维护计划失败: %s", e, exc_info=True)
+            raise
 
 
 async def seed_equipment_data() -> dict:
@@ -283,7 +314,7 @@ async def seed_equipment_data() -> dict:
     sessionmaker = _get_session()
     await _ensure_tables()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     equipment_data = [
         {
@@ -359,123 +390,132 @@ async def seed_equipment_data() -> dict:
         if existing.scalar() > 0:
             return {"already_exists": True, "counts": {}}
 
-        # 创建设备
-        for ed in equipment_data:
-            session.add(Equipment(**ed))
-        await session.flush()
+        try:
+            # 创建设备
+            for ed in equipment_data:
+                session.add(Equipment(**ed))
+            await session.flush()
 
-        # 创建告警
-        alarm_data = [
-            {
-                "equipment_id": equipment_data[0]["id"],
-                "alarm_type": "温度异常",
-                "severity": "警告",
-                "message": "CNC-001 主轴温度偏高 (45.2°C)，接近阈值上限",
-                "status": "未处理",
-            },
-            {
-                "equipment_id": equipment_data[3]["id"],
-                "alarm_type": "振动异常",
-                "severity": "警告",
-                "message": "GRIND-001 振动值偏高 (0.15mm/s)，建议检查砂轮平衡",
-                "status": "未处理",
-            },
-            {
-                "equipment_id": equipment_data[4]["id"],
-                "alarm_type": "维护提醒",
-                "severity": "提示",
-                "message": "ROBOT-001 焊接机器人已进入计划维护周期",
-                "status": "已确认",
-            },
-            {
-                "equipment_id": equipment_data[1]["id"],
-                "alarm_type": "功率异常",
-                "severity": "紧急",
-                "message": "CNC-002 功率波动异常，瞬时峰值超过额定功率15%",
-                "status": "未处理",
-            },
-            {
-                "equipment_id": equipment_data[2]["id"],
-                "alarm_type": "维护提醒",
-                "severity": "提示",
-                "message": "WEDM-001 线切割机电极丝寿命即将到期，建议更换",
-                "status": "已解决",
-            },
-            {
-                "equipment_id": equipment_data[5]["id"],
-                "alarm_type": "温度异常",
-                "severity": "警告",
-                "message": "CMM-001 测量环境温度波动超出允许范围",
-                "status": "未处理",
-            },
-        ]
+            # 创建告警
+            alarm_data = [
+                {
+                    "equipment_id": equipment_data[0]["id"],
+                    "alarm_type": "温度异常",
+                    "severity": "警告",
+                    "message": "CNC-001 主轴温度偏高 (45.2°C)，接近阈值上限",
+                    "status": "未处理",
+                },
+                {
+                    "equipment_id": equipment_data[3]["id"],
+                    "alarm_type": "振动异常",
+                    "severity": "警告",
+                    "message": "GRIND-001 振动值偏高 (0.15mm/s)，建议检查砂轮平衡",
+                    "status": "未处理",
+                },
+                {
+                    "equipment_id": equipment_data[4]["id"],
+                    "alarm_type": "维护提醒",
+                    "severity": "提示",
+                    "message": "ROBOT-001 焊接机器人已进入计划维护周期",
+                    "status": "已确认",
+                },
+                {
+                    "equipment_id": equipment_data[1]["id"],
+                    "alarm_type": "功率异常",
+                    "severity": "紧急",
+                    "message": "CNC-002 功率波动异常，瞬时峰值超过额定功率15%",
+                    "status": "未处理",
+                },
+                {
+                    "equipment_id": equipment_data[2]["id"],
+                    "alarm_type": "维护提醒",
+                    "severity": "提示",
+                    "message": "WEDM-001 线切割机电极丝寿命即将到期，建议更换",
+                    "status": "已解决",
+                },
+                {
+                    "equipment_id": equipment_data[5]["id"],
+                    "alarm_type": "温度异常",
+                    "severity": "警告",
+                    "message": "CMM-001 测量环境温度波动超出允许范围",
+                    "status": "未处理",
+                },
+            ]
 
-        for ad in alarm_data:
-            session.add(EquipmentAlarm(**ad))
-        await session.flush()
+            for ad in alarm_data:
+                session.add(EquipmentAlarm(**ad))
+            await session.flush()
 
-        # 创建维护计划
-        maintenance_data = [
-            {
-                "equipment_id": equipment_data[0]["id"],
-                "title": "主轴润滑保养",
-                "type": "定期保养",
-                "frequency": "每周",
-                "last_date": now - timedelta(days=3),
-                "next_date": now + timedelta(days=4),
-                "status": "待执行",
-            },
-            {
-                "equipment_id": equipment_data[1]["id"],
-                "title": "刀具磨损检查",
-                "type": "预防性维护",
-                "frequency": "每日",
-                "last_date": now - timedelta(hours=8),
-                "next_date": now + timedelta(hours=16),
-                "status": "待执行",
-            },
-            {
-                "equipment_id": equipment_data[2]["id"],
-                "title": "电极丝更换",
-                "type": "定期保养",
-                "frequency": "每月",
-                "last_date": now - timedelta(days=25),
-                "next_date": now + timedelta(days=5),
-                "status": "待执行",
-            },
-            {
-                "equipment_id": equipment_data[3]["id"],
-                "title": "砂轮修整与校准",
-                "type": "定期保养",
-                "frequency": "每季度",
-                "last_date": now - timedelta(days=60),
-                "next_date": now + timedelta(days=30),
-                "status": "待执行",
-            },
-            {
-                "equipment_id": equipment_data[4]["id"],
-                "title": "机械臂关节润滑与校准",
-                "type": "故障维修",
-                "frequency": "每月",
-                "last_date": now - timedelta(days=10),
-                "next_date": now - timedelta(days=3),
-                "status": "进行中",
-            },
-            {
-                "equipment_id": equipment_data[5]["id"],
-                "title": "测量探头校准",
-                "type": "预防性维护",
-                "frequency": "每周",
-                "last_date": now - timedelta(days=6),
-                "next_date": now + timedelta(days=1),
-                "status": "待执行",
-            },
-        ]
+            # 创建维护计划
+            maintenance_data = [
+                {
+                    "equipment_id": equipment_data[0]["id"],
+                    "title": "主轴润滑保养",
+                    "type": "定期保养",
+                    "frequency": "每周",
+                    "last_date": now - timedelta(days=3),
+                    "next_date": now + timedelta(days=4),
+                    "status": "待执行",
+                },
+                {
+                    "equipment_id": equipment_data[1]["id"],
+                    "title": "刀具磨损检查",
+                    "type": "预防性维护",
+                    "frequency": "每日",
+                    "last_date": now - timedelta(hours=8),
+                    "next_date": now + timedelta(hours=16),
+                    "status": "待执行",
+                },
+                {
+                    "equipment_id": equipment_data[2]["id"],
+                    "title": "电极丝更换",
+                    "type": "定期保养",
+                    "frequency": "每月",
+                    "last_date": now - timedelta(days=25),
+                    "next_date": now + timedelta(days=5),
+                    "status": "待执行",
+                },
+                {
+                    "equipment_id": equipment_data[3]["id"],
+                    "title": "砂轮修整与校准",
+                    "type": "定期保养",
+                    "frequency": "每季度",
+                    "last_date": now - timedelta(days=60),
+                    "next_date": now + timedelta(days=30),
+                    "status": "待执行",
+                },
+                {
+                    "equipment_id": equipment_data[4]["id"],
+                    "title": "机械臂关节润滑与校准",
+                    "type": "故障维修",
+                    "frequency": "每月",
+                    "last_date": now - timedelta(days=10),
+                    "next_date": now - timedelta(days=3),
+                    "status": "进行中",
+                },
+                {
+                    "equipment_id": equipment_data[5]["id"],
+                    "title": "测量探头校准",
+                    "type": "预防性维护",
+                    "frequency": "每周",
+                    "last_date": now - timedelta(days=6),
+                    "next_date": now + timedelta(days=1),
+                    "status": "待执行",
+                },
+            ]
 
-        for md in maintenance_data:
-            session.add(MaintenancePlan(**md))
+            for md in maintenance_data:
+                session.add(MaintenancePlan(**md))
 
-        await session.commit()
+            await session.commit()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("填充设备种子数据失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("填充设备种子数据失败: %s", e, exc_info=True)
+            raise
 
     return {
         "already_exists": False,

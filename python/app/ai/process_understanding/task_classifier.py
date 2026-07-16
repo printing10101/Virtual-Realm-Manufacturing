@@ -144,6 +144,18 @@ class RuleBasedClassifier:
     # 规则匹配的最低置信度
     MIN_RULE_CONFIDENCE = 0.5
 
+    # 规则匹配置信度参数
+    RULE_MATCH_BASE_CONFIDENCE: float = 0.5  # 基础置信度
+    RULE_MATCH_STEP: float = 0.15  # 每匹配一个关键词的置信度增量
+    RULE_MATCH_MAX_CONFIDENCE: float = 0.95  # 规则匹配置信度上限
+    RULE_DEFAULT_CONFIDENCE: float = 0.9  # 规则匹配命中时的默认置信度
+
+    # LLM 置信度参数
+    LLM_DEFAULT_CONFIDENCE: float = 0.8  # LLM 解析成功的默认置信度
+    LLM_FALLBACK_CONFIDENCE: float = 0.5  # LLM 解析失败时的回退置信度
+    LLM_ERROR_CONFIDENCE: float = 0.3  # LLM 异常时的最低置信度
+    LLM_PARSE_DEFAULT_CONFIDENCE: float = 0.5  # LLM 响应中 confidence 字段缺失时的默认值
+
     def classify(self, user_input: str) -> ClassificationResult | None:
         """基于规则快速分类，不确定时返回 None。
 
@@ -157,7 +169,7 @@ class RuleBasedClassifier:
         if not input_lower:
             return ClassificationResult(
                 task_type=TaskType.CHITCHAT,
-                confidence=0.9,
+                confidence=self.RULE_DEFAULT_CONFIDENCE,
                 keywords_matched=[],
             )
 
@@ -178,8 +190,11 @@ class RuleBasedClassifier:
                 continue
 
             if matched:
-                # 根据匹配数量计算置信度（每匹配一个关键词 +0.15）
-                confidence = min(0.95, 0.5 + len(matched) * 0.15)
+                # 根据匹配数量计算置信度（每匹配一个关键词 +RULE_MATCH_STEP）
+                confidence = min(
+                    self.RULE_MATCH_MAX_CONFIDENCE,
+                    self.RULE_MATCH_BASE_CONFIDENCE + len(matched) * self.RULE_MATCH_STEP,
+                )
                 scores[task_type] = (confidence, matched)
 
         if not scores:
@@ -187,7 +202,7 @@ class RuleBasedClassifier:
             if all_chitchat_matched:
                 return ClassificationResult(
                     task_type=TaskType.CHITCHAT,
-                    confidence=0.8,
+                    confidence=self.LLM_DEFAULT_CONFIDENCE,
                     keywords_matched=all_chitchat_matched,
                 )
             return None
@@ -241,6 +256,12 @@ class TaskClassifier:
     1. 规则匹配（<10ms）：覆盖约80%的常见输入
     2. LLM分类（<500ms）：处理模糊或复杂输入
     """
+
+    # LLM 置信度参数
+    LLM_DEFAULT_CONFIDENCE: float = 0.8  # LLM 解析成功的默认置信度
+    LLM_FALLBACK_CONFIDENCE: float = 0.5  # LLM 解析失败时的回退置信度
+    LLM_ERROR_CONFIDENCE: float = 0.3  # LLM 异常时的最低置信度
+    LLM_PARSE_DEFAULT_CONFIDENCE: float = 0.5  # LLM 响应中 confidence 字段缺失时的默认值
 
     def __init__(self):
         self._rule_classifier = RuleBasedClassifier()
@@ -321,8 +342,8 @@ class TaskClassifier:
             logger.warning("LLM分类失败，降级为通用查询: %s", e, exc_info=True)
             return ClassificationResult(
                 task_type=TaskType.KNOWLEDGE_QUERY,
-                confidence=0.3,
-                raw_response=str(e),
+                confidence=self.LLM_ERROR_CONFIDENCE,
+                raw_response="llm_classification_failed",
             )
 
     @staticmethod
@@ -337,7 +358,7 @@ class TaskClassifier:
                 if task_code in ("A", "B", "C", "D", "E"):
                     return ClassificationResult(
                         task_type=TaskType.from_code(task_code),
-                        confidence=float(data.get("confidence", 0.5)),
+                        confidence=float(data.get("confidence", TaskClassifier.LLM_PARSE_DEFAULT_CONFIDENCE)),
                         raw_response=content,
                     )
             except (json.JSONDecodeError, ValueError) as parse_err:
@@ -353,14 +374,14 @@ class TaskClassifier:
             if ch in ("A", "B", "C", "D", "E"):
                 return ClassificationResult(
                     task_type=TaskType.from_code(ch),
-                    confidence=0.5,
+                    confidence=TaskClassifier.LLM_FALLBACK_CONFIDENCE,
                     raw_response=content,
                 )
 
         logger.warning("无法解析LLM分类结果，降级为通用查询: %s", content[:200])
         return ClassificationResult(
             task_type=TaskType.KNOWLEDGE_QUERY,
-            confidence=0.3,
+            confidence=TaskClassifier.LLM_ERROR_CONFIDENCE,
             raw_response=content,
         )
 

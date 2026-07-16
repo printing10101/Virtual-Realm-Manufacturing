@@ -155,13 +155,27 @@ function normalizeList(raw: unknown): LLMProvider[] {
   return []
 }
 
+/**
+ * LLM Provider 默认 Base URL 常量
+ *
+ * 集中管理各 provider 的默认地址，便于统一维护与端口调整。
+ * 用户可在运行时通过 ProviderFormDialog 覆盖这些默认值。
+ */
+const PROVIDER_DEFAULT_BASE_URLS = {
+  ollama: 'http://127.0.0.1:11434',
+  lmstudio: 'http://127.0.0.1:1234/v1',
+  llamacpp: 'http://127.0.0.1:8080/v1',
+  vllm: 'http://127.0.0.1:8000/v1',
+  tgi: 'http://127.0.0.1:8090/v1',
+} as const;
+
 /** Provider 类型元信息（本地缓存，便于 UI 不必每次请求） */
 export const PROVIDER_TYPE_META: Record<ProviderType, ProviderTypeInfo> = {
   ollama: {
     value: 'ollama',
     label: 'Ollama',
     category: 'local',
-    default_base_url: 'http://127.0.0.1:11434',
+    default_base_url: PROVIDER_DEFAULT_BASE_URLS.ollama,
     default_capabilities: ['chat', 'streaming'],
     needs_api_key: false,
     description: '本地 Ollama 服务，桌面版常用，支持模型拉取与管理',
@@ -170,7 +184,7 @@ export const PROVIDER_TYPE_META: Record<ProviderType, ProviderTypeInfo> = {
     value: 'lmstudio',
     label: 'LM Studio',
     category: 'local',
-    default_base_url: 'http://127.0.0.1:1234/v1',
+    default_base_url: PROVIDER_DEFAULT_BASE_URLS.lmstudio,
     default_capabilities: ['chat', 'streaming'],
     needs_api_key: false,
     description: 'LM Studio 桌面应用，OpenAI 兼容 API',
@@ -179,7 +193,7 @@ export const PROVIDER_TYPE_META: Record<ProviderType, ProviderTypeInfo> = {
     value: 'llamacpp',
     label: 'llama.cpp',
     category: 'local',
-    default_base_url: 'http://127.0.0.1:8080/v1',
+    default_base_url: PROVIDER_DEFAULT_BASE_URLS.llamacpp,
     default_capabilities: ['chat'],
     needs_api_key: false,
     description: 'llama.cpp HTTP 服务器，OpenAI 兼容 API',
@@ -188,7 +202,7 @@ export const PROVIDER_TYPE_META: Record<ProviderType, ProviderTypeInfo> = {
     value: 'vllm',
     label: 'vLLM',
     category: 'local',
-    default_base_url: 'http://127.0.0.1:8000/v1',
+    default_base_url: PROVIDER_DEFAULT_BASE_URLS.vllm,
     default_capabilities: ['chat', 'streaming'],
     needs_api_key: false,
     description: 'vLLM 高性能推理服务器，OpenAI 兼容 API',
@@ -197,7 +211,7 @@ export const PROVIDER_TYPE_META: Record<ProviderType, ProviderTypeInfo> = {
     value: 'tgi',
     label: 'TGI',
     category: 'local',
-    default_base_url: 'http://127.0.0.1:8090/v1',
+    default_base_url: PROVIDER_DEFAULT_BASE_URLS.tgi,
     default_capabilities: ['chat', 'streaming'],
     needs_api_key: false,
     description: 'HuggingFace Text Generation Inference',

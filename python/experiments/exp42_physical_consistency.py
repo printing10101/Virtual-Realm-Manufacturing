@@ -67,8 +67,8 @@ def generate_physics_constrained_data(num_samples=1000, seq_len=20):
     }
 
 
-class CTLTCModel(nn.Module):
-    """CT-LTC模型简化版"""
+class DLLNNModel(nn.Module):
+    """DL-LNN模型简化版"""
     def __init__(self, input_dim=6, hidden_dim=64, num_layers=3, output_dim=1, dt=0.01):
         super().__init__()
         self.input_dim = input_dim
@@ -110,7 +110,7 @@ def train_model(X_train, y_train, X_test, y_test, epochs=50, lr=0.001):
     X_test_t = torch.FloatTensor(X_test).to(device)
     y_test_t = torch.FloatTensor(y_test).to(device)
     
-    model = CTLTCModel(input_dim=X_train.shape[2]).to(device)
+    model = DLLNNModel(input_dim=X_train.shape[2]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
     
@@ -328,7 +328,7 @@ def physical_consistency_experiment():
     print(f"  测试集: {X_test.shape[0]} 样本")
     
     # 训练模型
-    print("\n[2] 训练CT-LTC模型...")
+    print("\n[2] 训练DL-LNN模型...")
     model, y_pred = train_model(X_train, y_train, X_test, y_test, epochs=50)
     
     # 计算基础指标

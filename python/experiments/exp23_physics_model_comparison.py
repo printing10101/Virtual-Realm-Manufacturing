@@ -1,6 +1,6 @@
 """
 与物理解析模型的深度对比实验
-对比CT-LTC与传统物理解析模型（Tlusty、Altintas等）的性能差异
+对比DL-LNN与传统物理解析模型（Tlusty、Altintas等）的性能差异
 
 实验设计：
 1. 实现简化的Tlusty颤振稳定性模型
@@ -22,7 +22,7 @@ from typing import Dict, List, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import ModelConfig
-from models import CTCTCWithPhysics, BaselineLSTM, BaselineTransformer, BaselinePINN
+from models import DLLNNWithPhysics, BaselineLSTM, BaselineTransformer, BaselinePINN
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -443,12 +443,12 @@ def run_physics_comparison_experiment():
     # ============================================================
     print("\n[步骤 3/5] 评估数据驱动模型...")
     
-    # CT-LTC
-    print("  训练 CT-LTC...")
+    # DL-LNN
+    print("  训练 DL-LNN...")
     torch.manual_seed(42)
     np.random.seed(42)
     
-    ct_ltc = CTCTCWithPhysics(
+    ct_ltc = DLLNNWithPhysics(
         input_dim=config.input_dim,
         hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,
@@ -461,7 +461,7 @@ def run_physics_comparison_experiment():
     ct_ltc_metrics = evaluate_data_model(ct_ltc, test_loader, device)
     
     results['data_models'].append({
-        'model': 'CT-LTC',
+        'model': 'DL-LNN',
         'description': '连续时间LTC网络（本方法）',
         'MAE': round(ct_ltc_metrics['MAE'], 6),
         'RMSE': round(ct_ltc_metrics['RMSE'], 6),
@@ -533,8 +533,8 @@ def run_physics_comparison_experiment():
     # ============================================================
     print("\n[步骤 4/5] 评估物理-数据混合模型...")
     
-    # CT-LTC + Tlusty 混合
-    print("  评估 CT-LTC + Tlusty 混合模型...")
+    # DL-LNN + Tlusty 混合
+    print("  评估 DL-LNN + Tlusty 混合模型...")
     hybrid_tlusty = PhysicsBasedHybrid(tlusty_model, ct_ltc, alpha=0.3)
     
     # 评估混合模型
@@ -565,8 +565,8 @@ def run_physics_comparison_experiment():
     }
     
     results['hybrid_models'].append({
-        'model': 'CT-LTC + Tlusty',
-        'description': 'CT-LTC与Tlusty模型加权融合（α=0.3）',
+        'model': 'DL-LNN + Tlusty',
+        'description': 'DL-LNN与Tlusty模型加权融合（α=0.3）',
         'MAE': round(hybrid_tlusty_metrics['MAE'], 6),
         'RMSE': round(hybrid_tlusty_metrics['RMSE'], 6),
         'R2': round(hybrid_tlusty_metrics['R2'], 6),
@@ -576,8 +576,8 @@ def run_physics_comparison_experiment():
     print(f"    MAE={hybrid_tlusty_metrics['MAE']:.4f}, RMSE={hybrid_tlusty_metrics['RMSE']:.4f}, "
           f"R²={hybrid_tlusty_metrics['R2']:.4f}, PCC={hybrid_tlusty_metrics['PCC']:.4f}")
     
-    # CT-LTC + Altintas 混合
-    print("  评估 CT-LTC + Altintas 混合模型...")
+    # DL-LNN + Altintas 混合
+    print("  评估 DL-LNN + Altintas 混合模型...")
     hybrid_altintas = PhysicsBasedHybrid(altintas_model, ct_ltc, alpha=0.2)
     
     all_preds = []
@@ -606,8 +606,8 @@ def run_physics_comparison_experiment():
     }
     
     results['hybrid_models'].append({
-        'model': 'CT-LTC + Altintas',
-        'description': 'CT-LTC与Altintas模型加权融合（α=0.2）',
+        'model': 'DL-LNN + Altintas',
+        'description': 'DL-LNN与Altintas模型加权融合（α=0.2）',
         'MAE': round(hybrid_altintas_metrics['MAE'], 6),
         'RMSE': round(hybrid_altintas_metrics['RMSE'], 6),
         'R2': round(hybrid_altintas_metrics['R2'], 6),

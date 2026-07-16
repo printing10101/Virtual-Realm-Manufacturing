@@ -354,7 +354,7 @@ export function toErrorBusPayload(error: StandardError): ErrorDialogPayload {
  */
 export function collectDiagnosticContext(
   error: StandardError,
-  extra?: Record<string, any>
+  extra?: Record<string, unknown>
 ): DiagnosticContext {
   return {
     error,
@@ -479,8 +479,9 @@ export function triggerGlobalErrorHandlers(error: StandardError): void {
   for (const handler of globalErrorHandlers) {
     try {
       handler(error)
-    } catch {
-      // 静默处理全局处理器异常
+    } catch (e: unknown) {
+      // 单个全局处理器异常不应中断其他处理器分发，但需记录便于排查
+      console.warn('[error-handler] triggerGlobalErrorHandlers: handler execution failed:', e)
     }
   }
 }

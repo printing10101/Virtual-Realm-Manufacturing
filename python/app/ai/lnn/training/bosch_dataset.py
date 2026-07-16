@@ -39,6 +39,29 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 
+
+# 合成数据生成参数（用于 generate_cutting_force_data 方法）
+FEATURE_NOISE_SCALE: float = 0.5  # 特征噪声标准差
+FEATURE_OFFSET_RANGE: float = 2.0  # 特征偏移范围
+DEFAULT_MISSING_RATE: float = 0.02  # 缺失值注入率（2%）
+
+# 切削力合成系数（线性组合权重，总和应为 1.0）
+CUTTING_FORCE_WEIGHTS = {
+    "spindle_speed": 0.3,
+    "feed_rate": 0.25,
+    "depth_of_cut": 0.2,
+    "vibration_x": 0.15,
+    "temperature": 0.1,
+}
+
+# 刀具磨损合成系数
+TOOL_WEAR_WEIGHTS = {
+    "cutting_force": 0.4,
+    "spindle_speed": 0.2,
+    "temperature": 0.15,
+    "vibration_x": 0.1,
+}
+
 logger = logging.getLogger(__name__)
 
 
@@ -113,7 +136,7 @@ class BoschDatasetProcessor:
                 f"Bosch 数据集加载失败：不支持的文件格式 '{suffix}'。支持的文件格式包括：'.csv'（CSV 文本文件）、'.xls'/.xlsx（Excel 文件）、'.parquet'（Parquet 列式存储文件）。请将数据转换为支持的格式，或检查文件扩展名是否正确。"  # noqa: E501
             )
 
-        logger.info(f"Loaded data from {data_path}: {self.raw_data.shape}")
+        logger.info("Loaded data from %s: %s", data_path, self.raw_data.shape)
         self._stats["raw_shape"] = self.raw_data.shape
         self._stats["raw_columns"] = list(self.raw_data.columns)
 
@@ -130,7 +153,7 @@ class BoschDatasetProcessor:
             原始数据DataFrame
         """
         self.raw_data = df.copy()
-        logger.info(f"Loaded data from DataFrame: {self.raw_data.shape}")
+        logger.info("Loaded data from DataFrame: %s", self.raw_data.shape)
         self._stats["raw_shape"] = self.raw_data.shape
         self._stats["raw_columns"] = list(self.raw_data.columns)
 
@@ -142,8 +165,10 @@ class BoschDatasetProcessor:
         handle_missing: bool = True,
         handle_outliers: bool = True,
     ) -> pd.DataFrame:
-        """
-        数据清洗
+        """数据清洗（无数据泄漏版）。
+
+        缺失值处理使用非统计方法（fillna(0)），不拟合 imputer。
+        imputer 的拟合延迟到 ``split_data`` 后仅用训练集进行。
 
         Args:
             drop_duplicates: 是否删除重复行
@@ -165,7 +190,7 @@ class BoschDatasetProcessor:
             df = df.drop_duplicates()
             dropped = initial_rows - len(df)
             self._stats["duplicates_removed"] = dropped
-            logger.info(f"Removed {dropped} duplicate rows")
+            logger.info("Removed %s duplicate rows", dropped)
 
         if handle_missing:
             missing_before = df.isnull().sum().sum()
@@ -178,7 +203,7 @@ class BoschDatasetProcessor:
 
         self.processed_data = df
         self._stats["cleaned_shape"] = df.shape
-        logger.info(f"Data cleaning complete: {df.shape}")
+        logger.info("Data cleaning complete: %s", df.shape)
 
         return df
 
@@ -191,8 +216,11 @@ class BoschDatasetProcessor:
         add_diff_features: bool = False,
         add_interaction: bool = False,
     ) -> np.ndarray:
-        """
-        特征工程
+        """特征工程（无数据泄漏版）。
+
+        构建滞后/滚动/差分/交互特征，返回**未标准化**的原始特征矩阵。
+        标准化已从本方法移除，改由 ``split_data`` 在数据划分后仅用训练集
+        拟合 scaler，避免测试集统计量泄漏。
 
         Args:
             add_lag_features: 是否添加滞后特征
@@ -203,7 +231,7 @@ class BoschDatasetProcessor:
             add_interaction: 是否添加交互特征
 
         Returns:
-            特征矩阵 numpy.ndarray
+            未标准化的特征矩阵 numpy.ndarray（标准化在 split_data 中进行）
         """
         if self.processed_data is None:
             raise ValueError(
@@ -263,7 +291,12 @@ class BoschDatasetProcessor:
         X = df[all_feature_cols].values.astype(np.float32)
         y = df[target_cols].values.astype(np.float32) if target_cols else None
 
-        X = self._normalize_features(X)
+        # 注意：此处不对 X 进行标准化，避免在数据划分前使用全量数据统计量
+        # 造成测试集信息泄漏。scaler 将在 split_data 后仅用 X_train 拟合。
+        logger.warning(
+            "engineer_features: 已跳过特征标准化（防止数据泄漏），"
+            "返回未标准化的原始特征矩阵。scaler 将在 split_data 后仅用训练集拟合。"
+        )
 
         self.feature_data = X
         self.target_data = y
@@ -284,14 +317,22 @@ class BoschDatasetProcessor:
         Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray],
         Tuple[Any, Any, Any],
     ]:
-        """
-        划分训练/验证/测试集
+        """划分训练/验证/测试集，并在划分后仅用训练集拟合 imputer 和 scaler。
+
+        无数据泄漏流程：
+            1. 先按 ``random_state`` 将 ``feature_data`` 划分为 train/val/test
+            2. 仅用 ``X_train`` 拟合 ``SimpleImputer``，再 transform 三个子集
+            3. 仅用 ``X_train`` 拟合 scaler（Standard/MinMax/Robust），再 transform
+               三个子集
+
+        拟合完成后 ``self.imputer`` 和 ``self.scaler`` 可用于推理时 transform。
 
         Args:
             return_tensors: 是否返回PyTorch张量
 
         Returns:
-            (X_train, X_val, X_test, y_train, y_val, y_test) 或 DataLoader
+            (X_train, X_val, X_test, y_train, y_val, y_test) 或 DataLoader。
+            X 子集均已用训练集统计量完成插补与标准化。
         """
         if self.feature_data is None:
             raise ValueError(
@@ -304,6 +345,7 @@ class BoschDatasetProcessor:
         test_size = self.config.test_size
         val_size = self.config.val_size / (1 - test_size)
 
+        # 步骤 1：先划分，再拟合预处理器，避免测试集统计信息泄漏
         X_temp, X_test, y_temp, y_test = train_test_split(
             X, y, test_size=test_size, random_state=self.config.random_state
         )
@@ -312,9 +354,41 @@ class BoschDatasetProcessor:
             X_temp, y_temp, test_size=val_size, random_state=self.config.random_state
         )
 
+        # 步骤 2：仅用训练集拟合 imputer，防止 val/test 统计量泄漏
+        strategy = self.config.imputation_strategy
+        if strategy in ("median", "most_frequent"):
+            self.imputer = SimpleImputer(strategy=strategy)
+        else:
+            self.imputer = SimpleImputer(strategy="mean")
+        X_train = self.imputer.fit_transform(X_train)
+        X_val = self.imputer.transform(X_val)
+        X_test = self.imputer.transform(X_test)
+
+        # 步骤 3：仅用训练集拟合 scaler，防止 val/test 统计量泄漏
+        method = self.config.normalization_method
+        if method == "minmax":
+            self.scaler = MinMaxScaler()
+        elif method == "robust":
+            self.scaler = RobustScaler()
+        else:
+            self.scaler = StandardScaler()
+        X_train = self.scaler.fit_transform(X_train)
+        X_val = self.scaler.transform(X_val)
+        X_test = self.scaler.transform(X_test)
+
+        # 转回 float32 以兼容下游 PyTorch 张量
+        X_train = X_train.astype(np.float32)
+        X_val = X_val.astype(np.float32)
+        X_test = X_test.astype(np.float32)
+
         self._stats["train_size"] = len(X_train)
         self._stats["val_size"] = len(X_val)
         self._stats["test_size"] = len(X_test)
+
+        logger.info(
+            "split_data: imputer 和 scaler 已仅用训练集拟合（无数据泄漏）。"
+            f"train={X_train.shape}, val={X_val.shape}, test={X_test.shape}"
+        )
 
         if return_tensors and HAS_TORCH:
             train_dataset = TensorDataset(
@@ -334,8 +408,12 @@ class BoschDatasetProcessor:
         self,
         return_tensors: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        创建滑动窗口数据集（适用于时序预测）
+        """创建滑动窗口数据集（适用于时序预测）。
+
+        .. note::
+            返回的窗口数据来自 ``self.feature_data``（未标准化的原始特征）。
+            如需标准化窗口数据，请先调用 ``split_data`` 拟合 scaler，
+            再使用 ``self.scaler.transform`` 对窗口数据变换。
 
         Args:
             return_tensors: 是否返回PyTorch张量
@@ -365,7 +443,7 @@ class BoschDatasetProcessor:
         self._stats["window_count"] = len(X_windows)
         self._stats["window_size"] = window_size
 
-        logger.info(f"Windowed dataset created: {X_windows.shape}")
+        logger.info("Windowed dataset created: %s", X_windows.shape)
 
         if return_tensors and HAS_TORCH:
             return torch.FloatTensor(X_windows), torch.FloatTensor(y_windows)
@@ -410,20 +488,23 @@ class BoschDatasetProcessor:
         return train_loader, val_loader, test_loader
 
     def _handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
-        """处理缺失值"""
+        """处理缺失值（无数据泄漏版）。
+
+        .. note::
+            此处仅使用非统计方法（fillna(0)）进行初步填充，避免在全量数据上
+            拟合 imputer 造成测试集统计量泄漏。真正的 imputer 拟合在
+            ``split_data`` 完成后仅用 ``X_train`` 进行，详见 ``split_data``。
+        """
         numeric_cols = df.select_dtypes(include=[np.number]).columns
-        strategy = self.config.imputation_strategy
 
-        if strategy == "mean":
-            self.imputer = SimpleImputer(strategy="mean")
-        elif strategy == "median":
-            self.imputer = SimpleImputer(strategy="median")
-        elif strategy == "most_frequent":
-            self.imputer = SimpleImputer(strategy="most_frequent")
-        else:
-            self.imputer = SimpleImputer(strategy="mean")
-
-        df[numeric_cols] = self.imputer.fit_transform(df[numeric_cols])
+        # 注意：此处不拟合 imputer，避免在数据划分前使用全量数据统计量造成泄漏。
+        # imputer 将在 split_data 后仅用训练集拟合。此处用 0 填充仅作为占位，
+        # 防止 lag/rolling 特征工程时 NaN 过度传播导致 dropna 丢失过多样本。
+        df[numeric_cols] = df[numeric_cols].fillna(0)
+        logger.warning(
+            "_handle_missing_values: 已跳过 imputer 拟合（防止数据泄漏），"
+            "仅用 0 填充缺失值。imputer 将在 split_data 后仅用训练集拟合。"
+        )
 
         return df
 
@@ -456,24 +537,24 @@ class BoschDatasetProcessor:
                 outlier_count += outliers
 
         self._stats["outliers_handled"] = outlier_count
-        logger.info(f"Handled {outlier_count} outliers")
+        logger.info("Handled %s outliers", outlier_count)
 
         return df
 
     def _normalize_features(self, X: np.ndarray) -> np.ndarray:
-        """特征标准化"""
-        method = self.config.normalization_method
+        """特征标准化（已废弃 - 为防止数据泄漏，标准化已延迟到 split_data 后）。
 
-        if method == "standard":
-            self.scaler = StandardScaler()
-        elif method == "minmax":
-            self.scaler = MinMaxScaler()
-        elif method == "robust":
-            self.scaler = RobustScaler()
-        else:
-            self.scaler = StandardScaler()
-
-        X = self.scaler.fit_transform(X)
+        .. warning::
+            此方法现在为 no-op，直接返回未变换的 X。scaler 的拟合已移至
+            ``split_data`` 方法中，仅使用训练集拟合，避免测试集统计量泄漏。
+            如需在推理时对数据标准化，请先调用 ``split_data`` 或
+            ``load_preprocessors`` 加载已拟合的 scaler，再使用
+            ``self.scaler.transform(X)``。
+        """
+        logger.warning(
+            "_normalize_features 已废弃（no-op）：为防止数据泄漏，"
+            "标准化已在 split_data 中仅用训练集拟合。此调用不执行任何变换。"
+        )
         return X
 
     def inverse_transform(self, y_pred: np.ndarray) -> np.ndarray:
@@ -488,7 +569,7 @@ class BoschDatasetProcessor:
         """
         if self.scaler is None:
             raise ValueError(
-                "Bosch 数据集逆变换失败：尚未完成数据标准化。scale 对象在进行逆变换前必须通过数据标准化过程创建。请先调用 clean_data() 或 engineer_features() 方法处理数据。"
+                "Bosch 数据集逆变换失败：尚未完成数据标准化。scaler 对象在进行逆变换前必须通过 split_data() 或 load_preprocessors() 加载。请先调用 split_data() 完成数据划分与标准化拟合，或调用 load_preprocessors() 加载已保存的预处理器。"
             )
         return self.scaler.inverse_transform(y_pred)
 
@@ -518,14 +599,65 @@ class BoschDatasetProcessor:
         else:
             self.processed_data.to_csv(output_path, index=False)
 
-        logger.info(f"Processed data saved to {output_path}")
+        logger.info("Processed data saved to %s", output_path)
 
     def export_feature_names(self, output_path: str) -> None:
         """导出特征名称列表"""
         with open(output_path, "w", encoding="utf-8") as f:
             for name in self.feature_names:
                 f.write(f"{name}\n")
-        logger.info(f"Feature names exported to {output_path}")
+        logger.info("Feature names exported to %s", output_path)
+
+    def save_preprocessors(self, path: str) -> None:
+        """持久化预处理器（imputer + scaler）到磁盘，供推理时加载。
+
+        在 ``split_data`` 完成后调用，将仅用训练集拟合的 imputer 和 scaler
+        序列化为 joblib 文件。推理时可通过 ``load_preprocessors`` 加载。
+
+        Args:
+            path: joblib 文件路径（如 ``models/lnn/preprocessors.pkl``）
+        """
+        import joblib
+
+        if self.scaler is None or self.imputer is None:
+            raise ValueError(
+                "Bosch 数据集预处理器保存失败：scaler 或 imputer 尚未拟合。"
+                "请先调用 split_data() 完成数据划分与预处理器拟合，再进行保存。"
+            )
+
+        path_obj = Path(path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+
+        payload = {
+            "scaler": self.scaler,
+            "imputer": self.imputer,
+            "feature_names": self.feature_names,
+            "normalization_method": self.config.normalization_method,
+            "imputation_strategy": self.config.imputation_strategy,
+        }
+        joblib.dump(payload, path)
+        logger.info("Preprocessors saved to %s", path)
+
+    def load_preprocessors(self, path: str) -> None:
+        """从磁盘加载预处理器（imputer + scaler），供推理时使用。
+
+        Args:
+            path: joblib 文件路径
+        """
+        import joblib
+
+        path_obj = Path(path)
+        if not path_obj.exists():
+            raise FileNotFoundError(
+                f"Bosch 数据集预处理器加载失败：找不到文件 '{path}'。"
+                "请确认路径正确，或先调用 save_preprocessors() 保存预处理器。"
+            )
+
+        payload = joblib.load(path)
+        self.scaler = payload["scaler"]
+        self.imputer = payload["imputer"]
+        self.feature_names = payload.get("feature_names", [])
+        logger.info("Preprocessors loaded from %s", path)
 
 
 class BoschDataGenerator:
@@ -584,28 +716,28 @@ class BoschDataGenerator:
         ][:n_features]
 
         for feat in feature_names:
-            data[feat] = rng.randn(n_samples) * 0.5 + rng.rand() * 2
+            data[feat] = rng.randn(n_samples) * FEATURE_NOISE_SCALE + rng.rand() * FEATURE_OFFSET_RANGE
 
         data["cutting_force"] = (
-            0.3 * data["spindle_speed"]
-            + 0.25 * data["feed_rate"]
-            + 0.2 * data["depth_of_cut"]
-            + 0.15 * data["vibration_x"]
-            + 0.1 * data["temperature"]
+            CUTTING_FORCE_WEIGHTS["spindle_speed"] * data["spindle_speed"]
+            + CUTTING_FORCE_WEIGHTS["feed_rate"] * data["feed_rate"]
+            + CUTTING_FORCE_WEIGHTS["depth_of_cut"] * data["depth_of_cut"]
+            + CUTTING_FORCE_WEIGHTS["vibration_x"] * data["vibration_x"]
+            + CUTTING_FORCE_WEIGHTS["temperature"] * data["temperature"]
             + rng.randn(n_samples) * noise_level
         )
 
         data["tool_wear"] = (
-            0.4 * data["cutting_force"]
-            + 0.2 * data["spindle_speed"]
-            + 0.15 * data["temperature"]
-            + 0.1 * data["vibration_x"]
+            TOOL_WEAR_WEIGHTS["cutting_force"] * data["cutting_force"]
+            + TOOL_WEAR_WEIGHTS["spindle_speed"] * data["spindle_speed"]
+            + TOOL_WEAR_WEIGHTS["temperature"] * data["temperature"]
+            + TOOL_WEAR_WEIGHTS["vibration_x"] * data["vibration_x"]
             + rng.randn(n_samples) * noise_level * 0.5
         )
 
         df = pd.DataFrame(data)
 
-        missing_mask = rng.rand(n_samples, n_features) < 0.02
+        missing_mask = rng.rand(n_samples, n_features) < DEFAULT_MISSING_RATE
         for i, col in enumerate(feature_names):
             df.loc[missing_mask[:, i], col] = np.nan
 

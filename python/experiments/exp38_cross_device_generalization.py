@@ -12,8 +12,8 @@ import os
 from datetime import datetime
 
 
-class CTLTCModel(nn.Module):
-    """CT-LTC模型简化版本"""
+class DLLNNModel(nn.Module):
+    """DL-LNN模型简化版本"""
     def __init__(self, input_dim=10, hidden_dim=64, num_layers=3, output_dim=1, dt=0.01):
         super().__init__()
         self.input_dim = input_dim
@@ -210,7 +210,7 @@ def cross_device_experiment():
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'experiment': '跨设备泛化实验',
         'devices': list(devices.keys()),
-        'models': ['CT-LTC', 'LSTM', 'GRU'],
+        'models': ['DL-LNN', 'LSTM', 'GRU'],
         'results': {
             'single_device_training': {},
             'cross_device_generalization': {},
@@ -234,10 +234,10 @@ def cross_device_experiment():
         
         device_results = {}
         
-        # CT-LTC
-        model = CTLTCModel(input_dim=X.shape[1], hidden_dim=64, num_layers=3)
+        # DL-LNN
+        model = DLLNNModel(input_dim=X.shape[1], hidden_dim=64, num_layers=3)
         metrics = train_and_evaluate(model, X_train, y_train, X_test, y_test)
-        device_results['CT-LTC'] = metrics
+        device_results['DL-LNN'] = metrics
         
         # LSTM
         model = LSTMModel(input_dim=X.shape[1], hidden_dim=64, num_layers=2)
@@ -273,10 +273,10 @@ def cross_device_experiment():
             
             target_results = {}
             
-            # CT-LTC
-            model = CTLTCModel(input_dim=X_src.shape[1], hidden_dim=64, num_layers=3)
+            # DL-LNN
+            model = DLLNNModel(input_dim=X_src.shape[1], hidden_dim=64, num_layers=3)
             metrics = train_and_evaluate(model, X_train_src, y_train_src, X_test_tgt, y_test_tgt)
-            target_results['CT-LTC'] = metrics
+            target_results['DL-LNN'] = metrics
             
             # LSTM
             model = LSTMModel(input_dim=X_src.shape[1], hidden_dim=64, num_layers=2)
@@ -318,10 +318,10 @@ def cross_device_experiment():
     
     multi_device_results = {}
     
-    # CT-LTC
-    model = CTLTCModel(input_dim=X_all.shape[1], hidden_dim=64, num_layers=3)
+    # DL-LNN
+    model = DLLNNModel(input_dim=X_all.shape[1], hidden_dim=64, num_layers=3)
     metrics = train_and_evaluate(model, X_train, y_train, X_test, y_test)
-    multi_device_results['CT-LTC'] = metrics
+    multi_device_results['DL-LNN'] = metrics
     
     # LSTM
     model = LSTMModel(input_dim=X_all.shape[1], hidden_dim=64, num_layers=2)

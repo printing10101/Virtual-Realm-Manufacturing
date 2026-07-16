@@ -40,7 +40,7 @@ Show available design systems organized by category:
 
 When user selects a brand:
 
-1. **Copy DESIGN.md** to project root: `c:\Users\Lenovo\Desktop\灵境制造（上线版）\skills\awesome-design-md-main\design-md\<brand>\DESIGN.md` → project root
+1. **Copy DESIGN.md** to project root: `skills/awesome-design-md-main/design-md/<brand>/DESIGN.md` → project root
 2. **Read the DESIGN.md** and apply its specifications during code generation:
    - Color palette and semantic roles
    - Typography rules (font families, hierarchy)

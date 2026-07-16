@@ -946,6 +946,12 @@
 </template>
 
 <script setup lang="ts">
+// TODO(P1-3): 巨型组件拆分 — 本文件 1884+ 行，应拆分为子组件/composable：
+//   - 仿真控制面板 → SimulationControls.vue
+//   - 3D 视口 → SimulationViewport.vue
+//   - 碰撞检测逻辑 → useCollisionDetection.ts
+//   - 播放/时间轴控制 → useSimulationPlayback.ts
+// 拆分时注意保持 props/emits 接口不变，逐模块迁移并验证。
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   VideoPlay, Plus, Upload, Delete, Download,

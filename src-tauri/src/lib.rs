@@ -14,39 +14,70 @@ use std::sync::Arc;
 use tauri::{Manager, RunEvent, WebviewWindowBuilder, WindowEvent};
 
 use crate::commands::{
-    close_splashscreen, get_app_version, get_backend_port, get_backend_state, ping_backend,
-    restart_backend, start_backend, stop_backend, AppState,
+    auto_fix_health, close_splashscreen, export_logs_cmd, get_app_version, get_backend_port,
+    get_backend_state, get_diagnostics_text, get_version_info, ping_backend, restart_backend,
+    retry_launch_step, run_health_check, run_single_health_check, start_backend, stop_backend,
+    AppState,
 };
 use crate::sidecar::SidecarManager;
 
 /// 默认后端端口（与 `python/app/main.py` 中 uvicorn 启动端口保持一致）
-pub const DEFAULT_BACKEND_PORT: u16 = 8000;
+// P0-9 修复：原本为 8000，与 Python 端 config.server.port=8765 不一致，
+// 导致 Tauri 默认连接 8000 端口而 Python 监听 8765，前端调用全部失败。
+pub const DEFAULT_BACKEND_PORT: u16 = 8765;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let _ = env_logger::try_init();
 
-    // 清理 WebView2 残留锁文件，避免 HRESULT(0x800700AA) 错误。
-    // 上次异常退出（如任务管理器强杀、崩溃）会留下 LOCK 文件，
-    // 导致下次启动时 WebView2 创建失败，窗口变成 15×15 像素的空壳（白屏）。
+    // 注意：不要在启动时清理整个 EBWebView 目录！
+    // 之前的实现会 remove_dir_all(EBWebView)，但 tauri::Builder::build() 紧接着
+    // 会创建 splashscreen 窗口，splashscreen 的 WebView2 会异步重建 EBWebView 目录。
+    // 此时 setup 回调中 500ms 后创建 main 窗口，main 窗口的 WebView2 与 splashscreen
+    // 共享同一用户数据目录，但目录正在被 splashscreen 重建，导致 main 窗口 WebView2
+    // 创建时报 HRESULT(0x80070057) "参数错误"。
+    //
+    // 现在改为：只清理 Default 子目录下可能残留的 LOCK 文件（仅当无进程占用时才安全）。
+    // LOCK 文件是 SQLite/LevelDB 的进程独占锁，进程正常退出时会释放，异常退出后残留。
+    // 只删除 LOCK 文件不会破坏 EBWebView 目录结构，避免与 splashscreen 重建冲突。
     #[cfg(target_os = "windows")]
     {
         if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
             let identifier = "com.lingjing.manufacturing";
-            let ebwebview_dir = std::path::Path::new(&local_app_data)
+            let default_dir = std::path::Path::new(&local_app_data)
                 .join(identifier)
-                .join("EBWebView");
-            if ebwebview_dir.exists() {
-                log::info!("清理 WebView2 数据目录: {:?}", ebwebview_dir);
-                if let Err(e) = std::fs::remove_dir_all(&ebwebview_dir) {
-                    // 删除失败不阻塞启动，仅记录警告（可能是目录正在被其他进程占用）
-                    log::warn!("清理 WebView2 数据目录失败: {e}");
+                .join("EBWebView")
+                .join("Default");
+            if default_dir.exists() {
+                // 递归查找并删除 LOCK 文件（不删除目录结构）
+                let mut removed = 0u32;
+                let mut failed = 0u32;
+                for entry in walkdir(&default_dir) {
+                    if entry.file_name() == Some(std::ffi::OsStr::new("LOCK")) {
+                        match std::fs::remove_file(&entry) {
+                            Ok(_) => removed += 1,
+                            Err(_) => failed += 1,
+                        }
+                    }
+                }
+                if removed > 0 || failed > 0 {
+                    log::info!(
+                        "清理 WebView2 LOCK 文件: 成功 {} 个, 失败 {} 个 (失败多为正在被占用，可忽略)",
+                        removed,
+                        failed
+                    );
                 }
             }
         }
     }
 
-    let manager = Arc::new(SidecarManager::new(DEFAULT_BACKEND_PORT));
+    let manager = Arc::new(match SidecarManager::new(DEFAULT_BACKEND_PORT) {
+        Ok(m) => m,
+        Err(e) => {
+            log::error!("创建 SidecarManager 失败: {e}");
+            return;
+        }
+    });
     let app_state = AppState {
         sidecar: manager.clone(),
     };
@@ -64,8 +95,16 @@ pub fn run() {
             restart_backend,
             ping_backend,
             get_app_version,
+            get_version_info,
             get_backend_port,
             close_splashscreen,
+            // 健康检查与日志导出（前端 HealthCheck.vue + useSettings.ts 调用）
+            run_health_check,
+            run_single_health_check,
+            auto_fix_health,
+            get_diagnostics_text,
+            export_logs_cmd,
+            retry_launch_step,
         ])
         .setup(move |app| {
             let app_handle = app.handle().clone();
@@ -116,20 +155,22 @@ pub fn run() {
                         Ok(w) => w,
                         Err(e) => {
                             log::error!("创建主窗口失败: {e}");
+                            // 即使 main 窗口创建失败，也要关闭 splashscreen，
+                            // 否则用户会卡在"启动中"画面永远进不去。
+                            // 关闭后用户至少看到桌面，可以查看日志或重新启动。
+                            if let Some(splash) = app_for_close.get_webview_window("splashscreen") {
+                                let _ = splash.close();
+                            }
                             return;
                         }
                     };
                     log::info!("主窗口 main 创建成功");
 
-                    // 诊断模式：自动打开 DevTools 以便排查白屏问题
+                    // 诊断模式：仅在 debug 构建下打开 DevTools
+                    // release 构建不再打开 DevTools，避免暴露 __TAURI__ 全局对象与开发工具入口
+                    // （devtools feature 仍保留在 Cargo.toml，是为了 release 出包后通过环境变量
+                    //   或快捷键按需打开；这里仅控制默认行为）
                     #[cfg(debug_assertions)]
-                    {
-                        if let Some(win) = app_for_close.get_webview_window("main") {
-                            let _ = win.open_devtools();
-                        }
-                    }
-                    // release 模式下也打开 DevTools（devtools feature 已在 Cargo.toml 启用）
-                    // 用于本次白屏问题排查，问题解决后可移除
                     {
                         if let Some(win) = app_for_close.get_webview_window("main") {
                             let _ = win.open_devtools();
@@ -150,40 +191,55 @@ pub fn run() {
                             });
                         }
                     });
+                });
 
-                    // 超时兜底：前端 close_splashscreen IPC 未在 10 秒内触发时
-                    // （通常因后端未启动、前端初始化卡住或 IPC 调用失败），
-                    // 强制 show main 窗口并关闭 splashscreen，确保用户始终能进入主界面。
-                    let app_for_timeout = app_for_close.clone();
-                    tauri::async_runtime::spawn(async move {
-                        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-                        let main_win = match app_for_timeout.get_webview_window("main") {
-                            Some(w) => w,
-                            None => {
-                                log::warn!("[兜底] main 窗口不存在，跳过强制显示");
-                                return;
-                            }
-                        };
+                // 超时兜底：独立于 main 窗口创建逻辑。
+                // 无论 main 窗口是否创建成功，10 秒后都强制关闭 splashscreen 并尝试 show main。
+                // 这避免了 main 窗口创建失败时 splashscreen 永远卡死的问题。
+                let app_for_timeout = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+                    log::warn!("[兜底] 10 秒到达，开始强制切换窗口");
+
+                    // 先尝试 show main 窗口（如果存在且未显示）
+                    if let Some(main_win) = app_for_timeout.get_webview_window("main") {
                         let already_visible = main_win.is_visible().unwrap_or(false);
-                        if already_visible {
-                            return;
+                        if !already_visible {
+                            log::warn!("[兜底] 强制显示 main 窗口");
+                            if let Err(e) = main_win.show() {
+                                log::error!("[兜底] 强制 show main 窗口失败: {e}");
+                            }
+                            let _ = main_win.set_focus();
+                        } else {
+                            log::info!("[兜底] main 窗口已可见，无需强制显示");
                         }
-                        log::warn!("[兜底] 10 秒内 main 窗口未被前端 show，强制显示主窗口");
-                        if let Err(e) = main_win.show() {
-                            log::error!("[兜底] 强制 show main 窗口失败: {e}");
-                        }
-                        let _ = main_win.set_focus();
-                        if let Some(splash) = app_for_timeout.get_webview_window("splashscreen") {
-                            let _ = splash.close();
-                        }
-                    });
+                    } else {
+                        log::warn!("[兜底] main 窗口不存在（创建失败或仍在创建中）");
+                    }
+
+                    // 无论 main 窗口状态如何，都关闭 splashscreen
+                    // （如果 main 不存在，用户会回到桌面；如果 main 存在，用户进入主界面）
+                    if let Some(splash) = app_for_timeout.get_webview_window("splashscreen") {
+                        log::info!("[兜底] 关闭 splashscreen 窗口");
+                        let _ = splash.close();
+                    }
                 });
             }
 
             Ok(())
         })
-        .build(tauri::generate_context!())
-        .expect("启动 Tauri 应用失败");
+        .build(tauri::generate_context!());
+
+    // 安全修复：避免 .expect() 在 build 失败时直接 panic 导致进程异常终止。
+    // 改为 match 返回 Result，记录错误日志后以非零码优雅退出。
+    let app = match app {
+        Ok(a) => a,
+        Err(e) => {
+            log::error!("启动 Tauri 应用失败: {e}");
+            eprintln!("启动 Tauri 应用失败: {e}");
+            std::process::exit(1);
+        }
+    };
 
     let manager_for_run = manager.clone();
     app.run(move |_app_handle, event| match event {
@@ -191,10 +247,47 @@ pub fn run() {
             log::info!("收到 ExitRequested，进程即将退出");
         }
         RunEvent::Exit => {
-            log::info!("Tauri RunEvent::Exit 已触发");
-            // 兜底清理：阻止 Rust 端提前释放 SidecarManager
-            let _ = manager_for_run;
+            // 进程退出阶段：同步强制终止后端子进程，避免残留
+            // 注意：此处不能 await，使用 force_kill_sync 非阻塞终止
+            log::info!("Tauri RunEvent::Exit 已触发，强制终止后端进程");
+            manager_for_run.force_kill_sync();
         }
         _ => {}
     });
+}
+
+/// 递归遍历目录，返回所有文件和子目录的路径列表。
+/// 这是个最小化的实现，避免引入 `walkdir` crate 依赖。
+/// 仅用于启动时清理 WebView2 Default 目录下的 LOCK 文件。
+///
+/// 安全修复：原实现无深度限制，遇到符号链接环（symlink loop）会无限递归导致栈溢出。
+/// 现添加 max_depth 限制（默认 10 层）并跳过符号链接，避免栈溢出风险。
+fn walkdir(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    walkdir_inner(dir, 0, 10)
+}
+
+fn walkdir_inner(dir: &std::path::Path, depth: u32, max_depth: u32) -> Vec<std::path::PathBuf> {
+    let mut result = Vec::new();
+    // 深度超限直接返回，避免恶意构造的深层嵌套目录导致栈溢出
+    if depth >= max_depth {
+        return result;
+    }
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            // 跳过符号链接，避免符号链接环导致无限递归栈溢出
+            // （使用 symlink_metadata 不跟踪符号链接目标）
+            let is_symlink = std::fs::symlink_metadata(&path)
+                .map(|m| m.file_type().is_symlink())
+                .unwrap_or(false);
+            if is_symlink {
+                continue;
+            }
+            result.push(path.clone());
+            if path.is_dir() {
+                result.extend(walkdir_inner(&path, depth + 1, max_depth));
+            }
+        }
+    }
+    result
 }

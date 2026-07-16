@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import select, func, or_
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.database.connection import get_sessionmaker
 from app.database.models.tool import Tool
@@ -182,7 +183,7 @@ async def get_tool(tool_id: str) -> Optional[dict]:
         return _row_to_dict(t)
 
 
-async def create_tool(body_data: dict) -> dict:
+async def create_tool(body_data: dict[str, Any]) -> dict[str, Any]:
     """创建新刀具。
 
     Args:
@@ -196,21 +197,29 @@ async def create_tool(body_data: dict) -> dict:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        # 检查编码唯一性
-        existing = await session.execute(
-            select(Tool).where(Tool.code == body_data["code"])
-        )
-        if existing.scalar_one_or_none() is not None:
-            raise ValueError(f"刀具编码 '{body_data['code']}' 已存在")
+        try:
+            # 检查编码唯一性
+            existing = await session.execute(
+                select(Tool).where(Tool.code == body_data["code"])
+            )
+            if existing.scalar_one_or_none() is not None:
+                raise ValueError(f"刀具编码 '{body_data['code']}' 已存在")
 
-        t = Tool(**body_data)
-        session.add(t)
-        await session.flush()
-        await session.commit()
-        return _row_to_dict(t)
+            t = Tool(**body_data)
+            session.add(t)
+            await session.commit()
+            return _row_to_dict(t)
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("创建刀具失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("创建刀具失败: %s", e, exc_info=True)
+            raise
 
 
-async def update_tool(tool_id: str, update_data: dict) -> Optional[dict]:
+async def update_tool(tool_id: str, update_data: dict[str, Any]) -> Optional[dict[str, Any]]:
     """更新刀具信息。
 
     Args:
@@ -222,20 +231,28 @@ async def update_tool(tool_id: str, update_data: dict) -> Optional[dict]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        result = await session.execute(
-            select(Tool).where(Tool.id == tool_id)
-        )
-        t = result.scalar_one_or_none()
-        if t is None:
-            return None
+        try:
+            result = await session.execute(
+                select(Tool).where(Tool.id == tool_id)
+            )
+            t = result.scalar_one_or_none()
+            if t is None:
+                return None
 
-        for key, value in update_data.items():
-            setattr(t, key, value)
-        t.updated_at = datetime.now(timezone.utc)
+            for key, value in update_data.items():
+                setattr(t, key, value)
+            t.updated_at = datetime.now(timezone.utc)
 
-        await session.flush()
-        await session.commit()
-        return _row_to_dict(t)
+            await session.commit()
+            return _row_to_dict(t)
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("更新刀具失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("更新刀具失败: %s", e, exc_info=True)
+            raise
 
 
 async def delete_tool(tool_id: str) -> Optional[bool]:
@@ -246,16 +263,25 @@ async def delete_tool(tool_id: str) -> Optional[bool]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        result = await session.execute(
-            select(Tool).where(Tool.id == tool_id)
-        )
-        t = result.scalar_one_or_none()
-        if t is None:
-            return None
+        try:
+            result = await session.execute(
+                select(Tool).where(Tool.id == tool_id)
+            )
+            t = result.scalar_one_or_none()
+            if t is None:
+                return None
 
-        await session.delete(t)
-        await session.commit()
-        return True
+            await session.delete(t)
+            await session.commit()
+            return True
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("删除刀具失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("删除刀具失败: %s", e, exc_info=True)
+            raise
 
 
 async def update_tool_wear(
@@ -273,33 +299,41 @@ async def update_tool_wear(
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        result = await session.execute(
-            select(Tool).where(Tool.id == tool_id)
-        )
-        t = result.scalar_one_or_none()
-        if t is None:
-            return None
+        try:
+            result = await session.execute(
+                select(Tool).where(Tool.id == tool_id)
+            )
+            t = result.scalar_one_or_none()
+            if t is None:
+                return None
 
-        if sharpened:
-            # 刃磨：重置磨损量，记录刃磨时间
-            t.wear_amount = 0.0
-            t.last_sharpened = datetime.now(timezone.utc)
-            t.status = "active"
-            logger.info("刀具 %s 已刃磨，磨损量重置为0", t.code)
-        else:
-            # 正常磨损累加
-            t.usage_time += additional_usage_time
-            t.wear_amount += additional_wear
+            if sharpened:
+                # 刃磨：重置磨损量，记录刃磨时间
+                t.wear_amount = 0.0
+                t.last_sharpened = datetime.now(timezone.utc)
+                t.status = "active"
+                logger.info("刀具 %s 已刃磨，磨损量重置为0", t.code)
+            else:
+                # 正常磨损累加
+                t.usage_time += additional_usage_time
+                t.wear_amount += additional_wear
 
-            # 自动更新状态
-            if t.wear_percentage > 80.0:
-                t.status = "worn"
-                logger.warning("刀具 %s 磨损超过80%%，状态更新为worn", t.code)
+                # 自动更新状态
+                if t.wear_percentage > 80.0:
+                    t.status = "worn"
+                    logger.warning("刀具 %s 磨损超过80%%，状态更新为worn", t.code)
 
-        t.updated_at = datetime.now(timezone.utc)
-        await session.flush()
-        await session.commit()
-        return _row_to_dict(t)
+            t.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+            return _row_to_dict(t)
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("更新刀具磨损失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("更新刀具磨损失败: %s", e, exc_info=True)
+            raise
 
 
 async def tool_life_prediction(tool_id: str) -> Optional[dict]:
@@ -347,15 +381,23 @@ async def seed_tools() -> dict:
         if existing_count > 0:
             return {"already_exists": True, "existing_count": existing_count, "inserted_count": 0}
 
-        for item in SEED_TOOLS:
-            t = Tool(**item)
-            session.add(t)
-        await session.flush()
-        await session.commit()
+        try:
+            for item in SEED_TOOLS:
+                t = Tool(**item)
+                session.add(t)
+            await session.commit()
 
-        logger.info("已插入 %d 条刀具种子数据", len(SEED_TOOLS))
-        return {
-            "already_exists": False,
-            "existing_count": 0,
-            "inserted_count": len(SEED_TOOLS),
-        }
+            logger.info("已插入 %d 条刀具种子数据", len(SEED_TOOLS))
+            return {
+                "already_exists": False,
+                "existing_count": 0,
+                "inserted_count": len(SEED_TOOLS),
+            }
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("填充刀具演示数据失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("填充刀具演示数据失败: %s", e, exc_info=True)
+            raise

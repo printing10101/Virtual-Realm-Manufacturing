@@ -44,7 +44,12 @@ def main():
         print(f"\n验证零件: {part_id} ...")
 
         try:
-            report = validator.validate_reconstruction(part_id)
+            # P1 学术诚信修复：CI 验证脚本显式传 allow_mock_fallback=True。
+            # 当前 CI 环境无真实 3D 重建模型，使用 mock 数据生成验证报告用于流水线冒烟测试。
+            # 生产环境或学术论文实验必须替换为真实 reconstructed_model。
+            report = validator.validate_reconstruction(
+                part_id, allow_mock_fallback=True
+            )
 
             report_path = reports_dir / f"validation_{part_id}.html"
             html = validator.generate_report(report, str(report_path))

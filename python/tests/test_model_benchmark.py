@@ -59,20 +59,23 @@ DATA_FILE = DATA_DIR / "uniwear.csv"
 
 
 def load_uniwear_dataset() -> tuple[np.ndarray, np.ndarray]:
-    """加载Uniwear数据集并返回特征矩阵X和目标向量y。
+    """加载Uniwear数据集并返回特征矩阵X和目标向量y（未标准化）。
 
     从 python/data/uniwear/uniwear.csv 读取数据，
     自动处理缺失值、删除非数值列，并以tool_wear作为预测目标。
 
+    注意：本函数仅返回原始特征，**不进行标准化**。标准化器必须在
+    训练/测试集划分之后仅用训练集拟合，避免测试集统计信息泄漏
+    到训练流程（数据泄漏会高估模型精度，破坏学术可复现性）。
+
     Returns:
-        (X, y): 标准化后的特征矩阵和目标向量
+        (X, y): 原始特征矩阵和目标向量
 
     Raises:
         FileNotFoundError: 数据集文件不存在
         ValueError: 数据集中无数值型列或未找到目标列
     """
     import pandas as pd
-    from sklearn.preprocessing import StandardScaler
 
     if not DATA_FILE.exists():
         raise FileNotFoundError(
@@ -100,13 +103,6 @@ def load_uniwear_dataset() -> tuple[np.ndarray, np.ndarray]:
     label_col = _find_label_column(df)
     y = df[label_col].values.astype(np.float64)
     X = df.drop(columns=[label_col]).values.astype(np.float64)
-
-    # 标准化
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X)
-
-    # 极端值截断（4 sigma）
-    X = np.clip(X, -4, 4)
 
     return X, y
 
@@ -367,11 +363,30 @@ def dataset():
 
     整个测试会话只加载一次数据，避免重复I/O开销。
 
+    标准化流程严格遵循"无数据泄漏"原则：
+      1. 加载原始 X, y（未标准化）
+      2. 先按 seed 划分 train/test
+      3. StandardScaler 仅在 X_train 上 fit
+      4. 对 X_train 与 X_test 分别 transform
+      5. 极端值截断（4 sigma）在标准化后统一施加
+
     Returns:
         (X_train, X_test, y_train, y_test) 元组
     """
+    from sklearn.preprocessing import StandardScaler
+
     X, y = load_uniwear_dataset()
     X_train, X_test, y_train, y_test = split_train_test(X, y)
+
+    # 仅用训练集统计量拟合 scaler，避免测试集信息泄漏
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    # 极端值截断（4 sigma，基于训练集标准化尺度）
+    X_train = np.clip(X_train, -4, 4)
+    X_test = np.clip(X_test, -4, 4)
+
     return X_train, X_test, y_train, y_test
 
 

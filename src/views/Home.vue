@@ -288,6 +288,7 @@
             {{ t('home.msgNoAlerts') }}
           </div>
           <template v-else>
+            <!-- 动态列表，alert 无业务唯一 id，index 作为 key 可接受 -->
             <div
               v-for="(alert, index) in alerts"
               :key="index"
@@ -347,7 +348,6 @@ import http from '@/utils/http'
 import { API_CONFIG } from '@/config/api'
 import { useAgentStore } from '@/stores/agents'
 import { useTasksStore } from '@/stores/tasks'
-import type { TaskInfo } from '@/stores/tasks'
 
 // ---------------------------------------------------------------------------
 // Stores

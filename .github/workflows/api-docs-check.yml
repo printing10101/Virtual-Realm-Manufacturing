@@ -10,10 +10,18 @@ on:
       - 'docs/api-reference.md.tmpl'
       - 'scripts/gen-api-docs.py'
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check-api-docs:
     name: Check API Documentation Sync
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 from typing import Any, Optional
 
 import networkx as nx
@@ -95,6 +96,10 @@ class GraphStore:
         # 使用 MultiDiGraph：允许 (source, target) 之间存在多条不同
         # ``edge_type`` 的关系（普通 DiGraph 仅允许一条边）。
         self._graph: nx.MultiDiGraph = nx.MultiDiGraph()
+        # 并发保护：NetworkX MultiDiGraph 非线程安全，单例在多请求间共享时
+        # 必须用锁保护所有读写操作，避免并发损坏图数据结构。使用 RLock 以
+        # 允许同线程内嵌套加锁（例如持久化方法内部调用查询方法）。
+        self._lock = threading.RLock()
         # M1.3 增强：支持 init 时自动从数据库加载。
         # 行为：
         #   - 仅在 ``DB_URL`` 已配置且当前图为空时触发，避免在测试或
@@ -153,27 +158,30 @@ class GraphStore:
         # ``type`` 是 NetworkX 内置概念，重命名避免冲突；
         # 用户提供的 ``type`` 键若与 node_type 冲突，则 node_type 优先。
         props.pop("type", None)
-        self._graph.add_node(
-            node_id,
-            type=node_type,
-            properties=props,
-        )
+        with self._lock:
+            self._graph.add_node(
+                node_id,
+                type=node_type,
+                properties=props,
+            )
         logger.debug("add_node: %s (%s) props=%s", node_id, node_type, props)
 
     def has_node(self, node_id: str) -> bool:
         """判断节点是否存在。"""
-        return self._graph.has_node(node_id)
+        with self._lock:
+            return self._graph.has_node(node_id)
 
     def get_node(self, node_id: str) -> Optional[dict[str, Any]]:
         """按 ID 查询节点；返回包含 ``node_id`` / ``node_type`` / ``properties`` 的字典。"""
-        if not self._graph.has_node(node_id):
-            return None
-        data = self._graph.nodes[node_id]
-        return {
-            "node_id": node_id,
-            "node_type": data.get("type", ""),
-            "properties": dict(data.get("properties", {})),
-        }
+        with self._lock:
+            if not self._graph.has_node(node_id):
+                return None
+            data = self._graph.nodes[node_id]
+            return {
+                "node_id": node_id,
+                "node_type": data.get("type", ""),
+                "properties": dict(data.get("properties", {})),
+            }
 
     def update_node_properties(
         self,
@@ -185,45 +193,49 @@ class GraphStore:
         Returns:
             是否真的更新了节点属性（节点不存在时返回 ``False``）。
         """
-        if not self._graph.has_node(node_id):
-            return False
-        existing = self._graph.nodes[node_id]
-        merged = dict(existing.get("properties", {}))
-        merged.update(_ensure_props(properties))
-        existing["properties"] = merged
-        return True
+        with self._lock:
+            if not self._graph.has_node(node_id):
+                return False
+            existing = self._graph.nodes[node_id]
+            merged = dict(existing.get("properties", {}))
+            merged.update(_ensure_props(properties))
+            existing["properties"] = merged
+            return True
 
     def remove_node(self, node_id: str) -> bool:
         """删除节点及其所有关联边。"""
-        if not self._graph.has_node(node_id):
-            return False
-        self._graph.remove_node(node_id)
-        return True
+        with self._lock:
+            if not self._graph.has_node(node_id):
+                return False
+            self._graph.remove_node(node_id)
+            return True
 
     def list_nodes_by_type(self, node_type: str) -> list[dict[str, Any]]:
         """按节点类型查询节点列表。"""
-        results: list[dict[str, Any]] = []
-        for nid, data in self._graph.nodes(data=True):
-            if data.get("type") == node_type:
-                results.append(
-                    {
-                        "node_id": nid,
-                        "node_type": data.get("type", ""),
-                        "properties": dict(data.get("properties", {})),
-                    }
-                )
-        results.sort(key=lambda x: x["node_id"])
-        return results
+        with self._lock:
+            results: list[dict[str, Any]] = []
+            for nid, data in self._graph.nodes(data=True):
+                if data.get("type") == node_type:
+                    results.append(
+                        {
+                            "node_id": nid,
+                            "node_type": data.get("type", ""),
+                            "properties": dict(data.get("properties", {})),
+                        }
+                    )
+            results.sort(key=lambda x: x["node_id"])
+            return results
 
     def node_count(self, node_type: Optional[str] = None) -> int:
         """返回节点数量；可选按类型过滤。"""
-        if node_type is None:
-            return self._graph.number_of_nodes()
-        return sum(
-            1
-            for _, data in self._graph.nodes(data=True)
-            if data.get("type") == node_type
-        )
+        with self._lock:
+            if node_type is None:
+                return self._graph.number_of_nodes()
+            return sum(
+                1
+                for _, data in self._graph.nodes(data=True)
+                if data.get("type") == node_type
+            )
 
     # ============================================================== 关系操作
 
@@ -255,42 +267,45 @@ class GraphStore:
             )
         _validate_node_id(source_id)
         _validate_node_id(target_id)
-        if not self._graph.has_node(source_id):
-            raise ValueError(f"source node not found: {source_id!r}")
-        if not self._graph.has_node(target_id):
-            raise ValueError(f"target node not found: {target_id!r}")
-        if source_id == target_id:
-            # 允许自环，但记录日志以便排查异常数据
-            logger.debug(
-                "add_edge: self-loop detected on %s with type %s",
+        # 在加锁前进行参数校验，避免持锁等待期间抛错导致锁泄漏。
+        # 端点存在性检查与写操作必须在同一把锁内完成，保证原子性。
+        with self._lock:
+            if not self._graph.has_node(source_id):
+                raise ValueError(f"source node not found: {source_id!r}")
+            if not self._graph.has_node(target_id):
+                raise ValueError(f"target node not found: {target_id!r}")
+            if source_id == target_id:
+                # 允许自环，但记录日志以便排查异常数据
+                logger.debug(
+                    "add_edge: self-loop detected on %s with type %s",
+                    source_id,
+                    edge_type,
+                )
+
+            props = _ensure_props(properties)
+            confidence = props.get("confidence")
+            if confidence is not None:
+                if not isinstance(confidence, (int, float)):
+                    raise TypeError(
+                        f"confidence must be a number, got {type(confidence).__name__}"
+                    )
+                if not (0.0 <= float(confidence) <= 1.0):
+                    raise ValueError(
+                        f"confidence must be in [0, 1], got {confidence!r}"
+                    )
+                props["confidence"] = float(confidence)
+            else:
+                # 未显式给出 confidence 时使用默认值 0.5，保证下游
+                # 消费者按 ``properties["confidence"]`` 取值一致。
+                props["confidence"] = 0.5
+
+            self._graph.add_edge(
                 source_id,
-                edge_type,
+                target_id,
+                key=edge_type,
+                edge_type=edge_type,
+                properties=props,
             )
-
-        props = _ensure_props(properties)
-        confidence = props.get("confidence")
-        if confidence is not None:
-            if not isinstance(confidence, (int, float)):
-                raise TypeError(
-                    f"confidence must be a number, got {type(confidence).__name__}"
-                )
-            if not (0.0 <= float(confidence) <= 1.0):
-                raise ValueError(
-                    f"confidence must be in [0, 1], got {confidence!r}"
-                )
-            props["confidence"] = float(confidence)
-        else:
-            # 未显式给出 confidence 时使用默认值 0.5，保证下游
-            # 消费者按 ``properties["confidence"]`` 取值一致。
-            props["confidence"] = 0.5
-
-        self._graph.add_edge(
-            source_id,
-            target_id,
-            key=edge_type,
-            edge_type=edge_type,
-            properties=props,
-        )
         logger.debug(
             "add_edge: %s -[%s]-> %s props=%s",
             source_id,
@@ -303,7 +318,8 @@ class GraphStore:
         self, source_id: str, target_id: str, edge_type: str
     ) -> bool:
         """判断关系是否存在。"""
-        return self._graph.has_edge(source_id, target_id, key=edge_type)
+        with self._lock:
+            return self._graph.has_edge(source_id, target_id, key=edge_type)
 
     def get_edge(
         self,
@@ -312,15 +328,16 @@ class GraphStore:
         edge_type: str,
     ) -> Optional[dict[str, Any]]:
         """按 ``(source, target, type)`` 三元组查询关系。"""
-        if not self._graph.has_edge(source_id, target_id, key=edge_type):
-            return None
-        data = self._graph.edges[source_id, target_id, edge_type]
-        return {
-            "source_id": source_id,
-            "target_id": target_id,
-            "edge_type": edge_type,
-            "properties": dict(data.get("properties", {})),
-        }
+        with self._lock:
+            if not self._graph.has_edge(source_id, target_id, key=edge_type):
+                return None
+            data = self._graph.edges[source_id, target_id, edge_type]
+            return {
+                "source_id": source_id,
+                "target_id": target_id,
+                "edge_type": edge_type,
+                "properties": dict(data.get("properties", {})),
+            }
 
     def update_edge_properties(
         self,
@@ -330,50 +347,53 @@ class GraphStore:
         properties: dict[str, Any],
     ) -> bool:
         """更新关系属性（合并语义）。"""
-        if not self._graph.has_edge(source_id, target_id, key=edge_type):
-            return False
-        existing = self._graph.edges[source_id, target_id, edge_type]
-        merged = dict(existing.get("properties", {}))
-        update = _ensure_props(properties)
-        if "confidence" in update:
-            conf = update["confidence"]
-            if not isinstance(conf, (int, float)):
-                raise TypeError(
-                    f"confidence must be a number, got {type(conf).__name__}"
-                )
-            if not (0.0 <= float(conf) <= 1.0):
-                raise ValueError(
-                    f"confidence must be in [0, 1], got {conf!r}"
-                )
-            update["confidence"] = float(conf)
-        merged.update(update)
-        existing["properties"] = merged
-        return True
+        with self._lock:
+            if not self._graph.has_edge(source_id, target_id, key=edge_type):
+                return False
+            existing = self._graph.edges[source_id, target_id, edge_type]
+            merged = dict(existing.get("properties", {}))
+            update = _ensure_props(properties)
+            if "confidence" in update:
+                conf = update["confidence"]
+                if not isinstance(conf, (int, float)):
+                    raise TypeError(
+                        f"confidence must be a number, got {type(conf).__name__}"
+                    )
+                if not (0.0 <= float(conf) <= 1.0):
+                    raise ValueError(
+                        f"confidence must be in [0, 1], got {conf!r}"
+                    )
+                update["confidence"] = float(conf)
+            merged.update(update)
+            existing["properties"] = merged
+            return True
 
     def remove_edge(
         self, source_id: str, target_id: str, edge_type: str
     ) -> bool:
         """按三元组删除关系。"""
-        if not self._graph.has_edge(source_id, target_id, key=edge_type):
-            return False
-        self._graph.remove_edge(source_id, target_id, key=edge_type)
-        return True
+        with self._lock:
+            if not self._graph.has_edge(source_id, target_id, key=edge_type):
+                return False
+            self._graph.remove_edge(source_id, target_id, key=edge_type)
+            return True
 
     def list_edges_by_type(self, edge_type: str) -> list[dict[str, Any]]:
         """按关系类型查询所有边。"""
-        results: list[dict[str, Any]] = []
-        for u, v, k, data in self._graph.edges(keys=True, data=True):
-            if k == edge_type:
-                results.append(
-                    {
-                        "source_id": u,
-                        "target_id": v,
-                        "edge_type": k,
-                        "properties": dict(data.get("properties", {})),
-                    }
-                )
-        results.sort(key=lambda x: (x["source_id"], x["target_id"]))
-        return results
+        with self._lock:
+            results: list[dict[str, Any]] = []
+            for u, v, k, data in self._graph.edges(keys=True, data=True):
+                if k == edge_type:
+                    results.append(
+                        {
+                            "source_id": u,
+                            "target_id": v,
+                            "edge_type": k,
+                            "properties": dict(data.get("properties", {})),
+                        }
+                    )
+            results.sort(key=lambda x: (x["source_id"], x["target_id"]))
+            return results
 
     def list_edges_by_source(
         self,
@@ -381,23 +401,24 @@ class GraphStore:
         edge_type: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """按起始节点查询出边。"""
-        if not self._graph.has_node(source_id):
-            return []
-        results: list[dict[str, Any]] = []
-        for _, v, k, data in self._graph.out_edges(
-            source_id, keys=True, data=True
-        ):
-            if edge_type is None or k == edge_type:
-                results.append(
-                    {
-                        "source_id": source_id,
-                        "target_id": v,
-                        "edge_type": k,
-                        "properties": dict(data.get("properties", {})),
-                    }
-                )
-        results.sort(key=lambda x: (x["edge_type"], x["target_id"]))
-        return results
+        with self._lock:
+            if not self._graph.has_node(source_id):
+                return []
+            results: list[dict[str, Any]] = []
+            for _, v, k, data in self._graph.out_edges(
+                source_id, keys=True, data=True
+            ):
+                if edge_type is None or k == edge_type:
+                    results.append(
+                        {
+                            "source_id": source_id,
+                            "target_id": v,
+                            "edge_type": k,
+                            "properties": dict(data.get("properties", {})),
+                        }
+                    )
+            results.sort(key=lambda x: (x["edge_type"], x["target_id"]))
+            return results
 
     def list_edges_by_target(
         self,
@@ -405,23 +426,24 @@ class GraphStore:
         edge_type: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """按目标节点查询入边。"""
-        if not self._graph.has_node(target_id):
-            return []
-        results: list[dict[str, Any]] = []
-        for u, _, k, data in self._graph.in_edges(
-            target_id, keys=True, data=True
-        ):
-            if edge_type is None or k == edge_type:
-                results.append(
-                    {
-                        "source_id": u,
-                        "target_id": target_id,
-                        "edge_type": k,
-                        "properties": dict(data.get("properties", {})),
-                    }
-                )
-        results.sort(key=lambda x: (x["edge_type"], x["source_id"]))
-        return results
+        with self._lock:
+            if not self._graph.has_node(target_id):
+                return []
+            results: list[dict[str, Any]] = []
+            for u, _, k, data in self._graph.in_edges(
+                target_id, keys=True, data=True
+            ):
+                if edge_type is None or k == edge_type:
+                    results.append(
+                        {
+                            "source_id": u,
+                            "target_id": target_id,
+                            "edge_type": k,
+                            "properties": dict(data.get("properties", {})),
+                        }
+                    )
+            results.sort(key=lambda x: (x["edge_type"], x["source_id"]))
+            return results
 
     def list_edges_by_confidence(
         self,
@@ -452,49 +474,57 @@ class GraphStore:
             raise ValueError(
                 f"max_confidence must be in [0, 1], got {max_confidence!r}"
             )
-        results: list[dict[str, Any]] = []
-        for u, v, k, data in self._graph.edges(keys=True, data=True):
-            if edge_type is not None and k != edge_type:
-                continue
-            conf = (data.get("properties") or {}).get("confidence")
-            if conf is None:
-                continue
-            try:
-                conf_f = float(conf)
-            except (TypeError, ValueError):
-                continue
-            if min_confidence <= conf_f <= max_confidence:
-                results.append(
-                    {
-                        "source_id": u,
-                        "target_id": v,
-                        "edge_type": k,
-                        "confidence": conf_f,
-                        "properties": dict(data.get("properties", {})),
-                    }
-                )
-        results.sort(key=lambda x: x.get("confidence", 0.0), reverse=True)
-        return results
+        with self._lock:
+            results: list[dict[str, Any]] = []
+            for u, v, k, data in self._graph.edges(keys=True, data=True):
+                if edge_type is not None and k != edge_type:
+                    continue
+                conf = (data.get("properties") or {}).get("confidence")
+                if conf is None:
+                    continue
+                try:
+                    conf_f = float(conf)
+                except (TypeError, ValueError):
+                    continue
+                if min_confidence <= conf_f <= max_confidence:
+                    results.append(
+                        {
+                            "source_id": u,
+                            "target_id": v,
+                            "edge_type": k,
+                            "confidence": conf_f,
+                            "properties": dict(data.get("properties", {})),
+                        }
+                    )
+            results.sort(key=lambda x: x.get("confidence", 0.0), reverse=True)
+            return results
 
     def edge_count(self, edge_type: Optional[str] = None) -> int:
         """返回关系数量；可选按类型过滤。"""
-        if edge_type is None:
-            return self._graph.number_of_edges()
-        return sum(
-            1
-            for _, _, k in self._graph.edges(keys=True)
-            if k == edge_type
-        )
+        with self._lock:
+            if edge_type is None:
+                return self._graph.number_of_edges()
+            return sum(
+                1
+                for _, _, k in self._graph.edges(keys=True)
+                if k == edge_type
+            )
 
     # ============================================================== 辅助操作
 
     def clear(self) -> None:
         """清空内存图（不影响数据库）。"""
-        self._graph.clear()
+        with self._lock:
+            self._graph.clear()
 
     def graph(self) -> nx.DiGraph:
-        """返回底层 NetworkX ``DiGraph``（只读视图语义，调用方不应原地修改）。"""
-        return self._graph
+        """返回底层 NetworkX ``DiGraph``（只读视图语义，调用方不应原地修改）。
+
+        注意：返回的是内部图对象的引用，调用方应在持锁期间使用，或自行
+        拷贝后再使用，以避免在迭代过程中被其他线程修改。
+        """
+        with self._lock:
+            return self._graph
 
     # ============================================================== 持久化便捷方法
 
@@ -537,10 +567,13 @@ class GraphStore:
                 )
                 return {"nodes_written": 0, "edges_written": 0}
 
-        persistence = GraphPersistence(session_factory=session_factory)
-        return persistence.flush_to_repository(
-            self, clear_first=clear_first
-        )
+        # 持锁以防止在落库过程中其他线程修改内存图，确保快照一致性。
+        # 使用 RLock 允许 GraphPersistence 内部回调本类查询方法时复用锁。
+        with self._lock:
+            persistence = GraphPersistence(session_factory=session_factory)
+            return persistence.flush_to_repository(
+                self, clear_first=clear_first
+            )
 
     def load_from_repository(
         self,
@@ -573,13 +606,16 @@ class GraphStore:
             )
             return {"nodes_loaded": 0, "edges_loaded": 0}
 
-        persistence = GraphPersistence(session_factory=session_factory)
-        return persistence.load_from_repository(
-            self,
-            node_limit=node_limit,
-            edge_limit=edge_limit,
-            replace=replace,
-        )
+        # 持锁以防止在加载过程中其他线程读取到半成品图数据。
+        # 使用 RLock 允许 GraphPersistence 内部回调本类写方法时复用锁。
+        with self._lock:
+            persistence = GraphPersistence(session_factory=session_factory)
+            return persistence.load_from_repository(
+                self,
+                node_limit=node_limit,
+                edge_limit=edge_limit,
+                replace=replace,
+            )
 
 
 __all__ = ["GraphStore"]

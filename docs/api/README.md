@@ -6,6 +6,8 @@
 > **在线文档**：`http://localhost:8765/api/docs`（Swagger UI） | `http://localhost:8765/api/redoc`（ReDoc）
 > **OpenAPI JSON**：`http://localhost:8765/api/openapi.json`
 
+> **交叉引用**: 本文档提供完整端点列表、认证流程与错误码详解；API 端点总览见 [`docs/api-reference.md`](../api-reference.md)。两份文档遵循同一响应格式约定（见下文"响应格式约定"小节）。
+
 ## 文档目录
 
 | 文档 | 用途 |
@@ -13,7 +15,7 @@
 | [OpenAPI 规范](./openapi.json) | OpenAPI 3.0.3 完整机器可读规范（与代码同步） |
 | [请求/响应示例](./examples.md) | 各 API 端点的完整调用示例（正常 + 边界场景） |
 | [错误码说明](./error-codes.md) | 完整错误码体系（数值范围、描述、原因、建议） |
-| [通用 API 文档（合并版）](../API.md) | 旧版合并文档（保留以兼容旧链接） |
+| [通用 API 文档](../api-reference.md) | API 端点、请求/响应格式、认证流程总览 |
 
 ## 主要端点分组
 
@@ -63,6 +65,19 @@
 Authorization: Bearer <jwt_token>
 ```
 
+### 响应格式约定
+
+所有 API 响应遵循统一格式，字段定义与 `python/app/core/response.py` 实现保持一致：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `code` | `number` | 数值状态码，`0` 表示成功，非 `0` 表示错误（如 `1001`、`2001`） |
+| `message` | `string` | 人类可读的状态描述 |
+| `data` | `any` | 成功时为业务数据，错误时通常省略或为 `null` |
+| `request_id` | `string` | 请求追踪标识，对应客户端 `X-Request-ID` |
+
+> **注意**：代码内部 `ErrorCode` 保留字符串枚举（如 `SUCCESS`、`NOT_FOUND`）以保持向后兼容，但通过 `code_to_numeric()` 映射表统一转换为数值后返回给客户端。客户端应始终以数值 `code` 判断响应状态，不应依赖字符串枚举值。
+
 ### 响应格式
 
 **成功响应**：
@@ -71,7 +86,8 @@ Authorization: Bearer <jwt_token>
 {
   "code": 0,
   "message": "操作成功",
-  "data": { ... }
+  "data": { ... },
+  "request_id": "uuid-string"
 }
 ```
 

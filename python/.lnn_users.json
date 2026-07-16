@@ -2,11 +2,12 @@
   "users": [
     {
       "username": "admin",
-      "password_hash": "$2b$12$h/8l55YtQU16rAeshgtwfugKXe.KC0d6INoZzBwRq9/9CB/1grvuy",
+      "password_hash": "PLACEHOLDER_RESET_REQUIRED",
       "role": "admin",
       "created_at": "2026-06-24T12:18:04.644173+00:00",
       "last_login": "2026-06-24T13:16:12.611844+00:00",
-      "is_active": true
+      "is_active": true,
+      "must_change_password": true
     }
   ]
 }

@@ -99,21 +99,21 @@ def _derive_real_query_row(
         if isinstance(spd_range, list) and len(spd_range) == 2:
             speed_range = (spd_range[0], spd_range[1])
 
-    # CT-LTC 在 PHM2010 上的表现（真实数据集）
+    # DL-LNN 在 PHM2010 上的表现（真实数据集）
     ctltc_mae_phm: float | None = None
     ctltc_rmse_phm: float | None = None
     if main_results is not None:
         phm_block = main_results.get("PHM2010", {})
-        ctltc_stats = phm_block.get("CT-LTC", {})
+        ctltc_stats = phm_block.get("DL-LNN", {})
         ctltc_mae_phm = ctltc_stats.get("MAE")
         ctltc_rmse_phm = ctltc_stats.get("RMSE")
 
-    # 跨工况平均 PCC（CT-LTC）
+    # 跨工况平均 PCC（DL-LNN）
     ctltc_pcc_loco: float | None = None
     if cross_results is not None:
         loco_block = cross_results.get("LOCO", {})
         avg_block = loco_block.get("Average", {})
-        ctltc_stats = avg_block.get("CT-LTC", {})
+        ctltc_stats = avg_block.get("DL-LNN", {})
         ctltc_pcc_loco = ctltc_stats.get("PCC")
 
     # —— 派生查询场景 ——
@@ -147,7 +147,7 @@ def _derive_real_query_row(
         )
     if ctltc_mae_phm is not None and ctltc_rmse_phm is not None:
         assistant_parts.append(
-            f"在 PHM2010 真实数据集上 CT-LTC 的 MAE = "
+            f"在 PHM2010 真实数据集上 DL-LNN 的 MAE = "
             f"{_fmt(ctltc_mae_phm, 3)} mm，RMSE = "
             f"{_fmt(ctltc_rmse_phm, 3)} mm"
         )

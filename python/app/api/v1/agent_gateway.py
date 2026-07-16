@@ -7,11 +7,13 @@ import logging
 import os
 import time
 import uuid
+from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from app.core.response import ErrorCode, error, success
+from app.core.response_models import ErrorResponse, SuccessResponse
 from app.core.safe_errors import safe_error_message
 from app.auth.permissions import paper_only_guard, require_permission
 from app.agent.auth import agent_token_store
@@ -19,6 +21,8 @@ from app.agent.middleware import (
     agent_audit_log,
 )
 from app.agent.orchestrator import AgentOrchestrator
+# P2-4-3 修复：引入共享速率限制器，防止 AI 推理/训练端点被滥用导致 DoS。
+from app.middleware.rate_limiter import limiter
 from app.models.schemas import (
     AgentTokenCreateRequest,
     AgentTokenResponse,
@@ -40,6 +44,9 @@ from app.services.model_registry_service import get_model_registry_service
 from app.api.v1.sse import sse_manager, create_progress_callback
 
 logger = logging.getLogger(__name__)
+
+# SSE 心跳超时（秒）：超过此时间无事件则发送 heartbeat 注释帧保持连接
+SSE_HEARTBEAT_TIMEOUT = 30.0
 
 router = APIRouter(prefix="/api/agent/v1", tags=["Agent Gateway"])
 
@@ -70,17 +77,29 @@ def _handle_training_done(task: asyncio.Task, task_id: str) -> None:
 orchestrator = AgentOrchestrator()
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    dependencies=[Depends(require_permission("agent:read"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={500: {"model": ErrorResponse}},
+)
 async def agent_health():
-    """健康检查（R类，免认证）"""
-    return {
-        "status": "healthy",
-        "timestamp": time.time(),
-        "models_registered": len(model_registry.registry),
-    }
+    """健康检查（R类）"""
+    return success(
+        data={
+            "status": "healthy",
+            "timestamp": time.time(),
+            "models_registered": len(model_registry.registry),
+        }
+    )
 
 
-@router.get("/models")
+@router.get(
+    "/models",
+    dependencies=[Depends(require_permission("agent:read"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={500: {"model": ErrorResponse}},
+)
 async def list_models():
     """已注册模型列表（R类）"""
     models = model_registry.list_models(return_objects=True)
@@ -101,7 +120,12 @@ async def list_models():
     )
 
 
-@router.get("/models/{name}/info")
+@router.get(
+    "/models/{name}/info",
+    dependencies=[Depends(require_permission("agent:read"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def model_info(name: str):
     """模型详细信息（R类）"""
     entry = model_registry.registry.get(name)
@@ -124,19 +148,30 @@ async def model_info(name: str):
 
 
 # 认证：预测操作需要 agent:predict 权限
-@router.post("/predict", dependencies=[Depends(require_permission("agent:predict"))])
-async def agent_predict(request: AgentPredictRequest):
+@router.post(
+    "/predict",
+    dependencies=[Depends(require_permission("agent:predict"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={
+        400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+# P2-4-3 修复：LNN 推理消耗 GPU/CPU 计算资源，需速率限制防止 DoS。
+@limiter.limit("60/minute")
+async def agent_predict(request: Request, body: AgentPredictRequest):
     """LNN 预测（R类）"""
     try:
-        entry = model_registry.registry.get(request.model_name)
+        entry = model_registry.registry.get(body.model_name)
         if not entry:
             return error(
                 code=ErrorCode.NOT_FOUND,
-                message=f"Model '{request.model_name}' not found",
+                message=f"Model '{body.model_name}' not found",
             )
 
-        if not request.input_data or any(
-            not isinstance(x, (int, float)) for x in request.input_data
+        if not body.input_data or any(
+            not isinstance(x, (int, float)) for x in body.input_data
         ):
             return error(
                 code=ErrorCode.INVALID_REQUEST, message="输入数据必须为非空数值数组"
@@ -146,26 +181,26 @@ async def agent_predict(request: AgentPredictRequest):
             len(entry.info.input_features) if entry.info.input_features else None
         )
         if expected_dim:
-            input_len = len(request.input_data)
+            input_len = len(body.input_data)
             if input_len != expected_dim and input_len % expected_dim != 0:
                 return error(
                     code=ErrorCode.INVALID_REQUEST,
                     message=f"输入维度不匹配: 期望{expected_dim}维或其倍数，实际{input_len}维",
                 )
 
-        predictor = agent_model_cache.get(request.model_name)
+        predictor = agent_model_cache.get(body.model_name)
         if predictor is None:
             predictor = LNNPredictor.from_registry(
                 registry=model_registry,
-                model_name=request.model_name,
+                model_name=body.model_name,
                 use_amp=True,
                 auto_device=True,
             )
-            agent_model_cache.put(request.model_name, predictor)
+            agent_model_cache.put(body.model_name, predictor)
 
         result = predictor.predict(
-            input_data=request.input_data,
-            return_confidence=request.return_confidence,
+            input_data=body.input_data,
+            return_confidence=body.return_confidence,
         )
 
         if not isinstance(result, PredictionResult):
@@ -185,7 +220,7 @@ async def agent_predict(request: AgentPredictRequest):
                 "version": entry.info.version,
             },
         }
-        if request.return_confidence:
+        if body.return_confidence:
             resp["confidence"] = result.confidence
 
         return success(data=resp, message="Prediction completed")
@@ -194,11 +229,11 @@ async def agent_predict(request: AgentPredictRequest):
         # 修复：使用 safe_error_message 包装异常，避免 str(e) 泄露
         # 内部错误详情到前端用户/调用方。
         safe = safe_error_message(
-            e, context=f"agent.predict[{request.model_name}]"
+            e, context=f"agent.predict[{body.model_name}]"
         )
         logger.warning(
             "Prediction failed | model=%s | error_id=%s | exc=%s: %s",
-            request.model_name,
+            body.model_name,
             safe.get("error_id"),
             type(e).__name__,
             e,
@@ -346,8 +381,15 @@ async def _run_agent_training(
 
 
 # 认证：训练操作需要 agent:train 权限
-@router.post("/train", dependencies=[Depends(require_permission("agent:train"))])
-async def agent_train(request: AgentTrainRequest):
+@router.post(
+    "/train",
+    dependencies=[Depends(require_permission("agent:train"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
+# P2-4-3 修复：训练消耗大量 GPU/CPU 资源，限制为 5/hour（与 lnn/routes.py train 一致）。
+@limiter.limit("5/hour")
+async def agent_train(request: Request, body: AgentTrainRequest):
     """启动训练（B类，异步，返回job_id）"""
     try:
         task_id = str(uuid.uuid4())
@@ -358,20 +400,20 @@ async def agent_train(request: AgentTrainRequest):
         }
 
         hyperparams = {
-            "learning_rate": request.hyperparameters.learning_rate,
-            "epochs": request.hyperparameters.epochs,
-            "batch_size": request.hyperparameters.batch_size,
-            "optimizer": request.hyperparameters.optimizer,
+            "learning_rate": body.hyperparameters.learning_rate,
+            "epochs": body.hyperparameters.epochs,
+            "batch_size": body.hyperparameters.batch_size,
+            "optimizer": body.hyperparameters.optimizer,
         }
 
         # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
         task = asyncio.create_task(
             _run_agent_training(
                 task_id,
-                request.model_name,
-                request.data_path,
+                body.model_name,
+                body.data_path,
                 hyperparams,
-                request.device,
+                body.device,
             )
         )
         task.add_done_callback(lambda t: _handle_training_done(t, task_id))
@@ -389,11 +431,11 @@ async def agent_train(request: AgentTrainRequest):
         # 修复：使用 safe_error_message 包装异常，避免直接
         # 将 str(e) 暴露到 HTTP 错误响应中。
         safe = safe_error_message(
-            e, context=f"agent.train_init[{request.model_name}]"
+            e, context=f"agent.train_init[{body.model_name}]"
         )
         logger.warning(
             "Training initiation failed | model=%s | error_id=%s | exc=%s: %s",
-            request.model_name,
+            body.model_name,
             safe.get("error_id"),
             type(e).__name__,
             e,
@@ -405,7 +447,12 @@ async def agent_train(request: AgentTrainRequest):
         )
 
 
-@router.get("/train/{job_id}")
+@router.get(
+    "/train/{job_id}",
+    dependencies=[Depends(require_permission("agent:read"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def get_train_status(job_id: str):
     """训练状态（R类）"""
     if job_id not in training_tasks:
@@ -430,18 +477,20 @@ async def _sse_stream(task_id: str, client_id: str):
     try:
         while True:
             try:
-                event = await asyncio.wait_for(client.queue.get(), timeout=30.0)
+                event = await asyncio.wait_for(client.queue.get(), timeout=SSE_HEARTBEAT_TIMEOUT)
                 yield event
             except asyncio.TimeoutError:
                 yield ": heartbeat\n\n"
     except asyncio.CancelledError:
-        # SSE 连接被客户端主动关闭时静默退出（业务预期行为）
-        pass
+        # SSE 连接被客户端主动关闭时退出（业务预期行为）。
+        # P1-6 修复：不静默 pass——记录 debug 日志便于排查 SSE 生命周期异常，
+        # 如频繁取消可能暗示客户端连接泄漏或心跳超时配置不当。
+        logger.debug("SSE stream cancelled for task_id=%s, client_id=%s", task_id, client_id)
     finally:
         await sse_manager.unsubscribe(task_id, client_id)
 
 
-@router.get("/train/{job_id}/stream")
+@router.get("/train/{job_id}/stream", dependencies=[Depends(require_permission("agent:read"))])
 async def stream_training(job_id: str):
     """训练进度SSE流（R类）"""
     if job_id not in training_tasks:
@@ -462,10 +511,22 @@ async def stream_training(job_id: str):
 
 
 # 认证：执行类操作需要 agent:execute 权限
-@router.post("/execute", dependencies=[Depends(require_permission("agent:execute"))])
-async def agent_execute(request: AgentExecuteRequest):
+@router.post(
+    "/execute",
+    dependencies=[Depends(require_permission("agent:execute"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={
+        400: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def agent_execute(request: AgentExecuteRequest, http_request: Request):
     """工艺参数下发（T类，paper_only默认）"""
     try:
+        # [F-P0-4] 获取操作员标识用于审计留痕
+        operator = getattr(http_request.state, "username", None) or "unknown"
+
         # Paper-Only 安全检查
         is_live = paper_only_guard.is_live_execution_allowed()
         if request.simulate or not is_live:
@@ -473,11 +534,36 @@ async def agent_execute(request: AgentExecuteRequest):
                 {
                     "machine_id": request.machine_id,
                     "parameters": request.parameters,
-                }
+                },
+                operator=operator,
             )
             return success(data=result, message="Operation simulated (Paper-Only mode)")
 
-        # Actual execution (requires LNN_LIVE_EXECUTION_ENABLED=true + token paper_only=false)
+        # [F-P0-4] 实模式：必须通过双因子确认 + 机床安全前置校验
+        #   - has_t_permission: 权限已由 require_permission 依赖项校验，此处置 True
+        #   - ui_confirmed: simulate=False 表示用户在 UI 上明确选择实模式执行
+        #   - supervisor_confirmed: 班长双因子确认（请求体显式传入）
+        #   - machine_safety_status: 机床物理安全状态（请求体显式传入）
+        allowed, reason = paper_only_guard.check_t_operation(
+            has_t_permission=True,
+            ui_confirmed=not request.simulate,
+            supervisor_confirmed=request.supervisor_confirmed,
+            machine_safety_status=request.machine_safety_status,
+        )
+        if not allowed:
+            # 审计留痕：实模式被拒绝也必须记录
+            logger.warning(
+                "T operation rejected | machine_id=%s | operator=%s | reason=%s",
+                request.machine_id,
+                operator,
+                reason,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=reason,
+            )
+
+        # Actual execution (requires LNN_LIVE_EXECUTION_ENABLED=true + 双因子确认通过)
         # Placeholder for actual machine dispatch
         return success(
             data={
@@ -508,11 +594,16 @@ async def agent_execute(request: AgentExecuteRequest):
 
 
 # 认证：审计日志查询需要 agent:audit:read 权限
-@router.get("/audit-log", dependencies=[Depends(require_permission("agent:audit:read"))])
+@router.get(
+    "/audit-log",
+    dependencies=[Depends(require_permission("agent:audit:read"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={500: {"model": ErrorResponse}},
+)
 async def get_audit_log(
     agent_id: str | None = None,
     permission_class: str | None = None,
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):
     """审计日志查询（C类，仅管理员）"""
@@ -535,7 +626,12 @@ async def get_audit_log(
 
 # Token management endpoints (for internal use / settings page)
 # 认证：创建 Token 需要 agent:token:create 权限
-@router.post("/tokens", dependencies=[Depends(require_permission("agent:token:create"))])
+@router.post(
+    "/tokens",
+    dependencies=[Depends(require_permission("agent:token:create"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def create_agent_token(req: AgentTokenCreateRequest):
     """创建 Agent Token"""
     try:
@@ -581,7 +677,12 @@ async def create_agent_token(req: AgentTokenCreateRequest):
 
 
 # 认证：列出 Token 需要 agent:token:create 权限（Token 管理操作）
-@router.get("/tokens", dependencies=[Depends(require_permission("agent:token:create"))])
+@router.get(
+    "/tokens",
+    dependencies=[Depends(require_permission("agent:token:create"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={500: {"model": ErrorResponse}},
+)
 async def list_agent_tokens():
     """列出所有 Agent Token"""
     tokens = agent_token_store.list_tokens()
@@ -589,7 +690,12 @@ async def list_agent_tokens():
 
 
 # 认证：撤销单个 Token 需要 agent:token:revoke 权限
-@router.delete("/tokens/{agent_id}", dependencies=[Depends(require_permission("agent:token:revoke"))])
+@router.delete(
+    "/tokens/{agent_id}",
+    dependencies=[Depends(require_permission("agent:token:revoke"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def revoke_agent_token(agent_id: str):
     """撤销 Agent Token"""
     if agent_token_store.revoke_token(agent_id):
@@ -598,7 +704,12 @@ async def revoke_agent_token(agent_id: str):
 
 
 # 认证：一键撤销所有 T 类 Token 需要 agent:token:revoke_all 权限（紧急停止）
-@router.post("/tokens/revoke-t-all", dependencies=[Depends(require_permission("agent:token:revoke_all"))])
+@router.post(
+    "/tokens/revoke-t-all",
+    dependencies=[Depends(require_permission("agent:token:revoke_all"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={500: {"model": ErrorResponse}},
+)
 async def revoke_all_t_tokens():
     """一键撤销所有 T 类 Token（紧急停止）"""
     count = agent_token_store.revoke_t_tokens()
@@ -615,7 +726,12 @@ from app.models.schemas import AgentPipelineRequest
 
 
 # 认证：管线执行属于执行类操作，需要 agent:execute 权限
-@router.post("/pipeline/execute", dependencies=[Depends(require_permission("agent:execute"))])
+@router.post(
+    "/pipeline/execute",
+    dependencies=[Depends(require_permission("agent:execute"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def execute_pipeline(request: AgentPipelineRequest):
     """
     执行工作流管线（B类，需要认证）
@@ -713,9 +829,14 @@ async def execute_pipeline(request: AgentPipelineRequest):
         )
 
 
-@router.get("/pipeline/history")
+@router.get(
+    "/pipeline/history",
+    dependencies=[Depends(require_permission("agent:read"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={500: {"model": ErrorResponse}},
+)
 async def get_pipeline_history(
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):
     """
@@ -762,7 +883,12 @@ async def get_pipeline_history(
         )
 
 
-@router.get("/pipeline/{pipeline_id}/trace")
+@router.get(
+    "/pipeline/{pipeline_id}/trace",
+    dependencies=[Depends(require_permission("agent:read"))],
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def get_pipeline_trace(pipeline_id: str):
     """
     获取管线执行追踪详情（R类，需要认证）

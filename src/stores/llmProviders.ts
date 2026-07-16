@@ -61,8 +61,15 @@ export const useLLMProvidersStore = defineStore('llmProviders', () => {
     try {
       const [list, statusResp, routerResp] = await Promise.all([
         api.listProviders(),
-        api.getRegistryStatus().catch(() => null),
-        api.getRouterStatus().catch(() => null),
+        // 状态查询失败时降级为 null，不阻塞列表加载，但需记录便于排查
+        api.getRegistryStatus().catch((e: unknown) => {
+          console.warn('[llmProviders] getRegistryStatus failed:', e)
+          return null
+        }),
+        api.getRouterStatus().catch((e: unknown) => {
+          console.warn('[llmProviders] getRouterStatus failed:', e)
+          return null
+        }),
       ])
       providers.value = list
       status.value = statusResp
@@ -78,14 +85,20 @@ export const useLLMProvidersStore = defineStore('llmProviders', () => {
   async function refreshStatus(): Promise<void> {
     try {
       const [statusResp, routerResp] = await Promise.all([
-        api.getRegistryStatus().catch(() => null),
-        api.getRouterStatus().catch(() => null),
+        api.getRegistryStatus().catch((e: unknown) => {
+          console.warn('[llmProviders] getRegistryStatus failed:', e)
+          return null
+        }),
+        api.getRouterStatus().catch((e: unknown) => {
+          console.warn('[llmProviders] getRouterStatus failed:', e)
+          return null
+        }),
       ])
       status.value = statusResp
       routerStatus.value = routerResp
     } catch (e: unknown) {
-      // 静默失败
-      console.warn('刷新状态失败', e)
+      // 状态刷新失败属于辅助功能，不阻塞主流程，仅记录日志
+      console.warn('[llmProviders] refreshStatus failed:', e)
     }
   }
 

@@ -242,7 +242,7 @@ class Quantizer:
         return quantized_model
 
     def _calibrate(self, model: nn.Module, calibration_data: Any) -> None:
-        self.logger.info(f"Calibrating with {len(calibration_data)} samples")
+        self.logger.info("Calibrating with %s samples", len(calibration_data))
         model.eval()
 
         samples_processed = 0
@@ -264,11 +264,12 @@ class Quantizer:
                 if inputs.dim() == 1:
                     inputs = inputs.unsqueeze(0)
 
-                with torch.no_grad():
+                # P2-AI-4: 使用 inference_mode 替代 no_grad，校准阶段为纯推理，无需 autograd 图
+                with torch.inference_mode():
                     model(inputs)
 
                 samples_processed += inputs.shape[0]
-                self.logger.debug(f"Calibrated {samples_processed} samples")
+                self.logger.debug("Calibrated %s samples", samples_processed)
         else:
             if isinstance(calibration_data, np.ndarray):
                 calibration_data = torch.from_numpy(calibration_data.astype(np.float32))
@@ -287,7 +288,8 @@ class Quantizer:
                 if batch.dim() == 1:
                     batch = batch.unsqueeze(0)
 
-                with torch.no_grad():
+                # P2-AI-4: 使用 inference_mode 替代 no_grad，校准阶段为纯推理，无需 autograd 图
+                with torch.inference_mode():
                     model(batch)
 
                 samples_processed += batch.shape[0]
@@ -307,13 +309,13 @@ class Quantizer:
             os.makedirs(save_dir, exist_ok=True)
 
         torch.save(model.state_dict(), save_path)
-        self.logger.info(f"Quantized model saved to {save_path}")
+        self.logger.info("Quantized model saved to %s", save_path)
 
         if metadata:
             meta_path = save_path + ".meta.json"
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, indent=2, default=str)
-            self.logger.info(f"Metadata saved to {meta_path}")
+            self.logger.info("Metadata saved to %s", meta_path)
 
         return save_path
 
@@ -334,7 +336,7 @@ class Quantizer:
         state_dict = torch.load(model_path, map_location="cpu", weights_only=True)
         model.load_state_dict(state_dict)
 
-        self.logger.info(f"Quantized model loaded from {model_path}")
+        self.logger.info("Quantized model loaded from %s", model_path)
         return model
 
     def evaluate_performance(
@@ -365,7 +367,8 @@ class Quantizer:
         test_tensor = test_tensor[:num_samples]
 
         original_times = []
-        with torch.no_grad():
+        # P2-AI-4: 使用 inference_mode 替代 no_grad，基准测试为纯推理，无需 autograd 图
+        with torch.inference_mode():
             for i in range(len(test_tensor)):
                 sample = test_tensor[i : i + 1]
                 start = time.perf_counter()
@@ -376,7 +379,8 @@ class Quantizer:
         original_avg_time = np.mean(original_times)
 
         quantized_times = []
-        with torch.no_grad():
+        # P2-AI-4: 使用 inference_mode 替代 no_grad，基准测试为纯推理，无需 autograd 图
+        with torch.inference_mode():
             for i in range(len(test_tensor)):
                 sample = test_tensor[i : i + 1]
                 start = time.perf_counter()

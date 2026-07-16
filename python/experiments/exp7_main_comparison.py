@@ -15,10 +15,17 @@ from typing import Dict, List, Tuple
 
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
+# 添加项目根目录（python/）到 path，用于导入 app 模块
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from app.ai.lnn.training.reproducibility import set_global_seed
+from app.ai.lnn.training.experiment_tracker import start_run, is_enabled
 
 from config import ModelConfig, ExperimentConfig
 from models import (
-    CTLTCModel, CTCTCWithPhysics,
+    DLLNNModel, DLLNNWithPhysics,
     BaselineLSTM, BaselineTransformer, BaselinePINN, BaselineBPNN,
     BaselineCNN, BaselineGRU, BaselinegPINN, BaselinePeRCNN
 )
@@ -39,8 +46,8 @@ def create_model_by_name(name: str, config: ModelConfig, device: torch.device) -
         output_dim=config.output_dim,
     )
 
-    if name == 'CT-LTC':
-        model = CTCTCWithPhysics(
+    if name == 'DL-LNN':
+        model = DLLNNWithPhysics(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
@@ -285,7 +292,7 @@ def get_dataset_data_source(dataset_name: str) -> str:
     return mapping.get(dataset_name, 'unknown')
 
 
-MODEL_NAMES = ['CT-LTC', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
+MODEL_NAMES = ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
 
 
 def run_main_comparison_experiment():
@@ -457,4 +464,6 @@ def run_main_comparison_experiment():
 
 
 if __name__ == "__main__":
-    results = run_main_comparison_experiment()
+    set_global_seed(42)
+    with start_run(experiment_name="exp7_main_comparison"):
+        results = run_main_comparison_experiment()

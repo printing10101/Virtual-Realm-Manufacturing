@@ -11,7 +11,7 @@ import time
 from typing import Dict, List, Tuple
 from torch.utils.data import Dataset, DataLoader
 
-from models import CTLTCModel
+from models import DLLNNModel
 from metrics import ChatterMetrics
 
 
@@ -251,7 +251,7 @@ def run_sensor_comparison(sensor_config: str, device: str = "cpu") -> Dict:
     
     # 创建并训练多个模型
     models = {
-        "CT-LTC": CTLTCModel(
+        "DL-LNN": DLLNNModel(
             input_dim=input_dim,
             hidden_dim=64,
             num_layers=3,
@@ -312,7 +312,7 @@ def main():
     print("\n\n计算传感器融合增益...")
     fusion_gains = {}
     
-    for model_name in ["CT-LTC", "LSTM", "GRU"]:
+    for model_name in ["DL-LNN", "LSTM", "GRU"]:
         baseline_mae = None
         fused_mae = None
         

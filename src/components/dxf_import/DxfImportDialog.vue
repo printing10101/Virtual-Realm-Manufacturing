@@ -215,6 +215,7 @@
           v-if="store.parseResult.warnings && store.parseResult.warnings.length > 0"
           class="warning-section"
         >
+          <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
           <el-alert
             v-for="(w, i) in store.parseResult.warnings"
             :key="i"

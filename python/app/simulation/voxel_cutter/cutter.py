@@ -449,7 +449,13 @@ class VoxelCutter:
         max_retries: int = MAX_STL_RETRIES,
         retry_interval: float = STL_RETRY_INTERVAL,
     ) -> dict[str, Any]:
-        """确保STL文件存在，不存在则尝试从源文件自动生成。"""
+        """确保STL文件存在，不存在则尝试从源文件自动生成。
+
+        .. note::
+            仅同步上下文使用：本方法使用 ``time.sleep`` 进行重试退避，
+            不应在 async 上下文中直接调用。如需 async 支持，请用
+            ``asyncio.to_thread`` 包装。
+        """
 
         if stl_path.exists():
             logger.info(

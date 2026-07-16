@@ -11,7 +11,7 @@ import time
 from typing import Dict, List
 from torch.utils.data import DataLoader
 
-from models import CTLTCModel
+from models import DLLNNModel
 from data_generator import PHM2010Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
@@ -29,7 +29,7 @@ def train_and_eval(seed: int, device: str = "cpu") -> Dict[str, float]:
     val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
-    model = CTLTCModel(input_dim=2, hidden_dim=64, num_layers=3, output_dim=1, dt=0.1, dropout=0.2)
+    model = DLLNNModel(input_dim=7, hidden_dim=64, num_layers=3, output_dim=1, dt=0.1, dropout=0.2)
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
     criterion = torch.nn.MSELoss()
@@ -91,14 +91,14 @@ def main():
 
     seeds = [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]
     models_to_test = {
-        "CT-LTC": lambda: None,  # placeholder
+        "DL-LNN": lambda: None,  # placeholder
         "LSTM": lambda: None,
         "GRU": lambda: None,
     }
 
     all_results = {}
 
-    for model_name in ["CT-LTC", "LSTM", "GRU"]:
+    for model_name in ["DL-LNN", "LSTM", "GRU"]:
         print(f"\n模型: {model_name}")
         print("-" * 40)
         run_results = []
@@ -107,12 +107,12 @@ def main():
             torch.manual_seed(seed)
             np.random.seed(seed)
 
-            if model_name == "CT-LTC":
-                model = CTLTCModel(input_dim=2, hidden_dim=64, num_layers=3, output_dim=1, dt=0.1, dropout=0.2)
+            if model_name == "DL-LNN":
+                model = DLLNNModel(input_dim=7, hidden_dim=64, num_layers=3, output_dim=1, dt=0.1, dropout=0.2)
             elif model_name == "LSTM":
-                model = torch.nn.LSTM(input_size=2, hidden_size=64, num_layers=2, batch_first=True)
+                model = torch.nn.LSTM(input_size=7, hidden_size=64, num_layers=2, batch_first=True)
             else:
-                model = torch.nn.GRU(input_size=2, hidden_size=64, num_layers=2, batch_first=True)
+                model = torch.nn.GRU(input_size=7, hidden_size=64, num_layers=2, batch_first=True)
 
             train_ds = PHM2010Dataset(num_samples=2000, noise_level=0.05, seed=seed)
             test_ds = PHM2010Dataset(num_samples=500, noise_level=0.05, seed=seed + 200)

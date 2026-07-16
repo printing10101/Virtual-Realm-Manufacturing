@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -462,17 +463,22 @@ class ProviderRouter:
 # ---------------------------------------------------------------------------
 
 _router: ProviderRouter | None = None
+_router_lock = threading.Lock()
 
 
 def get_router() -> ProviderRouter:
-    """获取全局 ProviderRouter 实例。"""
+    """获取全局 ProviderRouter 实例（双重检查锁，线程安全）。"""
     global _router
-    if _router is None:
-        _router = ProviderRouter()
+    if _router is not None:
+        return _router
+    with _router_lock:
+        if _router is None:
+            _router = ProviderRouter()
     return _router
 
 
 def reset_router() -> None:
     """重置全局路由器（主要供测试使用）。"""
     global _router
-    _router = None
+    with _router_lock:
+        _router = None

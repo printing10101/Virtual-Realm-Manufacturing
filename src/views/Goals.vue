@@ -136,8 +136,9 @@ const loadAlignmentSummary = async () => {
   try {
     const res = await http.get(buildApiPath(API_CONFIG.GOAL_ALIGNMENT, '/summary'))
     alignmentSummary.value = res.data?.data
-  } catch {
-    // 静默处理
+  } catch (e: unknown) {
+    // 对齐摘要为辅助信息，加载失败不阻塞主流程，但需记录便于排查
+    console.warn('[Goals] loadAlignmentSummary failed:', e)
   }
 }
 

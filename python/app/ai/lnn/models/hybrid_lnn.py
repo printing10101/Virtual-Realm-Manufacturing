@@ -22,7 +22,7 @@ Example:
 import numpy as np
 from typing import Any, Dict, List, Optional
 
-from .base_lnn import BaseLNNModel
+from .base_lnn import BaseLNNModel, DEFAULT_WEIGHT_DECAY
 
 
 class HybridLNNModel(BaseLNNModel):
@@ -374,8 +374,9 @@ class HybridLNNModel(BaseLNNModel):
             indices = np.random.choice(
                 n_samples, min(batch_size, n_samples), replace=False
             )
-            batch_data = torch.FloatTensor(data[indices])
-            batch_labels = torch.FloatTensor(labels[indices])
+            # P3-AI-3: 使用 torch.tensor + 显式 dtype 替代 FloatTensor，避免受全局默认 dtype 影响
+            batch_data = torch.tensor(data[indices], dtype=torch.float32)
+            batch_labels = torch.tensor(labels[indices], dtype=torch.float32)
             if batch_labels.ndim == 1:
                 batch_labels = batch_labels.unsqueeze(1)
 
@@ -393,7 +394,7 @@ class HybridLNNModel(BaseLNNModel):
             torch_model.train()
 
             optimizer = torch.optim.AdamW(
-                torch_model.parameters(), lr=learning_rate, weight_decay=1e-5
+                torch_model.parameters(), lr=learning_rate, weight_decay=DEFAULT_WEIGHT_DECAY
             )
             criterion = torch.nn.MSELoss()
 
@@ -482,7 +483,8 @@ class HybridLNNModel(BaseLNNModel):
     def _sync_from_torch(self, torch_model) -> None:
         """从PyTorch模型同步权重回NumPy模型"""
         import torch as _torch
-        with _torch.no_grad():
+        # P2-AI-4: 使用 inference_mode 替代 no_grad，权重同步为纯读操作，无需 autograd 图
+        with _torch.inference_mode():
             # 同步CNN权重
             cnn_layers = torch_model.cnn
             conv_idx = 0

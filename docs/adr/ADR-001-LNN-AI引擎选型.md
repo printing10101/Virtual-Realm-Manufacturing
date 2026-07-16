@@ -1,8 +1,20 @@
-# ADR-001: 采用 LNN（逻辑神经网络）作为核心 AI 推理引擎
+# ADR-001: 采用 LNN（Liquid Neural Network，液态神经网络）作为核心 AI 推理引擎
 
 **日期**: 2024-01-15  
 **状态**: 已接受  
 **决策者**: AI 架构团队、技术委员会
+
+---
+
+## 修订记录
+
+| 日期 | 修订内容 | 修订人 |
+|------|----------|--------|
+| 2024-01-15 | 初始版本（采用 LNN 作为核心 AI 推理引擎） | AI 架构团队 |
+| 2024-02-01 | 补充实施计划细节 | 技术委员会 |
+| 2026-07-09 | 学术命名统一：LNN 定义由 "Logical Neural Network（逻辑神经网络）" 修正为 "Liquid Neural Network（液态神经网络）"，CFC 定义由 "Continuous Fluid Dynamics" 修正为 "Closed-form Continuous-time"。本次修订原因：研究核心为 LTC (Liquid Time-Constant) 网络在颤振预测中的应用，模型命名已统一为 DL-LNN (Delay-embedded Liquid Neural Network)，本文档须与代码（`DLLNNModel` 类）及 `docs/research/experiment_design.md` 保持一致 | 学术诚信修订组 |
+
+> **命名一致性说明**：本 ADR 描述的 LNN 引擎指基于液态时间常数（Liquid Time-Constant）的连续时间循环神经网络族，涵盖 LTC (Liquid Time-Constant) 与 CFC (Closed-form Continuous-time) 两类模型。在颤振预测研究中实际部署的具体模型为 DL-LNN (Delay-embedded Liquid Neural Network)，对应代码中的 `DLLNNModel` 类（见 `python/experiments/models.py`）。
 
 ---
 
@@ -19,10 +31,10 @@
 
 ## 决策
 
-采用 **LNN（Logical Neural Network，逻辑神经网络）** 作为系统的核心 AI 推理引擎，具体技术选型包括：
+采用 **LNN（Liquid Neural Network，液态神经网络）** 作为系统的核心 AI 推理引擎，具体技术选型包括：
 
 - **基础框架**：PyTorch 2.0+
-- **LNN 实现**：自研 LNN 引擎，支持 CFC（Continuous Fluid Dynamics）和 LTC（Liquid Time Constant）模型
+- **LNN 实现**：自研 LNN 引擎，支持 CFC（Closed-form Continuous-time）和 LTC（Liquid Time-Constant）模型
 - **规则集成**：支持将领域专家规则转换为神经网络约束
 - **不确定性建模**：集成贝叶斯推理，提供预测置信度区间
 
@@ -38,10 +50,10 @@
    - 优点：完全可解释、易于维护、确定性输出
    - 缺点：缺乏学习能力、规则维护成本高、难以处理复杂模式
 
-3. **方案 C：LNN（逻辑神经网络）** ✓ **选择**
+3. **方案 C：LNN（Liquid Neural Network，液态神经网络）** ✓ **选择**
    - 优点：
-     - **可解释性**：网络结构与逻辑规则对应，可追溯决策路径
-     - **知识融合**：天然支持将专家规则嵌入网络结构
+     - **可解释性**：液态时间常数网络的状态演化可追溯决策路径
+     - **知识融合**：支持将专家规则嵌入网络结构
      - **不确定性量化**：通过贝叶斯方法提供置信度评估
      - **持续学习**：支持在线学习和增量更新
      - **领域适配**：特别适合制造业这种规则+数据并重的场景
@@ -93,7 +105,7 @@
 
 ### 阶段一：基础引擎开发（2024 Q1）
 - 实现 LNN 核心算子和网络层
-- 支持 CFC 和 LTC 模型
+- 支持 CFC（Closed-form Continuous-time）和 LTC（Liquid Time-Constant）模型
 - 完成基础训练和推理功能
 - **负责人**：AI 架构组
 
@@ -117,10 +129,11 @@
 
 ## 相关文档
 
-- [LNN 架构设计文档](../docs/ai/lnn-architecture.md)
-- [LNN 训练指南](../docs/ai/lnn-training-guide.md)
-- [规则系统集成指南](../docs/ai/rule-integration.md)
-- [LNN API 参考](../docs/api/lnn-api.md)
+- [Bayesian LNN 架构与训练指南](../ai/bayesian-lnn-guide.md)
+- [模型自动微调流水线指南](../ai/auto-retrain-guide.md)
+- [主动学习触发器系统](../ai/active-learning-triggers.md)
+- [API 参考文档](../api-reference.md)
+- [实验设计文档](../research/experiment_design.md)（DL-LNN 模型在颤振预测中的应用）
 
 ## 变更记录
 
@@ -128,3 +141,4 @@
 |------|----------|--------|
 | 2024-01-15 | 初始版本 | AI 架构团队 |
 | 2024-02-01 | 补充实施计划细节 | 技术委员会 |
+| 2026-07-09 | 学术命名统一：LNN=Liquid Neural Network（液态神经网络），CFC=Closed-form Continuous-time；与 DL-LNN / `DLLNNModel` 对齐 | 学术诚信修订组 |

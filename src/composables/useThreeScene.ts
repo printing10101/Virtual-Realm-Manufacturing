@@ -71,8 +71,9 @@ export function useThreeScene(options: SceneOptions): ThreeSceneReturn {
     scene.add(light)
   }
 
+  let gridHelper: THREE.GridHelper | null = null
   if (showGrid) {
-    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x444444, 0x222222)
+    gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x444444, 0x222222)
     scene.add(gridHelper)
   }
 
@@ -108,6 +109,13 @@ export function useThreeScene(options: SceneOptions): ThreeSceneReturn {
     stopAnimation()
     controls.dispose()
     renderer.dispose()
+    // 释放 GridHelper 的 geometry 和 material，避免 GPU 内存泄漏
+    if (gridHelper) {
+      gridHelper.geometry?.dispose()
+      ;(gridHelper.material as THREE.Material)?.dispose?.()
+      scene.remove(gridHelper)
+      gridHelper = null
+    }
     if (renderer.domElement.parentNode) {
       renderer.domElement.parentNode.removeChild(renderer.domElement)
     }

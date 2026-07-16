@@ -64,7 +64,8 @@ def get_memory_usage():
         try:
             if torch.cuda.is_available():
                 return torch.cuda.memory_allocated()
-        except:
+        except Exception:
+            # CUDA 不可用或调用失败时返回 0，与 ImportError 路径一致
             pass
         return 0
 

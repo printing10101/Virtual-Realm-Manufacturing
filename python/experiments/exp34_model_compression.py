@@ -13,7 +13,7 @@ import copy
 from typing import Dict, List
 from torch.utils.data import DataLoader
 
-from models import CTLTCModel
+from models import DLLNNModel
 from metrics import ChatterMetrics
 from data_generator import SyntheticChatterDataset
 
@@ -24,7 +24,7 @@ def quantize_model(model: torch.nn.Module, bits: int = 8) -> torch.nn.Module:
     将浮点参数转换为低精度表示
     """
     # 创建模型副本
-    quantized_model = CTLTCModel(
+    quantized_model = DLLNNModel(
         input_dim=model.input_dim,
         hidden_dim=model.hidden_dim,
         num_layers=model.num_layers,
@@ -52,7 +52,7 @@ def prune_model(model: torch.nn.Module, amount: float = 0.3) -> torch.nn.Module:
     移除不重要的权重连接
     """
     # 创建模型副本
-    pruned_model = CTLTCModel(
+    pruned_model = DLLNNModel(
         input_dim=model.input_dim,
         hidden_dim=model.hidden_dim,
         num_layers=model.num_layers,
@@ -142,7 +142,7 @@ def main():
     print("\n实验1：原始模型基线")
     print("-" * 40)
     
-    original_model = CTLTCModel(input_dim=2, hidden_dim=64)
+    original_model = DLLNNModel(input_dim=7, hidden_dim=64)
     original_model = original_model.to(device)
     
     # 训练原始模型

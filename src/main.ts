@@ -1,14 +1,28 @@
 // === 全局错误捕获（必须在所有其他代码之前注册） ===
 // 用于诊断 Tauri 桌面环境下白屏问题：将任何未捕获的错误渲染到页面，避免白屏无信息。
+
+/**
+ * 完整 HTML 转义：防止错误信息中的特殊字符在 innerHTML 上下文中被解析为 HTML/JS。
+ * 转义顺序要求 & 必须最先，否则后续转义产生的实体会被二次转义。
+ */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function renderFatalError(stage: string, err: unknown) {
   const msg = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack ?? ''}` : String(err)
   const html = `
     <div style="position:fixed;inset:0;background:#1e1e1e;color:#ff5555;font-family:Consolas,monospace;font-size:13px;padding:20px;z-index:2147483647;overflow:auto;white-space:pre-wrap;">
-      <h2 style="color:#ff9900;margin:0 0 12px;">[致命错误] ${stage}</h2>
-      <div style="color:#dddddd;">${msg.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+      <h2 style="color:#ff9900;margin:0 0 12px;">[致命错误] ${escapeHtml(stage)}</h2>
+      <div style="color:#dddddd;">${escapeHtml(msg)}</div>
       <hr style="border:0;border-top:1px solid #444;margin:16px 0;" />
-      <div style="color:#888;">UA: ${navigator.userAgent}</div>
-      <div style="color:#888;">URL: ${location.href}</div>
+      <div style="color:#888;">UA: ${escapeHtml(navigator.userAgent)}</div>
+      <div style="color:#888;">URL: ${escapeHtml(location.href)}</div>
       <div style="color:#888;">Time: ${new Date().toISOString()}</div>
     </div>
   `
@@ -30,7 +44,7 @@ window.addEventListener('unhandledrejection', (e) => {
 })
 
 // === 正常应用启动流程 ===
-import { createApp, ref, watch } from 'vue'
+import { createApp, ref } from 'vue'
 import { createPinia } from 'pinia'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
@@ -49,10 +63,6 @@ const elLocale = ref(getLocale() === 'en' ? en : zhCn)
 function syncElLocale(locale: string) {
   elLocale.value = locale === 'en' ? en : zhCn
 }
-
-watch(() => localStorage.getItem('app_locale'), (val) => {
-  if (val) syncElLocale(val)
-})
 
 const originalSetLocale = setLocale
 function setLocaleWithEl(locale: SupportedLocale) {

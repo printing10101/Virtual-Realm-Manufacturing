@@ -49,7 +49,7 @@ def create_results_directory():
 def run_experiment_1_main():
     """实验1: 主实验 - 模型对比"""
     print("\n" + "=" * 80)
-    print("实验1: 主实验 - 模型对比 (CT-LTC vs 8种基线方法)")
+    print("实验1: 主实验 - 模型对比 (DL-LNN vs 8种基线方法)")
     print("=" * 80)
     
     config = ExperimentConfig()
@@ -172,7 +172,7 @@ def run_experiment_4_visualization(
     
     # 模拟各模型预测
     predictions = {
-        'CT-LTC (Ours)': true_sld + np.random.normal(0, 0.05, 100),
+        'DL-LNN (Ours)': true_sld + np.random.normal(0, 0.05, 100),
         'Transformer': true_sld + np.random.normal(0, 0.15, 100),
         'LSTM': true_sld + np.random.normal(0, 0.20, 100),
         'PINN': true_sld + np.random.normal(0, 0.12, 100),
@@ -198,7 +198,7 @@ def generate_summary_report(
     
     report = []
     report.append("\n" + "=" * 80)
-    report.append("CT-LTC 铣削颤振稳定性预测 - 实验总结报告")
+    report.append("DL-LNN 铣削颤振稳定性预测 - 实验总结报告")
     report.append("=" * 80)
     report.append(f"\n实验时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
@@ -209,11 +209,11 @@ def generate_summary_report(
     
     for dataset_name, dataset_results in main_results.items():
         report.append(f"\n{dataset_name} 数据集:")
-        if 'CT-LTC' in dataset_results:
-            ct_ltc = dataset_results['CT-LTC']
-            report.append(f"  CT-LTC MAE: {ct_ltc.get('MAE', 'N/A'):.3f} mm")
-            report.append(f"  CT-LTC PCC: {ct_ltc.get('PCC', 'N/A'):.3f}")
-            report.append(f"  CT-LTC R²:  {ct_ltc.get('R²', 'N/A'):.3f}")
+        if 'DL-LNN' in dataset_results:
+            ct_ltc = dataset_results['DL-LNN']
+            report.append(f"  DL-LNN MAE: {ct_ltc.get('MAE', 'N/A'):.3f} mm")
+            report.append(f"  DL-LNN PCC: {ct_ltc.get('PCC', 'N/A'):.3f}")
+            report.append(f"  DL-LNN R²:  {ct_ltc.get('R²', 'N/A'):.3f}")
     
     # 2. 跨工况泛化结果
     report.append("\n" + "-" * 80)
@@ -222,17 +222,17 @@ def generate_summary_report(
     
     if 'LOMO' in cross_condition_results:
         lomo_avg = cross_condition_results['LOMO'].get('Average', {})
-        if 'CT-LTC' in lomo_avg:
+        if 'DL-LNN' in lomo_avg:
             report.append(f"\nLOMO协议 (跨材料):")
-            report.append(f"  CT-LTC 平均 MAE: {lomo_avg['CT-LTC']['MAE']:.3f} mm")
-            report.append(f"  CT-LTC 平均 PCC: {lomo_avg['CT-LTC']['PCC']:.3f}")
+            report.append(f"  DL-LNN 平均 MAE: {lomo_avg['DL-LNN']['MAE']:.3f} mm")
+            report.append(f"  DL-LNN 平均 PCC: {lomo_avg['DL-LNN']['PCC']:.3f}")
     
     if 'LOCO' in cross_condition_results:
         loco_avg = cross_condition_results['LOCO'].get('Average', {})
-        if 'CT-LTC' in loco_avg:
+        if 'DL-LNN' in loco_avg:
             report.append(f"\nLOCO协议 (跨工况):")
-            report.append(f"  CT-LTC 平均 MAE: {loco_avg['CT-LTC']['MAE']:.3f} mm")
-            report.append(f"  CT-LTC 平均 PCC: {loco_avg['CT-LTC']['PCC']:.3f}")
+            report.append(f"  DL-LNN 平均 MAE: {loco_avg['DL-LNN']['MAE']:.3f} mm")
+            report.append(f"  DL-LNN 平均 PCC: {loco_avg['DL-LNN']['PCC']:.3f}")
     
     # 3. 消融实验结果
     report.append("\n" + "-" * 80)
@@ -257,7 +257,7 @@ def generate_summary_report(
     report.append("4. 主要结论")
     report.append("-" * 80)
     
-    report.append("\n✓ CT-LTC在所有数据集上取得最佳性能")
+    report.append("\n✓ DL-LNN在所有数据集上取得最佳性能")
     report.append("✓ 连续时间建模相比离散时间网络(LSTM/GRU)有显著优势")
     report.append("✓ PCC Loss有效保证物理一致性")
     report.append("✓ 两阶段训练策略缓解小样本冷启动问题")
@@ -278,7 +278,7 @@ def generate_summary_report(
 def main():
     """主函数"""
     print("=" * 80)
-    print("CT-LTC 铣削颤振稳定性预测 - 完整实验流程")
+    print("DL-LNN 铣削颤振稳定性预测 - 完整实验流程")
     print("=" * 80)
     print(f"开始时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     

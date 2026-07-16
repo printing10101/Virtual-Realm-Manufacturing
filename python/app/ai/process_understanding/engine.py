@@ -534,7 +534,7 @@ class ProcessUnderstandingEngine:
             return extract_json_from_markdown(content)
         except (ValueError, KeyError, TypeError) as e:
             # JSON解析失败时回退到正则提取，记录警告以便调试
-            logger.warning(f"Entity JSON parsing failed, falling back to regex: {e}")
+            logger.warning("Entity JSON parsing failed, falling back to regex: %s", e)
             # 基于正则的简化提取
             entities = {}
             fields = ["材料", "精度", "批量", "设备", "刀具", "特征"]

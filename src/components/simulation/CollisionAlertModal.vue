@@ -167,7 +167,7 @@ watch(
         <div class="collision-list">
           <div
             v-for="(collision, index) in collisions"
-            :key="index"
+            :key="`${collision.toolSegment}-${collision.position[0]}-${collision.position[1]}-${collision.position[2]}`"
             class="collision-card"
             :class="[`severity-${collision.severity}`]"
           >

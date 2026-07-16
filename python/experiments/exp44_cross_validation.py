@@ -36,8 +36,8 @@ def generate_milling_data(num_samples=1000, seq_len=20, input_dim=6):
     return X, y
 
 
-class CTLTCModel(nn.Module):
-    """CT-LTC模型简化版"""
+class DLLNNModel(nn.Module):
+    """DL-LNN模型简化版"""
     def __init__(self, input_dim=6, hidden_dim=64, num_layers=3, output_dim=1, dt=0.01):
         super().__init__()
         self.input_dim = input_dim
@@ -205,8 +205,8 @@ def cross_validation_experiment():
     
     # 定义模型
     models = {
-        'CT-LTC': {
-            'class': CTLTCModel,
+        'DL-LNN': {
+            'class': DLLNNModel,
             'params': {'input_dim': 6, 'hidden_dim': 64, 'num_layers': 3, 'output_dim': 1, 'dt': 0.01}
         },
         'LSTM': {

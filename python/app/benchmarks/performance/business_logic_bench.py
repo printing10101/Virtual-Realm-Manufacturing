@@ -58,7 +58,7 @@ class BusinessLogicPerfBenchmark:
                     elapsed = (time.perf_counter() - t0) * 1000
                     times.append(elapsed)
                 except Exception as e:
-                    logger.debug(f"DXF解析失败: {e}")
+                    logger.debug("DXF解析失败: %s", e)
 
             # 清理测试文件
             if test_file.exists():
@@ -78,7 +78,7 @@ class BusinessLogicPerfBenchmark:
             return result
 
         except ImportError as e:
-            logger.warning(f"DXF模块不可用: {e}")
+            logger.warning("DXF模块不可用: %s", e)
             return {"dxf_parse_ms": -1}
 
     def test_process_planning(self) -> dict[str, float]:
@@ -117,7 +117,7 @@ class BusinessLogicPerfBenchmark:
             return result
 
         except Exception as e:
-            logger.warning(f"工艺规划测试失败: {e}")
+            logger.warning("工艺规划测试失败: %s", e)
             return {"process_planning_ms": -1}
 
     def test_toolpath_generation(self) -> dict[str, float]:
@@ -163,7 +163,7 @@ class BusinessLogicPerfBenchmark:
             return result
 
         except Exception as e:
-            logger.warning(f"刀轨生成测试失败: {e}")
+            logger.warning("刀轨生成测试失败: %s", e)
             return {"toolpath_gen_ms": -1}
 
     def test_post_processor(self) -> dict[str, float]:
@@ -200,7 +200,7 @@ class BusinessLogicPerfBenchmark:
             return result
 
         except Exception as e:
-            logger.warning(f"后处理测试失败: {e}")
+            logger.warning("后处理测试失败: %s", e)
             return {"post_processor_ms": -1}
 
     def test_lnn_real_inference(self) -> dict[str, float]:
@@ -223,7 +223,7 @@ class BusinessLogicPerfBenchmark:
                     elapsed = (time.perf_counter() - t0) * 1000
                     times.append(elapsed)
                 except Exception as e:
-                    logger.debug(f"LNN推理失败: {e}")
+                    logger.debug("LNN推理失败: %s", e)
 
             if not times:
                 return {"lnn_real_inference_ms": -1}
@@ -239,7 +239,7 @@ class BusinessLogicPerfBenchmark:
             return result
 
         except ImportError as e:
-            logger.warning(f"LNN模块不可用: {e}")
+            logger.warning("LNN模块不可用: %s", e)
             return {"lnn_real_inference_ms": -1}
 
     def _generate_test_dxf(self) -> str:
@@ -339,4 +339,4 @@ if __name__ == "__main__":
     results = bench.run_all()
     logger.info("\n业务逻辑性能测试结果:")
     for k, v in results.items():
-        logger.info(f"  {k}: {v}")
+        logger.info("  %s: %s", k, v)

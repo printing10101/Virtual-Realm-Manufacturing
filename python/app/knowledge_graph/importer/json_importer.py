@@ -269,6 +269,11 @@ def _retry_with_backoff(
 ) -> Any:
     """简单的指数退避重试包装。
 
+    .. note::
+        仅同步上下文使用：本函数使用 ``time.sleep`` 进行退避等待，
+        不应在 async 上下文中直接调用。async 路径请使用
+        ``asyncio.sleep`` 实现的异步重试包装。
+
     Args:
         func: 实际执行函数（无参 callable）。
         retries: 总重试次数（含首次执行）。``retries=3`` 表示最多尝试 3 次。
@@ -1012,9 +1017,9 @@ def import_all(
     )
 
     # 控制台输出固定格式
-    logger.info(f"导入完成：{report.total_nodes} 节点 {report.total_edges} 关系")
+    logger.info("导入完成：%s 节点 %s 关系", report.total_nodes, report.total_edges)
     if total_failed > 0:
-        logger.warning(f"  警告：{total_failed} 条记录失败，详情见 report")
+        logger.warning("  警告：%s 条记录失败，详情见 report", total_failed)
 
     return report
 

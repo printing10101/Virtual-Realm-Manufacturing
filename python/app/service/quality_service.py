@@ -7,13 +7,17 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, date
 from typing import Optional
 
 from sqlalchemy import select, func
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.database.connection import get_sessionmaker
 from app.database.models import QualityRecord, QualityAnomaly
+
+logger = logging.getLogger(__name__)
 
 
 def _get_session():
@@ -81,23 +85,30 @@ async def create_quality_record(
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        # 生成检验编号 - 使用微秒时间戳避免并发冲突
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-        inspection_no = f"QC-{timestamp}"
+        try:
+            # 生成检验编号 - 使用微秒时间戳避免并发冲突
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+            inspection_no = f"QC-{timestamp}"
 
-        record = QualityRecord(
-            inspection_no=inspection_no,
-            batch_no=batch_no,
-            inspection_type=inspection_type,
-            result=result,
-            inspector=inspector,
-            notes=notes,
-        )
-        session.add(record)
-        await session.flush()
-        await session.commit()
-
-    return record.to_dict()
+            record = QualityRecord(
+                inspection_no=inspection_no,
+                batch_no=batch_no,
+                inspection_type=inspection_type,
+                result=result,
+                inspector=inspector,
+                notes=notes,
+            )
+            session.add(record)
+            await session.commit()
+            return record.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("创建质量检验记录失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("创建质量检验记录失败: %s", e, exc_info=True)
+            raise
 
 
 async def get_quality_stats() -> dict:
@@ -202,31 +213,39 @@ async def seed_quality_data() -> dict:
         ]
 
         record_map = {}  # inspection_no -> id
-        for rd in records_data:
-            rec = QualityRecord(**rd)
-            session.add(rec)
-            await session.flush()
-            record_map[rd["inspection_no"]] = rec.id
+        try:
+            for rd in records_data:
+                rec = QualityRecord(**rd)
+                session.add(rec)
+                await session.flush()
+                record_map[rd["inspection_no"]] = rec.id
 
-        # 8 条异常记录: 3 尺寸偏差, 2 表面缺陷, 2 材料问题, 1 其他
-        anomalies_data = [
-            {"record_id": record_map["QC-20260623-003"], "anomaly_type": "表面缺陷", "description": "成品表面粗糙度Ra值超标", "severity": "一般", "status": "处理中"},
-            {"record_id": record_map["QC-20260623-005"], "anomaly_type": "尺寸偏差", "description": "轴径尺寸偏大0.02mm", "severity": "严重", "status": "待处理"},
-            {"record_id": record_map["QC-20260623-007"], "anomaly_type": "材料问题", "description": "材料硬度低于标准值HRC58", "severity": "严重", "status": "待处理"},
-            {"record_id": record_map["QC-20260623-003"], "anomaly_type": "尺寸偏差", "description": "孔径公差超出允许范围", "severity": "一般", "status": "已解决"},
-            {"record_id": record_map["QC-20260623-005"], "anomaly_type": "尺寸偏差", "description": "长度方向尺寸偏差0.05mm", "severity": "一般", "status": "处理中"},
-            {"record_id": record_map["QC-20260623-007"], "anomaly_type": "材料问题", "description": "材料成分中Cr含量偏低", "severity": "严重", "status": "待处理"},
-            {"record_id": record_map["QC-20260623-003"], "anomaly_type": "表面缺陷", "description": "表面有明显划痕", "severity": "一般", "status": "已解决"},
-            {"record_id": record_map["QC-20260623-005"], "anomaly_type": "其他", "description": "标签信息不完整", "severity": "轻微", "status": "已解决"},
-        ]
+            # 8 条异常记录: 3 尺寸偏差, 2 表面缺陷, 2 材料问题, 1 其他
+            anomalies_data = [
+                {"record_id": record_map["QC-20260623-003"], "anomaly_type": "表面缺陷", "description": "成品表面粗糙度Ra值超标", "severity": "一般", "status": "处理中"},
+                {"record_id": record_map["QC-20260623-005"], "anomaly_type": "尺寸偏差", "description": "轴径尺寸偏大0.02mm", "severity": "严重", "status": "待处理"},
+                {"record_id": record_map["QC-20260623-007"], "anomaly_type": "材料问题", "description": "材料硬度低于标准值HRC58", "severity": "严重", "status": "待处理"},
+                {"record_id": record_map["QC-20260623-003"], "anomaly_type": "尺寸偏差", "description": "孔径公差超出允许范围", "severity": "一般", "status": "已解决"},
+                {"record_id": record_map["QC-20260623-005"], "anomaly_type": "尺寸偏差", "description": "长度方向尺寸偏差0.05mm", "severity": "一般", "status": "处理中"},
+                {"record_id": record_map["QC-20260623-007"], "anomaly_type": "材料问题", "description": "材料成分中Cr含量偏低", "severity": "严重", "status": "待处理"},
+                {"record_id": record_map["QC-20260623-003"], "anomaly_type": "表面缺陷", "description": "表面有明显划痕", "severity": "一般", "status": "已解决"},
+                {"record_id": record_map["QC-20260623-005"], "anomaly_type": "其他", "description": "标签信息不完整", "severity": "轻微", "status": "已解决"},
+            ]
 
-        for ad in anomalies_data:
-            session.add(QualityAnomaly(**ad))
+            for ad in anomalies_data:
+                session.add(QualityAnomaly(**ad))
 
-        await session.commit()
-
-    return {
-        "already_exists": False,
-        "records_count": len(records_data),
-        "anomalies_count": len(anomalies_data),
-    }
+            await session.commit()
+            return {
+                "already_exists": False,
+                "records_count": len(records_data),
+                "anomalies_count": len(anomalies_data),
+            }
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("填充质量检验演示数据失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("填充质量检验演示数据失败: %s", e, exc_info=True)
+            raise

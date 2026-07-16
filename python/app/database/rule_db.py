@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 # 数据格式版本（用于区分导出数据结构的版本）
 CURRENT_FORMAT_VERSION = "1.0"
 
+# 默认查询条数上限（用于 list_rules 等接口的默认 limit）
+DEFAULT_QUERY_LIMIT = 10000
+# 导出场景下的最大条数上限
+MAX_EXPORT_LIMIT = 100000
+
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 VERSION_FILE = PROJECT_ROOT / "VERSION"
 
@@ -30,7 +35,7 @@ def get_project_version() -> str:
     try:
         return VERSION_FILE.read_text(encoding="utf-8").strip()
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as e:
-            logger.warning(f"无法读取VERSION文件: {e}，使用默认版本 0.0.0")
+            logger.warning("无法读取VERSION文件: %s，使用默认版本 0.0.0", e)
             return "0.0.0"
 
 
@@ -260,8 +265,8 @@ class RuleDatabase:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
                 description TEXT DEFAULT '',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+                updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
             )
         """)
 
@@ -276,8 +281,8 @@ class RuleDatabase:
                 result_json TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'active',
                 priority INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+                updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
                 FOREIGN KEY (group_id) REFERENCES rule_groups(id) ON DELETE SET NULL
             )
         """)
@@ -293,7 +298,7 @@ class RuleDatabase:
         """)
 
         conn.commit()
-        logger.info(f"工艺规则数据库初始化完成: {self.db_path}")
+        logger.info("工艺规则数据库初始化完成: %s", self.db_path)
 
     def close(self):
         """关闭数据库连接，归还连接到连接池"""
@@ -306,7 +311,13 @@ class RuleDatabase:
         self.close()
 
     def _now(self) -> str:
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        """返回当前时间的 ISO8601 带时区格式字符串（UTC）。
+
+        统一时间戳格式为 ``YYYY-MM-DDTHH:MM:SSZ``（UTC 零时区），
+        与 DDL 中的 ``DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`` 一致。
+        """
+        from datetime import timezone
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def _row_to_rule(self, row: sqlite3.Row) -> ProcessRule:
         conditions = json.loads(row["conditions_json"])
@@ -369,7 +380,7 @@ class RuleDatabase:
         )
         conn.commit()
         rule.id = cursor.lastrowid
-        logger.info(f"创建规则: {rule.name} (id={rule.id})")
+        logger.info("创建规则: %s (id=%s)", rule.name, rule.id)
         return rule
 
     def update_rule(self, rule_id: int, rule: ProcessRule) -> Optional[ProcessRule]:
@@ -404,7 +415,7 @@ class RuleDatabase:
         if cursor.rowcount == 0:
             return None
         rule.id = rule_id
-        logger.info(f"更新规则: {rule.name} (id={rule_id})")
+        logger.info("更新规则: %s (id=%s)", rule.name, rule_id)
         return rule
 
     def delete_rule(self, rule_id: int) -> bool:
@@ -413,7 +424,7 @@ class RuleDatabase:
         cursor.execute("DELETE FROM rules WHERE id=?", (rule_id,))
         conn.commit()
         if cursor.rowcount > 0:
-            logger.info(f"删除规则: id={rule_id}")
+            logger.info("删除规则: id=%s", rule_id)
             return True
         return False
 
@@ -491,7 +502,7 @@ class RuleDatabase:
     def load_all_active_rules(self) -> List[ProcessRule]:
         """加载所有启用状态的规则（用于LNN引擎启动时加载）"""
         return self.list_rules(
-            status="active", sort_by="priority", sort_order="DESC", limit=10000
+            status="active", sort_by="priority", sort_order="DESC", limit=DEFAULT_QUERY_LIMIT
         )
 
     # ==================== Group CRUD ====================
@@ -513,7 +524,7 @@ class RuleDatabase:
         )
         conn.commit()
         group.id = cursor.lastrowid
-        logger.info(f"创建规则分组: {group.name} (id={group.id})")
+        logger.info("创建规则分组: %s (id=%s)", group.name, group.id)
         return group
 
     def update_group(self, group_id: int, group: RuleGroup) -> Optional[RuleGroup]:
@@ -564,7 +575,7 @@ class RuleDatabase:
 
     def export_rules(self, output_path: str) -> Dict[str, Any]:
         """导出所有规则和分组到JSON文件"""
-        rules = self.list_rules(limit=100000)
+        rules = self.list_rules(limit=MAX_EXPORT_LIMIT)
         groups = self.list_groups()
 
         project_version = get_project_version()
@@ -605,7 +616,7 @@ class RuleDatabase:
         )
 
         if not is_compatible:
-            logger.warning(f"规则导入版本不兼容: {version_message}")
+            logger.warning("规则导入版本不兼容: %s", version_message)
             return {
                 "imported_groups": 0,
                 "imported_rules": 0,
@@ -617,7 +628,7 @@ class RuleDatabase:
             }
 
         if import_version != current_version:
-            logger.info(f"规则导入版本提示: {version_message}")
+            logger.info("规则导入版本提示: %s", version_message)
 
         imported_groups = 0
         imported_rules = 0
@@ -656,7 +667,7 @@ class RuleDatabase:
             "compatible" if import_version == current_version else "warning"
         )
 
-        logger.info(f"导入规则完成: {imported_groups} 个分组, {imported_rules} 条规则")
+        logger.info("导入规则完成: %s 个分组, %s 条规则", imported_groups, imported_rules)
         return {
             "imported_groups": imported_groups,
             "imported_rules": imported_rules,
@@ -677,7 +688,7 @@ class RuleDatabase:
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 
         shutil.copy2(self.db_path, backup_path)
-        logger.info(f"数据库备份完成: {backup_path}")
+        logger.info("数据库备份完成: %s", backup_path)
         return backup_path
 
     def _find_group_by_name(self, name: str) -> Optional[RuleGroup]:

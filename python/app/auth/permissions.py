@@ -367,36 +367,178 @@ def require_role(*roles: str):
     return role_checker
 
 
+# [F-P0-4] 防复发：T 级操作敏感字段脱敏白名单
+#   NC 程序内容、API Key、密码等不得写入审计日志或普通日志
+_SENSITIVE_FIELDS: tuple[str, ...] = (
+    "api_key", "password", "token", "secret", "credential",
+    "nc_program", "g_code", "nc_code",  # NC 程序可能含商业机密
+    "signature", "private_key",
+)
+
+# [F-P0-4] 防复发：T 级操作机床安全前置状态字段
+#   依据 ISO 10218 工业机器人安全标准 + 用户三方评估 F-P0-4
+#   实模式执行前必须校验所有物理安全信号
+REQUIRED_MACHINE_SAFETY_FIELDS: tuple[str, ...] = (
+    "emergency_stop_active",   # 急停是否触发（True=危险，必须阻止）
+    "guard_door_closed",       # 防护门是否关闭
+    "light_curtain_clear",     # 光幕是否畅通
+    "operator_present",        # 操作员是否在场
+)
+
+
 class PaperOnlyGuard:
+    """T 级操作（机床执行）守卫，确保 Paper-Only 模式安全。
+
+    设计依据：
+    - ISO 10218 工业机器人安全标准
+    - FDA 21 CFR Part 11 电子记录/电子签名
+    - 用户三方评估 F-P0-4：实模式必须双因子确认 + 物理急停硬联锁
+
+    防复发机制：
+    1. 配置热刷新：每次从环境变量读取，避免启动时固化导致配置无法热切换
+    2. 双因子确认：操作员权限 + 班长确认（supervisor_confirmed）
+    3. 机床状态前置校验：检查急停/防护门/光幕/操作员在场
+    4. 审计日志：T 级操作必须留痕，敏感字段脱敏
+    """
+
     def __init__(self):
-        self.live_execution_enabled = (
-            os.environ.get("LNN_LIVE_EXECUTION_ENABLED", "false").lower() == "true"
-        )
+        # 兼容旧代码：保留实例字段，但 is_live_execution_allowed 改为实时读取
+        # 避免启动时固化配置导致无法热切换
+        self._live_execution_cached: Optional[bool] = None
+
+    @staticmethod
+    def _read_live_execution_enabled() -> bool:
+        """实时读取环境变量，支持热刷新（不再启动时固化）。"""
+        return os.environ.get("LNN_LIVE_EXECUTION_ENABLED", "false").lower() == "true"
 
     def is_live_execution_allowed(self) -> bool:
-        return self.live_execution_enabled
+        """是否允许实模式执行（实时读取环境变量）。"""
+        return self._read_live_execution_enabled()
 
     def check_t_operation(
-        self, has_t_permission: bool, ui_confirmed: bool
+        self,
+        has_t_permission: bool,
+        ui_confirmed: bool,
+        supervisor_confirmed: bool = False,
+        machine_safety_status: Optional[Dict[str, bool]] = None,
     ) -> tuple[bool, str]:
-        if not self.live_execution_enabled:
+        """T 级操作前置校验。
+
+        Args:
+            has_t_permission: 操作员是否具备 T 级权限
+            ui_confirmed: 操作员 UI 确认
+            supervisor_confirmed: 班长双因子确认（F-P0-4 新增，默认 False
+                以强制调用方显式传入，避免遗漏）
+            machine_safety_status: 机床安全状态字典，包含：
+                - emergency_stop_active: 急停是否触发（True=危险，禁止执行）
+                - guard_door_closed: 防护门是否关闭
+                - light_curtain_clear: 光幕是否畅通
+                - operator_present: 操作员是否在场
+
+        Returns:
+            (是否允许执行, 原因说明)
+        """
+        # 1. Paper-Only 模式快速拒绝
+        if not self.is_live_execution_allowed():
             return False, "Paper-Only mode: T operations are simulated"
 
+        # 2. 操作员权限校验
         if not has_t_permission:
             return False, "Insufficient permission: T-level required"
 
+        # 3. 操作员 UI 确认
         if not ui_confirmed:
             return False, "UI confirmation required for T operations"
 
+        # 4. 双因子确认（班长）—— F-P0-4 核心修复
+        if not supervisor_confirmed:
+            return False, "Supervisor dual-factor confirmation required for T operations"
+
+        # 5. 机床安全状态前置校验 —— F-P0-4 物理联锁
+        if machine_safety_status is not None:
+            if machine_safety_status.get("emergency_stop_active", True):
+                return False, "Machine emergency stop is active; T operation blocked"
+            if not machine_safety_status.get("guard_door_closed", False):
+                return False, "Guard door is open; T operation blocked"
+            if not machine_safety_status.get("light_curtain_clear", True):
+                return False, "Light curtain is blocked; T operation blocked"
+            if not machine_safety_status.get("operator_present", False):
+                return False, "Operator not present; T operation blocked"
+
         return True, "T operation approved"
 
-    def simulate_t_operation(self, operation: dict) -> dict:
-        logger.info("SIMULATED T operation (Paper-Only mode): %s", operation)
+    def simulate_t_operation(
+        self, operation: Dict[str, Any], operator: str = "unknown"
+    ) -> Dict[str, Any]:
+        """模拟 T 级操作，记录审计日志（脱敏）。
+
+        Args:
+            operation: 操作字典
+            operator: 操作员标识
+
+        Returns:
+            模拟结果字典
+        """
+        # 1. 脱敏：移除敏感字段后记录
+        sanitized = self._sanitize_operation(operation)
+        logger.info(
+            "SIMULATED T operation (Paper-Only mode) by %s: %s",
+            operator,
+            sanitized,
+        )
+
+        # 2. 写入审计日志（延迟导入避免循环依赖）
+        #    即使是模拟操作也必须留痕，满足 FDA 21 CFR Part 11 合规要求
+        try:
+            from app.audit.audit_log import (
+                Audit,
+                AIModule,
+                UserDecision,
+                OperationStatus,
+            )
+            from app.utils.utils import get_output_dir
+
+            audit = Audit(log_dir=str(get_output_dir("logs") / "audit"))
+            audit.log_decision(
+                ai_module=AIModule.PROCESS_OPTIMIZE,
+                ai_recommendation=sanitized,
+                user_decision=UserDecision.AUTO_EXECUTED,
+                final_execution={"executed": False, "mode": "paper-only"},
+                operation_status=OperationStatus.PENDING,
+                user_id=operator,
+                metadata={"operation_type": "t_operation_simulated"},
+            )
+        except ImportError:
+            logger.debug(
+                "Audit log module not available; skipping audit record for simulated T operation"
+            )
+        except Exception as exc:
+            # 审计日志写入失败不应阻断模拟流程，但必须告警
+            logger.warning(
+                "Failed to write audit log for simulated T operation: %s", exc
+            )
+
         return {
             "status": "simulated",
             "message": "Operation recorded but not executed (Paper-Only mode)",
-            "operation": operation,
+            "operation": sanitized,
         }
+
+    @staticmethod
+    def _sanitize_operation(operation: Dict[str, Any]) -> Dict[str, Any]:
+        """脱敏操作字典，移除敏感字段值。
+
+        依据 F-P0-4 安全要求：NC 程序内容、API Key、密码等
+        不得明文写入审计日志或普通日志。
+        """
+        sanitized: Dict[str, Any] = {}
+        for key, value in operation.items():
+            key_lower = str(key).lower()
+            if any(sensitive in key_lower for sensitive in _SENSITIVE_FIELDS):
+                sanitized[key] = "***REDACTED***"
+            else:
+                sanitized[key] = value
+        return sanitized
 
 
 paper_only_guard = PaperOnlyGuard()

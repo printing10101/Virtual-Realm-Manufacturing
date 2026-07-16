@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.auth.permissions import require_permission
 from app.utils.utils import validate_user_path
+from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,15 @@ def _validate_dxf_path(user_path: str) -> Path:
             project_root=_ALLOWED_DXF_BASE_DIRS[0],
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # 包装异常消息，避免直接回显内部错误细节
+        safe = safe_error_message(
+            exc, context="dxf_pipeline.validate_user_path", fallback="DXF 路径校验失败"
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=safe["message"],
+            headers={"X-Error-ID": safe["error_id"]},
+        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -165,13 +174,13 @@ def e2e_fixture(req: DxfE2EFixtureRequest) -> dict[str, Any]:
     if not fixtures_dir.exists():
         raise HTTPException(
             status_code=404,
-            detail=f"fixtures dir not found: {req.fixtures_dir}",
+            detail="指定的 fixtures 目录不存在，请检查路径配置",
         )
     dxf_files = sorted(fixtures_dir.glob("*.dxf"))
     if not dxf_files:
         raise HTTPException(
             status_code=404,
-            detail=f"no dxf files in {req.fixtures_dir}",
+            detail="指定目录中未找到任何 DXF 文件",
         )
     if len(dxf_files) > 20:
         dxf_files = dxf_files[:20]

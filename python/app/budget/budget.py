@@ -294,7 +294,7 @@ class BudgetManager:
                     )
                 except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
                     # 重复的预算条目插入（已存在）属于幂等性场景，记录后跳过
-                    logger.debug(f"Budget already exists, skipping insert: {e}")
+                    logger.debug("Budget already exists, skipping insert: %s", e)
 
             self._conn.commit()
 
@@ -570,7 +570,7 @@ class BudgetManager:
             self.close()
         except (sqlite3.ProgrammingError, AttributeError) as e:
             # 析构时数据库连接已关闭或对象处于无效状态属于正常 GC 路径
-            logger.debug(f"Cleanup during deallocation skipped: {e}")
+            logger.debug("Cleanup during deallocation skipped: %s", e)
 
 
 class _BudgetManagerHolder:

@@ -157,7 +157,7 @@ class ProcessPlanningDataManager:
         except json.JSONDecodeError as e:
             raise DataLoadError(f"JSON解析失败: {filename}, 错误: {e}") from e
         except (OSError, ValueError, TypeError, KeyError) as e:
-            logger.error(f"加载数据文件失败: {filename}, 错误: {e}")
+            logger.error("加载数据文件失败: %s, 错误: %s", filename, e)
             raise DataLoadError(f"加载数据文件失败: {filename}, 错误: {e}") from e
 
     def _load_all(self) -> None:

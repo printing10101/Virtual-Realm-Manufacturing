@@ -180,12 +180,24 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { invoke } from '@tauri-apps/api/core'
 import { ElMessage } from 'element-plus'
 import {
   Loading, RefreshRight, CopyDocument,
   CircleCheckFilled, CircleCloseFilled, WarningFilled
 } from '@element-plus/icons-vue'
+
+/**
+ * 安全修复：原代码静态导入 invoke，在非 Tauri 环境（Web/测试）会抛错。
+ * 改为动态导入 + 环境守卫，仅在桌面应用环境调用 IPC。
+ * 每个 async 函数内调用 `const invoke = await getInvoke()` 获取 invoke。
+ */
+async function getInvoke() {
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+    throw new Error('当前操作仅在桌面应用环境可用')
+  }
+  const mod = await import('@tauri-apps/api/core')
+  return mod.invoke
+}
 
 interface HealthItem {
   id: string
@@ -245,6 +257,7 @@ async function runAllChecks() {
   checking.value = true
   expandedId.value = null
   try {
+    const invoke = await getInvoke()
     const results = await invoke<HealthItem[]>('run_health_check')
     items.value = results
   } catch (e: unknown) {
@@ -258,6 +271,7 @@ async function runAllChecks() {
 async function retrySingleCheck(id: string) {
   singleCheckingId.value = id
   try {
+    const invoke = await getInvoke()
     const result = await invoke<HealthItem>('run_single_health_check', { component: id })
     const idx = items.value.findIndex(i => i.id === id)
     if (idx !== -1) {
@@ -274,6 +288,7 @@ async function retrySingleCheck(id: string) {
 async function runAutoFix(id: string) {
   fixingId.value = id
   try {
+    const invoke = await getInvoke()
     const result = await invoke<string>('auto_fix_health', { component: id })
     ElMessage.success(result)
     await retrySingleCheck(id)
@@ -287,6 +302,7 @@ async function runAutoFix(id: string) {
 
 async function copyDiagnostics() {
   try {
+    const invoke = await getInvoke()
     const text = await invoke<string>('get_diagnostics_text')
     await navigator.clipboard.writeText(text)
     ElMessage.success(t('healthCheck.diagnosticsCopied'))

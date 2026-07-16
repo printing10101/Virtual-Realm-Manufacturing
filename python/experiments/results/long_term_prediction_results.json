@@ -8,13 +8,13 @@
     5000
   ],
   "models": [
-    "CT-LTC",
+    "DL-LNN",
     "LSTM",
     "Transformer"
   ],
   "results": {
     "1000": {
-      "CT-LTC": {
+      "DL-LNN": {
         "avg_error": 1.8399356756190521,
         "final_error": 1.8649982368364337,
         "error_growth_rate": 0.005575888692227767,
@@ -76,7 +76,7 @@
       }
     },
     "2000": {
-      "CT-LTC": {
+      "DL-LNN": {
         "avg_error": 1.8710489198188605,
         "final_error": 1.9267497326254133,
         "error_growth_rate": 0.005891536612470631,
@@ -138,7 +138,7 @@
       }
     },
     "3000": {
-      "CT-LTC": {
+      "DL-LNN": {
         "avg_error": 1.9016624228524353,
         "final_error": 1.9865867540063369,
         "error_growth_rate": 0.0059233718063412474,
@@ -200,7 +200,7 @@
       }
     },
     "4000": {
-      "CT-LTC": {
+      "DL-LNN": {
         "avg_error": 1.9315361799957644,
         "final_error": 2.0435664229161374,
         "error_growth_rate": 0.005865595783821034,
@@ -262,7 +262,7 @@
       }
     },
     "5000": {
-      "CT-LTC": {
+      "DL-LNN": {
         "avg_error": 1.9604383237596357,
         "final_error": 2.0967902959181903,
         "error_growth_rate": 0.005754746497109506,

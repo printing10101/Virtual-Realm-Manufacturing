@@ -1,4 +1,4 @@
-﻿"""
+"""
 GPU Budget Management System - Comprehensive Integration Test Suite
 
 Tests all 8 budget management scenarios:
@@ -14,6 +14,7 @@ Tests all 8 budget management scenarios:
 
 import os
 import sys
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -48,15 +49,9 @@ from app.models.budget import (  # noqa: E402
 def temp_dir():
     tmpdir = tempfile.mkdtemp()
     yield tmpdir
-    for f in os.listdir(tmpdir):
-        try:
-            os.unlink(os.path.join(tmpdir, f))
-        except Exception:
-            pass
-    try:
-        os.rmdir(tmpdir)
-    except Exception:
-        pass
+    # P2-1 修复：改用 shutil.rmtree 递归清理，防止 db WAL/-shm 附属文件导致 rmdir 失败。
+    # 消除 except Exception: pass 静默吞错。
+    shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 @pytest.fixture

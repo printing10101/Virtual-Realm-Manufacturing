@@ -6,12 +6,16 @@
 
 from __future__ import annotations
 
-from typing import Optional
+import logging
+from typing import Any, Optional
 
 from sqlalchemy import select, func, delete
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.database.connection import get_sessionmaker
 from app.database.models import ProcessRoute, ProcessStep
+
+logger = logging.getLogger(__name__)
 
 
 def _get_session():
@@ -80,7 +84,7 @@ async def get_process_route(route_id: str) -> Optional[dict]:
     return result
 
 
-async def create_process_route(body_data: dict, steps: list[dict]) -> dict:
+async def create_process_route(body_data: dict[str, Any], steps: list[dict[str, Any]]) -> dict[str, Any]:
     """创建工艺路线（含工序步骤）。
 
     Args:
@@ -92,26 +96,34 @@ async def create_process_route(body_data: dict, steps: list[dict]) -> dict:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        route = ProcessRoute(
-            name=body_data["name"],
-            part_type=body_data["part_type"],
-            status=body_data["status"],
-            description=body_data["description"],
-            steps_count=len(steps),
-        )
-        session.add(route)
-        await session.flush()
-
-        for step_data in steps:
-            step = ProcessStep(
-                route_id=route.id,
-                **step_data,
+        try:
+            route = ProcessRoute(
+                name=body_data["name"],
+                part_type=body_data["part_type"],
+                status=body_data["status"],
+                description=body_data["description"],
+                steps_count=len(steps),
             )
-            session.add(step)
+            session.add(route)
+            await session.flush()
 
-        await session.commit()
+            for step_data in steps:
+                step = ProcessStep(
+                    route_id=route.id,
+                    **step_data,
+                )
+                session.add(step)
 
-    return route.to_dict()
+            await session.commit()
+            return route.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("创建工艺路线失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("创建工艺路线失败: %s", e, exc_info=True)
+            raise
 
 
 async def update_process_route(
@@ -131,40 +143,47 @@ async def update_process_route(
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        route_stmt = select(ProcessRoute).where(ProcessRoute.id == route_id)
-        route = (await session.execute(route_stmt)).scalar_one_or_none()
-        if not route:
-            return None
+        try:
+            route_stmt = select(ProcessRoute).where(ProcessRoute.id == route_id)
+            route = (await session.execute(route_stmt)).scalar_one_or_none()
+            if not route:
+                return None
 
-        # 更新基本字段
-        if "name" in update_fields:
-            route.name = update_fields["name"]
-        if "part_type" in update_fields:
-            route.part_type = update_fields["part_type"]
-        if "status" in update_fields:
-            route.status = update_fields["status"]
-        if "description" in update_fields:
-            route.description = update_fields["description"]
+            # 更新基本字段
+            if "name" in update_fields:
+                route.name = update_fields["name"]
+            if "part_type" in update_fields:
+                route.part_type = update_fields["part_type"]
+            if "status" in update_fields:
+                route.status = update_fields["status"]
+            if "description" in update_fields:
+                route.description = update_fields["description"]
 
-        # 如果提供了 steps，则替换所有工序
-        if steps is not None:
-            # 删除旧工序
-            del_stmt = delete(ProcessStep).where(ProcessStep.route_id == route_id)
-            await session.execute(del_stmt)
+            # 如果提供了 steps，则替换所有工序
+            if steps is not None:
+                # 删除旧工序
+                del_stmt = delete(ProcessStep).where(ProcessStep.route_id == route_id)
+                await session.execute(del_stmt)
 
-            for step_data in steps:
-                step = ProcessStep(
-                    route_id=route_id,
-                    **step_data,
-                )
-                session.add(step)
+                for step_data in steps:
+                    step = ProcessStep(
+                        route_id=route_id,
+                        **step_data,
+                    )
+                    session.add(step)
 
-            route.steps_count = len(steps)
+                route.steps_count = len(steps)
 
-        await session.flush()
-        await session.commit()
-
-    return route.to_dict()
+            await session.commit()
+            return route.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("更新工艺路线失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("更新工艺路线失败: %s", e, exc_info=True)
+            raise
 
 
 async def delete_process_route(route_id: str) -> Optional[bool]:
@@ -175,22 +194,30 @@ async def delete_process_route(route_id: str) -> Optional[bool]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        route_stmt = select(ProcessRoute).where(ProcessRoute.id == route_id)
-        route = (await session.execute(route_stmt)).scalar_one_or_none()
-        if not route:
-            return None
+        try:
+            route_stmt = select(ProcessRoute).where(ProcessRoute.id == route_id)
+            route = (await session.execute(route_stmt)).scalar_one_or_none()
+            if not route:
+                return None
 
-        # 删除工序
-        del_steps = delete(ProcessStep).where(ProcessStep.route_id == route_id)
-        await session.execute(del_steps)
+            # 删除工序
+            del_steps = delete(ProcessStep).where(ProcessStep.route_id == route_id)
+            await session.execute(del_steps)
 
-        # 删除路线
-        del_route = delete(ProcessRoute).where(ProcessRoute.id == route_id)
-        await session.execute(del_route)
+            # 删除路线
+            del_route = delete(ProcessRoute).where(ProcessRoute.id == route_id)
+            await session.execute(del_route)
 
-        await session.commit()
-
-    return True
+            await session.commit()
+            return True
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("删除工艺路线失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("删除工艺路线失败: %s", e, exc_info=True)
+            raise
 
 
 async def seed_process_routes() -> dict:
@@ -292,20 +319,28 @@ async def seed_process_routes() -> dict:
         ]
 
         steps_count = 0
-        for rs in routes_seed:
-            steps = rs.pop("steps")
-            steps_count += len(steps)
-            route = ProcessRoute(steps_count=len(steps), **rs)
-            session.add(route)
-            await session.flush()
+        try:
+            for rs in routes_seed:
+                steps = rs.pop("steps")
+                steps_count += len(steps)
+                route = ProcessRoute(steps_count=len(steps), **rs)
+                session.add(route)
+                await session.flush()
 
-            for sd in steps:
-                session.add(ProcessStep(route_id=route.id, **sd))
+                for sd in steps:
+                    session.add(ProcessStep(route_id=route.id, **sd))
 
-        await session.commit()
-
-    return {
-        "already_exists": False,
-        "routes_count": len(routes_seed),
-        "steps_count": steps_count,
-    }
+            await session.commit()
+            return {
+                "already_exists": False,
+                "routes_count": len(routes_seed),
+                "steps_count": steps_count,
+            }
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("填充工艺路线演示数据失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("填充工艺路线演示数据失败: %s", e, exc_info=True)
+            raise

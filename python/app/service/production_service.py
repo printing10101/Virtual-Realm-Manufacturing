@@ -10,10 +10,12 @@ from __future__ import annotations
 import logging
 import random
 from datetime import date, timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import select, func
+from sqlalchemy.exc import SQLAlchemyError
 
+from app.config import config
 from app.database.connection import get_sessionmaker
 from app.database.models import ProductionRecord, WorkOrder, EquipmentAlarm
 
@@ -23,6 +25,18 @@ logger = logging.getLogger(__name__)
 # 产线与班次常量（与原路由保持一致）
 LINES = ["产线A", "产线B", "产线C", "产线D", "产线E"]
 SHIFTS = ["早班", "中班", "晚班"]
+
+# 演示数据生成参数（P1 学术诚信：仅用于演示，禁止用于生产或学术论文实验）
+SEED_DATA_DAYS = 14
+SEED_PLANNED_QTY_MIN = 80
+SEED_PLANNED_QTY_MAX = 120
+SEED_ACTUAL_QTY_RATIO_MIN = 0.85
+SEED_QUALIFIED_RATIO_MIN = 0.92
+SEED_QUALIFIED_RATIO_MAX = 0.99
+SEED_UTILIZATION_MIN = 75.0
+SEED_UTILIZATION_MAX = 98.0
+SEED_ENERGY_MIN = 200.0
+SEED_ENERGY_MAX = 500.0
 
 
 def _get_session():
@@ -41,7 +55,7 @@ async def get_dashboard() -> dict:
          "oee": float, "equipment_utilization": float, "active_alarms": int}
     """
     sessionmaker = _get_session()
-    today = date.today().isoformat()
+    today = date.today()
 
     async with sessionmaker() as session:
         # 今日产量
@@ -83,8 +97,8 @@ async def get_dashboard() -> dict:
 
 
 async def list_production_records(
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     line_name: Optional[str] = None,
     shift: Optional[str] = None,
     limit: int = 50,
@@ -172,7 +186,7 @@ async def get_work_order(wo_id: str) -> Optional[dict]:
     return row.to_dict()
 
 
-async def update_work_order(wo_id: str, update_data: dict) -> Optional[dict]:
+async def update_work_order(wo_id: str, update_data: dict[str, Any]) -> Optional[dict[str, Any]]:
     """更新工单信息。
 
     Args:
@@ -184,18 +198,25 @@ async def update_work_order(wo_id: str, update_data: dict) -> Optional[dict]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        stmt = select(WorkOrder).where(WorkOrder.id == wo_id)
-        row = (await session.execute(stmt)).scalar_one_or_none()
-        if not row:
-            return None
+        try:
+            stmt = select(WorkOrder).where(WorkOrder.id == wo_id)
+            row = (await session.execute(stmt)).scalar_one_or_none()
+            if not row:
+                return None
 
-        for key, value in update_data.items():
-            setattr(row, key, value)
+            for key, value in update_data.items():
+                setattr(row, key, value)
 
-        await session.flush()
-        await session.commit()
-
-    return row.to_dict()
+            await session.commit()
+            return row.to_dict()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("更新工单失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("更新工单失败: %s", e, exc_info=True)
+            raise
 
 
 async def get_production_lines() -> dict:
@@ -205,7 +226,7 @@ async def get_production_lines() -> dict:
         {"lines": [{"line_name": str, "shifts": {...}}, ...]}
     """
     sessionmaker = _get_session()
-    today = date.today().isoformat()
+    today = date.today()
 
     async with sessionmaker() as session:
         # 单次查询获取今天所有产线的记录，替代 N 次（LINES 长度）独立查询。
@@ -247,7 +268,7 @@ async def get_monthly_summary() -> dict:
     """月度汇总 KPI。"""
     sessionmaker = _get_session()
     today = date.today()
-    month_start = today.replace(day=1).isoformat()
+    month_start = today.replace(day=1)
 
     async with sessionmaker() as session:
         stmt = select(
@@ -289,9 +310,27 @@ async def get_monthly_summary() -> dict:
 async def seed_production_data() -> dict:
     """填充生产演示数据：14天 x 5产线 x 3班次 + 8个工单。
 
+    P1 学术诚信警告：
+        本函数使用 random.randint/uniform 生成模拟生产数据，仅用于
+        演示环境的功能验证，不包含真实生产数据。
+        - 禁止在生产环境调用（本函数入口有 is_production 守卫）
+        - 禁止用于学术论文实验（项目目标期刊：Journal of Intelligent Manufacturing）
+        - 任何基于此数据的统计分析、KPI 报告均不具备生产参考价值
+
     Returns:
         {"already_exists": bool, "record_count": int, "work_order_count": int}
+
+    Raises:
+        RuntimeError: 数据库未配置 或 当前为生产环境
     """
+    # P1 学术诚信守卫：禁止在生产环境生成演示数据
+    if config.environment.is_production:
+        logger.error(
+            "seed_production_data 在生产环境被调用，已拒绝执行（ENVIRONMENT=%s）",
+            config.environment.environment,
+        )
+        raise RuntimeError("禁止在生产环境调用 seed_production_data 演示数据填充")
+
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         existing = (await session.execute(select(func.count()).select_from(ProductionRecord))).scalar()
@@ -301,49 +340,67 @@ async def seed_production_data() -> dict:
         today = date.today()
         record_count = 0
 
-        for day_offset in range(14):
-            d = today - timedelta(days=day_offset)
-            d_str = d.isoformat()
+        try:
+            for day_offset in range(SEED_DATA_DAYS):
+                d = today - timedelta(days=day_offset)
 
-            for line in LINES:
-                for shift in SHIFTS:
-                    planned = random.randint(80, 120)
-                    actual = random.randint(int(planned * 0.85), planned)
-                    qualified = int(actual * random.uniform(0.92, 0.99))
-                    defect = actual - qualified
-                    util = round(random.uniform(75, 98), 1)
-                    energy = round(random.uniform(200, 500), 1)
+                for line in LINES:
+                    for shift in SHIFTS:
+                        planned = random.randint(SEED_PLANNED_QTY_MIN, SEED_PLANNED_QTY_MAX)
+                        actual = random.randint(
+                            int(planned * SEED_ACTUAL_QTY_RATIO_MIN), planned
+                        )
+                        qualified = int(
+                            actual * random.uniform(
+                                SEED_QUALIFIED_RATIO_MIN, SEED_QUALIFIED_RATIO_MAX
+                            )
+                        )
+                        defect = actual - qualified
+                        util = round(
+                            random.uniform(SEED_UTILIZATION_MIN, SEED_UTILIZATION_MAX), 1
+                        )
+                        energy = round(
+                            random.uniform(SEED_ENERGY_MIN, SEED_ENERGY_MAX), 1
+                        )
 
-                    rec = ProductionRecord(
-                        date=d_str,
-                        line_name=line,
-                        planned_qty=planned,
-                        actual_qty=actual,
-                        qualified_qty=qualified,
-                        defect_qty=defect,
-                        equipment_utilization=util,
-                        energy_consumption=energy,
-                        shift=shift,
-                    )
-                    session.add(rec)
-                    record_count += 1
+                        rec = ProductionRecord(
+                            date=d,
+                            line_name=line,
+                            planned_qty=planned,
+                            actual_qty=actual,
+                            qualified_qty=qualified,
+                            defect_qty=defect,
+                            equipment_utilization=util,
+                            energy_consumption=energy,
+                            shift=shift,
+                        )
+                        session.add(rec)
+                        record_count += 1
 
-        # 8 个工单
-        work_orders_data = [
-            {"order_no": "WO-20260623-001", "product_name": "精密轴类零件-A型", "planned_qty": 500, "completed_qty": 320, "status": "进行中", "priority": "紧急", "start_date": "2026-06-20", "due_date": "2026-06-28"},
-            {"order_no": "WO-20260623-002", "product_name": "齿轮组件-B型", "planned_qty": 300, "completed_qty": 300, "status": "已完成", "priority": "高", "start_date": "2026-06-15", "due_date": "2026-06-22"},
-            {"order_no": "WO-20260623-003", "product_name": "箱体铸件-C型", "planned_qty": 100, "completed_qty": 45, "status": "进行中", "priority": "中", "start_date": "2026-06-21", "due_date": "2026-07-05"},
-            {"order_no": "WO-20260623-004", "product_name": "模具核心-D型", "planned_qty": 50, "completed_qty": 0, "status": "待开始", "priority": "高", "start_date": "2026-06-25", "due_date": "2026-07-10"},
-            {"order_no": "WO-20260623-005", "product_name": "焊接支架-E型", "planned_qty": 200, "completed_qty": 180, "status": "进行中", "priority": "中", "start_date": "2026-06-18", "due_date": "2026-06-26"},
-            {"order_no": "WO-20260623-006", "product_name": "精密轴承座-F型", "planned_qty": 150, "completed_qty": 150, "status": "已完成", "priority": "低", "start_date": "2026-06-10", "due_date": "2026-06-20"},
-            {"order_no": "WO-20260623-007", "product_name": "涡轮叶片-G型", "planned_qty": 80, "completed_qty": 20, "status": "已延期", "priority": "紧急", "start_date": "2026-06-12", "due_date": "2026-06-22"},
-            {"order_no": "WO-20260623-008", "product_name": "液压缸体-H型", "planned_qty": 120, "completed_qty": 0, "status": "待开始", "priority": "中", "start_date": "2026-06-28", "due_date": "2026-07-15"},
-        ]
+            # 8 个工单
+            work_orders_data = [
+                {"order_no": "WO-20260623-001", "product_name": "精密轴类零件-A型", "planned_qty": 500, "completed_qty": 320, "status": "进行中", "priority": "紧急", "start_date": date(2026, 6, 20), "due_date": date(2026, 6, 28)},
+                {"order_no": "WO-20260623-002", "product_name": "齿轮组件-B型", "planned_qty": 300, "completed_qty": 300, "status": "已完成", "priority": "高", "start_date": date(2026, 6, 15), "due_date": date(2026, 6, 22)},
+                {"order_no": "WO-20260623-003", "product_name": "箱体铸件-C型", "planned_qty": 100, "completed_qty": 45, "status": "进行中", "priority": "中", "start_date": date(2026, 6, 21), "due_date": date(2026, 7, 5)},
+                {"order_no": "WO-20260623-004", "product_name": "模具核心-D型", "planned_qty": 50, "completed_qty": 0, "status": "待开始", "priority": "高", "start_date": date(2026, 6, 25), "due_date": date(2026, 7, 10)},
+                {"order_no": "WO-20260623-005", "product_name": "焊接支架-E型", "planned_qty": 200, "completed_qty": 180, "status": "进行中", "priority": "中", "start_date": date(2026, 6, 18), "due_date": date(2026, 6, 26)},
+                {"order_no": "WO-20260623-006", "product_name": "精密轴承座-F型", "planned_qty": 150, "completed_qty": 150, "status": "已完成", "priority": "低", "start_date": date(2026, 6, 10), "due_date": date(2026, 6, 20)},
+                {"order_no": "WO-20260623-007", "product_name": "涡轮叶片-G型", "planned_qty": 80, "completed_qty": 20, "status": "已延期", "priority": "紧急", "start_date": date(2026, 6, 12), "due_date": date(2026, 6, 22)},
+                {"order_no": "WO-20260623-008", "product_name": "液压缸体-H型", "planned_qty": 120, "completed_qty": 0, "status": "待开始", "priority": "中", "start_date": date(2026, 6, 28), "due_date": date(2026, 7, 15)},
+            ]
 
-        for wod in work_orders_data:
-            session.add(WorkOrder(**wod))
+            for wod in work_orders_data:
+                session.add(WorkOrder(**wod))
 
-        await session.commit()
+            await session.commit()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error("填充生产演示数据失败: %s", e, exc_info=True)
+            raise
+        except (RuntimeError, OSError, ValueError) as e:
+            await session.rollback()
+            logger.error("填充生产演示数据失败: %s", e, exc_info=True)
+            raise
 
     return {
         "already_exists": False,

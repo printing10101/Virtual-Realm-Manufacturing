@@ -222,19 +222,7 @@ class Test3ViewToNCConversion:
         # 验证IT8公差数据完整性
         assert len(it8_tolerance_data["nominal_ranges"]) >= 8, "IT8公差数据不完整"
 
-    # ---------- 感知层：I-JEPA特征提取 + CadQuery模型生成 ----------
-
-    def test_ijepa_geometry_extraction_config(self):
-        """感知层验证：I-JEPA模型配置正确加载."""
-        try:
-            from app.ai.ijepa_3d.config import IJEPAConfig
-
-            config = IJEPAConfig()
-            assert config is not None, "I-JEPA配置加载失败"
-            assert hasattr(config, "input_resolution") or hasattr(config, "mask_ratio"), \
-                "I-JEPA配置缺少关键参数"
-        except ImportError:
-            pytest.skip("I-JEPA模块未安装")
+    # ---------- 感知层：CadQuery模型生成（I-JEPA 模块已于 v2.5 移除） ----------
 
     def test_cadquery_3d_model_generation(self, temp_dir, standard_3view_images):
         """感知层验证：CadQuery 3D模型生成完整性."""
