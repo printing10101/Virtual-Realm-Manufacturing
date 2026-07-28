@@ -6,22 +6,22 @@ on:
       - main
       - 'release/*'
     paths:
-      - 'python/app/validation/**'
-      - 'python/app/cad/**'
+      - 'engineering/python/app/validation/**'
+      - 'engineering/python/app/cad/**'
       - 'tests/benchmark/geometric/**'
       - 'tests/validation/**'
-      - 'python/tests/validation/**'
+      - 'engineering/python/tests/validation/**'
       - '.github/workflows/geometry-validation.yml'
   push:
     branches:
       - main
       - 'release/*'
     paths:
-      - 'python/app/validation/**'
-      - 'python/app/cad/**'
+      - 'engineering/python/app/validation/**'
+      - 'engineering/python/app/cad/**'
       - 'tests/benchmark/geometric/**'
       - 'tests/validation/**'
-      - 'python/tests/validation/**'
+      - 'engineering/python/tests/validation/**'
       - '.github/workflows/geometry-validation.yml'
 
 permissions:
@@ -35,10 +35,10 @@ env:
   PYTHONUNBUFFERED: '1'
   LNN_AUTH_ENABLED: 'false'
   AGENT_AUTH_ENABLED: 'false'
-  # 修复：app 包位于 python/app/，需将 python/ 加入 PYTHONPATH，
+  # 修复：app 包位于 engineering/python/app/，需将 engineering/python/ 加入 PYTHONPATH，
   # 否则步骤 7（运行3D重建）执行 `from app.validation import ...` 时
   # 会因 ModuleNotFoundError 失败。
-  PYTHONPATH: ${{ github.workspace }}/python
+  PYTHONPATH: ${{ github.workspace }}/engineering/python
 
 jobs:
   geometry-validation:
@@ -117,7 +117,7 @@ jobs:
           echo "检查验证阈值..."
           python -c "
           import json, sys
-          with open('python/app/validation/reports/ci_summary.json', 'r') as f:
+          with open('engineering/python/app/validation/reports/ci_summary.json', 'r') as f:
               summary = json.load(f)
           failed = False
           for part_id, result in summary.items():
@@ -150,12 +150,12 @@ jobs:
         with:
           name: geometry-validation-reports
           path: |
-            python/app/validation/reports/*.html
-            python/app/validation/reports/ci_summary.json
+            engineering/python/app/validation/reports/*.html
+            engineering/python/app/validation/reports/ci_summary.json
           retention-days: 30
 
       - name: 摘要输出
         if: always()
         run: |
           echo "验证报告已生成并保存为CI artifacts（保留30天）"
-          echo "报告路径: python/app/validation/reports/"
+          echo "报告路径: engineering/python/app/validation/reports/"

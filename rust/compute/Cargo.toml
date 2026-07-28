@@ -3,7 +3,7 @@ members = ["crates/core", "crates/pyo3_bindings"]
 resolver = "2"
 
 [workspace.package]
-version = "2.6.0"
+version = "2.7.0"
 edition = "2021"
 rust-version = "1.70"
 authors = ["Lingjing Manufacturing Team"]
@@ -12,7 +12,7 @@ repository = "https://github.com/printing10101/Virtual-Realm-Manufacturing"
 
 [workspace.dependencies]
 # 内部 crate
-compute-core = { path = "crates/core", version = "2.6.0" }
+compute-core = { path = "crates/core", version = "2.7.0" }
 
 # 第三方依赖
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py38", "numpy"] }

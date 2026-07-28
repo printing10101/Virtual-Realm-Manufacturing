@@ -1,11 +1,11 @@
-name: API Docs Sync Check
+﻿name: API Docs Sync Check
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - 'python/app/api/v1/**/*.py'
-      - 'python/app/models/**/*.py'
+      - 'engineering/python/app/api/v1/**/*.py'
+      - 'engineering/python/app/models/**/*.py'
       - 'docs/api-reference.md'
       - 'docs/api-reference.md.tmpl'
       - 'scripts/gen-api-docs.py'

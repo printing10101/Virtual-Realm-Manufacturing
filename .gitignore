@@ -61,11 +61,13 @@ pnpm-debug.log*
 # ============================================================
 # Rust / Tauri
 # ============================================================
-src-tauri/target/
+# P1-E4 修复：路径前缀对齐实际目录结构（engineering/src-tauri/）
+engineering/src-tauri/target/
 **/target/
 **/*.rs.bk
 *.pdb
-Cargo.lock.lock
+# 注：Cargo.lock.lock 为原笔误（无此文件类型）；Cargo.lock 本身是二进制
+# 应用的依赖锁文件，必须提交以保证可复现构建，故不忽略。
 
 # ============================================================
 # 测试和报告
@@ -85,9 +87,10 @@ benchmarks/results/
 benchmarks/performance/history/
 
 # SHARP 调试探针（开发期临时文件，不应入库）
-python/_sharp_*.py
-python/_sharp_*.log
-python/_sharp_*.json
+# P1-E4 修复：路径前缀对齐 engineering/python/
+engineering/python/_sharp_*.py
+engineering/python/_sharp_*.log
+engineering/python/_sharp_*.json
 
 # Playwright E2E 套件已在 v2.5 移除，相关产物不再入库
 e2e/
@@ -95,23 +98,23 @@ playwright.config.ts
 tests/screenshots/
 
 # 测试生成的临时目录
-python/test_chroma_db/
-python/test_chroma_db_e2e/
-python/tests/_test_output/
-python/_test_output/
-python/_test_output*.txt
+engineering/python/test_chroma_db/
+engineering/python/test_chroma_db_e2e/
+engineering/python/tests/_test_output/
+engineering/python/_test_output/
+engineering/python/_test_output*.txt
 
 # 临时调试输出文件（pytest 输出/异常 pass 统计）
-python/coverage_output.txt
-python/coverage-full-report.txt
-python/ep_full.txt
-python/ep_remaining.txt
-python/_test_full.txt
+engineering/python/coverage_output.txt
+engineering/python/coverage-full-report.txt
+engineering/python/ep_full.txt
+engineering/python/ep_remaining.txt
+engineering/python/_test_full.txt
 
 # 运行时生成的输出目录（模型/项目/规则/仿真/演示等）
-python/output/
-output/
-!output/.gitkeep
+# P1-E4 修复：合并重复规则，统一使用 engineering/python/output/ 前缀
+engineering/python/output/
+!engineering/python/output/.gitkeep
 
 # E2E 测试输出目录（由 /e2e-fixture 端点自动生成）
 data/outputs/e2e/
@@ -183,12 +186,14 @@ secrets/
 .lnn_token
 .lnn_token_meta.json
 .lnn_banned_tokens.json
-python/.lnn_banned_tokens.json
+# P1-E4 修复：路径前缀对齐 engineering/python/
+engineering/python/.lnn_banned_tokens.json
 
 # Sidecar 运行时状态文件（由 sidecar_main.py 自动写入/读取）
-python/sidecar.json
-python/sidecar.pid
-python/sidecar_test_pid.txt
+# P1-E4 修复：路径前缀对齐 engineering/python/
+engineering/python/sidecar.json
+engineering/python/sidecar.pid
+engineering/python/sidecar_test_pid.txt
 
 # ============================================================
 # 虚拟环境
@@ -238,46 +243,58 @@ Thumbs.db
 /test_*.sh
 
 # ============================================================
-# 临时调试/诊断脚本（python/根目录）
-# 测试脚本应放在 python/tests/ 目录下
+# 临时调试/诊断脚本（engineering/python/ 根目录）
+# 测试脚本应放在 engineering/python/tests/ 目录下
+# P1-E4 修复：路径前缀对齐实际目录结构（原 /python/ 不存在顶层 python/ 目录）
 # ============================================================
-/python/_test_*.py
-/python/test_*.py
-/python/debug_*.py
-/python/diagnose*.py
-/python/diagnose_*.py
-/python/diagnose2*.py
-/python/diagnose3*.py
-/python/deep_diag*.py
-/python/quick_*.py
-/python/quick_diag*.py
-/python/run_*step*.py
-/python/run_test*.bat
-/python/run_via_*.py
-/python/verify_and_test*.py
-/python/debug_train*.py
-/python/_check.py
-/python/_refresh_files.py
-/python/_smoke_import.py
-/python/_tiny_test.py
-/python/check_cov.py
-/python/check_coverage.py
-/python/detail_except_pass.py
-/python/e2e_run.py
-/python/fix_step_parser.py
-/python/minimal_flush*.py
-/python/minimal_load.py
-/python/scan_exceptions.py
-/python/scan_leaks_round2.py
-/python/scan_unused_full.py
-/python/scan_unused_imports.py
-/python/update_imports.ps1
-/python/verify_security_fix.py
-/python/test_output.txt
-/python/test_train_request.json
-/python/test_env.ps1
-/python/test_powershell.ps1
-/python/test_sse.ps1
+/engineering/python/_test_*.py
+/engineering/python/test_*.py
+/engineering/python/debug_*.py
+/engineering/python/diagnose*.py
+/engineering/python/diagnose_*.py
+/engineering/python/diagnose2*.py
+/engineering/python/diagnose3*.py
+/engineering/python/deep_diag*.py
+/engineering/python/quick_*.py
+/engineering/python/quick_diag*.py
+/engineering/python/run_*step*.py
+/engineering/python/run_test*.bat
+/engineering/python/run_via_*.py
+/engineering/python/verify_and_test*.py
+/engineering/python/debug_train*.py
+/engineering/python/_check.py
+/engineering/python/_refresh_files.py
+/engineering/python/_smoke_import.py
+/engineering/python/_tiny_test.py
+/engineering/python/check_cov.py
+/engineering/python/check_coverage.py
+/engineering/python/detail_except_pass.py
+/engineering/python/e2e_run.py
+/engineering/python/fix_step_parser.py
+/engineering/python/minimal_flush*.py
+/engineering/python/minimal_load.py
+/engineering/python/scan_exceptions.py
+/engineering/python/scan_leaks_round2.py
+/engineering/python/scan_unused_full.py
+/engineering/python/scan_unused_imports.py
+/engineering/python/update_imports.ps1
+/engineering/python/verify_security_fix.py
+/engineering/python/test_output.txt
+/engineering/python/test_train_request.json
+/engineering/python/test_env.ps1
+/engineering/python/test_powershell.ps1
+/engineering/python/test_sse.ps1
+
+# 阶段性验证脚本（开发阶段产物，已被 pytest 用例取代）
+/engineering/python/_verify_*.py
+/engineering/python/_tmp_*.py
+/engineering/python/standalone_verify_*.py
+/engineering/python/standalone_integration_*.py
+/engineering/python/verify_*_standalone.py
+/engineering/python/tests/standalone_verify_*.py
+
+# 数据库备份文件（运行时产物）
+/engineering/python/data/*_backup_*.db
 
 # 项目根目录的一次性测试/诊断脚本
 /quick_test.bat
@@ -298,3 +315,32 @@ Thumbs.db
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+# ============================================================
+# 运行时生成的图表 / 截图（P1-E5 修复）
+# matplotlib / seaborn 训练过程生成的性能图、混淆矩阵等产物，
+# 不应入库（应通过 MLflow / checkpoint 跟踪，而非二进制 PNG）。
+# Tauri 应用图标、文档配图等需保留跟踪的 PNG 通过白名单放行。
+# ============================================================
+*.png
+# 白名单：Tauri 应用图标（构建资源，必须入库）
+!engineering/src-tauri/icons/*.png
+!engineering/src-tauri/icons/**.png
+# 白名单：文档与 README 中的配图（按需放行）
+!docs/**/*.png
+!docs-site/docs/**/*.png
+!README.md.d/**/*.png
+
+# ============================================================
+# E2E 测试输出的二进制 CAD 文件（P1-E5 修复）
+# STL/BREP/STEP 等网格/几何交换文件由测试运行时生成，体积大且
+# 可由 fixture 重新生成，不应入库。.gitignore 中已有 data/outputs/e2e/
+# 规则，但历史跟踪的文件需通过 `git rm --cached` 显式移除后此规则才生效。
+# ============================================================
+data/outputs/e2e/**/*.stl
+data/outputs/e2e/**/*.brep
+data/outputs/e2e/**/*.step
+data/outputs/e2e_v2/**/*.stl
+data/outputs/e2e_v2/**/*.brep
+data/outputs/e2e_v2/**/*.step
+data/outputs/test_shadow/**/*.stl

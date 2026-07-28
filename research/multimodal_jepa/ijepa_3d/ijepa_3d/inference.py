@@ -14,8 +14,9 @@ import time
 import logging
 import numpy as np
 
-from app.ai.ijepa_3d.model import IJEPA3DModel
-from app.ai.ijepa_3d.config import IJEPA3DConfig
+# Q2 修复：原 `from app.ai.ijepa_3d.xxx` 为悬空 import，改为同包相对导入。
+from .model import IJEPA3DModel
+from .config import IJEPA3DConfig
 
 logger = logging.getLogger(__name__)
 

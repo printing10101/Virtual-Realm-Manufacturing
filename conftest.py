@@ -1,78 +1,27 @@
-"""根目录 conftest.py —— 绕过 Python 3.11.0rc2 _overlapped 加载失败问题。
+"""项目根 conftest.py（阶段2 解耦改造新增）.
 
-依据 project_memory 中的 lesson learned：
-"WinSock initialization issues may occur; implement workaround by forcing
-WinSock initialization before imports"
+职责：
+    在 pytest 启动阶段（早于任何 test module collect）将 ``engineering/python/``
+    加入 sys.path，确保 ``from plugins.data_flywheel.xxx import ...`` 等绝对
+    导入在 collect 阶段可用。
 
-问题根因：
-    Python 3.11.0rc2 在 Windows 上 _overlapped C 扩展模块初始化失败，
-    抛出 OSError [WinError 10038]。该模块被 asyncio.windows_events 导入，
-    任何触发 asyncio 导入的链路（如 typing_extensions.deprecated 装饰器、
-    pydantic_core、torch.cuda 等）都会失败。
+背景：
+    - ``engineering/python/conftest.py`` 和 ``engineering/python/tests/conftest.py``
+      都有 sys.path 注入，但它们的加载时机可能晚于部分 test module 的 collect。
+    - 特别是 ``--collect-only`` 场景下，pytest 可能在 conftest.py 完全加载之前
+      就开始 import test module，导致 ModuleNotFoundError。
+    - 项目根 conftest.py 是 pytest 启动时最先加载的 conftest，确保 sys.path
+      在最早时机被正确设置。
 
-绕过方案：
-    在任何应用代码导入前，预先尝试导入 _overlapped。若失败，则注入一个
-    最小 stub 模块替换它，使 asyncio.windows_events 能完成导入。stub 仅
-    提供符号占位，不提供真实 IOCP 功能——对单元测试足够（测试不需要真实
-    异步 IO），对生产环境无害（生产环境用正式 Python 版本，不会触发此分支）。
+防复发机制：
+    - 本文件与 ``engineering/python/conftest.py`` 的 sys.path 注入形成双重防护。
+    - 如果未来 pytest 版本改变 conftest 加载顺序，项目根 conftest 仍然最先加载。
 """
 
 import sys
-import types
+from pathlib import Path
 
-
-def _patch_overlapped_if_needed() -> None:
-    """若 _overlapped 加载失败，注入 stub 模块。"""
-    if sys.platform != "win32":
-        return
-    try:
-        import _overlapped  # noqa: F401
-        return  # 加载成功，无需 patch
-    except OSError:
-        pass
-
-    # 加载失败，创建 stub
-    stub = types.ModuleType("_overlapped")
-
-    # asyncio.windows_events 需要的符号（参考 Python 3.11 源码）
-    # 这些常量和函数在 stub 中提供占位实现，避免 AttributeError
-    stub.INVALID_HANDLE_VALUE = -1
-    stub.ERROR_IO_PENDING = 997
-    stub.ERROR_NETNAME_DELETED = 64
-    stub.ERROR_OPERATION_ABORTED = 995
-    stub.OVERLAPPED = type("OVERLAPPED", (object,), {
-        "__init__": lambda self, *args, **kwargs: None,
-        "event": 0,
-        "address": 0,
-    })
-
-    def _placeholder(*args, **kwargs):
-        raise RuntimeError(
-            "_overlapped stub: IOCP 操作不可用（Python 3.11.0rc2 环境限制）"
-        )
-
-    stub.CreateIoCompletionPort = _placeholder
-    stub.GetQueuedCompletionStatus = _placeholder
-    stub.PostQueuedCompletionStatus = _placeholder
-    stub.RegisterWaitWithQueue = _placeholder
-    stub.UnregisterWait = _placeholder
-    stub.CreateEvent = _placeholder
-    stub.SetEvent = _placeholder
-    stub.ResetEvent = _placeholder
-    stub.CloseHandle = _placeholder
-    stub.FormatMessage = lambda *a, **kw: ""
-    stub.BindLocal = _placeholder
-    stub.Overlapped = type("Overlapped", (object,), {
-        "__init__": lambda self, *args, **kwargs: None,
-        "address": 0,
-        "event": 0,
-        "pending": False,
-        "completed": False,
-    })
-
-    sys.modules["_overlapped"] = stub
-    sys.modules["_overlapped"].__name__ = "_overlapped"
-    sys.modules["_overlapped"].__loader__ = None  # type: ignore[assignment]
-
-
-_patch_overlapped_if_needed()
+_ROOT = Path(__file__).resolve().parent
+_ENGINEERING_PYTHON = _ROOT / "engineering" / "python"
+if _ENGINEERING_PYTHON.exists() and str(_ENGINEERING_PYTHON) not in sys.path:
+    sys.path.insert(0, str(_ENGINEERING_PYTHON))

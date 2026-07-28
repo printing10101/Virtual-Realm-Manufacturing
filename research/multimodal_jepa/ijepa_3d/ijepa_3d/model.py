@@ -18,14 +18,16 @@ import torch.nn as nn
 from typing import Dict, Optional, Tuple
 import logging
 
-from app.ai.ijepa_3d.config import IJEPA3DConfig
-from app.ai.ijepa_3d.resnet_backbone import ResNetBackbone
-from app.ai.ijepa_3d.ijepa_encoder import IJEPAEncoder
-from app.ai.ijepa_3d.predictor import Predictor
-from app.ai.ijepa_3d.view_fusion import ViewFusion
-from app.ai.ijepa_3d.geometry_head import GeometryHead
-from app.ai.ijepa_3d.masking import MultiScaleMasking
-from app.ai.ijepa_3d.losses import IJPELoss
+# Q2 修复：原 `from app.ai.ijepa_3d.xxx` 为悬空 import（app/ai/ijepa_3d/ 不存在）。
+# 改为同包内相对导入。
+from .config import IJEPA3DConfig
+from .resnet_backbone import ResNetBackbone
+from .ijepa_encoder import IJEPAEncoder
+from .predictor import Predictor
+from .view_fusion import ViewFusion
+from .geometry_head import GeometryHead
+from .masking import MultiScaleMasking
+from .losses import IJPELoss
 
 logger = logging.getLogger(__name__)
 

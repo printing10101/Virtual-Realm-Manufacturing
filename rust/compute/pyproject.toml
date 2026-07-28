@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "compute"
-version = "2.6.0"
+version = "2.7.0"
 description = "Voxel cutting simulation compute engine (Rust + PyO3)."
 requires-python = ">=3.8"
 license = { text = "MIT" }

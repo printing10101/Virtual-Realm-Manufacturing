@@ -1,0 +1,66 @@
+"""启动后端服务的辅助脚本，设置必要的环境变量。
+
+S3 修复：移除"密钥缺失时自动生成临时密钥"的回退逻辑——
+此回退会绕过 ``app.auth.security._validate_and_get_secret()`` 的 fail-fast
+保护，使生产环境在缺失 LNN_JWT_SECRET 时仍能启动，但每次重启密钥变化
+导致所有已签发 JWT 失效，且无任何告警。
+
+新策略：
+- 生产环境（LNN_ENV=production 或未声明为 dev/test）：缺失密钥直接 fail-fast，
+  退出码 1，提示运维通过 `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+  生成并配置 LNN_JWT_SECRET。
+- 开发/测试环境（LNN_ENV=dev 或 test）：允许显式回退临时密钥，但必须打印
+  警告。这是为了保留 "clone 后直接 python start_server.py 跑起来" 的开发体验。
+"""
+import os
+import sys
+
+
+def _is_dev_env() -> bool:
+    """判断是否为开发/测试环境。"""
+    env = os.environ.get("LNN_ENV", "").lower()
+    return env in ("dev", "development", "test", "testing", "local")
+
+
+def main():
+    # S3 修复：JWT 密钥缺失时的处理策略
+    if not os.environ.get("LNN_JWT_SECRET"):
+        if _is_dev_env():
+            # 开发/测试：显式回退临时密钥（仅本机，跨进程 JWT 不持久）
+            import secrets
+            os.environ["LNN_JWT_SECRET"] = secrets.token_urlsafe(32)
+            print("[startup] WARNING: LNN_JWT_SECRET 未配置，已生成临时密钥（重启后失效）。")
+            print("[startup] 此为开发模式回退，生产环境必须固定配置 LNN_JWT_SECRET。")
+        else:
+            # 生产/未声明环境：fail-fast
+            print(
+                "[startup] FATAL: LNN_JWT_SECRET 未配置。生产环境拒绝启动。", file=sys.stderr,
+            )
+            print(
+                "[startup] 请执行: python -c \"import secrets; print(secrets.token_urlsafe(32))\" "
+                "并将输出设置为环境变量 LNN_JWT_SECRET。", file=sys.stderr,
+            )
+            print(
+                "[startup] 如确需开发模式回退，请显式设置 LNN_ENV=dev。", file=sys.stderr,
+            )
+            sys.exit(1)
+    else:
+        print("[startup] LNN_JWT_SECRET 已从环境变量加载")
+
+    # 切换到 python 目录
+    python_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(python_dir)
+    print(f"Working directory: {python_dir}")
+
+    # 启动 uvicorn
+    # P0-6 修复：host 从环境变量读取，默认 127.0.0.1（仅本机访问），
+    # 避免误用此脚本时在所有网络接口暴露 API。生产对外部署应通过
+    # 反向代理（nginx）或显式设置 SERVER_HOST=0.0.0.0。
+    import uvicorn
+    host = os.environ.get("SERVER_HOST", "127.0.0.1")
+    port = int(os.environ.get("SERVER_PORT", "8765"))
+    uvicorn.run("app.main:app", host=host, port=port, reload=False)
+
+
+if __name__ == "__main__":
+    main()

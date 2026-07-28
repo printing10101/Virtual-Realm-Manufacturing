@@ -1,0 +1,52 @@
+{
+  "task_id": "ch_1784361914_bec18b93",
+  "created_at": 1784361914.6853626,
+  "source_cutting_parameters_task_id": "cp_edit_001",
+  "chatter_params_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\pytest-of-Lenovo\\pytest-125\\test_review_edited_updates_sta0\\chatter_params.json",
+  "material_id": "al_6061",
+  "precision_tier": "standard",
+  "mesh_calibrated": false,
+  "machine_type": "vmc_850",
+  "status": "reviewed",
+  "feature_results": [
+    {
+      "feature_id": "feat_001",
+      "feature_type": "plane",
+      "material_id": "al_6061",
+      "spindle_rpm": 8000.0,
+      "axial_depth_mm": 2.0,
+      "limit_depth_mm": 30.586942767806658,
+      "stable": true,
+      "stability_margin": 0.06538737837195806,
+      "method": "analytical",
+      "ltc_active": false,
+      "confidence": 0.8,
+      "inference_time_ms": 2.2056102752685547,
+      "warnings": [],
+      "material_calibration_status": "calibrated",
+      "review_status": "edited",
+      "edited_params": {
+        "axial_depth_mm": 2.0
+      },
+      "reviewed_by": "engineer_li",
+      "reviewed_at": 1784361914.7066,
+      "engineer_notes": "加大切深",
+      "source_cutting_params_task_id": "cp_edit_001",
+      "machine_id": "vmc_850",
+      "tool_id": "endmill_d10",
+      "cutting_force_coeff": 2000.0
+    }
+  ],
+  "workspace_dir": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\pytest-of-Lenovo\\pytest-125\\test_review_edited_updates_sta0\\chatter_prediction\\ch_1784361914_bec18b93",
+  "error_message": "",
+  "cam_validation_required": true,
+  "chatter_report_path": "",
+  "started_at": 1784361914.6862004,
+  "completed_at": 0.0,
+  "analytical_count": 1,
+  "neural_network_count": 0,
+  "fallback_count": 0,
+  "ltc_model_available": false,
+  "reviewed_by": "engineer_li",
+  "reviewed_at": 1784361914.7066128
+}

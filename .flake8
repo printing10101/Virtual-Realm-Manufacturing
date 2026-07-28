@@ -10,13 +10,18 @@ exclude =
     dist,
     .venv,
     venv,
+    # 阶段2 解耦改造：排除科研侧与契约层目录（科研侧独立 lint 配置）
+    research,
+    shared,
     # 排除临时一次性验证脚本（以单下划线开头的工具脚本）
     _*.py,
     # 排除 Agent Review 临时 diff 快照目录
     C:/Users/Lenovo/AppData/Local/Temp/trae-cn/agent-review/*,
 per-file-ignores =
-    python/app/ai/lnn/engine.py:E203
-    python/app/ai/lnn/quantization/quantizer.py:E203
-    python/app/cad/cadquery_gen.py:E203
-    python/app/audit/audit_log.py:E203
-    python/alembic/versions/be7e8d82d196_initial_schema.py:E122,E128,E501,W291
+    # 阶段2 解耦改造：路径前缀从 python/ 改为 engineering/python/
+    # quantization/quantizer.py 已迁移到 research/quantization/quantizer.py
+    engineering/python/app/ai/lnn/engine.py:E203
+    engineering/python/app/cad/cadquery_gen.py:E203
+    engineering/python/app/audit/audit_log.py:E203
+    engineering/python/alembic/versions/be7e8d82d196_initial_schema.py:E122,E128,E501,W291
+    research/quantization/quantizer.py:E203

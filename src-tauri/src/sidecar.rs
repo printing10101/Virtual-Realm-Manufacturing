@@ -458,7 +458,11 @@ impl SidecarManager {
             }
         }
 
-        if let Some(child) = self.child.lock().await.take() {
+        // H17 bug 修复：原代码在 `self.child.lock().await` 持锁状态下 sleep 5 秒，
+        // 导致所有其他需要访问 child 的请求排队等待。改为先 take 出 child（短暂持锁），
+        // 释放锁后再 sleep + kill。
+        let child_opt = self.child.lock().await.take();
+        if let Some(child) = child_opt {
             if graceful_succeeded {
                 // 第 2 步：固定等待 5 秒，让 Python 端完成 graceful shutdown
                 // （足够 SQLite WAL checkpoint + asyncio 任务完成）

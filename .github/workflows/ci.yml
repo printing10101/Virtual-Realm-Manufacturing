@@ -66,24 +66,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
-          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('python/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('engineering/python/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-${{ matrix.python-version }}-
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        working-directory: python
+        working-directory: engineering/python
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-cov pytest-asyncio httpx
 
       - name: Run unit tests with coverage
-        working-directory: python
+        working-directory: engineering/python
         run: |
           pytest tests/unit/ -v \
             --cov=app \
-            --cov-config=../.coveragerc \
+            --cov-config=../../.coveragerc \
             --cov-report=xml:coverage-unit.xml \
             --cov-report=json:coverage-unit.json \
             --cov-report=html:coverage-unit-html \
@@ -92,7 +92,7 @@ jobs:
             -m unit
 
       - name: Check unit test coverage threshold (65%)
-        working-directory: python
+        working-directory: engineering/python
         if: matrix.python-version == '3.10'
         run: |
           echo "======================================================"
@@ -201,17 +201,17 @@ jobs:
         with:
           name: unit-test-results-py${{ matrix.python-version }}
           path: |
-            python/junit-unit.xml
-            python/coverage-unit.xml
-            python/coverage-unit.json
-            python/coverage-unit-html/
+            engineering/python/junit-unit.xml
+            engineering/python/coverage-unit.xml
+            engineering/python/coverage-unit.json
+            engineering/python/coverage-unit-html/
           retention-days: 30
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.10'
         uses: codecov/codecov-action@v4
         with:
-          file: python/coverage-unit.xml
+          file: engineering/python/coverage-unit.xml
           flags: unit-tests
           name: codecov-unit-tests
           fail_ci_if_error: false
@@ -238,23 +238,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
-          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('python/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('engineering/python/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        working-directory: python
+        working-directory: engineering/python
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-cov pytest-asyncio httpx
 
       - name: Run integration tests with coverage
-        working-directory: python
+        working-directory: engineering/python
         run: |
           pytest tests/integration/ -v \
             --cov=app \
-            --cov-config=../.coveragerc \
+            --cov-config=../../.coveragerc \
             --cov-report=xml:coverage-integration.xml \
             --cov-report=json:coverage-integration.json \
             --cov-report=html:coverage-integration-html \
@@ -370,16 +370,16 @@ jobs:
         with:
           name: integration-test-results
           path: |
-            python/junit-integration.xml
-            python/coverage-integration.xml
-            python/coverage-integration.json
-            python/coverage-integration-html/
+            engineering/python/junit-integration.xml
+            engineering/python/coverage-integration.xml
+            engineering/python/coverage-integration.json
+            engineering/python/coverage-integration-html/
           retention-days: 30
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: python/coverage-integration.xml
+          file: engineering/python/coverage-integration.xml
           flags: integration-tests
           name: codecov-integration-tests
           fail_ci_if_error: false
@@ -406,23 +406,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
-          key: ${{ runner.os }}-pip-regression-${{ hashFiles('python/requirements.txt') }}
+          key: ${{ runner.os }}-pip-regression-${{ hashFiles('engineering/python/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        working-directory: python
+        working-directory: engineering/python
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-cov pytest-asyncio httpx
 
       - name: Run regression tests
-        working-directory: python
+        working-directory: engineering/python
         run: |
           pytest tests/regression/ -v \
             --cov=app \
-            --cov-config=../.coveragerc \
+            --cov-config=../../.coveragerc \
             --cov-report=xml:coverage-regression.xml \
             --cov-report=json:coverage-regression.json \
             --cov-report=term-missing \
@@ -435,15 +435,15 @@ jobs:
         with:
           name: regression-test-results
           path: |
-            python/junit-regression.xml
-            python/coverage-regression.xml
-            python/coverage-regression.json
+            engineering/python/junit-regression.xml
+            engineering/python/coverage-regression.xml
+            engineering/python/coverage-regression.json
           retention-days: 30
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: python/coverage-regression.xml
+          file: engineering/python/coverage-regression.xml
           flags: regression-tests
           name: codecov-regression-tests
           fail_ci_if_error: false
@@ -470,19 +470,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
-          key: ${{ runner.os }}-pip-full-${{ hashFiles('python/requirements.txt') }}
+          key: ${{ runner.os }}-pip-full-${{ hashFiles('engineering/python/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        working-directory: python
+        working-directory: engineering/python
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-cov pytest-asyncio httpx
 
       - name: Run full test suite
-        working-directory: python
+        working-directory: engineering/python
         run: |
           # [E-P0-4] tests/integration/test_e2e_latency.py 包含真实 sidecar 进程级 E2E 测试
           # 标记为 @pytest.mark.e2e + @pytest.mark.slow，验证 Rust ↔ Python 契约
@@ -493,7 +493,7 @@ jobs:
           pytest tests/unit/ tests/integration/ tests/regression/ tests/lnn/ tests/test_*.py \
             -v \
             --cov=app \
-            --cov-config=../.coveragerc \
+            --cov-config=../../.coveragerc \
             --cov-report=xml:coverage-full.xml \
             --cov-report=json:coverage-full.json \
             --cov-report=html:coverage-full-html \
@@ -638,16 +638,16 @@ jobs:
         with:
           name: full-test-suite-results
           path: |
-            python/junit-full.xml
-            python/coverage-full.xml
-            python/coverage-full.json
-            python/coverage-full-html/
+            engineering/python/junit-full.xml
+            engineering/python/coverage-full.xml
+            engineering/python/coverage-full.json
+            engineering/python/coverage-full-html/
           retention-days: 30
 
       - name: Upload full coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: python/coverage-full.xml
+          file: engineering/python/coverage-full.xml
           flags: full-suite
           name: codecov-full-suite
           fail_ci_if_error: false
@@ -659,6 +659,10 @@ jobs:
     name: Frontend Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # 前端 package.json/pnpm-lock.yaml 位于 engineering/ 目录下
+    defaults:
+      run:
+        working-directory: engineering
 
     steps:
       - name: Checkout code
@@ -678,7 +682,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PNPM_CACHE_DIR }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('engineering/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
@@ -825,14 +829,14 @@ jobs:
         with:
           name: frontend-test-results
           path: |
-            junit-frontend.xml
-            coverage/
+            engineering/junit-frontend.xml
+            engineering/coverage/
           retention-days: 30
 
       - name: Upload frontend coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: coverage/coverage-final.json
+          file: engineering/coverage/coverage-final.json
           flags: frontend-tests
           name: codecov-frontend
           fail_ci_if_error: false
@@ -863,14 +867,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
-          key: ${{ runner.os }}-pip-bench-${{ hashFiles('python/requirements.txt', 'requirements.txt') }}
+          key: ${{ runner.os }}-pip-bench-${{ hashFiles('engineering/python/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
+          if [ -f engineering/python/requirements.txt ]; then pip install -r engineering/python/requirements.txt; fi
           pip install pytest pytest-benchmark
           pip install matplotlib 2>/dev/null || true
 
@@ -992,7 +996,7 @@ jobs:
         run: pip install ruff mypy
 
       - name: Run Python lint
-        working-directory: python
+        working-directory: engineering/python
         run: |
           ruff check app/
           ruff format --check app/
@@ -1074,7 +1078,7 @@ jobs:
       - name: Run response_model coverage check
         run: |
           python scripts/check_response_model.py \
-            --scan-dir python/app/api \
+            --scan-dir engineering/python/app/api \
             --baseline .ci_baseline_response_model.json \
             --json-output response-model-report.json
 
@@ -1112,7 +1116,7 @@ jobs:
   # Job 7.5: Core Contracts Tests
   # ============================================
   # 运行核心架构契约测试（ADR-005 阶段 0 验收门禁）。
-  # 测试文件：python/tests/unit/test_*_contract.py
+  # 测试文件：engineering/python/tests/unit/test_*_contract.py
   # 标记：@pytest.mark.unit + @pytest.mark.contracts
   # 覆盖：Task/Workflow、Dataset/Version/Lineage、Plugin/ExtensionPoint、
   #       ConfigSpec、Observability 五大基础契约 +
@@ -1135,12 +1139,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
-          key: ${{ runner.os }}-pip-contracts-${{ hashFiles('python/requirements.txt') }}
+          key: ${{ runner.os }}-pip-contracts-${{ hashFiles('engineering/python/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        working-directory: python
+        working-directory: engineering/python
         run: |
           python -m pip install --upgrade pip
           # 契约层仅依赖 dataclasses/abc/enum/datetime，无第三方依赖
@@ -1148,7 +1152,7 @@ jobs:
           pip install pytest pytest-cov pytest-asyncio
 
       - name: Run core contracts tests
-        working-directory: python
+        working-directory: engineering/python
         run: |
           pytest tests/unit/test_task_contract.py \
                  tests/unit/test_dataset_contract.py \
@@ -1160,7 +1164,7 @@ jobs:
                  tests/unit/test_rl_agent_contract.py \
                  -v \
                  --cov=app/contracts \
-                 --cov-config=../.coveragerc \
+                 --cov-config=../../.coveragerc \
                  --cov-report=xml:coverage-contracts.xml \
                  --cov-report=json:coverage-contracts.json \
                  --cov-report=term-missing \
@@ -1168,7 +1172,7 @@ jobs:
                  -m "unit and contracts"
 
       - name: Check contracts coverage threshold (90%)
-        working-directory: python
+        working-directory: engineering/python
         run: |
           echo "======================================================"
           echo "  COVERAGE CHECK: Core Contracts (threshold >= 90%)"
@@ -1210,15 +1214,15 @@ jobs:
         with:
           name: contracts-test-results
           path: |
-            python/junit-contracts.xml
-            python/coverage-contracts.xml
-            python/coverage-contracts.json
+            engineering/python/junit-contracts.xml
+            engineering/python/coverage-contracts.xml
+            engineering/python/coverage-contracts.json
           retention-days: 30
 
       - name: Upload contracts coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: python/coverage-contracts.xml
+          file: engineering/python/coverage-contracts.xml
           flags: contracts-tests
           name: codecov-contracts
           fail_ci_if_error: false
@@ -1244,7 +1248,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Run OpenAPI consistency check
-        working-directory: python
+        working-directory: engineering/python
         run: |
           export PYTHONPATH="${PYTHONPATH}:${PWD}"
           # Step 1: 重新生成 openapi.json 到临时路径

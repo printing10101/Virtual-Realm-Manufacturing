@@ -1,0 +1,8 @@
+﻿
+   Id Name            CPU WorkingSet StartTime          Responding HasExited
+   -- ----            --- ---------- ---------          ---------- ---------
+ 8776 python 53905.671875  555630592 2026/7/19 20:22:11       True     False
+29356 python  52984.28125  587276288 2026/7/19 20:34:51       True     False
+29936 python      0.09375    8568832 2026/7/19 20:22:10       True     False
+
+
