@@ -11,7 +11,7 @@
 # ---- Stage 1: Builder - 安装构建依赖和编译 Python 包 ----
 # P0-13 修复：基础镜像改为可参数化，默认国内镜像，海外部署可覆盖为 docker.io/library
 ARG BASE_REGISTRY=swr.cn-north-4.myhuaweicloud.com/library
-FROM ${BASE_REGISTRY}/python:3.11-slim AS builder
+FROM ${BASE_REGISTRY}/python:3.12-slim AS builder
 
 # P0-13 修复：pip 源可参数化，默认阿里云镜像，海外部署可通过 --build-arg 覆盖
 ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
@@ -39,10 +39,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
     g++ \
+    libspatialindex-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 先复制依赖文件，充分利用 Docker 缓存层
-COPY requirements.txt ./
+COPY engineering/python/requirements.txt ./requirements.txt
 
 # 安装 Python 依赖到独立目录（pip 源由 PIP_INDEX_URL 环境变量控制）
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
@@ -53,7 +54,7 @@ COPY . .
 # ---- Stage 2: Runtime - 最小化运行时镜像 ----
 # P0-13 修复：runtime 阶段也需要使用同一 BASE_REGISTRY ARG
 ARG BASE_REGISTRY=swr.cn-north-4.myhuaweicloud.com/library
-FROM ${BASE_REGISTRY}/python:3.11-slim AS runtime
+FROM ${BASE_REGISTRY}/python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -69,16 +70,19 @@ WORKDIR $APP_HOME
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libgomp1 \
+    libspatialindex-dev \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 # 从 builder 阶段复制已安装的 Python 包
 COPY --from=builder /install /usr/local
 
 # 复制应用代码（仅复制必要的目录）
-COPY --from=builder /build/python/app ./python/app
-COPY --from=builder /build/python/alembic ./python/alembic
-COPY --from=builder /build/python/alembic.ini ./python/
-COPY --from=builder /build/python/config ./python/config
+# 注意：源码实际位于 engineering/python/ 下，需保持路径一致
+COPY --from=builder /build/engineering/python/app ./python/app
+COPY --from=builder /build/engineering/python/alembic ./python/alembic
+COPY --from=builder /build/engineering/python/alembic.ini ./python/
+COPY --from=builder /build/engineering/python/config ./python/config
 COPY --from=builder /build/config ./config
 
 # 创建非 root 用户并设置权限

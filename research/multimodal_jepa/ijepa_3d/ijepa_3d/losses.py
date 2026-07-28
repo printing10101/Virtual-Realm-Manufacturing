@@ -21,7 +21,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, Tuple
-from app.ai.ijepa_3d.config import IJEPA3DConfig
+# Q2 修复：原 `from app.ai.ijepa_3d.config` 为悬空 import，改为同包相对导入。
+from .config import IJEPA3DConfig
 
 
 class VICRegLoss(nn.Module):

@@ -101,3 +101,11 @@ OPC UA 与 MTConnect 集成说明。
 - 修改对外文档时，**必须先修改 `docs/` 中的源文件**，再同步到本目录。
 - 添加新的对外文档目录时，需同步更新 `.vitepress/config.js` 中的 `sidebar` 配置。
 - 内部文档（ADR、报告、研究、运维手册等）仅放在 `docs/` 中，不进入本目录。
+
+## 依赖锁文件提交策略（P2-E7）
+
+- **策略**：`pnpm-lock.yaml` **应当提交**到仓库，以保证文档站构建可复现。
+- **首次安装后**：执行 `pnpm install` 会生成 `pnpm-lock.yaml`，请将其一并提交。
+- **依赖升级时**：先在本地验证 `pnpm build` 通过，再提交更新后的 `package.json` 与 `pnpm-lock.yaml`。
+- **本地 .gitignore**：`docs-site/.gitignore` 仅忽略 `node_modules/` 与构建产物（`dist/`、`.vitepress/cache/`），不忽略 lockfile。
+- **若需切换为"不锁版本"策略**：在根 `.gitignore` 中显式添加 `docs-site/pnpm-lock.yaml` 并同步更新本说明。

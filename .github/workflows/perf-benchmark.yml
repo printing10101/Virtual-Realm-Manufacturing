@@ -1,4 +1,4 @@
-name: 性能基准测试与回归检测
+﻿name: 性能基准测试与回归检测
 
 on:
   push:
@@ -46,7 +46,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
+          if [ -f engineering/python/requirements.txt ]; then pip install -r engineering/python/requirements.txt; fi
           pip install pytest pytest-benchmark matplotlib
           pip install numpy
 

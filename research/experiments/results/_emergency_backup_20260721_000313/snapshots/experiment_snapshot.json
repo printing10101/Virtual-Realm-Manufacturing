@@ -1,0 +1,163 @@
+{
+  "snapshot_timestamp": "2026-07-21 00:08:35 +08:00",
+  "snapshot_purpose": "Emergency data capture - guaranteed recoverable even if experiment terminates within next 10 hours",
+
+  "experiment_1": {
+    "name": "DL-LNN Ablation v4 (PID 8776)",
+    "script": "research/papers/论文相关/脚本/ablation_experiment.py",
+    "command_line": "ablation_experiment.py --dataset synthetic --ablations Full A1 A2 A3 A4_lam0.01 A4_lam0.05 A4_lam0.1 A4_lam0.5 A4_lam1.0 A6_fixed0.0 A6_fixed0.25 A6_fixed0.5 A6_fixed0.75 A6_fixed1.0 A7_MLP A7_CNN --stage1_epochs 30 --stage2_epochs 60 --output_dir research\\papers\\论文相关\\脚本\\results\\ablation --resume",
+    "process_start_time": "2026-07-19 20:22:11",
+    "process_cpu_sec": 53905.67,
+    "process_working_set_mb": 530,
+    "process_responding": true,
+    "process_has_exited": false,
+    "total_configs": 16,
+    "completed_configs": 5,
+    "completion_rate_pct": 31.25,
+    "current_config": "A4_lam0.05 (6/16) - Stage 1 epoch 1-10+",
+    "checkpoint_file": "research/papers/论文相关/脚本/results/ablation/ablation_checkpoint_synthetic.json",
+    "checkpoint_last_update": "2026-07-20 23:25:02",
+    "log_file": "research/experiments/results/ablation_v4_20260719_202211.log",
+    "log_last_update": "2026-07-21 00:00:xx (flushed periodically)",
+    "backup_log_path": "_emergency_backup_20260721_000313/ablation_v4/ablation_v4_20260719_202211.log",
+
+    "completed_results": {
+      "Full": {
+        "description": "完整 DL-LNN（LTC + 物理分支 + 自适应门控 + 两阶段 + L_data + L_phys + L_pcc）",
+        "metrics": {"mae": 0.3716, "rmse": 0.4493, "r2": 0.9966, "mape": 20.14, "pcc": 0.8057,
+                    "phys_mae": 0.2312, "phys_within_threshold": 0.2953},
+        "train_history": {"total_epochs": 90, "final_train_loss": 0.1904, "final_val_loss": 0.0484, "best_val_loss": 0.0477},
+        "elapsed_sec": 24318.0,
+        "config_overrides": {"lambda_phys": 0.5, "lambda_pcc": 0.1, "two_stage": true, "model_variant": "default"}
+      },
+      "A1": {
+        "description": "去除 L_phys（λ₂=0，仅 L_data + L_pcc）",
+        "metrics": {"mae": 0.3833, "rmse": 0.4666, "r2": 0.9963, "mape": 18.78, "pcc": 0.8188,
+                    "phys_mae": 0.2541, "phys_within_threshold": 0.1027},
+        "train_history": {"total_epochs": 90, "final_train_loss": 0.1846, "final_val_loss": 0.0500, "best_val_loss": 0.0500},
+        "elapsed_sec": 21561.5,
+        "config_overrides": {"lambda_phys": 0.0, "lambda_pcc": 0.1, "two_stage": true, "model_variant": "default"}
+      },
+      "A2": {
+        "description": "去除 L_pcc（λ₃=0，等价于 PINN，L_data + L_phys）",
+        "metrics": {"mae": 0.2397, "rmse": 0.3163, "r2": 0.9983, "mape": 5.75, "pcc": 0.9524,
+                    "phys_mae": 0.0767, "phys_within_threshold": 0.498},
+        "train_history": {"total_epochs": 90, "final_train_loss": 0.0816, "final_val_loss": 0.0318, "best_val_loss": 0.0296},
+        "elapsed_sec": 19800.7,
+        "config_overrides": {"lambda_phys": 0.5, "lambda_pcc": 0.0, "two_stage": true, "model_variant": "default"},
+        "_observation": "BEST PERFORMANCE - removing L_pcc improved all metrics. Suggests L_pcc may conflict with L_data on synthetic data"
+      },
+      "A3": {
+        "description": "去除两阶段训练（单阶段 300 epochs，从头用完整损失训练）",
+        "metrics": {"mae": 0.3625, "rmse": 0.4417, "r2": 0.9967, "mape": 15.50, "pcc": 0.8500,
+                    "phys_mae": 0.2674, "phys_within_threshold": 0.0593},
+        "train_history": {"total_epochs": 90, "final_train_loss": 0.1905, "final_val_loss": 0.0477, "best_val_loss": 0.0461},
+        "elapsed_sec": 29043.9,
+        "config_overrides": {"lambda_phys": 0.5, "lambda_pcc": 0.1, "two_stage": false, "model_variant": "default"}
+      },
+      "A4_lam0.01": {
+        "description": "λ₃ 敏感性分析：λ₃=0.01（默认 0.1）",
+        "metrics": {"mae": 0.2469, "rmse": 0.3233, "r2": 0.9982, "mape": 8.75, "pcc": 0.9219,
+                    "phys_mae": 0.0851, "phys_within_threshold": 0.506},
+        "train_history": {"total_epochs": 90, "final_train_loss": 0.0894, "final_val_loss": 0.0329, "best_val_loss": 0.0321},
+        "elapsed_sec": 68305.9,
+        "config_overrides": {"lambda_phys": 0.5, "lambda_pcc": 0.01, "two_stage": true, "model_variant": "default"},
+        "_observation": "Anomalously long elapsed time (19h) - GPU contention with LOMO caused 3x slowdown vs A2"
+      }
+    },
+
+    "remaining_configs": [
+      "A4_lam0.05", "A4_lam0.1", "A4_lam0.5", "A4_lam1.0",
+      "A6_fixed0.0", "A6_fixed0.25", "A6_fixed0.5", "A6_fixed0.75", "A6_fixed1.0",
+      "A7_MLP", "A7_CNN"
+    ],
+    "estimated_remaining_time_hours": "72-96 (depends on GPU contention)"
+  },
+
+  "experiment_2": {
+    "name": "LOMO Cross-Material Generalization (PID 29356)",
+    "script": "research/papers/论文相关/脚本/lomo_loco_experiment.py",
+    "command_line": "lomo_loco_experiment.py --protocol LOMO --models DL-LNN --dataset synthetic_multi --output_dir ...\\results\\lomo_loco_ar02_full --physics_aware",
+    "process_start_time": "2026-07-19 20:34:51",
+    "process_cpu_sec": 52984.28,
+    "process_working_set_mb": 560,
+    "process_responding": true,
+    "process_has_exited": false,
+    "total_folds": 5,
+    "completed_folds": 4,
+    "completion_rate_pct": 80,
+    "current_fold": "5/5 (304_SS) - exact epoch unknown (log buffer not flushed)",
+    "checkpoint_file": "research/papers/论文相关/脚本/results/lomo_loco_ar02_full/lomo_ckpt_DL-LNN_physics_aware.json",
+    "checkpoint_last_update": "2026-07-19 23:54:20",
+    "_alert": "CHECKPOINT HAS NOT UPDATED FOR 24+ HOURS - possible hang or fold 5 stuck. Process still responds and consumes CPU/GPU but no progress signals.",
+    "log_file": "research/papers/论文相关/脚本/results/lomo_loco_ar02_full/ar02_run_20260719_203451.log",
+    "log_size_bytes": 0,
+    "backup_log_path": "_emergency_backup_20260721_000313/lomo_loco/ (includes 7 historical log files from 2026-07-16 to 2026-07-19 for context)",
+
+    "completed_results": [
+      {"fold": 1, "test_material": "6061-T6",
+       "metrics": {"mae": 6.3466, "rmse": 7.3198, "r2": -0.0729, "mape": 85.64, "pcc": 0.1458,
+                    "phys_mae": 6.3461, "phys_within_threshold": 0.00056},
+       "train_size": 7200, "test_size": 1800, "physics_aware": true,
+       "_observation": "COMPLETE FAILURE - hardness 95 too low, ks_scale out of training distribution. Ideal OOD case for Bayesian UQ paper."},
+      {"fold": 2, "test_material": "TC4",
+       "metrics": {"mae": 1.6260, "rmse": 2.4149, "r2": 0.8646, "mape": 34.37, "pcc": 0.6568,
+                    "phys_mae": 1.6242, "phys_within_threshold": 0.0706},
+       "train_size": 7200, "test_size": 1800, "physics_aware": true},
+      {"fold": 3, "test_material": "HRC52",
+       "metrics": {"mae": 1.9803, "rmse": 2.8387, "r2": 0.7637, "mape": 36.81, "pcc": 0.6321,
+                    "phys_mae": 1.9785, "phys_within_threshold": 0.0317},
+       "train_size": 7200, "test_size": 1800, "physics_aware": true},
+      {"fold": 4, "test_material": "45_Steel",
+       "metrics": {"mae": 0.9482, "rmse": 1.1707, "r2": 0.9740, "mape": 18.71, "pcc": 0.8143,
+                    "phys_mae": 0.9399, "phys_within_threshold": 0.0411},
+       "train_size": 7200, "test_size": 1800, "physics_aware": true,
+       "_observation": "BEST FOLD - 45_Steel hardness 200 matches training distribution center (ks_scale=1.0)"}
+    ],
+    "remaining_folds": ["304_SS (fold 5, hardness 180)"],
+    "estimated_remaining_time_hours": "UNKNOWN - checkpoint not updating, may be stuck or in final long epoch"
+  },
+
+  "gpu_status_at_snapshot": {
+    "name": "NVIDIA GeForce RTX 3080 Laptop GPU",
+    "memory_used_mib": 667,
+    "memory_total_mib": 16384,
+    "utilization_pct": 91,
+    "temperature_c": 40,
+    "compute_apps_pids": [8776, 29356, 28160]
+  },
+
+  "recovery_plan_if_experiment_lost": {
+    "step_1_v4_ablation": "Run: python research/papers/论文相关/脚本/ablation_experiment.py --dataset synthetic --ablations Full A1 A2 A3 A4_lam0.01 A4_lam0.05 A4_lam0.1 A4_lam0.5 A4_lam1.0 A6_fixed0.0 A6_fixed0.25 A6_fixed0.5 A6_fixed0.75 A6_fixed1.0 A7_MLP A7_CNN --stage1_epochs 30 --stage2_epochs 60 --output_dir research\\papers\\论文相关\\脚本\\results\\ablation --resume  (the --resume flag will skip the 5 already-completed configs from this snapshot)",
+    "step_2_lomo": "Run: python research/papers/论文相关/脚本/lomo_loco_experiment.py --protocol LOMO --models DL-LNN --dataset synthetic_multi --output_dir ...\\results\\lomo_loco_ar02_full --physics_aware  (no --resume, will restart all 5 folds unless LOMO script supports resume - CHECK THIS FIRST)",
+    "step_3_bayesian_weights": "After v4 completes: python research/papers/论文相关/脚本/bayesian_uq/rerun_full_save_weights.py  (requires v4 Full config, ~6h)",
+    "step_4_bayesian_uq": "After step 3: python research/papers/论文相关/脚本/bayesian_uq/bayesian_uq_experiment.py  (MC Dropout UQ experiment, ~30min)"
+  },
+
+  "backup_files_manifest": {
+    "ablation_v4_dir": [
+      "ablation_v4_20260719_202211.log (6291 bytes)",
+      "ablation_v4_20260719_202211.err.log (0 bytes - no errors)",
+      "ablation_checkpoint_synthetic.json (4502 bytes, 5 completed configs)"
+    ],
+    "lomo_loco_dir": [
+      "lomo_ckpt_DL-LNN_physics_aware.json (1659 bytes, 4 completed folds)",
+      "ar02_run_20260716_222924.log",
+      "ar02_run_20260717_131655.log",
+      "ar02_run_20260717_154116.log",
+      "ar02_run_20260717_223939.log",
+      "ar02_run_20260718_154203.log",
+      "ar02_run_20260719_200331.log",
+      "ar02_run_20260719_203451.log (0 bytes - current run, buffered)"
+    ],
+    "snapshots_dir": [
+      "process_status.txt",
+      "experiment_snapshot.json (this file)"
+    ],
+    "root_files": [
+      "backup_manifest.json",
+      "backup_timestamp.txt",
+      "README.md (will be generated next)"
+    ]
+  }
+}

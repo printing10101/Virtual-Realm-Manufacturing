@@ -1,4 +1,4 @@
-name: PR 阶段流水线
+﻿name: PR 阶段流水线
 
 # 覆盖率阈值统一说明：所有测试类型（单元/集成/前端）的覆盖率阈值
 # 统一为 65%，与 ci.yml、vitest.config.ts 和 .coveragerc 中的 fail_under 保持一致。
@@ -59,7 +59,7 @@ jobs:
         run: pip install ruff mypy
 
       - name: Python 代码检查
-        working-directory: python
+        working-directory: engineering/python
         run: |
           echo "=== 运行 ruff check ==="
           ruff check app/ || exit 1
@@ -103,24 +103,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
-          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('python/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('engineering/python/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-
             ${{ runner.os }}-pip-
 
       - name: 安装依赖
-        working-directory: python
+        working-directory: engineering/python
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-cov pytest-asyncio httpx
 
       - name: 运行单元测试
-        working-directory: python
+        working-directory: engineering/python
         run: |
           pytest tests/unit/ -v \
             --cov=app \
-            --cov-config=../.coveragerc \
+            --cov-config=../../.coveragerc \
             --cov-report=xml:coverage-unit.xml \
             --cov-report=json:coverage-unit.json \
             --cov-report=html:coverage-unit-html \
@@ -129,7 +129,7 @@ jobs:
             -m unit
 
       - name: 检查单元测试覆盖率阈值 (65%)
-        working-directory: python
+        working-directory: engineering/python
         run: |
           echo "======================================================"
           echo "  覆盖率检查: 单元测试 (阈值 >= 65%)"
@@ -196,23 +196,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
-          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('python/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('engineering/python/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: 安装依赖
-        working-directory: python
+        working-directory: engineering/python
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-cov pytest-asyncio httpx
 
       - name: 运行集成测试
-        working-directory: python
+        working-directory: engineering/python
         run: |
           pytest tests/integration/ -v \
             --cov=app \
-            --cov-config=../.coveragerc \
+            --cov-config=../../.coveragerc \
             --cov-report=xml:coverage-integration.xml \
             --cov-report=json:coverage-integration.json \
             --cov-report=html:coverage-integration-html \
@@ -221,7 +221,7 @@ jobs:
             -m integration
 
       - name: 检查集成测试覆盖率阈值 (65%)
-        working-directory: python
+        working-directory: engineering/python
         run: |
           echo "======================================================"
           echo "  覆盖率检查: 集成测试 (阈值 >= 65%)"

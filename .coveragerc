@@ -1,6 +1,8 @@
 [run]
 # Source code to measure
-source = app
+# 阶段2 解耦改造：source 路径从 app 改为 engineering/python/app
+# （项目根目录运行 pytest 时，工程侧代码在 engineering/python/app 下）
+source = engineering/python/app
 
 # Branch coverage analysis
 branch = True

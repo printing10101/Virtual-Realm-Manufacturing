@@ -143,3 +143,27 @@ build
 *.cache
 *.sqlite
 *.db
+
+# --- Rust build artifacts (engineering/src-tauri/target, *.rlib/.rmeta/.d) ---
+# 这些产物体积巨大（target/ 可达数 GB，数千个 .rlib/.rmeta/.d），
+# 不属于生产镜像，必须排除以缩小 build context。
+engineering/src-tauri/target/
+*.rlib
+*.rmeta
+*.d
+
+# --- Runtime-mounted / non-image data dirs (被 compose volumes 覆盖) ---
+data/
+coverage-reports/
+output/
+experiments/
+models/
+logs/
+
+# --- Research side (训练栈，生产镜像不需要) ---
+research/
+
+# --- Python virtual environments (根目录 .venv 可达数 GB，必须排除) ---
+.venv/
+venv/
+env/

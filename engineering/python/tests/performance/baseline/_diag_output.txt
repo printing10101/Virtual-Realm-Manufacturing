@@ -1,0 +1,19 @@
+﻿[warn] _overlapped 模块加载失败，已注入空实现绕过 WinSock 损坏。
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Lenovo\AppData\Roaming\TRAE SOLO CN\ModularData\ai-agent\vm\tools\python\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Lenovo\Desktop\灵境制造（上线版）
+configfile: pytest.ini
+collecting ... collected 1 item
+
+tests\performance\test_critical_modules_performance.py::TestDatabaseConnectionPoolPerformance::test_connection_pool_creation_time 
+连接池创建时间: 0.002ms
+PASSED
+
+============================== warnings summary ===============================
+..\..\..\..\AppData\Roaming\TRAE SOLO CN\ModularData\ai-agent\vm\tools\python\lib\site-packages\_pytest\assertion\rewrite.py:188
+  C:\Users\Lenovo\AppData\Roaming\TRAE SOLO CN\ModularData\ai-agent\vm\tools\python\lib\site-packages\_pytest\assertion\rewrite.py:188: UserWarning: [S7] 真实 torch 不可用。依赖 torch 的测试将通过 pytest.importorskip('torch') 跳过，而非通过桩模块伪装通过。如需运行完整测试套件，请安装 PyTorch。
+    exec(co, module.__dict__)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 1 passed, 1 warning in 4.69s =========================

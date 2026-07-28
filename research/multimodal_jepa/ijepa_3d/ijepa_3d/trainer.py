@@ -21,8 +21,9 @@ import os
 import json
 import logging
 from datetime import datetime
-from app.ai.ijepa_3d.config import IJEPA3DConfig
-from app.ai.ijepa_3d.model import IJEPA3DModel
+# Q2 修复：原 `from app.ai.ijepa_3d.xxx` 为悬空 import，改为同包相对导入。
+from .config import IJEPA3DConfig
+from .model import IJEPA3DModel
 
 logger = logging.getLogger(__name__)
 

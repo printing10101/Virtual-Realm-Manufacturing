@@ -15,10 +15,12 @@
     - IJEPA3DTrainer: 训练流程管理
 """
 
-from app.ai.ijepa_3d.config import IJEPA3DConfig
-from app.ai.ijepa_3d.model import IJEPA3DModel
-from app.ai.ijepa_3d.trainer import IJEPA3DTrainer
-from app.ai.ijepa_3d.dataset import IJEPA3DDataset
+# Q2 修复：原 `from app.ai.ijepa_3d.xxx` 为悬空 import（app/ai/ijepa_3d/ 不存在）。
+# 改为同包内相对导入，使 research.multimodal_jepa.ijepa_3d.ijepa_3d 可独立加载。
+from .config import IJEPA3DConfig
+from .model import IJEPA3DModel
+from .trainer import IJEPA3DTrainer
+from .dataset import IJEPA3DDataset
 
 __all__ = [
     "IJEPA3DConfig",

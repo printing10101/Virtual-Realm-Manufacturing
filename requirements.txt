@@ -2,9 +2,9 @@
 # 灵境制造 - 根目录 requirements.txt（薄包装）
 # =============================================================================
 # 此文件为兼容旧部署脚本（Dockerfile / CI 入口）保留，
-# 实际依赖定义在 python/requirements.txt（更靠近代码，作为权威源）。
+# 实际依赖定义在 engineering/python/requirements.txt（更靠近代码，作为权威源）。
 #
-# 请勿在此文件添加新依赖，所有依赖请编辑 python/requirements.txt。
+# 请勿在此文件添加新依赖，所有依赖请编辑 engineering/python/requirements.txt。
 #
 # 国内镜像加速：默认使用 PyPI 官方源。
 # 国内部署可通过 pip config 或 PIP_INDEX_URL 环境变量配置镜像源，例如：
@@ -12,4 +12,4 @@
 #   export PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 # =============================================================================
 
--r python/requirements.txt
+-r engineering/python/requirements.txt
