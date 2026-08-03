@@ -5,20 +5,44 @@
 
 from __future__ import annotations
 
+import json
+import logging
+import traceback
+
 import numpy as np
 from typing import Any, Dict, List, Optional
 
 from app.contracts.rl_agent import (
+    ActionEvaluation,
+    OptimizationTarget,
+    PolicyError,
+    PolicyNotFoundError,
     PolicyVersion,
-    TrainingStatusInfo,
+    RecommendedAction,
+    SafetyConstraintsSpec,
     TrainingMetricsSnapshot,
+    TrainingStatusInfo,
 )
 from app.contracts.world_model import ActionField, StateField
-from app.database.models.rl_agent import RLAgentPolicyVersionORM, RLAgentTrainingRunORM
+from app.database.models.rl_agent import (
+    RLAgentPolicyVersionORM,
+    RLAgentTrainingRunORM,
+)
+from app.utils.time import utcnow
+
+logger = logging.getLogger(__name__)
+
+
+# 状态/动作字段索引（与 StateField.all() / ActionField.all() 顺序对齐）
+_STATE_FIELD_ORDER: list[str] = StateField.all()
+_ACTION_FIELD_ORDER: list[str] = ActionField.all()
+_STATE_FIELD_INDEX: dict[str, int] = {
+    name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)
+}
 
 
 def _orm_to_dataclass(
-    self, orm: RLAgentPolicyVersionORM
+    orm: RLAgentPolicyVersionORM
 ) -> PolicyVersion:
     """ORM → 契约层 dataclass."""
     return PolicyVersion(
@@ -34,8 +58,8 @@ def _orm_to_dataclass(
     )
 
 def _training_run_to_status_info(
-    self, orm: RLAgentTrainingRunORM
-) -> TrainingStatusInfo:
+    orm: RLAgentTrainingRunORM
+) -> TrainingStatusInfo:  # type: ignore[arg-type]
     """训练运行 ORM → TrainingStatusInfo."""
     metrics: Optional[TrainingMetricsSnapshot] = None
     if orm.metrics_json:
@@ -75,7 +99,7 @@ def _training_run_to_status_info(
     )
 
 def _state_dict_to_array(
-    self, state_dict: dict[str, float], *, field_name: str
+    state_dict: dict[str, float], *, field_name: str
 ) -> np.ndarray:
     """状态字典 → ndarray [state_dim].
 
@@ -100,7 +124,7 @@ def _state_dict_to_array(
     return np.asarray(values, dtype=np.float32)
 
 def _action_dict_to_array(
-    self, action_dict: dict[str, float], *, field_name: str
+    action_dict: dict[str, float], *, field_name: str
 ) -> np.ndarray:
     """动作字典 → ndarray [action_dim].
 
@@ -125,7 +149,7 @@ def _action_dict_to_array(
     return np.asarray(values, dtype=np.float32)
 
 def _action_array_to_dict(
-    self, action_arr: np.ndarray
+    action_arr: np.ndarray
 ) -> dict[str, float]:
     """动作 ndarray → 字典（按 ActionField 顺序还原字段名）."""
     arr = np.asarray(action_arr, dtype=np.float32).reshape(-1)
@@ -136,7 +160,7 @@ def _action_array_to_dict(
     return result
 
 def _extract_state_field(
-    self, state_arr: np.ndarray, field_name: str, *, default: float = 0.0
+    state_arr: np.ndarray, field_name: str, *, default: float = 0.0
 ) -> float:
     """从状态数组提取指定字段值."""
     idx = _STATE_FIELD_INDEX.get(field_name)
@@ -144,7 +168,7 @@ def _extract_state_field(
         return default
     return float(state_arr[idx])
 
-def _load_weights(self, net: Any, model_uri: str, *, kind: str) -> None:
+def _load_weights(net: Any, model_uri: str, *, kind: str) -> None:
     """从 ModelRegistry 加载权重到网络.
 
     v1 实现：尝试从 ModelRegistry 解析，失败则使用随机初始化
@@ -175,7 +199,7 @@ def _load_weights(self, net: Any, model_uri: str, *, kind: str) -> None:
             exc,
         )
 
-def _extract_action(self, policy_out: Any) -> np.ndarray:
+def _extract_action(policy_out: Any) -> np.ndarray:
     """从策略输出提取动作向量.
 
     处理 torch.Tensor 与 NumPy 回退两种模式（与 RLAgentPlugin 对齐）.
@@ -194,7 +218,7 @@ def _extract_action(self, policy_out: Any) -> np.ndarray:
         action_arr = action_arr.reshape(-1)
     return action_arr
 
-def _extract_value(self, value_out: Any) -> float:
+def _extract_value(value_out: Any) -> float:
     """从值网络输出提取标量价值."""
     if hasattr(value_out, "detach"):  # torch.Tensor
         value_out = value_out.detach().cpu().numpy()
@@ -224,7 +248,7 @@ def _rank_candidates(
     return sorted(candidates, key=lambda e: e.q_value, reverse=True)
 
 def _build_reasoning(
-    self,
+    
     *,
     action_dict: dict[str, float],
     optimization_target: str,

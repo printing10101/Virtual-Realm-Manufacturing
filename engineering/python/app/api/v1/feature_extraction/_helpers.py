@@ -16,6 +16,7 @@ from app.feature_extraction import (
     FeatureExtractionPipeline,
     FeatureExtractionTaskStatus,
     build_feature_disclaimer,
+    get_feature_store,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,9 @@ def _spawn(coro):
     _background_tasks.add(t)
     t.add_done_callback(_background_tasks.discard)
     return t
+
+_pipeline: FeatureExtractionPipeline | None = None
+
 
 def _get_pipeline() -> FeatureExtractionPipeline:
     """获取 pipeline 单例。"""

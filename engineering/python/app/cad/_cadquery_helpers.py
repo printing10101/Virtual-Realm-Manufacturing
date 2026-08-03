@@ -169,10 +169,14 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
     # 安全修复：先进行 AST 审计，拒绝危险属性访问和 import 语句
     try:
         tree = ast.parse(script)
+        from app.cad.cadquery_gen import _CadQueryScriptValidator, _DANGEROUS_ATTRS  # 延迟导入避免循环
+
         _CadQueryScriptValidator().visit(tree)
     except SyntaxError as e:
         error_msg = f"Script syntax error (task {task_id}): {e}"
         logger.error(error_msg, exc_info=True)
+        from app.cad.cadquery_gen import CadQueryScriptError
+
         raise CadQueryScriptError(error_msg) from e
 
     # 安全修复：用 wrapper 包装反射 API，阻止字符串形式的 dunder 属性访问
@@ -261,7 +265,8 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
             try:
                 # 内存上限（字节）
                 mem_bytes = memory_limit_mb * 1024 * 1024
-                _resource.setrlimit(_resource.RLIMIT_AS, (mem_bytes, mem_bytes))
+                if hasattr(_resource, "setrlimit") and hasattr(_resource, "RLIMIT_AS"):
+                    _resource.setrlimit(_resource.RLIMIT_AS, (mem_bytes, mem_bytes))  # type: ignore[attr-defined]
                 logger.debug(
                     "Set RLIMIT_AS=%d MB for task %s", memory_limit_mb, task_id
                 )
@@ -309,24 +314,32 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
                 f"(task {task_id}): {exc}"
             )
             logger.error(error_msg, exc_info=True)
-            raise CadQueryScriptError(error_msg) from exc
+            from app.cad.cadquery_gen import CadQueryScriptError
+
+        raise CadQueryScriptError(error_msg) from exc
         if isinstance(exc, KeyboardInterrupt):
             error_msg = (
                 f"Script execution interrupted (task {task_id}): {exc}"
             )
             logger.error(error_msg, exc_info=True)
-            raise CadQueryScriptError(error_msg) from exc
+            from app.cad.cadquery_gen import CadQueryScriptError
+
+        raise CadQueryScriptError(error_msg) from exc
         if isinstance(exc, (ValueError, KeyError, TypeError, OSError,
                              RuntimeError, SyntaxError, NameError)):
             error_msg = f"Script execution failed (task {task_id}): {exc}"
             logger.error(error_msg, exc_info=True)
-            raise CadQueryScriptError(error_msg) from exc
+            from app.cad.cadquery_gen import CadQueryScriptError
+
+        raise CadQueryScriptError(error_msg) from exc
         # 其他未预期异常
         error_msg = (
             f"Script execution failed with unexpected exception "
             f"(task {task_id}): {exc}"
         )
         logger.error(error_msg, exc_info=True)
+        from app.cad.cadquery_gen import CadQueryScriptError
+
         raise CadQueryScriptError(error_msg) from exc
 
     logger.debug("Script for task %s completed successfully", task_id)

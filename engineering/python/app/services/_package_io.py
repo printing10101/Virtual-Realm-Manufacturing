@@ -10,11 +10,13 @@ import json
 import os
 import platform
 import socket
+import zipfile
 from typing import Any, Optional
 
 from app.config import config
 from app.contracts.project_package import (
     ExportOptions,
+    PackageManifest,
     SourceMachineInfo,
     PACKAGE_FILE_EXTENSION,
     PACKAGE_FILENAME_TEMPLATE,
@@ -24,7 +26,7 @@ from app.contracts.project_package import (
 from app.utils.time import utcnow_filename_suffix
 
 
-def _resolve_output_path(self, output_dir: str, options: ExportOptions) -> str:
+def _resolve_output_path(output_dir: str, options: ExportOptions) -> str:
     """解析导出包输出路径.
 
     Args:
@@ -46,7 +48,7 @@ def _resolve_output_path(self, output_dir: str, options: ExportOptions) -> str:
         )
     return os.path.abspath(os.path.join(output_dir, filename))
 
-def _resolve_resource_path(self, ref: dict[str, Any]) -> Optional[str]:
+def _resolve_resource_path(ref: dict[str, Any]) -> Optional[str]:
     """从资源引用 metadata 解析实际文件路径.
 
     Args:
@@ -70,7 +72,7 @@ def _resolve_resource_path(self, ref: dict[str, Any]) -> Optional[str]:
         )
     return path if os.path.exists(path) else None
 
-def _compute_sha256(self, file_path: str) -> str:
+def _compute_sha256(file_path: str) -> str:
     """计算文件 sha256（流式读取，64KB 缓冲）."""
     h = hashlib.sha256()
     with open(file_path, "rb") as f:
@@ -81,7 +83,7 @@ def _compute_sha256(self, file_path: str) -> str:
             h.update(chunk)
     return h.hexdigest()
 
-def _compute_manifest_checksum(self, manifest_dict: dict[str, Any]) -> str:
+def _compute_manifest_checksum(manifest_dict: dict[str, Any]) -> str:
     """计算 manifest.json 的 sha256 校验和（排除 checksum 字段本身）.
 
     Args:
@@ -95,7 +97,7 @@ def _compute_manifest_checksum(self, manifest_dict: dict[str, Any]) -> str:
     content = json.dumps(data, ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
-def _get_source_machine_info(self) -> SourceMachineInfo:
+def _get_source_machine_info() -> SourceMachineInfo:
     """获取当前机器信息."""
     return SourceMachineInfo(
         hostname=socket.gethostname() or SOURCE_MACHINE_INFO_DEFAULTS["hostname"],
@@ -104,7 +106,7 @@ def _get_source_machine_info(self) -> SourceMachineInfo:
     )
 
 def _build_package_path(
-    self, resource_type: str, resource_uri: str, ext: str
+    resource_type: str, resource_uri: str, ext: str
 ) -> str:
     """构造包内路径（基于 resource_type + URI）."""
     # URI 格式：<scheme>://<path>
@@ -113,7 +115,7 @@ def _build_package_path(
     safe_path = path_part.replace("/", "_").replace(":", "_")
     return f"{resource_type}s/{safe_path}{ext}"
 
-def _read_manifest(self, package_path: str) -> PackageManifest:
+def _read_manifest(package_path: str) -> PackageManifest:
     """从 .lomo 包读取 manifest.json."""
     try:
         with zipfile.ZipFile(package_path, "r") as zf:
@@ -130,7 +132,7 @@ def _read_manifest(self, package_path: str) -> PackageManifest:
         ) from e
 
 def _check_existing_resources(
-    self, manifest: PackageManifest, repo_path: str
+    manifest: PackageManifest, repo_path: str
 ) -> list[str]:
     """检查目标目录已存在的资源 URI（用于 conflict_strategy=fail）."""
     existing = []
@@ -142,7 +144,7 @@ def _check_existing_resources(
             existing.append(entry.resource_uri)
     return existing
 
-def _rename_target_path(self, path: str) -> str:
+def _rename_target_path(path: str) -> str:
     """生成重命名后的目标路径（追加 _imported_<timestamp> 后缀）."""
     timestamp = utcnow_filename_suffix()
     root, ext = os.path.splitext(path)
