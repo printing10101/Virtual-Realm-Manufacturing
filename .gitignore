@@ -397,6 +397,7 @@ mypy_gg*.txt
 /python/desktop_runtime/
 
 /engineering/python/desktop_runtime/
+/engineering/python/desktop_runtime_new/
 
 # 后端运行产物（数据库/令牌/探测脚本，不入库）
 /engineering/python/data/*.db
