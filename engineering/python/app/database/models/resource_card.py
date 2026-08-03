@@ -35,6 +35,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import relationship
 
@@ -328,16 +329,16 @@ class DatasetReadme(Base):
             "dataset_id",
             "version",
             unique=True,
-            sqlite_where="version IS NOT NULL",
-            postgresql_where="version IS NOT NULL",
+            sqlite_where=text("version IS NOT NULL"),
+            postgresql_where=text("version IS NOT NULL"),
         ),
         # 数据集级 README 唯一约束（version IS NULL）
         Index(
             "uq_dataset_readmes_dataset_level",
             "dataset_id",
             unique=True,
-            sqlite_where="version IS NULL",
-            postgresql_where="version IS NULL",
+            sqlite_where=text("version IS NULL"),
+            postgresql_where=text("version IS NULL"),
         ),
     )
 

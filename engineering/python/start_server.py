@@ -23,6 +23,37 @@ def _is_dev_env() -> bool:
 
 
 def main():
+    # ---- 桌面嵌入式场景：.env 自动生成与加载（2026-08-03 桌面实装验证修复） ----
+    # 桌面安装包内无 .env（sidecar 直接启动后端）。首次启动自动生成：
+    #   随机 JWT + SQLite 数据库 + 空 REDIS_URL（内存缓存），实现「开箱即用」。
+    # 服务端部署（install.sh 已生成 .env）时跳过生成，仅加载。
+    # 生成位置：python_dir 的父目录（工程版=仓库根；桌面版=desktop_runtime/）。
+    import secrets
+    from pathlib import Path
+
+    _py_dir = os.path.dirname(os.path.abspath(__file__))
+    # 确保数据库目录存在（桌面首次启动无 data/，SQLite 打开前必须建目录）
+    Path(_py_dir, "data").mkdir(parents=True, exist_ok=True)
+    _env_file = Path(_py_dir).parent / ".env"
+    if not _env_file.exists():
+        try:
+            _jwt = secrets.token_urlsafe(48)
+            _db_url = "sqlite+aiosqlite:///" + _py_dir.replace("\\", "/") + "/data/app.db"
+            _env_file.write_text(
+                "LNN_JWT_SECRET=" + _jwt + "\n"
+                "DATABASE_URL=" + _db_url + "\n"
+                "REDIS_URL=\n",
+                encoding="utf-8",
+            )
+            print(f"[startup] 已生成 {_env_file}（随机 JWT + SQLite 单机模式）")
+        except OSError as _e:
+            print(f"[startup] WARNING: .env 生成失败（{_e}），继续按环境变量启动")
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_env_file, override=False)
+    except ImportError:
+        pass
+
     # S3 修复：JWT 密钥缺失时的处理策略
     if not os.environ.get("LNN_JWT_SECRET"):
         if _is_dev_env():

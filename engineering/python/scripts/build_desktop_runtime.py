@@ -25,7 +25,7 @@
     # 无本地依赖缓存时用 pip 安装（CI 用）：
     python scripts/build_desktop_runtime.py --install-deps
 
-依赖来源优先级：--site-packages 参数 > 相邻 venv > --install-deps。
+依赖来源：显式 --site-packages 参数复制；否则默认 pip 安装 requirements.txt（CI 与本机一致，避免宿主 venv 污染）。
 """
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def main() -> int:
     parser.add_argument("--backend-src", type=Path, default=PROJECT_ROOT,
                         help="后端源码根（默认 engineering/python）")
     parser.add_argument("--install-deps", action="store_true",
-                        help="用 pip 安装依赖到运行时（无本地 site-packages 时，CI 用）")
+                        help="[兼容保留] 默认即用 pip 安装 requirements.txt（无 --site-packages 时）")
     parser.add_argument("--pip-index", default="https://mirrors.aliyun.com/pypi/simple/",
                         help="--install-deps 时的 pip 源")
     args = parser.parse_args()
@@ -140,34 +140,24 @@ def main() -> int:
     sp_dst.mkdir(parents=True, exist_ok=True)
 
     if args.site_packages is not None and args.site_packages.is_dir():
+        # 显式指定 site-packages → 复制（开发快速路径，调用方对内容负责）
         n = copy_tree(args.site_packages, sp_dst, ignore=("__pycache__",))
         log(f"复制依赖 {n} 个文件（来自 {args.site_packages}）")
-    elif args.install_deps:
+    else:
+        # 默认（含 --install-deps 兼容标志）：pip 从 requirements.txt 安装。
+        # 注意：不复制宿主 venv（2026-08-03 曾因 venv 混入 torch/casadi 等
+        # 训练向包污染运行时 → NSIS/WiX 打包失败），requirements.txt 才是真源。
         req = PROJECT_ROOT / "requirements.txt"
-        log(f"pip 安装依赖到运行时（源: {args.pip_index}）...")
+        log(f"pip 安装依赖到运行时（requirements.txt 真源，镜像: {args.pip_index}）...")
         r = subprocess.run(
             [str(py_exe), "-m", "pip", "install", "--no-cache-dir",
+             "--break-system-packages",  # python-build-standalone 带 PEP668 标记
              "--target", str(sp_dst), "-r", str(req),
              "--index-url", args.pip_index],
         )
         if r.returncode != 0:
             log("ERROR: 依赖安装失败")
             return r.returncode
-    else:
-        # 自动探测相邻 venv（安装验证环境或仓库内 venv）
-        venv_sp = None
-        for cand in (
-            Path.home() / ".lingjing-manufacturing/venv/Lib/site-packages",
-            ENGINEERING / "venv/Lib/site-packages",
-        ):
-            if cand.is_dir():
-                venv_sp = cand
-                break
-        if venv_sp is not None:
-            n = copy_tree(venv_sp, sp_dst, ignore=("__pycache__",))
-            log(f"复制依赖 {n} 个文件（来自 {venv_sp}）")
-        else:
-            log("WARN: 无可用依赖来源，运行时将缺少第三方包（--install-deps 可安装）")
 
     # 4. 后端代码
     log("复制后端代码...")
