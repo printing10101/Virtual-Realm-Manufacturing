@@ -362,6 +362,21 @@ jobs:
           retention-days: 7
 
   # ============================================
+  # Job 4.5: 版本一致性检查 (P4-3)
+  # ============================================
+  version-check:
+    name: 版本一致性检查
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 验证版本一致性
+        run: python scripts/version_sync.py --check
+
+  # ============================================
   # Job 5: 测试汇总报告
   # ============================================
   test-summary:
@@ -373,6 +388,7 @@ jobs:
       - python-unit-tests
       - python-integration-tests
       - frontend-tests
+      - version-check
     if: always()
 
     steps:
@@ -391,6 +407,7 @@ jobs:
           echo "| Python 单元测试 | ${{ needs.python-unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Python 集成测试 | ${{ needs.python-integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 前端测试 | ${{ needs.frontend-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 版本一致性检查 | ${{ needs.version-check.result }} |" >> $GITHUB_STEP_SUMMARY
 
       - name: 显示覆盖率摘要
         if: needs.python-unit-tests.result == 'success'
@@ -427,7 +444,8 @@ jobs:
           needs.lint-and-typecheck.result != 'success' ||
           needs.python-unit-tests.result != 'success' ||
           needs.python-integration-tests.result != 'success' ||
-          needs.frontend-tests.result != 'success'
+          needs.frontend-tests.result != 'success' ||
+          needs.version-check.result != 'success'
         run: |
           echo "❌ 部分测试失败，请查看详细结果。"
           exit 1

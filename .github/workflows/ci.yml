@@ -1273,6 +1273,111 @@ jobs:
           echo "- 校验目标: \`docs/api/openapi.json\`" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
+  # Job 7.5: Shell Script Lint (P4-2)
+  # ============================================
+  shell-lint:
+    name: Shell Script Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: bash -n syntax check (blocking)
+        run: |
+          # Collect all .sh files, syntax-check each
+          mapfile -t scripts < <(find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*')
+          if [ ${#scripts[@]} -eq 0 ]; then
+            echo "No shell scripts found."
+            exit 0
+          fi
+          failed=0
+          for script in "${scripts[@]}"; do
+            if bash -n "$script"; then
+              echo "OK: $script"
+            else
+              echo "FAIL: $script (syntax error)"
+              failed=1
+            fi
+          done
+          exit $failed
+
+      - name: Install shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+
+      - name: shellcheck (advisory, non-blocking)
+        continue-on-error: true
+        run: |
+          mapfile -t scripts < <(find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*')
+          if [ ${#scripts[@]} -eq 0 ]; then
+            exit 0
+          fi
+          # SC1090/SC1091: dynamic source false positives
+          # SC2155: declare+assign stylistic only
+          shellcheck -e SC1090,SC1091,SC2155 "${scripts[@]}" || true
+          echo "::notice::shellcheck advisory scan complete (non-blocking)"
+
+  # ============================================
+  # Job 7.6: Install Smoke Test (P4-1)
+  # ============================================
+  install-smoke:
+    name: Install Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run install.sh (no systemd)
+        env:
+          LINGJING_SRC: ${{ github.workspace }}
+        run: |
+          bash deploy/install.sh --no-systemd --port 8765
+
+      - name: Start service and health check
+        run: |
+          # install.sh installs lingjing CLI to ~/.local/bin, but the
+          # PATH export inside install.sh does not persist across steps
+          export PATH="$HOME/.local/bin:$PATH"
+          echo "lingjing path: $(which lingjing)"
+
+          # Start service
+          lingjing start
+
+          # Poll health endpoint (max 30s)
+          max_retries=30
+          for i in $(seq 1 $max_retries); do
+            response=$(curl -fsS http://127.0.0.1:8765/api/health/ping 2>/dev/null || true)
+            if echo "$response" | grep -q '"ping"'; then
+              echo "Health check passed: $response"
+              exit 0
+            fi
+            echo "Waiting for service (attempt $i/$max_retries)..."
+            sleep 1
+          done
+
+          echo "Health check failed: service did not respond within 30 seconds"
+          exit 1
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          echo "=== lingjing status ==="
+          lingjing status || true
+          echo "=== service logs (last 80 lines) ==="
+          tail -80 "$HOME/.lingjing/logs/lingjing.log" 2>/dev/null || echo "No log file found"
+
+      - name: Stop service (always)
+        if: always()
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          lingjing stop 2>/dev/null || true
+          echo "Service stopped."
+
+  # ============================================
   # Job 8: Summary Report
   # ============================================
   test-summary:
@@ -1292,6 +1397,8 @@ jobs:
       - response-model-check
       - contracts-tests
       - openapi-consistency-check
+      - shell-lint
+      - install-smoke
     if: always()
 
     steps:
@@ -1318,6 +1425,8 @@ jobs:
           echo "| Response Model Check | ${{ needs.response-model-check.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Core Contracts Tests (ADR-005) | ${{ needs.contracts-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| OpenAPI Consistency Check (ADR-005) | ${{ needs.openapi-consistency-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Shell Script Lint (P4-2) | ${{ needs.shell-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Install Smoke Test (P4-1) | ${{ needs.install-smoke.result }} |" >> $GITHUB_STEP_SUMMARY
 
       - name: Display coverage summary
         if: needs.python-unit-tests.result == 'success'
@@ -1388,7 +1497,9 @@ jobs:
           needs.api-docs-sync.result != 'success' ||
           needs.response-model-check.result != 'success' ||
           needs.contracts-tests.result != 'success' ||
-          needs.openapi-consistency-check.result != 'success'
+          needs.openapi-consistency-check.result != 'success' ||
+          needs.shell-lint.result != 'success' ||
+          needs.install-smoke.result != 'success'
         run: |
           echo "Some tests failed. Please check the detailed results above."
           exit 1
