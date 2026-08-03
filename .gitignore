@@ -404,3 +404,8 @@ mypy_gg*.txt
 /engineering/python/data/chroma_db/
 /engineering/python/.lnn_*
 /engineering/python/_probe_*.py
+
+# 测试运行动态产物（时间戳漂移，不入库）
+engineering/output/cutting_parameters_tasks/
+engineering/output/chatter_tasks/
+engineering/output/gcode_generation_tasks/
