@@ -25,13 +25,20 @@ cadquery==2.5.2          # 参数化 CAD 几何生成
 Pillow==11.1.0           # 图像处理与 CV 几何参数提取
 ezdxf==1.3.5             # DXF 工程图文件解析（dxf_parser 依赖）
 
-# AI & Deep Learning（阶段2 解耦后工程侧仅保留 ONNX Runtime 推理）
+# AI & Deep Learning
 # -----------------------------------------------------------------------------
-# 阶段2 解耦改造：torch / torchdiffeq / mlflow / xgboost_baseline 已迁移到
-# research/requirements.txt（科研侧训练依赖）。工程侧通过 ONNX Runtime 消费
-# 训练好的模型，运行时不再依赖 torch（torch ≈2GB → onnxruntime ≈50MB）。
-# 若需 GPU 加速，使用：pip install torch==2.5.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
-# （仅在 research/ 环境中安装，工程侧无需）
+# 运行时依赖说明（实测校准 2026-08-03）：
+#   - LNN 模型推理：onnxruntime（工程侧消费训练好的 ONNX 模型，不依赖 torch）。
+#   - RAG 语义嵌入：sentence-transformers + transformers 在运行时硬依赖
+#     CPU-only torch（≈476MB）。torch 必须随桌面运行时分发，不可裁剪。
+#   - 重型传递依赖（实测均被 cadquery 顶层 import 拉起，不可裁剪）：
+#       * casadi（≈201MB）：cadquery/occ_impl/solver.py 顶层 import。
+#       * vtk / vtkmodules（≈117MB）：cadquery vis/assembly/shapes/exporters 顶层 import。
+#     cadquery 是 NL2CAD / CAD 几何生成的硬核心依赖，裁剪 casadi/vtk 会致
+#     `import cadquery` 失败、破坏核心功能。
+#   - torch 完整 CUDA 版（≈2GB）仅用于 research/ 训练环境，工程侧用 CPU-only 版。
+#   - 若需 GPU 推理加速，在 research/ 环境安装：
+#     pip install torch==2.5.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
 onnxruntime==1.20.1      # ONNX 推理引擎（替代 torch，工程侧 LNN 模型推理）
 numpy>=2.1,<2.3
 pandas==2.2.3            # 数据处理（PHM2010 数据集分析依赖）
