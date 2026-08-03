@@ -19,7 +19,10 @@ from app.core.safe_errors import safe_error_message
 from app.cutting_parameters import (
     CuttingParametersPipeline,
     CuttingParametersTask,
+    MaterialParams,
+    MaterialResolverError,
     build_cutting_disclaimer,
+    get_material_resolver,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +38,7 @@ def _spawn(coro):
     t.add_done_callback(_background_tasks.discard)
     return t
 
+_pipeline: CuttingParametersPipeline | None = None
 def _get_pipeline() -> CuttingParametersPipeline:
     """获取 pipeline 单例。"""
     global _pipeline

@@ -37,6 +37,7 @@ def _spawn(coro):
     t.add_done_callback(_background_tasks.discard)
     return t
 
+_pipeline: ChatterPredictionPipeline | None = None
 def _get_pipeline() -> ChatterPredictionPipeline:
     """获取 pipeline 单例。"""
     global _pipeline

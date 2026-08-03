@@ -9,6 +9,12 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from app.contracts.resource_card import DatasetReadme, ModelArtifact
+from app.database.models.resource_card import (
+    ModelArtifact as ModelArtifactORM,
+    DatasetReadme as DatasetReadmeORM,
+)
+
 def _json_dumps(value: Any) -> str:
     """安全 JSON 序列化."""
     if value is None:
@@ -24,7 +30,7 @@ def _json_loads(value: Optional[str], default: Any) -> Any:
     except (json.JSONDecodeError, TypeError):
         return default
 
-def _orm_to_model_artifact(orm: ModelArtifactORM) -> ModelArtifact:
+def _orm_to_model_artifact(orm: ModelArtifactORM) -> ModelArtifact:  # type: ignore[arg-type]
     """ORM → dataclass."""
     return ModelArtifact(
         model_id=orm.id,
@@ -44,7 +50,7 @@ def _orm_to_model_artifact(orm: ModelArtifactORM) -> ModelArtifact:
         updated_at=orm.updated_at,
     )
 
-def _orm_to_dataset_readme(orm: DatasetReadmeORM) -> DatasetReadme:
+def _orm_to_dataset_readme(orm: DatasetReadmeORM) -> DatasetReadme:  # type: ignore[arg-type]
     """ORM → dataclass."""
     return DatasetReadme(
         readme_id=orm.id,
