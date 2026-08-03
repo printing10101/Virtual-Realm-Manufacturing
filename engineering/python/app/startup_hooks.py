@@ -24,6 +24,7 @@ import sys
 # Alembic 迁移日志截断长度（防止 stdout/stderr 过长污染日志）
 ALEMBIC_STDOUT_LOG_LIMIT: int = 200
 ALEMBIC_STDERR_LOG_LIMIT: int = 500
+ALEMBIC_TIMEOUT_SEC: int = 120
 
 
 async def run_alembic_upgrade(logger: logging.Logger) -> None:
@@ -40,27 +41,30 @@ async def run_alembic_upgrade(logger: logging.Logger) -> None:
 
     python_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     try:
-        proc = await asyncio.create_subprocess_exec(
-            sys.executable, "-m", "alembic", "upgrade", "head",
+        # 2026-08-03 桌面实装验证修复：WindowsSelectorEventLoop（start_server.py 为
+        # 绕 _overlapped 坑强制切换）不支持 asyncio subprocess → create_subprocess_exec
+        # 抛 NotImplementedError 且不在 except 范围 → 破坏「不阻断启动」语义。
+        # 改同步 subprocess.run（startup 阶段阻塞可接受），任何事件循环均兼容。
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
             cwd=python_dir,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            capture_output=True,
+            timeout=ALEMBIC_TIMEOUT_SEC,
         )
-        stdout, stderr = await proc.communicate()
-        if proc.returncode == 0:
+        if result.returncode == 0:
             logger.info(
                 "[startup] Alembic upgrade head done: %s",
-                stdout.decode("utf-8", "replace").strip()[:ALEMBIC_STDOUT_LOG_LIMIT],
+                result.stdout.decode("utf-8", "replace").strip()[:ALEMBIC_STDOUT_LOG_LIMIT],
             )
         else:
             logger.warning(
                 "[startup] Alembic upgrade returned non-zero (rc=%s): %s",
-                proc.returncode,
-                stderr.decode("utf-8", "replace").strip()[:ALEMBIC_STDERR_LOG_LIMIT],
+                result.returncode,
+                result.stderr.decode("utf-8", "replace").strip()[:ALEMBIC_STDERR_LOG_LIMIT],
             )
     except FileNotFoundError:
         logger.warning("[startup] alembic not installed, skip migration")
-    except (OSError, subprocess.SubprocessError) as e:
+    except Exception as e:  # noqa: BLE001 - 迁移失败绝不阻断启动
         logger.warning("[startup] Alembic migration failed (non-fatal): %s", e, exc_info=True)
 
 
