@@ -144,7 +144,7 @@ class ProjectorCache:
         # UMAP：可选依赖
         if method == ProjectionMethod.UMAP:
             try:
-                import umap  # type: ignore[import]
+                import umap
             except ImportError as exc:
                 raise ProjectionError(
                     "UMAP 需要 umap-learn，请安装: pip install umap-learn"

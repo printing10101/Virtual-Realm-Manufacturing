@@ -81,7 +81,7 @@ _RUST_NATIVE: Any = None
 
 try:
     # 路径 1：maturin 构建产物 (compute._native.*)
-    from compute import _native  # type: ignore[import-not-found]
+    from compute import _native
 
     _RUST_NATIVE = _native
     try:
@@ -421,7 +421,7 @@ class VoxelCutter(_PyVoxelCutter):
                         (0.0, tool.diameter * 0.5),
                     ]
 
-                mask_array, _info = _RUST_VOXEL_CUTTER.build_tool_mask(  # type: ignore[union-attr]
+                mask_array, _info = _RUST_VOXEL_CUTTER.build_tool_mask(
                     tool_type=rust_type,
                     diameter=float(tool.diameter),
                     corner_radius=float(corner_radius),
@@ -468,7 +468,7 @@ class VoxelCutter(_PyVoxelCutter):
                 pts_view = np.ascontiguousarray(points, dtype=np.float64)
                 if pts_view.ndim == 1:
                     pts_view = pts_view.reshape(-1, 3)
-                result = _RUST_VOXEL_CUTTER.apply_tool_mask(  # type: ignore[union-attr]
+                result = _RUST_VOXEL_CUTTER.apply_tool_mask(
                     grid=grid_view,
                     tool_mask=mask_view,
                     points=pts_view,
@@ -538,7 +538,7 @@ def apply_cutting_batch(
         raise RuntimeError(
             f"Rust compute engine unavailable (import_error={RUST_IMPORT_ERROR})"
         )
-    return _RUST_VOXEL_CUTTER.apply_tool_mask(  # type: ignore[union-attr]
+    return _RUST_VOXEL_CUTTER.apply_tool_mask(
         voxel_grid, tool_mask, points, bbox_min, voxel_size, padding
     )
 
@@ -557,7 +557,7 @@ def build_tool_mask(
         raise RuntimeError(
             f"Rust compute engine unavailable (import_error={RUST_IMPORT_ERROR})"
         )
-    mask_array, _info = _RUST_VOXEL_CUTTER.build_tool_mask(  # type: ignore[union-attr]
+    mask_array, _info = _RUST_VOXEL_CUTTER.build_tool_mask(
         tool_type=tool_type,
         diameter=diameter,
         corner_radius=corner_radius,

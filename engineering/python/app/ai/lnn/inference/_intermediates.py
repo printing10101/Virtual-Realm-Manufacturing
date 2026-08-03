@@ -34,7 +34,7 @@ try:
 
     _HAS_TORCH_MODELS = True
 except ImportError:
-    BaseLNNModel = None  # type: ignore
+    BaseLNNModel = None
     _HAS_TORCH_MODELS = False
 
 if TYPE_CHECKING:

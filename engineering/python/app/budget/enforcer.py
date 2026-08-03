@@ -881,7 +881,7 @@ class BudgetEnforcer(BaseSingletonService):
         with cls._service_lock:
             cls._db_path = db_path
             cls._service_singleton = cls()
-            return cls._service_singleton  # type: ignore[return-value]
+            return cls._service_singleton
 
     @classmethod
     def reset_instance(cls) -> None:

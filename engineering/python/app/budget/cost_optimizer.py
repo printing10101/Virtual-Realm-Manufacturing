@@ -250,7 +250,7 @@ class CostOptimizer(BaseSingletonService):
         """
         with cls._service_lock:
             cls._service_singleton = cls()
-            return cls._service_singleton  # type: ignore[return-value]
+            return cls._service_singleton
 
 
 class _CostOptimizerHolder:

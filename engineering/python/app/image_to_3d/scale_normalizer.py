@@ -55,7 +55,7 @@ class ScaleNormalizationResult:
 def _try_import_trimesh() -> Any:
     """条件导入 trimesh，失败则返回 None。"""
     try:
-        import trimesh  # type: ignore[import]
+        import trimesh
         return trimesh
     except ImportError:
         return None

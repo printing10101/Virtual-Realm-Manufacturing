@@ -26,7 +26,7 @@ try:
 
     _HAS_TORCH = True
 except ImportError:
-    torch = None  # type: ignore[assignment]
+    torch = None
     _HAS_TORCH = False
 
 from app.simulation.cutting_force.kienzle import (

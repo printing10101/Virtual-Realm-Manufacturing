@@ -27,7 +27,7 @@ try:
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
-    torch = None  # type: ignore
+    torch = None
 
 from app.plugins.world_model.net import WorldModelConfig, WorldModelNet
 from app.plugins.world_model.unified_state import UnifiedState

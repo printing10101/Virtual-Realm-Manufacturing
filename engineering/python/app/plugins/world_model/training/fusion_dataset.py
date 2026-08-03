@@ -45,8 +45,8 @@ try:
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
-    torch = None  # type: ignore
-    Dataset = object  # type: ignore[assignment, misc]
+    torch = None
+    Dataset = object
 
 logger = logging.getLogger(__name__)
 

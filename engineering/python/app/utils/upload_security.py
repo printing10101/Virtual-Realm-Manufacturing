@@ -122,7 +122,7 @@ _TEXT_EXTENSIONS: Set[str] = {
 
 # 检测 python-magic 是否可用（可选依赖，不强制安装）
 try:
-    import magic as _magic  # type: ignore[import-not-found]
+    import magic as _magic
 
     _HAS_LIBMAGIC = True
 except ImportError:

@@ -47,7 +47,7 @@ class SecurityHeadersMiddleware:
                     if not any(h[0].decode("latin-1", errors="ignore").lower() == key_lower for h in headers):
                         headers.append((key.encode("latin-1"), value.encode("latin-1")))
                 message = {"type": "http.response.start", **message}
-                message["headers"] = headers  # type: ignore[assignment]
+                message["headers"] = headers
             await send(message)
 
         await self.app(scope, receive, send_wrapper)

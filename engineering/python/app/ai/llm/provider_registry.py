@@ -80,7 +80,7 @@ class APIKeyCipher:
         self._fernet = None
         self._key_source: str = "unknown"
         try:
-            from cryptography.fernet import Fernet  # type: ignore
+            from cryptography.fernet import Fernet
             self._Fernet = Fernet
         except ImportError:
             self._Fernet = None  # type: ignore

@@ -504,7 +504,7 @@ def _log_to_jsonl(entry: LogEntry) -> str:
 def _load_sanitizer():
     """尝试加载 LogSanitizer（不可用时返回 None）."""
     try:
-        from app.utils.log_sanitizer import LogSanitizer  # type: ignore
+        from app.utils.log_sanitizer import LogSanitizer
 
         return LogSanitizer()
     except Exception:

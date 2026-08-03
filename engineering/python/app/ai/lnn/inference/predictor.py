@@ -40,10 +40,10 @@ from app.ai.lnn.inference.model_cache import get_model_cache
 # 阶段2 解耦改造：models/ 已迁移到 research/models/。
 # 工程侧推理路径应改为加载 ONNX（见 onnx_predictor.py）。
 try:
-    from app.ai.lnn.models.base_lnn import BaseLNNModel  # type: ignore
+    from app.ai.lnn.models.base_lnn import BaseLNNModel
     _HAS_TORCH_MODELS = True
 except ImportError:
-    BaseLNNModel = None  # type: ignore
+    BaseLNNModel = None
     _HAS_TORCH_MODELS = False
 
 try:

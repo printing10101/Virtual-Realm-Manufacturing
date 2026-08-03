@@ -50,9 +50,9 @@ try:
     HAS_TORCH = True
 except ImportError:  # pragma: no cover - 测试环境通过 importorskip 跳过
     HAS_TORCH = False
-    torch = None  # type: ignore
-    nn = None  # type: ignore
-    DataLoader = None  # type: ignore
+    torch = None
+    nn = None
+    DataLoader = None
 
 from app.plugins.world_model.training.weights_resolver import (
     build_canonical_weights_path,
@@ -337,8 +337,8 @@ class FusionWorldModelTrainer:
             # 记录超参（含融合专属字段）
             mlflow_log_params(self._collect_hyperparams(horizon))
 
-            train_size = len(train_loader.dataset)  # type: ignore[arg-type]
-            val_size = len(val_loader.dataset)  # type: ignore[arg-type]
+            train_size = len(train_loader.dataset)
+            val_size = len(val_loader.dataset)
             logger.info(
                 "融合训练启动: train=%d val=%d horizon=%d epochs=%d device=%s amp=%s",
                 train_size,
@@ -668,7 +668,7 @@ class FusionWorldModelTrainer:
 
     def _collect_hyperparams(self, horizon: int) -> Dict[str, Any]:
         """收集超参（含融合专属字段）用于 MLflow 记录."""
-        cfg = self.model.config  # type: ignore[union-attr]
+        cfg = self.model.config
         params: Dict[str, Any] = {
             "model_uri": self.model_uri,
             "learning_rate": self.learning_rate,
@@ -699,7 +699,7 @@ class FusionWorldModelTrainer:
 
     def _serialize_model_config(self) -> Dict[str, Any]:
         """序列化模型配置用于 checkpoint（恢复训练时重建模型）."""
-        cfg = self.model.config  # type: ignore[union-attr]
+        cfg = self.model.config
         if hasattr(cfg, "to_dict"):
             return cfg.to_dict()
         return {k: getattr(cfg, k) for k in dir(cfg) if not k.startswith("_")}
