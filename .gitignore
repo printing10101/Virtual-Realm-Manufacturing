@@ -396,7 +396,6 @@ mypy_gg*.txt
 /python/
 /python/desktop_runtime/
 
-# 桌面嵌入式 Python 运行时（构建产物 ~1.8GB，由 scripts/build_desktop_runtime.py 生成）
 /engineering/python/desktop_runtime/
 
 # 后端运行产物（数据库/令牌/探测脚本，不入库）
@@ -409,3 +408,5 @@ mypy_gg*.txt
 engineering/output/cutting_parameters_tasks/
 engineering/output/chatter_tasks/
 engineering/output/gcode_generation_tasks/
+
+# 桌面嵌入式 Python 运行时构建产物（可重新生成）
