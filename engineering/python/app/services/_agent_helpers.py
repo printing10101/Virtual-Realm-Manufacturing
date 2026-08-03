@@ -59,7 +59,7 @@ def _orm_to_dataclass(
 
 def _training_run_to_status_info(
     orm: RLAgentTrainingRunORM
-) -> TrainingStatusInfo:  # type: ignore[arg-type]
+) -> TrainingStatusInfo:
     """训练运行 ORM → TrainingStatusInfo."""
     metrics: Optional[TrainingMetricsSnapshot] = None
     if orm.metrics_json:
