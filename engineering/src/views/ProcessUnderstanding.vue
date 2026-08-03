@@ -145,7 +145,7 @@
                     <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
                     <li
                       v-for="(src, i) in msg.result.sources"
-                      :key="i"
+                      :key="`src-${i}`"
                     >
                       {{ src }}
                     </li>
@@ -162,7 +162,7 @@
                     <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
                     <li
                       v-for="(act, i) in msg.result.actions"
-                      :key="i"
+                      :key="`src-${i}`"
                     >
                       {{ act }}
                     </li>

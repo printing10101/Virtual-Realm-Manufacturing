@@ -33,16 +33,21 @@ from app.models.schemas import (
 from app.tasks.task_manager import TaskType, TaskStatus
 from app.api.v1.sse import sse_manager
 
-# 阶段2 解耦改造：training/ 已迁移到 research/training/。
-# 工程侧不再暴露训练能力；此处保留 try/except 兼容旧路径。
-try:
-    from app.ai.lnn.training.device_manager import (  # type: ignore
-        detect_device,
-    )
-    _HAS_DEVICE_MANAGER = True
-except ImportError:
-    detect_device = None  # type: ignore
-    _HAS_DEVICE_MANAGER = False
+# P0#3 解耦: 通过 research_bridge 延迟导入。
+_HAS_DEVICE_MANAGER = False
+detect_device = None
+
+def _lazy_init_device_manager() -> bool:
+    global _HAS_DEVICE_MANAGER, detect_device
+    if _HAS_DEVICE_MANAGER:
+        return True
+    try:
+        from app.ai.lnn._research_bridge import get_device_detect
+        detect_device = get_device_detect()
+        _HAS_DEVICE_MANAGER = detect_device is not None
+    except Exception:
+        _HAS_DEVICE_MANAGER = False
+    return _HAS_DEVICE_MANAGER
 
 from app.api.v1.lnn.dependencies import (
     model_registry,
@@ -60,6 +65,12 @@ from app.api.v1.lnn.services import (
 )
 
 logger = logging.getLogger(__name__)
+
+# 模块级集合：保存 asyncio.create_task 返回的训练/广播任务引用，
+# 防止任务在执行完成前被 Python GC 回收（局部变量引用丢失会导致
+# 任务被静默取消且不抛异常）。任务完成后通过 done_callback 自动移除。
+_active_training_tasks: set[asyncio.Task] = set()
+_active_broadcast_tasks: set[asyncio.Task] = set()
 
 # === 训练 dry-run 参数 ===
 _DRY_RUN_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024  # 数据文件大小上限：100 MB
@@ -405,6 +416,11 @@ async def train_lnn(
         task_manager.register_cancel_hook(task_id, cancel_training_hook)
 
         # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
+        # 原实现只通过 add_done_callback 记录异常，但未保留任务引用，
+        # 局部变量 training_task / broadcast_task 在函数返回后被 GC，
+        # asyncio 事件循环仅持有弱引用 → 任务被静默取消且不抛异常，
+        # 训练流程会被悄悄杀死。现使用模块级 set 持有强引用，与
+        # routes_prediction.py 中的 _active_batch_tasks 修复方式保持一致。
         training_task = asyncio.create_task(
             _run_training_task_async(
                 task_id,
@@ -414,13 +430,22 @@ async def train_lnn(
                 body.device,
             )
         )
-        training_task.add_done_callback(
-            lambda t: _log_task_exception(t, f"training-{task_id}")
-        )
+        _active_training_tasks.add(training_task)
+
+        def _on_training_done(t: asyncio.Task) -> None:
+            _active_training_tasks.discard(t)
+            _log_task_exception(t, f"training-{task_id}")
+
+        training_task.add_done_callback(_on_training_done)
+
         broadcast_task = asyncio.create_task(_broadcast_training_events(task_id))
-        broadcast_task.add_done_callback(
-            lambda t: _log_task_exception(t, f"broadcast-{task_id}")
-        )
+        _active_broadcast_tasks.add(broadcast_task)
+
+        def _on_broadcast_done(t: asyncio.Task) -> None:
+            _active_broadcast_tasks.discard(t)
+            _log_task_exception(t, f"broadcast-{task_id}")
+
+        broadcast_task.add_done_callback(_on_broadcast_done)
 
         return success(
             data={"job_id": task_id, "status": "queued"},

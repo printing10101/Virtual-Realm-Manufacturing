@@ -51,7 +51,7 @@ _PYTHON_DIR = Path(__file__).resolve().parents[3]
 if str(_PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(_PYTHON_DIR))
 
-from app.services import tdengine_client  # noqa: E402  pylint: disable=wrong-import-position
+from app.services import tdengine_client
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,34 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
+/** axios 实例形状（mock 用）。 */
+interface HttpAxiosLike {
+  request: ReturnType<typeof vi.fn>
+  get: ReturnType<typeof vi.fn>
+  post: ReturnType<typeof vi.fn>
+  put: ReturnType<typeof vi.fn>
+  delete: ReturnType<typeof vi.fn>
+  interceptors: {
+    request: { use: ReturnType<typeof vi.fn> }
+    response: { use: ReturnType<typeof vi.fn> }
+  }
+}
+
+/** hoisted mock 集合类型（消除自引用导致的隐式 any）。 */
+interface HttpMocks extends HttpAxiosLike {
+  create: (...args: unknown[]) => HttpAxiosLike
+  elMessage: {
+    error: ReturnType<typeof vi.fn>
+    success: ReturnType<typeof vi.fn>
+    warning: ReturnType<typeof vi.fn>
+    info: ReturnType<typeof vi.fn>
+  }
+  emitManufacturingError: ReturnType<typeof vi.fn>
+  isNetworkError: ReturnType<typeof vi.fn>
+  shouldShowConflictDialog: ReturnType<typeof vi.fn>
+}
+
 // Mock 依赖：使用 vi.hoisted 确保在 http.ts 导入前完成 mock 注册
-const mocks = vi.hoisted(() => {
+const mocks = vi.hoisted<HttpMocks>(() => {
   return {
     // axios 实例上的方法将被替换
     request: vi.fn(),
@@ -13,14 +40,14 @@ const mocks = vi.hoisted(() => {
       request: { use: vi.fn() },
       response: { use: vi.fn() },
     },
-    create: vi.fn(() => ({
+    create: vi.fn((() => ({
       request: mocks.request,
       get: mocks.get,
       post: mocks.post,
       put: mocks.put,
       delete: mocks.delete,
       interceptors: mocks.interceptors,
-    })),
+    })) as (...args: unknown[]) => HttpAxiosLike),
     // ElMessage 错误提示
     elMessage: {
       error: vi.fn(),
@@ -31,8 +58,8 @@ const mocks = vi.hoisted(() => {
     // 错误总线
     emitManufacturingError: vi.fn(),
     // 错误处理器
-    isNetworkError: vi.fn(() => false),
-    shouldShowConflictDialog: vi.fn(() => false),
+    isNetworkError: vi.fn(() => false) as unknown as ReturnType<typeof vi.fn>,
+    shouldShowConflictDialog: vi.fn(() => false) as unknown as ReturnType<typeof vi.fn>,
   }
 })
 

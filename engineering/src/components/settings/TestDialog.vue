@@ -59,8 +59,8 @@
       </div>
       <div class="messages-area">
         <div
-          v-for="(msg, idx) in messages"
-          :key="idx"
+          v-for="msg in messages"
+          :key="msg.id"
           class="message-row"
         >
           <el-select
@@ -94,7 +94,7 @@
             type="danger"
             circle
             :disabled="messages.length <= 1"
-            @click="removeMessage(idx)"
+            @click="removeMessage(msg.id)"
           >
             <el-icon><Delete /></el-icon>
           </el-button>
@@ -253,12 +253,17 @@ const emit = defineEmits<{
 const store = useLLMProvidersStore()
 
 interface MessageInput {
+  id: number
   role: 'system' | 'user' | 'assistant'
   content: string
 }
 
+// 消息唯一 id 计数器，作为 v-for key 防止 splice 中间删除时 DOM 复用错误
+let _nextMessageId = 1
+const newMessageId = (): number => _nextMessageId++
+
 const messages = ref<MessageInput[]>([
-  { role: 'user', content: t('settings.testDialog.defaultGreeting') },
+  { id: newMessageId(), role: 'user', content: t('settings.testDialog.defaultGreeting') },
 ])
 
 const params = reactive({
@@ -288,15 +293,18 @@ const resultTagType = computed(() => {
 })
 
 function addMessage(): void {
-  messages.value.push({ role: 'user', content: '' })
+  messages.value.push({ id: newMessageId(), role: 'user', content: '' })
 }
 
-function removeMessage(idx: number): void {
-  messages.value.splice(idx, 1)
+function removeMessage(id: number): void {
+  const idx = messages.value.findIndex(m => m.id === id)
+  if (idx >= 0) {
+    messages.value.splice(idx, 1)
+  }
 }
 
 function resetMessages(): void {
-  messages.value = [{ role: 'user', content: t('settings.testDialog.defaultGreeting') }]
+  messages.value = [{ id: newMessageId(), role: 'user', content: t('settings.testDialog.defaultGreeting') }]
   result.value = null
   errorMsg.value = ''
 }

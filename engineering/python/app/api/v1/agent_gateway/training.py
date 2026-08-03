@@ -33,6 +33,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Agent Gateway"])
 
+# 模块级任务引用集合：保存 asyncio.create_task 返回的 Task 对象，
+# 防止任务被 GC 提前回收（CPython 弱引用机制下，本地变量出作用域即可能被回收）。
+# 任务完成后由 done_callback 自动从集合中移除。
+_active_agent_training_tasks: set[asyncio.Task] = set()
+
 
 async def _run_agent_training(
     task_id: str,
@@ -64,16 +69,23 @@ async def _run_agent_training(
             import torch
             import numpy as np
             from torch.utils.data import DataLoader, TensorDataset
-            # 阶段2 解耦改造：training/ 和 models/ 已迁移到 research/。
-            # 工程侧不再暴露训练能力；此处保留 import 以兼容旧路径，torch 缺失时由外层 try/except 捕获。
-            from research.models.torch_base_lnn import LNNConfig  # type: ignore
-            from research.models.torch_cfc_model import CFCModel as TorchCFCModel  # type: ignore
-            from research.training.trainer import LNNTrainer  # type: ignore
-            from research.training.device_manager import (  # type: ignore
-                detect_device,
-                get_optimal_batch_size,
-                get_optimal_num_workers,
+            # P0#3 解耦: 通过 research_bridge 延迟导入，避免工程侧直接依赖 research/
+            from app.ai.lnn._research_bridge import (
+                get_lnn_config_factory,
+                get_cfc_model_factory,
+                get_device_detect,
+                get_device_optimal_batch_size,
+                get_device_optimal_num_workers,
+                get_trainer_factory,
             )
+            LNNConfig = get_lnn_config_factory()
+            TorchCFCModel = get_cfc_model_factory()
+            LNNTrainer = get_trainer_factory()
+            detect_device = get_device_detect()
+            get_optimal_batch_size = get_device_optimal_batch_size()
+            get_optimal_num_workers = get_device_optimal_num_workers()
+            if any(x is None for x in (LNNConfig, LNNTrainer)):
+                raise ImportError("Research package not available for training")
 
             data = await asyncio.to_thread(np.loadtxt, data_path, delimiter=",")
             if data.ndim == 1:
@@ -210,7 +222,13 @@ async def agent_train(request: Request, body: AgentTrainRequest):
                 body.device,
             )
         )
-        task.add_done_callback(lambda t: training_coordinator.handle_task_done(t, task_id))
+        _active_agent_training_tasks.add(task)
+
+        def _on_train_done(t: asyncio.Task) -> None:
+            _active_agent_training_tasks.discard(t)
+            training_coordinator.handle_task_done(t, task_id)
+
+        task.add_done_callback(_on_train_done)
 
         return success(
             data={

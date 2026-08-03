@@ -803,7 +803,7 @@ describe('useWorkflow - 聚合 composable', () => {
       envelope({ workflow_run_id: 'wf_001', deleted: true }),
     )
 
-    const { removeWorkflow, workflows, currentRunId } = useWorkflow()
+    const { removeWorkflow, workflows } = useWorkflow()
     workflows.value = [
       { id: 'wf_001', name: 'w1', version: '1.0.0', spec: makeSpec(), status: 'completed', inputs: null, outputs: null, owner_id: null, error: null, metadata: {}, created_at: null, updated_at: null, started_at: null, completed_at: null },
       { id: 'wf_002', name: 'w2', version: '1.0.0', spec: makeSpec(), status: 'failed', inputs: null, outputs: null, owner_id: null, error: null, metadata: {}, created_at: null, updated_at: null, started_at: null, completed_at: null },

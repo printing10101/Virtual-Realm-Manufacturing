@@ -92,12 +92,19 @@ class _SyncSingletons:
     def get_sessionmaker(self) -> Optional[sessionmaker]:
         if self._sessionmaker is not None:
             return self._sessionmaker
+        # 修复：原实现在 self._lock 内调用 self.get_engine()，而
+        # get_engine() 也会尝试获取同一把 threading.Lock——
+        # threading.Lock 不可重入，会永久死锁。
+        # 当前侥幸不死锁只是因为 get_engine 总是先被调用（engine 已存在
+        # 的快速路径直接返回，不进入锁）。一旦调用顺序改变即死锁。
+        # 现改为在锁外获取 engine 引用，与异步版本（connection.py:152-165）
+        # 的修复方式保持一致。
+        engine = self.get_engine()
+        if engine is None:
+            return None
         with self._lock:
             if self._sessionmaker is not None:
                 return self._sessionmaker
-            engine = self.get_engine()
-            if engine is None:
-                return None
             self._sessionmaker = sessionmaker(
                 bind=engine, expire_on_commit=False, future=True
             )

@@ -119,7 +119,7 @@ describe('TaskBoard.vue', () => {
     const wrapper = mountTaskBoard()
     await flushPromises()
     // 看板列均无任务，渲染列标题但 items 为空
-    const columns = wrapper.findAll('.kanban-column, .kanban-col')
+    wrapper.findAll('.kanban-column, .kanban-col')
     // 即使 stub 渲染，至少能挂载
     expect(wrapper.find('.task-board-page').exists()).toBe(true)
   })

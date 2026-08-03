@@ -237,7 +237,7 @@ class DynamicAdjustmentOrchestrator:
                     calibration.get("deviation_ratio", 0.0),
                     calibration.get("sensor_adjustment", 1.0),
                 )
-            except Exception as exc:  # noqa: BLE001 - 校正失败不应阻断决策主链路
+            except Exception as exc:
                 logger.warning(
                     "实时磨损校正失败，降级到原始磨损值决策: %s", exc
                 )
@@ -289,7 +289,7 @@ class DynamicAdjustmentOrchestrator:
             # 反算 mm/rev
             if spindle_rpm > 0:
                 new_feed_rate = optimized_feed_mm_min / spindle_rpm
-        except Exception as exc:  # noqa: BLE001 - FeedRateOptimizer 内部可能抛出多种异常
+        except Exception as exc:
             logger.warning("FeedRateOptimizer 进给优化失败，使用补偿建议值: %s", exc)
 
         # 4) 通过后处理器限幅（机床能力硬约束）
@@ -377,7 +377,7 @@ class DynamicAdjustmentOrchestrator:
 
         try:
             segments = parser.parse_gcode(gcode_text)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("NC 代码解析失败: %s", exc)
             return NCRewriteResult(
                 rewritten_gcode=gcode_text,

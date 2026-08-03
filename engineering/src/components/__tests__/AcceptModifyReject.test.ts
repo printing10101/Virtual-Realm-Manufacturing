@@ -64,7 +64,7 @@ vi.mock('@/utils/statusHelpers', () => ({
 }))
 
 vi.mock('@/utils/formatters', () => ({
-  formatTimestamp: vi.fn((ts: number) => '2024-01-01 12:00:00'),
+  formatTimestamp: vi.fn((_ts: number) => '2024-01-01 12:00:00'),
 }))
 
 describe('AcceptModifyReject.vue', () => {
@@ -182,7 +182,6 @@ describe('AcceptModifyReject.vue', () => {
 
     it('confidence 为 null 时不应显示置信度标签', () => {
       mountComponent({ confidence: null })
-      const card = wrapper.find('.recommendation-card')
       // el-tag stub 不渲染，所以检查 confidence 显示逻辑
       expect(wrapper.vm.confidence).toBe(null)
     })

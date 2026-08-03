@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { ref, onBeforeUnmount } from 'vue'
+import { onBeforeUnmount } from 'vue'
 
 export interface SceneOptions {
   container: HTMLElement

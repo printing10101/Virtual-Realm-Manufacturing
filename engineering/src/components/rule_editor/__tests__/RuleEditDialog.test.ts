@@ -266,7 +266,7 @@ describe('RuleEditDialog.vue', () => {
 
     it('无有效条件时显示添加条件警告', async () => {
       wrapper = mountComponent({ rule: null })
-      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue() }
+      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue(undefined) }
       wrapper.vm.form.conditions = [{ parameter: '', operator: '=', value: '', unit: undefined }]
       wrapper.vm.form.result = { parameter: 'X', operator: '<=', value: '1', unit: undefined }
       await wrapper.vm.handleSubmit()
@@ -275,7 +275,7 @@ describe('RuleEditDialog.vue', () => {
 
     it('无结果时显示结果必填警告', async () => {
       wrapper = mountComponent({ rule: null })
-      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue() }
+      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue(undefined) }
       wrapper.vm.form.conditions = [{ parameter: '材料', operator: '=', value: 'TC4', unit: undefined }]
       wrapper.vm.form.result = { parameter: '', operator: '<=', value: '', unit: undefined }
       await wrapper.vm.handleSubmit()
@@ -284,7 +284,7 @@ describe('RuleEditDialog.vue', () => {
 
     it('新建模式调用 createRule 并触发 saved 事件', async () => {
       wrapper = mountComponent({ rule: null })
-      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue() }
+      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue(undefined) }
       wrapper.vm.form.conditions = [{ parameter: '材料', operator: '=', value: 'TC4', unit: undefined }]
       wrapper.vm.form.result = { parameter: '转速', operator: '<=', value: '8000', unit: 'rpm' }
       await wrapper.vm.handleSubmit()
@@ -300,7 +300,7 @@ describe('RuleEditDialog.vue', () => {
           status: 'active', priority: 0,
         },
       })
-      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue() }
+      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue(undefined) }
       wrapper.vm.form.conditions = [{ parameter: '材料', operator: '=', value: 'TC4', unit: undefined }]
       wrapper.vm.form.result = { parameter: '转速', operator: '<=', value: '8000', unit: 'rpm' }
       await wrapper.vm.handleSubmit()
@@ -309,7 +309,7 @@ describe('RuleEditDialog.vue', () => {
 
     it('提交成功后显示成功消息', async () => {
       wrapper = mountComponent({ rule: null })
-      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue() }
+      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue(undefined) }
       wrapper.vm.form.conditions = [{ parameter: '材料', operator: '=', value: 'TC4', unit: undefined }]
       wrapper.vm.form.result = { parameter: '转速', operator: '<=', value: '8000', unit: 'rpm' }
       await wrapper.vm.handleSubmit()
@@ -318,7 +318,7 @@ describe('RuleEditDialog.vue', () => {
 
     it('提交过程中 submitting 状态正确切换', async () => {
       wrapper = mountComponent({ rule: null })
-      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue() }
+      wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue(undefined) }
       wrapper.vm.form.conditions = [{ parameter: '材料', operator: '=', value: 'TC4', unit: undefined }]
       wrapper.vm.form.result = { parameter: '转速', operator: '<=', value: '8000', unit: 'rpm' }
       const promise = wrapper.vm.handleSubmit()

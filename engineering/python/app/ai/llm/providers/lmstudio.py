@@ -5,12 +5,14 @@ LM Studio 默认端口 1234，提供 OpenAI 兼容 API：
 - GET  /v1/models
 - POST /v1/chat/completions
 
-本地默认 API Key 为 "lm-studio"（LM Studio 占位 key，无需真实鉴权）。
+本地默认 API Key 可通过环境变量 ``LMSTUDIO_API_KEY`` 覆盖。
+LM Studio 默认不验证此 key（本地服务安全模型依赖网络隔离而非 API 认证）。
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import Any
 
@@ -32,14 +34,15 @@ class LMStudioProvider(LLMProvider):
     DEFAULT_BASE_URL = "http://127.0.0.1:1234/v1"
     # LM Studio 本地占位 key（OpenAI 兼容接口需要 Authorization 头）。
     # 这是 LM Studio 官方文档公开的占位字符串，非真实凭证，本地服务不校验此值。
-    # nosec B105: 跳过 bandit 硬编码密码字符串检查（此处为公开占位 key，非凭证）
-    DEFAULT_API_KEY = "lm-studio"  # nosec B105
+    # 可通过 LMSTUDIO_API_KEY 环境变量覆盖。
+    DEFAULT_API_KEY = os.environ.get("LMSTUDIO_API_KEY", "lm-studio")
 
     def __init__(self, config: ProviderConfig) -> None:
         # 如果未指定 base_url，使用默认本地地址
         if not config.base_url:
             config.base_url = self.DEFAULT_BASE_URL
         # LM Studio 本地占位 key（OpenAI 兼容接口需要 Authorization 头）
+        # P1 修复: 优先使用环境变量 LMSTUDIO_API_KEY，fallback 到公开占位 key
         if not config.api_key:
             config.api_key = self.DEFAULT_API_KEY
         # 确保类型正确

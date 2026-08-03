@@ -200,7 +200,7 @@
                 >
                   <div
                     v-for="(uri, idx) in currentSnapshot.dataset_versions"
-                    :key="idx"
+                    :key="`uri-${idx}`"
                     class="uri-item mono"
                   >
                     {{ uri }}

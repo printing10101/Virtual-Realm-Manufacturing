@@ -28,7 +28,7 @@ import sys
 _original_platform = sys.platform
 sys.platform = "linux"
 try:
-    import asyncio  # noqa: F401
+    import asyncio
 finally:
     sys.platform = _original_platform
 

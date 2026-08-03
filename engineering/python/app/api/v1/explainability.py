@@ -34,30 +34,9 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
-from app.contracts.explainability import (
-    ComparisonType,
-    ExplanationType,
-    ProjectionMethod,
-)
 from app.core.response import ErrorCode, error, success
-from app.services.explainability_service import (
-    ComparisonMismatchError,
-    ExplainabilityError,
-    ExplanationLookupError,
-    ExplanationValidationError,
-    ProjectionError,
-    SamplingError,
-    get_explainability_service,
-)
+from app.dependencies import get_explainability_service
 
-logger = logging.getLogger(__name__)
-
-
-router = APIRouter(
-    prefix="/api/v1/explainability",
-    tags=["Explainability"],
-    dependencies=[Depends(require_permission("explainability:read"))],
-)
 
 
 # ---------------------------------------------------------------------------

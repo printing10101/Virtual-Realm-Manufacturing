@@ -44,15 +44,15 @@ _PYTHON_DIR = Path(__file__).resolve().parents[4]
 if str(_PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(_PYTHON_DIR))
 
-from app.integrations.mtconnect import MTConnectAdapter  # noqa: E402
-from app.integrations.mtconnect import parser as parser_mod  # noqa: E402
-from app.integrations.mtconnect import cli  # noqa: E402
-from app.integrations.mtconnect.adapter import (  # noqa: E402
+from app.integrations.mtconnect import MTConnectAdapter
+from app.integrations.mtconnect import parser as parser_mod
+from app.integrations.mtconnect import cli
+from app.integrations.mtconnect.adapter import (
     AdapterConfig,
     build_table_ddl,
     parse_tds_url,
 )
-from app.integrations.mtconnect.parser import Sample, parse_sample_response  # noqa: E402
+from app.integrations.mtconnect.parser import Sample, parse_sample_response
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +279,7 @@ def _build_stub_session(responses: List[Any]) -> Session:
     session = MagicMock(spec=Session)
     queue = list(responses)
 
-    def _get(url: str, timeout: Optional[float] = None) -> Any:  # noqa: ARG001
+    def _get(url: str, timeout: Optional[float] = None) -> Any:
         if not queue:
             raise AssertionError("No more stub responses queued")
         item = queue.pop(0)
@@ -309,7 +309,7 @@ class _StubTDE:
         self.inserted.extend(rows)
         return len(rows)
 
-    async def ensure_database(self, database: str) -> bool:  # noqa: ARG002
+    async def ensure_database(self, database: str) -> bool:
         return True
 
     async def create_table_if_not_exists(
@@ -635,7 +635,7 @@ class TestCLIMain:
 def _make_async_returning(value: Any):
     """Return a coroutine function that resolves to ``value``."""
 
-    async def _coro(*args, **kwargs):  # noqa: ANN001, D401
+    async def _coro(*args, **kwargs):
         return value
 
     return _coro

@@ -221,7 +221,7 @@ describe('useDxfImportStore', () => {
     it('上传成功时解析响应并返回 data', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf', { type: 'application/dxf' })
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       expect(xhr.open).toHaveBeenCalledWith('POST', expect.stringContaining('/upload'), true)
@@ -241,7 +241,7 @@ describe('useDxfImportStore', () => {
     it('上传过程中通过 onprogress 更新 uploadProgress', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf')
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       // 触发上传进度
@@ -260,7 +260,7 @@ describe('useDxfImportStore', () => {
     it('后端返回非 0 code 时拒绝并返回 message', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf')
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       xhr.status = 200
@@ -273,7 +273,7 @@ describe('useDxfImportStore', () => {
     it('响应体非 JSON 时拒绝并返回解析错误', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf')
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       xhr.status = 200
@@ -286,7 +286,7 @@ describe('useDxfImportStore', () => {
     it('HTTP 状态码非 2xx 时拒绝并返回错误信息', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf')
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       xhr.status = 500
@@ -299,7 +299,7 @@ describe('useDxfImportStore', () => {
     it('HTTP 错误响应非 JSON 时返回状态码错误', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf')
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       xhr.status = 503
@@ -312,7 +312,7 @@ describe('useDxfImportStore', () => {
     it('HTTP 错误响应包含 detail 字符串时返回 detail', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf')
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       xhr.status = 400
@@ -325,7 +325,7 @@ describe('useDxfImportStore', () => {
     it('HTTP 错误响应包含 detail 对象时返回 detail.message', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf')
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       xhr.status = 400
@@ -338,7 +338,7 @@ describe('useDxfImportStore', () => {
     it('网络错误时拒绝', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf')
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       xhr.handler.onerror!()
@@ -349,7 +349,7 @@ describe('useDxfImportStore', () => {
     it('上传超时时拒绝', async () => {
       const store = useDxfImportStore()
       const file = new File(['data'], 'test.dxf')
-      const promise = store.uploadDxfFile(file)
+      const promise = (store as any).uploadDxfFile(file)
 
       const xhr = lastXhr()
       expect(xhr.timeout).toBe(120000)
@@ -365,7 +365,7 @@ describe('useDxfImportStore', () => {
         data: { code: 0, data: { entities: [{ id: 'e1' }] } },
       })
       const store = useDxfImportStore()
-      const result = await store.parseDxfFile('f1')
+      const result = await (store as any).parseDxfFile('f1')
       expect(result).toEqual({ entities: [{ id: 'e1' }] })
       expect(store.parseProgress).toBe(100)
     })
@@ -375,7 +375,7 @@ describe('useDxfImportStore', () => {
         data: { code: 1, message: '解析失败' },
       })
       const store = useDxfImportStore()
-      await expect(store.parseDxfFile('f1')).rejects.toThrow('解析失败')
+      await expect((store as any).parseDxfFile('f1')).rejects.toThrow('解析失败')
       expect(store.parseProgress).toBe(80)
     })
 
@@ -384,13 +384,13 @@ describe('useDxfImportStore', () => {
         data: { code: 1 },
       })
       const store = useDxfImportStore()
-      await expect(store.parseDxfFile('f1')).rejects.toThrow('解析失败')
+      await expect((store as any).parseDxfFile('f1')).rejects.toThrow('解析失败')
     })
 
     it('网络异常时抛出 axios 错误', async () => {
       ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useDxfImportStore()
-      await expect(store.parseDxfFile('f1')).rejects.toThrow('network')
+      await expect((store as any).parseDxfFile('f1')).rejects.toThrow('network')
     })
   })
 
@@ -400,7 +400,7 @@ describe('useDxfImportStore', () => {
         data: { code: 0, data: { holes: 5, planes: 3 } },
       })
       const store = useDxfImportStore()
-      const result = await store.extractDxfFeatures('f1')
+      const result = await (store as any).extractDxfFeatures('f1')
       expect(result).toEqual({ holes: 5, planes: 3 })
     })
 
@@ -409,14 +409,14 @@ describe('useDxfImportStore', () => {
         data: { code: 1 },
       })
       const store = useDxfImportStore()
-      const result = await store.extractDxfFeatures('f1')
+      const result = await (store as any).extractDxfFeatures('f1')
       expect(result).toBeNull()
     })
 
     it('网络异常时返回 null（不阻塞主流程）', async () => {
       ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useDxfImportStore()
-      const result = await store.extractDxfFeatures('f1')
+      const result = await (store as any).extractDxfFeatures('f1')
       expect(result).toBeNull()
     })
   })

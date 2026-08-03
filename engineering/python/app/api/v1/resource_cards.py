@@ -34,15 +34,8 @@ from app.contracts.resource_card import (
     ModelArtifactStatus,
     ModelArtifactType,
 )
-from app.services.resource_card_service import (
-    DatasetReadmeNotFoundError,
-    InvalidModelStatusTransitionError,
-    LineageSummaryError,
-    ModelArtifactAlreadyExistsError,
-    ModelArtifactNotFoundError,
-    ResourceCardError,
-    get_resource_card_service,
-)
+from app.dependencies import get_resource_card_service
+from app.services.resource_card_service import DatasetReadmeNotFoundError, InvalidModelStatusTransitionError, LineageSummaryError, ModelArtifactAlreadyExistsError, ModelArtifactNotFoundError, ResourceCardError
 
 logger = logging.getLogger(__name__)
 
@@ -285,7 +278,7 @@ async def get_dataset_lineage(
 
     权限：``resource_card:read``
     """
-    from app.data.dataset_store import get_dataset_store
+    from app.dependencies import get_dataset_store
 
     service = get_resource_card_service()
 
@@ -330,7 +323,7 @@ async def get_dataset_metrics(dataset_id: str):
 
     权限：``resource_card:read``
     """
-    from app.data.dataset_store import get_dataset_store
+    from app.dependencies import get_dataset_store
 
     try:
         dataset_store = get_dataset_store()

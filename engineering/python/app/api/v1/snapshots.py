@@ -128,7 +128,7 @@ async def list_snapshots(
 
     try:
         snapshots = await store.list(filters=filters if filters else None)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.exception("list_snapshots 失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -156,7 +156,7 @@ async def create_snapshot(req: CreateSnapshotRequest):
         )
     except ValueError as e:
         return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.exception("create_snapshot 失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -178,7 +178,7 @@ async def get_snapshot(snapshot_id: str):
             message=str(e),
             detail=f"snapshot_id={snapshot_id}",
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.exception("get_snapshot 失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
@@ -220,7 +220,7 @@ async def reproduce_snapshot(snapshot_id: str):
             message="workflow_spec 反序列化失败",
             detail=str(e),
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.exception("reproduce_snapshot 失败")
         return error(
             code=ErrorCode.INTERNAL_ERROR,

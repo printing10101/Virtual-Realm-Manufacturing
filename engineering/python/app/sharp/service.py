@@ -159,7 +159,7 @@ class SharpService:
                 self._memory_top_k,
                 self._ablation_mode,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning(
                 "SHARP: load SharpConfig failed, use module defaults: %s", e
             )
@@ -211,7 +211,7 @@ class SharpService:
 
             self._llm_router = get_router()
             logger.info("SHARP: LLMRouter loaded")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("SHARP: LLMRouter load failed: %s", e)
             self._llm_router = None
 
@@ -222,7 +222,7 @@ class SharpService:
 
             self._query_api = _get_query_api()
             logger.info("SHARP: KnowledgeGraphQueryAPI loaded")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("SHARP: KnowledgeGraphQueryAPI load failed: %s", e)
             self._query_api = None
 
@@ -233,7 +233,7 @@ class SharpService:
 
             self._rag_engine = _get_rag_engine()
             logger.info("SHARP: RagRetrievalEngine loaded")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("SHARP: RagRetrievalEngine load failed: %s", e)
             self._rag_engine = None
 
@@ -418,7 +418,7 @@ class SharpService:
         if self._memory_augmentor is not None:
             try:
                 self._memory_augmentor.store(result)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.warning("SHARP: trajectory store failed: %s", e)
 
         return result
@@ -435,7 +435,7 @@ class SharpService:
         if self._memory_augmentor is not None:
             try:
                 self._memory_augmentor.store(result)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.warning("SHARP: trajectory store failed: %s", e)
 
         return result
@@ -500,7 +500,7 @@ class SharpService:
                             "SHARP no_react: llm.reason tool failed: %s",
                             tool_result.error,
                         )
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     # execute() 内部已捕获异常，此处兜底防御
                     reasoning = f"no_react 模式 LLM 推理异常: {type(e).__name__}: {e}"
                     logger.warning("SHARP no_react: llm.reason execute raised: %s", e)
@@ -576,7 +576,7 @@ class SharpService:
                     max_react_steps=max_react_steps,
                 )
                 results.append((idx, result, None))
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.warning(
                     "SHARP batch verify[%d] failed: %s", idx, e
                 )

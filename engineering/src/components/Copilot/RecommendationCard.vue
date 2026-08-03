@@ -65,10 +65,9 @@
           {{ $t('copilot.card.alternatives') }}
         </div>
         <div class="alternatives-list">
-          <!-- 动态列表，AlternativePlan 无业务唯一 id，index 作为 key 可接受 -->
           <div
             v-for="(alt, index) in alternatives"
-            :key="index"
+            :key="(alt.label ?? '') + alt.confidence + index"
             class="alternative-item"
           >
             <div class="alternative-header">

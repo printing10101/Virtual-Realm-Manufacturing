@@ -190,13 +190,106 @@
         </el-table>
       </div>
     </div>
+
+    <!-- 设备参数设置弹窗 -->
+    <el-dialog
+      v-model="settingsDialogVisible"
+      :title="t('equipmentMonitor.dialogSettingsTitle')"
+      width="480px"
+      :close-on-click-modal="false"
+    >
+      <el-form label-width="110px" @submit.prevent>
+        <el-form-item :label="t('equipmentMonitor.colDeviceName')">
+          <el-input :model-value="settingsForm.name" disabled />
+        </el-form-item>
+        <el-form-item :label="t('equipmentMonitor.fieldStatus')">
+          <el-select v-model="settingsForm.status" style="width: 100%">
+            <el-option :label="t('equipmentMonitor.labelStatusRunning')" :value="t('equipmentMonitor.labelStatusRunning')" />
+            <el-option :label="t('equipmentMonitor.labelStatusStandby')" :value="t('equipmentMonitor.labelStatusStandby')" />
+            <el-option :label="t('equipmentMonitor.labelStatusMaintenance')" :value="t('equipmentMonitor.labelStatusMaintenance')" />
+            <el-option :label="t('equipmentMonitor.labelStatusFault')" :value="t('equipmentMonitor.labelStatusFault')" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('equipmentMonitor.fieldTemperature')">
+          <el-input-number v-model="settingsForm.temperature" :min="0" :max="500" :precision="1" style="width: 100%" />
+        </el-form-item>
+        <el-form-item :label="t('equipmentMonitor.fieldVibration')">
+          <el-input-number v-model="settingsForm.vibration" :min="0" :max="50" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item :label="t('equipmentMonitor.fieldRpm')">
+          <el-input-number v-model="settingsForm.rpm" :min="0" :max="50000" style="width: 100%" />
+        </el-form-item>
+        <el-form-item :label="t('equipmentMonitor.fieldPower')">
+          <el-input-number v-model="settingsForm.power" :min="0" :max="1000" :precision="1" style="width: 100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="settingsDialogVisible = false">
+          {{ t('equipmentMonitor.btnCancel') }}
+        </el-button>
+        <el-button type="primary" :loading="settingsSubmitting" @click="submitSettings">
+          {{ t('equipmentMonitor.btnSubmit') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 设备详情弹窗 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="t('equipmentMonitor.dialogDetailTitle')"
+      width="520px"
+    >
+      <div v-loading="detailLoading" style="min-height: 200px">
+        <template v-if="detailData">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item :label="t('equipmentMonitor.colDeviceId')">
+              {{ detailData.id }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('equipmentMonitor.colDeviceName')">
+              {{ detailData.name }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('equipmentMonitor.fieldModel')">
+              {{ detailData.model || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('equipmentMonitor.fieldLocation')">
+              {{ detailData.location || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('equipmentMonitor.colStatus')">
+              <el-tag :type="statusTagType(detailData.status)" size="small" effect="light">
+                {{ detailData.status }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('equipmentMonitor.fieldTemperature')">
+              {{ detailData.temperature ?? '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('equipmentMonitor.fieldVibration')">
+              {{ detailData.vibration ?? '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('equipmentMonitor.fieldRpm')">
+              {{ detailData.rpm ?? '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('equipmentMonitor.fieldPower')">
+              {{ detailData.power ?? '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('equipmentMonitor.fieldUpdatedAt')">
+              {{ detailData.updated_at }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </template>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">
+          {{ t('equipmentMonitor.btnCancel') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Setting, Monitor, VideoPlay, Clock, WarningFilled } from '@element-plus/icons-vue'
 import http from '@/utils/http'
 import { API_CONFIG } from '@/config/api'
@@ -274,13 +367,6 @@ const STATUS_TO_TAG_TYPE: Record<string, 'success' | 'info' | 'danger' | 'warnin
   [t('equipmentMonitor.labelStatusMaintenance')]: 'warning',
 }
 
-const STATUS_TO_ENGLISH: Record<string, string> = {
-  [t('equipmentMonitor.labelStatusRunning')]: 'running',
-  [t('equipmentMonitor.labelStatusStandby')]: 'standby',
-  [t('equipmentMonitor.labelStatusFault')]: 'fault',
-  [t('equipmentMonitor.labelStatusMaintenance')]: 'maintenance',
-}
-
 // ========================= 计算属性 =========================
 const statsCards = computed<StatsCard[]>(() => {
   const s = stats.value
@@ -321,9 +407,9 @@ async function fetchDevices() {
       http.get(API_CONFIG.EQUIPMENT + '/maintenance/'),
     ])
 
-    // 设备列表
+    // 设备列表（后端返回 { items, total, page, ... }）
     if (deviceRes.data?.code === 0) {
-      devices.value = deviceRes.data.data || []
+      devices.value = deviceRes.data.data?.items || []
     } else {
       devices.value = []
     }
@@ -361,20 +447,160 @@ async function handleRefresh() {
   ElMessage.success(t('equipmentMonitor.msgRefreshed'))
 }
 
-function handleSettings() {
-  ElMessage.info(t('equipmentMonitor.msgSettingsWip'))
+// ========================= 设备参数设置弹窗 =========================
+const settingsDialogVisible = ref(false)
+const settingsSubmitting = ref(false)
+const settingsForm = ref({
+  id: 0,
+  name: '',
+  status: '',
+  temperature: null as number | null,
+  vibration: null as number | null,
+  rpm: null as number | null,
+  power: null as number | null,
+})
+
+/** 打开设备参数设置弹窗。 */
+function handleSettings(row?: Device | MouseEvent) {
+  if (row && typeof row === 'object' && 'id' in row) {
+    settingsForm.value = {
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      temperature: row.temperature,
+      vibration: row.vibration,
+      rpm: row.rpm,
+      power: row.power,
+    }
+  } else {
+    // 顶部"监控配置"按钮：默认选中第一台设备
+    const first = devices.value[0]
+    if (!first) {
+      ElMessage.warning(t('equipmentMonitor.emptyData'))
+      return
+    }
+    settingsForm.value = {
+      id: first.id,
+      name: first.name,
+      status: first.status,
+      temperature: first.temperature,
+      vibration: first.vibration,
+      rpm: first.rpm,
+      power: first.power,
+    }
+  }
+  settingsDialogVisible.value = true
 }
 
-function handleViewDetail(row: Device) {
-  ElMessage.info(t('equipmentMonitor.msgViewDetail', { name: row.name }))
+/** 保存设备参数（PUT /api/v1/equipment/{id}）。 */
+async function submitSettings() {
+  if (!settingsForm.value.id) return
+  settingsSubmitting.value = true
+  try {
+    const res = await http.put(
+      API_CONFIG.EQUIPMENT + `/${settingsForm.value.id}`,
+      {
+        status: settingsForm.value.status,
+        temperature: settingsForm.value.temperature,
+        vibration: settingsForm.value.vibration,
+        rpm: settingsForm.value.rpm,
+        power: settingsForm.value.power,
+      },
+    )
+    if (res.data.code === 0) {
+      ElMessage.success(t('equipmentMonitor.msgSettingsSaved'))
+      settingsDialogVisible.value = false
+      fetchDevices()
+    } else {
+      ElMessage.error(res.data.message || t('equipmentMonitor.msgSettingsFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[EquipmentMonitor] save settings failed:', e)
+    ElMessage.error(t('equipmentMonitor.msgSettingsFailed'))
+  } finally {
+    settingsSubmitting.value = false
+  }
 }
 
-function handleStop(row: Device) {
-  ElMessage.warning(t('equipmentMonitor.msgStop', { name: row.name }))
+// ========================= 设备详情弹窗 =========================
+const detailDialogVisible = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<Device | null>(null)
+
+/** 查看设备详情（GET /api/v1/equipment/{id}）。 */
+async function handleViewDetail(row: Device) {
+  detailDialogVisible.value = true
+  detailLoading.value = true
+  detailData.value = null
+  try {
+    const res = await http.get(API_CONFIG.EQUIPMENT + `/${row.id}`)
+    if (res.data.code === 0 && res.data.data) {
+      detailData.value = res.data.data
+    } else {
+      ElMessage.error(res.data.message || t('equipmentMonitor.msgOpFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[EquipmentMonitor] fetch detail failed:', e)
+    ElMessage.error(t('equipmentMonitor.msgOpFailed'))
+  } finally {
+    detailLoading.value = false
+  }
 }
 
-function handleRepair(row: Device) {
-  ElMessage.warning(t('equipmentMonitor.msgRepair', { name: row.name }))
+// ========================= 停机 / 报修 =========================
+
+/** 停机：将设备状态切换为「待机」。 */
+async function handleStop(row: Device) {
+  try {
+    await ElMessageBox.confirm(
+      t('equipmentMonitor.msgStopConfirm', { name: row.name }),
+      t('equipmentMonitor.btnStop'),
+      { type: 'warning', confirmButtonText: t('equipmentMonitor.btnSubmit'), cancelButtonText: t('equipmentMonitor.btnCancel') },
+    )
+  } catch {
+    return // 用户取消
+  }
+  try {
+    const res = await http.put(API_CONFIG.EQUIPMENT + `/${row.id}`, {
+      status: t('equipmentMonitor.labelStatusStandby'),
+    })
+    if (res.data.code === 0) {
+      ElMessage.success(t('equipmentMonitor.msgStopSuccess'))
+      fetchDevices()
+    } else {
+      ElMessage.error(res.data.message || t('equipmentMonitor.msgOpFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[EquipmentMonitor] stop failed:', e)
+    ElMessage.error(t('equipmentMonitor.msgOpFailed'))
+  }
+}
+
+/** 报修：将设备状态切换为「维护中」。 */
+async function handleRepair(row: Device) {
+  try {
+    await ElMessageBox.confirm(
+      t('equipmentMonitor.msgRepairConfirm', { name: row.name }),
+      t('equipmentMonitor.btnRepair'),
+      { type: 'warning', confirmButtonText: t('equipmentMonitor.btnSubmit'), cancelButtonText: t('equipmentMonitor.btnCancel') },
+    )
+  } catch {
+    return // 用户取消
+  }
+  try {
+    const res = await http.put(API_CONFIG.EQUIPMENT + `/${row.id}`, {
+      status: t('equipmentMonitor.labelStatusMaintenance'),
+    })
+    if (res.data.code === 0) {
+      ElMessage.success(t('equipmentMonitor.msgRepairSuccess'))
+      fetchDevices()
+    } else {
+      ElMessage.error(res.data.message || t('equipmentMonitor.msgOpFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[EquipmentMonitor] repair failed:', e)
+    ElMessage.error(t('equipmentMonitor.msgOpFailed'))
+  }
 }
 
 // ========================= 生命周期 =========================

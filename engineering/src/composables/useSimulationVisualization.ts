@@ -269,7 +269,7 @@ export function createVibrationVisualization(
 export function createColorLegend(
   min: number,
   max: number,
-  label: string = '数值'
+  _label: string = '数值'
 ): THREE.Group {
   const group = new THREE.Group()
   group.name = 'color-legend'
@@ -326,8 +326,6 @@ export function useSimulationVisualization() {
     vibrationGroup: THREE.Group
     legendGroup: THREE.Group
   } {
-    const startTime = performance.now()
-
     // 创建力矢量
     const forceGroup = createForceVectorGroup(forceData, options)
     scene.add(forceGroup)
@@ -360,9 +358,6 @@ export function useSimulationVisualization() {
     }
 
     scene.add(legendGroup)
-
-    const renderTime = performance.now() - startTime
-    // 仿真结果渲染时间: renderTime.toFixed(2)ms
 
     return {
       forceGroup,

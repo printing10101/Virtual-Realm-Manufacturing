@@ -187,7 +187,9 @@ class SessionExtractor:
     def _extract_mlflow_sessions(self, cutoff: datetime) -> List[ProjectSession]:
         """从 MLflow 拉取实验 run，归一化为 ProjectSession。"""
         try:
-            from research.training.experiment_tracker import HAS_MLFLOW  # 阶段2 解耦：training/ 已迁移到 research/
+            # P0#3 解耦: 通过 research_bridge 检查 MLflow 可用性
+            from app.ai.lnn._research_bridge import get_has_mlflow
+            HAS_MLFLOW = get_has_mlflow()
         except ImportError:
             HAS_MLFLOW = False
 

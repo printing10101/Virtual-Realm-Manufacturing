@@ -14,7 +14,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Depends
 from fastapi.responses import FileResponse
 
-from app.api.v1.auth import get_current_user
+from app.auth.dependencies import get_current_user
 from app.dxf.schemas import DxfParseResponse, DxfFeatureResponse, DxfPipelineResponse
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message

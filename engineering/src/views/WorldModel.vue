@@ -337,7 +337,12 @@ const defaultActionValue: Record<string, number> = {
   [ACTION_FIELD.WIDTH_OF_CUT_DELTA]: 0.0,
 }
 
-const predictForm = reactive({
+const predictForm = reactive<{
+  model_uri: string
+  horizon: number
+  current_state: Record<string, number>
+  candidate_action: Record<string, number>
+}>({
   model_uri: DEFAULT_WORLD_MODEL_URI,
   horizon: DEFAULT_HORIZON,
   current_state: { ...defaultStateValue },

@@ -327,13 +327,13 @@ class VectorStore:
                 if close_fn is not None:
                     try:
                         close_fn()
-                    except Exception as e:  # noqa: BLE001
+                    except Exception as e:
                         logger.warning(
                             "ChromaDB close() raised: %s", e, exc_info=True
                         )
                 self._client = None
                 logger.info("ChromaDB PersistentClient closed")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("Failed to close ChromaDB client: %s", e, exc_info=True)
         finally:
             self._closed = True

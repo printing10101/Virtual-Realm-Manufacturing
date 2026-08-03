@@ -59,7 +59,7 @@ describe('TestDialog.vue', () => {
     wrapper = mount(TestDialog, {
       props: {
         visible: true,
-        provider: mockProvider,
+        provider: mockProvider as any,
         ...props,
       },
       global: {

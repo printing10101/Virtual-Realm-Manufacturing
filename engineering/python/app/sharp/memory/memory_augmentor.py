@@ -110,7 +110,7 @@ class MemoryAugmentor:
                 self.trajectory_store,
                 self.top_k,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("Memory retrieve_similar failed: %s", e)
             self.last_retrieve_scores = []
             return []
@@ -195,7 +195,7 @@ class MemoryAugmentor:
 
         try:
             return self.trajectory_store.store(result, timestamp)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("Memory store failed: %s", e)
             return None
 

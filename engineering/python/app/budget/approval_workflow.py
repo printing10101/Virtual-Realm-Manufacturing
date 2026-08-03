@@ -874,12 +874,7 @@ _holder = _ApprovalEngineHolder()
 def get_approval_engine() -> ApprovalWorkflowEngine:
     """获取共享的 :class:`ApprovalWorkflowEngine` 单例；首次访问时懒初始化。
 
-    Returns:
-        :class:`ApprovalWorkflowEngine` 实例（应用生命周期内同一实例）。
-
-    Note:
-        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_approval_engine)``。
-        实现是线程安全的，行为与重构前完全一致。
+    .. deprecated:: V3.0 (2026-08-02)
     """
     return _holder.get()
 

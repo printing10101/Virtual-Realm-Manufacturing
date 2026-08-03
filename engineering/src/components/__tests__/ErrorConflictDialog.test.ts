@@ -145,7 +145,6 @@ describe('http utility', () => {
   })
 
   it('should define ErrorDialogPayload type structure', async () => {
-    const mod = await import('@/utils/http')
     const payload: ErrorDialogPayload = {
       title: 'test',
       code: 'E0001',

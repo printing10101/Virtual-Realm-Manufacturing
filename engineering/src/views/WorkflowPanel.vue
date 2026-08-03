@@ -177,7 +177,7 @@
                 v-for="(edge, idx) in dagLayout.edges"
                 :key="`edge-${idx}`"
                 :d="edge.path"
-                :class="['dag-edge', { active: isEdgeActive(edge) }]"
+                :class="['dag-edge', { active: isEdgeActiveLocal(edge) }]"
                 fill="none"
               />
               <!-- Nodes -->
@@ -248,7 +248,7 @@
             </div>
             <div
               v-for="(ev, idx) in stream.events.value"
-              :key="idx"
+              :key="`ev-${idx}`"
               class="event-log-entry"
               :class="`event-${ev.event_type}`"
             >
@@ -349,6 +349,8 @@ import {
 } from '@element-plus/icons-vue'
 import { useWorkflow } from '@/composables/useWorkflow'
 import type { WorkflowSpec, TaskStatus, WorkflowEvent } from '@/contracts/task'
+import { useDagLayout, type LayoutEdge } from '@/composables/useDagLayout'
+import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 
 const { t } = useI18n()
 
@@ -388,31 +390,8 @@ const statusOptions = [
   { value: 'skipped', label: t('workflowPanel.statusSkipped') },
 ]
 
-function statusTagType(s?: string | null) {
-  switch (s) {
-    case 'completed': return 'success'
-    case 'failed': return 'danger'
-    case 'cancelled': return 'info'
-    case 'running': return 'primary'
-    case 'queued':
-    case 'pending': return 'warning'
-    case 'skipped': return 'info'
-    default: return 'info'
-  }
-}
-
-function statusLabel(s?: string | null): string {
-  const map: Record<string, string> = {
-    pending: t('workflowPanel.statusPending'),
-    queued: t('workflowPanel.statusQueued'),
-    running: t('workflowPanel.statusRunning'),
-    completed: t('workflowPanel.statusCompleted'),
-    failed: t('workflowPanel.statusFailed'),
-    cancelled: t('workflowPanel.statusCancelled'),
-    skipped: t('workflowPanel.statusSkipped'),
-  }
-  return map[s || ''] ?? s ?? '-'
-}
+function statusTagType(s?: string | null) { return getTaskStatusTagType(s ?? '') }
+function statusLabel(s?: string | null): string { return getTaskStatusLabel(s ?? '') || '-' }
 
 // ---------------------------------------------------------------------------
 // 内置模板（与后端 python/app/workflow/templates/builtin/*.yaml 对应）
@@ -420,24 +399,7 @@ function statusLabel(s?: string | null): string {
 // ---------------------------------------------------------------------------
 const builtinTemplates = ref<Array<{ name: string; version: string; spec: WorkflowSpec }>>([])
 
-const SAMPLE_TOOL_WEAR_SPEC: WorkflowSpec = {
-  name: '刀具磨损预测流水线',
-  version: '1.0.0',
-  nodes: [
-    { node_id: 'load_dataset', task_type: 'dataset_loader', params: { loader_type: 'phm2010' }, inputs: {}, retry: 0, timeout_seconds: 600 },
-    { node_id: 'train_model', task_type: 'ltc_trainer', params: { model_type: 'ltc', epochs: 50 }, inputs: { train_split: '${load_dataset.train_split}' }, retry: 1, timeout_seconds: 7200 },
-    { node_id: 'evaluate_model', task_type: 'model_evaluator', params: { metrics: ['mae', 'r2'] }, inputs: { test_split: '${load_dataset.test_split}', trained_model: '${train_model.model_artifact}' }, retry: 0, timeout_seconds: 1800 },
-    { node_id: 'generate_report', task_type: 'report_generator', params: { template: 'tool_wear_evaluation.md' }, inputs: { metrics: '${evaluate_model.metrics_artifact}' }, retry: 0, timeout_seconds: 600 },
-  ],
-  edges: [
-    { upstream: 'load_dataset', downstream: 'train_model' },
-    { upstream: 'train_model', downstream: 'evaluate_model' },
-    { upstream: 'evaluate_model', downstream: 'generate_report' },
-  ],
-  inputs: {},
-  outputs: { wear_report: '${generate_report.report_artifact}' },
-  metadata: { max_concurrent: 2, tags: ['tool_wear', 'ltc'] },
-}
+const SAMPLE_TOOL_WEAR_SPEC: WorkflowSpec = JSON.parse('{"name": "刀具磨损预测流水线", "version": "1.0.0", "nodes": [{"node_id": "load_dataset", "task_type": "dataset_loader", "params": {"loader_type": "phm2010"}, "inputs": {}, "retry": 0, "timeout_seconds": 600}, {"node_id": "train_model", "task_type": "ltc_trainer", "params": {"model_type": "ltc", "epochs": 50}, "inputs": {"train_split": "${load_dataset.train_split}"}, "retry": 1, "timeout_seconds": 7200}, {"node_id": "evaluate_model", "task_type": "model_evaluator", "params": {"metrics": ["mae", "r2"]}, "inputs": {"test_split": "${load_dataset.test_split}", "trained_model": "${train_model.model_artifact}"}, "retry": 0, "timeout_seconds": 1800}, {"node_id": "generate_report", "task_type": "report_generator", "params": {"template": "tool_wear_evaluation.md"}, "inputs": {"metrics": "${evaluate_model.metrics_artifact}"}, "retry": 0, "timeout_seconds": 600}], "edges": [{"upstream": "load_dataset", "downstream": "train_model"}, {"upstream": "train_model", "downstream": "evaluate_model"}, {"upstream": "evaluate_model", "downstream": "generate_report"}], "inputs": {}, "outputs": {"wear_report": "${generate_report.report_artifact}"}, "metadata": {"max_concurrent": 2, "tags": ["tool_wear", "ltc"]}}')
 
 function initBuiltinTemplates() {
   builtinTemplates.value = [
@@ -500,112 +462,10 @@ function getNodeStatus(nodeId: string): TaskStatus {
 // ---------------------------------------------------------------------------
 const nodeWidth = 160
 const nodeHeight = 76
-const layerGapX = 220
-const padding = 40
 
-interface LayoutNode {
-  node_id: string
-  task_type: string
-  x: number
-  y: number
-  layer: number
-}
+const dagLayout = useDagLayout(() => currentSpec.value)
 
-interface LayoutEdge {
-  path: string
-  upstream: string
-  downstream: string
-}
-
-const dagLayout = computed(() => {
-  const spec = currentSpec.value
-  if (!spec || spec.nodes.length === 0) {
-    return { nodes: [] as LayoutNode[], edges: [] as LayoutEdge[], width: 0, height: 0 }
-  }
-
-  // 构建邻接表 + 入度
-  const adj = new Map<string, string[]>()
-  const inDegree = new Map<string, number>()
-  spec.nodes.forEach(n => {
-    adj.set(n.node_id, [])
-    inDegree.set(n.node_id, 0)
-  })
-  spec.edges.forEach(e => {
-    adj.get(e.upstream)?.push(e.downstream)
-    inDegree.set(e.downstream, (inDegree.get(e.downstream) ?? 0) + 1)
-  })
-
-  // Kahn 分层：BFS，每层为当前入度为 0 的节点集合
-  const layers: string[][] = []
-  const remaining = new Map(inDegree)
-  const visited = new Set<string>()
-
-  while (visited.size < spec.nodes.length) {
-    const layer = spec.nodes
-      .map(n => n.node_id)
-      .filter(id => !visited.has(id) && (remaining.get(id) ?? 0) === 0)
-    if (layer.length === 0) {
-      // 检测到环（理论上 validate 已拦截），把剩余节点强行放入最后一层避免死循环
-      const leftover = spec.nodes.map(n => n.node_id).filter(id => !visited.has(id))
-      layers.push(leftover)
-      leftover.forEach(id => visited.add(id))
-      break
-    }
-    layers.push(layer)
-    layer.forEach(id => {
-      visited.add(id)
-      adj.get(id)?.forEach(down => {
-        remaining.set(down, (remaining.get(down) ?? 1) - 1)
-      })
-    })
-  }
-
-  // 计算坐标：每层水平排列，层间垂直间距
-  const nodeMap = new Map(spec.nodes.map(n => [n.node_id, n]))
-  const layoutNodes: LayoutNode[] = []
-  const maxLayerSize = Math.max(...layers.map(l => l.length), 1)
-
-  layers.forEach((layer, layerIdx) => {
-    const layerHeight = layer.length * nodeHeight + (layer.length - 1) * 20
-    const startY = (maxLayerSize * (nodeHeight + 20) - layerHeight) / 2 + padding
-    layer.forEach((nodeId, idx) => {
-      const node = nodeMap.get(nodeId)
-      layoutNodes.push({
-        node_id: nodeId,
-        task_type: node?.task_type ?? '',
-        x: padding + layerIdx * layerGapX,
-        y: startY + idx * (nodeHeight + 20),
-        layer: layerIdx,
-      })
-    })
-  })
-
-  const totalWidth = padding * 2 + layers.length * layerGapX
-  const totalHeight = padding * 2 + maxLayerSize * (nodeHeight + 20)
-
-  // 计算边路径（贝塞尔曲线连接 downstream 节点底部 → upstream 节点顶部）
-  const nodePos = new Map(layoutNodes.map(n => [n.node_id, n]))
-  const layoutEdges: LayoutEdge[] = spec.edges.map(e => {
-    const u = nodePos.get(e.upstream)
-    const d = nodePos.get(e.downstream)
-    if (!u || !d) return { path: '', upstream: e.upstream, downstream: e.downstream }
-    const x1 = u.x + nodeWidth / 2
-    const y1 = u.y + nodeHeight
-    const x2 = d.x + nodeWidth / 2
-    const y2 = d.y
-    const midY = (y1 + y2) / 2
-    return {
-      path: `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`,
-      upstream: e.upstream,
-      downstream: e.downstream,
-    }
-  }).filter(e => e.path !== '')
-
-  return { nodes: layoutNodes, edges: layoutEdges, width: totalWidth, height: totalHeight }
-})
-
-function isEdgeActive(edge: LayoutEdge): boolean {
-  // 当 upstream 节点 completed 且 downstream 节点已启动时高亮
+function isEdgeActiveLocal(edge: LayoutEdge): boolean {
   const u = getNodeStatus(edge.upstream)
   const d = getNodeStatus(edge.downstream)
   return u === 'completed' && d !== 'pending'
@@ -627,7 +487,7 @@ watch(
 )
 
 function getEventMessage(ev: WorkflowEvent): string {
-  const payload = ev.payload as Record<string, unknown>
+  const payload = ev.payload as unknown as Record<string, unknown>
   if (typeof payload?.error === 'string') return payload.error
   if (typeof payload?.message === 'string') return payload.message
   if (typeof payload?.progress === 'number') return `${Math.round(payload.progress * 100)}%`

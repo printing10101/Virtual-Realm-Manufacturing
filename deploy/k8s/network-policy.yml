@@ -15,14 +15,17 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # 放行来自同一命名空间的流量（前后端同 namespace）
-    - from:
-        - podSelector: {}
-    # 放行来自 ingress-nginx 命名空间的流量（Ingress Controller）
+    # 仅放行来自 ingress-nginx 命名空间的流量（Ingress Controller）
+    # 同一命名空间内 Pod 间通信需显式声明标签选择器
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
+    # 放行来自同一命名空间且标签为 app=lnn-frontend 的前端 Pod
+    - from:
+        - podSelector:
+            matchLabels:
+              app: lnn-frontend
   egress:
     # 放行 DNS 解析（kube-system 的 CoreDNS）
     - to:
@@ -61,14 +64,25 @@ spec:
         - protocol: TCP
           port: 6041
     # 放行 HTTPS 出站（调用云端 LLM API、HuggingFace 模型下载）
+    # 仅放行外部互联网流量，使用 ipBlock 排除集群内部 CIDR
     - to:
-        - namespaceSelector: {}
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
       ports:
         - protocol: TCP
           port: 443
     # 放行 HTTP 出站（部分镜像站可能仅 HTTP，按需收紧）
     - to:
-        - namespaceSelector: {}
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
       ports:
         - protocol: TCP
           port: 80

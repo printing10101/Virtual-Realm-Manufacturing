@@ -29,6 +29,8 @@ spec:
       imagePullSecrets:
         - name: ${REGISTRY_SECRET_NAME:-regcred}
       # 安全修复：Pod 级 securityContext，强制非 root 运行
+      # 注意：UID/GID 1000 需与 Dockerfile 中创建的用户 ID 保持一致
+      # 若 Dockerfile 的 appuser 使用不同的 UID，需同步更新此值
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -40,7 +42,7 @@ spec:
         - name: lnn-api
           # 安全修复：使用固定版本标签替代 latest，确保可追溯与可复现
           # 注意：发布流程应通过 CI 自动同步此标签与 VERSION 文件
-          image: lnn-api:2.5.0
+          image: lnn-api:2.7.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8765

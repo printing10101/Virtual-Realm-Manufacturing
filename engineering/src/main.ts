@@ -50,7 +50,7 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
 import App from './App.vue'
 import router from './router'
-import { i18n, setLocale, SUPPORTED_LOCALES, type SupportedLocale } from './i18n'
+import { i18n, setLocale, type SupportedLocale } from './i18n'
 import { setHttpReady } from './utils/http'
 import './assets/styles/theme.css'
 
@@ -89,8 +89,14 @@ try {
   throw err
 }
 
-// 初始化阶段完成后启用 HTTP 错误弹窗（延迟 3 秒等待后端健康检查）
-setTimeout(() => setHttpReady(), 3000)
+// === 启动时序常量 ===
+/** HTTP 健康检查就绪延迟（毫秒）：等待后端完成初始化后再启用 HTTP 错误弹窗 */
+const HTTP_READY_DELAY_MS = 3_000
+/** 首屏渲染后等待帧数再关闭启动画面，避免短暂白屏 */
+const SPLASHSCREEN_CLOSE_DELAY_MS = 100
+
+// 初始化阶段完成后启用 HTTP 错误弹窗
+setTimeout(() => setHttpReady(), HTTP_READY_DELAY_MS)
 
 // === Tauri 启动动画收尾 ===
 // Vue 应用挂载完成、首屏渲染就绪后，关闭原生 splashscreen 窗口并显示主窗口。
@@ -110,5 +116,5 @@ async function closeNativeSplashscreen() {
 }
 // 等待一帧让首屏真正绘制后再切换，避免出现短暂白屏
 requestAnimationFrame(() => {
-  setTimeout(closeNativeSplashscreen, 100)
+  setTimeout(closeNativeSplashscreen, SPLASHSCREEN_CLOSE_DELAY_MS)
 })

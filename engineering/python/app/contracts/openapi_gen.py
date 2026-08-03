@@ -126,7 +126,7 @@ def _python_type_to_schema(tp: Any) -> dict[str, Any]:
     # Optional / Union
     origin = get_origin(tp)
     if origin is Union:
-        args = [a for a in get_args(tp) if a is not type(None)]  # noqa: E721
+        args = [a for a in get_args(tp) if a is not type(None)]
         if len(args) == 1:
             schema = _python_type_to_schema(args[0])
             schema["nullable"] = True

@@ -22,30 +22,30 @@ logger = logging.getLogger(__name__)
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "..", ".."))
 
-from app.benchmarks.performance.thresholds import (  # noqa: E402
+from app.benchmarks.performance.thresholds import (
     REGRESSION_THRESHOLDS,
     check_violations,
 )
-from app.benchmarks.performance.lnn_inference_bench import LNNPerfBenchmark  # noqa: E402
-from app.benchmarks.performance.nc_generation_bench import NCGenerationBenchmark  # noqa: E402
-from app.benchmarks.performance.drawing_parse_bench import DrawingParseBenchmark  # noqa: E402
-from app.benchmarks.performance.api_bench import APIPerfBenchmark  # noqa: E402
-from app.benchmarks.performance.database_bench import DatabasePerfBenchmark  # noqa: E402
+from app.benchmarks.performance.lnn_inference_bench import LNNPerfBenchmark
+from app.benchmarks.performance.nc_generation_bench import NCGenerationBenchmark
+from app.benchmarks.performance.drawing_parse_bench import DrawingParseBenchmark
+from app.benchmarks.performance.api_bench import APIPerfBenchmark
+from app.benchmarks.performance.database_bench import DatabasePerfBenchmark
 # 阶段2 解耦改造：business_logic_bench 模块已迁移到 research/，
 # 工程侧运行时若需调用完整业务逻辑基准测试，请在 research/ 环境中执行。
 # 这里通过 try/except 提供降级保护，避免 import 失败导致整个基准测试框架不可用。
 try:
-    from app.benchmarks.performance.business_logic_bench import (  # noqa: E402
+    from app.benchmarks.performance.business_logic_bench import (
         BusinessLogicPerfBenchmark,
     )
     _HAS_BUSINESS_LOGIC_BENCH = True
 except ImportError:
     BusinessLogicPerfBenchmark = None  # type: ignore[assignment,misc]
     _HAS_BUSINESS_LOGIC_BENCH = False
-from app.benchmarks.performance.concurrency_bench import ConcurrencyPerfBenchmark  # noqa: E402
-from app.benchmarks.performance.world_model_bench import WorldModelPerfBenchmark  # noqa: E402
-from app.benchmarks.performance.rl_agent_bench import RLAgentPerfBenchmark  # noqa: E402
-from app.benchmarks.performance.closed_loop_bench import ClosedLoopPerfBenchmark  # noqa: E402
+from app.benchmarks.performance.concurrency_bench import ConcurrencyPerfBenchmark
+from app.benchmarks.performance.world_model_bench import WorldModelPerfBenchmark
+from app.benchmarks.performance.rl_agent_bench import RLAgentPerfBenchmark
+from app.benchmarks.performance.closed_loop_bench import ClosedLoopPerfBenchmark
 
 
 @dataclass

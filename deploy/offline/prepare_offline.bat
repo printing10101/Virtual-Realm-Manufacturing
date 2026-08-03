@@ -63,8 +63,10 @@ echo [√] 依赖包下载完成
 :: 复制项目文件
 echo.
 echo [4/4] 复制项目文件...
-xcopy /E /I /Q /Y "%PROJECT_ROOT%\python\app" "%OFFLINE_DIR%\python\app" >nul
-copy /Y "%PROJECT_ROOT%\requirements.txt" "%OFFLINE_DIR%\" >nul
+:: P0-2 修复：阶段2解耦后后端代码位于 engineering\python（原 python\ 已不存在）
+xcopy /E /I /Q /Y "%PROJECT_ROOT%\engineering\python\app" "%OFFLINE_DIR%\python\app" >nul
+:: P0-2 修复：离线包内 requirements.txt 必须为真实依赖清单（根目录薄包装在离线包内无法解析）
+copy /Y "%PROJECT_ROOT%\engineering\python\requirements.txt" "%OFFLINE_DIR%\requirements.txt" >nul
 copy /Y "%PROJECT_ROOT%\.env.example" "%OFFLINE_DIR%\" >nul 2>nul
 copy /Y "%PROJECT_ROOT%\docker-compose.yml" "%OFFLINE_DIR%\" >nul 2>nul
 copy /Y "%PROJECT_ROOT%\docker-compose-cn.yml" "%OFFLINE_DIR%\" >nul 2>nul

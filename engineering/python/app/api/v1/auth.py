@@ -9,16 +9,14 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 
-from app.models.user import UserCreate, UserLogin, UserResponse, get_user_store
-from app.auth.security import (
-    hash_password,
-    verify_password,
-    create_access_token,
-    create_refresh_token,
-    decode_token_strict,
-    get_token_ban_list,
-)
-from app.config import config
+from app.models.user import UserCreate, UserLogin, UserResponse
+from app.dependencies import get_user_store
+from app.auth.dependencies import get_current_user, security_scheme
+from app.dependencies import get_token_ban_list
+
+from app.dependencies import get_config
+from app.dependencies import get_config
+from app.config import AppConfig
 from typing import Any
 from app.middleware.rate_limiter import limiter
 from app.core.request_id import get_request_id as _get_request_id
@@ -28,7 +26,6 @@ from app.audit.audit_log import get_audit_log, OperationStatus
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
-security_scheme = HTTPBearer()
 
 
 def _extract_request_meta(request: Request) -> dict[str, str]:
@@ -83,7 +80,7 @@ def _audit_auth_event(
             input_parameters={"username": username} if username else {},
             metadata=meta,
         )
-    except Exception as audit_err:  # noqa: BLE001
+    except Exception as audit_err:
         # 审计日志失败不阻断业务，但必须告警
         logger.error(
             "[AUDIT] Failed to write auth audit log (type=%s, user=%s): %s",
@@ -109,28 +106,9 @@ class TokenRequest(BaseModel):
     access_token: str = Field("", description="访问令牌")
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-) -> dict[str, Any]:
-    token = credentials.credentials
-    ban_list = get_token_ban_list()
-    if ban_list.is_banned(token):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token已被撤销")
-
-    payload = decode_token_strict(token, expected_type="access")
-    if payload is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效或过期的Token")
-
-    username = payload.get("sub")
-    if not username:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token载荷无效")
-
-    store = get_user_store()
-    user = store.get_user(username)
-    if user is None or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用")
-
-    return {"username": username, "role": user.role}
+# =====================================================================
+# 认证依赖 (已迁移到 app.auth.dependencies，此处为兼容导入)
+# =====================================================================
 
 
 def require_role(*roles: str):
@@ -143,7 +121,7 @@ def require_role(*roles: str):
 
 @router.post("/register", response_model=dict)
 @limiter.limit("3/hour")
-async def register(request: Request, body: UserCreate):
+async def register(request: Request, body: UserCreate, config: AppConfig = Depends(get_config)):
     """注册新用户。
 
     安全控制（按执行顺序）：
@@ -320,7 +298,7 @@ async def refresh_token(request: Request, body: TokenRequest):
     if old_access_token_str:
         try:
             ban_list.ban(old_access_token_str)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # 撤销旧 access token 失败不应阻断 refresh 主流程（新令牌已签发），
             # 但需记录 warning 以便运维感知黑名单写入异常。
             logger.warning(
@@ -366,7 +344,7 @@ async def logout(request: Request, body: TokenRequest):
             payload = decode_token_strict(access_token_str, expected_type="access")
             if payload is not None:
                 logout_username = payload.get("sub")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # P1-5 修复：token 已失效或无效时无法解析用户名，仅记录匿名登出。
             # 不得静默 pass——JWT 库异常可能暗示密钥配置错误或 token 格式篡改，
             # debug 级日志便于安全审计回溯，但不影响登出主流程。

@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
 from app.auth.permissions import require_permission
-from app.goals.goal_chain_store import get_goal_chain_store
+from app.dependencies import get_goal_chain_store
 from app.goals.goal_alignment import GoalAlignmentChecker, GoalAlignmentError
 from app.models.goals import (
     Goal,
@@ -115,8 +115,8 @@ def set_alignment_checker(checker: Optional[GoalAlignmentChecker]) -> None:
     if checker is None:
         _holder.reset()
         return
-    with _holder._lock:  # noqa: SLF001 - 测试/启动期显式注入需要写锁
-        _holder._instance = checker  # noqa: SLF001
+    with _holder._lock:
+        _holder._instance = checker
 
 
 def reset_alignment_checker() -> None:

@@ -184,7 +184,7 @@ class TemplateEvolutionEngine:
         return EvolutionSuggestion(
             suggestion_id=f"ev_{uuid.uuid4().hex[:8]}",
             trigger_type="skill",
-            description=f"Error type '{metrics.get('error_type', 'unknown')}' appeared {metrics.get('error_count_same_type', 0)} times. Consider adding skill documentation.",  # noqa: E501
+            description=f"Error type '{metrics.get('error_type', 'unknown')}' appeared {metrics.get('error_count_same_type', 0)} times. Consider adding skill documentation.",
             data_evidence=metrics,
             proposed_change={
                 "action": "add_skill_doc",
@@ -200,7 +200,7 @@ class TemplateEvolutionEngine:
         return EvolutionSuggestion(
             suggestion_id=f"ev_{uuid.uuid4().hex[:8]}",
             trigger_type="model_config",
-            description=f"A/B test winner: {winner.get('config_name', 'unknown')} with {winner.get('improvement', 0):.1f}% improvement.",  # noqa: E501
+            description=f"A/B test winner: {winner.get('config_name', 'unknown')} with {winner.get('improvement', 0):.1f}% improvement.",
             data_evidence=metrics,
             proposed_change={"action": "update_model_config", "config": winner},
             confidence=metrics.get("confidence", 0.95),
@@ -308,7 +308,7 @@ class TemplateEvolutionEngine:
 
                     self._db.execute(
                         """INSERT OR REPLACE INTO evolution_suggestions
-                           (suggestion_id, trigger_type, description, data_evidence, proposed_change, confidence, created_at, status)  # noqa: E501
+                           (suggestion_id, trigger_type, description, data_evidence, proposed_change, confidence, created_at, status)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
                             suggestion.suggestion_id,
@@ -349,7 +349,7 @@ class TemplateEvolutionEngine:
             self._suggestions.append(suggestion)
             self._db.execute(
                 """INSERT OR REPLACE INTO evolution_suggestions
-                   (suggestion_id, trigger_type, description, data_evidence, proposed_change, confidence, created_at, status)  # noqa: E501
+                   (suggestion_id, trigger_type, description, data_evidence, proposed_change, confidence, created_at, status)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     suggestion.suggestion_id,

@@ -51,7 +51,8 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11']
+        # P0-5 修复：移除已 EOL 的 3.9（与 numpy>=2 不兼容），对齐实际运行版本
+        python-version: ['3.11', '3.12']
 
     steps:
       - name: Checkout code
@@ -264,7 +265,7 @@ jobs:
 
       - name: Check integration test coverage threshold (65%)
         run: |
-          cd python
+          cd engineering/python
 
           echo "======================================================"
           echo "  COVERAGE CHECK: Integration Tests (threshold >= 65%)"
@@ -505,7 +506,7 @@ jobs:
 
       - name: Check overall coverage threshold (65%)
         run: |
-          cd python
+          cd engineering/python
 
           echo "======================================================"
           echo "  COVERAGE CHECK: Full Test Suite (threshold >= 65%)"
@@ -876,7 +877,7 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f engineering/python/requirements.txt ]; then pip install -r engineering/python/requirements.txt; fi
           pip install pytest pytest-benchmark
-          pip install matplotlib 2>/dev/null || true
+          pip install matplotlib 2>/dev/null || echo "::warning::matplotlib 安装失败，性能基准测试图表将跳过"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

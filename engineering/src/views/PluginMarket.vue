@@ -3,20 +3,26 @@
     <el-card class="header-card">
       <div class="header-content">
         <h2>{{ t('pluginMarket.pageTitle') }}</h2>
-        <el-input
-          v-model="searchQuery"
-          :placeholder="t('pluginMarket.placeholderSearch')"
-          style="width: 300px"
-          clearable
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
+        <div style="display: flex; gap: 8px;">
+          <el-button size="small" :icon="Refresh" @click="fetchMarketplace">
+            {{ t('equipmentMonitor.btnRefresh') }}
+          </el-button>
+          <el-input
+            v-model="searchQuery"
+            :placeholder="t('pluginMarket.placeholderSearch')"
+            style="width: 300px"
+            clearable
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+        </div>
       </div>
     </el-card>
 
     <el-row
+      v-loading="loading"
       :gutter="16"
       style="margin-top: 20px"
     >
@@ -48,14 +54,32 @@
               {{ plugin.plugin_type }}
             </el-tag>
             <span class="version">v{{ plugin.version }}</span>
+            <el-tag
+              v-if="plugin.installed"
+              size="small"
+              type="success"
+              effect="light"
+            >
+              {{ t('pluginMarket.labelInstalled') }}
+            </el-tag>
           </div>
           <div class="plugin-actions">
             <el-button
+              v-if="!plugin.installed"
               type="primary"
               size="small"
+              :loading="installingId === plugin.id"
               @click="handleInstall(plugin)"
             >
               {{ t('pluginMarket.btnInstall') }}
+            </el-button>
+            <el-button
+              v-else
+              type="success"
+              size="small"
+              disabled
+            >
+              {{ t('pluginMarket.labelInstalled') }}
             </el-button>
             <el-button
               size="small"
@@ -69,17 +93,59 @@
     </el-row>
 
     <el-empty
-      v-if="filteredPlugins.length === 0"
-      :description="t('pluginMarket.emptyNoPlugin')"
+      v-if="!loading && filteredPlugins.length === 0"
+      :description="loadError ? t('pluginMarket.msgLoadFailed') : t('pluginMarket.emptyNoPlugin')"
     />
+
+    <!-- 插件详情弹窗 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="t('pluginMarket.dialogDetailTitle')"
+      width="520px"
+    >
+      <div v-loading="detailLoading" style="min-height: 160px">
+        <template v-if="detailData">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item :label="t('pluginMarket.fieldType')">
+              {{ detailData.plugin_type || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('pluginMarket.fieldVersion')">
+              {{ detailData.version || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('pluginMarket.fieldAuthor')">
+              {{ detailData.author || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('pluginMarket.fieldStatus')">
+              <template v-if="detailData.status">
+                {{ detailData.status === 'enabled' ? t('pluginMarket.statusEnabled') : detailData.status }}
+              </template>
+              <template v-else>—</template>
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('pluginMarket.fieldDescription')">
+              {{ detailData.description || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('pluginMarket.fieldEntryPoint')">
+              {{ detailData.entry_point || '—' }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </template>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">
+          {{ t('pluginMarket.btnClose') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Search, Setting } from '@element-plus/icons-vue'
+import { Search, Setting, Refresh } from '@element-plus/icons-vue'
+import http from '@/utils/http'
+import { API_CONFIG } from '@/config/api'
 
 const { t } = useI18n()
 
@@ -90,18 +156,21 @@ interface MarketplacePlugin {
   description: string
   plugin_type: string
   author: string
+  entry_point?: string
+  status?: string | null
+  installed?: boolean
 }
 
 const searchQuery = ref('')
+const marketplacePlugins = ref<MarketplacePlugin[]>([])
+const loading = ref(false)
+const loadError = ref(false)
+const installingId = ref('')
 
-const marketplacePlugins = ref<MarketplacePlugin[]>([
-  { id: 'fanuc-adapter', name: t('pluginMarket.pluginFanucAdapter'), version: '1.0.0', description: t('pluginMarket.pluginFanucAdapterDesc'), plugin_type: 'adapter', author: t('pluginMarket.pluginAuthor') },
-  { id: 'siemens-adapter', name: t('pluginMarket.pluginSiemensAdapter'), version: '1.0.0', description: t('pluginMarket.pluginSiemensAdapterDesc'), plugin_type: 'adapter', author: t('pluginMarket.pluginAuthor') },
-  { id: 'opcua-source', name: t('pluginMarket.pluginOpcuaSource'), version: '2.0.0', description: t('pluginMarket.pluginOpcuaSourceDesc'), plugin_type: 'data_source', author: t('pluginMarket.pluginAuthor') },
-  { id: 'modbus-source', name: t('pluginMarket.pluginModbusSource'), version: '1.7.0', description: t('pluginMarket.pluginModbusSourceDesc'), plugin_type: 'data_source', author: t('pluginMarket.pluginAuthor') },
-  { id: 'vibration-analyzer', name: t('pluginMarket.pluginVibrationAnalyzer'), version: '1.0.0', description: t('pluginMarket.pluginVibrationAnalyzerDesc'), plugin_type: 'analyzer', author: t('pluginMarket.pluginAuthor') },
-  { id: '3d-monitor', name: t('pluginMarket.plugin3dMonitor'), version: '1.0.0', description: t('pluginMarket.plugin3dMonitorDesc'), plugin_type: 'visualization', author: t('pluginMarket.pluginAuthor') },
-])
+// 详情弹窗
+const detailDialogVisible = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<MarketplacePlugin | null>(null)
 
 const filteredPlugins = computed(() => {
   if (!searchQuery.value) return marketplacePlugins.value
@@ -111,13 +180,74 @@ const filteredPlugins = computed(() => {
   )
 })
 
-const handleInstall = (plugin: MarketplacePlugin) => {
-  ElMessage.success(t('pluginMarket.msgInstallStarted', { name: plugin.name }))
+/** 从后端拉取真实市场插件列表（GET /api/v1/plugins/marketplace）。 */
+async function fetchMarketplace() {
+  loading.value = true
+  loadError.value = false
+  try {
+    const res = await http.get(API_CONFIG.PLUGINS + '/marketplace')
+    if (res.data.code === 0 && res.data.data) {
+      marketplacePlugins.value = res.data.data.plugins ?? []
+    } else {
+      marketplacePlugins.value = []
+      loadError.value = true
+    }
+  } catch (e: unknown) {
+    console.warn('[PluginMarket] fetch marketplace failed:', e)
+    marketplacePlugins.value = []
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleViewDetail = (plugin: MarketplacePlugin) => {
-  ElMessage.info(t('pluginMarket.msgViewDetail', { name: plugin.name }))
+/** 真实安装插件（POST /api/v1/plugins/marketplace/{id}/install）。 */
+async function handleInstall(plugin: MarketplacePlugin) {
+  if (plugin.installed) {
+    ElMessage.info(t('pluginMarket.msgAlreadyInstalled', { name: plugin.name }))
+    return
+  }
+  installingId.value = plugin.id
+  try {
+    const res = await http.post(API_CONFIG.PLUGINS + `/marketplace/${plugin.id}/install`)
+    if (res.data.code === 0) {
+      ElMessage.success(t('pluginMarket.msgInstallSuccess', { name: plugin.name }))
+      await fetchMarketplace()
+    } else {
+      ElMessage.error(res.data.message || t('pluginMarket.msgInstallFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[PluginMarket] install failed:', e)
+    ElMessage.error(t('pluginMarket.msgInstallFailed'))
+  } finally {
+    installingId.value = ''
+  }
 }
+
+/** 查看插件详情：优先拉取已注册插件详情，未注册则展示市场条目信息。 */
+async function handleViewDetail(plugin: MarketplacePlugin) {
+  detailDialogVisible.value = true
+  detailLoading.value = true
+  detailData.value = null
+  try {
+    const res = await http.get(API_CONFIG.PLUGINS + `/${plugin.id}`)
+    if (res.data.code === 0 && res.data.data) {
+      detailData.value = { ...plugin, ...res.data.data }
+    } else {
+      detailData.value = plugin
+    }
+  } catch (e: unknown) {
+    console.warn('[PluginMarket] fetch detail failed:', e)
+    // 未注册插件（如内置包）无详情接口，展示市场条目数据
+    detailData.value = plugin
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchMarketplace()
+})
 </script>
 
 <style scoped>

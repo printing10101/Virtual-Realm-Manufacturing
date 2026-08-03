@@ -145,7 +145,7 @@ export const POLICY_ALGORITHM_LABELS: Readonly<Record<PolicyAlgorithm, string>> 
 }
 
 /** 策略算法 → UI Tag 类型. */
-export const POLICY_ALGORITHM_TAG_TYPE: Readonly<Record<PolicyAlgorithm, string>> = {
+export const POLICY_ALGORITHM_TAG_TYPE: Readonly<Record<PolicyAlgorithm, 'success' | 'warning' | 'danger' | 'info' | 'primary'>> = {
   [POLICY_ALGORITHM.PPO]: 'primary',
   [POLICY_ALGORITHM.DQN]: 'info',
   [POLICY_ALGORITHM.SAC]: 'info',
@@ -210,7 +210,7 @@ export const TRAINING_STATUS_LABELS: Readonly<Record<TrainingStatus, string>> = 
 }
 
 /** 训练状态 → UI Tag 类型. */
-export const TRAINING_STATUS_TAG_TYPE: Readonly<Record<TrainingStatus, string>> = {
+export const TRAINING_STATUS_TAG_TYPE: Readonly<Record<TrainingStatus, 'success' | 'warning' | 'danger' | 'info' | 'primary'>> = {
   [TRAINING_STATUS.IDLE]: 'info',
   [TRAINING_STATUS.RUNNING]: 'success',
   [TRAINING_STATUS.PAUSED]: 'warning',

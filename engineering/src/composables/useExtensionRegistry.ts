@@ -14,7 +14,7 @@
  * 共享同一份注册表，避免重复初始化。
  */
 
-import { ref, computed, shallowRef, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import http from '@/utils/http'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 import type {
@@ -345,7 +345,7 @@ async function syncFromBackend(): Promise<void> {
     const manifests: PluginManifest[] = []
     for (const item of data.plugins) {
       // 兼容两种返回格式：PluginInfo（含 manifest 字段）或直接 manifest dict
-      const manifest = (item as PluginInfo).manifest ?? (item as PluginManifest)
+      const manifest = (item as PluginInfo).manifest ?? (item as unknown as PluginManifest)
       if (manifest && manifest.id) {
         manifests.push(manifest)
       }

@@ -227,7 +227,7 @@ def _resolve_upstream_calibrated(
             cp_task.material_id,
         )
 
-    except Exception as e:  # noqa: BLE001 - 上游 store 异常不应阻塞本模块
+    except Exception as e:
         safe = safe_error_message(
             e, context="chatter_prediction.resolve_upstream_calibrated"
         )

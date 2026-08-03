@@ -54,8 +54,8 @@
               />
               <div class="autonomy-labels">
                 <span
-                  v-for="(label, idx) in autonomyLabels"
-                  :key="idx"
+                  v-for="label in autonomyLabels"
+                  :key="label"
                   class="autonomy-label"
                 >{{ label }}</span>
               </div>
@@ -239,7 +239,7 @@
           <div class="trend-chart">
             <div
               v-for="(item, idx) in healthStatus.recentInferences"
-              :key="idx"
+              :key="`inf-${idx}`"
               class="trend-bar-wrapper"
             >
               <div

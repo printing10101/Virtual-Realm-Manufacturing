@@ -125,7 +125,7 @@ pub struct VersionStatus {
 pub fn get_version_info<R: Runtime>(app: AppHandle<R>) -> VersionStatus {
     let rust_version = app.package_info().version.to_string();
     VersionStatus {
-        rust_version: rust_version.clone(),
+        rust_version,
         rust_commit: String::from("unknown"),
         python_version: None,
         python_commit: None,
@@ -540,6 +540,7 @@ pub async fn retry_launch_step<R: Runtime>(
 /// 实现"启动动画 → 主应用"的平滑切换，避免出现白屏过渡。
 #[tauri::command]
 pub fn close_splashscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    log::info!("[close_splashscreen] 前端调用 close_splashscreen IPC，开始切换窗口");
     // 先显示主窗口（避免先关 splash 再显主窗口造成的视觉空档）
     if let Some(main_window) = app.get_webview_window("main") {
         main_window
@@ -547,8 +548,9 @@ pub fn close_splashscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
             .map_err(|e| format!("显示主窗口失败: {e}"))?;
         // 把焦点切到主窗口
         let _ = main_window.set_focus();
+        log::info!("[close_splashscreen] main 窗口已显示");
     } else {
-        log::warn!("未找到 main 窗口，无法切换");
+        log::warn!("[close_splashscreen] 未找到 main 窗口，无法切换");
     }
 
     // 关闭 splashscreen 窗口
@@ -556,8 +558,9 @@ pub fn close_splashscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         splash_window
             .close()
             .map_err(|e| format!("关闭 splashscreen 窗口失败: {e}"))?;
+        log::info!("[close_splashscreen] splashscreen 窗口已关闭");
     } else {
-        log::warn!("未找到 splashscreen 窗口，可能已被关闭");
+        log::warn!("[close_splashscreen] 未找到 splashscreen 窗口，可能已被关闭");
     }
 
     Ok(())

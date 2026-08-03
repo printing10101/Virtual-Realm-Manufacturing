@@ -11,24 +11,13 @@
 
 from __future__ import annotations
 
-from app.plugins.plugin_manager import (  # noqa: F401
-    DependencyResolver,
-    PluginDiscovery,
-    PluginLifecycleManager,
-    PluginLoader,
-    PluginRegistry,
-    _PluginSystemHolder,
-    _holder,
-    get_dependency_resolver,
-    get_plugin_manager,
-    init_plugin_system,
-    shutdown_plugin_system,
-)
-from app.plugins.plugin_metadata import (  # noqa: F401
+from app.dependencies import get_plugin_manager
+
+from app.plugins.plugin_metadata import (
     PluginDependency,
     PluginMetadata,
 )
-from app.plugins.plugin_types import (  # noqa: F401
+from app.plugins.plugin_types import (
     CAPABILITY_DATA_SOURCE,
     CAPABILITY_FILE_ACCESS,
     CAPABILITY_GPU_ACCESS,

@@ -373,7 +373,7 @@ class PatternEngine:
                     pattern = Pattern(
                         pattern_id=f"cp_{uuid.uuid4().hex[:8]}",
                         pattern_type="combination",
-                        description=f"Combination optimization: {', '.join(f'{k}={v}' for k, v in elements.items())} under {', '.join(f'{k}={v}' for k, v in conditions.items())}",  # noqa: E501
+                        description=f"Combination optimization: {', '.join(f'{k}={v}' for k, v in elements.items())} under {', '.join(f'{k}={v}' for k, v in conditions.items())}",
                         elements=elements,
                         conditions=conditions,
                         metrics={

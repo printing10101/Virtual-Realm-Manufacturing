@@ -88,8 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import { Aim } from '@element-plus/icons-vue'
 import * as THREE from 'three'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
@@ -113,18 +112,12 @@ const GRID_SIZE = 500
 const GRID_DIVISIONS = 20
 const AXES_SIZE = 100
 
-const { t } = useI18n()
-
 const props = defineProps<{
   modelUrl: string
   modelName?: string
   faceCount?: number
   vertexCount?: number
   fileSize?: number
-}>()
-
-const emit = defineEmits<{
-  (e: 'close'): void
 }>()
 
 const visible = defineModel<boolean>({ required: true })
@@ -147,6 +140,14 @@ let axesHelperRef: THREE.AxesHelper | null = null
 let fpsFrames = 0
 let fpsLastTime = 0
 let lod: THREE.LOD | null = null
+// 修复竞态条件：每次发起 STL 加载时递增 loadEpoch，
+// loader.load 的异步回调执行时检查 epoch 是否仍为最新，
+// 否则放弃对 modelMesh / scene 的写入，避免：
+//   1. 连续切换 modelUrl（A → B）：A 后完成时旧 mesh 仍添加到场景，
+//      覆盖 B 的 modelMesh 引用 → 场景中残留孤儿 A mesh（GPU 内存泄漏）
+//   2. 对话框关闭后 STL 才加载完：回调里若不检查会写入已 dispose 的
+//      threeScene / modelMesh 引用，造成内存泄漏或场景图错乱
+let loadEpoch = 0
 
 function initViewer() {
   if (!canvasContainer.value) return
@@ -164,7 +165,7 @@ function initViewer() {
     gridDivisions: GRID_DIVISIONS,
   })
 
-  const { scene, camera, renderer, controls, addLight, startAnimation } = threeScene
+  const { scene, camera, renderer, addLight, startAnimation } = threeScene
 
   // 灯光
   addLight(new THREE.AmbientLight(0xffffff, 0.6))
@@ -214,6 +215,10 @@ function loadModel(url: string) {
   if (!threeScene) return
   const { scene } = threeScene
 
+  // 递增 epoch 使任何正在进行的 STL 加载回调失效
+  loadEpoch += 1
+  const currentEpoch = loadEpoch
+
   if (modelMesh) {
     scene.remove(modelMesh)
     modelMesh.geometry?.dispose()
@@ -229,7 +234,8 @@ function loadModel(url: string) {
   loader.load(
     url,
     (geometry) => {
-      if (!threeScene) return
+      // 修复竞态：如果期间已发起新加载或对话框已关闭，丢弃本次结果
+      if (currentEpoch !== loadEpoch || !threeScene) return
       const { scene } = threeScene
 
       geometry.computeVertexNormals()
@@ -270,7 +276,7 @@ function loadModel(url: string) {
     },
     () => {},
     () => {
-      // STL 加载失败，静默处理
+      // STL 加载失败，静默处理；不需要清理 epoch（旧回调自然失效）
     },
   )
 }
@@ -306,7 +312,6 @@ function simplifyGeometry(
 ): THREE.BufferGeometry | null {
   try {
     const positions = geometry.attributes.position.array as Float32Array
-    const indices = geometry.index?.array
     const vertexCount = positions.length / 3
 
     const step = Math.max(2, Math.round(1 / (1 - ratio)))
@@ -425,6 +430,10 @@ function toggleLOD() {
 }
 
 function disposeViewer() {
+  // 递增 epoch，使任何 in-flight STL 加载回调立即失效，
+  // 防止回调写入已 dispose 的 threeScene / modelMesh 引用
+  loadEpoch += 1
+
   if (threeScene) {
     threeScene.cleanup()
     threeScene = null

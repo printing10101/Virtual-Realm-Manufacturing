@@ -141,7 +141,7 @@ class GitCollector:
         except subprocess.TimeoutExpired:
             logger.warning("GitCollector: git %s 超时", " ".join(args))
             return None
-        except subprocess.SubprocessError as e:  # noqa: BLE001
+        except subprocess.SubprocessError as e:
             logger.warning("GitCollector: git %s 异常: %s", " ".join(args), e)
             return None
 

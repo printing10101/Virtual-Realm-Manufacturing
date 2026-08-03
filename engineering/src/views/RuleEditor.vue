@@ -414,7 +414,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, FolderAdd, Download, Upload, CopyDocument } from '@element-plus/icons-vue'
 import { useRuleStore } from '@/stores/rules'
 import type { ProcessRule } from '@/types'

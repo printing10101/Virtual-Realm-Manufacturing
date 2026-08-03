@@ -303,8 +303,8 @@ export const useFlywheelStore = defineStore('flywheel', () => {
   /**
    * 查询模型热更新部署记录列表。
    *
-   * 后端通过 TASK_HANDLER 扩展点暴露 hot_update_manager.list_deployments，
-   * 前端通过 tasks API 提交 action=list_deployments 任务查询。
+   * 后端通过 GET /api/v1/flywheel/deployments 扫描本地模型存储目录
+   * 返回真实部署产物记录（名称、路径、大小、更新时间）。
    * 接口不可用时降级为空列表（不影响看板其他模块）。
    *
    * @param modelName 按模型名筛选（可选）
@@ -317,22 +317,45 @@ export const useFlywheelStore = defineStore('flywheel', () => {
     deploymentsLoading.value = true
     error.value = null
     try {
-      const payload: Record<string, unknown> = {
-        action: 'list_deployments',
-        plugin_id: 'data_flywheel',
-        handler: 'hot_update',
-      }
-      if (modelName) payload.filter_model_name = modelName
-      if (statusFilter) payload.filter_status = statusFilter
-
-      const response = await http.post(
-        buildApiPath(API_CONFIG.TASKS, '/'),
-        payload,
+      const response = await http.get(
+        buildApiPath(API_CONFIG.FLYWHEEL, '/deployments'),
       )
       const data = response.data?.data ?? response.data
-      // 后端返回 { action, deployments, count }
-      const result = data as { deployments?: DeploymentRecord[] }
-      deployments.value = result?.deployments ?? []
+      // 后端返回 { deployments, count }，记录为模型目录扫描结果，
+      // 在此映射为 DeploymentRecord 结构供看板表格渲染
+      const raw = (data as { deployments?: Array<Record<string, unknown>> })
+        ?.deployments ?? []
+      let list: DeploymentRecord[] = raw.map((r) => ({
+        deployment_id: String(r.path ?? r.model_name ?? 'unknown'),
+        model_name: String(r.model_name ?? 'unknown'),
+        new_model_uri: String(r.path ?? ''),
+        baseline_model_uri: '',
+        status: 'promoted' as DeploymentStatus,
+        canary_ratio: 0,
+        observation_hours: 0,
+        rollback_on_failure: false,
+        rollback_metric_drop: 0,
+        eval_metric: '',
+        eval_metrics: {},
+        baseline_metrics: null,
+        canary_metrics: null,
+        decision: 'model_scan',
+        reason: '由本地模型目录扫描生成',
+        created_at: String(r.updated_at ?? ''),
+        updated_at: String(r.updated_at ?? ''),
+        metadata: {
+          size_bytes: r.size_bytes,
+          size_human: r.size_human,
+          version: r.version,
+        },
+      }))
+      if (modelName) {
+        list = list.filter((r) => r.model_name.includes(modelName))
+      }
+      if (statusFilter) {
+        list = list.filter((r) => r.status === statusFilter)
+      }
+      deployments.value = list
     } catch (e: unknown) {
       // 部署查询失败不阻塞看板其他模块，仅记录错误
       error.value = extractErrorMessage(e, '获取部署记录失败')

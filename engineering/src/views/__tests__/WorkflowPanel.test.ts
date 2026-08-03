@@ -106,7 +106,7 @@ const mockUseWorkflow = vi.hoisted(() => ({
   pageSize: { value: 20 },
   statusFilter: { value: '' as string },
   loadWorkflows: vi.fn(() => Promise.resolve()),
-  removeWorkflow: vi.fn((id: string) => Promise.resolve()),
+  removeWorkflow: vi.fn((_id: string) => Promise.resolve()),
   currentRunId: { value: null as string | null },
   currentStatus: { value: null as any },
   submitWorkflow: vi.fn((_payload: any) => Promise.resolve('wf_new_001')),

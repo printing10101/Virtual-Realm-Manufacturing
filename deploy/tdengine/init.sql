@@ -1,6 +1,7 @@
 -- TDengine 初始化脚本
 -- 用于创建灵境制造系统所需的数据库和表结构
--- 执行方式: taos -h localhost -u root -ptaosdata < init.sql
+-- 执行方式: taos -h localhost -u <user> -p<password> < init.sql
+-- 示例: taos -h localhost -u root -p$(echo $TDENGINE_PASSWORD) < init.sql
 
 -- ============================================================
 -- 1. 创建数据库

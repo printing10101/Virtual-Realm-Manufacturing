@@ -23,14 +23,13 @@
           >
             <!-- 步骤指示器 -->
             <div class="tour-indicators">
-              <!-- 静态列表，index 作为 key 可接受 -->
               <span
-                v-for="(_, index) in steps"
-                :key="index"
+                v-for="n in steps.length"
+                :key="n"
                 class="tour-indicator"
                 :class="{
-                  'tour-indicator--active': index === currentStepIndex,
-                  'tour-indicator--completed': index < currentStepIndex
+                  'tour-indicator--active': (n - 1) === currentStepIndex,
+                  'tour-indicator--completed': (n - 1) < currentStepIndex
                 }"
               />
             </div>

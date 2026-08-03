@@ -29,10 +29,26 @@ from app.simulation.cutting_force.pinn import (
     CuttingForcePINN,
     PINNLoss,
 )
-from research.training.reproducibility import (  # 阶段2 解耦：training/ 已迁移到 research/
-    set_global_seed,
-    get_worker_init_fn,
-)
+# P0#3 解耦: 通过 research_bridge 延迟导入，fallback 到 numpy random
+try:
+    from app.ai.lnn._research_bridge import get_set_global_seed
+    _seed_func = get_set_global_seed()
+    set_global_seed = _seed_func if _seed_func is not None else (
+        lambda seed=42: (__import__('random').seed(seed), __import__('numpy').random.seed(seed))
+    )
+except ImportError:
+    def set_global_seed(seed: int = 42) -> None:
+        import random
+        import numpy as np
+        random.seed(seed)
+        np.random.seed(seed)
+
+def get_worker_init_fn(seed: int = 42):
+    """Worker 初始化函数（纯 numpy，不依赖 torch）。"""
+    def _init(worker_id: int) -> None:
+        import numpy as np
+        np.random.seed(seed + worker_id)
+    return _init
 
 logger = logging.getLogger(__name__)
 

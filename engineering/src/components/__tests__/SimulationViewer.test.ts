@@ -44,7 +44,7 @@ vi.mock('@/composables/useSimulationVisualization', async (importOriginal) => {
       renderSimulationResult: vi.fn(),
       clearVisualization: vi.fn(),
       updateVisualization: vi.fn(),
-      getColorForValue: vi.fn((value: number, min: number, max: number) => new THREE.Color(0xff0000)),
+      getColorForValue: vi.fn((_value: number, _min: number, _max: number) => new THREE.Color(0xff0000)),
       createForceArrow: vi.fn(() => new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(), 1, 0xff0000)),
       createForceVectorGroup: vi.fn(() => new THREE.Group()),
       createTemperatureMaterial: vi.fn(() => new THREE.ShaderMaterial()),
@@ -52,7 +52,7 @@ vi.mock('@/composables/useSimulationVisualization', async (importOriginal) => {
       createVibrationVisualization: vi.fn(() => new THREE.Group()),
       createColorLegend: vi.fn(() => new THREE.Group()),
     })),
-    getColorForValue: vi.fn((value: number, min: number, max: number) => new THREE.Color(0xff0000)),
+    getColorForValue: vi.fn((_value: number, _min: number, _max: number) => new THREE.Color(0xff0000)),
     createForceArrow: vi.fn(() => new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(), 1, 0xff0000)),
     createForceVectorGroup: vi.fn(() => {
       const g = new THREE.Group()
@@ -77,7 +77,7 @@ vi.mock('@/composables/useSimulationVisualization', async (importOriginal) => {
 // Mock STLLoader
 vi.mock('three/examples/jsm/loaders/STLLoader.js', () => ({
   STLLoader: vi.fn().mockImplementation(() => ({
-    load: vi.fn((url: string, onLoad: (geometry: THREE.BufferGeometry) => void) => {
+    load: vi.fn((_url: string, onLoad: (geometry: THREE.BufferGeometry) => void) => {
       // 模拟加载成功
       const geometry = new THREE.BufferGeometry()
       onLoad(geometry)
@@ -537,7 +537,6 @@ describe('SimulationViewer.vue', () => {
       })
       await wrapper.vm.$nextTick()
 
-      const collisionClickSpy = vi.fn()
       wrapper.emitted('collision-click')
       // 碰撞点击事件应该被触发
       expect(wrapper.exists()).toBe(true)
@@ -883,7 +882,6 @@ describe('SimulationViewer.vue', () => {
       wrapper.vm.fps = 60
       await wrapper.vm.$nextTick()
 
-      const emitted = wrapper.emitted('fps-update')
       // FPS更新应该被发射
       expect(wrapper.exists()).toBe(true)
     })
@@ -1140,8 +1138,6 @@ describe('simulation API', () => {
   })
 
   it('应该定义正确的数据结构', async () => {
-    const mod = await import('@/api/simulation')
-    
     const forceData: ForceData = {
       position: [0, 0, 0],
       direction: [0, 0, -1],

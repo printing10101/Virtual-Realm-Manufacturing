@@ -494,3 +494,7 @@ export interface RuleValidation {
   errors: string[]
   preview_text?: string
 }
+
+// 共享类型（消除 Store 间重复定义）
+export type { PaginationState } from './pagination'
+export { createPagination, nextOffset, hasMore } from './pagination'

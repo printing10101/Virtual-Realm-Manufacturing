@@ -17,7 +17,8 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
-from app.services.memory_cache import get_memory_cache, init_memory_cache, close_memory_cache
+from app.dependencies import get_memory_cache
+from app.services.memory_cache import init_memory_cache, close_memory_cache
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +133,18 @@ class _RedisHolder:
             self._client = None
         if client is not None:
             try:
-                await client.close()
-            except (ConnectionError, OSError, RuntimeError) as close_err:
+                # 桌面模式降级时 client 可能是 MemoryCache 实例，
+                # 它只有 stop() 方法（取消后台清理任务），没有 close()。
+                # 真 Redis 客户端才有 close()。两者分别处理，避免抛
+                # AttributeError 中断整个 shutdown 流程（导致后续
+                # close_shared_http_client / close_db / shutdown_logging
+                # 都不会执行）。
+                if hasattr(client, "stop") and not hasattr(client, "close"):
+                    # MemoryCache 路径：取消后台清理任务，释放 asyncio.Task
+                    await client.stop()
+                else:
+                    await client.close()
+            except (ConnectionError, OSError, RuntimeError, AttributeError) as close_err:
                 # Redis 关闭失败不应阻塞主流程，记录以便排查
                 logger.debug(
                     "Redis client close failed, continuing shutdown: %s",
@@ -153,6 +164,9 @@ _holder = _RedisHolder()
 
 async def get_redis() -> Optional[Any]:
     """获取共享的 Redis 客户端；首次访问时建立连接。
+
+    .. deprecated:: V3.0
+        本函数保留向后兼容，未来版本可能移除。
 
     Returns:
         redis.asyncio.Redis 实例；如果未配置 ``REDIS_URL`` 或连接失败则返回 ``None``。
@@ -261,7 +275,11 @@ async def check_redis_health() -> dict:
         return {"status": "disabled", "message": "REDIS_URL not configured"}
     try:
         await r.ping()
-        info = await r.info("memory")
+        # 修复：原代码只调用 r.info("memory")，但 connected_clients 字段
+        # 属于 INFO clients section，不在 INFO memory 返回结果中，导致
+        # 生产环境（真 Redis）下 connected_clients 恒为 "N/A"。
+        # 现改为分别查询两个 section，或调用无参数 info() 获取全部信息。
+        info = await r.info()
         return {
             "status": "healthy",
             "used_memory_human": info.get("used_memory_human", "N/A"),

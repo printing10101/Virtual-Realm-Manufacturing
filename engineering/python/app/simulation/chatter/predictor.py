@@ -49,8 +49,12 @@ class ChatterPredictor:
         try:
             import torch
 
-            from research.models.torch_ltc_model import LTCModel  # 阶段2 解耦：models/ 已迁移到 research/
-            from research.models.torch_base_lnn import LNNConfig  # 阶段2 解耦：models/ 已迁移到 research/
+            # P0#3 解耦: 通过 research_bridge 延迟导入
+            from app.ai.lnn._research_bridge import get_ltc_model_factory, get_lnn_config_factory
+            LTCModel = get_ltc_model_factory()
+            LNNConfig = get_lnn_config_factory()
+            if LTCModel is None or LNNConfig is None:
+                raise ImportError("Research package not available")
 
             # 构建 LTC 模型配置（与论文 DL-LNN 架构一致）
             config = LNNConfig(

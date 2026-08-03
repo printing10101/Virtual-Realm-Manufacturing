@@ -20,7 +20,7 @@
       highlight-current
       @node-click="handleNodeClick"
     >
-      <template #default="{ node, data }">
+      <template #default="{ data }">
         <span class="tree-node">
           <el-tag
             size="small"

@@ -216,7 +216,7 @@ def _resolve_upstream_chatter_report(
             default_controller_type,
         )
 
-    except Exception as e:  # noqa: BLE001 - 上游 store 异常不应阻塞本模块
+    except Exception as e:
         safe = safe_error_message(
             e, context="gcode_generation.resolve_upstream_chatter_report"
         )
@@ -292,7 +292,7 @@ def _resolve_upstream_operation_plan(
 
         return op_plan_path
 
-    except Exception as e:  # noqa: BLE001 - 上游 store 异常不应阻塞本模块
+    except Exception as e:
         safe = safe_error_message(
             e, context="gcode_generation.resolve_upstream_operation_plan"
         )

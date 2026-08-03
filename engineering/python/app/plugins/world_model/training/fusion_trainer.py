@@ -303,12 +303,23 @@ class FusionWorldModelTrainer:
         # 依赖，放在模块级会导致无 torch 环境下整个 fusion_trainer 不可导入
         # （FusionTrainerError / _extract_version_from_uri 等 torch-free 符号
         # 也无法被测试验证）。此处 train() 本就需要 torch，延迟导入不影响契约。
-        from research.training.reproducibility import set_global_seed  # 阶段2 解耦：training/ 已迁移到 research/
-        from research.training.experiment_tracker import (
-            log_metrics as mlflow_log_metrics,
-            log_params as mlflow_log_params,
-            start_run as mlflow_start_run,
+        # P0#3 解耦: 通过 research_bridge 延迟导入
+        from app.ai.lnn._research_bridge import (
+            get_set_global_seed,
+            get_mlflow_start_run,
+            get_mlflow_log_params,
+            get_mlflow_log_metrics,
         )
+        set_global_seed = get_set_global_seed()
+        mlflow_start_run = get_mlflow_start_run()
+        mlflow_log_params = get_mlflow_log_params()
+        mlflow_log_metrics = get_mlflow_log_metrics()
+        if set_global_seed is None:
+            import random
+            import numpy as np
+            def set_global_seed(seed: int = 42) -> None:
+                random.seed(seed)
+                np.random.seed(seed)
 
         # 学术诚信：训练开始前设置随机种子
         set_global_seed(self.seed)

@@ -137,7 +137,7 @@ def _resolve_upstream_calibrated(
             return False, "external_upload"
 
         return bool(upstream.calibrated), source_reconstruction_task_id
-    except Exception as e:  # noqa: BLE001 - 上游 store 异常不应阻塞本模块
+    except Exception as e:
         safe = safe_error_message(
             e, context="feature_extraction.resolve_upstream_calibrated"
         )

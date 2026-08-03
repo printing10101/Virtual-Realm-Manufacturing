@@ -29,7 +29,7 @@ except ImportError:
     HAS_TORCH = False
 
 try:
-    from torch.cuda.amp import autocast  # noqa: F401  保留以与 predictor.py 对齐
+    from torch.cuda.amp import autocast
 
     HAS_AMP = True
 except ImportError:

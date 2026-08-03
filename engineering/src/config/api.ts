@@ -25,17 +25,17 @@ export const API_CONFIG = {
   /** 工艺路线模块 */
   PROCESS_ROUTES: '/api/v1/process-routes',
 
-  /** 代理管理模块 */
-  AGENTS: '/api/v1/agents',
+  /** 代理管理模块（后端注册于 /agents，无 /api/v1 段） */
+  AGENTS: '/agents',
 
   /** 模板更新模块 */
   TEMPLATES_UPDATES: '/api/v1/templates/updates',
 
-  /** 项目管理模块 */
-  PROJECTS: '/api/v1/projects',
+  /** 项目管理模块（后端注册于 /api/projects，无 v1 段） */
+  PROJECTS: '/api/projects',
 
-  /** 任务管理模块 */
-  TASKS: '/api/v1/tasks',
+  /** 任务管理模块（通用任务创建/查询使用 jobs 接口） */
+  TASKS: '/api/v1/jobs',
 
   /** 模型管理模块 */
   MODELS: '/api/v1/models',
@@ -85,14 +85,17 @@ export const API_CONFIG = {
   /** 指标监控 */
   METRICS: '/api/metrics',
 
-  /** 工艺规则管理 */
-  RULES: '/api/v1/rules',
+  /** 工艺规则管理（后端注册于 /api/rules，无 v1 段） */
+  RULES: '/api/rules',
 
-  /** STEP 文件导入 */
-  IMPORT: '/api/v1/import',
+  /** STEP 文件导入（后端注册于 /api/import/step，无 v1 段） */
+  IMPORT: '/api/import',
 
   /** 目标对齐管理 */
   GOAL_ALIGNMENT: '/api/v1/goal-alignment',
+
+  /** 目标对齐管理（features/goals 使用，与 GOAL_ALIGNMENT 同后端） */
+  GOALS: '/api/v1/goal-alignment',
 
   /** DXF 文件导入 */
   DXF: '/api/dxf',
@@ -111,6 +114,9 @@ export const API_CONFIG = {
 
   /** 工作流模板市场（ADR-010 阶段 6 p6-1：发布 / 列表 / 搜索 / 下载 / 评分 / 下架） */
   WORKFLOW_TEMPLATES: '/api/v1/workflow-templates',
+
+  /** 模板市场（features/template-market 使用，后端注册于 /api/v1/template_market） */
+  TEMPLATES: '/api/v1/template_market',
 
   /** 项目级 Git 同步（ADR-011 阶段 6 p6-2：项目 / 资源引用 / commit/push/pull/clone / 同步记录） */
   PROJECT_SYNC: '/api/v1/project-sync',

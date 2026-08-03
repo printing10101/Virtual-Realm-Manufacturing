@@ -3,7 +3,7 @@
  * 提供类似 VSCode 的命令面板功能，支持快捷键唤起、搜索、分类展示
  */
 
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 
 /** 命令类型 */

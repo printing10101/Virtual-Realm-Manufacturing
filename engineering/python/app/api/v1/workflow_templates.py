@@ -34,26 +34,8 @@ from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
-from app.plugins.workflow_template_loader import (
-    TemplateValidationError,
-    load_template_from_dict,
-)
-from app.services.workflow_template_service import (
-    InvalidVersionError,
-    TemplateAlreadyExistsError,
-    TemplateNotFoundError,
-    VersionAlreadyExistsError,
-    get_workflow_template_service,
-)
+from app.dependencies import get_workflow_template_service
 
-logger = logging.getLogger(__name__)
-
-
-router = APIRouter(
-    prefix="/api/v1/workflow-templates",
-    tags=["Workflow Template Marketplace"],
-    dependencies=[Depends(require_permission("workflow_template:read"))],
-)
 
 
 # ---------------------------------------------------------------------------

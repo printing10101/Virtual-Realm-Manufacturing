@@ -320,7 +320,7 @@ class ReconstructionPipeline:
         def _run_sync() -> Path:
             # 延迟导入 torch 与 part_prior 模块，避免模块加载期依赖 torch
             try:
-                import torch  # noqa: F401
+                import torch
                 from app.image_to_3d.part_prior.encoder import PartPriorVAE
                 from app.image_to_3d.part_prior.runner import PartPriorRunner
             except ImportError as e:

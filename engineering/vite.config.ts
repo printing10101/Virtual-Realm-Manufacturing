@@ -5,12 +5,17 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { readFileSync } from 'fs'
+import { cspNoncePlugin } from './vite-csp-nonce'
 
 const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'))
 
 export default defineConfig({
+  // Tauri 生产模式通过 tauri:// 协议加载本地文件，必须使用相对路径，
+  // 否则 /assets/... 等绝对路径无法解析，导致 JS/CSS 全部加载失败、Vue 无法挂载。
+  base: './',
   plugins: [
     vue(),
+    cspNoncePlugin(),
     AutoImport({
       imports: ['vue', 'vue-router', 'pinia'],
       resolvers: [ElementPlusResolver({ importStyle: false })],

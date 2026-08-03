@@ -51,7 +51,7 @@ def _load_plugin() -> Any:
         sys.path.insert(0, plugin_dir)
 
     try:
-        from plugin import create_plugin  # noqa: E402
+        from plugin import create_plugin
 
         instance = create_plugin()
         logger.info("Plugin '%s' loaded from %s", state.plugin_id, plugin_dir)

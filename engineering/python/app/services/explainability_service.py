@@ -14,29 +14,5 @@
 
 新代码请直接使用 ``from app.services.explainability import ...``。
 """
-from app.contracts.explainability import (
-    ComparisonMismatchError,
-    ExplainabilityError,
-    ExplanationLookupError,
-    ExplanationValidationError,
-    ProjectionError,
-    SamplingError,
-)
-from app.services.explainability.service import (
-    ExplainabilityService,
-    get_explainability_service,
-    reset_explainability_service,
-)
+from app.dependencies import get_explainability_service
 
-__all__ = [
-    "ExplainabilityService",
-    "get_explainability_service",
-    "reset_explainability_service",
-    # 异常类（re-export 供路由层统一导入，与 project_package_service 风格一致）
-    "ExplainabilityError",
-    "ExplanationLookupError",
-    "ExplanationValidationError",
-    "ProjectionError",
-    "SamplingError",
-    "ComparisonMismatchError",
-]

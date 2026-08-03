@@ -36,7 +36,7 @@ const mockSovereigntySettings = {
 const mockAutonomyMarks = { 0: '0', 1: '1', 2: '2', 3: '3', 4: '4' }
 const mockFormatAutonomyLevel = vi.fn((v: number) => `L${v}`)
 const mockCurrentAutonomyDescription = ref('当前等级描述')
-const mockGetAutonomyAlertType = vi.fn((v: number) => 'info')
+const mockGetAutonomyAlertType = vi.fn((_v: number) => 'info')
 const mockHandleAutonomyChange = vi.fn()
 const mockSaveSovereigntySettings = vi.fn()
 const mockResetSovereigntySettings = vi.fn()

@@ -239,7 +239,7 @@ class BGEEmbedder:
         if self._is_loaded:
             return
         try:
-            from app.rag.embeddings import get_embedding_service
+            from app.dependencies import get_embedding_service
             self._embedding_service = get_embedding_service()
             logger.info("使用全局 embedding service")
         except ImportError:

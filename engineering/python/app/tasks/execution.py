@@ -20,8 +20,8 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 from pathlib import Path
 
-from app.budget.budget import get_budget_manager
-from app.budget.cost_tracker import get_cost_tracker
+from app.dependencies import get_budget_manager
+from app.dependencies import get_cost_tracker
 from app.plugins.skill_loader import get_skill_loader
 from app.utils.utils import get_output_dir
 from app.utils.sqlite_pool import get_sqlite_manager
@@ -498,7 +498,7 @@ class TaskExecutor:
     ) -> Dict[str, Any]:
         """执行LNN推理任务"""
         from app.ai.lnn.inference.predictor import LNNPredictor
-        from app.services.model_registry_service import get_model_registry_service
+        from app.dependencies import get_model_registry_service
         import numpy as np
 
         logger.info("Executing LNN inference for task %s", workspace_context.task_id)
@@ -546,8 +546,12 @@ class TaskExecutor:
                 3. 调用 ``fit(train_loader, val_loader)``
                 4. 通过 ``get_training_summary()`` 获取训练指标
         """
-        from research.training.trainer import LNNTrainer  # 阶段2 解耦：training/ 已迁移到 research/
-        from app.services.model_registry_service import get_model_registry_service
+        # P0#3 解耦: 通过 research_bridge 延迟导入
+        from app.ai.lnn._research_bridge import get_trainer_factory
+        LNNTrainer = get_trainer_factory()
+        if LNNTrainer is None:
+            raise ImportError("Research package not available for training")
+        from app.dependencies import get_model_registry_service
         import torch
         from torch.utils.data import DataLoader, TensorDataset
         import numpy as np
@@ -628,7 +632,7 @@ class TaskExecutor:
         self, workspace_context: Any, params: Dict[str, Any]
     ) -> Dict[str, Any]:
         from app.ai.lnn.inference.predictor import LNNPredictor
-        from app.services.model_registry_service import get_model_registry_service
+        from app.dependencies import get_model_registry_service
         import numpy as np
 
         logger.info("Executing LNN analysis for task %s", workspace_context.task_id)
@@ -685,7 +689,8 @@ class ExecutionEngine:
         Returns:
             执行结果
         """
-        from app.heartbeat.heartbeat import get_scheduler, ScheduleStatus
+        from app.dependencies import get_scheduler
+        from app.heartbeat.heartbeat import ScheduleStatus
 
         scheduler = get_scheduler()
         budget_manager = get_budget_manager()
@@ -814,7 +819,8 @@ class ExecutionEngine:
         self, task: Any, session: ExecutionSession, result: ExecutionResult
     ) -> None:
         """处理任务失败，实现重试机制"""
-        from app.heartbeat.heartbeat import get_scheduler, ScheduleStatus
+        from app.dependencies import get_scheduler
+        from app.heartbeat.heartbeat import ScheduleStatus
 
         scheduler = get_scheduler()
 
@@ -904,7 +910,8 @@ class ExecutionEngine:
         Returns:
             恢复的任务数量
         """
-        from app.heartbeat.heartbeat import get_scheduler, ScheduleStatus
+        from app.dependencies import get_scheduler
+        from app.heartbeat.heartbeat import ScheduleStatus
 
         scheduler = get_scheduler()
 

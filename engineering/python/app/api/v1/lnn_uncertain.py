@@ -23,7 +23,7 @@ from app.auth.permissions import require_permission
 from app.middleware.rate_limiter import limiter
 from app.models.schemas import LNNPredictRequest, UncertaintyResponse
 from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
-from app.services.model_registry_service import get_model_registry_service
+from app.dependencies import get_model_registry_service
 
 logger = logging.getLogger(__name__)
 

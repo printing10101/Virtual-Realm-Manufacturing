@@ -17,9 +17,9 @@ import os
 import time
 from typing import Any
 
-from app.rag.embeddings import get_embedding_service
+from app.dependencies import get_embedding_service
 from app.rag.entity_index import EntityIndex, get_entity_index
-from app.rag.vector_store import get_vector_store
+from app.dependencies import get_vector_store
 from app.config.limits import DEFAULT_QUERY_LIMIT
 
 logger = logging.getLogger(__name__)

@@ -148,7 +148,7 @@ vi.mock('three', () => {
 
 // Mock STLLoader
 vi.mock('three/examples/jsm/loaders/STLLoader.js', () => {
-  const MockGeometry = {
+  const MockGeometry: any = {
     computeVertexNormals: vi.fn(),
     center: vi.fn(),
     attributes: {
@@ -161,7 +161,7 @@ vi.mock('three/examples/jsm/loaders/STLLoader.js', () => {
   }
   return {
     STLLoader: vi.fn().mockImplementation(() => ({
-      load: vi.fn((url: string, onSuccess: (geo: any) => void, _onProgress: any, _onError: any) => {
+      load: vi.fn((_url: string, onSuccess: (geo: any) => void, _onProgress: any, _onError: any) => {
         // 异步触发成功回调
         onSuccess(MockGeometry)
       }),
@@ -193,7 +193,7 @@ describe('StepModelViewer.vue', () => {
         modelUrl: 'http://example.com/model.stl',
         visible: true,
         ...props,
-      },
+      } as any,
       global: {
         stubs: {
           'el-dialog': {

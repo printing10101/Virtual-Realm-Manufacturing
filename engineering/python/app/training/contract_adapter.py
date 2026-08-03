@@ -29,7 +29,8 @@ from app.contracts.dataset import (
     IDatasetStore,
     LineageRecord,
 )
-from app.data.dataset_store import DatasetStore, get_dataset_store
+from app.dependencies import get_dataset_store
+from app.data.dataset_store import DatasetStore
 from app.training.data_lake import TrainingDataLake
 
 logger = logging.getLogger(__name__)
@@ -101,7 +102,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
             return stable_id
         except KeyError:
             pass
-        except Exception:  # noqa: BLE001
+        except Exception:
             # 其他异常（如 DB 未初始化）兜底为 None，由 create 路径处理
             pass
 
@@ -119,7 +120,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
                 new_id,
                 self._dataset_name,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             # unique 约束冲突 → 复用 stable_id
             logger.warning(
                 "TrainingDataLakeAdapter: create 失败（%s），复用 stable_id=%s",

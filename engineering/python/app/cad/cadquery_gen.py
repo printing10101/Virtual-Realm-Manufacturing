@@ -51,7 +51,7 @@ def _cleanup_cadquery_temp_dirs() -> None:
     for d in list(_CADQUERY_TEMP_DIRS):
         try:
             _shutil.rmtree(d, ignore_errors=True)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.debug("Failed to cleanup cadquery temp dir %s: %s", d, e)
 
 
@@ -165,7 +165,7 @@ class CadQueryGenerator:
                         cv_out["confidence"],
                         cv_out["bbox_size"],
                     )
-            except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:  # noqa: BLE001
+            except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
                 logger.warning(
                     "CV extraction failed for view %s (%s): %s",
                     view_name,
@@ -592,7 +592,7 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
         except (ValueError, KeyError, TypeError, OSError, RuntimeError,
                 SyntaxError, NameError, KeyboardInterrupt, MemoryError) as e:
             result_holder["exc"] = e
-        except BaseException as e:  # noqa: BLE001 兜底捕获所有异常
+        except BaseException as e:
             result_holder["exc"] = e
 
     worker = threading.Thread(

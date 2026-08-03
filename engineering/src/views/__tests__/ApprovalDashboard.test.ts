@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -42,7 +42,14 @@ import ApprovalDashboard from '@/views/ApprovalDashboard.vue'
 describe('ApprovalDashboard.vue', () => {
   let pinia: ReturnType<typeof createPinia>
   let router: ReturnType<typeof createRouter>
-  const httpMock = (await import('@/utils/http')).default as any
+
+  // 顶层 await 会触发 TS1308（vitest 运行时可接受，但类型检查报错），
+  // 改为在 beforeAll 中异步获取 http mock。
+  let httpMock: any
+
+  beforeAll(async () => {
+    httpMock = (await import('@/utils/http')).default as any
+  })
 
   beforeEach(() => {
     setActivePinia(pinia = createPinia())

@@ -14,7 +14,7 @@ describe('download', () => {
       clickSpy = vi.fn()
       appendChildSpy = vi.fn()
       removeSpy = vi.fn()
-      createObjectURLSpy = vi.fn(() => 'blob:http://localhost/fake-url')
+      createObjectURLSpy = vi.fn().mockReturnValue('blob:http://localhost/fake-url')
       revokeObjectURLSpy = vi.fn()
 
       vi.stubGlobal('URL', {

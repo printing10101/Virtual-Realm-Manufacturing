@@ -200,7 +200,7 @@
               <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
               <el-alert
                 v-for="(w, i) in store.warnings"
-                :key="i"
+                :key="`warn-${i}`"
                 :title="w"
                 type="warning"
                 :closable="false"
@@ -223,7 +223,7 @@
                 <!-- 动态列表，entity_name 可能重复且 radio 使用 index 作为 value，index 作为 key 可接受 -->
                 <el-radio-button
                   v-for="(f, i) in store.activeStlFiles"
-                  :key="i"
+                  :key="`warn-${i}`"
                   :value="i"
                 >
                   {{ f.entity_name }}
@@ -239,7 +239,7 @@
               <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
               <el-alert
                 v-for="(e, i) in store.currentResult.status.errors"
-                :key="i"
+                :key="`warn-${i}`"
                 :title="e"
                 type="error"
                 :closable="false"

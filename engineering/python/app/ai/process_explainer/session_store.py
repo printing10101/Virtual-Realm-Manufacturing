@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import json
 import logging
 import os
@@ -74,7 +75,8 @@ class SessionStore:
     连接池设计：
         - 每个线程首次访问时创建连接（懒加载），缓存到 ``_thread_local.conn``
         - 连接配置 ``check_same_thread=False`` + ``isolation_level=None``（手动事务）
-        - 进程退出时连接由 GC 回收（sqlite3 自动 close）
+        - 进程退出时通过 ``atexit`` 注册的清理回调统一关闭所有线程的连接，
+          避免 sqlite3 自动 close 时序不确定导致的资源泄漏
     """
 
     def __init__(self, db_path: Optional[str] = None) -> None:
@@ -84,6 +86,12 @@ class SessionStore:
         self._write_lock = threading.Lock()
         # 线程局部连接池：每个工作线程持有独立 connection
         self._thread_local = threading.local()
+        # 跟踪所有线程创建的连接，用于进程退出时统一关闭
+        # （threading.local 无法跨线程枚举属性，必须自行登记）
+        self._all_conns: list[sqlite3.Connection] = []
+        self._conns_lock = threading.Lock()
+        # 注册进程退出时的清理回调（幂等，多次注册只生效一次）
+        atexit.register(self._cleanup_at_exit)
         # 初始化表结构
         self._init_db_sync()
 
@@ -110,7 +118,41 @@ class SessionStore:
             )
             conn.row_factory = sqlite3.Row
             self._thread_local.conn = conn
+            # 登记到全局连接列表，供 close_all / atexit 统一关闭
+            with self._conns_lock:
+                self._all_conns.append(conn)
         return conn
+
+    # ------------------------------------------------------------------
+    # 资源清理
+    # ------------------------------------------------------------------
+
+    def _cleanup_at_exit(self) -> None:
+        """进程退出时关闭所有线程创建的 SQLite 连接。
+
+        作为 ``atexit`` 回调注册，由解释器在退出时调用。
+        连接被 close 后，``_thread_local.conn`` 仍持有失效引用——
+        进程退出后无影响；测试场景需配合 ``reset_session_store`` 重置单例，
+        否则后续访问会复用已关闭连接导致 ``ProgrammingError``。
+        """
+        try:
+            with self._conns_lock:
+                for conn in self._all_conns:
+                    try:
+                        conn.close()
+                    except sqlite3.Error as e:
+                        logger.debug("close conn failed: %s", e)
+                self._all_conns.clear()
+        except Exception as e:  # atexit 回调不应抛异常
+            logger.debug("session_store cleanup failed: %s", e)
+
+    def close_all(self) -> None:
+        """显式关闭所有线程创建的 SQLite 连接。
+
+        供测试或应用 shutdown 场景使用，调用后该实例不可再用；
+        单例场景请配合 ``reset_session_store`` 重置全局实例。
+        """
+        self._cleanup_at_exit()
 
     # ------------------------------------------------------------------
     # 初始化
@@ -374,10 +416,24 @@ def get_session_store() -> SessionStore:
     return _global_store
 
 
+def reset_session_store() -> None:
+    """重置全局 SessionStore 单例（仅供测试使用）。
+
+    调用前应确保无进行中的 IO 操作；调用后单例会被置空，
+    下次 ``get_session_store`` 调用将创建新实例。
+    """
+    global _global_store
+    with _singleton_lock:
+        if _global_store is not None:
+            _global_store.close_all()
+            _global_store = None
+
+
 __all__ = [
     "ChatMessage",
     "SessionStore",
     "get_session_store",
+    "reset_session_store",
     "MAX_MESSAGES_PER_SESSION",
     "SESSION_TTL_SECONDS",
 ]

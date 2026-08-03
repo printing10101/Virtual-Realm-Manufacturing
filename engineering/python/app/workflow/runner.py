@@ -447,7 +447,7 @@ class WorkflowRunner(IWorkflowRunner):
                     payload={"outputs": final_outputs},
                     timestamp=time.time(),
                 ))
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("工作流 %s 执行异常: %s", workflow_run_id, e, exc_info=True)
             await self._store.update_run_status(
                 workflow_run_id, "failed",
@@ -581,7 +581,7 @@ class WorkflowRunner(IWorkflowRunner):
                         failed_ids.append(nid)
                     else:
                         failed_ids.append(nid)
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     logger.error("节点 %s 执行异常: %s", nid, e, exc_info=True)
                     failed_ids.append(nid)
                 pending_futures.pop(nid, None)
@@ -744,7 +744,7 @@ class WorkflowRunner(IWorkflowRunner):
                     completed_at=datetime.now(timezone.utc),
                 )
                 raise
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 result = TaskResult(
                     status=TaskStatus.FAILED,
                     error=str(e)[:2048],
@@ -845,7 +845,7 @@ class WorkflowRunner(IWorkflowRunner):
                     logger.warning(
                         "订阅者队列满，丢弃旧事件: workflow_run_id=%s", workflow_run_id
                     )
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     logger.debug("订阅者队列异常: %s", e)
                     dead_queues.append(q)
             for q in dead_queues:

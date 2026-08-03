@@ -44,7 +44,7 @@ jobs:
       - name: 生成版本号
         id: version
         run: |
-          VERSION=$(cat VERSION 2>/dev/null || echo "2.5.0")
+          VERSION=$(cat VERSION 2>/dev/null || echo "2.7.0")
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
           BUILD_VERSION="${VERSION}-staging.${TIMESTAMP}"
           echo "version=${BUILD_VERSION}" >> $GITHUB_OUTPUT
@@ -183,8 +183,12 @@ jobs:
           COSIGN_EXPERIMENTAL: '1'
         run: |
           # keyless 签名（使用 OIDC token，无需管理私钥）
-          cosign sign --yes ${{ steps.meta.outputs.tags }} || echo "cosign 签名失败（可能缺少 OIDC 权限），跳过"
-        continue-on-error: true  # 签名失败不阻塞发布流程
+          # 与 release.yml 保持一致：签名失败应阻断流水线以确保供应链完整性
+          cosign sign --yes ${{ steps.meta.outputs.tags }} || {
+            echo "::error::cosign 签名失败! 镜像未签名，供应链完整性无法保证。"
+            exit 1
+          }
+        # 注释：如果 OIDC 权限未正确配置，签名必定失败，此时应修复权限而非静默跳过。
 
       - name: 镜像构建完成确认
         run: |

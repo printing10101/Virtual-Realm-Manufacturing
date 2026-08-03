@@ -18,14 +18,21 @@ from app.ai.lnn.inference.registry import (
     get_quantized_model_name,
 )
 
-# 阶段2 解耦改造：models/ 已迁移到 research/。
-# 工程侧不再暴露训练能力；此处保留 try/except 兼容旧路径，torch 缺失时降级为 None。
-try:
-    from app.ai.lnn.models.torch_base_lnn import LNNConfig  # type: ignore
-    _HAS_LNN_CONFIG = True
-except ImportError:
-    LNNConfig = None  # type: ignore
-    _HAS_LNN_CONFIG = False
+# P0#3 解耦: 通过 research_bridge 延迟导入。
+_HAS_LNN_CONFIG = False
+LNNConfig = None
+
+def _lazy_init_config() -> bool:
+    global _HAS_LNN_CONFIG, LNNConfig
+    if _HAS_LNN_CONFIG:
+        return True
+    try:
+        from app.ai.lnn._research_bridge import get_lnn_config_factory
+        LNNConfig = get_lnn_config_factory()
+        _HAS_LNN_CONFIG = LNNConfig is not None
+    except Exception:
+        _HAS_LNN_CONFIG = False
+    return _HAS_LNN_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -109,11 +116,20 @@ def _run_quantizer(model, model_name: str, quantization_type: str, calibration_d
     返回 ``(quantized_model, result, quantizer)``。
     量化器实例一并返回,供调用方查询模型大小等元信息。
     """
-    from research.quantization.quantizer import (  # 阶段2 解耦：quantization/ 已迁移到 research/
-        Quantizer,
-        QuantizationConfig,
-        QuantizationType,
+    # P0#3 解耦: 通过 research_bridge 延迟导入
+    from app.ai.lnn._research_bridge import (
+        get_quantizer_factory,
+        get_quantization_config,
+        get_quantization_type_enum,
     )
+    Quantizer = get_quantizer_factory()
+    QuantizationConfig = get_quantization_config()
+    QuantizationType = get_quantization_type_enum()
+    if any(x is None for x in (Quantizer, QuantizationConfig, QuantizationType)):
+        raise ImportError(
+            "Quantization module is not available. "
+            "Ensure the research package is installed with torch."
+        )
 
     quant_type = (
         QuantizationType.DYNAMIC

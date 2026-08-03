@@ -11,9 +11,10 @@ import time
 from typing import Any
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from app.config import config
+from app.dependencies import get_config
+from app.config import AppConfig
 from app.version import VERSION as PY_VERSION
 from app.database.connection import check_db_health
 from app.services.redis_client import check_redis_health
@@ -53,16 +54,16 @@ def _get_package_versions() -> dict[str, str]:
     return versions
 
 
-async def _get_ollama_status() -> dict[str, Any]:
+async def _get_ollama_status(cfg: AppConfig) -> dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=HEALTH_CHECK_TIMEOUT) as client:
-            response = await client.get(f"{config.ai.ollama_base_url}/api/tags")
+            response = await client.get(f"{cfg.ai.ollama_base_url}/api/tags")
             if response.status_code == 200:
                 data = response.json()
                 models = data.get("models", [])
                 return {
                     "running": True,
-                    "base_url": config.ai.ollama_base_url,
+                    "base_url": cfg.ai.ollama_base_url,
                     "model_count": len(models),
                     "models": [
                         {
@@ -121,9 +122,9 @@ def _get_memory_info() -> dict[str, Any]:
 
 
 @router.get("/system")
-async def system_health():
+async def system_health(config: AppConfig = Depends(get_config)):
     """Full system health check — returns status of all components."""
-    ollama = await _get_ollama_status()
+    ollama = await _get_ollama_status(config)
     disk = _get_disk_info()
     memory = _get_memory_info()
     python_info = _get_python_info()
@@ -330,7 +331,7 @@ async def main_health():
     try:
         db_status = await check_db_health()
         db_ok = db_status.get("status") in ("healthy", "disabled")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("主健康检查 DB ping 失败: %s", exc, exc_info=True)
 
     body = {

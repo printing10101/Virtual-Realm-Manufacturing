@@ -253,8 +253,8 @@ function onTourStart() {
   // 引导流程开始
 }
 
-function onTourStepChange(index: number) {
-  // 引导步骤变化: index
+function onTourStepChange(_index: number) {
+  // 引导步骤变化回调（由 Tour 子组件触发，无需额外处理）
 }
 
 function onTourFinish() {
@@ -265,8 +265,8 @@ function onTourSkip(index: number) {
   ElMessage.info(t('uxDemo.msgTourSkipped', { step: index + 1 }))
 }
 
-function onCommandExecute(command: Command) {
-  // 命令已执行: command.name
+function onCommandExecute(_command: Command) {
+  // 命令执行回调（由命令面板触发，无需额外处理）
 }
 
 // 生命周期

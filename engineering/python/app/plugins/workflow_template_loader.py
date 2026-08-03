@@ -324,7 +324,7 @@ def load_templates_from_dir(
                 manifest.id,
                 manifest.version,
             )
-        except Exception as e:  # noqa: BLE001 - 加载器不应因单个文件失败而中断
+        except Exception as e:
             logger.warning(
                 "Failed to load workflow template from %s: %s", yaml_path, e
             )
@@ -359,7 +359,7 @@ def load_templates_from_plugin(
 
                 manifest = replace(manifest, plugin_id=_infer_plugin_id(plugin_dir))
             results.append(manifest)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             # 保留 Exception 兜底：load_template_from_yaml 内部 yaml 在 try 块内导入，
             # 无法在 except 子句中引用 yaml.YAMLError。为确保单个模板加载失败不影响
             # 其他模板，保留 Exception 作为最外层兜底。
@@ -390,7 +390,7 @@ def _infer_plugin_id(plugin_dir: Path) -> str:
         with open(yaml_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         return str(data.get("id", "") or "")
-    except Exception:  # noqa: BLE001
+    except Exception:
         # 保留 Exception 兜底：yaml 在 try 块内导入，无法在 except 中引用 yaml.YAMLError。
         # plugin_id 为可选字段，任何失败都应返回空字符串而非阻塞插件加载。
         return ""

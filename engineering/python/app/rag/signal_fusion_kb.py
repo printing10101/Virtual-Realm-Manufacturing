@@ -275,13 +275,13 @@ class SignalFusionKnowledgeBase:
 
     def _get_vector_store(self):
         if self._vector_store is None:
-            from app.rag.vector_store import get_vector_store
+            from app.dependencies import get_vector_store
             self._vector_store = get_vector_store()
         return self._vector_store
 
     def _get_embedding_service(self):
         if self._embedding_service is None:
-            from app.rag.embeddings import get_embedding_service
+            from app.dependencies import get_embedding_service
             self._embedding_service = get_embedding_service()
         return self._embedding_service
 

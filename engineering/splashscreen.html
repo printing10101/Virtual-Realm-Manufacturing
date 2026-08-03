@@ -8,21 +8,17 @@
   <!--
     CSP 指令说明（P0 安全修复 / P1 收紧）：
     - default-src 'self'                   : 默认仅允许同源资源，收紧兜底策略
-    - script-src 'self' 'unsafe-inline'    : 移除 'unsafe-eval'（XSS 防护）；保留 'unsafe-inline' 因为本页内联脚本依赖
-                                             TODO: 后续批次应引入 nonce 机制替换 'unsafe-inline'
-    - connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*
+    - script-src 'self' 'nonce-__CSP_NONCE__'   : 移除 'unsafe-inline'，使用构建期随机 nonce 替代
+                                             （Vite 插件自动为内联脚本注入 nonce，无需手动维护）
+    - connect-src 'self' ipc: http://ipc.localhost http://localhost:8765-8785 ws://localhost:8765-8785 http://127.0.0.1:8765-8785 ws://127.0.0.1:8765-8785
                                            : 保留 ipc: 和 http://ipc.localhost（Tauri 2 IPC 通信硬约束）；
-                                             localhost/127.0.0.1 用于后端健康检查
-                                             （已移除 https://api.openai.com https://api.anthropic.com
-                                              https://api.deepseek.com https://generativelanguage.googleapis.com
-                                              https://*.aliyuncs.com —— 这些 LLM API 由后端 FastAPI 代理调用，
-                                              splashscreen 启动阶段无需任何外部 API 访问，
-                                              CSP 白名单冗余且增加 XSS 数据外泄风险）
+                                             localhost/127.0.0.1 限于后端端口范围 8765-8785
+                                             （移除通配符 :*，与 SidecarManager 动态端口范围对齐）
     - img-src 'self' data: blob: https:    : 允许同源、data URI、blob URL 和 HTTPS 图片
     - font-src 'self' data:                : 允许同源和 data URI 字体
     - style-src 'self' 'unsafe-inline'     : CSS 内联通常必要（动画样式等），保留 'unsafe-inline'
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-__CSP_NONCE__'; connect-src 'self' ipc: http://ipc.localhost http://localhost:8765-8785 ws://localhost:8765-8785 http://127.0.0.1:8765-8785 ws://127.0.0.1:8765-8785; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';" />
   <style>
     * {
       margin: 0;

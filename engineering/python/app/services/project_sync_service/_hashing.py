@@ -83,7 +83,7 @@ class _HashingMixin:
             if resource_type == RESOURCE_TYPES.TEMPLATE:
                 # template://<template_id>/<version> → manifest_snapshot sha256
                 return await self._lookup_template_hash(path)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning(
                 "ProjectSyncService: 计算 content_hash 失败 (%s): %s",
                 resource_uri,
@@ -139,7 +139,7 @@ class _HashingMixin:
             if spec is None:
                 return ""
             return self._sha256_json(spec.to_dict() if hasattr(spec, "to_dict") else str(spec))
-        except Exception:  # noqa: BLE001
+        except Exception:
             return ""
 
     async def _lookup_snapshot_hash(self, snapshot_id: str) -> str:

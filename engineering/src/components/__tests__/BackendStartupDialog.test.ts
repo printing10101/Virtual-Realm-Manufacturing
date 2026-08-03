@@ -78,8 +78,6 @@ vi.mock('@/composables/useBackendStatus', () => ({
   }),
 }))
 
-import { ref } from 'vue'
-
 describe('BackendStartupDialog.vue', () => {
   let wrapper: VueWrapper<any>
 

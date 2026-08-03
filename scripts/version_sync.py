@@ -110,6 +110,7 @@ def _write_regex(pattern: str, replacement_template: str):
 
 def _write_config_py(path: Path, version: str) -> bool:
     content = path.read_text(encoding="utf-8")
+    # P0-5 修复：匹配 _env("APP_VERSION", "x.y.z") 写法（原正则缺逗号）
     pattern = r'(APP_VERSION",\s*")([\d.]+)(")'
     new_content, count = re.subn(pattern, rf'\g<1>{version}\g<3>', content)
     if count == 0 or new_content == content:
@@ -152,31 +153,33 @@ VERSION_FILES: list[VersionFile] = [
         _write_raw,
     ),
     VersionFile(
-        "package.json",
+        # P0-5 修复：阶段2解耦后前端/桌面位于 engineering/ 下
+        "engineering/package.json",
         "package.json (Node.js/Tauri frontend)",
         _read_json_key("version"),
         _write_json_key("version"),
     ),
     VersionFile(
-        "src-tauri/Cargo.toml",
+        "engineering/src-tauri/Cargo.toml",
         "Cargo.toml (Rust backend)",
         _read_cargo_toml,
         _write_cargo_toml,
     ),
     VersionFile(
-        "src-tauri/tauri.conf.json",
+        "engineering/src-tauri/tauri.conf.json",
         "tauri.conf.json (Tauri config)",
         _read_json_key("version"),
         _write_json_key("version"),
     ),
     VersionFile(
-        "python/app/config.py",
-        "config.py (APP_VERSION default)",
+        # P0-5 修复：config.py 实际位于 app/config/app_config.py，且写法为 _env("APP_VERSION", "x.y.z")
+        "engineering/python/app/config/app_config.py",
+        "app_config.py (APP_VERSION default)",
         _read_regex(r'APP_VERSION",\s*"([\d.]+)"'),
         _write_config_py,
     ),
     VersionFile(
-        "python/app/main.py",
+        "engineering/python/app/main.py",
         "main.py (FastAPI version string)",
         _read_regex(r'version="([\d.]+)"'),
         _write_main_py,
@@ -255,8 +258,11 @@ def set_version(new_version: str, dry_run: bool = False) -> bool:
 
     old_version = (PROJECT_ROOT / "VERSION").read_text().strip()
     if old_version == new_version:
-        print(f"Version already at {new_version}, no changes needed.")
-        return True
+        # P0-5 修复：VERSION 已为目标版本时仍应同步其他落后文件
+        # （例如 main.py 的 version 串、openapi.json 等可能滞后于 VERSION）
+        print(f"VERSION 已为 {new_version}，继续同步其他版本文件...")
+    else:
+        print(f"版本同步: {old_version} -> {new_version}")
 
     changed = False
 

@@ -24,7 +24,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, U
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from app.api.v1.auth import get_current_user
+from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
 from app.core.response import error, ErrorCode, success
 from app.core.safe_errors import safe_error_message

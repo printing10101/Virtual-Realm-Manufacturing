@@ -11,11 +11,11 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, UploadFile, File, Form
 
-from app.api.v1.auth import get_current_user
+from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
 from app.core.safe_errors import safe_error_message
-from app.rag.knowledge_base import get_knowledge_base
-from app.rag.vector_store import get_vector_store
+from app.dependencies import get_knowledge_base
+from app.dependencies import get_vector_store
 from app.utils.upload_security import validate_upload
 
 logger = logging.getLogger(__name__)

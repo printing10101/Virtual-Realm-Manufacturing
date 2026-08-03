@@ -91,7 +91,7 @@ class SensitiveDataFilter(logging.Filter):
         try:
             from app.core.log_sanitizer import sanitizer as _sanitizer_instance
             self._log_sanitizer = _sanitizer_instance
-        except Exception as init_err:  # noqa: BLE001
+        except Exception as init_err:
             # 初始化失败不阻断日志系统，记录到 stderr（此时日志系统可能未就绪）
             import sys as _sys
             _sys.stderr.write(
@@ -137,7 +137,7 @@ class SensitiveDataFilter(logging.Filter):
             _REENTRANCY_GUARD.active = True
             try:
                 record.msg = self._log_sanitizer.sanitize(record.msg)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 # LogSanitizer 异常不得影响日志输出，降级为仅使用第一层脱敏。
                 # 不使用 logger.debug 记录此错误以避免递归；降级信息已通过
                 # __init__ 的 stderr 警告提示运维方。
@@ -170,7 +170,7 @@ class SensitiveDataFilter(logging.Filter):
                 _REENTRANCY_GUARD.active = True
                 try:
                     return self._log_sanitizer.sanitize(text)
-                except Exception:  # noqa: BLE001
+                except Exception:
                     return text
                 finally:
                     _REENTRANCY_GUARD.active = False
@@ -181,7 +181,7 @@ class SensitiveDataFilter(logging.Filter):
             _REENTRANCY_GUARD.active = True
             try:
                 text = self._log_sanitizer.sanitize(text)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
             finally:
                 _REENTRANCY_GUARD.active = False
@@ -482,7 +482,7 @@ def configure_logging(
                         return [_sentry_scrub(i) for i in obj]
                     return obj
 
-                def _sentry_before_send(event, hint):  # noqa: ANN001
+                def _sentry_before_send(event, hint):
                     """Sentry event 发送前过滤敏感信息。"""
                     try:
                         if "request" in event:
@@ -491,7 +491,7 @@ def configure_logging(
                             event["extra"] = _sentry_scrub(event["extra"])
                         if "contexts" in event:
                             event["contexts"] = _sentry_scrub(event["contexts"])
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         # 脱敏失败不应阻断 event 上报，但记录到本地日志
                         root_logger.warning("Sentry before_send scrub failed", exc_info=True)
                     return event

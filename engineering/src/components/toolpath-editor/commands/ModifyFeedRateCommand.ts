@@ -19,7 +19,7 @@ export class ModifyFeedRateCommand extends BaseCommand {
     this.oldFeedRate = 0
   }
 
-  execute(): void {
+  override execute(): void {
     this.targetIndex = this.segments.findIndex((s) => s.id === this.segmentId)
     if (this.targetIndex === -1) return
     this.oldFeedRate = this.segments[this.targetIndex].feedRate
@@ -27,13 +27,13 @@ export class ModifyFeedRateCommand extends BaseCommand {
     this.onUpdate()
   }
 
-  undo(): void {
+  override undo(): void {
     if (this.targetIndex === -1) return
     this.segments[this.targetIndex].feedRate = this.oldFeedRate
     this.onUpdate()
   }
 
-  getDescription(): string {
+  override getDescription(): string {
     return `Feed rate: ${this.oldFeedRate} → ${this.newFeedRate}`
   }
 }

@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
 from app.auth.permissions import require_permission
-from app.utils.ring_buffer import get_ring_log_buffer
+from app.dependencies import get_ring_log_buffer
 from app.middleware.rate_limiter import limiter
 from app.models.schemas import (
     LNNPredictRequest,
@@ -47,6 +47,11 @@ from app.api.v1.lnn.routes_training import _log_task_exception
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# 模块级集合：保存 asyncio.create_task 返回的批量推理任务引用，
+# 防止任务在执行完成前被 Python GC 回收（局部变量引用丢失会导致
+# 任务被静默取消且不抛异常）。任务完成后通过 done_callback 自动移除。
+_active_batch_tasks: set[asyncio.Task] = set()
 
 
 def _validate_predict_request(body: LNNPredictRequest, model_info) -> Optional[dict]:
@@ -333,9 +338,14 @@ async def batch_inference(
         batch_task = asyncio.create_task(
             task_manager.execute_task(record.job_id, batch_executor)
         )
-        batch_task.add_done_callback(
-            lambda t: _log_task_exception(t, f"batch-{record.job_id}")
-        )
+        _active_batch_tasks.add(batch_task)
+
+        def _on_batch_done(t: asyncio.Task) -> None:
+            # 先从集合移除引用，再记录异常，避免任务永久驻留集合导致内存泄漏
+            _active_batch_tasks.discard(t)
+            _log_task_exception(t, f"batch-{record.job_id}")
+
+        batch_task.add_done_callback(_on_batch_done)
 
         return success(
             data={"job_id": record.job_id, "status": "queued"},

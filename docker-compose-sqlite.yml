@@ -47,6 +47,8 @@ services:
       # 强制使用 SQLite
       - DB_URL=sqlite+aiosqlite:///./data/app.db
       # AI 模型配置
+      # 安全提示：CLOUD_API_KEY 为阿里云 DashScope API 密钥，生产环境建议使用 Docker Secret 或 K8s Secret
+      # 通过环境变量注入的密钥可通过 docker inspect 查看，请确保 .env.sqlite 不进入版本控制
       - AI_MODE=${AI_MODE:-local}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}

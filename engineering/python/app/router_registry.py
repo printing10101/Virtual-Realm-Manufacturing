@@ -51,7 +51,7 @@ if config.hardware.skip_ollama:
     )
 else:
     try:
-        from app.ai import ollama_routes  # noqa: F401
+        from app.ai import ollama_routes
         _OLLAMA_AVAILABLE = True
     except ImportError as e:
         logging.warning(

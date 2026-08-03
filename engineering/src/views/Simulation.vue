@@ -693,8 +693,37 @@
       </div>
       <div class="results-section">
         <div class="result-viewport-wrap">
-          <div class="result-viewport">
-            <div class="result-placeholder">
+          <div class="result-viewport" v-loading="femSolving">
+            <template v-if="femResult">
+              <div class="fem-result-summary">
+                <div class="fem-result-row">
+                  <span class="fem-result-label">{{ t('simulationPage.femResultMaxStress') }}</span>
+                  <span class="fem-result-value">{{ femResult.max_stress }} MPa</span>
+                </div>
+                <div class="fem-result-row">
+                  <span class="fem-result-label">{{ t('simulationPage.femResultDeflection') }}</span>
+                  <span class="fem-result-value">{{ femResult.max_deflection }} mm</span>
+                </div>
+                <div class="fem-result-row">
+                  <span class="fem-result-label">{{ t('simulationPage.femResultSafety') }}</span>
+                  <el-tag
+                    :type="femResult.safety_factor >= 1.5 ? 'success' : femResult.safety_factor >= 1 ? 'warning' : 'danger'"
+                    size="small"
+                    effect="light"
+                  >
+                    {{ femResult.safety_factor }}
+                  </el-tag>
+                </div>
+                <div class="fem-result-row">
+                  <span class="fem-result-label">{{ t('simulationPage.femResultNodes') }}</span>
+                  <span class="fem-result-value">{{ femResult.nodes }}</span>
+                </div>
+                <p v-if="femResult.warning" class="fem-result-warning">
+                  {{ femResult.warning }}
+                </p>
+              </div>
+            </template>
+            <div v-else class="result-placeholder">
               <span>{{ t('simulationPage.femResultPlaceholder') }}</span>
             </div>
             <div class="color-legend">
@@ -796,6 +825,7 @@
               type="primary"
               size="small"
               class="btn-export"
+              :loading="exportLoading === 'gif'"
               @click="handleExportGif"
             >
               {{ t('simulationPage.exportGifBtn') }}
@@ -913,6 +943,7 @@
               type="primary"
               size="small"
               class="btn-export"
+              :loading="exportLoading === 'mp4'"
               @click="handleExportMp4"
             >
               {{ t('simulationPage.exportMp4Btn') }}
@@ -1102,15 +1133,20 @@ const runButtonText = computed(() => {
   }
 })
 
+// 已忽略（dismiss）的碰撞索引集合
+const dismissedCollisions = ref<Set<number>>(new Set())
+
 const collisionList = computed<CollisionInfo[]>(() => {
   if (!simResult.value?.collision_detected || !simResult.value.collision_details) return []
   const details = simResult.value.collision_details
-  return details.positions.map((pos, idx) => ({
-    position: pos as [number, number, number],
-    severity: details.severity === 'critical' ? 'critical' : 'warning',
-    toolSegment: details.segment_indices[idx] ?? idx,
-    description: t('simulationPage.msgCollisionDesc', { idx: idx + 1, severity: details.severity }),
-  }))
+  return details.positions
+    .map((pos, idx) => ({
+      position: pos as [number, number, number],
+      severity: (details.severity === 'critical' ? 'critical' : 'warning') as CollisionInfo['severity'],
+      toolSegment: details.segment_indices[idx] ?? idx,
+      description: t('simulationPage.msgCollisionDesc', { idx: idx + 1, severity: details.severity }),
+    }))
+    .filter((_, idx) => !dismissedCollisions.value.has(idx))
 })
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -1216,12 +1252,24 @@ function handleLocateCollision(index: number) {
   }
 }
 
-function handleDismissCollision() {
-  // User dismissed single collision
+function handleDismissCollision(index?: number) {
+  // 从碰撞列表中移除指定索引（真实状态变更）
+  if (index === undefined) return
+  dismissedCollisions.value = new Set(dismissedCollisions.value).add(index)
+  if (collisionList.value.length === 0) {
+    ElMessage.success(t('simulationPage.msgAllCollisionsDismissed'))
+  }
 }
 
 function handleDismissAllCollisions() {
-  // User dismissed all collisions
+  // 忽略全部碰撞
+  const details = simResult.value?.collision_details
+  if (details) {
+    details.positions.forEach((_, idx) => {
+      dismissedCollisions.value = new Set(dismissedCollisions.value).add(idx)
+    })
+  }
+  ElMessage.success(t('simulationPage.msgAllCollisionsDismissed'))
 }
 
 // ─── Download STL ─────────────────────────────────────
@@ -1296,8 +1344,52 @@ function resetFemParams() {
   }
 }
 
-function handleStartSolve() {
-  ElMessage.info(t('simulationPage.msgFemWip'))
+// FEM 求解结果（真实接口返回）
+interface FEMResult {
+  material: string
+  max_stress: number
+  max_deflection: number
+  yield_strength: number
+  safety_factor: number
+  nodes: number
+  status: string
+  warning?: string
+  stress_distribution?: Array<{ x: number; stress: number }>
+}
+
+const femResult = ref<FEMResult | null>(null)
+const femSolving = ref(false)
+
+async function handleStartSolve() {
+  femSolving.value = true
+  femResult.value = null
+  try {
+    const res = await http.post(buildApiPath(API_CONFIG.SIMULATION, '/fem/solve'), {
+      material: femParams.value.material,
+      elastic_modulus: femParams.value.elasticModulus,
+      poisson_ratio: femParams.value.poissonRatio,
+      density: femParams.value.density,
+      yield_strength: femParams.value.yieldStrength,
+      mesh_type: femParams.value.meshType,
+      element_size: femParams.value.elementSize,
+      adaptive_refinement: femParams.value.adaptiveRefinement,
+      beam_length: 100.0,
+      beam_width: 20.0,
+      beam_height: 20.0,
+      load_force: 5000.0,
+    })
+    if (res.data.code === 0 && res.data.data) {
+      femResult.value = res.data.data
+      ElMessage.success(t('simulationPage.msgFemDone'))
+    } else {
+      ElMessage.error(res.data.message || t('simulationPage.msgFemFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[Simulation] FEM solve failed:', e)
+    ElMessage.error(t('simulationPage.msgFemFailed'))
+  } finally {
+    femSolving.value = false
+  }
 }
 
 // ─── Tab 3: Export ──────────────────────────────────────
@@ -1315,12 +1407,54 @@ const mp4Export = ref({
   bitrate: '10',
 })
 
+const exportLoading = ref<'gif' | 'mp4' | null>(null)
+
+/** 导出仿真动画（真实调用 POST /api/simulation/export-animation，blob 下载）。 */
+async function exportAnimation(format: 'gif' | 'mp4') {
+  if (!gcode.value.trim()) {
+    ElMessage.warning(t('simulationPage.msgNoGcode'))
+    return
+  }
+  exportLoading.value = format
+  try {
+    const res = await http.post(
+      buildApiPath(API_CONFIG.SIMULATION, '/export-animation'),
+      {
+        nc_code: gcode.value,
+        format,
+        voxel_size: simParams.value.voxelSize,
+        tool_diameter: simParams.value.toolDiameter,
+        tool_length: simParams.value.toolLength,
+        tool_type: simParams.value.toolType,
+      },
+      { responseType: 'blob' },
+    )
+    // 后端返回文件流，触发浏览器下载
+    const blob = res.data as Blob
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const ts = new Date().toISOString().replace(/[:.]/g, '-')
+    a.href = url
+    a.download = `simulation_${format}_${ts}.${format}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    ElMessage.success(t('simulationPage.msgExportSuccess', { format: format.toUpperCase() }))
+  } catch (e: unknown) {
+    console.warn('[Simulation] export animation failed:', e)
+    ElMessage.error(t('simulationPage.msgExportFailed'))
+  } finally {
+    exportLoading.value = null
+  }
+}
+
 function handleExportGif() {
-  ElMessage.info(t('simulationPage.msgGifWip'))
+  void exportAnimation('gif')
 }
 
 function handleExportMp4() {
-  ElMessage.info(t('simulationPage.msgMp4Wip'))
+  void exportAnimation('mp4')
 }
 
 // ─── Utilities ──────────────────────────────────────────
@@ -1885,5 +2019,35 @@ onUnmounted(() => {
 .btn-export {
   width: 100%;
   font-weight: 500;
+}
+.fem-result-summary {
+  width: 100%;
+  padding: 20px;
+  text-align: left;
+}
+
+.fem-result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color, rgba(0, 0, 0, 0.06));
+}
+
+.fem-result-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.fem-result-value {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.fem-result-warning {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--warning);
+  line-height: 1.5;
 }
 </style>

@@ -118,7 +118,7 @@ function initScene() {
     gridDivisions: GRID_DIVISIONS,
   })
 
-  const { scene, camera, renderer, controls, addLight } = threeScene
+  const { camera, renderer, controls, addLight } = threeScene
 
   camera.lookAt(...LOOK_AT_TARGET)
   cameraRef.value = camera

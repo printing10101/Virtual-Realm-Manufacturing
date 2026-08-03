@@ -2,7 +2,7 @@ from typing import Dict, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from app.tasks.task_manager import TaskType
+from app.contracts.task import TaskType
 
 # [P0-17] 公共约束：dict 字段允许的标量值类型
 # 用于限制 dict 字段的内容，防止注入任意嵌套结构

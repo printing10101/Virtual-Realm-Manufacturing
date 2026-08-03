@@ -96,7 +96,7 @@ class DxfToModelConverter:
         """
         if feature_result is None:
             raise DxfModelError("特征提取结果为空，无法生成3D模型。"
-                                 "请先调用FeatureExtractor.extract()获取特征数据。")  # noqa: E127
+                                 "请先调用FeatureExtractor.extract()获取特征数据。")
 
         result = ModelConversionResult()
         length = feature_result.overall_length
@@ -169,7 +169,7 @@ class DxfToModelConverter:
                     "hole_count": hole_count,
                 },
             )
-        except (OSError, RuntimeError, ImportError) as e:  # noqa: BLE001
+        except (OSError, RuntimeError, ImportError) as e:
             logger.debug("bridge 数据收集失败（不影响主流程）: %s", e)
 
         return result
@@ -259,7 +259,7 @@ class DxfToModelConverter:
         """
         if not conversion_result.success:
             raise DxfModelError("模型转换未成功，无法导出STL。"
-                                 f"错误: {'; '.join(conversion_result.errors)}")  # noqa: E127
+                                 f"错误: {'; '.join(conversion_result.errors)}")
 
         path = Path(output_path)
         try:
@@ -294,7 +294,7 @@ class DxfToModelConverter:
         """
         if not conversion_result.success:
             raise DxfModelError("模型转换未成功，无法导出STEP。"
-                                 f"错误: {'; '.join(conversion_result.errors)}")  # noqa: E127
+                                 f"错误: {'; '.join(conversion_result.errors)}")
 
         path = Path(output_path)
         try:

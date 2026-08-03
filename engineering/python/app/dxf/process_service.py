@@ -145,7 +145,7 @@ class DxfProcessService:
         # 影子模式：研究轨 IJepa-3D chamfer 启发式识别（不阻塞产品流程）
         try:
             self._run_ijepa3d_shadow(path, result, user_id)
-        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:
             logger.warning("ijepa3d shadow run failed: %s", e, exc_info=True)
         # 桥接层落盘
         try:
@@ -165,7 +165,7 @@ class DxfProcessService:
                     "output_files": list(result.output_files.keys()),
                 },
             )
-        except (OSError, RuntimeError, ImportError) as e:  # noqa: BLE001
+        except (OSError, RuntimeError, ImportError) as e:
             logger.warning("bridge collect failed: %s", e, exc_info=True)
         return result
 
@@ -182,7 +182,11 @@ class DxfProcessService:
         不影响主流程 result.success / result.errors。
         """
         try:
-            from research.multimodal_jepa.ijepa_3d.chamfer_heuristic import detect_all_extended
+            # P0#3 解耦: 通过 research_bridge 延迟导入
+            from app.ai.lnn._research_bridge import get_multimodal_jepa_chamfer
+            detect_all_extended = get_multimodal_jepa_chamfer()
+            if detect_all_extended is None:
+                raise ImportError("multimodal_jepa not available")
             from app.dxf.dxf_parser import DxfParser
         except ImportError as e:
             logger.warning("ijepa3d import failed: %s", e, exc_info=True)
@@ -191,7 +195,7 @@ class DxfProcessService:
         # 解析 DXF 拿几何
         try:
             parsed = DxfParser().parse(str(path))
-        except (ValueError, TypeError, KeyError, AttributeError, OSError) as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, OSError) as e:
             logger.warning("ijepa3d shadow parse failed: %s", e, exc_info=True)
             return
 
@@ -199,7 +203,7 @@ class DxfProcessService:
         t0 = time.time()
         try:
             research_feats = detect_all_extended(parsed)
-        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:
             # detect_all_extended 内部已对 detect_all 做了 try-except 保护，
             # 这里仅记录日志，不再回退调用 detect_all（避免重复抛出相同异常）
             logger.warning("ijepa3d shadow detect_all_extended failed: %s", e, exc_info=True)
@@ -278,7 +282,7 @@ class DxfProcessService:
                 latency_ms=(time.time() - t0) * 1000,
                 error="DXF 文件解析失败，请检查文件格式",
             )
-        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:
             logger.error("Unexpected DXF parse error: %s", e, exc_info=True)
             return StageResult(
                 name="parse", success=False,
@@ -305,7 +309,7 @@ class DxfProcessService:
                 },
                 error="; ".join(r.errors) if r.errors else "",
             )
-        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:
             logger.error("DXF feature extraction failed: %s", e, exc_info=True)
             return StageResult(
                 name="features", success=False,
@@ -342,7 +346,7 @@ class DxfProcessService:
                     stl_path = out_dir / f"{path.stem}.stl"
                     conv.export_stl(result, stl_path)
                     files.append(str(stl_path))
-                except (OSError, RuntimeError, ValueError, TypeError) as e:  # noqa: BLE001
+                except (OSError, RuntimeError, ValueError, TypeError) as e:
                     logger.warning("STL 导出失败: %s", e, exc_info=True)
             return StageResult(
                 name="model3d",
@@ -357,7 +361,7 @@ class DxfProcessService:
                 },
                 error="; ".join(result.errors) if result.errors else "",
             )
-        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:
             logger.error("DXF 3D conversion failed: %s", e, exc_info=True)
             return StageResult(
                 name="model3d", success=False,
@@ -393,7 +397,7 @@ class DxfProcessService:
                 latency_ms=(time.time() - t0) * 1000,
                 summary={"controller": controller, "output": str(g_path), "lines": gcode.count("\n")},
             )
-        except (OSError, RuntimeError, KeyError, ValueError, TypeError) as e:  # noqa: BLE001
+        except (OSError, RuntimeError, KeyError, ValueError, TypeError) as e:
             logger.error("GCode generation failed: %s", e, exc_info=True)
             return StageResult(
                 name="gcode", success=False,

@@ -645,7 +645,7 @@ def get_plugin_contract_adapter() -> PluginLifecycleManagerAdapter:
     with _adapter_lock:
         if _adapter_singleton is None:
             # 延迟导入避免循环依赖
-            from app.plugins.plugin_system import get_plugin_manager
+            from app.dependencies import get_plugin_manager
 
             legacy_mgr = get_plugin_manager()  # 可能抛 RuntimeError
             _adapter_singleton = PluginLifecycleManagerAdapter(legacy_mgr)

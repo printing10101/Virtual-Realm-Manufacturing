@@ -198,6 +198,145 @@
         </el-table>
       </div>
     </div>
+
+    <!-- 入库登记弹窗 -->
+    <el-dialog
+      v-model="stockInDialogVisible"
+      :title="t('materialManagement.dialogStockInTitle')"
+      width="460px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <el-form label-width="90px" @submit.prevent>
+        <el-form-item :label="t('materialManagement.fieldMaterial')" required>
+          <el-select
+            v-model="stockInForm.material_id"
+            :placeholder="t('materialManagement.placeholderSelectMaterial')"
+            style="width: 100%"
+            filterable
+          >
+            <el-option
+              v-for="m in materials"
+              :key="m.id"
+              :label="`${m.code} - ${m.name}`"
+              :value="m.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('materialManagement.fieldQuantity')" required>
+          <el-input-number
+            v-model="stockInForm.quantity"
+            :min="1"
+            :max="100000"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item :label="t('materialManagement.fieldRemark')">
+          <el-input
+            v-model="stockInForm.remark"
+            :placeholder="t('materialManagement.placeholderRemark')"
+            maxlength="200"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="stockInDialogVisible = false">
+          {{ t('materialManagement.btnCancel') }}
+        </el-button>
+        <el-button type="primary" :loading="stockInSubmitting" @click="submitStockIn">
+          {{ t('materialManagement.btnSubmit') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 采购申请弹窗 -->
+    <el-dialog
+      v-model="purchaseDialogVisible"
+      :title="t('materialManagement.dialogPurchaseTitle')"
+      width="460px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <el-form label-width="90px" @submit.prevent>
+        <el-form-item :label="t('materialManagement.fieldMaterial')" required>
+          <el-input :model-value="purchaseMaterialLabel" disabled />
+        </el-form-item>
+        <el-form-item :label="t('materialManagement.fieldQuantity')" required>
+          <el-input-number
+            v-model="purchaseForm.quantity"
+            :min="1"
+            :max="100000"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item :label="t('materialManagement.fieldSupplier')">
+          <el-input
+            v-model="purchaseForm.supplier"
+            :placeholder="t('materialManagement.placeholderSupplier')"
+            maxlength="128"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="purchaseDialogVisible = false">
+          {{ t('materialManagement.btnCancel') }}
+        </el-button>
+        <el-button type="primary" :loading="purchaseSubmitting" @click="submitPurchase">
+          {{ t('materialManagement.btnSubmit') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 物料详情弹窗 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="t('materialManagement.dialogDetailTitle')"
+      width="520px"
+    >
+      <div v-loading="detailLoading" style="min-height: 200px">
+        <template v-if="detailData">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item :label="t('materialManagement.colMaterialCode')">
+              {{ detailData.code }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('materialManagement.colMaterialName')">
+              {{ detailData.name }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('materialManagement.fieldSpec')">
+              {{ detailData.spec || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('materialManagement.colCategory')">
+              {{ detailData.category }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('materialManagement.colQuantity')">
+              {{ detailData.quantity }} {{ detailData.unit || '' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('materialManagement.fieldSafeQuantity')">
+              {{ detailData.safe_quantity }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('materialManagement.colStatus')">
+              <el-tag :type="stockStatusTagType(detailData.status)" size="small" effect="light">
+                {{ detailData.status }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('materialManagement.fieldLocation')">
+              {{ detailData.location || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('materialManagement.fieldSupplier')">
+              {{ detailData.supplier || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('materialManagement.fieldUpdatedAt')">
+              {{ detailData.updated_at }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </template>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">
+          {{ t('materialManagement.btnCancel') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -282,11 +421,12 @@ async function fetchMaterials() {
     if (keyword) params.keyword = keyword
 
     const [materialsRes, statsRes] = await Promise.all([
-      http.get(API_CONFIG.MATERIALS, { params }),
+      http.get(API_CONFIG.MATERIALS + '/', { params }),
       http.get(API_CONFIG.MATERIALS + '/stats/summary'),
     ])
 
-    materials.value = materialsRes.data?.data || []
+    // 后端列表返回 { items, total, page, page_size, total_pages }
+    materials.value = materialsRes.data?.data?.items || []
     statsSummary.value = statsRes.data?.data || { total: 0, low_stock: 0, out_of_stock: 0 }
   } catch {
     loadError.value = true
@@ -297,21 +437,142 @@ async function fetchMaterials() {
   }
 }
 
+// ========================= 入库登记弹窗 =========================
+const stockInDialogVisible = ref(false)
+const stockInSubmitting = ref(false)
+const stockInForm = ref({
+  material_id: '' as number | '',
+  quantity: 1 as number,
+  remark: '',
+})
+
+/** 打开入库登记弹窗（顶部按钮不传物料，行内按钮预选物料）。 */
 function handleStockIn(row?: Material | MouseEvent) {
-  if (row && 'name' in row) {
-    ElMessage.info(t('materialManagement.msgStockInRow', { name: row.name }))
+  if (row && typeof row === 'object' && 'id' in row) {
+    stockInForm.value = { material_id: row.id, quantity: 1, remark: '' }
   } else {
-    ElMessage.success(t('materialManagement.msgStockInWip'))
+    stockInForm.value = { material_id: '', quantity: 1, remark: '' }
+  }
+  stockInDialogVisible.value = true
+}
+
+/** 提交入库登记。 */
+async function submitStockIn() {
+  if (!stockInForm.value.material_id) {
+    ElMessage.warning(t('materialManagement.msgMaterialRequired'))
+    return
+  }
+  if (!stockInForm.value.quantity || stockInForm.value.quantity <= 0) {
+    ElMessage.warning(t('materialManagement.msgQuantityInvalid'))
+    return
+  }
+  stockInSubmitting.value = true
+  try {
+    const res = await http.post(
+      API_CONFIG.MATERIALS + `/${stockInForm.value.material_id}/stock-in`,
+      {
+        quantity: stockInForm.value.quantity,
+        remark: stockInForm.value.remark.trim() || null,
+      },
+    )
+    if (res.data.code === 0) {
+      ElMessage.success(t('materialManagement.msgStockInSuccess'))
+      stockInDialogVisible.value = false
+      fetchMaterials()
+    } else {
+      ElMessage.error(res.data.message || t('materialManagement.msgOperationFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[MaterialManagement] stock-in failed:', e)
+    ElMessage.error(t('materialManagement.msgOperationFailed'))
+  } finally {
+    stockInSubmitting.value = false
   }
 }
 
-function handleViewDetail(row: Material) {
-  ElMessage.info(t('materialManagement.msgViewDetail', { name: row.name }))
+// ========================= 采购申请弹窗 =========================
+const purchaseDialogVisible = ref(false)
+const purchaseSubmitting = ref(false)
+const purchaseForm = ref({
+  material_id: '' as number | '',
+  quantity: 1 as number,
+  supplier: '',
+})
+
+/** 打开采购申请弹窗。 */
+function handlePurchase(row: Material) {
+  purchaseForm.value = {
+    material_id: row.id,
+    quantity: 1,
+    supplier: row.supplier || '',
+  }
+  purchaseDialogVisible.value = true
 }
 
-function handlePurchase(row: Material) {
-  ElMessage.warning(t('materialManagement.msgPurchase', { name: row.name }))
+/** 提交采购申请。 */
+async function submitPurchase() {
+  if (!purchaseForm.value.material_id) {
+    ElMessage.warning(t('materialManagement.msgMaterialRequired'))
+    return
+  }
+  if (!purchaseForm.value.quantity || purchaseForm.value.quantity <= 0) {
+    ElMessage.warning(t('materialManagement.msgQuantityInvalid'))
+    return
+  }
+  purchaseSubmitting.value = true
+  try {
+    const res = await http.post(
+      API_CONFIG.MATERIALS + `/${purchaseForm.value.material_id}/purchase`,
+      {
+        quantity: purchaseForm.value.quantity,
+        supplier: purchaseForm.value.supplier.trim() || null,
+      },
+    )
+    if (res.data.code === 0) {
+      ElMessage.success(t('materialManagement.msgPurchaseSuccess'))
+      purchaseDialogVisible.value = false
+      fetchMaterials()
+    } else {
+      ElMessage.error(res.data.message || t('materialManagement.msgOperationFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[MaterialManagement] purchase failed:', e)
+    ElMessage.error(t('materialManagement.msgOperationFailed'))
+  } finally {
+    purchaseSubmitting.value = false
+  }
 }
+
+// ========================= 详情弹窗 =========================
+const detailDialogVisible = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<Material | null>(null)
+
+/** 查看物料详情（GET /api/v1/materials/{id}）。 */
+async function handleViewDetail(row: Material) {
+  detailDialogVisible.value = true
+  detailLoading.value = true
+  detailData.value = null
+  try {
+    const res = await http.get(API_CONFIG.MATERIALS + `/${row.id}`)
+    if (res.data.code === 0 && res.data.data) {
+      detailData.value = res.data.data
+    } else {
+      ElMessage.error(res.data.message || t('materialManagement.msgOperationFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[MaterialManagement] fetch detail failed:', e)
+    ElMessage.error(t('materialManagement.msgOperationFailed'))
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+/** 采购弹窗中当前选中物料的展示标签。 */
+const purchaseMaterialLabel = computed(() => {
+  const m = materials.value.find((x) => x.id === purchaseForm.value.material_id)
+  return m ? `${m.code} - ${m.name}` : ''
+})
 
 // ========================= 生命周期 =========================
 onMounted(() => {

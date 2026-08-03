@@ -240,11 +240,43 @@ async def check_tdengine_health() -> dict:
 # ---------------------------------------------------------------------------
 # 业务级辅助函数（高层 API）
 # ---------------------------------------------------------------------------
+#
+# SQL 安全模型：
+#   TDengine Python 驱动 (taos) 的 DDL 语句（CREATE/USE/ALTER DATABASE|TABLE）
+#   不支持 ``?`` 参数占位符，因此标识符必须经过白名单校验后拼接。
+#
+#   所有 SQL 构建必须遵循：
+#   1. 标识符（库名/表名/列名）→ _safe_ident() 白名单校验后返回
+#   2. 时间字面量 → _validate_timestamp_literal() 校验后返回
+#   3. 列表达式 → 正则白名单匹配后返回
+#   4. 数值参数 → int()/float() 强制转换
+#
+#   禁止：在未调用以上安全函数的情况下，将任何外部输入拼入 SQL 字符串。
 
 import re as _re
 
 # 标识符白名单：仅允许字母/下划线开头，后接字母/数字/下划线，长度 1-63
 _IDENTIFIER_RE = _re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$")
+
+
+def _safe_ident(name: str, kind: str = "identifier") -> str:
+    """安全包装器：校验 TDengine 标识符后原样返回。
+
+    此函数将 ``_validate_identifier`` 的校验与返回值绑定，
+    确保标识符在拼入 SQL 之前必须经过白名单校验，无法绕过。
+
+    Args:
+        name: 待校验的标识符。
+        kind: 标识符类型（用于错误信息），如 "database" / "table"。
+
+    Returns:
+        校验通过的原始标识符字符串。
+
+    Raises:
+        ValueError: 当标识符不符合白名单规则时。
+    """
+    _validate_identifier(name, kind)
+    return name
 
 
 def _validate_identifier(name: str, kind: str = "identifier") -> None:
@@ -276,15 +308,10 @@ async def ensure_database(database: Optional[str] = None) -> bool:
     client = await get_tdengine_async()
     if client is None:
         return False
-    db_name = database or TDengineConfig().database
-    try:
-        _validate_identifier(db_name, "database")
-    except ValueError as e:
-        logger.error("Database name validation failed: %s", e)
-        return False
+    db_name = _safe_ident(database or TDengineConfig().database, "database")
 
     def _ensure() -> None:
-        # IF NOT EXISTS 由 TDengine 支持；db_name 已通过白名单校验
+        # db_name 已通过 _safe_ident() 白名单校验
         client.execute(f"CREATE DATABASE IF NOT EXISTS {db_name}")
 
     try:
@@ -300,12 +327,7 @@ async def use_database(database: Optional[str] = None) -> bool:
     client = await get_tdengine_async()
     if client is None:
         return False
-    db_name = database or TDengineConfig().database
-    try:
-        _validate_identifier(db_name, "database")
-    except ValueError as e:
-        logger.error("Database name validation failed: %s", e)
-        return False
+    db_name = _safe_ident(database or TDengineConfig().database, "database")
     try:
         await _run_sync(client.execute, f"USE {db_name}")
         return True
@@ -323,17 +345,27 @@ async def create_table_if_not_exists(
 
     本任务范围内 ``columns`` 接受完整的 ``CREATE TABLE`` 列定义字符串
     （例如 ``"(ts TIMESTAMP, value DOUBLE)"``）。
+
+    安全：列定义仅允许字母/数字/下划线/括号/逗号/空格及常见 SQL 类型
+    关键字，禁止分号与注释，防止 SQL 注入。
     """
     client = await get_tdengine_async()
     if client is None:
         return False
-    db_name = database or TDengineConfig().database
-    try:
-        _validate_identifier(db_name, "database")
-        _validate_identifier(table_name, "table")
-    except ValueError as e:
-        logger.error("Identifier validation failed: %s", e)
-        return False
+    db_name = _safe_ident(database or TDengineConfig().database, "database")
+    table_name = _safe_ident(table_name, "table")
+    # 列定义白名单：允许字母/数字/下划线/空格/逗号/括号及常见 SQL 类型关键字
+    # 禁止分号、注释（--、/* */）、引号转义等注入向量
+    _COLUMN_DEF_RE = _re.compile(
+        r"^[A-Za-z_][A-Za-z0-9_(),\s]*$"
+    )
+    for col_def in columns:
+        if not isinstance(col_def, str) or not _COLUMN_DEF_RE.match(col_def.strip()):
+            logger.error(
+                "Invalid column definition rejected (SQL injection defense): %r",
+                col_def,
+            )
+            return False
     cols = " ".join(columns).strip()
     sql = f"CREATE TABLE IF NOT EXISTS {db_name}.{table_name} {cols}"
     try:
@@ -364,13 +396,8 @@ async def insert_rows(
     client = await get_tdengine_async()
     if client is None:
         return -1
-    db_name = database or TDengineConfig().database
-    try:
-        _validate_identifier(db_name, "database")
-        _validate_identifier(table_name, "table")
-    except ValueError as e:
-        logger.error("Identifier validation failed: %s", e)
-        return -1
+    db_name = _safe_ident(database or TDengineConfig().database, "database")
+    table_name = _safe_ident(table_name, "table")
     sql = f"INSERT INTO {db_name}.{table_name} VALUES"
     try:
         def _insert() -> int:
@@ -412,13 +439,8 @@ async def query_time_range(
     client = await get_tdengine_async()
     if client is None:
         return []
-    db_name = database or TDengineConfig().database
-    try:
-        _validate_identifier(db_name, "database")
-        _validate_identifier(table_name, "table")
-    except ValueError as e:
-        logger.error("Identifier validation failed: %s", e)
-        return []
+    db_name = _safe_ident(database or TDengineConfig().database, "database")
+    table_name = _safe_ident(table_name, "table")
     start = _format_value(start_ts)
     end = _format_value(end_ts)
     # P2-3-1 修复：对 _format_value 输出做二次校验，确保时间字面量仅为

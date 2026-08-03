@@ -154,7 +154,7 @@ class ConcurrencyPerfBenchmark:
                     elapsed = (time.perf_counter() - t0) * 1000
                     times.append(elapsed)
                     request_count += 1
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     logging.getLogger(__name__).warning(
                         "concurrency_bench worker error: %s", e
                     )

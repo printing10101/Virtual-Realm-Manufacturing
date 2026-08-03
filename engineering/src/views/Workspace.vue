@@ -17,134 +17,7 @@
           :label="$t('workspace.predictTab')"
           name="predict"
         >
-          <el-form
-            :model="predictForm"
-            label-width="120px"
-          >
-            <el-form-item :label="$t('workspace.modelName')">
-              <el-select
-                v-model="predictForm.modelName"
-                :placeholder="$t('workspace.selectModel')"
-              >
-                <el-option
-                  label="CFC-Fast"
-                  value="CFC-Fast"
-                />
-                <el-option
-                  label="LTC-TimeSeries"
-                  value="LTC-TimeSeries"
-                />
-                <el-option
-                  label="Hybrid-Multimodal"
-                  value="Hybrid-Multimodal"
-                />
-              </el-select>
-            </el-form-item>
-            <el-form-item :label="$t('workspace.inputData')">
-              <el-input
-                v-model="predictForm.inputData"
-                type="textarea"
-                :rows="4"
-                :placeholder="$t('workspace.inputDataPlaceholder')"
-              />
-            </el-form-item>
-            <el-form-item :label="$t('workspace.returnConfidence')">
-              <el-switch v-model="predictForm.returnConfidence" />
-            </el-form-item>
-            <el-form-item>
-              <el-button
-                type="primary"
-                :loading="predicting"
-                @click="handlePredict"
-              >
-                {{ $t('workspace.startInference') }}
-              </el-button>
-            </el-form-item>
-          </el-form>
-
-          <el-divider />
-
-          <div
-            v-if="predictResponse"
-            class="result-section"
-          >
-            <div class="result-header">
-              <h4>{{ $t('workspace.inferenceResult') }}</h4>
-              <ConfidenceIndicator
-                v-if="predictResponse.confidence !== undefined && predictResponse.confidence !== null"
-                :confidence="predictResponse.confidence"
-              />
-            </div>
-
-            <div class="prediction-value">
-              <span class="label">{{ $t('workspace.predictedValue') }}</span>
-              <span class="value">{{ formatPredictionValue(predictResponse.value) }}</span>
-            </div>
-
-            <div
-              v-if="predictResponse.reasoning"
-              class="reasoning-section"
-            >
-              <h5>{{ $t('workspace.aiReasoning') }}</h5>
-              <p>{{ predictResponse.reasoning }}</p>
-            </div>
-
-            <AcceptModifyReject
-              :ai-recommendation="getAIRecommendation()"
-              :confidence="predictResponse.confidence"
-              :reasoning="predictResponse.reasoning"
-              :alternatives="predictResponse.alternatives"
-              :allow-modify="true"
-              @accept="handleAcceptPrediction"
-              @modify="handleModifyPrediction"
-              @reject="handleRejectPrediction"
-            >
-              <!-- eslint-disable-next-line vue/no-unused-vars -->
-              <template #modify-form="{ recommendation }">
-                <el-alert
-                  :title="$t('workspace.adjustPrediction')"
-                  type="info"
-                  :closable="false"
-                  show-icon
-                />
-                <el-form
-                  :model="modifiedPrediction"
-                  label-width="120px"
-                  style="margin-top: 16px;"
-                >
-                  <el-form-item :label="$t('workspace.predictedValueField')">
-                    <el-input-number
-                      v-if="typeof modifiedPrediction.value === 'number'"
-                      v-model="modifiedPrediction.value"
-                      :step="0.01"
-                      :precision="4"
-                    />
-                    <el-input
-                      v-else
-                      v-model="modifiedPrediction.value"
-                    />
-                  </el-form-item>
-                  <el-form-item :label="$t('workspace.confidenceField')">
-                    <el-slider
-                      v-model="modifiedPrediction.confidence"
-                      :min="0"
-                      :max="1"
-                      :step="0.01"
-                      :format-tooltip="(val: number) => `${(val * 100).toFixed(0)}%`"
-                    />
-                  </el-form-item>
-                </el-form>
-
-                <div
-                  v-if="showAdjustedResult"
-                  class="adjusted-result"
-                >
-                  <h5>{{ $t('workspace.adjustedResult') }}</h5>
-                  <pre>{{ JSON.stringify(modifiedPrediction, null, 2) }}</pre>
-                </div>
-              </template>
-            </AcceptModifyReject>
-          </div>
+          <WorkspacePredictTab />
         </el-tab-pane>
 
         <el-tab-pane
@@ -293,7 +166,7 @@
               <h5>{{ $t('workspace.potentialRisks') }}</h5>
               <el-alert
                 v-for="(risk, idx) in dryRunResult.training_plan.potential_risks"
-                :key="idx"
+                :key="`risk-${idx}`"
                 :title="risk"
                 type="warning"
                 :closable="false"
@@ -310,7 +183,7 @@
               <ul>
                 <li
                   v-for="(rec, idx) in dryRunResult.training_plan.recommendations"
-                  :key="idx"
+                  :key="`rec-${idx}`"
                 >
                   {{ rec }}
                 </li>
@@ -451,31 +324,7 @@
           :label="$t('workspace.modelsTab')"
           name="models"
         >
-          <el-table
-            :data="modelList"
-            style="width: 100%"
-          >
-            <el-table-column
-              prop="name"
-              :label="$t('workspace.modelListName')"
-            />
-            <el-table-column
-              prop="model_type"
-              :label="$t('workspace.modelListType')"
-            />
-            <el-table-column
-              prop="version"
-              :label="$t('workspace.modelListVersion')"
-            />
-            <el-table-column
-              prop="input_features"
-              :label="$t('workspace.modelListFeatures')"
-            >
-              <template #default="{ row }">
-                {{ row.input_features?.join(', ') }}
-              </template>
-            </el-table-column>
-          </el-table>
+          <WorkspaceModelsTab />
         </el-tab-pane>
       </el-tabs>
     </el-card>
@@ -493,34 +342,17 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '@/utils/http'
-import ConfidenceIndicator from '@/components/ConfidenceIndicator.vue'
-import AcceptModifyReject from '@/components/AcceptModifyReject.vue'
-import { useSettingsStore } from '@/stores/settings'
+import WorkspacePredictTab from '@/components/workspace/WorkspacePredictTab.vue'
+import WorkspaceModelsTab from '@/components/workspace/WorkspaceModelsTab.vue'
 import { useEventSource } from '@/composables/useEventSource'
 import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 
-const settingsStore = useSettingsStore()
 const { t } = useI18n()
 const activeTab = ref('predict')
-const predicting = ref(false)
 const training = ref(false)
 const dryRunning = ref(false)
 const trainPlanConfirmed = ref(false)
-
-interface PredictResponse {
-  value: string | number | number[]
-  confidence?: number
-  reasoning?: string
-  inference_time: number
-  alternatives?: Array<{
-    plan_id: string
-    parameters: Record<string, unknown>
-    expected_outcome: string
-    confidence: number
-    reasoning: string
-  }>
-}
 
 interface DryRunResult {
   is_dry_run: boolean
@@ -550,22 +382,6 @@ interface ModelInfo {
   input_features?: string[]
 }
 
-interface AuditLogData {
-  ai_module: string
-  ai_recommendation: Record<string, unknown>
-  user_decision: string
-  operation_status: string
-  final_execution?: Record<string, unknown>
-  confidence?: number | null
-  reasoning?: string | null
-}
-
-const predictForm = reactive({
-  modelName: 'CFC-Fast',
-  inputData: '',
-  returnConfidence: true,
-})
-
 const trainForm = reactive({
   modelName: '',
   dataPath: '',
@@ -578,18 +394,9 @@ const trainForm = reactive({
   device: 'auto',
 })
 
-interface PredictionParams {
-  value: string | number
-  confidence: number
-  [key: string]: string | number | boolean | null | undefined
-}
-
-const predictResponse = ref<PredictResponse | null>(null)
 const dryRunResult = ref<DryRunResult | null>(null)
 const trainResult = ref<TrainResult | null>(null)
 const modelList = ref<ModelInfo[]>([])
-const modifiedPrediction = ref<PredictionParams>({ value: '', confidence: 0 })
-const showAdjustedResult = ref(false)
 
 const currentJobId = ref<string | null>(null)
 const sseJobId = ref('')
@@ -713,120 +520,6 @@ const valLossHistory = computed(() => {
   return losses
 })
 
-async function handlePredict() {
-  predicting.value = true
-  predictResponse.value = null
-  try {
-    // 输入验证
-    if (!predictForm.modelName || predictForm.modelName.trim() === '') {
-      ElMessage.error(t('workspace.msgSelectModel'))
-      predicting.value = false
-      return
-    }
-
-    if (!predictForm.inputData || predictForm.inputData.trim() === '') {
-      ElMessage.error(t('workspace.msgInputData'))
-      predicting.value = false
-      return
-    }
-
-    const inputArray = predictForm.inputData
-      .split(',')
-      .map(val => val.trim())
-      .filter(val => val !== '')
-      .map(Number)
-
-    // 检查是否有无效数字
-    const hasInvalidNumbers = inputArray.some(num => isNaN(num))
-    if (hasInvalidNumbers) {
-      ElMessage.error(t('workspace.msgInvalidNumber'))
-      predicting.value = false
-      return
-    }
-
-    if (inputArray.length === 0) {
-      ElMessage.error(t('workspace.msgEmptyInput'))
-      predicting.value = false
-      return
-    }
-
-    // 验证数值范围（可选，根据业务需求调整）
-    const hasOutOfRangeValues = inputArray.some(num => !isFinite(num) || Math.abs(num) > 1e10)
-    if (hasOutOfRangeValues) {
-      ElMessage.error(t('workspace.msgOutOfRange'))
-      predicting.value = false
-      return
-    }
-
-    const res = await http.post(buildApiPath(API_CONFIG.LNN, '/predict'), {
-      model_name: predictForm.modelName,
-      input_data: inputArray,
-      return_confidence: predictForm.returnConfidence,
-    })
-
-    // 响应结构验证
-    if (!res.data || !res.data.data) {
-      throw new Error(t('workspace.errMsgFormat'))
-    }
-
-    const responseData = res.data.data as PredictResponse
-
-    // 验证必要字段
-    if (responseData.value === undefined || responseData.value === null) {
-      throw new Error(t('workspace.errMsgMissingResult'))
-    }
-
-    if (responseData.inference_time === undefined || responseData.inference_time === null) {
-      // 推理时间字段可选，不记录警告
-    }
-
-    predictResponse.value = responseData
-    ElMessage.success(t('workspace.inferenceResult'))
-
-    await recordAuditLog('lnn_predict', predictResponse.value, 'auto_executed', 'success')
-  } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error(errorMsg || t('workspace.msgInferenceFailed'))
-  } finally {
-    predicting.value = false
-  }
-}
-
-function getAIRecommendation(): { [key: string]: string | number | boolean | null | undefined } {
-  if (!predictResponse.value) return {}
-  const val = predictResponse.value.value
-  return {
-    value: Array.isArray(val) ? val[0] : val,
-    confidence: predictResponse.value.confidence,
-    inference_time: predictResponse.value.inference_time,
-  }
-}
-
-function formatPredictionValue(value: string | number | number[]): string {
-  if (typeof value === 'string') return value
-  if (Array.isArray(value)) {
-    return `[${value.map(v => v.toFixed(4)).join(', ')}]`
-  }
-  return value.toFixed(4)
-}
-
-async function handleAcceptPrediction(recommendation: { [key: string]: string | number | boolean | null | undefined }) {
-  await recordAuditLog('lnn_predict', predictResponse.value, 'accept', 'success', recommendation)
-  ElMessage.success(t('settings.accept'))
-}
-
-async function handleModifyPrediction(modifiedParams: { [key: string]: string | number | boolean | null | undefined }) {
-  modifiedPrediction.value = { ...modifiedParams } as PredictionParams
-  showAdjustedResult.value = true
-  await recordAuditLog('lnn_predict', predictResponse.value, 'modify', 'success', modifiedParams)
-  ElMessage.info(t('settings.modify'))
-}
-
-async function handleRejectPrediction(recommendation: { [key: string]: string | number | boolean | null | undefined }) {
-  await recordAuditLog('lnn_predict', predictResponse.value, 'reject', 'cancelled', recommendation)
-  predictResponse.value = null
-}
-
 async function handleDryRun() {
   if (!trainForm.modelName || !trainForm.dataPath) {
     ElMessage.warning(t('common.inputPlaceholder'))
@@ -931,8 +624,8 @@ async function recordAuditLog(
         user_decision: userDecision,
         final_execution: JSON.stringify(finalExecution || {}),
         operation_status: operationStatus,
-        confidence: predictResponse.value?.confidence || dryRunResult.value?.confidence || null,
-        reasoning: predictResponse.value?.reasoning || dryRunResult.value?.reasoning || null,
+        confidence: dryRunResult.value?.confidence || null,
+        reasoning: dryRunResult.value?.reasoning || null,
       },
     })
   } catch (e: unknown) {

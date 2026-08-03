@@ -7,6 +7,7 @@
 - production — 生产管理
 - process_routes — 工艺路线
 - documents  — 制造文档
+- notifications — 通知 / 系统状态 / 活动简报聚合
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from app.api.v1 import (
     documents,
     equipment,
     materials,
+    notifications,
     process_routes,
     production,
     quality,
@@ -31,3 +33,5 @@ def register(app: FastAPI) -> None:
     app.include_router(production.router)
     app.include_router(process_routes.router)
     app.include_router(documents.router)
+    # === 顶栏通知 / 首页系统状态与活动简报（聚合端点） ===
+    app.include_router(notifications.router)

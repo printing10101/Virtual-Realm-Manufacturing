@@ -538,3 +538,25 @@ Virtual-Realm-Manufacturing/
 - **修改与分发**:允许,需保留版权与许可证声明
 - **专利授权**:贡献者自动授予必要的专利使用权
 - **商标使用**:本许可证不授予商标使用权
+
+---
+
+## 架构规则（Architecture Rules · 2026-08-03）
+
+以下规则由 `tests/architecture/` 强制执行（CI 阻断）。数据来源：全量架构审计。
+
+### 依赖方向
+- **API 层不得直接 `import app.database` / `app.models`**（仅允许 `app.models.schemas` 类型导入）。数据访问经 `app.infrastructure/repositories/`。
+- **单例工厂仅从 `app.dependencies` 导入**：禁止 `from app.X import get_*`（白名单仅 `app.dependencies`）。
+
+### 契约定义
+- **契约定义于被消费的领域包**，禁止新建顶层共享目录。范式：`chatter_prediction/_types.py`。
+
+### 代码体积
+- 生产 `.py` ≤800 行；生产 `.vue` ≤800 行。
+
+### 类型与 Lint
+- 禁止新增 `# noqa`（已全局清理）。新增 `# type: ignore` 需 PR 描述说明理由。
+
+### 路由注册
+- 全部通过 `app/router_registry.py` 挂载。`main.py` 禁止路由装饰器。

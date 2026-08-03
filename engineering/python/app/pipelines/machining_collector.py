@@ -419,7 +419,7 @@ class MachiningCollector:
                 if self._aggregator.should_flush():
                     try:
                         await self._flush_once()
-                    except (RuntimeError, OSError, ValueError) as e:  # noqa: BLE001
+                    except (RuntimeError, OSError, ValueError) as e:
                         # flush 失败时记录错误，数据保留在队列中等待重试
                         logger.warning(
                             "Collector[%s] flush failed: %s; records queued for retry",
@@ -465,7 +465,7 @@ class MachiningCollector:
         records: List[MachiningRecordCreate] = []
         pending_samples: List[Sample] = []
         if len(self._aggregator) > 0:
-            pending_samples = list(self._aggregator._buffer)  # noqa: SLF001
+            pending_samples = list(self._aggregator._buffer)
             try:
                 record = aggregate_samples_to_record(
                     samples=pending_samples,
@@ -521,7 +521,7 @@ class MachiningCollector:
             try:
                 written = await _attempt()
                 return int(written or 0)
-            except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:  # noqa: BLE001
+            except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
                 self._stats.write_retries += 1
                 if attempt >= self.config.max_write_retries:
                     logger.error(
@@ -574,7 +574,7 @@ class MachiningCollector:
                 if written is None or written < 0:
                     raise RuntimeError(f"TDengine sink returned {written!r}")
                 return int(written)
-            except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:  # noqa: BLE001
+            except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
                 self._stats.write_retries += 1
                 if attempt >= self.config.max_write_retries:
                     logger.error(

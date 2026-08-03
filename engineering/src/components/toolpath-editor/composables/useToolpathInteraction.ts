@@ -12,7 +12,7 @@ export function useToolpathInteraction(
   canvasRef: Ref<HTMLElement | undefined>,
   camera: Ref<THREE.PerspectiveCamera | null>,
   segmentLines: Ref<Map<string, THREE.Line>>,
-  segments: Ref<EditableToolpathSegment[]>,
+  _segments: Ref<EditableToolpathSegment[]>,
   onHoverChange: (segmentId: string | null) => void,
   onContextMenu: (x: number, y: number, segmentId: string) => void,
   onSegmentClick: (segmentId: string) => void,

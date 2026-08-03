@@ -102,17 +102,16 @@
         </el-radio-group>
       </div>
       <div style="padding: 20px;">
-        <div class="chart-placeholder">
-          <el-icon
-            :size="48"
-            color="var(--text-tertiary)"
-          >
-            <TrendCharts />
-          </el-icon>
-          <p class="chart-placeholder__text">
-            {{ t('productionReport.chartPlaceholder') }}
-          </p>
-        </div>
+        <div
+          ref="chartEl"
+          class="trend-chart"
+          v-loading="statsLoading"
+        />
+        <el-empty
+          v-if="!statsLoading && trendData.length === 0"
+          :description="t('productionReport.emptyTrendData')"
+          :image-size="60"
+        />
       </div>
     </div>
 
@@ -309,8 +308,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, type Component } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Download, TrendCharts, Top, Bottom, Right } from '@element-plus/icons-vue'
+import { Download, Top, Bottom, Right } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
+import * as echarts from 'echarts'
 import http from '@/utils/http'
 import { API_CONFIG } from '@/config/api'
 
@@ -388,6 +388,55 @@ const dashboardData = ref<DashboardData | null>(null)
 const trendData = ref<TrendRow[]>([])
 const productionRecords = ref<ProductionRecord[]>([])
 const workOrders = ref<WorkOrder[]>([])
+
+// ========================= 趋势图表 =========================
+const chartEl = ref<HTMLElement | null>(null)
+let chartInstance: echarts.ECharts | null = null
+
+/** 渲染生产趋势图表（数据来自真实 /production/stats 接口）。 */
+function renderChart() {
+  if (!chartEl.value) return
+  if (!chartInstance) {
+    chartInstance = echarts.init(chartEl.value)
+  }
+  const dates = trendData.value.map((r) => r.date)
+  const planOutputs = trendData.value.map((r) => r.planOutput)
+  const actualOutputs = trendData.value.map((r) => r.actualOutput)
+  const yieldRates = trendData.value.map((r) => parseFloat(r.yieldRate))
+  const utilizations = trendData.value.map((r) => parseFloat(r.utilization))
+
+  const isBar = chartType.value === 'bar'
+  const series = isBar
+    ? [
+        { name: t('productionReport.colPlanOutput'), type: 'bar', barGap: '10%', data: planOutputs, itemStyle: { color: '#909399' } },
+        { name: t('productionReport.colActualOutput'), type: 'bar', data: actualOutputs, itemStyle: { color: '#409eff' } },
+      ]
+    : [
+        { name: t('productionReport.colPlanOutput'), type: 'line', smooth: true, data: planOutputs, itemStyle: { color: '#909399' } },
+        { name: t('productionReport.colActualOutput'), type: 'line', smooth: true, data: actualOutputs, itemStyle: { color: '#409eff' } },
+      ]
+
+  chartInstance.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: [t('productionReport.colPlanOutput'), t('productionReport.colActualOutput'), t('productionReport.colYieldRate'), t('productionReport.colUtilization')] },
+    grid: { left: 50, right: 50, top: 40, bottom: 40 },
+    xAxis: { type: 'category', data: dates },
+    yAxis: [
+      { type: 'value', name: t('productionReport.colQtyShort') },
+      { type: 'value', name: '%', max: 100, splitLine: { show: false } },
+    ],
+    series: [
+      ...series,
+      { name: t('productionReport.colYieldRate'), type: 'line', smooth: true, yAxisIndex: 1, data: yieldRates, itemStyle: { color: '#67c23a' } },
+      { name: t('productionReport.colUtilization'), type: 'line', smooth: true, yAxisIndex: 1, data: utilizations, itemStyle: { color: '#e6a23c' } },
+    ],
+  })
+}
+
+/** 图表自适应容器宽度。 */
+function resizeChart() {
+  chartInstance?.resize()
+}
 
 // ========================= 辅助方法 =========================
 
@@ -559,18 +608,63 @@ function handleTimeRangeChange() {
   fetchAllData()
 }
 
+/** 导出当前趋势数据为 CSV 文件（真实导出，非占位）。 */
 function handleExport() {
-  ElMessage.success(t('productionReport.msgExportWip'))
+  if (trendData.value.length === 0) {
+    ElMessage.warning(t('productionReport.msgExportEmpty'))
+    return
+  }
+  try {
+    const header = [
+      t('productionReport.colDate'),
+      t('productionReport.colPlanOutput'),
+      t('productionReport.colActualOutput'),
+      t('productionReport.colYieldRate'),
+      t('productionReport.colUtilization'),
+      t('productionReport.colAchievementRate'),
+    ]
+    const lines = trendData.value.map((r) =>
+      [r.date, r.planOutput, r.actualOutput, r.yieldRate, r.utilization, r.achievementRate + '%'].join(',')
+    )
+    const csv = '\uFEFF' + [header.join(','), ...lines].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const dateStr = new Date().toISOString().slice(0, 10)
+    a.href = url
+    a.download = `production_report_${dateStr}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    ElMessage.success(t('productionReport.msgExportSuccess'))
+  } catch (e: unknown) {
+    console.warn('[ProductionReport] export failed:', e)
+    ElMessage.error(t('productionReport.msgExportFailed'))
+  }
 }
+
+// 趋势数据或图表类型变化时重新渲染
+watch([trendData, chartType], () => {
+  renderChart()
+})
 
 // ========================= 生命周期 =========================
 onMounted(() => {
   fetchAllData()
+  // 等数据加载后渲染图表
+  setTimeout(() => renderChart(), 0)
+  window.addEventListener('resize', resizeChart)
 })
 
 onUnmounted(() => {
   // 组件卸载时取消所有待处理的请求
   cancelPendingRequests()
+  window.removeEventListener('resize', resizeChart)
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
 })
 </script>
 
@@ -579,6 +673,11 @@ onUnmounted(() => {
   padding: var(--page-padding);
   max-width: var(--content-max-width);
   margin: 0 auto;
+}
+
+.trend-chart {
+  width: 100%;
+  height: 340px;
 }
 
 /* 汇总卡片 */

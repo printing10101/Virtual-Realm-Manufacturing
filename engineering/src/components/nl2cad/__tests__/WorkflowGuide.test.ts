@@ -167,8 +167,6 @@ describe('WorkflowGuide.vue', () => {
     it('nlDescription 为空时下一步按钮应禁用', () => {
       mountComponent()
       // 步骤1面板中的按钮
-      const stepPanel = wrapper.find('.content-panel')
-      const nextBtn = stepPanel.find('el-button-stub[type="primary"]')
       expect(wrapper.vm.nlDescription.trim()).toBe('')
     })
   })

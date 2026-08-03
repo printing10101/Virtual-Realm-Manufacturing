@@ -217,7 +217,7 @@ class GracefulShutdownHandler:
             from app.main import shutdown_event
             await shutdown_event()
             logger.info("FastAPI shutdown_event completed")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("shutdown_event failed: %s", e, exc_info=True)
 
         self._cleanup_all_resources()

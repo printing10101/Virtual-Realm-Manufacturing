@@ -28,28 +28,9 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
-from app.contracts.world_model import (
-    DEFAULT_HORIZON,
-    MAX_HORIZON,
-    MIN_HORIZON,
-    InvalidStateError,
-    ModelNotFoundError,
-    PredictionError,
-    WorldModelError,
-)
 from app.core.response import ErrorCode, error, success
-from app.services.world_model_service import (
-    get_world_model_service,
-)
+from app.dependencies import get_world_model_service
 
-logger = logging.getLogger(__name__)
-
-
-router = APIRouter(
-    prefix="/api/v1/world-model",
-    tags=["WorldModel"],
-    dependencies=[Depends(require_permission("world_model:read"))],
-)
 
 
 # ---------------------------------------------------------------------------

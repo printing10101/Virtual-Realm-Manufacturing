@@ -56,6 +56,10 @@ COPY . .
 ARG BASE_REGISTRY=swr.cn-north-4.myhuaweicloud.com/library
 FROM ${BASE_REGISTRY}/python:3.12-slim AS runtime
 
+# P0-3 修复：支持构建版本号注入（release.yml 通过 build-arg 传入，应用可经环境变量读取）
+ARG BUILD_VERSION=dev
+ENV BUILD_VERSION=${BUILD_VERSION}
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
@@ -98,5 +102,6 @@ EXPOSE 8765
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8765/api/health/ping || exit 1
 
-# 启动命令
+# 启动命令（容器内绑定 0.0.0.0 是必需的，外部端口绑定由 docker-compose 的 ports 映射控制）
+# 外部访问限制在 docker-compose.yml 中通过 127.0.0.1:8765:8765 实现，不会直接对外暴露
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8765", "--workers", "4"]

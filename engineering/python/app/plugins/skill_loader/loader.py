@@ -23,7 +23,7 @@ from app.config import config
 
 from .lifecycle import SkillFileWatcher
 from .models import (
-    PRIORITY_MAP,  # noqa: F401  保留 re-export 以维持向后兼容
+    PRIORITY_MAP,
     Skill,
     SkillLevel,
     SkillMetadata,
@@ -32,14 +32,14 @@ from .models import (
 )
 from .path_safety import PathSafetyMixin
 from .registry import SkillRegistry
-from .sandbox_executor import (  # noqa: F401
+from .sandbox_executor import (
     SecurityError,
     SandboxExecutorMixin,
     _SubprocessSkillExecutor,
 )
 from .skill_compiler import SkillCompilerMixin
 from .skill_discovery import SkillDiscoveryMixin
-from .validator import MarkdownSkillParser  # noqa: F401  保留 re-export
+from .validator import MarkdownSkillParser
 from .version_control import VersionControlMixin
 
 logger = logging.getLogger(__name__)

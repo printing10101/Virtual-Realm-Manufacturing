@@ -143,7 +143,7 @@ class BaseTool(ABC):
                 elapsed_ms=elapsed_ms,
                 metadata=self._build_metadata(call, output),
             )
-        except Exception as e:  # noqa: BLE001 - 工具层容错，不向 ReAct 抛出
+        except Exception as e:
             elapsed_ms = (time.perf_counter() - start) * 1000
             return ToolResult(
                 tool_name=self.name,

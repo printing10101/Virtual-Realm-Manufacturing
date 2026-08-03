@@ -14,16 +14,12 @@ P2-1 修复：本模块原为独立的 ``AgentAuditLog`` 实现（简化版，�
 
 调用方优先使用 ``get_agent_audit_log()`` 工厂函数；模块级
 ``agent_audit_log`` 仍可导入使用（指向同一实例）。
+
+注意：使用延迟导入避免 ``auth → agent`` 循环依赖；所有符号通过
+``__getattr__`` 惰性解析。
 """
 
 from __future__ import annotations
-
-from app.agent.middleware import (
-    AgentAuditEntry,
-    AgentAuditLog,
-    agent_audit_log,
-    get_agent_audit_log,
-)
 
 __all__ = [
     "AgentAuditEntry",
@@ -31,3 +27,22 @@ __all__ = [
     "agent_audit_log",
     "get_agent_audit_log",
 ]
+
+
+def __getattr__(name: str):
+    if name in __all__:
+        from app.agent.middleware import (
+            AgentAuditEntry,
+            AgentAuditLog,
+            agent_audit_log,
+            get_agent_audit_log,
+        )
+
+        _ns = {
+            "AgentAuditEntry": AgentAuditEntry,
+            "AgentAuditLog": AgentAuditLog,
+            "agent_audit_log": agent_audit_log,
+            "get_agent_audit_log": get_agent_audit_log,
+        }
+        return _ns[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

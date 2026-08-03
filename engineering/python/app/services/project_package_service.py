@@ -274,7 +274,7 @@ class ProjectPackageService(BaseSingletonService):
             ProjectPackageError: 导出失败
         """
         # 延迟导入避免循环依赖
-        from app.services.project_sync_service import get_project_sync_service
+        from app.dependencies import get_project_sync_service
 
         if not project_id:
             raise ValueError("project_id 不能为空")
@@ -491,7 +491,7 @@ class ProjectPackageService(BaseSingletonService):
                 )
 
             # 阶段 2：创建目标项目（通过 ProjectSyncService）
-            from app.services.project_sync_service import get_project_sync_service
+            from app.dependencies import get_project_sync_service
 
             sync_service = get_project_sync_service()
             target_name = options.target_project_name or manifest.project.name

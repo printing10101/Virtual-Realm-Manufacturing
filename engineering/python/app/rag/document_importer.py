@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from app.rag.embeddings import get_embedding_service
+from app.dependencies import get_embedding_service
 
 logger = logging.getLogger(__name__)
 

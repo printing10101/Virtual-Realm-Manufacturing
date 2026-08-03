@@ -137,6 +137,33 @@ export const useAgentStore = defineStore('agents', () => {
   }
 
   /**
+   * 部署新 Agent：先创建状态（upsert save），再调用部署接口切换为运行态。
+   * @param agentId - Agent ID（由名称 slug 化）
+   * @param form - { name, type }
+   * @returns 部署后的 Agent 状态 dict
+   */
+  async function deployAgent(
+    agentId: string,
+    form: { name: string; type: string },
+  ): Promise<unknown> {
+    // 1. upsert 创建 Agent 状态（白名单字段：status / metadata）
+    await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/save`), {
+      status: 'idle',
+      metadata: {
+        name: form.name,
+        type: form.type,
+        created_by: 'dashboard-deploy',
+        created_at: new Date().toISOString(),
+      },
+    })
+    // 2. 真实部署：状态切为 busy 并记录部署时间
+    const response = await http.post(
+      buildApiPath(API_CONFIG.AGENTS, `/${agentId}/deploy`),
+    )
+    return response.data.data
+  }
+
+  /**
    * 获取 Agent 详情
    * @param agentId - Agent ID
    * @returns Agent详情或null
@@ -163,8 +190,15 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 检查点数据
    */
   async function saveCheckpoint(agentId: string, data: Record<string, unknown>): Promise<unknown> {
-    const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/checkpoints/save`), data)
-    return response.data.data
+    error.value = null
+    try {
+      const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/checkpoints/save`), data)
+      // 防御后端返回 undefined 导致调用方解构报错
+      return response?.data?.data ?? null
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '保存检查点失败')
+      throw e
+    }
   }
 
   /**
@@ -174,10 +208,16 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 回滚结果
    */
   async function rollbackCheckpoint(agentId: string, checkpointId: string): Promise<unknown> {
-    const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/checkpoints/rollback`), {
-      checkpoint_id: checkpointId,
-    })
-    return response.data.data
+    error.value = null
+    try {
+      const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/checkpoints/rollback`), {
+        checkpoint_id: checkpointId,
+      })
+      return response?.data?.data ?? null
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '回滚检查点失败')
+      throw e
+    }
   }
 
   /**
@@ -187,10 +227,16 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 克隆结果
    */
   async function cloneAgent(sourceId: string, targetId: string): Promise<unknown> {
-    const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${sourceId}/clone`), {
-      target_agent_id: targetId,
-    })
-    return response.data.data
+    error.value = null
+    try {
+      const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${sourceId}/clone`), {
+        target_agent_id: targetId,
+      })
+      return response?.data?.data ?? null
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '克隆 Agent 失败')
+      throw e
+    }
   }
 
   /**
@@ -199,8 +245,14 @@ export const useAgentStore = defineStore('agents', () => {
    * @returns 恢复结果
    */
   async function resumeAgent(agentId: string): Promise<unknown> {
-    const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/resume`))
-    return response.data.data
+    error.value = null
+    try {
+      const response = await http.post(buildApiPath(API_CONFIG.AGENTS, `/${agentId}/resume`))
+      return response?.data?.data ?? null
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '恢复 Agent 失败')
+      throw e
+    }
   }
 
   /**
@@ -208,8 +260,15 @@ export const useAgentStore = defineStore('agents', () => {
    * @param agentId - Agent ID
    */
   async function deleteAgent(agentId: string): Promise<void> {
-    await http.delete(buildApiPath(API_CONFIG.AGENTS, `/${agentId}`))
-    agents.value = agents.value.filter((a) => a.agent_id !== agentId)
+    error.value = null
+    try {
+      await http.delete(buildApiPath(API_CONFIG.AGENTS, `/${agentId}`))
+      // 仅在请求成功后才更新本地列表，避免删除失败却误删本地数据
+      agents.value = agents.value.filter((a) => a.agent_id !== agentId)
+    } catch (e: unknown) {
+      error.value = extractErrorMessage(e, '删除 Agent 失败')
+      throw e
+    }
   }
 
   return {
@@ -228,6 +287,7 @@ export const useAgentStore = defineStore('agents', () => {
     statusLabel,
     fetchAgents,
     fetchAgentDetail,
+    deployAgent,
     saveCheckpoint,
     rollbackCheckpoint,
     cloneAgent,

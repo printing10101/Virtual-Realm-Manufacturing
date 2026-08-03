@@ -87,7 +87,7 @@ class DreamingSchedulerAdapter:
             enable_llm: 是否启用 LLM 反思。True 优先用 LLM，不可用时降级。
         """
         if scheduler is None:
-            from app.heartbeat.heartbeat import get_scheduler
+            from app.dependencies import get_scheduler
 
             scheduler = get_scheduler()
         self._scheduler = scheduler

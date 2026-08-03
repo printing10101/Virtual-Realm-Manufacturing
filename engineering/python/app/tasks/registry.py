@@ -55,17 +55,17 @@ class TaskRegistry(ITaskRegistry):
         # 提前抽取元信息，避免后续查询时多次调用 handler
         try:
             description = handler.description() or ""
-        except Exception as e:  # noqa: BLE001 — 插件代码不可信
+        except Exception as e:
             logger.warning("handler.description() 抛出异常 (task_type=%s): %s", task_type, e)
             description = ""
         try:
             input_schema = handler.input_schema() or {}
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("handler.input_schema() 抛出异常 (task_type=%s): %s", task_type, e)
             input_schema = {}
         try:
             output_schema = handler.output_schema() or {}
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("handler.output_schema() 抛出异常 (task_type=%s): %s", task_type, e)
             output_schema = {}
 

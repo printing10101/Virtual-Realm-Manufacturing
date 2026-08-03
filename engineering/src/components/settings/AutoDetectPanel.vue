@@ -166,7 +166,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
-import { Aim, Search, Download } from '@element-plus/icons-vue'
+import { Search, Download } from '@element-plus/icons-vue'
 import { useLLMProvidersStore } from '@/stores/llmProviders'
 import { PROVIDER_TYPE_META } from '@/api/llmProviders'
 import type { ProviderType } from '@/types/llmProvider'

@@ -215,11 +215,12 @@
               width="80"
               align="center"
             >
-              <template #default>
+              <template #default="{ row }">
                 <el-button
                   type="primary"
                   text
                   size="small"
+                  @click="handleViewOrderDetail(row as WorkOrder)"
                 >
                   {{ t('home.btnDetail') }}
                 </el-button>
@@ -260,10 +261,9 @@
             {{ t('home.msgNoAlerts') }}
           </div>
           <template v-else>
-            <!-- 动态列表，alert 无业务唯一 id，index 作为 key 可接受 -->
             <div
-              v-for="(alert, index) in alerts"
-              :key="index"
+              v-for="alert in alerts"
+              :key="alert.time + alert.message"
               class="alert-item"
             >
               <span
@@ -344,11 +344,10 @@ interface WorkOrder {
 // ---------------------------------------------------------------------------
 // Computed — 使用 Store 数据
 // ---------------------------------------------------------------------------
-const displayAgents = computed(() => agentStore.agents)
 
 const displayTasks = computed(() => tasksStore.tasks)
 
-/** 将 tasksStore 数据映射为工单表格格式 */
+/** 将 tasksStore 数据映射为工单表格格式，并按 activeRange 时间范围过滤 */
 const displayWorkOrders = computed<WorkOrder[]>(() => {
   const tasks = displayTasks.value
 
@@ -361,15 +360,33 @@ const displayWorkOrders = computed<WorkOrder[]>(() => {
     cancelled: t('home.statusCancelled'),
   }
 
-  return tasks.map((task) => ({
-    orderNo: task.job_id,
-    productName: (task.params?.product as string) || task.task_type,
-    process: (task.params?.process as string) || task.task_type,
-    progress: task.progress ?? 0,
-    status: task.status,
-    statusLabel: statusMap[task.status] || task.status,
-  }))
+  // 按时间范围过滤（today / week / month），数据来自任务 created_at
+  const nowMs = Date.now()
+  const rangeMs = activeRange.value === 'today' ? 24 * 3600 * 1000
+    : activeRange.value === 'week' ? 7 * 24 * 3600 * 1000
+      : 30 * 24 * 3600 * 1000
+  const inRange = (createdAt?: string) => {
+    if (!createdAt) return true
+    const ts = new Date(createdAt).getTime()
+    return Number.isFinite(ts) && nowMs - ts <= rangeMs
+  }
+
+  return tasks
+    .filter((task) => inRange(task.created_at))
+    .map((task) => ({
+      orderNo: task.job_id,
+      productName: (task.params?.product as string) || task.task_type,
+      process: (task.params?.process as string) || task.task_type,
+      progress: task.progress ?? 0,
+      status: task.status,
+      statusLabel: statusMap[task.status] || task.status,
+    }))
 })
+
+/** 查看工单详情：跳转至生产报表页查看完整工单列表。 */
+function handleViewOrderDetail(row: WorkOrder) {
+  router.push({ path: '/production-report', query: { order: row.orderNo } })
+}
 
 // ---------------------------------------------------------------------------
 // Greeting & Clock
@@ -394,21 +411,33 @@ interface ProductionDashboard {
 const productionData = ref<ProductionDashboard | null>(null)
 const productionLoading = ref(false)
 const productionError = ref(false)
+/** 设备稼动率（%），来自生产按天统计接口最新一天的值 */
+const productionUtilization = ref<number | null>(null)
 
 onMounted(async () => {
   // 时钟
   timer = setInterval(() => { now.value = new Date() }, 1000)
 
-  // 并行请求 4 个独立数据源，减少总等待时间
+  // 并行请求 5 个独立数据源，减少总等待时间
   alertsLoading.value = true
   productionLoading.value = true
 
-  const [agentsResult, tasksResult, alertsResult, dashboardResult] = await Promise.allSettled([
+  const [_agentsResult, _tasksResult, alertsResult, dashboardResult, statsResult] = await Promise.allSettled([
     agentStore.fetchAgents(),
     tasksStore.fetchTasks(),
     http.get(API_CONFIG.EQUIPMENT + '/alarms/'),
     http.get(API_CONFIG.PRODUCTION + '/dashboard'),
+    http.get(API_CONFIG.PRODUCTION + '/stats', { params: { days: 1 } }),
   ])
+
+  // 设备稼动率：取按天统计最新一条的 utilization（真实数据）
+  if (statsResult.status === 'fulfilled') {
+    const list = statsResult.value.data?.data ?? []
+    if (Array.isArray(list) && list.length > 0) {
+      const latest = list[list.length - 1]
+      productionUtilization.value = typeof latest?.utilization === 'number' ? latest.utilization : null
+    }
+  }
 
   // 处理告警数据
   try {
@@ -528,10 +557,12 @@ const kpiCards = computed<KpiCard[]>(() => {
       ? t('home.loadingText')
       : '--'
 
-  // 设备稼动率 — 暂无独立 API，显示加载中或暂无数据
-  const utilizationValue = productionLoading.value
-    ? t('home.loadingText')
-    : '--'
+  // 设备稼动率 — 来自 /production/stats 按天统计的真实利用率
+  const utilizationValue = productionUtilization.value !== null
+    ? productionUtilization.value.toFixed(1) + '%'
+    : productionLoading.value
+      ? t('home.loadingText')
+      : '--'
 
   // 在制工单：running + pending
   const activeOrders = tasks.filter(

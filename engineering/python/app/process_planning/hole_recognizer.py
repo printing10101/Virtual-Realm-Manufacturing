@@ -299,7 +299,7 @@ class HoleFeatureRecognizer:
             f for f in raw_features
             if f.get("geometric_type") == "cylinder"
             and f.get("type") in ("through_hole", "inner_bore", "counterbore",
-                                  "center_hole", "blind_hole")  # noqa: E127
+                                  "center_hole", "blind_hole")
         ]
         # 合并 features 中的孔到 raw_holes
         for hf in hole_features:

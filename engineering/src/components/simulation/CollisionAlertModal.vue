@@ -46,12 +46,6 @@ const severityTagType = (severity: 'warning' | 'critical'): 'danger' | 'warning'
   return severity === 'critical' ? 'danger' : 'warning'
 }
 
-const severityBorderColor = (severity: 'warning' | 'critical'): string => {
-  return severity === 'critical'
-    ? 'var(--state-error)'
-    : 'var(--state-warning)'
-}
-
 const handleClose = () => {
   emit('update:visible', false)
 }

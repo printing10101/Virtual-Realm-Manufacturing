@@ -10,31 +10,5 @@
 """
 from __future__ import annotations
 
-from app.services.project_sync_service._exceptions import (
-    GitOperationError,
-    GitUnavailableError,
-    InvalidProjectStateError,
-    ProjectAlreadyExistsError,
-    ProjectNotFoundError,
-    ProjectSyncError,
-    ResourceRefAlreadyExistsError,
-    ResourceRefNotFoundError,
-)
-from app.services.project_sync_service.service import (
-    ProjectSyncService,
-    get_project_sync_service,
-)
+from app.dependencies import get_project_sync_service
 
-__all__ = [
-    "ProjectSyncService",
-    "get_project_sync_service",
-    # 异常类
-    "ProjectSyncError",
-    "ProjectNotFoundError",
-    "ProjectAlreadyExistsError",
-    "GitUnavailableError",
-    "GitOperationError",
-    "ResourceRefNotFoundError",
-    "ResourceRefAlreadyExistsError",
-    "InvalidProjectStateError",
-]

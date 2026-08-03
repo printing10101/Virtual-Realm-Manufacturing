@@ -1,4 +1,4 @@
-﻿"""规则灰度发布管理器（Progressive Publisher）。
+"""规则灰度发布管理器（Progressive Publisher）。
 
 对应 Anthropic Dreaming 的 "Rules are rolled out progressively (shadow → canary → full)"：
     - 通过沙箱验证的规则不直接全量应用，而是按 1% → 10% → 50% → 100% 四级灰度发布

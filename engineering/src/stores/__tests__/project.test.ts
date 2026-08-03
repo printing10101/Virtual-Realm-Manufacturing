@@ -76,7 +76,7 @@ describe('useProjectStore', () => {
         manifest: {
           ...store.manifest,
           metadata: { ...store.manifest.metadata, name: '测试工程' },
-        },
+        } as never,
       })
       expect(store.projectName).toBe('测试工程')
     })
@@ -91,7 +91,7 @@ describe('useProjectStore', () => {
             { id: 'r2', name: 'b' },
             { id: 'r3', name: 'c' },
           ] as never,
-        },
+        } as never,
       })
       expect(store.resourceCount).toBe(3)
     })
@@ -498,7 +498,7 @@ describe('useProjectStore', () => {
         manifest: {
           ...store.manifest,
           metadata: { ...store.manifest.metadata, name: 'modified' },
-        },
+        } as never,
       })
       store.resetProject()
       expect(store.projectId).toBe('')

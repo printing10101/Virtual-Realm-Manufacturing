@@ -175,7 +175,7 @@ def _resolve_upstream_calibrated(
 
         return bool(upstream.calibrated), source_feature_extraction_task_id
 
-    except Exception as e:  # noqa: BLE001 - 上游 store 异常不应阻塞本模块
+    except Exception as e:
         safe = safe_error_message(
             e, context="parametric_geometry.resolve_upstream_calibrated"
         )

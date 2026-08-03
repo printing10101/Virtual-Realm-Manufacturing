@@ -12,8 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
-from app.budget.budget import get_budget_manager
-from app.heartbeat.heartbeat import get_scheduler, ScheduledTask, ScheduleStatus
+from app.dependencies import get_budget_manager
+from app.dependencies import get_scheduler
+from app.heartbeat.heartbeat import ScheduledTask, ScheduleStatus
 from app.tasks.execution import get_execution_engine
 
 logger = logging.getLogger(__name__)
@@ -123,7 +124,7 @@ async def create_scheduled_task(request: CreateScheduledTaskRequest):
 @router.get("/tasks/{task_id}", response_model=TaskResponse)
 async def get_scheduled_task(task_id: str):
     """获取调度任务详情"""
-    from app.heartbeat.heartbeat import get_scheduler
+    from app.dependencies import get_scheduler
 
     scheduler = get_scheduler()
     task = scheduler.wakeup_queue.get_task(task_id)
@@ -152,7 +153,8 @@ async def list_scheduled_tasks(
     agent_id: Optional[str] = None, status: Optional[str] = None
 ):
     """列出所有调度任务"""
-    from app.heartbeat.heartbeat import get_scheduler, ScheduleStatus
+    from app.dependencies import get_scheduler
+    from app.heartbeat.heartbeat import ScheduleStatus
 
     scheduler = get_scheduler()
 
@@ -180,7 +182,7 @@ async def list_scheduled_tasks(
 @router.post("/tasks/{task_id}/trigger", dependencies=[Depends(require_permission("heartbeat:write"))])
 async def trigger_task_now(task_id: str):
     """立即触发任务执行"""
-    from app.heartbeat.heartbeat import get_scheduler
+    from app.dependencies import get_scheduler
 
     scheduler = get_scheduler()
 
@@ -209,7 +211,7 @@ async def pause_task(task_id: str):
 @router.post("/tasks/{task_id}/resume", dependencies=[Depends(require_permission("heartbeat:write"))])
 async def resume_task(task_id: str):
     """恢复任务"""
-    from app.heartbeat.heartbeat import get_scheduler
+    from app.dependencies import get_scheduler
 
     scheduler = get_scheduler()
 
@@ -237,7 +239,7 @@ async def delete_task(task_id: str):
 @router.get("/tasks/{task_id}/history")
 async def get_task_history(task_id: str, limit: int = Query(50, ge=1, le=100)):
     """获取任务执行历史"""
-    from app.heartbeat.heartbeat import get_scheduler
+    from app.dependencies import get_scheduler
 
     scheduler = get_scheduler()
     task = scheduler.wakeup_queue.get_task(task_id)
@@ -253,7 +255,7 @@ async def get_task_history(task_id: str, limit: int = Query(50, ge=1, le=100)):
 @router.get("/budget/{agent_id}", response_model=BudgetCheckResponse)
 async def check_budget(agent_id: str):
     """检查代理预算状态"""
-    from app.budget.budget import get_budget_manager
+    from app.dependencies import get_budget_manager
 
     budget_manager = get_budget_manager()
     result = budget_manager.check_budget(agent_id)

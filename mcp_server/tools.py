@@ -16,6 +16,7 @@ import hmac
 import json
 import logging
 import os
+import re as _re
 import secrets
 from typing import Any
 
@@ -27,6 +28,63 @@ AGENT_TOKEN: str = os.environ.get("LINGJING_AGENT_TOKEN", "")
 BASE_URL: str = os.environ.get("LINGJING_API_URL", "http://localhost:8765")
 
 _DEFAULT_TIMEOUT = 30.0
+_USER_AGENT = "lingjing-mcp/1.0"
+
+_ALLOWED_MODEL_NAME_PATTERN = _re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$")
+
+# 输入长度限制，防止 DoS
+_MAX_INPUT_SIZE = 100_000  # predict() 输入的浮点数列表最大长度
+_MAX_DATA_PATH_LEN = 1024  # train() 的 data_path 最大字符数
+_MAX_MODEL_NAME_LEN = 128  # 模型名称最大字符数
+_MAX_JOB_ID_LEN = 256  # job_id 最大字符数
+
+
+def _sanitize_model_name(name: str) -> str:
+    """校验并清理模型名称，防止路径遍历和注入。"""
+    if not name or len(name) > _MAX_MODEL_NAME_LEN:
+        raise ValueError(f"模型名称不能为空且最长 {_MAX_MODEL_NAME_LEN} 字符")
+    if ".." in name or "/" in name or "\\" in name:
+        raise ValueError(f"模型名称包含非法字符: {name!r}")
+    if not _ALLOWED_MODEL_NAME_PATTERN.match(name):
+        raise ValueError(f"模型名称格式无效: {name!r}")
+    return name
+
+
+def _sanitize_job_id(job_id: str) -> str:
+    """校验 job_id 格式。"""
+    if not job_id or len(job_id) > _MAX_JOB_ID_LEN:
+        raise ValueError(f"job_id 不能为空且最长 {_MAX_JOB_ID_LEN} 字符")
+    if not _ALLOWED_MODEL_NAME_PATTERN.match(job_id):
+        raise ValueError(f"job_id 格式无效: {job_id!r}")
+    return job_id
+
+
+def _sanitize_data_path(path: str) -> str:
+    """校验 data_path，防止路径遍历。"""
+    if not path or len(path) > _MAX_DATA_PATH_LEN:
+        raise ValueError(f"data_path 不能为空且最长 {_MAX_DATA_PATH_LEN} 字符")
+    if ".." in path:
+        raise ValueError(f"data_path 包含非法路径遍历字符: {path!r}")
+    return path
+
+
+def _validate_predict_input(input_data: list[float]) -> list[float]:
+    """校验 predict() 输入数据的尺寸和值域。"""
+    if not input_data:
+        raise ValueError("input_data 不能为空")
+    if len(input_data) > _MAX_INPUT_SIZE:
+        raise ValueError(
+            f"input_data 长度 {len(input_data)} 超过最大限制 {_MAX_INPUT_SIZE}"
+        )
+    # 检查 NaN/Inf
+    import math
+
+    for i, v in enumerate(input_data):
+        if math.isnan(v):
+            raise ValueError(f"input_data[{i}] = NaN")
+        if math.isinf(v):
+            raise ValueError(f"input_data[{i}] = Inf")
+    return input_data
 _USER_AGENT = "lingjing-mcp/1.0"
 
 # 安全修复：启动时校验 AGENT_TOKEN 强度，避免空 token 导致认证失效。
@@ -81,11 +139,6 @@ def _headers() -> dict[str, str]:
     return h
 
 
-def _constant_time_eq(a: str, b: str) -> bool:
-    """常数时间字符串比较，防止时序攻击。"""
-    return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
-
-
 def _generate_idempotency_key() -> str:
     import uuid
 
@@ -122,6 +175,7 @@ async def list_models() -> dict[str, Any]:
 
 
 async def get_model_info(name: str) -> dict[str, Any]:
+    name = _sanitize_model_name(name)
     async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
         resp = await client.get(
             f"{BASE_URL}/api/agent/v1/models/{name}/info", headers=_headers()
@@ -133,6 +187,8 @@ async def get_model_info(name: str) -> dict[str, Any]:
 async def predict(
     model_name: str, input_data: list[float], return_confidence: bool = False
 ) -> dict[str, Any]:
+    model_name = _sanitize_model_name(model_name)
+    input_data = _validate_predict_input(input_data)
     payload = {
         "model_name": model_name,
         "input_data": input_data,
@@ -157,6 +213,8 @@ async def train(
     optimizer: str = "adam",
     device: str = "auto",
 ) -> dict[str, Any]:
+    model_name = _sanitize_model_name(model_name)
+    data_path = _sanitize_data_path(data_path)
     for param_name, value in [
         ("learning_rate", learning_rate),
         ("epochs", float(epochs)),
@@ -195,6 +253,7 @@ async def train(
 
 
 async def get_train_status(job_id: str) -> dict[str, Any]:
+    job_id = _sanitize_job_id(job_id)
     async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
         resp = await client.get(
             f"{BASE_URL}/api/agent/v1/train/{job_id}", headers=_headers()
@@ -208,6 +267,9 @@ async def wait_for_training(
     poll_interval: float = 2.0,
     timeout: float = 3600.0,
 ) -> dict[str, Any]:
+    job_id = _sanitize_job_id(job_id)
+    # 限制最大超时时间为 24 小时，防止无限制轮询
+    timeout = min(timeout, 86400.0)
     err = _validate_range("poll_interval", poll_interval, (0.5, 60.0))
     if err:
         raise ValueError(err)

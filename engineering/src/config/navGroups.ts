@@ -21,6 +21,19 @@ import {
   ChatDotRound,
   Share,
   Camera,
+  Service,
+  Cpu,
+  Grid,
+  Opportunity,
+  Operation,
+  Aim,
+  Check,
+  Clock,
+  FolderOpened,
+  Connection,
+  Guide,
+  Edit,
+  Document,
 } from '@element-plus/icons-vue'
 
 export interface NavItem {
@@ -58,6 +71,42 @@ export const navGroups: NavGroup[] = [
       { path: '/snapshot-panel', label: '实验快照', icon: Camera },
       { path: '/production-report', label: '生产报表', icon: Reading },
       { path: '/settings', label: '系统设置', icon: Setting },
+    ],
+  },
+  {
+    label: '智能模块',
+    items: [
+      { path: '/world-model', label: '世界模型', icon: Service },
+      { path: '/rl-agent', label: '强化学习', icon: Cpu },
+      { path: '/explainability', label: '可解释性', icon: Grid },
+      { path: '/flywheel-dashboard', label: '数据飞轮', icon: Opportunity },
+      { path: '/nl-modeling', label: '自然语言建模', icon: Guide },
+    ],
+  },
+  {
+    label: '数据与运营',
+    items: [
+      { path: '/cost-dashboard', label: '成本看板', icon: Operation },
+      { path: '/goals', label: '目标对齐', icon: Aim },
+      { path: '/approval-dashboard', label: '审批中心', icon: Check },
+      { path: '/task-history', label: '任务历史', icon: Clock },
+    ],
+  },
+  {
+    label: '市场与工具',
+    items: [
+      { path: '/template-market', label: '模板市场', icon: FolderOpened },
+      { path: '/plugin-market', label: '插件市场', icon: Connection },
+      { path: '/rule-editor', label: '工艺规则', icon: Edit },
+      { path: '/toolpath-editor', label: '刀具路径', icon: Operation },
+      { path: '/plugin-manager', label: '插件管理', icon: FolderOpened },
+      { path: '/plugin-logs', label: '插件日志', icon: Document },
+    ],
+  },
+  {
+    label: '系统与帮助',
+    items: [
+      { path: '/about', label: '关于', icon: Service },
     ],
   },
 ]

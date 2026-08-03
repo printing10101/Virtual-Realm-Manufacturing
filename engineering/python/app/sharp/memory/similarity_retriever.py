@@ -156,7 +156,7 @@ class SimilarityRetriever:
         for record in records:
             try:
                 score = self._compute_similarity(triple, record)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.debug(
                     "Skip malformed trajectory %s: %s",
                     record.verification_id, e,

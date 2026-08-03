@@ -672,7 +672,7 @@ describe('FlywheelDashboard.vue', () => {
         makeDeployment({ deployment_id: 'dep-done', status: 'promoted' }),
         makeDeployment({ deployment_id: 'dep-fail', status: 'failed' }),
       ]
-      const wrapper = mountDashboard()
+      mountDashboard()
       await flushPromises()
       // activeDeployments getter 只返回 observing/deploying
       expect(mockFlywheelStore.activeDeployments.length).toBe(1)
@@ -881,14 +881,14 @@ describe('FlywheelDashboard.vue', () => {
       await flushPromises()
       const refreshBtn = wrapper.find('.page-header__actions button')
       // ElButton stub 的 loading prop 通过 props 传递
-      expect(refreshBtn.props('loading')).toBe(true)
+      expect((refreshBtn as any).props('loading')).toBe(true)
     })
 
     it('anyLoading 为 false 时刷新按钮非 loading 状态', async () => {
       const wrapper = mountDashboard()
       await flushPromises()
       const refreshBtn = wrapper.find('.page-header__actions button')
-      expect(refreshBtn.props('loading')).toBe(false)
+      expect((refreshBtn as any).props('loading')).toBe(false)
     })
   })
 })
