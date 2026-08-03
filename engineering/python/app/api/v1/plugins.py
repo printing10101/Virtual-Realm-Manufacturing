@@ -11,8 +11,9 @@ from app.capability.capability_gating import CapabilityGatekeeper
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
 from app.dependencies import get_plugin_manager
+from app.plugins.plugin_manager import get_dependency_resolver
 from app.plugins.plugin_types import PluginStatus
-from app.plugins.plugin_worker import PluginWorkerManager
+from app.plugins.plugin_worker import PluginWorkerManager, WorkerConfig
 
 logger = logging.getLogger(__name__)
 
