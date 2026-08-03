@@ -11,7 +11,6 @@
 - GET    /api/projects/download/{filename} — 下载工程文件
 """
 
-from __future__ import annotations
 
 import logging
 import os

@@ -19,6 +19,22 @@ from app.dependencies import get_budget_enforcer
 
 from app.budget.models import EnforcementAction, EnforcementResult
 
+# 修复：P1-2 拆分后静态 shim 缺失的 re-export 导入（2026-08-03 安装验证发现）
+from app.budget.enforcer import (
+    BudgetEnforcer,
+    _BudgetEnforcerHolder,
+    _budget_holder,
+    get_budget_enforcer,
+    init_budget_enforcer,
+)
+from app.budget.cost_optimizer import (
+    CostOptimizer,
+    _CostOptimizerHolder,
+    _optimizer_holder,
+    get_cost_optimizer,
+    init_cost_optimizer,
+)
+
 __all__ = [
     # 数据模型
     "EnforcementAction",

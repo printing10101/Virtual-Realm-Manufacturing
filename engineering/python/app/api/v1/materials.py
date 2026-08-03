@@ -3,7 +3,6 @@
 提供制造物料的 CRUD 操作、统计汇总和种子数据初始化。
 """
 
-from __future__ import annotations
 
 import logging
 from typing import Optional

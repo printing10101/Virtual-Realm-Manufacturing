@@ -51,7 +51,7 @@
       "icons/icon.icns"
     ],
     "resources": {
-      "../python/resources": "resources"
+      "../python/desktop_runtime": "desktop_runtime"
     },
     "category": "DeveloperTool",
     "copyright": "Copyright © 2026 灵境制造团队",

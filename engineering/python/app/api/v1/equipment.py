@@ -13,7 +13,6 @@ Endpoints:
     - POST /seed                  Seed initial demo data
 """
 
-from __future__ import annotations
 
 import logging
 from typing import Optional

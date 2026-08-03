@@ -18,14 +18,130 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.auth.dependencies import get_current_user
+from app.api.v1.auth import get_current_user
 from app.auth.permissions import require_permission
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
 from app.utils.utils import get_output_dir
 from app.utils.upload_security import validate_upload
-from app.dependencies import get_rule_db
+from app.database.rule_db import (
+    get_rule_db,
+    ProcessRule,
+    RuleCondition,
+    RuleResult,
+    RuleGroup,
+)
+from app.rules.conflict_detector import detect_conflicts, ConflictReport
+from app.config.limits import DEFAULT_QUERY_LIMIT
 
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/rules", tags=["Process Rules"])
+
+RULE_EXPORT_DIR = get_output_dir("rules")
+
+# ``DEFAULT_QUERY_LIMIT`` 由 ``app.config.limits`` 集中管理，
+# 与 database/rule_db.py / rag/knowledge_base.py 共享同一基准值。
+
+VALID_OPERATORS = {"=", "<", ">", "<=", ">=", "!="}
+VALID_LOGIC_OPERATORS = {"AND", "OR"}
+VALID_STATUSES = {"active", "inactive", "draft"}
+
+# [P0-16] sort_by 白名单：防止 SQL 注入（列名拼接）
+# 与 rule_db.list_rules 的 valid_sort 保持一致
+_ALLOWED_SORT_FIELDS = {
+    "name", "created_at", "updated_at", "priority", "status",
+}
+_ALLOWED_SORT_ORDERS = {"ASC", "DESC"}
+
+
+class ConditionItem(BaseModel):
+    parameter: str
+    operator: str
+    value: str
+    unit: Optional[str] = None
+
+
+class ResultItem(BaseModel):
+    parameter: str
+    operator: str
+    value: str
+    unit: Optional[str] = None
+
+
+class RuleCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+    group_id: Optional[int] = None
+    conditions: List[ConditionItem]
+    logic_operator: str = "AND"
+    result: ResultItem
+    status: str = "active"
+    priority: int = 0
+
+
+class RuleUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    group_id: Optional[int] = None
+    conditions: Optional[List[ConditionItem]] = None
+    logic_operator: Optional[str] = None
+    result: Optional[ResultItem] = None
+    status: Optional[str] = None
+    priority: Optional[int] = None
+
+
+class GroupCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+
+
+class GroupUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+def _validate_rule_data(
+    conditions: List[ConditionItem], result: ResultItem, logic_operator: str
+) -> Optional[str]:
+    if not conditions:
+        return "规则条件不能为空"
+
+    for i, cond in enumerate(conditions):
+        if not cond.parameter:
+            return f"条件{i + 1}的参数名不能为空"
+        if cond.operator not in VALID_OPERATORS:
+            return f"条件{i + 1}的运算符'{cond.operator}'无效，支持: {', '.join(sorted(VALID_OPERATORS))}"
+        if not cond.value:
+            return f"条件{i + 1}的值不能为空"
+
+    if logic_operator not in VALID_LOGIC_OPERATORS:
+        return f"逻辑运算符'{logic_operator}'无效，仅支持 AND 或 OR"
+
+    if not result.parameter:
+        return "结果参数名不能为空"
+    if result.operator not in VALID_OPERATORS:
+        return f"结果运算符'{result.operator}'无效，支持: {', '.join(sorted(VALID_OPERATORS))}"
+    if not result.value:
+        return "结果值不能为空"
+
+    return None
+
+
+def _build_rule_from_request(req: RuleCreateRequest) -> ProcessRule:
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return ProcessRule(
+        name=req.name,
+        description=req.description,
+        group_id=req.group_id,
+        conditions=[RuleCondition(**c.model_dump()) for c in req.conditions],
+        logic_operator=req.logic_operator,
+        result=RuleResult(**req.result.model_dump()),
+        status=req.status,
+        priority=req.priority,
+        created_at=now,
+        updated_at=now,
+    )
 
 
 def _rule_to_dict(rule: ProcessRule) -> dict:

@@ -5,7 +5,6 @@ Provides RESTful interfaces for skill CRUD, hot-reload,
 version management, and skill marketplace operations.
 """
 
-from __future__ import annotations
 
 import logging
 import os

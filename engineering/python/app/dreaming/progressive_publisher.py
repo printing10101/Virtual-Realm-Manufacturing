@@ -51,6 +51,7 @@ from app.dreaming.apply_rules import (
 )
 from app.dreaming.rule_synthesizer import RuleDraft
 from app.dreaming.rule_validator import RuleValidator, ValidationResult
+from datetime import timezone
 
 logger = logging.getLogger(__name__)
 

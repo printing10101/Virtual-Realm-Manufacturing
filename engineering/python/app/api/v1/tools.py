@@ -3,7 +3,6 @@
 提供刀具的 CRUD 操作、磨损跟踪、寿命预测集成和种子数据初始化。
 """
 
-from __future__ import annotations
 
 import logging
 from typing import Optional

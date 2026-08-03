@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import ImageTo3DConfig
+import time
 
 logger = logging.getLogger(__name__)
 

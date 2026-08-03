@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
+from datetime import timezone
+from pathlib import Path
 
+from fastapi import APIRouter, HTTPException
+
+from app.utils.utils import validate_user_path
 from app.auth.dependencies import get_current_user
 from app.config import config
 from app.core.response import success, error, ErrorCode
@@ -19,6 +27,7 @@ from app.simulation.voxel_cutter import (
     DiffResult,
 )
 from app.simulation.toolpath_parser import ToolpathParser, ToolpathSegment
+from app.simulation.schemas import SimulationRequest
 
 logger = logging.getLogger(__name__)
 
@@ -286,4 +295,3 @@ def _default_stock_stl() -> Path:
     box.apply_translation([0, 0, 20])
     box.export(str(default_path), file_type="stl")
     return default_path
-

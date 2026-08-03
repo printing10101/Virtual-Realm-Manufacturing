@@ -31,6 +31,7 @@ from app.ai.llm.router import (
 )
 from app.auth.permissions import require_permission
 from app.core.safe_errors import safe_error_message
+import time
 
 logger = logging.getLogger(__name__)
 

@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from app.knowledge_graph.graph_store import GraphStore
+import time
 
 logger = logging.getLogger(__name__)
 

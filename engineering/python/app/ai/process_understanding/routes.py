@@ -8,7 +8,8 @@ LLM工艺理解与知识问答模块 API 路由
 - GET  /api/process-understanding/health   - 健康检查
 """
 
-from __future__ import annotations
+# 注意：不可加 from __future__ import annotations（@router 装饰器 + 本地 Pydantic 模型参数会触发
+# PydanticUndefinedAnnotation，见运维手册）。2026-08-03 安装验证修复。
 
 import logging
 from typing import Any
@@ -19,6 +20,25 @@ from pydantic import BaseModel, Field
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
 from app.dependencies import get_process_understanding_engine
+
+# 修复：拆分/迁移时缺失的导入（2026-08-03 安装验证发现）
+from .prediction_explainer import PredictionData
+
+logger = logging.getLogger(__name__)
+
+# 修复：迁移/拆分时遗漏的 router 实例化（3 个端点装饰器引用它，缺失导致 NameError——2026-08-03 安装验证发现）
+router = APIRouter()
+
+
+class ExplainRequest(BaseModel):
+    """模型预测结果解释请求（修复：拆分时丢失的类型定义，2026-08-03）"""
+
+    force_pred: float = Field(0.0, description="切削力预测值 (N)")
+    force_conf: float = Field(0.0, description="切削力置信度 (%)")
+    wear_pred: float = Field(0.0, description="刀具磨损预测值 (mm)")
+    wear_conf: float = Field(0.0, description="刀具磨损置信度 (%)")
+    visual_status: str = Field("", description="工件状态描述")
+    anomaly_prob: float = Field(0.0, description="异常概率 (%)")
 
 
 @router.post("/explain", summary="模型预测结果解释")

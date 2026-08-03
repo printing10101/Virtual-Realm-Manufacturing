@@ -381,3 +381,26 @@ data/traces/*.jsonl
 /output/_*.py
 /output/d1_*.py
 /output/check_*.py
+
+# ============================================================
+# 诊断输出 / mypy 缓存（可重新生成，不入库）
+# ============================================================
+engineering/output/
+.mypy_gg_cache/
+mypy_gg*.txt
+
+# ============================================================
+# 嵌入式 Python 运行时构建目录（desktop_runtime，可重新生成）
+# ============================================================
+# 修复：必须用 /python/ 仅匹配仓库根目录（裸 python/ 会误伤 engineering/python 全部新增文件）
+/python/
+/python/desktop_runtime/
+
+# 桌面嵌入式 Python 运行时（构建产物 ~1.8GB，由 scripts/build_desktop_runtime.py 生成）
+/engineering/python/desktop_runtime/
+
+# 后端运行产物（数据库/令牌/探测脚本，不入库）
+/engineering/python/data/*.db
+/engineering/python/data/chroma_db/
+/engineering/python/.lnn_*
+/engineering/python/_probe_*.py

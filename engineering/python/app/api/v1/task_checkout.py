@@ -5,7 +5,6 @@ Endpoints for atomic task checkout, execution lock management,
 task board, and checkout queue processing.
 """
 
-from __future__ import annotations
 
 import logging
 from typing import Any, Optional, Union

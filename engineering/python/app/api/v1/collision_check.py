@@ -3,7 +3,6 @@
 提供G代码和刀路碰撞检测的REST API接口。
 """
 
-from __future__ import annotations
 
 import logging
 from typing import Any

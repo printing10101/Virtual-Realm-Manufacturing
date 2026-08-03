@@ -37,6 +37,28 @@ from pydantic import BaseModel, Field
 from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
 from app.dependencies import get_project_sync_service
+from app.contracts.project_sync import (
+    RESOURCE_TYPES,
+    SYNC_STRATEGIES,
+    parse_resource_uri,
+)
+from app.services.project_sync_service._exceptions import (
+    GitOperationError,
+    GitUnavailableError,
+    InvalidProjectStateError,
+    ProjectAlreadyExistsError,
+    ProjectNotFoundError,
+    ProjectSyncError,
+    ResourceRefAlreadyExistsError,
+    ResourceRefNotFoundError,
+)
+
+logger = logging.getLogger(__name__)
+
+# 骨架修复（2026-08-03 任务B）：原文件缺失 router/logger/域符号导入。
+# 补齐骨架但保持未接入（main/router_registry 未引用本文件）。
+router = APIRouter(prefix="/api/v1/project-sync", tags=["Project Sync"])
+
 
 
 

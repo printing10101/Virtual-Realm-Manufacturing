@@ -48,7 +48,15 @@ ENABLE_QUERY_REWRITE = os.getenv("ENABLE_QUERY_REWRITE", "1") == "1"
 ENABLE_HYDE = os.getenv("ENABLE_HYDE", "0") == "1"
 
 
-from ._retrieval_models import QueryIntent, RetrievalRule, _ResultCache
+# 修复：拆分后 INTENT_KEYWORDS / RETRIEVAL_RULES 迁入 _retrieval_models.py，
+# 此处必须一并导入（本文件 L77/L81/L86 引用，缺失会 ImportError——2026-08-03 安装验证发现）
+from ._retrieval_models import (
+    INTENT_KEYWORDS,
+    RETRIEVAL_RULES,
+    QueryIntent,
+    RetrievalRule,
+    _ResultCache,
+)
 
 class RagRetrievalEngine:
     """RAG 检索规则引擎
@@ -769,3 +777,42 @@ class RagRetrievalEngine:
     def clear_cache(self) -> None:
         """清空检索结果缓存。"""
         self._cache.clear()
+
+# ===========================================================================
+# 以下符号由安装验证（2026-08-03）发现拆分/迁移丢失，从 592aedb 恢复
+# ===========================================================================
+
+RAG_SOURCE_QUERY_TIMEOUT_SEC = float(os.getenv("RAG_SOURCE_QUERY_TIMEOUT_SEC", "15"))
+
+_CLUSTER_TAG_FILTERS: dict[str, dict] = {
+    "material_wear": {"category": "tool_wear"},
+    "cutting_params": {"category": "tool_wear"},
+    "vibration_wear": {"has_vibration": True},
+    "material_compare": {},   # 依赖 source_filters 即可
+    "cross_source": {},       # 跨源检索不额外限制
+    "signal_fusion": {},      # signal_fusion source 已通过 source_filters 过滤
+}
+
+# 查询实体提取模式（历史缺失，2026-08-03 安装验证补齐）：
+# 覆盖中文制造术语词组与英文/数字 token
+_QUERY_ENTITY_PATTERNS: list[re.Pattern] = [
+    re.compile(r"[\u4e00-\u9fff]{2,6}"),
+    re.compile(r"[a-zA-Z][a-zA-Z0-9_-]{1,31}"),
+]
+
+def _extract_query_entities(query: str) -> list[str]:
+    """从查询文本中提取制造领域实体（小写形式）。
+
+    用于在向量检索之外，通过 entity 倒排索引补充精确匹配的 chunk。
+    """
+    if not query or not query.strip():
+        return []
+    found: set[str] = set()
+    for pattern in _QUERY_ENTITY_PATTERNS:
+        for match in pattern.finditer(query):
+            entity = match.group(0).strip().lower()
+            if len(entity) >= 2:
+                found.add(entity)
+    return sorted(found)
+
+

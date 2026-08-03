@@ -4,7 +4,6 @@
 提供文档的 CRUD、分类统计、关键词搜索及演示数据填充功能。
 """
 
-from __future__ import annotations
 
 from typing import Optional
 

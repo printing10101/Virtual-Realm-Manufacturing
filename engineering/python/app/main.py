@@ -46,8 +46,9 @@ from app.core.request_id import get_request_id
 from app.core.logging_config import configure_logging
 from app.utils.utils import get_metrics_collector
 from app.sidecar.sidecar_lifecycle import GracefulShutdownHandler
-from app.dependencies import get_ring_log_buffer
-from app.utils.ring_buffer import BUFFER_TYPES
+# 修复：使用支持 base_dir 参数的 ring_buffer 版本（dependencies 单例版无参，
+# 与 L120 的 base_dir= 调用不匹配——2026-08-03 安装验证发现）
+from app.utils.ring_buffer import BUFFER_TYPES, get_ring_log_buffer
 from app.config import config
 from app.config.limits import LOG_MAX_BYTES
 from app.startup_hooks import (

@@ -1,6 +1,5 @@
 """Template Marketplace API Routes — enhanced with evolution data, trending, subscriptions, export/import."""
 
-from __future__ import annotations
 
 import logging
 import threading
