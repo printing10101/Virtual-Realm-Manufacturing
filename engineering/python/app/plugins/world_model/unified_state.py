@@ -139,7 +139,7 @@ class UnifiedState:
             )
         return cls(
             geometry=GeometryFeatures(
-                bbox_dimensions=tuple(bbox_raw),  # type: ignore[arg-type]
+                bbox_dimensions=tuple(bbox_raw),
                 feature_vector=list(feat_raw),
                 symmetry_score=float(geo["symmetry_score"]),
                 complexity_score=float(geo["complexity_score"]),

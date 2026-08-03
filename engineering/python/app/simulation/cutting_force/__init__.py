@@ -53,8 +53,8 @@ except ImportError:
     CuttingForcePINN = None  # type: ignore[assignment,misc]
     PINNLoss = None  # type: ignore[assignment,misc]
     ResidualBlock = None  # type: ignore[assignment,misc]
-    predict_cutting_force = None  # type: ignore[assignment,misc]
-    predict_cutting_force_batch = None  # type: ignore[assignment,misc]
+    predict_cutting_force = None
+    predict_cutting_force_batch = None
     _HAS_TORCH = False
 
 __all__ = [

@@ -14,13 +14,13 @@ import numpy as np
 # 不再依赖 torch。此处保留 try/except 兼容旧路径，torch 缺失时降级为 None，
 # 训练相关 API 将返回 503 服务不可用。
 try:
-    import torch  # type: ignore
-    from torch.utils.data import DataLoader, TensorDataset  # type: ignore
+    import torch
+    from torch.utils.data import DataLoader, TensorDataset
     _HAS_TORCH = True
 except ImportError:
-    torch = None  # type: ignore
-    DataLoader = None  # type: ignore
-    TensorDataset = None  # type: ignore
+    torch = None
+    DataLoader = None
+    TensorDataset = None
     _HAS_TORCH = False
 
 from app.core.response import ErrorCode, error, success

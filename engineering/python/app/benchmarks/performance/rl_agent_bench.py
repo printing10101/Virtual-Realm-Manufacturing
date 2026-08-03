@@ -442,7 +442,7 @@ class RLAgentPerfBenchmark:
             实际写入的文件路径。
         """
         try:
-            import torch as _torch  # type: ignore
+            import torch as _torch
 
             has_torch = True
             torch_version = _torch.__version__

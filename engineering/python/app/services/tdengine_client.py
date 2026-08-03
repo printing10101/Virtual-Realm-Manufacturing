@@ -123,7 +123,7 @@ class _TdengineHolder:
                 return None
 
             try:
-                import taos  # type: ignore[import-untyped]
+                import taos
 
                 self._connect_attempts += 1
                 client = taos.connect(
@@ -179,7 +179,7 @@ _holder = _TdengineHolder()
 # ---------------------------------------------------------------------------
 
 
-async def _run_sync(func, /, *args, **kwargs):  # type: ignore[no-untyped-def]
+async def _run_sync(func, /, *args, **kwargs):
     """在默认线程池中执行同步函数并返回结果。
 
     用 ``asyncio.to_thread`` 替代过时的 ``run_in_executor`` 写法；

@@ -20,16 +20,16 @@ from app.ai.lnn.core import ModelConfig, ModelType
 # 工程侧推理路径应改为加载 ONNX（见 onnx_predictor.py）。
 # 此处保留 try/except 兼容旧 torch 推理路径，torch 缺失时降级为 None。
 try:
-    from app.ai.lnn.models.base_lnn import BaseLNNModel  # type: ignore
-    from app.ai.lnn.models.cfc_model import CFCModel  # type: ignore
-    from app.ai.lnn.models.ltc_model import LTCModel  # type: ignore
-    from app.ai.lnn.models.hybrid_lnn import HybridLNNModel  # type: ignore
+    from app.ai.lnn.models.base_lnn import BaseLNNModel
+    from app.ai.lnn.models.cfc_model import CFCModel
+    from app.ai.lnn.models.ltc_model import LTCModel
+    from app.ai.lnn.models.hybrid_lnn import HybridLNNModel
     _HAS_TORCH_MODELS = True
 except ImportError:
-    BaseLNNModel = None  # type: ignore
-    CFCModel = None  # type: ignore
-    LTCModel = None  # type: ignore
-    HybridLNNModel = None  # type: ignore
+    BaseLNNModel = None
+    CFCModel = None
+    LTCModel = None
+    HybridLNNModel = None
     _HAS_TORCH_MODELS = False
 
 logger = logging.getLogger(__name__)

@@ -40,7 +40,7 @@ try:
     )
     _HAS_BUSINESS_LOGIC_BENCH = True
 except ImportError:
-    BusinessLogicPerfBenchmark = None  # type: ignore[assignment,misc]
+    BusinessLogicPerfBenchmark = None
     _HAS_BUSINESS_LOGIC_BENCH = False
 from app.benchmarks.performance.concurrency_bench import ConcurrencyPerfBenchmark
 from app.benchmarks.performance.world_model_bench import WorldModelPerfBenchmark

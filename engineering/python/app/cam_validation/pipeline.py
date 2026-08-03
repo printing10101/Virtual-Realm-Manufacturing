@@ -93,7 +93,7 @@ __all__ = [
 # =============================================================================
 
 
-class CamValidationPipeline(  # type: ignore[misc]
+class CamValidationPipeline(
     PreCheckMixin,
     SoftwareCheckMixin,
     MergeReportMixin,

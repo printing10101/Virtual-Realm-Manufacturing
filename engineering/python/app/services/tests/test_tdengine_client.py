@@ -59,7 +59,7 @@ from app.services import tdengine_client
 # ---------------------------------------------------------------------------
 
 
-_HAS_TAOS = importlib.util.find_spec("taos") is not None  # type: ignore[attr-defined]
+_HAS_TAOS = importlib.util.find_spec("taos") is not None
 
 
 def _client_available() -> bool:

@@ -38,9 +38,9 @@ from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Optional
 
 try:
-    import networkx as nx  # type: ignore
+    import networkx as nx
 except ImportError:  # pragma: no cover
-    nx = None  # type: ignore
+    nx = None
 
 from app.contracts.task import (
     Artifact,

@@ -66,7 +66,7 @@ def _ensure_jieba() -> bool:
             return _jieba_available
 
         try:
-            import jieba  # type: ignore
+            import jieba
 
             # 静默加载，避免 jieba 默认的初始化日志污染
             jieba.setLogLevel(20)  # WARNING+
@@ -114,7 +114,7 @@ def tokenize(text: str) -> list[str]:
 
     if _ensure_jieba():
         try:
-            import jieba  # type: ignore
+            import jieba
 
             # cut 返回生成器；lazily 使用 jieba.cut 精确模式
             tokens = [

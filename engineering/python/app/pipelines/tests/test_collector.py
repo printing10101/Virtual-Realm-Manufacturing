@@ -570,7 +570,7 @@ class TestCollectorExceptionIsolation:
             def __init__(self) -> None:
                 super().__init__(samples=[])
 
-            def fetch_sample(self) -> Sample:  # type: ignore[override]
+            def fetch_sample(self) -> Sample:
                 raise ConnectionError("network down")
 
         async def sink(recs: Sequence[MachiningRecordCreate]) -> int:

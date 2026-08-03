@@ -199,7 +199,7 @@ class TestPydanticSerialization:
     def test_validate_assignment(self) -> None:
         record = MachiningRecordCreate(**self._valid_payload())
         with pytest.raises(ValidationError):
-            record.spindle_speed = -1.0  # type: ignore[misc]
+            record.spindle_speed = -1.0
 
 
 # ======================================================================

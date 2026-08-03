@@ -516,7 +516,7 @@ class ClosedLoopPerfBenchmark:
     def save_results(self, output_path: str) -> str:
         """保存基准结果为 JSON 文件."""
         try:
-            import torch as _torch  # type: ignore
+            import torch as _torch
 
             has_torch = True
             torch_version = _torch.__version__

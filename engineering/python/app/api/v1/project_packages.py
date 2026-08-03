@@ -44,7 +44,33 @@ from app.auth.permissions import require_permission
 from app.config import config
 from app.config.limits import STREAM_CHUNK_SIZE
 from app.core.response import ErrorCode, error, success
+from app.contracts.project_package import (
+    ContentPolicy,
+    ConflictStrategy,
+    ExportOptions,
+    ImportOptions,
+    PackageFormatVersion,
+    PackageTaskStatus,
+)
 from app.dependencies import get_project_package_service
+from app.services.project_package_service import (
+    ImportRecordNotFoundError,
+    PackageChecksumError,
+    PackageConflictError,
+    PackageFormatError,
+    PackageNotFoundError,
+    ProjectNotFoundError,
+    ProjectPackageError,
+)
+
+logger = logging.getLogger(__name__)
+
+# 骨架修复（2026-08-03 任务B）：原文件缺失 router/logger/域符号导入，
+# mypy 报 49 条 name-defined。补齐骨架但保持未接入（main/router_registry 未引用本文件）。
+router = APIRouter(
+    prefix="/api/v1/project-packages",
+    tags=["Project Packages (Import/Export)"],
+)
 
 
 

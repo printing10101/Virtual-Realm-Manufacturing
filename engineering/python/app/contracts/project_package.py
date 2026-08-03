@@ -522,10 +522,10 @@ class PackageManifest:
             exported_at=str(data["exported_at"]),
             exported_by=str(data["exported_by"]),
             source_machine=SourceMachineInfo.from_dict(
-                data["source_machine"]  # type: ignore[arg-type]
+                data["source_machine"]
             ),
             project=PackageProjectInfo.from_dict(
-                data["project"]  # type: ignore[arg-type]
+                data["project"]
             ),
             resources=tuple(
                 PackageResourceEntry.from_dict(item) for item in resources_data

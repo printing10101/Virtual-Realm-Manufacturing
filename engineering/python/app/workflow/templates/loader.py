@@ -26,7 +26,7 @@ from typing import Any, Optional
 try:
     import yaml  # type: ignore
 except ImportError:  # pragma: no cover
-    yaml = None  # type: ignore
+    yaml = None
 
 from app.contracts.task import (
     Artifact,
