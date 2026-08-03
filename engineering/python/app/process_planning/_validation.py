@@ -192,7 +192,9 @@ def build_dry_run_preview(
             "machining_method": op.machining_method,
         }
         preview_result["tool_path_summary"].append(path_info)
-        total_travel += path_info["travel_distance"]
+        travel_dist = path_info["travel_distance"]
+        if isinstance(travel_dist, (int, float)):
+            total_travel += float(travel_dist)
         current_z = target_z
 
     # 2. 时间估算
@@ -281,8 +283,8 @@ def validate_gcode(gcode: str) -> dict:
 
     对G代码进行全面验证，检查常见错误。
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     if not gcode or not gcode.strip():
         errors.append("G代码为空")
