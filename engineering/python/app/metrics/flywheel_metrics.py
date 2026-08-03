@@ -223,7 +223,7 @@ class FlywheelMetricsCollector:
 
         try:
             snapshots = await self._snapshot_store.list()
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("列出快照失败: %s", e, exc_info=True)
             return []
 
@@ -367,7 +367,7 @@ class FlywheelMetricsCollector:
                 self._feedback_dataset_id
             )
             return int(version.row_count)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning(
                 "采集 data_volume 失败（dataset_id=%s）: %s",
                 self._feedback_dataset_id,
@@ -458,7 +458,7 @@ class FlywheelMetricsCollector:
             return None
         try:
             snapshots = await self._snapshot_store.list()
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("列出快照失败: %s", e)
             return None
         if not snapshots:
@@ -481,7 +481,7 @@ class FlywheelMetricsCollector:
             async for batch in self._dataset_store.read(self._feedback_dataset_id):
                 records.extend(batch)
             return records
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning(
                 "读取 feedback_records 失败（dataset_id=%s）: %s",
                 self._feedback_dataset_id,

@@ -288,7 +288,7 @@ def load_class_from_file(
     finally:
         # 不主动移除 sys.path 中的 plugin_dir，避免破坏插件后续相对导入
         # 重复加载同名插件时通过 sys.modules 清理已处理
-        if path_added and False:  # noqa: F841  保留语义占位
+        if path_added and False:
             pass
 
 

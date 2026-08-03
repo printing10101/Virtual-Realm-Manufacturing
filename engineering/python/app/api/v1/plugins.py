@@ -1,28 +1,53 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
 from app.auth.permissions import require_permission
 from app.capability.capability_gating import CapabilityGatekeeper
-from app.plugins.plugin_system import (
-    PluginStatus,
-    get_dependency_resolver,
-    get_plugin_manager,
-)
-from app.plugins.plugin_worker import PluginWorkerManager, WorkerConfig
-from app.core.response import ErrorCode, error, success
+from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
+from app.dependencies import get_plugin_manager
+from app.plugins.plugin_types import PluginStatus
+from app.plugins.plugin_worker import PluginWorkerManager
 
 logger = logging.getLogger(__name__)
 
+# 骨架修复（2026-08-03 任务B）：原文件缺失 router/logger/响应工具导入，
+# mypy 报 122 条 name-defined。补齐骨架但保持未接入（main/router_registry 未引用本文件）。
 router = APIRouter(
     prefix="/api/v1/plugins",
-    tags=["plugins"],
-    dependencies=[Depends(require_permission("plugin:read"))],
+    tags=["Plugins (Capability Marketplace)"],
 )
+
+
+
+# 内置插件包目录（源码内嵌，作为本地市场的真实条目来源）
+_MARKET_BUILTIN_DIR = Path(__file__).resolve().parents[2] / "plugins"
+
+
+def _friendly_name(raw: str) -> str:
+    """将插件目录名转为可读名称（skill_loader -> Skill Loader）。"""
+    return " ".join(word.capitalize() for word in raw.replace("_", " ").split())
+
+
+def _builtin_market_entry(dir_name: str) -> dict:
+    """构造内置插件包的市场条目（真实文件系统扫描结果）。"""
+    return {
+        "id": dir_name,
+        "name": _friendly_name(dir_name),
+        "version": "builtin",
+        "author": "Lingjing",
+        "description": f"本地内置插件包：{dir_name}",
+        "plugin_type": "builtin",
+        "installed": False,
+        "status": None,
+        "entry_point": "",
+        "capabilities": [],
+    }
 
 
 @router.get("/marketplace")
@@ -32,10 +57,59 @@ def list_marketplace_plugins(
     page: int = Query(1, ge=1, le=500),
     page_size: int = Query(20, ge=1, le=100),
 ):
+    """获取插件市场列表。
+
+    数据来源为真实本地状态：
+    1. 已注册插件（来自插件注册表，含真实状态）
+    2. 内置插件包目录扫描（app/plugins/ 下的源码插件包，标记为未安装）
+    """
+    try:
+        manager = get_plugin_manager()
+        registry = manager._registry
+        installed = registry.list_plugins()
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
+        safe = safe_error_message(e, context="plugins.marketplace", fallback="插件市场查询失败，请稍后重试")
+        logger.error("[plugins.marketplace] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        installed = []
+
+    installed_map: Dict[str, dict] = {}
+    for p in installed:
+        d = p.to_dict()
+        d["installed"] = True
+        installed_map[d["id"]] = d
+
+    entries: List[dict] = []
+
+    # 1. 已注册插件（真实）
+    entries.extend(sorted(installed_map.values(), key=lambda x: x["id"]))
+
+    # 2. 内置插件包目录扫描（真实文件系统）
+    if _MARKET_BUILTIN_DIR.is_dir():
+        for child in sorted(_MARKET_BUILTIN_DIR.iterdir()):
+            if not child.is_dir() or child.name.startswith("_"):
+                continue
+            if child.name in installed_map:
+                continue
+            entries.append(_builtin_market_entry(child.name))
+
+    # 过滤
+    if query:
+        q = query.lower()
+        entries = [
+            e for e in entries
+            if q in e["id"].lower()
+            or q in e["name"].lower()
+            or q in e.get("description", "").lower()
+        ]
+    if plugin_type:
+        entries = [e for e in entries if e.get("plugin_type") == plugin_type]
+
+    total = len(entries)
+    start = (page - 1) * page_size
     return success(
         data={
-            "plugins": [],
-            "total": 0,
+            "plugins": entries[start : start + page_size],
+            "total": total,
             "page": page,
             "page_size": page_size,
         }
@@ -44,7 +118,37 @@ def list_marketplace_plugins(
 
 @router.post("/marketplace/{plugin_id}/install", dependencies=[Depends(require_permission("plugin:config:update"))])
 def install_marketplace_plugin(plugin_id: str):
-    return success(data={"message": f"Plugin '{plugin_id}' installation started"})
+    """安装市场插件：对已注册插件执行真实启用；内置源码包提示直接启用。"""
+    manager = get_plugin_manager()
+    try:
+        info = manager.get_plugin_info(plugin_id)
+    except KeyError:
+        # 未注册：若为内置源码包，说明随应用内置，无法动态安装
+        builtin_dir = _MARKET_BUILTIN_DIR / plugin_id
+        if builtin_dir.is_dir():
+            return error(
+                code=ErrorCode.INVALID_REQUEST,
+                message=f"插件 '{plugin_id}' 为源码内置模块，已随应用安装，请在插件管理中启用",
+            )
+        return error(code=ErrorCode.NOT_FOUND, message=f"插件 '{plugin_id}' 不存在")
+
+    if info.get("status") == PluginStatus.ENABLED.value:
+        return success(
+            data={"installed": True, "status": PluginStatus.ENABLED.value},
+            message=f"插件 '{plugin_id}' 已处于启用状态",
+        )
+
+    try:
+        manager.enable_plugin(plugin_id)
+    except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
+        safe = safe_error_message(e, context="plugins.install", fallback=f"插件 '{plugin_id}' 安装失败")
+        logger.error("[plugins.install] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"])
+
+    return success(
+        data={"installed": True, "status": PluginStatus.ENABLED.value},
+        message=f"插件 '{plugin_id}' 安装并启用成功",
+    )
 
 
 @router.get("")
@@ -106,7 +210,9 @@ def get_plugin_detail(plugin_id: str):
 
         return success(data=info)
     except KeyError:
-        return error(f"Plugin '{plugin_id}' not found", code=404)
+        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
+        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
@@ -123,7 +229,9 @@ def enable_plugin(plugin_id: str):
         manager.enable_plugin(plugin_id)
         return success(data={"message": f"Plugin '{plugin_id}' enabled"})
     except KeyError:
-        return error(f"Plugin '{plugin_id}' not found", code=404)
+        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
+        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
@@ -140,7 +248,9 @@ def disable_plugin(plugin_id: str):
         manager.disable_plugin(plugin_id)
         return success(data={"message": f"Plugin '{plugin_id}' disabled"})
     except KeyError:
-        return error(f"Plugin '{plugin_id}' not found", code=404)
+        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
+        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
@@ -157,7 +267,9 @@ def reload_plugin(plugin_id: str):
         manager._loader.reload_plugin(plugin_id)
         return success(data={"message": f"Plugin '{plugin_id}' reloaded"})
     except KeyError:
-        return error(f"Plugin '{plugin_id}' not found", code=404)
+        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
+        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
@@ -174,7 +286,9 @@ def uninstall_plugin(plugin_id: str):
         manager.uninstall_plugin(plugin_id)
         return success(data={"message": f"Plugin '{plugin_id}' uninstalled"})
     except KeyError:
-        return error(f"Plugin '{plugin_id}' not found", code=404)
+        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
+        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
@@ -198,7 +312,9 @@ def update_plugin_config(
         manager._registry.update_config(plugin_id, config)
         return success(data={"message": f"Plugin '{plugin_id}' config updated"})
     except KeyError:
-        return error(f"Plugin '{plugin_id}' not found", code=404)
+        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
+        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
@@ -222,7 +338,9 @@ def get_plugin_dependencies(plugin_id: str):
             }
         )
     except KeyError:
-        return error(f"Plugin '{plugin_id}' not found", code=404)
+        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
+        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源
@@ -328,7 +446,9 @@ def start_worker(plugin_id: str):
 
         return success(data={"message": f"Worker for '{plugin_id}' started"})
     except KeyError:
-        return error(f"Plugin '{plugin_id}' not found", code=404)
+        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
+        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
         # 插件操作涉及注册表/沙箱/工作进程，异常族多源

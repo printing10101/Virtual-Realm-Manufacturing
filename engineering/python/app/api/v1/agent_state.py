@@ -13,6 +13,7 @@ Provides REST endpoints for:
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -511,6 +512,45 @@ async def resume_agent(
     require_permission(_user, "agents:write")
     result = await recovery.resume_agent(agent_id)
     return api_response(data=result)
+
+
+@router.post(
+    "/{agent_id}/deploy",
+    response_model=SuccessResponse[dict[str, Any]],
+    responses={
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def deploy_agent(
+    agent_id: str,
+    persistence: StatePersistenceManager = Depends(get_persistence),
+    _user: dict = Depends(get_current_user),
+):
+    """部署 Agent：加载状态、标记部署时间并将状态切换为 busy（真实状态变更）。
+
+    部署记录写入 Agent 元数据（deployed / deployed_at / deploy_version），
+    状态持久化到后端存储。
+    """
+    require_permission(_user, "agents:write")
+    state = await persistence.load_state(agent_id)
+    if state is None:
+        logger.info("Agent not found: %s", agent_id)
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    state.metadata = {
+        **(state.metadata or {}),
+        "deployed": True,
+        "deployed_at": datetime.now(timezone.utc).isoformat(),
+        "deploy_version": (state.metadata or {}).get("state_version", "current"),
+    }
+    state.status = AgentStatus.BUSY
+    await persistence.save_state(state)
+    return api_response(
+        data=state.to_dict(),
+        message=f"Agent '{agent_id}' deployed successfully",
+    )
 
 
 @router.post(

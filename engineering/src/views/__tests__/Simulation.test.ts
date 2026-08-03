@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -47,7 +47,13 @@ import Simulation from '@/views/Simulation.vue'
 describe('Simulation.vue', () => {
   let pinia: ReturnType<typeof createPinia>
   let router: ReturnType<typeof createRouter>
-  const httpMock = (await import('@/utils/http')).default as any
+
+  // 顶层 await 触发 TS1308，改为 beforeAll 异步获取 http mock
+  let httpMock: any
+
+  beforeAll(async () => {
+    httpMock = (await import('@/utils/http')).default as any
+  })
 
   beforeEach(() => {
     setActivePinia(pinia = createPinia())

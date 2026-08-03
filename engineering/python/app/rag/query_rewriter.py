@@ -148,11 +148,17 @@ class QueryRewriter:
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
     def _cache_get(self, cache: dict, keys: list, key: str) -> str | None:
-        """LRU 读：命中时把 key 移到末尾。"""
-        if key in cache:
-            keys.remove(key)
-            keys.append(key)
-            return cache[key]
+        """LRU 读：命中时把 key 移到末尾。
+
+        修复并发竞态：原实现在锁外执行 ``keys.remove`` / ``keys.append``，
+        多线程并发读时可能抛 ``ValueError``（list.remove 找不到元素）
+        或破坏 LRU 顺序。现统一在 ``self._lock`` 保护下操作。
+        """
+        with self._lock:
+            if key in cache:
+                keys.remove(key)
+                keys.append(key)
+                return cache[key]
         return None
 
     def _cache_set(

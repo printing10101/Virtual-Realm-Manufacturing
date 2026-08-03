@@ -314,7 +314,7 @@ describe('ProcessSettings.vue', () => {
         total_entries: 100,
         avg_confidence: 0.85,
         recent_24h: 20,
-      }
+      } as any
       wrapper = mountComponent()
       await wrapper.vm.$nextTick()
       expect(wrapper.find('.audit-stats').exists()).toBe(true)

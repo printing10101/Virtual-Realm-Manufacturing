@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from app.auth.permissions import require_permission, require_role
 
 from app.core.response import ErrorCode, error, success
-from app.service import process_routes_service
+from app.services import process_routes_service
 
 
 # ---------------------------------------------------------------------------

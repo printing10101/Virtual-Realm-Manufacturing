@@ -9,10 +9,6 @@ import logging
 import threading
 from typing import Any
 
-from app.contracts.explainability import (
-    ExplanationValidationError,
-    ProjectionError,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -82,19 +78,7 @@ class PredictorLoader:
             model_name = self.parse_model_uri(model_uri)
             try:
                 from app.ai.lnn.inference.predictor import LNNPredictor
-                from app.services.model_registry_service import (
-                    get_model_registry_service,
-                )
-
-                registry = get_model_registry_service().model_registry
-                predictor = LNNPredictor.from_registry(registry, model_name)
-            except (ImportError, AttributeError, RuntimeError, ValueError) as exc:
-                logger.error(
-                    "加载模型失败 model_uri=%s: %s",
-                    model_uri,
-                    exc,
-                    exc_info=True,
-                )
+            except ImportError as exc:
                 raise ProjectionError(
                     f"无法加载模型: {model_uri}（{exc}）"
                 ) from exc

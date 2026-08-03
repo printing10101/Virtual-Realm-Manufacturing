@@ -34,33 +34,9 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
-from app.contracts.rl_agent import (
-    OptimizationTarget,
-    PolicyAlgorithm,
-    PolicyError,
-    PolicyNotFoundError,
-    RLActError,
-    RLActRequest,
-    SafetyConstraintsSpec,
-    SafetyViolationError,
-    TrainingAlreadyRunningError,
-    TrainingError,
-    TrainingStartRequest,
-    TrainingStatus,
-)
 from app.core.response import ErrorCode, error, success
-from app.services.rl_agent_service import (
-    get_rl_agent_service,
-)
+from app.dependencies import get_rl_agent_service
 
-logger = logging.getLogger(__name__)
-
-
-router = APIRouter(
-    prefix="/api/v1/rl-agent",
-    tags=["RLAgent"],
-    dependencies=[Depends(require_permission("rl_agent:read"))],
-)
 
 
 # ---------------------------------------------------------------------------

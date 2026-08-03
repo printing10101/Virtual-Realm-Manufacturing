@@ -37,9 +37,9 @@ if str(_PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(_PYTHON_DIR))
 
 from app.integrations.mtconnect.adapter import MTConnectAdapter
-from app.integrations.mtconnect.parser import Sample  # noqa: E402
-from app.models.machining_record import MachiningRecordCreate  # noqa: E402
-from app.pipelines import (  # noqa: E402
+from app.integrations.mtconnect.parser import Sample
+from app.models.machining_record import MachiningRecordCreate
+from app.pipelines import (
     CollectorConfig,
     CollectorContext,
     MachiningCollector,
@@ -352,7 +352,7 @@ class TestSampleBatchAggregator:
         agg.add(_make_sample())
         agg.mark_flushed()
         assert len(agg) == 0
-        assert agg._last_flush_at is not None  # noqa: SLF001
+        assert agg._last_flush_at is not None
 
     def test_max_samples_cap(self) -> None:
         agg = SampleBatchAggregator(
@@ -513,8 +513,8 @@ class TestCollectorWriteRetry:
         await c.stop(timeout=2.0)
         # max_write_retries=2 ⇒ 每个 flush 最多调用 2 次
         assert attempts["n"] >= 1
-        assert c._stats.write_retries >= 1  # noqa: SLF001
-        assert c._stats.write_failures >= 1  # noqa: SLF001
+        assert c._stats.write_retries >= 1
+        assert c._stats.write_failures >= 1
         assert c._retry_queue  # 失败入队等待下次重试
 
     @pytest.mark.asyncio
@@ -538,7 +538,7 @@ class TestCollectorWriteRetry:
         await asyncio.sleep(0.5)
         await c.stop(timeout=2.0)
         assert td_attempts["n"] >= 1
-        assert c._tdengine_retry  # noqa: SLF001
+        assert c._tdengine_retry
 
     @pytest.mark.asyncio
     async def test_sink_succeeds_after_retries(self, base_config: CollectorConfig) -> None:
@@ -584,7 +584,7 @@ class TestCollectorExceptionIsolation:
         await c.start()
         await asyncio.sleep(0.3)
         await c.stop(timeout=1.0)
-        assert c._stats.poll_errors >= 1  # noqa: SLF001
+        assert c._stats.poll_errors >= 1
 
 
 class TestCollectorSingleton:

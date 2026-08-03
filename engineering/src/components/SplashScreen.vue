@@ -127,10 +127,6 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useVersionStore } from '@/stores/version'
 import { useI18n } from 'vue-i18n'
 
-const emit = defineEmits<{
-  (e: 'complete'): void
-}>()
-
 const { t } = useI18n()
 
 const visible = ref(true)
@@ -141,9 +137,6 @@ const versionStore = useVersionStore()
 const version = computed(() => versionStore.frontendVersion || '2.5.0')
 
 const appNameChars = t('splashScreen.appName').split('')
-
-// 3D 立方体旋转角度
-const rotation = ref(0)
 
 // 等轴测投影参数
 const size = 45
@@ -191,7 +184,7 @@ const connectingLines = computed(() => {
   ]
 })
 
-function particleStyle(i: number) {
+function particleStyle(_i: number) {
   const x = Math.random() * 100
   const y = Math.random() * 100
   const delay = Math.random() * 5

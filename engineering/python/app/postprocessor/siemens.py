@@ -194,7 +194,7 @@ class SiemensPostProcessor(BasePostProcessor):
     ) -> str:
         cfg = self.get_cycle_config("boring", cycle_type)
         r_plane = self.safe_z_height
-        _retract_mode = cfg.get("retract_mode", "G98")  # noqa: F841  # noqa: F841
+        _retract_mode = cfg.get("retract_mode", "G98")
         orient_spindle = 1 if cfg.get("orient_spindle", False) else 0
         shift_axis = cfg.get("shift_axis")
         shift_dist = cfg.get("shift_distance", 0.0)
@@ -260,10 +260,10 @@ class SiemensPostProcessor(BasePostProcessor):
         shift_dist = cfg.get("shift_distance", 0.1)
 
         r_plane = self.safe_z_height
-        _retract_mode = cfg.get("retract_mode", "G99")  # noqa: F841
+        _retract_mode = cfg.get("retract_mode", "G99")
         infeed = cfg.get("infeed_method", "radial")
         infeed_map = {"compound": 1, "radial": 2, "flank": 3}
-        _infeed_code = infeed_map.get(infeed, 2)  # noqa: F841
+        _infeed_code = infeed_map.get(infeed, 2)
 
         dx = self._fmt(shift_dist) if shift_axis == "X" else self._fmt(0.0)
         dy = self._fmt(shift_dist) if shift_axis == "Y" else self._fmt(0.0)

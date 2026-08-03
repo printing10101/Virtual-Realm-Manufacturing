@@ -395,7 +395,7 @@ describe('llmProviders API', () => {
     })
 
     it('api_key 为 null 时也允许更新', async () => {
-      const payload = { api_key: null }
+      const payload = { api_key: null } as never
       const updated = makeProvider()
       vi.mocked(http.put).mockResolvedValueOnce({ data: { data: updated } })
 

@@ -17,7 +17,7 @@ from app.models.schemas import (
     AuditLogExportRequest,
     UserSovereigntySettings,
 )
-from app.services.model_registry_service import get_model_registry_service
+from app.dependencies import get_model_registry_service
 from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
 from app.api.v1._shared.task_infra import handle_sovereignty_errors
 

@@ -51,7 +51,7 @@
                   {{ category }}
                 </div>
                 <div
-                  v-for="(cmd, index) in group"
+                  v-for="(cmd, _index) in group"
                   :key="cmd.id"
                   :class="[
                     'command-item',
@@ -124,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search, Warning, Operation } from '@element-plus/icons-vue'
 import type { Command } from '@/composables/useCommandPalette'

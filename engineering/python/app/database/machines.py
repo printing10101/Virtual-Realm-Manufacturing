@@ -124,7 +124,7 @@ class MachineEntry:
         self, spindle_speed: float, feed_rate: float, depth_of_cut: float
     ) -> tuple[bool, str]:
         if spindle_speed < self.spindle_speed_rpm_range[0] or spindle_speed > self.spindle_speed_rpm_range[1]:
-            return False, f"主轴转速{spindle_speed}RPM超出[{self.spindle_speed_rpm_range[0]}, {self.spindle_speed_rpm_range[1]}]"  # noqa: E501
+            return False, f"主轴转速{spindle_speed}RPM超出[{self.spindle_speed_rpm_range[0]}, {self.spindle_speed_rpm_range[1]}]"
         if feed_rate < 0 or feed_rate > self.feed_cutting_max_mmmin:
             return False, f"进给率{feed_rate}mm/min超出最大值{self.feed_cutting_max_mmmin}"
         return True, "OK"

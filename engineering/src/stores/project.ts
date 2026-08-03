@@ -11,7 +11,6 @@ import { extractErrorMessage } from '@/utils/error-handler'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 import type {
   ProjectManifest,
-  ProjectMetadata,
   ProjectSummary,
   NewProjectRequest,
   SaveProjectRequest,
@@ -38,10 +37,6 @@ function defaultManifest(name = '未命名工程'): ProjectManifest {
     },
     extensions: {},
   }
-}
-
-function emptySummary(): ProjectSummary {
-  return { path: '', name: '', created_at: '', modified_at: '', resource_count: 0, file_size: 0 }
 }
 
 /**
@@ -71,12 +66,6 @@ export const useProjectStore = defineStore('project', () => {
   const resourceCount = computed(() => manifest.value.resources.length)
 
   function markModified() { isModified.value = true }
-
-  function _updateManifestMeta(meta: Partial<ProjectMetadata>) {
-    manifest.value.metadata = { ...manifest.value.metadata, ...meta }
-    manifest.value.metadata.modified_at = new Date().toISOString()
-    isModified.value = true
-  }
 
   async function createProject(request: NewProjectRequest): Promise<boolean> {
     loading.value = true

@@ -19,7 +19,8 @@ from app.core.exceptions import (
     NotFoundException,
     ValidationException,
 )
-from app.repository.exceptions import RecordNotFoundError, RepositoryError
+# V3.0: RepositoryError / RecordNotFoundError 已改为继承 AppException，
+# FastAPI 自动通过下面的 app_exception_handler 处理，无需单独注册。
 from app.core.response import error_response, manufacturing_error
 from app.core.error_taxonomy import ManufacturingError
 
@@ -136,36 +137,6 @@ async def generic_exception_handler(_request: Request, exc: Exception) -> JSONRe
     )
 
 
-async def record_not_found_handler(
-    _request: Request, exc: RecordNotFoundError
-) -> JSONResponse:
-    exc_obj = NotFoundException(message=str(exc))
-    logger.warning("RecordNotFound: %s path=%s", exc, _request.url.path)
-    return _build_json_response(
-        code=exc_obj.code,
-        message=exc_obj.message,
-        http_status=exc_obj.status_code,
-        detail={"repository_type": getattr(exc, "repository_type", None)},
-    )
-
-
-async def repository_error_handler(
-    _request: Request, exc: RepositoryError
-) -> JSONResponse:
-    # 对数据库错误进行脱敏处理，避免泄露数据库结构信息
-    logger.error(
-        "RepositoryError: type=%s message=%s path=%s",
-        type(exc).__name__,
-        str(exc),
-        _request.url.path,
-    )
-    return _build_json_response(
-        code=3001,
-        message="数据访问异常，请联系管理员",
-        http_status=500,
-    )
-
-
 async def manufacturing_error_handler(
     _request: Request, exc: ManufacturingError
 ) -> JSONResponse:
@@ -186,6 +157,4 @@ def register_exception_handlers(app: Any) -> None:
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(RecordNotFoundError, record_not_found_handler)
-    app.add_exception_handler(RepositoryError, repository_error_handler)
     app.add_exception_handler(Exception, generic_exception_handler)

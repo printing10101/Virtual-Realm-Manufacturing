@@ -15,6 +15,11 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
+# 模块级任务引用集合：保存 TrainingProgressCallback.__call__ 创建的 broadcast_task，
+# 防止任务被 GC 提前回收（asyncio.create_task 文档明确要求外部保留强引用）。
+# 任务完成后由 done_callback 自动从集合中移除。
+_active_broadcast_tasks: set[asyncio.Task] = set()
+
 
 @dataclass
 class SSEClient:
@@ -197,18 +202,20 @@ class TrainingProgressCallback:
         broadcast_task = asyncio.create_task(
             self._manager.broadcast(self._task_id, "progress", data)
         )
-        broadcast_task.add_done_callback(self._handle_broadcast_done)
+        _active_broadcast_tasks.add(broadcast_task)
 
-    def _handle_broadcast_done(self, task: asyncio.Task) -> None:
-        """记录广播任务完成状态"""
-        if task.cancelled():
-            logger.debug("Broadcast task cancelled for %s", self._task_id)
-        elif task.exception():
-            logger.error(
-                "Broadcast task failed for %s: %s",
-                self._task_id,
-                task.exception(),
-            )
+        def _on_broadcast_done(t: asyncio.Task) -> None:
+            _active_broadcast_tasks.discard(t)
+            if t.cancelled():
+                logger.debug("Broadcast task cancelled for %s", self._task_id)
+            elif t.exception():
+                logger.error(
+                    "Broadcast task failed for %s: %s",
+                    self._task_id,
+                    t.exception(),
+                )
+
+        broadcast_task.add_done_callback(_on_broadcast_done)
 
     async def send_complete(
         self, status: str, final_loss: float, training_time: Optional[float] = None

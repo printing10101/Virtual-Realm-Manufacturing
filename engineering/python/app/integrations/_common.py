@@ -14,7 +14,7 @@ import re
 from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
-    from app.integrations.opcua.parser import Sample  # noqa: F401  (与 mtconnect 共享同一类型)
+    from app.integrations.opcua.parser import Sample
 
 
 # ---------------------------------------------------------------------------

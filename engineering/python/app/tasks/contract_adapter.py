@@ -251,7 +251,7 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
             # 上报启动进度（0%）
             try:
                 await progress_updater(0.0, "任务启动")
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.debug("progress_updater(0) 失败（忽略）: %s", e)
 
             ctx = TaskContext(
@@ -274,7 +274,7 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
                 raise asyncio.CancelledError("任务在完成前被取消")
             try:
                 await progress_updater(100.0, "任务完成")
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.debug("progress_updater(100) 失败（忽略）: %s", e)
 
             # 序列化 TaskResult 为 dict（用于 record.result 持久化）
@@ -298,7 +298,7 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
                 await self._manager.execute_task(job_id, _executor)
             except asyncio.CancelledError:
                 logger.info("Task %s 被取消", job_id)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.error(
                     "Task %s execute_task 异常: %s", job_id, e, exc_info=True
                 )

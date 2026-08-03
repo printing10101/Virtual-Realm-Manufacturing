@@ -309,7 +309,7 @@ class WorldModelPerfBenchmark:
 
     def save_results(self, output_path: str) -> str:
         try:
-            import torch as _torch  # noqa: F401
+            import torch as _torch
             torch_version = _torch.__version__
             has_torch = True
         except ImportError:

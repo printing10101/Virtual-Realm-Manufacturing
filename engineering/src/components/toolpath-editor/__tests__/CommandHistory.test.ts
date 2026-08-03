@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { CommandHistory } from '../commands/CommandHistory'
-import { BaseCommand, type Command } from '../commands/BaseCommand'
+import { BaseCommand } from '../commands/BaseCommand'
 import type { EditableToolpathSegment } from '../types/editor'
 
 function makeSegment(id: string): EditableToolpathSegment {
@@ -24,15 +24,15 @@ class TestCommand extends BaseCommand {
     super(segments, onUpdate)
     this.action = action
   }
-  execute(): void {
+  override execute(): void {
     this.segments.push(makeSegment(`test-${this.action}`))
     this.onUpdate()
   }
-  undo(): void {
+  override undo(): void {
     this.segments.pop()
     this.onUpdate()
   }
-  getDescription(): string {
+  override getDescription(): string {
     return `Test: ${this.action}`
   }
 }

@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission, require_role
 from app.core.response import success, error, ErrorCode
-from app.service import materials_service
+from app.services import materials_service
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,16 @@ class MaterialUpdate(BaseModel):
     status: Optional[str] = Field(None, max_length=16, description="状态")
     location: Optional[str] = Field(None, max_length=64, description="库位")
     unit: Optional[str] = Field(None, max_length=16, description="单位")
+    supplier: Optional[str] = Field(None, max_length=128, description="供应商")
+
+
+class StockInRequest(BaseModel):
+    quantity: int = Field(..., gt=0, le=100000, description="入库数量")
+    remark: Optional[str] = Field(None, max_length=200, description="入库备注")
+
+
+class PurchaseRequest(BaseModel):
+    quantity: int = Field(..., gt=0, le=100000, description="采购数量")
     supplier: Optional[str] = Field(None, max_length=128, description="供应商")
 
 
@@ -118,6 +128,28 @@ async def delete_material(material_id: str):
     if result is None:
         return error(ErrorCode.NOT_FOUND, message=f"物料 {material_id} 不存在")
     return success(message="物料删除成功")
+
+
+@router.post("/{material_id}/stock-in")
+async def stock_in_material(material_id: str, body: StockInRequest):
+    """物料入库：增加库存数量并自动重算状态。"""
+    data = await materials_service.stock_in_material(
+        material_id, body.quantity, remark=body.remark
+    )
+    if data is None:
+        return error(ErrorCode.NOT_FOUND, message=f"物料 {material_id} 不存在")
+    return success(data=data, message="入库成功")
+
+
+@router.post("/{material_id}/purchase")
+async def purchase_material(material_id: str, body: PurchaseRequest):
+    """物料采购：更新供应商并增加库存数量，自动重算状态。"""
+    data = await materials_service.purchase_material(
+        material_id, body.quantity, supplier=body.supplier
+    )
+    if data is None:
+        return error(ErrorCode.NOT_FOUND, message=f"物料 {material_id} 不存在")
+    return success(data=data, message="采购成功")
 
 
 # ---------------------------------------------------------------------------

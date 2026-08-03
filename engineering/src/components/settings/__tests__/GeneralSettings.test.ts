@@ -148,7 +148,7 @@ describe('GeneralSettings.vue', () => {
 
     it('版本不一致时显示警告', async () => {
       mockVersionStore.isConsistent = false
-      mockVersionStore.inconsistencyDetails = ['前端版本不一致']
+      mockVersionStore.inconsistencyDetails = ['前端版本不一致'] as any
       wrapper = mountComponent()
       expect(wrapper.find('.version-warning').exists()).toBe(true)
       // 恢复

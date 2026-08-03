@@ -76,6 +76,7 @@ asyncua==1.1.5           # OPC UA 客户端库（异步实现）
 cryptography==44.0.0     # 加密库（JWT 签名/验签依赖）
 PyJWT==2.9.0             # JWT 处理（替代已废弃的 python-jose，严格固定版本避免安全关键路径 API 漂移）
 bcrypt==4.2.1            # 密码哈希（4.x 原生 API）
+RestrictedPython==8.0    # 安全沙箱执行（Skill 动态代码编译，生产强制依赖）
 
 # LangChain Ecosystem
 langchain==0.3.14        # LangChain 核心（RAG / Agent 依赖）

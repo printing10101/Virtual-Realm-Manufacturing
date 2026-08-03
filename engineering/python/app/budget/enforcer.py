@@ -925,6 +925,9 @@ _budget_holder = _BudgetEnforcerHolder()
 def get_budget_enforcer() -> BudgetEnforcer:
     """获取共享的 :class:`BudgetEnforcer` 单例；首次访问时懒初始化。
 
+    .. deprecated:: V3.0 (2026-08-02)
+        本函数保留向后兼容。
+
     Returns:
         :class:`BudgetEnforcer` 实例（应用生命周期内同一实例）。
 

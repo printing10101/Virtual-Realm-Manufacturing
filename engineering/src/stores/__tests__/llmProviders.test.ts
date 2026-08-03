@@ -116,14 +116,14 @@ describe('useLLMProvidersStore', () => {
         providers: [
           makeProvider({ provider_id: 'a', is_active: false }),
           makeProvider({ provider_id: 'b', is_active: true }),
-        ],
+        ] as never,
       })
       expect(store.activeProvider?.provider_id).toBe('b')
     })
 
     it('无激活 provider 时 activeProvider 为 null', () => {
       const store = useLLMProvidersStore()
-      store.$patch({ providers: [makeProvider({ is_active: false })] })
+      store.$patch({ providers: [makeProvider({ is_active: false })] as never })
       expect(store.activeProvider).toBeNull()
     })
 
@@ -133,7 +133,7 @@ describe('useLLMProvidersStore', () => {
         providers: [
           makeProvider({ provider_id: 'a', enabled: true }),
           makeProvider({ provider_id: 'b', enabled: false }),
-        ],
+        ] as never,
       })
       expect(store.enabledProviders.length).toBe(1)
       expect(store.enabledProviders[0].provider_id).toBe('a')
@@ -145,7 +145,7 @@ describe('useLLMProvidersStore', () => {
         providers: [
           makeProvider({ provider_id: 'a', provider_type: 'ollama' }),
           makeProvider({ provider_id: 'b', provider_type: 'openai' }),
-        ],
+        ] as never,
       })
       expect(store.localProviders.length).toBe(1)
       expect(store.localProviders[0].provider_id).toBe('a')
@@ -157,7 +157,7 @@ describe('useLLMProvidersStore', () => {
         providers: [
           makeProvider({ provider_id: 'a', provider_type: 'ollama' }),
           makeProvider({ provider_id: 'b', provider_type: 'openai' }),
-        ],
+        ] as never,
       })
       expect(store.cloudProviders.length).toBe(1)
       expect(store.cloudProviders[0].provider_id).toBe('b')
@@ -166,7 +166,7 @@ describe('useLLMProvidersStore', () => {
     it('hasActiveProvider 反映是否存在激活 provider', () => {
       const store = useLLMProvidersStore()
       expect(store.hasActiveProvider).toBe(false)
-      store.$patch({ providers: [makeProvider({ is_active: true })] })
+      store.$patch({ providers: [makeProvider({ is_active: true })] as never })
       expect(store.hasActiveProvider).toBe(true)
     })
 
@@ -437,7 +437,7 @@ describe('useLLMProvidersStore', () => {
         checked_at: '2026-01-01T00:00:00Z',
       })
       const store = useLLMProvidersStore()
-      store.$patch({ providers: [makeProvider()] })
+      store.$patch({ providers: [makeProvider()] as never })
       const result = await store.checkHealth('p1')
       expect(result).not.toBeNull()
       expect(store.providers[0].last_health_status).toBe('healthy')
@@ -454,7 +454,7 @@ describe('useLLMProvidersStore', () => {
         checked_at: '2026-01-01T00:00:00Z',
       })
       const store = useLLMProvidersStore()
-      store.$patch({ providers: [makeProvider()] })
+      store.$patch({ providers: [makeProvider()] as never })
       await store.checkHealth('p1')
       expect(elMessageMock.warning).toHaveBeenCalled()
       expect(store.providers[0].last_health_status).toBe('unhealthy')
@@ -479,7 +479,7 @@ describe('useLLMProvidersStore', () => {
         checked_at: '2026-01-01T00:00:00Z',
       })
       const store = useLLMProvidersStore()
-      store.$patch({ providers: [] })
+      store.$patch({ providers: [] as never })
       const result = await store.checkHealth('p1')
       expect(result).not.toBeNull()
     })

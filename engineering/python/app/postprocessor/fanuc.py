@@ -123,7 +123,7 @@ class FanucPostProcessor(BasePostProcessor):
         cfg = self.get_cycle_config("drilling", cycle_code)
         retract_mode = cfg.get("retract_mode", "G98")
         peck_depth = cfg.get("peck_depth", 5.0)
-        _retract_dist = cfg.get("retract_distance", 1.0)  # noqa: F841
+        _retract_dist = cfg.get("retract_distance", 1.0)
         r_plane = self.safe_z_height
         drill_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.3))
 
@@ -191,7 +191,7 @@ class FanucPostProcessor(BasePostProcessor):
     ) -> str:
         cfg = self.get_cycle_config("boring", cycle_type)
         retract_mode = cfg.get("retract_mode", "G98")
-        _retract_type = cfg.get("retract_type", "rapid")  # noqa: F841
+        _retract_type = cfg.get("retract_type", "rapid")
         r_plane = self.safe_z_height
         bore_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.15))
         dwell_ms = int(dwell * 1000)
@@ -236,14 +236,14 @@ class FanucPostProcessor(BasePostProcessor):
     ) -> str:
         cfg = self.get_cycle_config("threading", "G76")
 
-        _p = passes if passes is not None else cfg.get("passes", 5)  # noqa: F841
+        _p = passes if passes is not None else cfg.get("passes", 5)
         d_first = depth_cut_first if depth_cut_first is not None else cfg.get("depth_cut_first", 0.2)
         d_last = depth_cut_last if depth_cut_last is not None else cfg.get("depth_cut_last", 0.05)
-        _finish = finishing_passes if finishing_passes is not None else cfg.get("finishing_passes", 2)  # noqa: F841
+        _finish = finishing_passes if finishing_passes is not None else cfg.get("finishing_passes", 2)
         angle = tool_angle if tool_angle is not None else cfg.get("tool_angle", 60.0)
         taper_val = taper if taper is not None else cfg.get("taper", 0.0)
-        _shift_axis = cfg.get("shift_axis", "X")  # noqa: F841
-        _shift_dist = cfg.get("shift_distance", 0.1)  # noqa: F841
+        _shift_axis = cfg.get("shift_axis", "X")
+        _shift_dist = cfg.get("shift_distance", 0.1)
 
         r_plane = self.safe_z_height
         retract_mode = cfg.get("retract_mode", "G99")
@@ -252,7 +252,7 @@ class FanucPostProcessor(BasePostProcessor):
         infeed_map = {"compound": 1, "radial": 2, "flank": 3}
         infeed_code = infeed_map.get(infeed, 1)
 
-        _thread_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.05))  # noqa: F841
+        _thread_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.05))
 
         lines = [
             f"{retract_mode} G76 X{self._fmt(x)} Y{self._fmt(y)} "

@@ -305,7 +305,7 @@ class BossRecognizer:
                         "id": fig_id,
                         "type": boss_type,
                         "position": contour.get("center", contour.get("position", {})),
-                        "diameter": contour.get("diameter", contour.get("radius", 0) * 2 if contour.get("radius") else 0),  # noqa: E501
+                        "diameter": contour.get("diameter", contour.get("radius", 0) * 2 if contour.get("radius") else 0),
                         "side_length": contour.get("side_length", contour.get("length", 0)),
                         "height": contour.get("height", contour.get("z_height", 0)),
                     })

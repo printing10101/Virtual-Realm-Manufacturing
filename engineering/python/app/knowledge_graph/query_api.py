@@ -359,7 +359,7 @@ class KnowledgeGraphQueryAPI:
             else:
                 count = 0 if data is None else 1
             return {"query_type": query_type, "count": count, "data": data}
-        except (ValueError, TypeError, KeyError, RuntimeError) as e:  # noqa: BLE001
+        except (ValueError, TypeError, KeyError, RuntimeError) as e:
             logger.warning("query %s failed: %s", query_type, e)
             return {
                 "query_type": query_type,

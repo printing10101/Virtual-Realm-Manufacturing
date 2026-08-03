@@ -185,7 +185,7 @@ class APIPerfBenchmark:
                 ) as resp:
                     await resp.text()
                     return (time.perf_counter() - t0) * 1000
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logging.getLogger(__name__).warning(
                     "api_bench request failed for %s: %s", url, e
                 )

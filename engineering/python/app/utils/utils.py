@@ -543,7 +543,7 @@ class MetricsCollector:
             lines.append(f"lnn_active_training_tasks {self._active_training_tasks}")
             lines.append("")
             try:
-                from app.utils.ring_buffer import get_ring_log_buffer
+                from app.dependencies import get_ring_log_buffer
 
                 rlb = get_ring_log_buffer()
                 buf_stats = rlb.stats()

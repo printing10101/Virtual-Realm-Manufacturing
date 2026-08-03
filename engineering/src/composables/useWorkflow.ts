@@ -243,6 +243,15 @@ export function useWorkflowStream(
   let eventSource: EventSource | null = null
   let retryCount = 0
   let retryTimer: number | null = null
+  // 修复竞态：每次 connect/reset 递增 streamEpoch，
+  // 异步事件回调与重连定时器执行时检查 epoch 是否仍为最新，
+  // 否则丢弃事件 / 取消重连，避免：
+  //   1. 快速切换 run（A → B）：A 的 SSE 事件仍在事件循环队列中，
+  //      reset 后被处理写入 events.value，造成 B 的事件列表中混入 A 的事件
+  //   2. 快速 close → connect：旧连接的 onerror 触发 scheduleReconnect，
+  //      retryTimer 到期后用新 id 建立连接（看似无害，但若期间已主动 close，
+  //      会建立意外的幽灵连接）
+  let streamEpoch = 0
 
   const buildUrl = (): string => {
     const id = unref(workflowRunId)
@@ -250,7 +259,9 @@ export function useWorkflowStream(
     return resolveBackendUrl(buildApiPath(BASE, `/${id}/stream`))
   }
 
-  const handleEvent = (event: WorkflowEvent): void => {
+  const handleEvent = (event: WorkflowEvent, epoch: number): void => {
+    // 竞态防御：仅处理与当前 epoch 匹配的事件
+    if (epoch !== streamEpoch) return
     // 节点级事件：更新 nodeStatuses
     if (event.node_id) {
       switch (event.event_type) {
@@ -301,18 +312,24 @@ export function useWorkflowStream(
     if (!id) return
     if (eventSource) close()
 
+    // 递增 epoch 使任何前一个连接的 in-flight 事件回调失效
+    streamEpoch += 1
+    const currentEpoch = streamEpoch
+
     const url = buildUrl()
     eventSource = new EventSource(url)
 
     eventSource.onopen = (): void => {
+      if (currentEpoch !== streamEpoch) return
       isConnected.value = true
       retryCount = 0
     }
 
     eventSource.onerror = (): void => {
+      if (currentEpoch !== streamEpoch) return
       isConnected.value = false
       if (autoReconnect && !isDone.value && retryCount < maxRetries) {
-        scheduleReconnect()
+        scheduleReconnect(currentEpoch)
       } else if (!isDone.value) {
         // 重连耗尽仍未完成：标记错误状态，避免 UI 永久等待
         error.value = '工作流事件流连接失败，已达最大重试次数'
@@ -327,10 +344,12 @@ export function useWorkflowStream(
 
     WORKFLOW_EVENT_TYPES.forEach(eventType => {
       source.addEventListener(eventType, (e: MessageEvent) => {
+        // 事件到达时若 epoch 已不匹配，直接丢弃
+        if (currentEpoch !== streamEpoch) return
         try {
           const payload = JSON.parse(e.data) as WorkflowEvent
           events.value.push(payload)
-          handleEvent(payload)
+          handleEvent(payload, currentEpoch)
         } catch (err: unknown) {
           // 单条事件解析失败不应断开整条流，记录后跳过
           console.warn('[useWorkflowStream] event parse failed for', eventType, err)
@@ -340,6 +359,7 @@ export function useWorkflowStream(
 
     // 后端在异常时主动推送 stream_error 事件（workflows.py line 331）
     source.addEventListener('stream_error', (e: MessageEvent) => {
+      if (currentEpoch !== streamEpoch) return
       try {
         const data = JSON.parse(e.data) as { error?: string }
         error.value = data.error ?? '工作流事件流异常'
@@ -353,15 +373,19 @@ export function useWorkflowStream(
     })
   }
 
-  const scheduleReconnect = (): void => {
+  const scheduleReconnect = (epoch: number): void => {
     retryCount++
     const delay = Math.min(baseDelay * Math.pow(2, retryCount - 1), maxDelay)
     retryTimer = window.setTimeout(() => {
+      // 重连到期时若 epoch 已不匹配（已被新 connect / close 取代），放弃重连
+      if (epoch !== streamEpoch) return
       connect()
     }, delay)
   }
 
   const close = (): void => {
+    // 递增 epoch 使任何 in-flight 事件回调立即失效
+    streamEpoch += 1
     if (eventSource) {
       eventSource.close()
       eventSource = null
@@ -374,6 +398,8 @@ export function useWorkflowStream(
   }
 
   const reset = (): void => {
+    // 递增 epoch 使 in-flight 事件不再写入旧 events 数组
+    streamEpoch += 1
     events.value = []
     currentStatus.value = null
     nodeStatuses.value = {}
@@ -423,6 +449,11 @@ export function useWorkflow() {
   const currentRunId = ref<string>('')
   const currentStatus = ref<WorkflowRunStatus | null>(null)
   const currentLoading = ref(false)
+  // 修复竞态：refreshCurrentStatus 是 async，若用户在 A 的 HTTP 还在飞行时
+  // 又切到 B（selectWorkflow(B)），A 的 await 完成后会用 A 的状态覆盖
+  // currentStatus.value，导致 UI 短暂显示错误状态。每次发起 refresh 时
+  // 递增 statusEpoch，await 完成后检查 epoch 是否仍匹配，不匹配则丢弃结果。
+  let statusEpoch = 0
 
   // SSE 订阅：run_id 切换时由 useWorkflowStream 内部重新建立连接
   const stream = useWorkflowStream(currentRunId, {
@@ -515,13 +546,23 @@ export function useWorkflow() {
    */
   async function refreshCurrentStatus(): Promise<void> {
     if (!currentRunId.value) return
+    // 递增 epoch 使前一个 in-flight refresh 的结果失效
+    statusEpoch += 1
+    const currentEpoch = statusEpoch
+    const targetRunId = currentRunId.value
     currentLoading.value = true
     try {
-      currentStatus.value = await getWorkflowStatus(currentRunId.value)
+      const status = await getWorkflowStatus(targetRunId)
+      // 若期间 currentRunId 已被切换（selectWorkflow/submitWorkflow），丢弃结果
+      if (currentEpoch !== statusEpoch || currentRunId.value !== targetRunId) return
+      currentStatus.value = status
     } catch (e: unknown) {
+      if (currentEpoch !== statusEpoch) return
       console.warn('[useWorkflow] refreshCurrentStatus failed:', e)
     } finally {
-      currentLoading.value = false
+      if (currentEpoch === statusEpoch) {
+        currentLoading.value = false
+      }
     }
   }
 

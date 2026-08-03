@@ -18,6 +18,7 @@ from pathlib import Path
 from app.utils.sqlite_retry import sqlite_retry
 from app.utils.utils import get_output_dir
 from app.utils.sqlite_pool import get_sqlite_manager, SQLiteConnectionManager
+from app.budget.sql_safety import validate_cost_dimension_column
 
 logger = logging.getLogger(__name__)
 
@@ -526,6 +527,8 @@ class MultiDimensionCostTracker:
             CostDimension.PROVIDER: "provider",
             CostDimension.MODEL: "model",
         }.get(dimension, "agent_id")
+        # 深度防御：即使 dim_column 来自可控字典，仍进行白名单校验
+        dim_column = validate_cost_dimension_column(dim_column)
 
         conditions = [f"{dim_column} = ?"]
         params = [scope_id]
@@ -587,6 +590,8 @@ class MultiDimensionCostTracker:
             CostDimension.PROVIDER: "provider",
             CostDimension.MODEL: "model",
         }.get(dimension, "agent_id")
+        # 深度防御：白名单校验
+        dim_column = validate_cost_dimension_column(dim_column)
 
         conditions = []
         params = []
@@ -857,12 +862,7 @@ _holder = _CostTrackerHolder()
 def get_cost_tracker() -> MultiDimensionCostTracker:
     """获取共享的 :class:`MultiDimensionCostTracker` 单例；首次访问时懒初始化。
 
-    Returns:
-        :class:`MultiDimensionCostTracker` 实例（应用生命周期内同一实例）。
-
-    Note:
-        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_cost_tracker)``。
-        实现是线程安全的，行为与重构前完全一致。
+    .. deprecated:: V3.0 (2026-08-02)
     """
     return _holder.get()
 

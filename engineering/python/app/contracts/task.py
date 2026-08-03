@@ -36,6 +36,18 @@ class TaskStatus(str, Enum):
     SKIPPED = "skipped"  # 工作流中前置失败时的跳过状态
 
 
+class TaskType(str, Enum):
+    """任务类型枚举（从 tasks/task_manager.py 提升到 contracts 层以避免循环依赖）。"""
+
+    LNN_TRAINING = "lnn_training"
+    LNN_INFERENCE = "lnn_inference"
+    LNN_BATCH_INFERENCE = "lnn_batch_inference"
+    DATA_PROCESSING = "data_processing"
+    MODEL_EXPORT = "model_export"
+    MODEL_QUANTIZATION = "model_quantization"
+    UNKNOWN = "unknown"
+
+
 # 合法状态转换矩阵（与现有 AsyncTaskManager.VALID_STATUS_TRANSITIONS 对齐，
 # 额外补充 SKIPPED 作为工作流编排器使用的终态）
 VALID_STATUS_TRANSITIONS: dict[TaskStatus, set[TaskStatus]] = {

@@ -111,7 +111,7 @@ def _get_rag_engine() -> Any:
     with _rag_engine_lock:
         if _rag_engine_instance is not None:
             return _rag_engine_instance
-        from app.rag.knowledge_base import get_knowledge_base
+        from app.dependencies import get_knowledge_base
         from app.rag.rag_retrieval import RagRetrievalEngine
         from app.rag.signal_fusion_kb import get_signal_fusion_kb
 
@@ -343,7 +343,7 @@ class KnowledgeRetriever:
     ) -> HybridRetrievalResult:
         """降级路径：直接调用 kb.query()，保证委托失败时仍可用。"""
         try:
-            from app.rag.knowledge_base import get_knowledge_base
+            from app.dependencies import get_knowledge_base
 
             kb = get_knowledge_base()
             raw = await asyncio.to_thread(

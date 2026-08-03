@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
+from app.core.endpoint_handler import safe_endpoint
 from app.auth.permissions import require_permission
 # P2-4-5 修复：引入共享速率限制器，信号检索/融合端点消耗向量计算资源，需速率限制防止 DoS。
 from app.middleware.rate_limiter import limiter
@@ -178,22 +179,16 @@ def _collect_samples(
 @router.post("/samples", dependencies=[Depends(require_permission("signal_kb:write"))])
 # P2-4-5 修复：样本注册端点添加速率限制，限制为 120/minute。
 @limiter.limit("120/minute")
+@safe_endpoint(context="signal_fusion_kb.register_sample", fallback="注册失败")
 async def register_sample(request: Request, req: SignalSampleRequest):
     """注册单个信号样本到知识库。"""
-    try:
-        sample = _to_signal_sample(req)
-        kb = get_signal_fusion_kb()
-        sample_id = kb.register_sample(sample)
-        return success(
-            data={"sample_id": sample_id},
-            message="信号样本已注册",
-        )
-    except ValueError as e:
-        safe = safe_error_message(e, context="signal_fusion_kb.register_sample", fallback="参数错误")
-        return error(ErrorCode.INVALID_REQUEST, message=safe["message"], detail={"error_id": safe["error_id"]})
-    except Exception as e:
-        safe = safe_error_message(e, context="signal_fusion_kb.register_sample", fallback="注册失败")
-        return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
+    sample = _to_signal_sample(req)
+    kb = get_signal_fusion_kb()
+    sample_id = kb.register_sample(sample)
+    return success(
+        data={"sample_id": sample_id},
+        message="信号样本已注册",
+    )
 
 
 # =====================================================================
@@ -519,12 +514,12 @@ async def health(request: Request):
     try:
         kb = get_signal_fusion_kb()
         # 触发懒加载但不强制写入
-        kb._get_vector_store()  # noqa: SLF001
+        kb._get_vector_store()
         return success(
             data={
                 "status": "healthy",
                 "supported_signal_types": list(SUPPORTED_SIGNAL_TYPES),
-                "vector_store_loaded": kb._vector_store is not None,  # noqa: SLF001
+                "vector_store_loaded": kb._vector_store is not None,
             }
         )
     except Exception as e:

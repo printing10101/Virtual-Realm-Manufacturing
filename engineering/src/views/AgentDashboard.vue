@@ -417,6 +417,14 @@
 
       <template #footer>
         <el-button
+          type="primary"
+          text
+          :disabled="!agentStore.currentAgent"
+          @click="openDetailPage"
+        >
+          {{ t('agentDashboard.btnOpenDetailPage') }}
+        </el-button>
+        <el-button
           type="success"
           text
           :disabled="!agentStore.currentAgent || agentStore.currentAgent.status === 'stopped'"
@@ -438,6 +446,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Monitor } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -530,10 +539,24 @@ async function handleDeploy() {
   const valid = await deployFormRef.value?.validate().catch(() => false)
   if (!valid) return
 
-  // 占位实现：部署 API 尚未实现，避免误导用户为"已成功部署"
-  // 后端接口就绪后在此处调用 agentStore.deployAgent(deployForm.value) 并依据结果提示
-  console.warn('[AgentDashboard] deploy API not implemented yet, form data:', deployForm.value)
-  ElMessage.warning(t('agentDashboard.msgDeployNotImplemented') || '部署功能尚未实现，请等待后续版本')
+  deployLoading.value = true
+  try {
+    // 由名称生成稳定 agent_id（slug 化），走"创建状态 → 部署"真实链路
+    const agentId = deployForm.value.name.trim().toLowerCase().replace(/\s+/g, '-')
+    await agentStore.deployAgent(agentId, {
+      name: deployForm.value.name.trim(),
+      type: deployForm.value.type,
+    })
+    ElMessage.success(t('agentDashboard.msgDeploySuccess', { name: deployForm.value.name.trim() }))
+    deployDialogVisible.value = false
+    deployForm.value = { name: '', type: '' }
+    agentStore.fetchAgents()
+  } catch (e: unknown) {
+    console.warn('[AgentDashboard] deploy failed:', e)
+    ElMessage.error(t('agentDashboard.msgDeployFailed'))
+  } finally {
+    deployLoading.value = false
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -553,6 +576,14 @@ async function handleShowDetail(agent: AgentSummary) {
   } catch {
     ElMessage.error(t('agentDashboard.msgGetDetailFailed'))
   }
+}
+
+/** 在独立详情页（/agent-detail/:id）打开当前 Agent。 */
+function openDetailPage() {
+  const agentId = agentStore.currentAgent?.agent_id
+  if (!agentId) return
+  const router = useRouter()
+  router.push(`/agent-detail/${agentId}`)
 }
 
 /* ------------------------------------------------------------------ */

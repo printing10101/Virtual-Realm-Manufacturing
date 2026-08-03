@@ -32,8 +32,8 @@ groups:
           description: "HTTP 5xx error rate is {{ $value | humanizePercentage }}, exceeding 5% threshold."
 
       - alert: HighMemoryUsage
-        # 容器内存限制为 4G（docker-compose.yml deploy.resources.limits.memory）
-        # process_resident_memory_bytes 单位为字节，除以 4GiB 得到占用比例
+        # 容器内存限制（默认 4G），与 docker-compose.yml / K8s limits.memory 保持同步
+        # 修改内存限制时，须同步更新此表达式中的除数
         expr: process_resident_memory_bytes / (4 * 1024 * 1024 * 1024) > 0.80
         for: 5m
         labels:

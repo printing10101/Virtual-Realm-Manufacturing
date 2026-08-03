@@ -187,55 +187,14 @@
               </span>
             </div>
             <div class="column-body">
-              <div
+              <TaskCard
                 v-for="task in column.items"
                 :key="task.job_id"
-                class="task-card"
-                :class="`priority-${mapPriority(task)}`"
+                :task="task"
+                :param-desc="getParamDesc(task)"
+                :priority="mapPriority(task)"
                 @click="openDetail(task)"
-              >
-                <div class="task-card-header">
-                  <span class="task-type-tag">{{ task.task_type }}</span>
-                  <span class="task-date">{{ formatDate(task.created_at) }}</span>
-                </div>
-                <div class="task-title">
-                  {{ task.job_id }}
-                </div>
-                <div
-                  v-if="getParamDesc(task)"
-                  class="task-desc"
-                >
-                  {{ getParamDesc(task) }}
-                </div>
-                <div
-                  v-if="task.error"
-                  class="task-error"
-                >
-                  <el-icon :size="14">
-                    <CircleCloseFilled />
-                  </el-icon>
-                  {{ truncate(task.error, 60) }}
-                </div>
-                <div class="task-footer">
-                  <div
-                    class="avatar"
-                    :style="{ backgroundColor: avatarColor(task.owner_id || '') }"
-                  >
-                    {{ (task.owner_id || '?').charAt(0).toUpperCase() }}
-                  </div>
-                  <div
-                    v-if="task.status === 'running'"
-                    class="task-progress"
-                  >
-                    <el-progress
-                      :percentage="Math.round(task.progress)"
-                      :stroke-width="6"
-                      :show-text="false"
-                    />
-                    <span class="progress-text">{{ Math.round(task.progress) }}%</span>
-                  </div>
-                </div>
-              </div>
+              />
               <div
                 v-if="column.items.length === 0"
                 class="column-empty"
@@ -477,6 +436,47 @@
         </div>
       </div>
     </transition>
+
+    <!-- 新建任务弹窗 -->
+    <el-dialog
+      v-model="createDialogVisible"
+      :title="t('taskBoard.dialogCreateTitle')"
+      width="460px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <el-form label-width="90px" @submit.prevent>
+        <el-form-item :label="t('taskBoard.fieldName')" required>
+          <el-input
+            v-model="createForm.name"
+            :placeholder="t('taskBoard.placeholderName')"
+            maxlength="128"
+          />
+        </el-form-item>
+        <el-form-item :label="t('taskBoard.labelTaskType')" required>
+          <el-select
+            v-model="createForm.task_type"
+            :placeholder="t('taskBoard.placeholderTaskType')"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="opt in createTaskTypeOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createDialogVisible = false">
+          {{ t('taskBoard.btnCancel') }}
+        </el-button>
+        <el-button type="primary" :loading="createSubmitting" @click="submitCreate">
+          {{ t('taskBoard.btnSubmit') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -493,11 +493,13 @@ import {
   Plus,
   Close,
   WarningFilled,
-  CircleCloseFilled,
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import http from '@/utils/http'
+import { API_CONFIG } from '@/config/api'
 import { useTasksStore, type TaskInfo } from '@/stores/tasks'
+import TaskCard from '@/components/task_board/TaskCard.vue'
 import type { TagType } from '@/utils/statusHelpers'
 
 /* ------------------------------------------------------------------ */
@@ -710,11 +712,6 @@ function formatDuration(seconds: number): string {
   return `${h}h ${rm}m`
 }
 
-function truncate(str: string, max: number): string {
-  if (!str) return ''
-  return str.length > max ? str.slice(0, max) + '...' : str
-}
-
 /* ------------------------------------------------------------------ */
 /*  Avatar color                                                       */
 /* ------------------------------------------------------------------ */
@@ -747,8 +744,58 @@ async function handleCancel(jobId: string) {
   ElMessage.success(t('taskBoard.msgTaskCancelled'))
 }
 
+/* ------------------------------------------------------------------ */
+/*  新建任务（真实调用 POST /api/v1/jobs）                               */
+/* ------------------------------------------------------------------ */
+const createDialogVisible = ref(false)
+const createSubmitting = ref(false)
+const createForm = ref({ name: '', task_type: '' })
+
+/** 创建任务弹窗的类型选项（对象数组，供 el-option 渲染）。 */
+const createTaskTypeOptions = computed(() => [
+  { value: 'lnn_training', label: t('taskBoard.typeLnnTraining') },
+  { value: 'lnn_inference', label: t('taskBoard.typeLnnInference') },
+  { value: 'lnn_batch_inference', label: t('taskBoard.typeBatchInference') },
+  { value: 'data_processing', label: t('taskBoard.typeDataProcessing') },
+  { value: 'model_export', label: t('taskBoard.typeModelExport') },
+  { value: 'model_quantization', label: t('taskBoard.typeModelQuantization') },
+])
+
 function handleCreate() {
-  ElMessage.info(t('taskBoard.msgCreateTaskWip'))
+  createForm.value = { name: '', task_type: '' }
+  createDialogVisible.value = true
+}
+
+/** 提交创建任务。 */
+async function submitCreate() {
+  if (!createForm.value.name.trim()) {
+    ElMessage.warning(t('taskBoard.msgNameRequired'))
+    return
+  }
+  if (!createForm.value.task_type) {
+    ElMessage.warning(t('taskBoard.msgTypeRequired'))
+    return
+  }
+  createSubmitting.value = true
+  try {
+    const res = await http.post(API_CONFIG.JOBS, {
+      name: createForm.value.name.trim(),
+      task_type: createForm.value.task_type,
+      params: {},
+    })
+    if (res.data.code === 0) {
+      ElMessage.success(t('taskBoard.msgCreateSuccess'))
+      createDialogVisible.value = false
+      tasksStore.fetchTasks()
+    } else {
+      ElMessage.error(res.data.message || t('taskBoard.msgCreateFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[TaskBoard] create task failed:', e)
+    ElMessage.error(t('taskBoard.msgCreateFailed'))
+  } finally {
+    createSubmitting.value = false
+  }
 }
 </script>
 

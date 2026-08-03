@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission, require_role
 from app.core.response import success, error, ErrorCode
-from app.service import tools_service
+from app.services import tools_service
 
 logger = logging.getLogger(__name__)
 

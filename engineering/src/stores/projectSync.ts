@@ -27,6 +27,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import http from '@/utils/http'
 import { extractErrorMessage } from '@/utils/error-handler'
+import { unwrap } from '@/utils/response'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 import {
   type ProjectSyncManifest,
@@ -211,24 +212,7 @@ export const useProjectSyncStore = defineStore(
         recordsLoading.value,
     )
 
-    // ===== 内部工具 =====
-
-    /**
-     * 解包响应信封：后端统一返回 { code, message, data, request_id }，
-     * 此处兼容直接返回 payload 的情况。
-     */
-    function unwrap<T>(response: unknown): T {
-      const r = response as { data?: { data?: T } | T; data?: T }
-      // axios response.data 即后端响应体；后端响应体的 data 字段为实际 payload
-      if (r && typeof r === 'object' && 'data' in r) {
-        const body = r.data as { data?: T } | T
-        if (body && typeof body === 'object' && 'data' in body) {
-          return (body as { data?: T }).data as T
-        }
-        return body as T
-      }
-      return response as T
-    }
+    // unwrap() 已提取到 @/utils/response.ts（消除 6 个 Store 的重复定义）
 
     /** 从项目列表中按 project_id 移除一条（用于删除后本地同步）。 */
     function removeFromList(projectId: string): void {

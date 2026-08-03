@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="灵境制造 - 智能制造平台" />
     <title>灵境制造</title>
@@ -13,22 +13,18 @@
       - default-src 'self' data: blob:       : 默认仅允许同源 + data/blob URI，收紧兜底策略
                                                 （移除冗余的 https://*.aliyuncs.com https://*.taosdata.com
                                                  通配符——前端无直接外部资源加载，且通配符过宽存在 C2 风险）
-      - script-src 'self' 'unsafe-inline'    : 移除 'unsafe-eval'（XSS 防护）；保留 'unsafe-inline' 因为 Vue 3 内联脚本
-                                               和诊断脚本依赖（index.html 中的 boot 诊断脚本为内联 <script>）
-                                               TODO: 后续批次应引入 nonce 机制替换 'unsafe-inline'
-      - connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*
+      - script-src 'self' 'nonce-__CSP_NONCE__'   : 移除 'unsafe-inline'，使用构建期随机 nonce 替代
+                                                （Vite 插件自动为内联脚本注入 nonce，无需手动维护）
+      - connect-src 'self' ipc: http://ipc.localhost http://localhost:8765-8785 ws://localhost:8765-8785 http://127.0.0.1:8765-8785 ws://127.0.0.1:8765-8785
                                              : 保留 ipc: 和 http://ipc.localhost（Tauri 2 IPC 通信硬约束）；
-                                               localhost/127.0.0.1 用于后端健康检查
-                                               （已移除 https://api.openai.com https://api.anthropic.com
-                                                https://api.deepseek.com https://generativelanguage.googleapis.com
-                                                https://*.aliyuncs.com —— 这些 LLM API 由后端 FastAPI 代理调用，
-                                                前端只通过 /api/v1/llm-providers/{id}/test 发起本地请求，
-                                                CSP 白名单冗余且增加 XSS 数据外泄风险）
+                                               localhost/127.0.0.1 限于后端端口范围 8765-8785
+                                               （移除通配符 :*，与 SidecarManager 动态端口范围对齐）
       - img-src 'self' data: blob: https:    : 允许同源、data URI、blob URL 和 HTTPS 图片
       - font-src 'self' data:                : 允许同源和 data URI 字体
-      - style-src 'self' 'unsafe-inline'     : CSS 内联通常必要（Element Plus 主题覆盖等），保留 'unsafe-inline'
+      - style-src 'self' 'unsafe-inline'     : CSS 内联通过 nonce 注入（Element Plus 主题覆盖等），
+                                                保留 'unsafe-inline' 作为兜底（部分浏览器 nonce 兼容性不佳）
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'nonce-__CSP_NONCE__'; connect-src 'self' ipc: http://ipc.localhost http://localhost:8765-8785 ws://localhost:8765-8785 http://127.0.0.1:8765-8785 ws://127.0.0.1:8765-8785; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';" />
     <!-- DNS 预解析（Tauri 桌面环境下 localhost 走回环，无实际 DNS 解析，保留以兼容 Web 模式） -->
     <link rel="dns-prefetch" href="//localhost" />
     <!-- 预连接后端源（仅 Web 模式生效，Tauri 模式下走 IPC 不影响） -->

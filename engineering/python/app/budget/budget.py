@@ -541,7 +541,7 @@ class BudgetManager:
             agent_id: 代理ID
             reason: 暂停原因
         """
-        from app.heartbeat.heartbeat import get_scheduler
+        from app.dependencies import get_scheduler
 
         try:
             scheduler = get_scheduler()
@@ -636,12 +636,7 @@ _holder = _BudgetManagerHolder()
 def get_budget_manager() -> BudgetManager:
     """获取共享的 :class:`BudgetManager` 单例；首次访问时懒初始化。
 
-    Returns:
-        :class:`BudgetManager` 实例（应用生命周期内同一实例）。
-
-    Note:
-        同时也是 FastAPI 依赖工厂，可直接用于 ``Depends(get_budget_manager)``。
-        实现是线程安全的，行为与重构前完全一致。
+    .. deprecated:: V3.0 (2026-08-02)
     """
     return _holder.get()
 

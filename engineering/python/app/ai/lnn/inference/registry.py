@@ -443,7 +443,7 @@ class ModelRegistry(BaseModelRegistry):
     def get(self, model_name: str, load_if_needed: bool = True) -> BaseLNNModel:
         if model_name not in self.registry:
             raise KeyError(
-                f"模型获取失败：模型 '{model_name}' 未在注册表中找到。可能原因：1) 模型尚未注册；2) 模型名称拼写错误。请调用 GET /api/v1/lnn/models 查看所有已注册的模型列表，确认模型名称后重试。"  # noqa: E501
+                f"模型获取失败：模型 '{model_name}' 未在注册表中找到。可能原因：1) 模型尚未注册；2) 模型名称拼写错误。请调用 GET /api/v1/lnn/models 查看所有已注册的模型列表，确认模型名称后重试。"
             )
 
         entry = self.registry[model_name]
@@ -461,7 +461,7 @@ class ModelRegistry(BaseModelRegistry):
             return entry.model
 
         raise RuntimeError(
-            f"模型获取失败：模型 '{model_name}' 尚未加载到内存中。可能原因：1) 模型尚未从磁盘加载；2) 模型已卸载。解决方案：1) 设置 load_if_needed=True 以自动加载模型；2) 调用 POST /api/v1/lnn/models/{{name}}/load 手动加载模型。"  # noqa: E501
+            f"模型获取失败：模型 '{model_name}' 尚未加载到内存中。可能原因：1) 模型尚未从磁盘加载；2) 模型已卸载。解决方案：1) 设置 load_if_needed=True 以自动加载模型；2) 调用 POST /api/v1/lnn/models/{{name}}/load 手动加载模型。"
         )
 
     def load_model(self, model_name: str) -> None:
@@ -474,7 +474,7 @@ class ModelRegistry(BaseModelRegistry):
         model_class = self.MODEL_CLASS_MAP.get(config.model_type)
         if model_class is None:
             raise ValueError(
-                f"模型加载失败：未知的模型类型 '{config.model_type}'。支持的模型类型可通过 registry.MODEL_CLASS_MAP.keys() 查看。请检查 ModelConfig 中的 model_type 配置，或调用 GET /api/v1/lnn/models 查看支持的模型类型。"  # noqa: E501
+                f"模型加载失败：未知的模型类型 '{config.model_type}'。支持的模型类型可通过 registry.MODEL_CLASS_MAP.keys() 查看。请检查 ModelConfig 中的 model_type 配置，或调用 GET /api/v1/lnn/models 查看支持的模型类型。"
             )
 
         hyperparams = config.hyperparameters or {}

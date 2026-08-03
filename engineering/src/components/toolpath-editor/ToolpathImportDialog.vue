@@ -54,7 +54,7 @@
         <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
         <div
           v-for="(line, i) in previewLines"
-          :key="i"
+          :key="`line-${i}`"
           class="preview-line"
         >
           {{ line }}

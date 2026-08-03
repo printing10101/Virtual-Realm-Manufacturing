@@ -340,15 +340,31 @@ class GCodeLoader:
     def _resolve_path(self, path: str) -> str:
         """解析路径：若为相对路径，相对 PROJECT_ROOT 解析。
 
+        安全：拒绝 ``..`` 路径遍历；绝对路径必须位于 PROJECT_ROOT 之下，
+        防止通过 report.json 的 gcode_file_path 字段读取任意系统文件。
+
         Args:
             path: 绝对或相对路径
 
         Returns:
             绝对路径
+
+        Raises:
+            GCodeReportLoadError: 路径越界（不在 PROJECT_ROOT 之下）时抛出
         """
+        project_root = os.path.abspath(self._project_root)
+        # 解析最终绝对路径（处理 .. 和符号链接）
         if os.path.isabs(path):
-            return path
-        return os.path.join(self._project_root, path)
+            resolved = os.path.abspath(path)
+        else:
+            resolved = os.path.abspath(os.path.join(project_root, path))
+        # 强制校验：最终路径必须位于 PROJECT_ROOT 之下
+        if not resolved.startswith(project_root + os.sep) and resolved != project_root:
+            raise GCodeReportLoadError(
+                f"路径越界被拒绝（安全策略）：{path!r} 解析为 {resolved!r}，"
+                f"不在项目根目录 {project_root!r} 之下"
+            )
+        return resolved
 
     def _load_gcode_text(self, gcode_file_path: str) -> str:
         """读取 G 代码文件文本。

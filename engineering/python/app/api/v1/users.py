@@ -1,10 +1,11 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from app.models.user import UserResponse, get_user_store
+from app.models.user import UserResponse
+from app.dependencies import get_user_store
 from app.models.schemas import (
     PermissionCheckResult,
     RoleAssignRequest,

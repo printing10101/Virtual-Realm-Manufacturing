@@ -282,13 +282,10 @@ _optimizer_holder = _CostOptimizerHolder()
 def get_cost_optimizer() -> CostOptimizer:
     """获取共享的 :class:`CostOptimizer` 单例；首次访问时懒初始化。
 
+    .. deprecated:: V3.0 (2026-08-02)
+
     Returns:
         :class:`CostOptimizer` 实例（应用生命周期内同一实例）。
-
-    Note:
-        同时是 FastAPI 依赖工厂，可直接用于 ``Depends(get_cost_optimizer)``。
-        实现是线程安全的，行为与重构前完全一致——内部委托给
-        :meth:`CostOptimizer.get_instance`。
     """
     return CostOptimizer.get_instance()  # type: ignore[return-value]
 

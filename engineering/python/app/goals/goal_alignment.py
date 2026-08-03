@@ -1,4 +1,4 @@
-﻿"""
+"""
 Goal Alignment Verification System
 
 Ensures all tasks are properly aligned with the goal hierarchy.
@@ -16,7 +16,8 @@ from typing import Any, Dict, List, Optional
 
 from app.models.goals import GoalStatus, GoalProgress
 from app.models.tasks import EnhancedTask, EnhancedTaskStatus
-from app.goals.goal_chain_store import GoalChainStore, get_goal_chain_store
+from app.dependencies import get_goal_chain_store
+from app.goals.goal_chain_store import GoalChainStore
 from app.context.context_builder import ContextBuilder
 
 logger = logging.getLogger(__name__)

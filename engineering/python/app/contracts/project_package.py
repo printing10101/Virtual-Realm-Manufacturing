@@ -28,7 +28,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Optional
 
-from app.config.limits import STREAM_BUFFER_SIZE
+# 流式传输缓冲区大小（1 MiB），与 config/limits.py 的 STREAM_CHUNK_SIZE 保持同步
+# 定义在 contracts 层而非从 config 导入，避免 contracts → config 循环依赖
+STREAM_BUFFER_SIZE: int = 1024 * 1024
 
 
 # ---------------------------------------------------------------------------

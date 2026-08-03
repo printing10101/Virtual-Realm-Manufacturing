@@ -211,7 +211,7 @@ def _collect_environment() -> dict[str, str]:
         try:
             mod = __import__(pkg)
             env[pkg] = getattr(mod, "__version__", "unknown")
-        except Exception:  # noqa: BLE001
+        except Exception:
             env[pkg] = "not-installed"
     return env
 

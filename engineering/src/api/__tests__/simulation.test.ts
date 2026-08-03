@@ -114,12 +114,12 @@ describe('simulation API', () => {
 
       const data = await getSimulationResult('task-warn')
 
-      expect(data.force_data).toHaveLength(2)
-      expect(data.force_data[0].position).toEqual([1, 2, 3])
-      expect(data.force_data[0].direction).toEqual([0, 0, -1])
-      expect(data.force_data[0].magnitude).toBe(500)
-      expect(data.force_data[1].position).toEqual([4, 5, 6])
-      expect(data.force_data[1].magnitude).toBe(500)
+      expect(data.force_data!).toHaveLength(2)
+      expect(data.force_data![0].position).toEqual([1, 2, 3])
+      expect(data.force_data![0].direction).toEqual([0, 0, -1])
+      expect(data.force_data![0].magnitude).toBe(500)
+      expect(data.force_data![1].position).toEqual([4, 5, 6])
+      expect(data.force_data![1].magnitude).toBe(500)
     })
 
     it('碰撞严重级别 critical 时 magnitude=1000', async () => {
@@ -139,8 +139,8 @@ describe('simulation API', () => {
 
       const data = await getSimulationResult('task-crit')
 
-      expect(data.force_data).toHaveLength(1)
-      expect(data.force_data[0].magnitude).toBe(1000)
+      expect(data.force_data!).toHaveLength(1)
+      expect(data.force_data![0].magnitude).toBe(1000)
     })
 
     it('task_id 与传入参数一致（来自 result）', async () => {

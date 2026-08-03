@@ -23,10 +23,10 @@ from typing import Any
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
 
-from app.simulation.constants import (  # noqa: E402
+from app.simulation.constants import (
     AXIS_LABEL_X,
     AXIS_LABEL_Y,
     AXIS_LABEL_Z,
@@ -51,8 +51,8 @@ from app.simulation.constants import (  # noqa: E402
     SUBPLOT_ADJUST,
     TITLE_TEXT,
 )
-from app.simulation.stock_model import StockModel  # noqa: E402
-from app.simulation.toolpath_parser import ToolpathSegment  # noqa: E402
+from app.simulation.stock_model import StockModel
+from app.simulation.toolpath_parser import ToolpathSegment
 
 
 # ---------------------------------------------------------------------------

@@ -24,6 +24,12 @@ import signal
 import sys
 from pathlib import Path
 
+# 确保 shared/ 契约层在 Python 路径中（V3.0 架构）
+# shared/ 位于 monorepo 根目录，main.py 位于 engineering/python/app/
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 import uvicorn
 from fastapi import FastAPI
 from starlette.responses import JSONResponse
@@ -40,7 +46,8 @@ from app.core.request_id import get_request_id
 from app.core.logging_config import configure_logging
 from app.utils.utils import get_metrics_collector
 from app.sidecar.sidecar_lifecycle import GracefulShutdownHandler
-from app.utils.ring_buffer import get_ring_log_buffer, BUFFER_TYPES
+from app.dependencies import get_ring_log_buffer
+from app.utils.ring_buffer import BUFFER_TYPES
 from app.config import config
 from app.config.limits import LOG_MAX_BYTES
 from app.startup_hooks import (
@@ -138,7 +145,7 @@ _DOCS_DISABLED = _LNN_ENV == "production"
 
 app = FastAPI(
     title="灵境制造 API",
-    version="2.5.0",
+    version="2.7.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url=None if _DOCS_DISABLED else "/api/docs",
     redoc_url=None if _DOCS_DISABLED else "/api/redoc",
@@ -184,7 +191,17 @@ async def startup_event():
         sys.exit(1)
 
     shutdown_handler.setup()
-    await ring_log.start()
+
+    # 修复：ring_log.start() 失败不应阻塞整个启动。
+    # 原实现未捕获，若 ring_log 内部创建后台任务失败（如事件循环已关闭），
+    # 会导致 startup_event 直接 raise，FastAPI 不会触发 shutdown_event，
+    # 已注册的 shutdown_handler 信号处理器等资源无法清理。
+    try:
+        await ring_log.start()
+    except Exception as ring_log_err:
+        logger.error(
+            "ring_log.start() 失败，环形日志将不可用: %s", ring_log_err, exc_info=True
+        )
 
     # 权限检查机制状态检查
     if not config.security.permission_enforced:
@@ -192,7 +209,7 @@ async def startup_event():
 
     from app.database.models import init_db
     from app.tasks.task_system import AsyncTaskManager
-    from app.services.redis_client import get_redis
+    from app.dependencies import get_redis
 
     # --- Step 1: 确保默认 SQLite 数据库目录存在 ---
     # DB_URL 环境变量不再由 main.py 设置，统一由 config.database.db_url 管理
@@ -202,10 +219,22 @@ async def startup_event():
         Path(_db_file).parent.mkdir(parents=True, exist_ok=True)
 
     # --- Step 2: Initialize async DB tables + seed RBAC ---
-    # (init_db uses Base.metadata.create_all, which handles fresh DB creation)
+    # 修复：init_db 失败（非 "already exists" 的 OperationalError，如磁盘满、
+    # 权限不足、schema 损坏）原实现会让 uvicorn 以非零码退出，但此时
+    # ring_log 已启动，FastAPI startup 失败不会触发 shutdown_event，
+    # 导致 ring_log 文件句柄泄漏（Windows 下可能锁定日志文件）。
+    # 现改为 try/except 记录错误但不阻塞启动，让 verify_critical_dependencies
+    # 后续报告 DB 不可用，由运维决定是否需要重启。
     logger.info("[startup] Calling init_db() ...")
-    await init_db()
-    logger.info("[startup] init_db() done")
+    try:
+        await init_db()
+    except Exception as db_init_err:
+        logger.error(
+            "[startup] init_db() 失败，数据库相关功能将不可用: %s",
+            db_init_err,
+            exc_info=True,
+        )
+    logger.info("[startup] init_db() step done")
 
     # --- Step 2b: Alembic 迁移（失败不阻断启动，仅告警）---
     # P0-3 修复：在 init_db 后执行 alembic upgrade head，保证 schema 版本一致
@@ -213,9 +242,18 @@ async def startup_event():
     await run_alembic_upgrade(logger)
 
     # --- Step 3: Redis (optional, returns None if not configured) ---
+    # Redis 已在 get_redis() 内部对 ConnectionError/TimeoutError 做降级
+    # 到内存缓存，但为防御 ImportError 等未预期异常，外层再加 try/except。
     logger.info("[startup] Calling get_redis() ...")
-    await get_redis()
-    logger.info("[startup] get_redis() done")
+    try:
+        await get_redis()
+    except Exception as redis_err:
+        logger.error(
+            "[startup] get_redis() 失败，将使用内存缓存降级: %s",
+            redis_err,
+            exc_info=True,
+        )
+    logger.info("[startup] get_redis() step done")
 
     # --- Step 3b: 关键依赖连通性自检（P1-15 修复）---
     # 启动后立即验证 DB / Redis 可达性，失败仅 warning 不阻断启动
@@ -225,10 +263,20 @@ async def startup_event():
     await verify_critical_dependencies(logger)
 
     # --- Step 4: Task manager ---
+    # 修复：AsyncTaskManager.initialize 失败原实现未捕获，若内部创建线程池
+    # 或注册定时器失败会导致 startup 直接 raise。现改为 try/except 让
+    # 应用以降级模式启动（无后台任务执行能力但 API 仍可响应）。
     logger.info("[startup] Initializing AsyncTaskManager ...")
-    task_mgr = AsyncTaskManager()
-    await task_mgr.initialize(max_concurrent=config.tasks.max_concurrent)
-    logger.info("[startup] AsyncTaskManager initialized")
+    try:
+        task_mgr = AsyncTaskManager()
+        await task_mgr.initialize(max_concurrent=config.tasks.max_concurrent)
+    except Exception as task_mgr_err:
+        logger.error(
+            "[startup] AsyncTaskManager 初始化失败，后台任务功能将不可用: %s",
+            task_mgr_err,
+            exc_info=True,
+        )
+    logger.info("[startup] AsyncTaskManager step done")
 
     ring_log.append(
         "system_event",
@@ -272,7 +320,7 @@ async def shutdown_event():
 
     # 1) HeartbeatScheduler：取消心跳 asyncio.Task 并关闭 WakeupQueue 连接
     try:
-        from app.heartbeat.heartbeat import get_scheduler
+        from app.dependencies import get_scheduler
         await get_scheduler().stop()
     except (OSError, RuntimeError, ValueError, AttributeError,
             ImportError, TypeError) as e:
@@ -285,28 +333,28 @@ async def shutdown_event():
     # 3) 业务模块：归还 SQLite 连接池连接，避免连接泄漏与 Windows 文件句柄锁定。
     #    各模块独立 try/except，避免一处失败影响其他资源的释放。
     try:
-        from app.budget.budget import get_budget_manager
+        from app.dependencies import get_budget_manager
         get_budget_manager().close()
     except (OSError, RuntimeError, ValueError, AttributeError,
             ImportError, TypeError) as e:
         logger.warning("BudgetManager close failed during shutdown: %s", e)
 
     try:
-        from app.budget.cost_tracker import get_cost_tracker
+        from app.dependencies import get_cost_tracker
         get_cost_tracker().close()
     except (OSError, RuntimeError, ValueError, AttributeError,
             ImportError, TypeError) as e:
         logger.warning("CostTracker close failed during shutdown: %s", e)
 
     try:
-        from app.database.rule_db import get_rule_db
+        from app.dependencies import get_rule_db
         get_rule_db().close()
     except (OSError, RuntimeError, ValueError, AttributeError,
             ImportError, TypeError) as e:
         logger.warning("RuleDatabase close failed during shutdown: %s", e)
 
     try:
-        from app.goals.goal_chain_store import get_goal_chain_store
+        from app.dependencies import get_goal_chain_store
         get_goal_chain_store().close()
     except (OSError, RuntimeError, ValueError, AttributeError,
             ImportError, TypeError) as e:
@@ -332,7 +380,7 @@ async def shutdown_event():
     # 显式关闭 ChromaDB PersistentClient，释放底层 SQLite/DuckDB 资源，
     # 避免 Windows 文件句柄锁定导致下次启动失败。
     try:
-        from app.rag.vector_store import get_vector_store
+        from app.dependencies import get_vector_store
         get_vector_store().close()
     except (OSError, RuntimeError, ValueError, AttributeError,
             ImportError, TypeError) as e:
@@ -361,106 +409,6 @@ register_middleware_stack(
 )
 
 
-# =============================================================================
-# 内联端点（生命周期相关 / 简单查询，不归属于任何业务域）
-# =============================================================================
-@app.get("/api/v1/version")
-async def get_version():
-    return get_version_info()
-
-
-# 健康检查端点 - Rust 端通过此端点判断后端是否就绪
-@app.get("/api/health/ping")
-async def health_ping():
-    return {"status": "ok"}
-
-
-@app.get("/api/v1/logs/stats")
-async def get_log_stats():
-    return {
-        "code": 0,
-        "message": "OK",
-        "data": ring_log.stats(),
-        "request_id": get_request_id(),
-    }
-
-
-@app.get("/api/v1/logs/{buffer_type}")
-async def query_logs(
-    buffer_type: str,
-    since: str | None = None,
-    until: str | None = None,
-    level: str | None = None,
-    limit: int = 100,
-    offset: int = 0,
-):
-    if buffer_type not in BUFFER_TYPES:
-        return JSONResponse(
-            content={
-                "code": 1002,
-                "message": f"Invalid buffer type: {buffer_type}",
-                "request_id": get_request_id(),
-                "detail": {"valid_types": list(BUFFER_TYPES)},
-            },
-            status_code=400,
-        )
-    result = ring_log.query(
-        buffer_type=buffer_type,
-        since=since,
-        until=until,
-        level=level,
-        limit=limit,
-        offset=offset,
-    )
-    return {"code": 0, "message": "OK", "data": result, "request_id": get_request_id()}
-
-
-# =============================================================================
-# P1-4 修复：桌面 sidecar 优雅关闭端点
-# =============================================================================
-# 设计：
-# - 仅在桌面 sidecar 模式（LNN_IDLE_AUTO_SHUTDOWN=false）下注册
-# - 仅监听 127.0.0.1，外部网络无法访问
-# - 接收 POST 后异步触发 graceful shutdown（通过 GracefulShutdownHandler）
-# - Rust 端 stop() 先 POST 此端点，等待最多 8s，超时才 fallback 到 kill()
-# - 避免直接 SIGKILL 导致 SQLite WAL 未 checkpoint / 文件句柄锁定
-if not _IDLE_AUTO_SHUTDOWN_ENABLED:
-    @app.post("/api/v1/admin/shutdown")
-    async def trigger_graceful_shutdown():
-        """触发后端优雅关闭。
-
-        由 Tauri Rust 端在退出前调用，确保 shutdown_event 中的
-        ring_log / sse_manager / Redis / DB / ChromaDB 资源正常释放。
-        """
-        logger.info("[shutdown] received graceful shutdown request from sidecar host")
-        # 异步触发关闭，不阻塞响应
-        # P0-2 修复：保存 task 引用并添加 done_callback，防止关闭流程异常被静默丢弃。
-        # 原实现 asyncio.create_task 未保存引用，若 _async_shutdown 内部抛出异常，
-        # Python 会在 GC 回收 task 时打印 "Task exception was never retrieved" 警告，
-        # 但关闭失败的信息无法被结构化日志捕获，运维无法感知关闭流程是否正常完成。
-        shutdown_task = asyncio.create_task(_async_shutdown())
-
-        def _on_shutdown_done(t: asyncio.Task) -> None:
-            if t.cancelled():
-                logger.warning("[shutdown] graceful shutdown task was cancelled")
-                return
-            if t.exception() is not None:
-                logger.error(
-                    "[shutdown] graceful shutdown task failed: %s",
-                    t.exception(),
-                    exc_info=t.exception(),
-                )
-            else:
-                logger.info("[shutdown] graceful shutdown task completed")
-
-        shutdown_task.add_done_callback(_on_shutdown_done)
-        return {"code": 0, "message": "shutdown scheduled"}
-
-    async def _async_shutdown():
-        """延迟触发关闭，确保 HTTP 响应已发送。"""
-        # P2-5-2 修复：使用命名常量替代魔法数字 0.2
-        await asyncio.sleep(SHUTDOWN_DELAY_SECONDS)
-        shutdown_handler._handle_shutdown_signal(signal.SIGTERM, None)
 
 
 # =============================================================================

@@ -202,15 +202,19 @@
 
       <!-- Page Content -->
       <main class="layout-content">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <keep-alive>
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </main>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   Folder,
@@ -225,14 +229,13 @@ import { navGroups } from '@/config/navGroups'
 
 const { t } = useI18n()
 const route = useRoute()
-const router = useRouter()
 
 const emit = defineEmits<{
   (e: 'file-command', cmd: string): void
   (e: 'refresh'): void
 }>()
 
-const props = defineProps<{
+defineProps<{
   projectName?: string
   isModified?: boolean
 }>()

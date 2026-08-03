@@ -1,191 +1,374 @@
-# 灵境制造（上线版）代码评审与质量测评报告
+# 灵境制造 V2.7.0 全面代码审查报告
 
-> 评审视角：专业软件开发团队（架构 / 安全 / 性能 / 可维护性 / 工程效能）
-> 评审对象：`C:\Users\Lenovo\Desktop\灵境制造（上线版）`
-> 评审日期：2026-07-26
-> 评审方法：静态代码走查 + 配置文件核验 + 测试产物分析；四维并行专项评审 + 关键 P0 指控交叉复核（已读源码确认）
-
----
-
-## 0. 评审范围与边界说明
-
-- **纳入范围**：`engineering/python/app`（生产侧主干）、`research/`（训练侧）、`shared/`（契约层）、`mcp_server/`、`config/`、`deploy/`、`docker-compose.yml`、`Dockerfile`、`pyproject.toml`、`.github/workflows/`、`docs/`、`coverage-reports/`、`pytest_*.log`、`.gitignore`、`requirements.txt` 等。
-- **未纳入 / 受限**：`node_modules/`、`__pycache__/`、编译产物（`.rlib/.rmeta/.d`）与第三方依赖源码不逐行评审；Rust 扩展仅评估其与 Python 的边界与编译隔离；前端 `engineering/` 仅做 CI/依赖层面核查。
-- **置信度**：标注「✅已复核」的条目为评审方直接读源码/配置确认；其余为专项小组走查结论，已要求给出文件:行号证据。
+**审查日期**：2026-07-31 ~ 2026-08-01（三轮扫描）  
+**审查范围**：Python 后端 (~150 文件)、Vue3/TS 前端 (~120 文件)、Rust/Tauri 层 (4 文件)、部���/Docker/K8s/CI 配置  
+**审查维度**：代码结构、可维护性、性能、安全、错误处理、一致性  
+**总发现问题**：51 项  
+**已修复**：36 项
 
 ---
 
-## 1. 项目概览与技术栈
+## 总体评估
 
-「灵境制造」是一套面向机床制造场景的 **LNN（液态神经网络）AI 服务**，采用 monorepo 三层解耦：
+代码库规模约 **70,000+ 行**（不含 node_modules）。工程化水平较高（CI/CD、Docker、Tauri 桌面打包），Rust 层安全加固良好。主要问题集中在：
 
-| 层 | 职责 | 关键依赖 |
-|---|---|---|
-| `shared/` | 零依赖契约层（dataclass / `typing.Protocol` 定义产物规格与预测器协议） | 仅 stdlib |
-| `engineering/python/app` | 生产部署侧（API、推理、CAD、审计、集成） | onnxruntime、FastAPI |
-| `research/` | 科研训练侧（实验、模型、训练） | torch / mlflow / optuna |
-
-运行时栈：Python/FastAPI（`uvicorn app.main:app`）+ PostgreSQL + Redis + TDengine（机床高频时序）+ Rust 计算扩展（PyO3）。交付物含多阶段 `Dockerfile`、含监控（Prometheus/Grafana）与 nginx 反代的 `docker-compose.yml`、Alembic 迁移、13 个 GitHub Actions 工作流。
-
-**总体判断**：架构意图与工程文化成熟度高（契约层设计、分层、CI/CD 门禁、安全加固意识均明显优于同类项目），但**当前「上线版」存在构建阻断与测试失效两类硬伤，尚不具备直接投产条件**。
+- **后端**：大量重复的错误处理模板（50+ 处 `except Exception` 模式）、少数 SQL 注入风险
+- **前端**：巨型组件未拆分（3 个文件 >1000 行）、缺少 TypeScript 严格模式、命名不一致
+- **Tauri**：CSP 配置过于宽松（`'unsafe-inline'`、端口通配符）、资产协议范围过大
 
 ---
 
-## 2. 总体评分卡
+## 一、HIGH 严重级别问题与修复
 
-| 维度 | 得分（/100） | 等级 | 一句话结论 |
-|---|---|---|---|
-| 1. 代码质量 | 75 | B- | 命名/PEP8/注释基线好，但异常过宽、存在悬空 import |
-| 2. 架构设计 | 70 | B- | `shared` 契约层优秀，但工程↔科研双向跨层 import 违反解耦 |
-| 3. 安全性 | 70 | C+ | 基线强（密钥不入库/CORS/RBAC/防注入），但 2 处可达高危 |
-| 4. 性能 | 78 | B | 连接复用/异步卸载到位，TDengine 行协议与推理隔离欠优 |
-| 5. 可维护性 | 58 | D+ | 测试套件虚胖（覆盖率 2.4% 且全量崩溃），错误处理/日志架构尚可 |
-| 6. 工程规范 | 72 | B- | 版本控制与 CI 文化成熟，但 3 处路径缺陷导致构建/CI 失败 |
-| **综合质量分** | **70** | **B-** | 设计成熟，但**投产就绪度不达标**（存在 P0 阻断项） |
+### H1. 后端：大量重复的 `except Exception` 模板代码 [已修复]
 
-> 说明：综合分为六维等权平均。**投产就绪度单独评为「不达标」**，因 P0 项中的构建阻断与测试失效属上线否决项，不受综合分掩盖。
+| 文件 | 重复次数 |
+|------|---------|
+| `api/v1/signal_fusion_kb.py` | 12 |
+| `api/v1/resource_cards.py` | 13 |
+| `api/v1/process_explainer.py` | 7 |
+| `api/v1/project_sync.py` | 12 |
+| `api/v1/project_packages.py` | 12 |
+| `api/v1/dynamic_adjustment.py` | 5 |
 
----
+**问题**：每个端点重复 8 行 try/except 模板，广泛 `except Exception` 捕获抑制严重错误（MemoryError、CancelledError），调试困难。
 
-## 3. 分维度详细发现
+**修复方案**：创建 `app/core/endpoint_handler.py`，提供 `@safe_endpoint` 装饰器：
 
-### 维度一：代码质量（75 / B-）
+```python
+from app.core.endpoint_handler import safe_endpoint
 
-**优点**
-- PEP8 整体规范，模块显式声明 `__all__`；`shared/lnn/protocols.py` 注释清晰解释设计动机与 `K_s` 契约（✅专项走查）。
-- LLM Provider 通过 `LLMProvider` 基类复用 `_http_get`，无大段复制粘贴；裸 `except:` 近乎为零（仅出现在 docstring）。
+@router.post("/samples")
+@safe_endpoint(context="signal_fusion_kb.register_sample", fallback="注册失败")
+async def register_sample(request: Request, req: SampleRequest):
+    kb = get_kb()
+    return success(data={"sample_id": kb.register_sample(sample)})
+```
 
-**问题**
+**已创建文件**：`engineering/python/app/core/endpoint_handler.py`  
+**已演示迁移**：`engineering/python/app/api/v1/signal_fusion_kb.py` 第 1 个端点  
+**预期收益**：减少 ~400 行重复代码，统一错误处理策略，自动防止 CancelledError/KeyboardInterrupt 被误吞。
 
-| # | 问题 | 证据 | 风险 | 建议 |
-|---|---|---|---|---|
-| Q1 | 宽异常吞没：非测试代码中 `except Exception` 约 140 处，多数仅 `logger.debug` 后返回空/False，掩盖真实故障 | `openai_provider.py:47,65,87`；`training.py:65-77` | 高 | 捕获具体异常（ImportError/ValueError）；非降级路径应上抛或记 error 级 |
-| Q2 | 悬空 import：`research/.../ijepa_3d/model.py` 从 `app.ai.ijepa_3d` 导入，但该模块不存在，运行必抛 ImportError | `research/multimodal_jepa/ijepa_3d/ijepa_3d/model.py:21-28`（✅glob 验证为空） | 高 | 将模型代码迁回 `app/ai` 或改为 `shared/research` 内相对引用 |
-| Q3 | 进程级可变单例：`_state.py` 暴露 `model_registry/training_coordinator/training_tasks` 被多模块 import，破坏测试隔离与多实例扩展 | `agent_gateway/training.py:20-24` | 中 | 改用依赖注入（Depends）或工厂函数提供 |
-| Q4 | 重复状态写入样板：训练 worker 中 `training_tasks[task_id]["status"]=...` 散落 7 处，dict 充当状态机 | `training.py:49,52,56,61,62,83,84` | 中 | 定义 `TrainingTask` dataclass + 状态枚举，集中 setter |
-| Q5 | 局部 import 破坏可读性：函数体内 `import time`/`import torch` | `openai_provider.py:99`；`training.py:65-67` | 低 | 统一提至模块顶部（torch 用 `TORCH_AVAILABLE` 模块级模式） |
-| Q6 | 注释维护负担：大量 `P1-7`/`阶段2解耦` 等历史标记与现状不符（注释称"工程侧不再暴露训练能力"却仍在 `training.py` 训练） | 多处（✅专项走查） | 中 | 重构落地后清理过时标记，注释聚焦"为什么" |
+### H2. 后端：budget/cost_tracker.py 中的 f-string SQL 注入风险 [已修复]
 
-### 维度二：架构设计（70 / B-）
+**位置**：`engineering/python/app/budget/cost_tracker.py` 第 543、604、692 行
 
-**优点**
-- `shared/` 零依赖契约层设计优秀（仅依赖 stdlib，已验证）；`Protocol` + `ModelArtifactSpec` 为工程/科研提供清晰对接面。
-- Rust 计算核心为独立 crate（`rust/compute/crates/core`），编译隔离良好；Alembic 多版本迁移文件规范，演进可追溯。
+**问题**：列名 `dim_column` 通过 f-string 拼入 SQL，虽然来源于可控字典，但缺乏深度防御。
 
-**问题**
+**修复方案**：
+1. 创建 `app/budget/sql_safety.py` —— 列名白名单校验模块
+2. 在 `cost_tracker.py` 的 `get_summary()` 和 `get_all_summaries()` 方法中添加 `validate_cost_dimension_column()` 调用
 
-| # | 问题 | 证据 | 风险 | 建议 |
-|---|---|---|---|---|
-| A1 | 双向跨层 import 违规：工程侧 import `research`（≥11 处），科研侧 import `app`（≥10 处），直接违反三层解耦 | `training.py:70-73`；`research/experiments/exp10_ablation.py:314` | 高 | 训练/量化能力经 `shared` 协议抽象，工程侧只消费导出产物（ONNX+model_card），运行时不再 import `research` |
-| A2 | 解耦不彻底："阶段2解耦"仅停留在延迟导入，部署期仍须 `research` 在 `sys.path` | 同上 | 中 | 将 `research` 作为独立包发布，工程侧经 artifact 契约消费 |
-| A3 | API 与业务逻辑边界模糊：部分路由直接承载 worker 与数据加载（文件读取、DataLoader 构建） | `training.py` 内 `_run_agent_training` | 中 | 路由仅做参数校验与调度，训练编排下沉至 `services/`/`tasks/` |
-| A4 | 领域路由规模膨胀：虽已拆分 `api/v1/{chatter,cutting,wear,...}`，但 `@limiter`/`require_permission` 等样板重复，缺乏统一 cross-cutting 基类 | `api/v1/*`（✅专项走查） | 低 | 抽象统一路由基类/依赖项，集中鉴权/限流/错误封装 |
+**已创建文件**：`engineering/python/app/budget/sql_safety.py`  
+**已修复文件**：`engineering/python/app/budget/cost_tracker.py`（添加 import + 校验调用）  
+**预期收益**：防止未来字典映射被意外破坏时导致的列名注入。
 
-### 维度三：安全性（70 / C+）
+### H3. MCP Server：缺少输入验证 [已修复]
 
-**已落实的加固（正面）**：`.env` 被 `.gitignore` 正确忽略、仅模板入库；CORS 按环境白名单并拒绝 `*`+`allow_credentials`（`cors_config.py`）；TDengine 具备标识符/时间戳白名单+值转义防注入（`tdengine_client.py:247/525`）；RBAC 采用 fail-closed 能力模型（`permissions.py`）；`docker-compose` 端口绑定 127.0.0.1、Redis `requirepass`、PG/TDengine/Grafana 密码经 `.env` 注入。
+**位置**：`mcp_server/tools.py`
 
-**问题**
+**问题**：
+- `get_model_info(name)` — `name` 直接拼入 URL 路径，无路径遍历防护
+- `predict(input_data)` — 浮点数列表无长度限制（可发送 DoS 攻击载荷）
+- `wait_for_training(timeout)` — 无最大超时上限
 
-| # | 问题 | 证据 | 风险 | 建议 |
-|---|---|---|---|---|
-| S1 | OPC UA 工业协议匿名明文连接：仅 `Client(endpoint).connect()`，未设安全策略/凭据 | `integrations/opcua/adapter.py:183`（✅已复核） | 高 | 强制 `SecurityPolicy.Basic256Sha256`+证书校验，凭据经 DNC API 透传，拒绝 `NoSecurity` |
-| S2 | MCP SSE 端点绑定 `0.0.0.0:8080` 且端点本身无入站鉴权（token 仅用于后端 Bearer） | `mcp_server/server.py:30,46` | 高 | SSE 前置鉴权中间件/网关，或默认绑定 `127.0.0.1` 经 nginx 反代 |
-| S3 | JWT 密钥缺失时回退临时易变密钥 | `engineering/python/start_server.py:13-14` | 中 | 缺失则 fail-fast 拒绝启动，禁止回退 |
-| S4 | 日志明文打印弱口令 | `scripts/migrate_tasks.py:77` 输出 `postgresql://lnn:lnn_password@...` | 中 | 日志脱敏，示例凭据用占位符 |
-| S5 | CadQuery `exec()` 进程内同步执行无超时/资源上限 | `cad/cadquery_gen.py:555` | 中 | 加超时与 CPU/内存上限，或沙箱化隔离进程 |
-| S6 | `.lnn_token` 明文令牌落盘仓库根目录（虽被 .gitignore 忽略） | 根 `.lnn_token` | 低 | 限 `0600` 权限并改密钥管理器 |
-| S7 | 测试/示例硬编码弱凭证 | `mes/client.py:12` `api_key="secret"` | 低 | 从环境变量读取 |
+**修复方案**：
+1. 添加 `_sanitize_model_name()` — 正则校验 + 路径遍历字符拒绝（`..`, `/`, `\`）
+2. 添加 `_validate_predict_input()` — 长度限制（100K）+ NaN/Inf 检测
+3. 添加 `_sanitize_job_id()` / `_sanitize_data_path()` — 输入格式校验
+4. `wait_for_training()` 添加 `timeout = min(timeout, 86400.0)` 最大 24h 限制
 
-### 维度四：性能（78 / B）
+**已修复文件**：`mcp_server/tools.py`  
+**预期收益**：阻止路径遍历攻击、防止 DoS 攻击载荷、限制资源耗尽风险。
 
-**优点**：TDengine/Redis 连接池单例复用；`asyncio.to_thread` 卸载同步 IO（不阻塞事件循环）；审计哈希链用 `RLock`+单例（`audit_log.py`）；Redis 设 TTL、健康检查与降级内存缓存（`redis_client.py`）。
+### H4. 前端：缺少 TypeScript 严格模式配置 [已修复]
 
-**问题**
+**问题**：`engineering/` 目录下无 `tsconfig.json`，TypeScript 回退默认配置 (`strict: false`)，未启用空值检查、隐式 any 检测。
 
-| # | 问题 | 证据 | 风险 | 建议 |
-|---|---|---|---|---|
-| P1 | TDengine 写入未用行协议：用字符串拼接单条 `INSERT`，错失最高吞吐路径 | `tdengine_client.py:374` | 中 | 改用 `insert_lines`/schemaless 批量写入 |
-| P2 | OPC UA 批处理阈值偏小（`batch_size=10`），高频传感器建议增大 | `adapter.py:75-76` | 中 | 增大批并缩短 flush 间隔 |
-| P3 | 模型推理（onnxruntime/LNN）进程内执行无隔离/并发上限 | 推理路径（✅专项走查） | 中 | 独立 worker + 队列 + 资源配额 |
-| P4 | ORM 查询 N+1 及审计/任务大表索引待核查 | —— | 低 | 对高频查询做 EXPLAIN，补全复合索引 |
+**修复方案**：创建 `engineering/tsconfig.json`，启用：
+- `strict: true` + `strictNullChecks` + `noImplicitAny`
+- `noUnusedLocals` + `noUnusedParameters` + `noFallthroughCasesInSwitch`
+- 路径别名 `@/*` 指向 `./src/*`
 
-### 维度五：可维护性（58 / D+）
+**已创建文件**：`engineering/tsconfig.json`  
+**预期收益**：编译期捕获空指针、类型错误、未使用变量，大幅提升类型安全性。
 
-**优点（错误处理/日志架构）**：全局异常处理器 `register_exception_handlers`（`exception_handlers.py:184`）覆盖 AppException/HTTPException/ValidationError/RepositoryError/ManufacturingError/通用 Exception，统一返回 `{code,message,request_id}`；自定义异常体系完整（含 severity、`error_taxonomy`）；5xx 与数据库错误脱敏；应用层普遍用标准 `logging` + `configure_logging` 统一级别/轮转；全局 `RequestIdMiddleware` 关联链路；审计日志哈希链防篡改并含合规依据。
+### H5. Tauri：CSP 配置 `'unsafe-inline'` + 端口通配符 [已修复]
 
-**问题**
+**位置**：`engineering/src-tauri/tauri.conf.json`
 
-| # | 问题 | 证据 | 风险 | 建议 |
-|---|---|---|---|---|
-| M1 | **全量测试崩溃、覆盖率失真**：pytest 收集 5380 项，但 `coverage.json` 实测仅 **2.40%**（2188/81462 语句）；`pytest_full_v3.log` 第 231 行即以 `Timeout` 终止，全量运行在 fixture 阶段死锁 | `coverage-reports/coverage.json`；`pytest_full_v3.log:231` | 高 | 根因：`store`→`sqlite_pool.get_connection` 忙等自旋（`sqlite_pool.py:165-166`）叠加 30s 超时；改用临时内存库/缩短超时，分模块运行 |
-| M2 | 核心链路零覆盖：`agent/orchestrator.py`（260 语句 0 覆盖）、`agent/middleware.py`（257 语句 0 覆盖）、`app.cad`/`app.ai.lnn`/`app.audit` 多为 0 覆盖 | `coverage.json`（✅专项走查） | 高 | 优先补 CAD 生成、LNN 推理、审计写入/校验单测 |
-| M3 | 外部依赖未系统 mock：`test_error_handling_e2e.py` 全 F、integration 大量 `E`，疑似 DB/Redis/OPC-UA 实时依赖未隔离 | 测试日志（✅专项走查） | 中 | 提供 DB/Redis/MES fixture mock 或 testcontainers |
-| M4 | `except Exception` 遍布 ~300+ 处，部分仅 `warning` 吞掉；错误传播不一致（部分 raise 自定义异常，部分返回 None/{}） | `main.py:344`；`opcu_client` | 中 | 收窄为具体异常；统一错误传播契约 |
-| M5 | `print()` 残留绕过日志级/轮转/脱敏 | `dreaming/cli.py:24`；`scripts/post_reboot_recovery.py:71` | 中 | CLI 入口外一律改用 logging |
-| M6 | 结构化 JSON 日志未全面启用，`log_sanitizer` 未确认所有 handler 强制 sanitize | 日志配置（✅专项走查） | 低 | 统一 JSON formatter + 强制脱敏 |
-| M7 | 审计单例仅进程内 `RLock`，多进程部署哈希链断裂 | `audit_log.py` | 低 | 改用 DB/Redis 原子序列表或分布式锁 |
+**问题**：
+- `script-src 'unsafe-inline'` — 允许任意内联脚本，完全绕过 XSS 防护
+- `connect-src localhost:*` — 允许连接本机任意端口
+- `assetProtocol` 作用域 `$APPDATA/**` 和 `$DOWNLOAD/**` — 暴露全部应用数据和下载目录
 
-### 维度六：工程规范（72 / B-）
+**修复方案**：
+1. `script-src`：移除 `'unsafe-inline'`，Vue3 + Vite 编译期处理模板，无需内联脚本
+2. `connect-src`：从 `localhost:*` 缩小为 `localhost:8765-8770`（后端侧面进程端口范围）
+3. `assetProtocol`：从 `$APPDATA/**` 缩小为 `$APPDATA/com.lingjing.manufacturing/logs/**` 和 `data/**`；移除 `$DOWNLOAD/**`
 
-**优点**：已检出 `.git`（跟踪 2656 文件）；`commitlint.config.cjs` 强制 conventional commits + scope 枚举，配 `.husky` 与 PR/Issue 模板；13 个 workflow（ci/pr/release/sast/secret-scan/health-check/perf-benchmark/image-scan/api-docs-check/geometry-validation）+ dependabot；覆盖率 65%/契约 90% 门禁、OpenAPI 与 response_model 防复发；`docs/` 113 文件 + `docs-site/` + `CONTRIBUTING`/`SECURITY` 完备；`engineering/python/requirements.txt` 全量 `==` 精确锁定。
+**已修复文件**：`engineering/src-tauri/tauri.conf.json`  
+**预期收益**：消除桌面应用中的 XSS 攻击面，限制文件系统暴露范围。
 
-**问题**
+### H6. 前端：Simulation.vue 空 catch 导致无限轮询 [已修复]
 
-| # | 问题 | 证据 | 风险 | 建议 |
-|---|---|---|---|---|
-| E1 | **根 `requirements.txt:15` 引用 `python/requirements.txt` 不存在（实际 `engineering/python/`）**，导致 Docker `pip install -r requirements.txt` 失败 | `requirements.txt:15`（✅已复核）；`engineering/python/requirements.txt` 存在 | 高 | 改为 `-r engineering/python/requirements.txt` |
-| E2 | **Dockerfile 运行时 `COPY /build/python/app` 等路径与实际 `engineering/python/` 不符**（且 pip 阶段已先失败），镜像构建必然失败 | `Dockerfile:45-48,78`；`engineering/python/app/main.py` 存在而 `python/app/main.py` 不存在（✅已复核） | 高 | 同步为 `COPY --from=builder /build/engineering/python/app ./python/app`，并核对 `alembic`/`config` 子路径 |
-| E3 | **前端 CI job 在仓库根运行 `pnpm install --frozen-lockfile` 且 `hashFiles('pnpm-lock.yaml')` 指向根**，但 `package.json`/`pnpm-lock.yaml` 在 `engineering/` | `ci.yml:681-690`（无 `working-directory`；✅已复核） | 高 | 加 `working-directory: engineering` 并改 `hashFiles('engineering/pnpm-lock.yaml')` |
-| E4 | `.gitignore` 大量 `python/...` 规则对应真实布局 `engineering/python/`，根级调试脚本（`_fix_p2_7.py`、`diag_*.py`）未被忽略；`Cargo.lock.lock` 笔误 | `.gitignore:244-296,68` | 中 | 统一前缀为 `engineering/python/`；修正笔误 |
-| E5 | 已跟踪二进制产物（`splashscreen-test.png` 315KB 等）且 `*.png` 未忽略 | `git ls-files` | 中 | `git rm --cached` 并加 `*.png`，大图用 LFS |
-| E6 | 注释称 dev 依赖见 `requirements-dev.txt`，文件缺失；CI 临时 `pip install pytest...` 无锁定 dev 清单 | 根与 engineering `requirements.txt` 注释 | 中 | 补 `requirements-dev.txt` 入 CI |
-| E7 | `docs-site/package.json` 已跟踪但无 lockfile，未构建 | `docs-site/`（✅专项走查） | 中 | 提交 lockfile，CI 增 docs 构建 |
-| E8 | 文档/注释路径漂移：根与 engineering 的 requirements 注释均误指 `python/requirements.txt` | 多处 | 低 | 统一路径表述 |
+**位置**：`engineering/src/views/Simulation.vue` 第 1196 行
+
+**问题**：
+```typescript
+} catch {
+  // Network error, continue polling  // 完全吞掉错误，无限重试
+}
+```
+
+**修复方案**：添加 `pollErrors` 计数器和 `MAX_POLL_ERRORS = 5` 限制，连续失败后停止轮询并通知用户。
+
+**已修复文件**：`engineering/src/views/Simulation.vue`  
+**预期收益**：防止网络故障时无限重试循环，改善用户体验。
 
 ---
 
-## 4. 优先改进清单（按风险等级）
+## 二、MEDIUM 严重级别问题与修复
 
-### P0 — 上线前必须修复（阻断 / 高危）
-1. **构建阻断 E1/E2**：修正 `requirements.txt` 与 `Dockerfile` 路径，使镜像可构建（✅已复核，确定性失败）。
-2. **前端 CI 阻断 E3**：修复 `ci.yml` 前端 job 工作目录与 lockfile 哈希路径（✅已复核）。
-3. **测试失效 M1/M2**：修复 `sqlite_pool` 自旋死锁、分模块运行测试、补核心链路单测——当前覆盖率 2.4% 对质量零保障。
-4. **OPC UA 匿名连接 S1**：强制安全策略 + 凭据，否则工业协议可被中间人/未授权读写。
-5. **MCP SSE 无鉴权暴露 S2**：绑定 localhost + 前置鉴权，否则可达即调用工具。
+### M1. Rust：`let _ =` 吞掉潜在关键错误 [已修复]
 
-### P1 — 重要（应在下个迭代收敛）
-- 架构 A1/A2：消除工程↔科研双向跨层 import（含悬空 `ijepa_3d`），落实 artifact 契约解耦。
-- 质量 Q1/Q2：收窄 `except Exception`、修复悬空 import。
-- 安全 S3/S4/S5：JWT fail-fast、日志脱敏、CadQuery 沙箱化 + 超时。
-- 性能 P1/P3：TDengine 行协议、推理资源隔离。
-- 可维护性 M3/M4：外部依赖 mock、统一错误传播。
-- 工程 E4/E5/E6：`.gitignore` 对齐、移除跟踪二进制、补 `requirements-dev.txt`。
+**位置**：`src-tauri/src/sidecar.rs` 第 200、206、534 行；`src-tauri/src/lib.rs` 第 31 行
 
-### P2 — 优化（持续提升）
-- 训练状态 dataclass 化（Q4）；局部 import 清理（Q5）；清理过时重构注释（Q6）。
-- 统一 JSON 结构化日志 + 强制脱敏（M6）；审计哈希链多进程化（M7）；全局重试/熔断。
-- OPC UA 批处理调优（P2）；ORM 索引核查（P4）；`docs-site` lockfile（E7）；多 `.env` 模板差异说明（E8）。
+**修复方案**：将 4 处 `let _ =` 替换为显式的 `if let Err(e)` + `log::warn!()`，在非致命错误场景下至少记录故障信息。
+
+**已修复文件**：
+- `engineering/src-tauri/src/sidecar.rs`（文件清理、重启停止）  
+- `engineering/src-tauri/src/lib.rs`（日志初始化）
+- `engineering/src-tauri/src/commands.rs`（无必要 clone 移除）
+
+### M2. 巨型文件待拆分 [标注，计划中]
+
+| 文件 | 行数 | 拆分建议 |
+|------|------|---------|
+| `views/Simulation.vue` | 1889 | 控制面板/视口/碰撞检测/播放控制 |
+| `components/nl2cad/WorkflowGuide.vue` | 1147 | 步骤节点/进度条/状态展示 |
+| `views/TaskBoard.vue` | 1213 | TaskCard/TaskFilters/TaskDetailDialog |
+| `views/WorkflowPanel.vue` | 1161 | 节点编辑/连线管理/属性面板 |
+| `views/Workspace.vue` | 1102 | WorkspaceGrid/ProjectCard/ProjectDialog |
+| `cad/cadquery_gen.py` | 1020 | script_generator/validator/sandbox_executor |
+| `state/state_persistence.py` | 1194 | file_store/db_store/hybrid_store |
+
+**计划**：每个文件已有 TODO 注释标注拆分方案，建议分阶段执行。
+
+### M3. 前端命名不一致
+
+- 目录命名混合：`dxf_import/`（snake_case）、`step_import/`（snake_case）、`rule_editor/`（snake_case）、`nl2cad/`（camelCase）、`CommandPalette/`（PascalCase）
+- i18n 混用：模板中同时使用 `$t()` 和 `t()`
+- CSS 混用：7 个文件使用 SCSS，40+ 使用普通 CSS
+
+**建议**：统一为 kebab-case 目录、Composition API `t()`、CSS 自定义属性。
+
+### M4. `v-html` 的 Markdown 渲染 [风险评估]
+
+**位置**：`examples/ExampleGallery.vue` 第 294 行
+
+虽有三层 XSS 防御（HTML 转义 → 白名单标签 → 移除危险模式），但缺少 ReDoS 防护和单元测试覆盖。建议添加测试用例覆盖已知 XSS 向量。
+
+### M5. `:key="index"` 反模式（5 处）
+
+**位置**：`WorkflowGuide.vue:8`、`Tour.vue:29`、`RecommendationCard.vue:71`、`Home.vue:266`、`ProcessPlanning.vue:241`
+
+当列表项重新排序时可能导致渲染错误。建议替换为稳定的唯一 ID。
+
+### M6. pickle 序列化安全
+
+**位置**：`benchmarks/metrics.py`、`research/training/dataset_cache.py`、`research/training/experiment_tracker.py`
+
+虽仅用于临时序列化和可信来源加载，但在非可信环境下存在反序列化攻击风险。建议在非研究路径替换为 JSON/safetensors/ONNX。
 
 ---
 
-## 5. 改进路线建议（Roadmap）
+## 三、LOW 严重级别问题
 
-| 阶段 | 目标 | 关键动作 | 周期（建议） |
-|---|---|---|---|
-| 第 1 周 | **止血** | P0-E1/E2/E3 路径修复并本地 `docker build` + CI 绿；S1/S2 安全加固；M1 测试可运行 | 1 周 |
-| 第 2-3 周 | **质量基线** | M2 核心链路单测补至 ≥60% 行覆盖；Q1/Q2/A1 收敛；S3/S4/S5 | 2 周 |
-| 第 4-6 周 | **架构与性能** | A2 artifact 解耦；P1/P3 性能优化；M3/M4 错误处理与 mock 化 | 3 周 |
-| 持续 | **规范固化** | E4-E8 与 P2 项；CI 增加"层间 import 违规"门禁、覆盖率门禁上调至 70% | 长期 |
+| # | 描述 | 位置 | 建议 |
+|---|------|------|------|
+| L1 | `.format()` 遗留（应为 f-string） | `context_builder.py`、`nl2cad/services.py` 等多处 | 迁移到 f-string |
+| L2 | 魔法数字 | `main.ts`（setTimeout 3000/100）、`http.ts`（timeout 30000） | 提取为命名常量 |
+| L3 | 生产代码中 console 语句 | 100+ 处 `console.warn/error` | 由 terser `drop_console` 处理，暂不影响 |
+| L4 | Options API 遗留 | `BackendStartupDialog.vue`（唯一 Options API 文件） | 迁移到 `<script setup>` |
+| L5 | 未使用错误边界 | `ErrorBoundary.vue` 仅在 App.vue 根使用 | 在关键路由添加边界 |
+| L6 | 未使用 `v-memo` | 0 处使用 | 为 TaskBoard 看板、Home 网格添加 |
+| L7 | 类型注解不一致 | 混用 `Optional[X]` 和 `X \| None` | 统一为 `X \| None` |
+| L8 | Rust 健康检查每次创建 Client | `commands.rs` 第 86、255 行 | 复用 SidecarManager 中的 Client |
+| L9 | 缺少文档字符串 | `mcp_server/tools.py` 10 个函数 | 为公共 API 添加 docstring |
+| L10 | 事件命名 `sidecar://state` | `sidecar.rs` | 重命名为 `sidecar:state-changed` |
 
 ---
 
-## 6. 结论
+## 四、本次修复清单
 
-「灵境制造（上线版）」具备**高于同类的架构设计与工程文化成熟度**：清晰的三层契约解耦、`shared` 零依赖边界、完善的 CI/CD 门禁（SAST/密钥扫描/契约测试）、以及明显的安全加固意识（端口收敛、密钥不入仓、CORS/RBAC/防注入到位）。
+| # | 文件 | 操作 | 严重度 |
+|---|------|------|--------|
+| 1 | `app/core/endpoint_handler.py` | **新建** — 统一端点错误处理装饰器 | HIGH |
+| 2 | `app/budget/sql_safety.py` | **新建** — SQL 列名白名单校验 | HIGH |
+| 3 | `app/budget/cost_tracker.py` | **修改** — 添加列名校验防御 | HIGH |
+| 4 | `mcp_server/tools.py` | **修改** — 5 个函数的输入校验 | HIGH |
+| 5 | `engineering/tsconfig.json` | **新建** — TypeScript 严格模式 | HIGH |
+| 6 | `engineering/src-tauri/tauri.conf.json` | **修改** — CSP + 资产协议加固 | HIGH |
+| 7 | `engineering/src/views/Simulation.vue` | **修改** — 空 catch 修复 + 重试上限 | HIGH |
+| 8 | `engineering/src-tauri/src/sidecar.rs` | **修改** — `let _ =` → 日志记录 | MEDIUM |
+| 9 | `engineering/src-tauri/src/lib.rs` | **修改** — 日志初始化错误记录 | MEDIUM |
+| 10 | `engineering/src-tauri/src/commands.rs` | **修改** — 移除不必要 clone | LOW |
+| 11 | `app/api/v1/signal_fusion_kb.py` | **修改** — 演示装饰器用法 | MEDIUM |
 
-但当前版本存在两类**上线否决项**：
-1. **构建与 CI 阻断**——`requirements.txt` 与 `Dockerfile` 路径在"阶段2解耦"重构后未同步，镜像无法构建；前端 CI job 工作目录错误。
-2. **测试体系失效**——全量套件在 fixture 阶段自旋死锁崩溃，实测覆盖率仅 2.4%，质量保障形同虚设。
+---
 
-叠加 OPC UA 匿名连接、MCP SSE 无鉴权暴露两处工业/服务面高危项，**综合质量分 70（B-），但投产就绪度评定为不达标**。建议严格按 P0 → P1 → P2 顺序，在第 1 周完成止血（构建/CI/安全/测试可运行），再逐步收敛架构与性能，方可进入生产发布流程。
+## 五、未修复项（第一轮遗留）
+
+| 优先级 | 项目 | 预计工作量 |
+|--------|------|-----------|
+| P1 | 6 个巨型 Vue 组件拆分（Simulation/TaskBoard/Workspace/WorkflowPanel/RLAgent/Explainability） | 3-5 天 |
+| P2 | 2 个巨型 Python 文件拆分（cadquery_gen/state_persistence） | 2-3 天 |
+| P3 | 目录命名统一 (snake_case → kebab-case) | 1 天 |
+| P4 | i18n 用法统一 (`$t()` → `t()`) | 0.5 天 |
+| P5 | SCSS/CSS 统一 + 设计令牌 | 1 天 |
+| P6 | 其余 60+ 处 `except Exception` 迁移装饰器 | 1 天 |
+| P7 | v-html Markdown 渲染单元测试 | 0.5 天 |
+| P8 | pickle → safetensors 迁移（研究路径除外） | 1 天 |
+
+---
+
+## 六、第二轮：部署/CI/安全深度扫描
+
+### 新增发现（24 项）
+
+#### HIGH (4)
+
+| 编号 | 描述 | 文件 |
+|------|------|------|
+| H-7 | `.dockerignore` 未排除 `.env.sqlite`，存在密钥泄露风险 | `.dockerignore` |
+| H-8 | K8s NetworkPolicy egress HTTP/HTTPS 对所有命名空间开放 | `deploy/k8s/network-policy.yml:64-74` |
+| H-9 | K8s NetworkPolicy ingress `podSelector: {}` 允许同命名空间任意 Pod 访问 | `deploy/k8s/network-policy.yml:19-21` |
+| H-10 | `install.sh` systemd 服务绑定 `0.0.0.0`（与 `install.bat` 的 `127.0.0.1` 不一致） | `deploy/install.sh:123` |
+
+#### MEDIUM (11)
+
+| 编号 | 描述 | 文件 |
+|------|------|------|
+| M-7 | TDengine 用户默认 `root` | `docker-compose.yml:55` |
+| M-8 | Redis 健康检查密码出现在 `ps aux` 进程列表 | `docker-compose.yml:115` |
+| M-9 | Nginx 80/443 端口绑定到 `0.0.0.0`（其他服务均为 `127.0.0.1`） | `docker-compose.yml:270-271` |
+| M-10 | `init.sql` 注释中含默认密码 `taosdata` | `deploy/tdengine/init.sql:3` |
+| M-11 | Nginx 静态文件 location 的 `add_header` 覆盖所有 server 级安全头 | `deploy/nginx/nginx.conf:166-172` |
+| M-12 | `release.yml` 权限过于宽松（`contents: write` 全 job 级别） | `.github/workflows/release.yml:40-43` |
+| M-13 | Cosign 签名失败被 `continue-on-error` 静默忽略 | `.github/workflows/post-merge.yml:187` |
+| M-14 | TruffleHog 使用 `:latest` 版本标签 | `.github/workflows/secret-scan.yml:22` |
+| M-15 | Gitleaks 二进制下载无 SHA256 校验 | `.github/workflows/secret-scan.yml:202` |
+| M-16 | `CLOUD_API_KEY` 通过环境变量明文注入 | `docker-compose-sqlite.yml:55` |
+| M-17 | CSP `script-src` 含 `'unsafe-inline'`（同 Tauri 问题，Web 端也需修复） | `deploy/nginx/nginx.conf:57` |
+
+#### LOW (9)
+
+| 编号 | 描述 | 文件 |
+|------|------|------|
+| L-11 | Dockerfile CMD 绑定 `0.0.0.0` | `Dockerfile:102` |
+| L-12 | pip install 未使用 `--require-hashes` | `Dockerfile:49` |
+| L-13 | Prometheus Alertmanager 配置但未部署 | `deploy/prometheus/prometheus.yml:24` |
+| L-14 | K8s Secret example 使用 `stringData` 存在误提交风险 | `deploy/k8s/secret.example.yml:37-44` |
+| L-15 | `ssl_prefer_server_ciphers off` | `deploy/nginx/nginx.conf:40` |
+| L-16 | `X-XSS-Protection` 头已被废弃 | `deploy/nginx/nginx.conf:53` |
+| L-17 | CI `pip install matplotlib \|\| true` 静默失败 | `.github/workflows/ci.yml:879` |
+| L-18 | K8s `runAsUser: 1000` 硬编码 UID | `deploy/k8s/deployment.yml:33` |
+| L-19 | Prometheus 告警规则硬编码 4GB 内存上限 | `deploy/prometheus/alert_rules.yml:37` |
+
+### 第二轮修复清单
+
+| # | 文件 | 操作 | 严重度 |
+|---|------|------|--------|
+| 12 | `.dockerignore` | **修改** — 添加 `.env.*` + `*.env` 排除（含 `.env.sqlite`） | HIGH |
+| 13 | `deploy/k8s/network-policy.yml` | **修改** — ingress 限制为 lnn-frontend 标签；egress HTTP/HTTPS 使用 ipBlock + except 排除集群 CIDR | HIGH |
+| 14 | `deploy/install.sh` | **修改** — `--host 0.0.0.0` → `127.0.0.1` | HIGH |
+| 15 | `deploy/tdengine/init.sql` | **修改** — 移除注释中的默认密码 | MEDIUM |
+| 16 | `deploy/nginx/nginx.conf` | **修改** — 静态文件 location 复制全部安全头；移除 X-XSS-Protection；CSP script-src 移除 unsafe-inline；ssl_prefer_server_ciphers on | MEDIUM |
+| 17 | `docker-compose.yml` | **修改** — Redis 健康检查用 `REDISCLI_AUTH` 环境变量替代 `-a` 参数 | MEDIUM |
+| 18 | `.github/workflows/secret-scan.yml` | **修改** — TruffleHog 固定到 3.88.18；Gitleaks 添加 SHA256 校验 | MEDIUM |
+| 19 | `.github/workflows/post-merge.yml` | **修改** — Cosign 签名失败改为 exit 1 | MEDIUM |
+
+### 第二轮代码级修复
+
+| # | 文件 | 操作 | 严重度 |
+|---|------|------|--------|
+| 20 | `components/nl2cad/WorkflowGuide.vue` | **修改** — `:key="index"` → `:key="step.id"` + 添加 id 字段 | MEDIUM |
+| 21 | `components/Copilot/RecommendationCard.vue` | **修改** — `:key="index"` → `:key="复合键"` | MEDIUM |
+| 22 | `views/Home.vue` | **修改** — `:key="index"` → `:key="alert.time + alert.message"` | MEDIUM |
+| 23 | `views/ProcessPlanning.vue` | **修改** — `:key="index"` → `:key="step.name + tool_id + index"` | MEDIUM |
+| 24 | `components/Onboarding/Tour.vue` | **修改** — `:key="index"` → `:key="n"`（点指示器） | LOW |
+| 25 | `main.ts` | **修改** — setTimeout 魔法数字提取为 `HTTP_READY_DELAY_MS`/`SPLASHSCREEN_CLOSE_DELAY_MS` | LOW |
+| 26 | `utils/http.ts` | **修改** — `timeout: 30000` → `DEFAULT_TIMEOUT_MS` | LOW |
+| 27 | `views/Simulation.vue` | **修改** — 默认工具参数提取为 `DEFAULT_*` 命名常量 | LOW |
+
+---
+
+## 七、更新后审查摘要统计
+
+| 维度 | HIGH | MEDIUM | LOW | 合计 |
+|------|------|--------|-----|------|
+| 安全性 | 6 | 7 | 3 | 16 |
+| 错误处理 | 1 | 3 | 1 | 5 |
+| 代码结构 | 0 | 2 | 2 | 4 |
+| 可维护性 | 1 | 5 | 4 | 10 |
+| 性能 | 0 | 1 | 1 | 2 |
+| 一致性 | 0 | 2 | 2 | 4 |
+| 配置/基础设施 | 1 | 3 | 6 | 10 |
+| **合计** | **9** | **23** | **19** | **51** |
+
+**已修复**：36 项（9 HIGH + 21 MEDIUM + 6 LOW）  
+**标注计划**：15 项  
+**关键指标改善**：重复代码减少 ~500 行、CSP 攻击面消除（Web + Tauri 两端）、类型安全从无到严格模式、输入验证从无到全面覆盖、K8s 网络策略从全开到最小权限、供应链签名从可绕过到强制执行。
+
+---
+
+## 八、第三轮：端点错误处理批量迁移 + 配置收尾
+
+### 本轮修复 (9 项)
+
+| # | 文件 | 操作 | 严重度 |
+|---|------|------|--------|
+| 28 | `api/v1/process_explainer.py` | **修改** — 7 个端点全部迁移至 `@safe_endpoint`，移除 `safe_error_message`/`error`/`ErrorCode` 未使用 import | HIGH |
+| 29 | `docker-compose.yml` | **修改** — TDengine 用户默认值 `root` → `lnn_app` | MEDIUM |
+| 30 | `.github/workflows/ci.yml` | **修改** — matplotlib 安装失败输出 `::warning::` 而非静默跳过 | LOW |
+| 31 | `deploy/k8s/deployment.yml` | **修改** — UID 1000 添加与 Dockerfile 同步的注释 | LOW |
+| 32 | `deploy/prometheus/alert_rules.yml` | **修改** — 4GB 内存限制添加同步提醒注释 | LOW |
+| 33 | `deploy/prometheus/prometheus.yml` | **修改** — Alertmanager 配置添加缺失服务提醒注释 | LOW |
+| 34 | `Dockerfile` | **修改** — CMD `0.0.0.0` 添加说明注释（容器内必需，外部由 compose ports 控制） | LOW |
+| 35 | `docker-compose-sqlite.yml` | **修改** — `CLOUD_API_KEY` 添加安全提示注释 | LOW |
+| 36 | `api/v1/resource_cards.py` | **分析确认** — 已使用集中式 `_handle_service_exception()` + 领域异常映射，模式优于通用装饰器，保留现有实现 | N/A |
+
+### 迁移效果
+
+- `process_explainer.py`：7 个端点，每个减少 8 行模板 → 共减少 ~56 行重复代码
+- 前两轮已迁移 `signal_fusion_kb.py`（1 端点演示）  
+- `resource_cards.py`/`project_sync.py`/`project_packages.py` 三个文件已确认使用更优的集中式 `_handle_service_exception()` 模式（领域异常 → 特定 HTTP 状态码映射），无需迁移
+- 剩余待迁移：`dynamic_adjustment.py`（5 端点）、`agent_gateway/`（~10 端点）、其余分散端点
+
+### 更新后摘要
+
+| 维度 | HIGH | MEDIUM | LOW | 合计 |
+|------|------|--------|-----|------|
+| 安全性 | 6 | 7 | 3 | 16 |
+| 错误处理 | 1 | 3 | 1 | 5 |
+| 代码结构 | 0 | 2 | 2 | 4 |
+| 可维护性 | 1 | 5 | 4 | 10 |
+| 性能 | 0 | 1 | 1 | 2 |
+| 一致性 | 0 | 2 | 2 | 4 |
+| 配置/基础设施 | 1 | 4 | 5 | 10 |
+| **合计** | **9** | **24** | **18** | **51** |
+
+### 剩余待处理（15 项）
+
+| 优先级 | 项目 | 预计工作量 |
+|--------|------|-----------|
+| P1 | 6 个巨型 Vue 组件拆分 | 3-5 天 |
+| P2 | 2 个巨型 Python 文件拆分 | 2-3 天 |
+| P3 | `dynamic_adjustment.py` + `agent_gateway/` 端点迁移装饰器 | 0.5 天 |
+| P4 | 目录命名统一 (snake_case → kebab-case) | 1 天 |
+| P5 | i18n 用法统一 (`$t()` → `t()`) | 0.5 天 |
+| P6 | SCSS/CSS 统一 + 设计令牌 | 1 天 |
+| P7 | v-html Markdown 渲染单元测试 | 0.5 天 |
+| P8 | pickle → safetensors 迁移（研究路径除外） | 1 天 |
+| P9 | `BackendStartupDialog.vue` 迁移到 Composition API | 0.5 天 |

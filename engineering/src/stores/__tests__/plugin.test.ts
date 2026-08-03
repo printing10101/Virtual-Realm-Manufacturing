@@ -85,7 +85,7 @@ describe('usePluginStore', () => {
           makePlugin({ id: 'p1', status: 'enabled' }),
           makePlugin({ id: 'p2', status: 'disabled' }),
           makePlugin({ id: 'p3', status: 'enabled' }),
-        ],
+        ] as never,
       })
       expect(store.enabledPlugins).toHaveLength(2)
       expect(store.enabledPlugins[0].id).toBe('p1')
@@ -98,7 +98,7 @@ describe('usePluginStore', () => {
         plugins: [
           makePlugin({ id: 'p1', status: 'enabled' }),
           makePlugin({ id: 'p2', status: 'disabled' }),
-        ],
+        ] as never,
       })
       expect(store.disabledPlugins).toHaveLength(1)
       expect(store.disabledPlugins[0].id).toBe('p2')
@@ -111,7 +111,7 @@ describe('usePluginStore', () => {
           makePlugin({ id: 'p1', plugin_type: 'adapter' }),
           makePlugin({ id: 'p2', plugin_type: 'data_source' }),
           makePlugin({ id: 'p3', plugin_type: 'adapter' }),
-        ],
+        ] as never,
       })
       expect(store.adapterPlugins).toHaveLength(2)
     })
@@ -122,7 +122,7 @@ describe('usePluginStore', () => {
         plugins: [
           makePlugin({ id: 'p1', plugin_type: 'data_source' }),
           makePlugin({ id: 'p2', plugin_type: 'adapter' }),
-        ],
+        ] as never,
       })
       expect(store.dataSourcePlugins).toHaveLength(1)
       expect(store.dataSourcePlugins[0].id).toBe('p1')
@@ -134,7 +134,7 @@ describe('usePluginStore', () => {
         plugins: [
           makePlugin({ id: 'p1', plugin_type: 'analyzer' }),
           makePlugin({ id: 'p2', plugin_type: 'adapter' }),
-        ],
+        ] as never,
       })
       expect(store.analyzerPlugins).toHaveLength(1)
     })
@@ -145,7 +145,7 @@ describe('usePluginStore', () => {
         plugins: [
           makePlugin({ id: 'p1', plugin_type: 'visualization' }),
           makePlugin({ id: 'p2', plugin_type: 'adapter' }),
-        ],
+        ] as never,
       })
       expect(store.visualizationPlugins).toHaveLength(1)
     })

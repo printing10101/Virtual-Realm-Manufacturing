@@ -701,7 +701,7 @@ class PPOTrainer:
                                     self._metrics.step,
                                 )
                                 break
-                        except Exception as exc:  # noqa: BLE001
+                        except Exception as exc:
                             logger.warning(
                                 "评估回调异常: %s", exc, exc_info=True
                             )
@@ -716,7 +716,7 @@ class PPOTrainer:
                     if snapshot_callback is not None:
                         try:
                             snapshot_callback(snapshot)
-                        except Exception as exc:  # noqa: BLE001
+                        except Exception as exc:
                             logger.warning(
                                 "snapshot 回调异常: %s", exc, exc_info=True
                             )

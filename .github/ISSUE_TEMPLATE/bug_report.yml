@@ -93,7 +93,7 @@ body:
     id: app-version
     attributes:
       label: 应用版本
-      placeholder: "如 v2.5.0"
+      placeholder: "如 v2.7.0"
     validations:
       required: true
 

@@ -158,7 +158,6 @@ import FeedRateDialog from './FeedRateDialog.vue'
 import GCodeExportDialog from './GCodeExportDialog.vue'
 import ToolpathImportDialog from './ToolpathImportDialog.vue'
 import { useToolpathEditorStore } from './stores/toolpathEditor'
-import type { EditableToolpathSegment } from './types/editor'
 
 const store = useToolpathEditorStore()
 

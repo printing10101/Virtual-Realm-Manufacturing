@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import http from '@/utils/http'
@@ -69,18 +69,6 @@ async function fetchTrending(forceRefresh = false) {
     }
   } catch (error) {
     console.warn(t('templateMarket.errorFetchTrending'), extractErrorMessage(error))
-  }
-}
-
-async function fetchTemplates() {
-  loading.value = true
-  try {
-    const res = await http.get(buildApiPath(API_CONFIG.V1, '/templates/branches'))
-    if (res.data.code === 'SUCCESS') templates.value = res.data.data
-  } catch (error) {
-    console.warn(t('templateMarket.errorFetchTemplates'), extractErrorMessage(error))
-  } finally {
-    loading.value = false
   }
 }
 

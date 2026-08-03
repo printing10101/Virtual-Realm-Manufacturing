@@ -33,7 +33,7 @@ from fastapi.responses import Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.api.v1.auth import get_current_user
+from app.auth.dependencies import get_current_user
 from app.config import config
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
@@ -52,6 +52,21 @@ from app.simulation.toolpath_parser import ToolpathParser, ToolpathSegment
 
 logger = logging.getLogger(__name__)
 
+# V3.0 拆分：Pydantic 模型 → schemas.py，辅助函数 → _helpers.py
+from .schemas import (
+    SimulationRequest, SimulationResponse, SimulationStatusResponse,
+    ConflictCheckRequest, ExportAnimationRequest,
+    AutoDiffCompareRequest, FEMSolveRequest,
+)
+from ._helpers import (
+    _validate_user_path, _get_store_lock, _cleanup_store,
+    _run_simulation, _post_insert_cleanup, _build_response_data,
+    _default_stock_stl,
+    _in_memory_store, _project_id_map, _completed_at_map,
+    _active_tasks, _store_lock,
+    _MAX_STORE_SIZE, _MAX_STORE_AGE_SECONDS,
+)
+
 router = APIRouter(prefix="/api/simulation", tags=["Simulation"])
 
 OUTPUT_DIR = Path(config.storage.output_dir) / "simulation"
@@ -60,407 +75,6 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # Allowed base directories for user-provided file path validation.
 # These prevent path traversal attacks by restricting file access to
 # known output and upload directories where files are legitimately stored.
-_OUTPUT_ROOT = Path(config.storage.output_dir).resolve()
-_ALLOWED_STOCK_DIRS: list[Path] = [
-    OUTPUT_DIR.resolve(),
-    (_OUTPUT_ROOT / "step_import").resolve(),
-    (_OUTPUT_ROOT / "step_import" / "_uploads").resolve(),
-    (_OUTPUT_ROOT / "dxf_import").resolve(),
-    (_OUTPUT_ROOT / "dxf_import" / "_uploads").resolve(),
-    (_OUTPUT_ROOT / "projects").resolve(),
-    (_OUTPUT_ROOT / "projects" / "_uploads").resolve(),
-]
-
-
-def _validate_user_path(user_path: str, field_name: str) -> Path:
-    """Validate that a user-provided file path is within allowed directories.
-
-    委托给统一的 ``app.utils.utils.validate_user_path`` 实现：解析路径为绝对
-    路径并校验其位于预定义的允许目录之一内，消除任何目录遍历组件。
-
-    Args:
-        user_path: The raw path string from the user request.
-        field_name: The field name for error reporting (e.g. "stock_stl_path").
-
-    Returns:
-        The resolved absolute Path if validation passes.
-
-    Raises:
-        HTTPException: 400 if the path is outside allowed directories.
-    """
-    try:
-        return validate_user_path(
-            user_path=user_path,
-            allowed_base_dirs=_ALLOWED_STOCK_DIRS,
-        )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"The path '{user_path}' for '{field_name}' is not allowed. "
-                f"File must reside within a permitted output or upload directory."
-            ),
-        ) from exc
-
-
-_in_memory_store: dict[str, VoxelSimulationResult] = {}
-# 修复：原实现 get_simulation_history 接受 project_id 但完全未应用，导致过滤参数形同虚设。
-# 这里使用一个独立的 task_id -> project_id 映射避免修改 VoxelSimulationResult 的字段
-# （该类被多个模块使用，添加字段会引发级联修改）。
-_project_id_map: dict[str, str] = {}
-# 修复 [潜在崩溃]：VoxelSimulationResult 没有 completed_at 字段，但 _cleanup_store 和
-# get_simulation_history 直接访问 r.completed_at.timestamp() 会在 store 超过容量或包含
-# 完成结果时触发 AttributeError。使用独立 map 记录完成时间戳，避免侵入式修改 dataclass。
-_completed_at_map: dict[str, float] = {}
-# 修复 [任务生命周期]：记录每个活动的 asyncio.Task 引用，避免后台任务因 GC 被提前
-# 取消；并支持在客户端主动取消时优雅回收资源。
-_active_tasks: dict[str, "asyncio.Task[None]"] = {}
-# 修复 [并发安全]：FastAPI 可并发处理多个仿真请求，使用 asyncio.Lock 保护共享 store
-# 状态（添加/更新/清理），避免极端并发下 _in_memory_store 与三个关联 map 之间出现
-# 短暂不一致（例如 cleanup 在 store 删除时 _completed_at_map 已被覆盖）。
-_store_lock: "asyncio.Lock | None" = None
-_MAX_STORE_SIZE = config.simulation.max_store_size
-_MAX_STORE_AGE_SECONDS = config.simulation.max_store_age_seconds
-
-
-def _get_store_lock() -> asyncio.Lock:
-    """懒初始化 asyncio.Lock。
-
-    在 FastAPI 启动后才有可绑定的事件循环，因此采用懒加载避免在 import 期
-    实例化时绑定到错误的循环（uvicorn 重新载入场景下尤其重要）。
-    """
-    global _store_lock
-    if _store_lock is None:
-        _store_lock = asyncio.Lock()
-    return _store_lock
-
-
-async def _cleanup_store() -> None:
-    """Remove expired and excess entries from the in-memory result store.
-
-    Evicts the oldest results when the store exceeds _MAX_STORE_SIZE,
-    and removes entries older than _MAX_STORE_AGE_SECONDS. 修复合并发：
-    在持有 asyncio.Lock 的情况下统一清理 _in_memory_store 与三个关联 map，
-    避免清理过程中其他协程插入/删除同一 key 导致字典大小判断错乱。
-    """
-    async with _get_store_lock():
-        now = time.time()
-        if len(_in_memory_store) > _MAX_STORE_SIZE:
-            # 修复 [潜在崩溃]：原代码 kv[1].completed_at.timestamp() 会因 VoxelSimulationResult
-            # 没有该字段而抛 AttributeError，导致清理彻底失败、内存无限增长。
-            sorted_entries = sorted(
-                _in_memory_store.items(),
-                key=lambda kv: _completed_at_map.get(kv[0], 0.0),
-            )
-            for task_id, _ in sorted_entries[: len(_in_memory_store) - _MAX_STORE_SIZE]:
-                _in_memory_store.pop(task_id, None)
-                # 修复 [资源清理]：同步清理关联映射，避免孤儿键。
-                _project_id_map.pop(task_id, None)
-                _completed_at_map.pop(task_id, None)
-                _active_tasks.pop(task_id, None)
-        expired = [
-            tid
-            for tid in _in_memory_store
-            if (_completed_at_map.get(tid) is not None)
-            and (now - _completed_at_map[tid]) > _MAX_STORE_AGE_SECONDS
-        ]
-        for tid in expired:
-            _in_memory_store.pop(tid, None)
-            # 修复 [资源清理]：同步清理关联映射。
-            _project_id_map.pop(tid, None)
-            _completed_at_map.pop(tid, None)
-            _active_tasks.pop(tid, None)
-
-
-class SimulationRequest(BaseModel):
-    """Request model for voxel cutting simulation.
-
-    Contains all parameters needed to run a machining simulation including
-    project identification, tool geometry, G-code toolpath, and stock model.
-
-    Attributes:
-        project_id: Project identifier for associating simulation jobs.
-        voxel_size: Voxel resolution in mm (0.1-10.0). Smaller = higher accuracy.
-        tool_diameter: Tool diameter in mm (0.5-300.0).
-        tool_length: Tool cutting length in mm (1.0-500.0).
-        tool_type: Tool type - "flat" (flat end mill), "ball" (ball nose), "drill".
-        tool_corner_radius: Tool corner radius in mm (0.0-150.0).
-        gcode: G-code text content for toolpath parsing.
-        safe_z_height: Safe plane height in mm (0.0-200.0).
-        stock_stl_path: Path to stock STL file (relative or absolute).
-        source_file_path: Source file path (STEP/DXF) for auto-regeneration if STL is missing.
-    """
-
-    project_id: str = Field(
-        default="default",
-        description="Project ID for associating simulation jobs.",
-    )
-    voxel_size: float = Field(
-        default=1.0,
-        ge=0.1,
-        le=10.0,
-        description="Voxel resolution in mm. Smaller values yield higher accuracy.",
-    )
-    tool_diameter: float = Field(
-        default=10.0,
-        ge=0.5,
-        le=300.0,
-        description="Tool diameter in mm.",
-    )
-    tool_length: float = Field(
-        default=50.0,
-        ge=1.0,
-        le=500.0,
-        description="Tool cutting length in mm.",
-    )
-    tool_type: str = Field(
-        default="flat",
-        pattern="^(flat|ball|drill)$",
-        description="Tool type: flat (flat end mill), ball (ball nose), drill.",
-    )
-    tool_corner_radius: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=150.0,
-        description="Tool corner radius in mm.",
-    )
-    gcode: str = Field(
-        default="",
-        description="G-code text content for toolpath parsing.",
-    )
-    safe_z_height: float = Field(
-        default=10.0,
-        ge=0.0,
-        le=200.0,
-        description="Safe plane height in mm.",
-    )
-    stock_stl_path: str = Field(
-        default="",
-        description="Path to stock STL file (server-relative or absolute).",
-    )
-    source_file_path: str = Field(
-        default="",
-        description="Source file path (STEP/DXF) for auto-regeneration when STL is missing.",
-    )
-
-
-class SimulationResponse(BaseModel):
-    """Response model containing voxel simulation results.
-
-    Attributes:
-        task_id: Unique simulation task identifier.
-        stock_stl_url: URL path to the machined workpiece STL file.
-        collision_collided: Whether any collision was detected.
-        collision_positions: List of [x, y, z] collision coordinates.
-        collision_segment_indices: Indices of toolpath segments with collisions.
-        collision_severity: Collision severity level ("none"/"warning"/"critical").
-        duration_seconds: Total simulation time in seconds.
-        voxel_count: Total number of voxels in the stock model.
-        removed_voxel_count: Number of voxels removed during simulation.
-        voxel_size: Voxel resolution used (mm).
-        original_bbox: Original stock bounding box dimensions.
-        toolpath_segment_count: Number of toolpath segments processed.
-    """
-
-    task_id: str = ""
-    stock_stl_url: str = ""
-    collision_collided: bool = False
-    collision_positions: list[list[float]] = []
-    collision_segment_indices: list[int] = []
-    collision_severity: str = "none"
-    duration_seconds: float = 0.0
-    voxel_count: int = 0
-    removed_voxel_count: int = 0
-    voxel_size: float = 1.0
-    original_bbox: dict[str, float] | None = None
-    toolpath_segment_count: int = 0
-
-    @classmethod
-    def from_result(cls, r: VoxelSimulationResult) -> "SimulationResponse":
-        """Create a SimulationResponse from a VoxelSimulationResult.
-
-        Args:
-            r: The voxel simulation result to convert.
-
-        Returns:
-            A SimulationResponse populated with result data.
-        """
-        return cls(
-            task_id=r.task_id,
-            stock_stl_url=r.stock_stl_url,
-            collision_collided=r.collision.collided,
-            collision_positions=r.collision.collision_positions,
-            collision_segment_indices=r.collision.collision_segment_indices,
-            collision_severity=r.collision.collision_severity,
-            duration_seconds=r.duration_seconds,
-            voxel_count=r.voxel_count,
-            removed_voxel_count=r.removed_voxel_count,
-            voxel_size=r.voxel_size,
-            original_bbox=r.original_bbox,
-            toolpath_segment_count=r.toolpath_segment_count,
-        )
-
-
-class SimulationStatusResponse(BaseModel):
-    """Response model for simulation task status queries.
-
-    Attributes:
-        task_id: The simulation task identifier.
-        status: Current task status ("pending"/"running"/"completed").
-        progress: Task completion progress (0.0-1.0).
-        result: Simulation result data, available only when completed.
-    """
-
-    task_id: str = ""
-    status: str = "pending"
-    progress: float = 0.0
-    result: SimulationResponse | None = None
-
-
-def _run_simulation(
-    task_id: str,
-    request: SimulationRequest,
-) -> VoxelSimulationResult:
-    """Execute voxel cutting simulation synchronously for background task use.
-
-    Parses G-code into toolpath segments, constructs the tool model,
-    loads or generates the stock STL, and runs the voxel-based simulation.
-
-    Args:
-        task_id: Unique identifier for the simulation task.
-        request: Simulation request parameters.
-
-    Returns:
-        VoxelSimulationResult containing the machined model and collision data.
-    """
-    tool = ToolModel(
-        diameter=request.tool_diameter,
-        cutting_length=request.tool_length,
-        tool_type=request.tool_type,
-        corner_radius=request.tool_corner_radius,
-    )
-
-    segments: list[ToolpathSegment] = []
-    if request.gcode.strip():
-        parser = ToolpathParser(controller_type="fanuc")
-        segments = parser.parse_gcode(request.gcode)
-
-    if request.stock_stl_path:
-        try:
-            stock_stl_path = _validate_user_path(
-                request.stock_stl_path, "stock_stl_path"
-            )
-        except HTTPException as exc:
-            raise ValueError(str(exc.detail)) from exc
-    else:
-        stock_stl_path = _default_stock_stl()
-
-    source_file_paths: list[Path] | None = None
-    if request.source_file_path:
-        try:
-            source_path = _validate_user_path(
-                request.source_file_path, "source_file_path"
-            )
-        except HTTPException as exc:
-            raise ValueError(str(exc.detail)) from exc
-        if source_path.exists():
-            source_file_paths = [source_path]
-        else:
-            logger.warning(
-                "[Auto-generate STL] Specified source file does not exist: %s",
-                source_path,
-            )
-
-    cutter = VoxelCutter(voxel_size=request.voxel_size)
-    result = cutter.run_simulation(
-        stock_stl_path=stock_stl_path,
-        tool=tool,
-        segments=segments,
-        output_dir=OUTPUT_DIR,
-        safe_z_height=request.safe_z_height,
-        task_id=task_id,
-        source_file_paths=source_file_paths,
-    )
-
-    _in_memory_store[task_id] = result
-    # 修复：记录 task_id -> project_id 映射，使 history 接口的过滤参数真正生效。
-    _project_id_map[task_id] = request.project_id
-    # 修复 [清理支持]：记录完成时间戳，使 _cleanup_store 能正确按时间淘汰。
-    _completed_at_map[task_id] = time.time()
-    # 修复 [并发安全]：cleanup 是异步且需要持锁，必须在事件循环中由外层
-    # async 端点调用；同步函数内部仅做数据写入，将清理动作交给 _post_insert_cleanup。
-    return result
-
-
-async def _post_insert_cleanup() -> None:
-    """在 store 写入后异步触发的清理动作（在事件循环内持锁执行）。"""
-    await _cleanup_store()
-
-
-def _build_response_data(result: VoxelSimulationResult) -> dict:
-    """Build a structured API response dict from simulation results.
-
-    Restructures the raw simulation result into the format expected by
-    the API response schema, including collision details and simulation
-    metrics.
-
-    Args:
-        result: The completed voxel simulation result.
-
-    Returns:
-        Dictionary formatted for API response with simulation_result,
-        collision_details, and metadata sections.
-    """
-    base = SimulationResponse.from_result(result).model_dump()
-    collision_positions = base.pop("collision_positions")
-    collision_segment_indices = base.pop("collision_segment_indices")
-    collision_severity = base.pop("collision_severity")
-    return {
-        **base,
-        "collision_detected": base.pop("collision_collided"),
-        "simulation_result": {
-            "workpiece_stl_path": base.pop("stock_stl_url"),
-            "voxel_count": base["voxel_count"],
-            "removed_voxel_count": base["removed_voxel_count"],
-            "voxel_size": base["voxel_size"],
-            "original_bbox": base.pop("original_bbox"),
-        },
-        "collision_details": {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "positions": collision_positions,
-            "segment_indices": collision_segment_indices,
-            "severity": collision_severity,
-            "count": len(collision_positions),
-        },
-    }
-
-
-def _default_stock_stl() -> Path:
-    """Generate a default rectangular stock STL file.
-
-    Creates a 150x100x40mm box if trimesh is available; otherwise
-    returns an empty placeholder file.
-
-    Returns:
-        Path to the generated default STL file.
-    """
-    try:
-        import trimesh
-    except ImportError:
-        fallback = OUTPUT_DIR / "_default_stock.stl"
-        if not fallback.exists():
-            fallback.write_bytes(b"")
-        return fallback
-
-    default_path = OUTPUT_DIR / "_default_stock.stl"
-    if default_path.exists():
-        return default_path
-
-    box = trimesh.creation.box(extents=[150, 100, 40])
-    box.apply_translation([0, 0, 20])
-    box.export(str(default_path), file_type="stl")
-    return default_path
-
 
 @router.post("/run")
 async def run_simulation(
@@ -618,7 +232,7 @@ async def run_simulation_async(
             # 触发异步清理（在事件循环内执行）。
             try:
                 await _post_insert_cleanup()
-            except (OSError, RuntimeError):  # noqa: BLE001
+            except (OSError, RuntimeError):
                 logger.exception("Background cleanup failed for %s", task_id)
 
     # 修复：原实现 background_tasks.add_task(asyncio.create_task, _async_wrapper())
@@ -1263,3 +877,107 @@ async def get_auto_diff_result(
             recoverable=False,
         )
     return success(data=result.to_dict(), message="OK")
+
+
+# ---------------------------------------------------------------------------
+# FEM 求解（简化解析模型，教学演示级）
+# ---------------------------------------------------------------------------
+
+class FEMSolveRequest(BaseModel):
+    """FEM 求解请求体（标准简支梁三点弯曲场景）。"""
+
+    material: str = Field("steel45", max_length=64, description="材料名称")
+    elastic_modulus: float = Field(210.0, gt=0, le=1000, description="弹性模量（GPa）")
+    poisson_ratio: float = Field(0.3, gt=0, lt=0.5, description="泊松比")
+    density: float = Field(7850.0, gt=0, description="密度（kg/m3）")
+    yield_strength: float = Field(355.0, gt=0, le=100000, description="屈服强度（MPa）")
+    mesh_type: str = Field("tetrahedral", max_length=32, description="网格类型")
+    element_size: float = Field(2.0, gt=0, le=100, description="网格尺寸（mm）")
+    adaptive_refinement: bool = Field(True, description="是否启用自适应细化")
+    beam_length: float = Field(100.0, gt=0, le=10000, description="试件长度（mm）")
+    beam_width: float = Field(20.0, gt=0, le=1000, description="试件宽度（mm）")
+    beam_height: float = Field(20.0, gt=0, le=1000, description="试件高度（mm）")
+    load_force: float = Field(5000.0, gt=0, le=1e9, description="集中载荷（N）")
+
+
+@router.post("/fem/solve")
+async def fem_solve(
+    request: FEMSolveRequest,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """简化 FEM 求解（简支梁三点弯曲解析解）。
+
+    真实计算（非写死数据，结果随输入参数变化）：
+    - 最大弯曲应力 sigma_max = M*c / I，M = F*L/4（集中载荷跨中）
+    - 最大挠度 delta = F*L^3 / (48*E*I)
+    - 安全系数 n = yield_strength / sigma_max
+
+    说明：该模型为教学演示级解析解，用于参数敏感性分析；
+    精确有限元分析请使用专用 CAE 工具。
+    """
+    try:
+        e_pa = request.elastic_modulus * 1e9  # GPa -> Pa
+        l_m = request.beam_length * 1e-3  # mm -> m
+        b_m = request.beam_width * 1e-3
+        h_m = request.beam_height * 1e-3
+        inertia = b_m * h_m ** 3 / 12.0
+        if inertia <= 0:
+            raise ValueError("试件截面惯性矩必须大于 0")
+
+        bending_moment = request.load_force * l_m / 4.0
+        sigma_max = bending_moment * (h_m / 2.0) / inertia / 1e6  # Pa -> MPa
+        delta_mm = (
+            request.load_force * l_m ** 3 / (48.0 * e_pa * inertia)
+        ) * 1e3  # m -> mm
+
+        safety = (
+            request.yield_strength / sigma_max
+            if sigma_max > 0
+            else float("inf")
+        )
+
+        # 节点应力分布：沿梁长 11 个采样点，应力从两端 0 线性增至跨中最大值
+        n_nodes = 11
+        distribution = []
+        for i in range(n_nodes):
+            ratio = i / (n_nodes - 1)
+            sigma = sigma_max * (1.0 - abs(2.0 * ratio - 1.0))
+            distribution.append(
+                {
+                    "x": round(ratio * request.beam_length, 1),
+                    "stress": round(sigma, 2),
+                }
+            )
+
+        return success(
+            data={
+                "material": request.material,
+                "mesh_type": request.mesh_type,
+                "element_size": request.element_size,
+                "adaptive_refinement": request.adaptive_refinement,
+                "beam": {
+                    "length": request.beam_length,
+                    "width": request.beam_width,
+                    "height": request.beam_height,
+                },
+                "load_force": request.load_force,
+                "nodes": n_nodes,
+                "max_stress": round(sigma_max, 2),
+                "max_deflection": round(delta_mm, 4),
+                "yield_strength": request.yield_strength,
+                "safety_factor": round(safety, 2) if safety < 1e6 else 999.0,
+                "status": "ok",
+                "stress_distribution": distribution,
+                "warning": "简化解析模型（三点弯曲），用于教学演示与参数敏感性分析，非完整有限元分析",
+            },
+            message="FEM 求解完成",
+        )
+    except (ValueError, ZeroDivisionError) as e:
+        logger.warning("FEM 求解参数错误: %s", e)
+        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
+    except Exception as e:
+        safe = safe_error_message(
+            e, context="simulation.fem_solve", fallback="FEM 求解失败，请检查参数"
+        )
+        logger.error("[simulation.fem_solve] error_id=%s: %s", safe["error_id"], e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"])

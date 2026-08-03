@@ -180,7 +180,7 @@ def _resolve_upstream_calibrated(
 
         return bool(pg_task.mesh_calibrated), source_parametric_geometry_task_id
 
-    except Exception as e:  # noqa: BLE001 - 上游 store 异常不应阻塞本模块
+    except Exception as e:
         safe = safe_error_message(
             e, context="cutting_parameters.resolve_upstream_calibrated"
         )
@@ -221,7 +221,7 @@ async def get_precision_info() -> dict[str, Any]:
             }
             for m in resolver.list_materials()
         ]
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         safe = safe_error_message(e, context="cutting_parameters.list_materials")
         logger.warning(
             "查询材料列表失败 error_id=%s，返回空列表",

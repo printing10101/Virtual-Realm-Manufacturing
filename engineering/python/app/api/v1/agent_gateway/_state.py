@@ -13,7 +13,7 @@ import asyncio
 import logging
 
 from app.agent.orchestrator import AgentOrchestrator
-from app.services.model_registry_service import get_model_registry_service
+from app.dependencies import get_model_registry_service
 
 logger = logging.getLogger(__name__)
 

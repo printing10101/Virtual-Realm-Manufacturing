@@ -321,7 +321,7 @@ async def stream_workflow_events(workflow_run_id: str):
         except asyncio.CancelledError:
             logger.info("SSE 流被取消: workflow_run_id=%s", workflow_run_id)
             raise
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.exception(
                 "SSE 流异常: workflow_run_id=%s err=%s", workflow_run_id, e
             )

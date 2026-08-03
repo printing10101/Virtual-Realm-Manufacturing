@@ -137,8 +137,11 @@ fi
 # 复制项目文件
 echo
 echo "[5/5] 复制项目文件..."
-cp -r "$PROJECT_ROOT/python/app" "$OFFLINE_DIR/python/"
-cp "$PROJECT_ROOT/requirements.txt" "$OFFLINE_DIR/"
+# P0-2 修复：阶段2解耦后后端代码位于 engineering/python（原 python/ 已不存在）
+cp -r "$PROJECT_ROOT/engineering/python/app" "$OFFLINE_DIR/python/"
+# P0-2 修复：离线包内 requirements.txt 必须为真实依赖清单（根目录薄包装
+# 引用 engineering/python/requirements.txt，在离线包内无法解析）
+cp "$PROJECT_ROOT/engineering/python/requirements.txt" "$OFFLINE_DIR/requirements.txt"
 
 # P1-8 修复：配置文件条件复制，缺失文件明确提示，避免静默失败造成"已复制"假象
 copy_optional() {

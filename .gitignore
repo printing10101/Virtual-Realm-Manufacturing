@@ -344,3 +344,40 @@ data/outputs/e2e_v2/**/*.stl
 data/outputs/e2e_v2/**/*.brep
 data/outputs/e2e_v2/**/*.step
 data/outputs/test_shadow/**/*.stl
+
+# === P2 整改补充规则（2026-07-29）===
+# 根目录临时诊断脚本
+/_[a-z]*.py
+/_[a-z]*.ps1
+/check_status*.ps1
+/diag_*.py
+# 测试输出残留
+/pytest_*.txt
+/engineering/python/perf_*.txt
+# 研究实验运行时产物
+research/experiments/results/*.pid
+research/experiments/results/*.pid.txt
+research/experiments/results/*_pid.txt
+research/papers/**/*.pid
+research/papers/**/*.pid.txt
+# 论文 docx 备份
+*.backup_*.docx
+# data/ 下的测试残留 jsonl（如有 fixtures 需要保留，请反向白名单）
+data/bridge/error_samples/*.jsonl
+data/bridge/usage_logs/*.jsonl
+data/budget/*.jsonl
+data/traces/*.jsonl
+
+# === 提交卫生（2026-08-03 P0-1）===
+# 内部工作记忆/日志（含安全细节，不对外发布）
+/.workbuddy/
+# 临时与运行残留
+/.disk_test
+/scan_out.txt
+/scan_stubs.py
+/output/*.log
+/output/data/
+# output/ 一次性分析/批处理脚本（成果报告与论文保留）
+/output/_*.py
+/output/d1_*.py
+/output/check_*.py

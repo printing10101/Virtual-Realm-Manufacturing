@@ -208,7 +208,7 @@ class KGQueryPathTool(BaseTool):
             for current_id, current_path in queue:
                 try:
                     neighbors = self._api.neighbors(current_id, max_hops=1, limit=50)
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     # KG 邻居查询失败不阻断路径搜索，但记录可定位的 warning 便于排查数据质量问题。
                     logger.warning(
                         "KG neighbors query failed for node %s: %s", current_id, e,

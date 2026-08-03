@@ -126,7 +126,7 @@ class MaterialEntry:
             specific_heat_capacity_j_kgk=data.get("specific_heat_capacity_j_kgk", 460),
             elastic_modulus_gpa=data.get("elastic_modulus_gpa", 210),
             poisson_ratio=data.get("poisson_ratio", 0.3),
-            specific_cutting_force_kc1_1=data.get("specific_cutting_force", data.get("specific_cutting_force_kc1_1", 2000)),  # noqa: E501
+            specific_cutting_force_kc1_1=data.get("specific_cutting_force", data.get("specific_cutting_force_kc1_1", 2000)),
             machinability_index=data.get("machinability_index", 50),
             cutting_speed_range=data.get("cutting_speed_range", {}),
             feed_range=data.get("feed_range", {}),

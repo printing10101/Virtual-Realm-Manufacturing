@@ -223,7 +223,7 @@ async def _get_role_permissions_from_db(role_code: str) -> Set[str]:
 
 
 async def get_user_permissions(username: str) -> Set[str]:
-    from app.models.user import get_user_store
+    from app.dependencies import get_user_store
 
     store = get_user_store()
     user = store.get_user(username)

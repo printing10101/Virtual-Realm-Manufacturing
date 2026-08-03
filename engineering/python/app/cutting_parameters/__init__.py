@@ -41,7 +41,7 @@ from app.cutting_parameters.cutting_store import (
     CuttingParametersTask,
     CuttingParametersTaskStatus,
     CuttingReviewStatus,
-    MaterialNotFoundError,  # noqa: F401 (re-export alias)
+    MaterialNotFoundError,
     OperationType,
     RecommendedCuttingParams,
     ReviewError,

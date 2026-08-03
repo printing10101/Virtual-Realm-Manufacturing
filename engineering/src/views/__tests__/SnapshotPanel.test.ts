@@ -443,7 +443,7 @@ describe('SnapshotPanel.vue', () => {
       await flushPromises()
       // descriptions-item 包含 lineage record label
       const items = wrapper.findAll('.el-descriptions-item')
-      const lineageItem = items.find(i =>
+      items.find(i =>
         i.find('.el-descriptions-item__label').text().includes('LineageRecord'),
       )
       // 至少不抛错；具体渲染依赖 mock label

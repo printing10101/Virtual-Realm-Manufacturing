@@ -60,8 +60,11 @@ export const EXPLANATION_TYPE_LABELS: Readonly<Record<ExplanationType, string>> 
   [EXPLANATION_TYPE.CONFIDENCE]: '置信度分布',
 }
 
+/** Element Plus Tag 类型字面量（与 el-tag type 对齐）。 */
+export type ExplanationTagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
+
 /** 解释类型 → UI Tag 类型（与 element-plus Tag type 对齐）。 */
-export const EXPLANATION_TYPE_TAG_TYPE: Readonly<Record<ExplanationType, string>> = {
+export const EXPLANATION_TYPE_TAG_TYPE: Readonly<Record<ExplanationType, ExplanationTagType>> = {
   [EXPLANATION_TYPE.HIDDEN_STATE]: 'primary',
   [EXPLANATION_TYPE.GATE_DYNAMICS]: 'success',
   [EXPLANATION_TYPE.COUNTERFACTUAL]: 'warning',
@@ -173,7 +176,7 @@ export const COMPARISON_TYPE_LABELS: Readonly<Record<ComparisonType, string>> = 
 }
 
 /** 对比类型 → UI Tag 类型。 */
-export const COMPARISON_TYPE_TAG_TYPE: Readonly<Record<ComparisonType, string>> = {
+export const COMPARISON_TYPE_TAG_TYPE: Readonly<Record<ComparisonType, 'success' | 'warning' | 'danger' | 'info' | 'primary'>> = {
   [COMPARISON_TYPE.SAME_MODEL_DIFF_INPUT]: 'info',
   [COMPARISON_TYPE.DIFF_MODEL_SAME_INPUT]: 'primary',
   [COMPARISON_TYPE.DIFF_MODEL_DIFF_INPUT]: 'warning',

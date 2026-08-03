@@ -393,7 +393,7 @@ describe('LLMEngineSettings.vue', () => {
       mountComponent()
       const provider = { provider_id: 'p1' } as any
       const spy = vi.spyOn(wrapper.vm, 'openEditDialog')
-      wrapper.find('.mock-provider-list').vm.$emit('edit', provider)
+      wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('edit', provider)
       await wrapper.vm.$nextTick()
       expect(spy).toHaveBeenCalledWith(provider)
     })
@@ -402,28 +402,28 @@ describe('LLMEngineSettings.vue', () => {
       mountComponent()
       const provider = { provider_id: 'p1' } as any
       const spy = vi.spyOn(wrapper.vm, 'openTestDialog')
-      wrapper.find('.mock-provider-list').vm.$emit('test', provider)
+      wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('test', provider)
       await wrapper.vm.$nextTick()
       expect(spy).toHaveBeenCalledWith(provider)
     })
 
     it('health 事件应调用 store.checkHealth', async () => {
       mountComponent()
-      wrapper.find('.mock-provider-list').vm.$emit('health', 'p1')
+      wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('health', 'p1')
       await wrapper.vm.$nextTick()
       expect(checkHealthMock).toHaveBeenCalledWith('p1')
     })
 
     it('activate 事件应调用 store.activateProvider', async () => {
       mountComponent()
-      wrapper.find('.mock-provider-list').vm.$emit('activate', 'p1')
+      wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('activate', 'p1')
       await wrapper.vm.$nextTick()
       expect(activateProviderMock).toHaveBeenCalledWith('p1')
     })
 
     it('enable 事件应调用 store.setEnabled', async () => {
       mountComponent()
-      wrapper.find('.mock-provider-list').vm.$emit('enable', 'p1', true)
+      wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('enable', 'p1', true)
       await wrapper.vm.$nextTick()
       expect(setEnabledMock).toHaveBeenCalledWith('p1', true)
     })
@@ -432,7 +432,7 @@ describe('LLMEngineSettings.vue', () => {
       mountComponent()
       const provider = { provider_id: 'p1', name: 'Test' } as any
       const spy = vi.spyOn(wrapper.vm, 'handleDelete')
-      wrapper.find('.mock-provider-list').vm.$emit('delete', provider)
+      wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('delete', provider)
       await wrapper.vm.$nextTick()
       expect(spy).toHaveBeenCalledWith(provider)
     })
@@ -441,7 +441,7 @@ describe('LLMEngineSettings.vue', () => {
       mountComponent()
       const provider = { provider_id: 'p1' } as any
       const spy = vi.spyOn(wrapper.vm, 'openModelsDialog')
-      wrapper.find('.mock-provider-list').vm.$emit('view-models', provider)
+      wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('view-models', provider)
       await wrapper.vm.$nextTick()
       expect(spy).toHaveBeenCalledWith(provider)
     })

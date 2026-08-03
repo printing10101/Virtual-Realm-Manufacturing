@@ -290,7 +290,7 @@ def _verify_magic_bytes(
                 detected_main,
                 expected_mime,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             # libmagic 调用失败时降级到字节签名校验
             logger.debug("libmagic 调用失败，降级到字节签名校验: %s", e)
 

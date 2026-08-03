@@ -190,7 +190,7 @@ class HeidenhainPostProcessor(BasePostProcessor):
         cfg = self.get_cycle_config("boring", cycle_type)
         r_plane = self.safe_z_height
         orient = 1 if cfg.get("orient_spindle", False) else 0
-        _shift_dist = cfg.get("shift_distance", 0.0)  # noqa: F841
+        _shift_dist = cfg.get("shift_distance", 0.0)
         bore_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.15))
 
         if cycle_type == "G86":
@@ -257,12 +257,12 @@ class HeidenhainPostProcessor(BasePostProcessor):
         d_last = depth_cut_last if depth_cut_last is not None else cfg.get("depth_cut_last", 0.05)
         finish = finishing_passes if finishing_passes is not None else cfg.get("finishing_passes", 2)
         angle = tool_angle if tool_angle is not None else cfg.get("tool_angle", 60.0)
-        _taper_val = taper if taper is not None else cfg.get("taper", 0.0)  # noqa: F841
-        _shift_axis = cfg.get("shift_axis")  # noqa: F841
-        _shift_dist = cfg.get("shift_distance", 0.0)  # noqa: F841
+        _taper_val = taper if taper is not None else cfg.get("taper", 0.0)
+        _shift_axis = cfg.get("shift_axis")
+        _shift_dist = cfg.get("shift_distance", 0.0)
 
         r_plane = self.safe_z_height
-        _retract_type = cfg.get("retract_type", "feed")  # noqa: F841
+        _retract_type = cfg.get("retract_type", "feed")
         infeed = cfg.get("infeed_method", "radial")
         infeed_map = {"compound": 0, "radial": 1, "flank": 2}
         infeed_code = infeed_map.get(infeed, 1)

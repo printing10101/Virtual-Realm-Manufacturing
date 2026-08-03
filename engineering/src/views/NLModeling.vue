@@ -110,6 +110,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Refresh, Download, Box, Switch } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
@@ -134,8 +135,8 @@ function toggleViewMode() {
 }
 
 // 工作流向导事件处理
-function handleStepChange(step: number) {
-  // 步骤切换调试日志已移除（生产环境不应保留 console.log）
+function handleStepChange(_step: number) {
+  // 步骤切换回调（由子组件触发，无需额外处理）
 }
 
 function handleParamsExtracted(params: CADParams) {
@@ -159,7 +160,7 @@ async function handleGenerateModel(params: CADParams) {
 
 async function handleGenerateProcess(config: ProcessConfig & { process_plan?: ProcessPlan }) {
   try {
-    const data = await apiGenerateProcessPlanning({
+    await apiGenerateProcessPlanning({
       cad_params: currentParams.value || {},
       material: config.material || 'steel',
       machine_type: config.machine_type || 'cnc_mill',
@@ -174,7 +175,7 @@ async function handleGenerateProcess(config: ProcessConfig & { process_plan?: Pr
 
 async function handleGenerateNC(payload: { nc_code: string; process_plan?: ProcessPlan }) {
   try {
-    const data = await apiGenerateNC({
+    await apiGenerateNC({
       process_plan: payload.process_plan || {},
       machine_type: 'cnc_mill',
     })
@@ -186,7 +187,13 @@ async function handleGenerateNC(payload: { nc_code: string; process_plan?: Proce
 }
 
 function handleStartSimulation() {
-  ElMessage.info(t('nlModeling.msgSimulationStart'))
+  // 跳转到仿真模拟页对当前模型/G代码执行切削仿真
+  if (!currentModelPath.value && !currentParams.value) {
+    ElMessage.warning(t('nlModeling.msgModelFirst'))
+    return
+  }
+  const router = useRouter()
+  router.push('/simulation')
 }
 
 function handleComplete() {
@@ -204,7 +211,10 @@ function handleView3D(modelPath: string) {
 }
 
 function handleResetView() {
-  // 视图重置由子组件处理，此处仅作占位
+  // 重置当前模型视图状态（模型路径与参数）
+  currentModelPath.value = ''
+  currentParams.value = null
+  ElMessage.success(t('nlModeling.msgViewReset'))
 }
 
 function handleExportModel() {

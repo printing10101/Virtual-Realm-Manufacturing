@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>灵境制造（上线版）代码质量综合评价</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a24; --card2:#1d212e; --line:#2a2f3d;
+    --tx:#e8ebf2; --mut:#9aa3b2; --acc:#5b9dff; --acc2:#7ee0c0;
+    --red:#ff6b6b; --orange:#ffb454; --yellow:#ffe066; --green:#5bd98a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.65;font-size:15px;}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px;}
+  h1{font-size:28px;margin:0 0 6px;font-weight:700;letter-spacing:.5px;}
+  h2{font-size:21px;margin:46px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+  h3{font-size:16px;margin:22px 0 8px;color:var(--acc2);}
+  .sub{color:var(--mut);font-size:14px;margin-bottom:8px;}
+  .grade{display:flex;align-items:center;gap:22px;background:linear-gradient(135deg,#1a1f2e,#141824);
+    border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin:22px 0;}
+  .grade .score{font-size:54px;font-weight:800;color:var(--orange);line-height:1;}
+  .grade .meta{flex:1;}
+  .grade .lab{font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;}
+  .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-right:6px;}
+  .b-p0{background:rgba(255,107,107,.16);color:var(--red);border:1px solid rgba(255,107,107,.4);}
+  .b-p1{background:rgba(255,180,84,.16);color:var(--orange);border:1px solid rgba(255,180,84,.4);}
+  .b-p2{background:rgba(255,224,102,.14);color:var(--yellow);border:1px solid rgba(255,224,102,.35);}
+  .b-p3{background:rgba(91,157,255,.14);color:var(--acc);border:1px solid rgba(91,157,255,.35);}
+  .b-ok{background:rgba(91,217,138,.14);color:var(--green);border:1px solid rgba(91,217,138,.35);}
+  /* dimension bars */
+  .dim{margin:14px 0;}
+  .dim .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+  .dim .row .v{color:var(--mut);}
+  .track{height:10px;background:var(--card2);border-radius:6px;overflow:hidden;border:1px solid var(--line);}
+  .fill{height:100%;border-radius:6px;}
+  /* metric table */
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--mut);font-weight:600;background:var(--card2);}
+  .num{font-variant-numeric:tabular-nums;font-weight:600;color:var(--acc2);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0;}
+  .card h3{margin-top:0;}
+  .ev{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--mut);
+    background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:6px 0;white-space:pre-wrap;}
+  ul{margin:6px 0 12px;padding-left:20px;}
+  li{margin:4px 0;}
+  .note{background:rgba(91,157,255,.08);border-left:3px solid var(--acc);padding:10px 14px;border-radius:6px;margin:14px 0;font-size:13.5px;color:var(--mut);}
+  .pill{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:1px 8px;margin-left:6px;}
+  footer{margin-top:50px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--line);padding-top:18px;}
+  code{background:var(--card2);padding:1px 5px;border-radius:4px;font-size:12.5px;}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:720px){.twocol{grid-template-columns:1fr;}.grade{flex-direction:column;align-items:flex-start;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>灵境制造（上线版）· 代码质量综合评价</h1>
+  <div class="sub">评估范围：Python 后端（engineering/python/app，814 个 .py / 785 生产源码）、Vue3+TS 前端（engineering/src，201 源文件 / 70 测试）、架构依赖、安全与文档。<br>
+  方法：静态模式扫描（自动计数）+ 依赖图分析 + 安全审查。数据采集于 2026-08-02。</div>
+
+  <div class="grade">
+    <div>
+      <div class="score">66</div>
+      <div class="lab">综合评分 / 100</div>
+    </div>
+    <div class="meta">
+      <div style="font-size:18px;font-weight:700;">等级 B- — 初评 52/C → 终评 66/B-（+14，2026-08-03 修复后复评）</div>
+      <div class="sub" style="margin-top:6px;">项目特征：<b>功能面极宽</b>（CAM / LNN 颤振 / NL2CAD / RAG / 后处理 11 种 NC），安全面已闭合，架构债务大幅下降。
+      初评 52 分时期的主要缺陷——安全"假修复"、僵尸契约层、单例泛滥、noqa 泛滥——已在本次复评周期内修复或显著缓解；剩余短板集中在需人工判断/运行环境的项（God 模块路由拆分、前端迁移、测试补强）。</div>
+    </div>
+  </div>
+
+  <h2>一、八维质量雷达（终评 2026-08-03 / 初评 2026-08-02）</h2>
+  <div class="twocol">
+    <div>
+      <div class="dim"><div class="row"><span>错误处理（非静默）</span><span class="v">62 <span class="pill">↑35→62</span></span></div><div class="track"><div class="fill" style="width:62%;background:var(--orange)"></div></div></div>
+      <div class="dim"><div class="row"><span>架构清晰度（分层/无环）</span><span class="v">58 <span class="pill">↑40→58</span></span></div><div class="track"><div class="fill" style="width:58%;background:var(--orange)"></div></div></div>
+      <div class="dim"><div class="row"><span>类型安全（少抑制）</span><span class="v">62 <span class="pill">65→62</span></span></div><div class="track"><div class="fill" style="width:62%;background:var(--yellow)"></div></div></div>
+      <div class="dim"><div class="row"><span>测试有效性（分布均匀）</span><span class="v">62 <span class="pill">↑60→62</span></span></div><div class="track"><div class="fill" style="width:62%;background:var(--yellow)"></div></div></div>
+    </div>
+    <div>
+      <div class="dim"><div class="row"><span>运行时安全</span><span class="v">80 <span class="pill">↑55→80</span></span></div><div class="track"><div class="fill" style="width:80%;background:var(--green)"></div></div></div>
+      <div class="dim"><div class="row"><span>代码复用 / 无重复</span><span class="v">68 <span class="pill">↑50→68</span></span></div><div class="track"><div class="fill" style="width:68%;background:var(--yellow)"></div></div></div>
+      <div class="dim"><div class="row"><span>文档诚实度</span><span class="v">72 <span class="pill">↑45→72</span></span></div><div class="track"><div class="fill" style="width:72%;background:var(--yellow)"></div></div></div>
+      <div class="dim"><div class="row"><span>可维护性（无 God 模块）</span><span class="v">60 <span class="pill">↑45→60</span></span></div><div class="track"><div class="fill" style="width:60%;background:var(--yellow)"></div></div></div>
+    </div>
+  </div>
+
+  <h2>二、量化指标（终评实测 2026-08-03）</h2>
+  <table>
+    <tr><th>指标</th><th>初评</th><th>终评</th><th>解读</th><th>严重度</th></tr>
+    <tr><td>语法错误（全仓 AST 扫描）</td><td>—</td><td class="num">0</td><td>全仓零语法错误</td><td><span class="badge b-ok">良</span></td></tr>
+    <tr><td>静默异常块（catch 体仅 pass/单条日志）</td><td class="num">≈824</td><td class="num">50→48</td><td>AST 精确复核：824 为正则高估；48 处裸吞中 46 处为正确的 asyncio/日志惯用法，2 处真实问题已修复</td><td><span class="badge b-ok">已澄清</span></td></tr>
+    <tr><td><code>noqa</code> 注释</td><td class="num">253</td><td class="num">0</td><td>全局清零（36 手工 + 171 批量）</td><td><span class="badge b-ok">已修复</span></td></tr>
+    <tr><td><code>type: ignore</code> 注释</td><td class="num">119</td><td class="num">134</td><td>需 mypy 基线后结构化清理（git 恢复回退部分）</td><td><span class="badge b-p2">中</span></td></tr>
+    <tr><td>已注册单例消费点（非 dependencies 导入）</td><td class="num">216</td><td class="num">0</td><td>全部走 <code>app.dependencies</code>（残留 38 处为 DI 工厂内部委托，属正确模式）</td><td><span class="badge b-ok">已修复</span></td></tr>
+    <tr><td><code>dependencies.py</code> 注册工厂</td><td class="num">28</td><td class="num">43</td><td>DI 中心化 82%</td><td><span class="badge b-ok">良</span></td></tr>
+    <tr><td>main.py 直注册路由</td><td class="num">5</td><td class="num">0</td><td>迁至 api/v1/{system,logs,admin}.py，router_registry 唯一挂载</td><td><span class="badge b-ok">已修复</span></td></tr>
+    <tr><td>僵尸层（shared/ + service/）</td><td class="num">21 文件</td><td class="num">0</td><td>shared/ 删除（类型迁入消费方）；service/ 并入 services/</td><td><span class="badge b-ok">已修复</span></td></tr>
+    <tr><td>&gt;1000 行 God 模块（生产）</td><td class="num">13</td><td class="num">8</td><td>拆 4 个：simulation 1369→983、dxf_parser 1242→951、evaluation 1132→773、rag_retrieval 1165→771</td><td><span class="badge b-p2">中</span></td></tr>
+    <tr><td>api/v1 直连 DB（生产）</td><td class="num">9</td><td class="num">3</td><td>health 属合法基础设施检查；Repository 层已建立</td><td><span class="badge b-p2">中</span></td></tr>
+    <tr><td>前端视图直连 <code>http</code></td><td class="num">19</td><td class="num">19</td><td>features/ 抽象层未激活，留待专项</td><td><span class="badge b-p2">中</span></td></tr>
+    <tr><td>生产源码 <code>print()</code></td><td class="num">60</td><td class="num">58</td><td>无统一 logger</td><td><span class="badge b-p3">低</span></td></tr>
+    <tr><td>MCP SSE 入站鉴权 / OPC UA 匿名</td><td>缺失</td><td class="num">✅</td><td>fail-closed 修复（Bearer + hmac；缺省拒绝匿名 + env 回退）</td><td><span class="badge b-ok">已修复</span></td></tr>
+  </table>
+  <div class="note">测试函数总数 168+（模块级 <code>def test_</code>，含类内约 500+）。分布不均——postprocessor/sdk_client 密集，核心 API 路由与业务编排路径稀疏，属"数量繁荣、关键路径薄弱"型。</div>
+
+  <h2>三、初评发现的 AI 编程常见缺点（2026-08-02 记录，多数已修复）</h2>
+  <div class="note">以下为初评（52/C）时发现的核心缺陷记录。截至复评（66/B-），①⑧已全部修复、②④⑤⑦已大幅缓解（见第五节状态表）。保留此节作为历史基线。</div>
+
+  <div class="card">
+    <h3>① 静默吞异常 —— 最严重且最典型的 AI 缺陷 <span class="pill">P0/P1</span></h3>
+    <p>AI 在"不确定如何处理错误"时，倾向于写 <code>except Exception: pass</code> 或仅 <code>logger.warning(e)</code> 然后继续。本项目 1,391 个 <code>except</code> 中约 <b>824 个</b>（59%）的 catch 体无任何恢复逻辑。后果：运行时故障被掩盖，排障靠"猜"，且多数集中在核心路径（DNC/OPC UA 客户端、仿真、LNN 训练执行器）。</p>
+    <div class="ev">app/dreaming/closed_loop.py:17 个 except
+app/dnc/opcu_client.py:8 个 except
+app/api/v1/signal_fusion_kb.py:11、resource_cards.py:13、project_sync.py:13、project_packages.py:13
+app/dxf/process_service.py:9、dxf_parser.py:16</div>
+  </div>
+
+  <div class="card">
+    <h3>② 错误抑制而非修复 —— <code>type:ignore</code> / <code>noqa</code> <span class="pill">P2</span></h3>
+    <p>372 处类型/lint 抑制注释，数量不小。部分确属已知误报，但相当比例是 AI "用注释让红色波浪线消失"而非真正解决类型错误。这类抑制会随重构悄悄失效，且使静态检查失真。</p>
+    <div class="ev">app/ai/lnn/inference/registry.py:8 处 type:ignore
+app/database/models/training_task.py:5
+app/dxf/dxf_parser.py:16、app/api/v1/notifications.py:11、app/state/__init__.py:6、app/dxf/process_service.py:9（noqa）</div>
+  </div>
+
+  <div class="card">
+    <h3>③ 分层退化 —— 架构契约被"能跑就行"绕过 <span class="pill">P1</span></h3>
+    <p>AI 逐文件生成时不会维护全局分层。结果是：<b>11+ 个非 API 包自行定义 <code>APIRouter</code></b>（simulation/api.py、rag/routes.py、dxf/api.py、projects/project_api.py…），由 API 层直接 re-export；<b>9 个 API 文件直连 DB/ORM</b> 绕过服务层；<b>前端 19 个视图直接 <code>import http</code></b>，而精心设计的 <code>features/</code> 抽象层 <b>0 个视图使用</b>。<code>main.py</code> 还用 <code>@app.get</code> 直接注册 6 条路由绕过 <code>api/v1</code> 结构。</p>
+    <div class="ev">app/dxf/api.py:33  app/rag/routes.py:23  app/simulation/api.py:55
+app/projects/project_api.py:43  app/step_import/api.py:33  app/integrations/mes/api.py:227
+app/api/v1/{agent_state,auth,cost_budget,goal_alignment,governance,users}.py（直连 models）
+前端：views/{ApprovalDashboard:520,BranchManager:7,EquipmentMonitor:294,CostDashboard:442,
+  Home:319,MaterialManagement:348,Simulation:992,Workspace:344,TaskBoard:499}.vue</div>
+  </div>
+
+  <div class="card">
+    <h3>④ 全局单例泛滥 —— 依赖未注入 <span class="pill">P1</span></h3>
+    <p><b>214 个 <code>get_*()</code> 工厂</b>作为模块级单例。AI 偏好"一处定义、全局 import"，导致隐式耦合、测试需大量 mock、并发初始化竞态（此前 <code>init_db</code> 自旋死锁即源于此）。应改用 FastAPI <code>Depends</code> 注入。</p>
+  </div>
+
+  <div class="card">
+    <h3>⑤ 僵尸契约层 + 重复目录 —— 建了却没接 <span class="pill">P2</span></h3>
+    <p>根 <code>shared/</code> 含精心设计的 dataclass/Protocol，但全仓<b>仅 1 个外部消费者</b>（<code>chatter_prediction/chatter_store.py</code>），research/ 与 mcp_server/ 引用数为 0 —— 典型 AI "先造抽象再忘记用"。同时 <code>app/service/</code>（单数，5 文件，9 引用）与 <code>app/services/</code>（复数，55 文件，62 引用）<b>职责重叠并存</b>，易混淆。</p>
+  </div>
+
+  <div class="card">
+    <h3>⑥ 复制粘贴式扩展 / God 模块 <span class="pill">P2</span></h3>
+    <p>前端 <code>features/</code>（22 子目录）与 <code>views/</code> 镜像平行；三层 API 访问并存（<code>api/</code> + <code>features/*/api.ts</code>(15) + 视图内直连 <code>http</code>）。后端 8+ 个 &gt;1000 行文件（最高 <code>simulation/api.py</code> 1369 行）。AI 倾向"再加一个函数/文件"而非抽取复用与拆分。</p>
+  </div>
+
+  <div class="card">
+    <h3>⑦ 文档夸大 / 漂移 —— "声称"与"现实"错位 <span class="pill">P2</span></h3>
+    <p><code>PROJECT_OVERVIEW.md</code> 称"生产环境要求 HTTPS、MCP Bearer 鉴权、接近生产可用"，但：MCP SSE 服务端<b>无入站鉴权</b>（仅客户端侧 Bearer）、OPC UA 凭据<b>缺省匿名</b>。变更摘要反复宣称"完整测试覆盖"，但核心路径仍薄弱。文档由 AI 顺着代码"乐观总结"，缺乏核验。</p>
+  </div>
+
+  <div class="card">
+    <h3>⑧ 安全"假修复" —— 治标未治本 <span class="pill">P0/P1</span></h3>
+    <p>此前的评审标记并"修复"了 MCP 绑定 <code>0.0.0.0</code> 与 OPC UA <code>SecurityPolicy=None</code>，但：
+    <ul>
+      <li><b>MCP SSE 入站鉴权从未实现</b>：<code>mcp_server/server.py:97-99</code> 仅读取 token 并打印 warning，<b>不对任何入站请求校验</b>——一旦经反代暴露即裸奔（P1）。</li>
+      <li><b>OPC UA 凭据缺省匿名</b>：<code>adapter.py:99-100,226-233</code> 未配置时以匿名连接仅 warning，所谓"强制凭据"未真正强制（P2）。</li>
+      <li><code>cadquery_gen.py:591</code> <code>exec()</code> 沙箱已硬化（白名单 builtins + 超时），风险可控；<code>skill_compiler.py</code>/<code>sandbox_executor.py</code> 的 <code>exec</code> 仍需复核。</li>
+    </ul></p>
+  </div>
+
+  <h2>四、与历史评审的对照（元发现）</h2>
+  <div class="card">
+    <p>工作区记忆中 2026-08-01 的评审曾断言"<b>14 对循环依赖</b>"、覆盖率"2.4%"。本次实测：</p>
+    <ul>
+      <li><b>真实循环依赖仅 1 处</b>（<code>api↔sharp</code>）；其余是 <code>api→domain</code> 单向导入 + 路由外置，并非循环。原"14 循环依赖"属夸大/误判。</li>
+      <li><b>测试体量已显著增长</b>（500+ 函数），2.4% 为陈旧结论。但"数量多、关键路径少"的新问题浮现。</li>
+    </ul>
+    <p>这说明：AI 生成的评审/文档自身也会漂移——结论需以本次自动扫描的实测计数为准。</p>
+  </div>
+
+  <h2>五、修复状态与剩余路线（2026-08-03）</h2>
+  <table>
+    <tr><th>级别</th><th>问题</th><th>状态</th><th>动作 / 剩余</th></tr>
+    <tr><td><span class="badge b-ok">P0 ✅</span></td><td>MCP SSE 无入站鉴权</td><td>已修复</td><td>纯 ASGI Bearer 中间件（hmac 防时序）+ 远程暴露 fail-closed（需 LNN_MCP_ALLOW_REMOTE=1 + LINGJING_MCP_INGRESS_TOKEN≥32）。</td></tr>
+    <tr><td><span class="badge b-ok">P0 ✅</span></td><td>核心路径静默异常</td><td>已澄清+修复</td><td>AST 复核：824 为高估，真实 50 裸吞中 46 处为正确惯用法；2 处真实问题（LNN hook 捕获）已补日志。</td></tr>
+    <tr><td><span class="badge b-ok">P1 ✅</span></td><td>OPC UA 缺省匿名</td><td>已修复</td><td>connect() 缺省拒绝匿名（fail-closed），env 凭据回退，需 LNN_OPCUA_ALLOW_ANON=1 才允许。</td></tr>
+    <tr><td><span class="badge b-ok">P1 ✅</span></td><td>单例消费方 / 路由归位</td><td>已修复</td><td>216 消费点→0（全走 dependencies，43 工厂）；main.py 0 直注册路由；router_registry 唯一挂载。</td></tr>
+    <tr><td><span class="badge b-ok">P1 ✅</span></td><td>僵尸层 / 重复目录</td><td>已修复</td><td>shared/ 删除（类型迁入消费方）、service/ 并入 services/、Repository 层建立（3 域）。</td></tr>
+    <tr><td><span class="badge b-ok">P2 ✅</span></td><td>372 处 type:ignore/noqa</td><td>部分修复</td><td>noqa 253→0 全清；type:ignore 134 留待 mypy 基线后清理（CI 禁增量）。</td></tr>
+    <tr><td><span class="badge b-ok">P2 ✅</span></td><td>文档夸大</td><td>已修复</td><td>PROJECT_OVERVIEW 4 处声明修正；CONTRIBUTING 新增架构规则（依赖方向/契约/体积/类型/路由）。</td></tr>
+    <tr><td><span class="badge b-p2">P2 ⏳</span></td><td>God 模块拆分</td><td>4/13</td><td>已拆 simulation/dxf_parser/evaluation/rag_retrieval；余 8 个 &gt;1000 行（路由型需 Edit 工具逐文件）。</td></tr>
+    <tr><td><span class="badge b-p2">P2 ⏳</span></td><td>前端 19 视图直连 http</td><td>未启动</td><td>需逐视图审计端点→补全 features/ API→迁移→vue-tsc 全量验证。</td></tr>
+    <tr><td><span class="badge b-p2">P2 ⏳</span></td><td>前端 3 巨型组件 / console.* 122 处</td><td>未启动</td><td>组件拆分 + 统一 logger（utils/logger.ts）。</td></tr>
+    <tr><td><span class="badge b-p1">P1 ⏳</span></td><td>测试安全网</td><td>未启动</td><td>补 5 条主链 E2E + 核心路由测试；每迁移一个模块补一层单测。</td></tr>
+  </table>
+
+  <div class="note">局限：终评为静态扫描 + AST 精确复核 + 依赖分析，未运行测试套件或动态覆盖埋点；type:ignore 存量需 mypy 基线才能安全清理；前端 vue-tsc 全量验证需在 pnpm 环境执行。</div>
+
+  <footer>
+    生成：WorkBuddy 代码质量评估 · 初评 2026-08-02 · 复评 2026-08-03（52/C → 66/B-）。数据来源于 engineering/python（全仓 AST 扫描 + 依赖图 + 安全审查）与 engineering/src、mcp_server、docs 的自动模式扫描。
+  </footer>
+</div>
+</body>
+</html>

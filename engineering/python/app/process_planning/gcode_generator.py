@@ -279,7 +279,7 @@ class GCodeGenerator:
         lines.append("")
 
         # ========== 逐工序生成G代码 ==========
-        _current_tool = ""  # noqa: F841
+        _current_tool = ""
         tool_index = 0
         tool_registry: dict[str, int] = {}
         checkpoints: list[dict[str, Any]] = []
@@ -292,7 +292,7 @@ class GCodeGenerator:
             if tool_key not in tool_registry:
                 tool_index += 1
                 tool_registry[tool_key] = tool_index
-                _current_tool = tool_key  # noqa: F841
+                _current_tool = tool_key
 
                 lines.append("")
                 lines.append(postprocessor._comment(

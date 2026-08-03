@@ -599,7 +599,7 @@ async def _seed_default_admin_user() -> None:
     import string as _string
 
     from app.auth.security import hash_password
-    from app.models.user import get_user_store
+    from app.dependencies import get_user_store
 
     store = get_user_store()
     if store.get_user("admin") is not None:
@@ -676,11 +676,11 @@ async def init_db():
 
     # P0-2 修复：显式导入全部 Base 持有者，确保 metadata 包含全部表定义
     # 顺序无关，但 import 触发模块级 declarative_base() 调用
-    import app.database.rule_models  # noqa: F401  RuleBase
-    import app.database.models.machining_record  # noqa: F401  MachiningRecordBase
-    import app.knowledge_graph.models  # noqa: F401  KnowledgeGraphBase
-    import app.database.models.workflow  # noqa: F401  WorkflowRun/WorkflowRunNode（复用 training_task Base）
-    import app.database.models.dataset  # noqa: F401  Dataset/DatasetVersion/LineageRecord/ExperimentSnapshot（复用 training_task Base）
+    import app.database.rule_models
+    import app.database.models.machining_record
+    import app.knowledge_graph.models
+    import app.database.models.workflow
+    import app.database.models.dataset
 
     # 收集全部 Base.metadata
     metadatas = [Base.metadata]

@@ -35,6 +35,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# 模块级任务引用集合：保存 asyncio.create_task 返回的 Task 对象，
+# 防止任务被 GC 提前回收（CPython 弱引用机制下，本地变量出作用域即可能被回收）。
+# 任务完成后由 done_callback 自动从集合中移除。
+_active_quantize_tasks: set[asyncio.Task] = set()
+
 
 @router.post("/models/{model_name}/quantize", dependencies=[Depends(require_permission("lnn:write"))])
 @limiter.limit("10/hour")
@@ -84,9 +89,13 @@ async def quantize_model(request: Request, model_name: str, body: LNNQuantizeReq
         quantize_task = asyncio.create_task(
             task_manager.execute_task(task_id, quantization_executor)
         )
-        quantize_task.add_done_callback(
-            lambda t: _log_task_exception(t, f"quantize-{task_id}")
-        )
+        _active_quantize_tasks.add(quantize_task)
+
+        def _on_quantize_done(t: asyncio.Task) -> None:
+            _active_quantize_tasks.discard(t)
+            _log_task_exception(t, f"quantize-{task_id}")
+
+        quantize_task.add_done_callback(_on_quantize_done)
 
         return success(
             data={"task_id": task_id, "status": "queued"},

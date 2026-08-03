@@ -243,7 +243,7 @@ class ReActLoop:
         if self.memory_augmentor is not None:
             try:
                 memory_context = await self._augment_with_memory(triple)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.warning("Memory augment failed: %s", e)
                 memory_context = ""
 
@@ -376,7 +376,7 @@ class ReActLoop:
                         # （LLM confidence 优先，避免被聚合值覆盖）
                         if tool_name != "llm.reason":
                             recorder.current_confidence = live_conf
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     logger.debug("Live aggregation failed at step %d: %s", step_idx, e)
 
             recorder.record_step(
@@ -479,7 +479,7 @@ class ReActLoop:
                     "LLM empty response | id=%s | step=%d | attempt=%d",
                     verification_id, step_idx, attempt + 1,
                 )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.warning(
                     "LLM call failed | id=%s | step=%d | attempt=%d | err=%s",
                     verification_id, step_idx, attempt + 1, e,
@@ -526,7 +526,7 @@ class ReActLoop:
             if not result:
                 return ""
             return self.memory_augmentor.format_memory_context(result)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("Memory augment failed: %s", e)
             return ""
 

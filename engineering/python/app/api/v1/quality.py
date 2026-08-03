@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from app.core.response import ErrorCode, error, success
-from app.service import quality_service
+from app.services import quality_service
 from app.auth.permissions import require_role
 
 class QualityRecordCreate(BaseModel):
@@ -148,3 +148,19 @@ async def seed_quality_data():
         "records": result["records_count"],
         "anomalies": result["anomalies_count"],
     })
+
+
+# 注意：动态路径 /{record_id} 必须位于所有静态路径（/stats/、/anomalies/、/seed）之后，
+# 否则 /stats/ 等请求会被 {record_id} 捕获导致 404。
+@router.get("/{record_id}")
+async def get_quality_record_detail(record_id: str):
+    """获取质量检验记录详情。"""
+    try:
+        data = await quality_service.get_quality_record(record_id)
+    except RuntimeError:
+        return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
+
+    if data is None:
+        return error(code=ErrorCode.NOT_FOUND, message="质量检验记录不存在")
+
+    return success(data=data)

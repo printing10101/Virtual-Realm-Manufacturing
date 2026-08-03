@@ -20,22 +20,33 @@ from app.auth.permissions import require_permission
 from app.core.api_response import api_response
 from app.tasks.task_manager import TaskType
 
-# 阶段2 解耦改造：training/ 已迁移到 research/training/。
-# 工程侧不再暴露训练能力；此处保留 try/except 兼容旧路径。
-try:
-    from app.ai.lnn.training.device_manager import (  # type: ignore
-        detect_device,
-        get_available_devices,
-        get_device_status,
-        clear_gpu_memory,
-    )
-    _HAS_DEVICE_MANAGER = True
-except ImportError:
-    detect_device = None  # type: ignore
-    get_available_devices = None  # type: ignore
-    get_device_status = None  # type: ignore
-    clear_gpu_memory = None  # type: ignore
-    _HAS_DEVICE_MANAGER = False
+# P0#3 解耦: 通过 research_bridge 延迟导入。
+_HAS_DEVICE_MANAGER = False
+detect_device = None
+get_available_devices = None
+get_device_status = None
+clear_gpu_memory = None
+
+def _lazy_init_device_manager() -> bool:
+    global _HAS_DEVICE_MANAGER, detect_device, get_available_devices
+    global get_device_status, clear_gpu_memory
+    if _HAS_DEVICE_MANAGER:
+        return True
+    try:
+        from app.ai.lnn._research_bridge import (
+            get_device_detect,
+            get_available_devices_func,
+            get_device_status_func,
+            get_clear_gpu_memory_func,
+        )
+        detect_device = get_device_detect()
+        get_available_devices = get_available_devices_func()
+        get_device_status = get_device_status_func()
+        clear_gpu_memory = get_clear_gpu_memory_func()
+        _HAS_DEVICE_MANAGER = detect_device is not None
+    except Exception:
+        _HAS_DEVICE_MANAGER = False
+    return _HAS_DEVICE_MANAGER
 
 from app.api.v1.lnn.dependencies import (
     model_registry,
@@ -111,6 +122,13 @@ async def list_training_tasks():
 @api_response
 async def get_device_info():
     """返回系统中可用的计算设备信息"""
+    # 设备管理模块未启用时直接返回错误，避免调用 None 抛 TypeError
+    if not _HAS_DEVICE_MANAGER or get_available_devices is None or detect_device is None:
+        return error(
+            code=ErrorCode.SERVICE_UNAVAILABLE,
+            message="device_manager 模块未启用，设备信息不可用",
+        )
+
     devices = get_available_devices()
 
     current_device, current_info = detect_device("auto")
@@ -142,6 +160,12 @@ async def get_device_info():
 @api_response
 async def get_device_status_endpoint():
     """返回当前设备利用率和温度等信息"""
+    if not _HAS_DEVICE_MANAGER or detect_device is None or get_device_status is None:
+        return error(
+            code=ErrorCode.SERVICE_UNAVAILABLE,
+            message="device_manager 模块未启用，设备状态不可用",
+        )
+
     device, device_info = detect_device("auto")
 
     status = get_device_status(device)
@@ -180,6 +204,12 @@ async def get_device_status_endpoint():
 @api_response
 async def clear_device_cache():
     """清空GPU缓存"""
+    if not _HAS_DEVICE_MANAGER or clear_gpu_memory is None:
+        return error(
+            code=ErrorCode.SERVICE_UNAVAILABLE,
+            message="device_manager 模块未启用，无法清理 GPU 缓存",
+        )
+
     if not torch.cuda.is_available():
         return error(
             code=ErrorCode.INVALID_REQUEST,

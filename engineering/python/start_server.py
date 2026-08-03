@@ -52,6 +52,16 @@ def main():
     os.chdir(python_dir)
     print(f"Working directory: {python_dir}")
 
+    # Windows asyncio 修复：某些 Python 安装（Anaconda 3.13 / Python 3.11）
+    # 的 `_overlapped` 模块损坏，导致默认的 ProactorEventLoop 初始化时报
+    # `AttributeError: module '_overlapped' has no attribute 'CreateIoCompletionPort'`。
+    # uvicorn 在 reload=False 时不依赖子进程，SelectorEventLoop 完全够用。
+    # 此处显式切换到 SelectorEventLoop，绕过损坏的 _overlapped 模块。
+    if sys.platform == "win32":
+        import asyncio
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        print("[startup] 已切换到 WindowsSelectorEventLoop（绕过 _overlapped 损坏）")
+
     # 启动 uvicorn
     # P0-6 修复：host 从环境变量读取，默认 127.0.0.1（仅本机访问），
     # 避免误用此脚本时在所有网络接口暴露 API。生产对外部署应通过

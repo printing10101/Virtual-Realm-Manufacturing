@@ -106,6 +106,11 @@ class AdapterConfig:
             raise ValueError(
                 f"endpoint must be an opc.tcp:// URL, got: {self.endpoint!r}"
             )
+        # 凭据支持从环境变量读取（未显式传入时），便于生产环境经 env 注入。
+        if self.username is None:
+            self.username = os.environ.get("LNN_OPCUA_USERNAME")
+        if self.password is None:
+            self.password = os.environ.get("LNN_OPCUA_PASSWORD")
         # S1 修复：生产环境拒绝 NoSecurity
         if self.security_policy.lower() == "none":
             # 仅在显式声明 LNN_OPCUA_ALLOW_NOSECURITY=1 时允许降级
@@ -222,14 +227,23 @@ class OPCUAAdapter:
                         private_key=self.config.key_path,
                     )
 
-                # S1 修复：设置用户名/密码凭据（生产环境必须配置）
+                # S1 加固：设置用户名/密码凭据（生产环境必须配置）。
+                # 缺省拒绝匿名连接（同 JWT secret 守卫的 fail-closed 思路）：
+                # 未配置凭据时抛出，除非显式 LNN_OPCUA_ALLOW_ANON=1（仅开发/仿真）。
                 if self.config.username and self.config.password:
                     self._client.set_user(self.config.username)
                     self._client.set_password(self.config.password)
                 else:
+                    if os.environ.get("LNN_OPCUA_ALLOW_ANON", "") != "1":
+                        raise RuntimeError(
+                            "OPC UA 未配置用户名/密码凭据，缺省拒绝匿名连接(anonymous)。"
+                            "生产环境请在 AdapterConfig 中配置 username/password，"
+                            "或设置 LNN_OPCUA_USERNAME / LNN_OPCUA_PASSWORD 环境变量；"
+                            "仅开发/仿真环境可设 LNN_OPCUA_ALLOW_ANON=1 显式允许匿名。"
+                        )
                     logger.warning(
-                        "OPC UA connecting without credentials (anonymous). "
-                        "Configure username/password in production."
+                        "OPC UA connecting without credentials (anonymous) - "
+                        "DEVELOPMENT ONLY. Configure username/password in production."
                     )
 
                 # Schedule connection on the background loop

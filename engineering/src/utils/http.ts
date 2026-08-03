@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+import axios, { type InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 import {
   emitManufacturingError,
@@ -77,11 +77,14 @@ declare module 'axios' {
 }
 
 // =============================================================================
+/** Axios 请求超时时间（毫秒） */
+const DEFAULT_TIMEOUT_MS = 30_000
+
 // Axios 实例
 // =============================================================================
 
 const http = axios.create({
-  timeout: 30000,
+  timeout: DEFAULT_TIMEOUT_MS,
   headers: { 'Content-Type': 'application/json' },
 })
 

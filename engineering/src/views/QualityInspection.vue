@@ -84,19 +84,19 @@
           :empty-text="loadError ? t('qualityInspection.emptyLoadFailed') : t('qualityInspection.emptyRecords')"
         >
           <el-table-column
-            prop="id"
+            prop="inspection_no"
             :label="t('qualityInspection.colId')"
-            width="120"
+            width="180"
           />
           <el-table-column
-            prop="product_name"
+            prop="inspection_type"
             :label="t('qualityInspection.colProductName')"
-            min-width="180"
+            min-width="140"
           />
           <el-table-column
-            prop="batch"
+            prop="batch_no"
             :label="t('qualityInspection.colBatch')"
-            width="140"
+            width="150"
           />
           <el-table-column
             :label="t('qualityInspection.colResult')"
@@ -141,6 +141,114 @@
         </el-table>
       </div>
     </div>
+
+    <!-- 新建检测弹窗 -->
+    <el-dialog
+      v-model="newDialogVisible"
+      :title="t('qualityInspection.dialogNewTitle')"
+      width="480px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <el-form label-width="90px" @submit.prevent>
+        <el-form-item :label="t('qualityInspection.fieldBatchNo')" required>
+          <el-input
+            v-model="newForm.batch_no"
+            :placeholder="t('qualityInspection.placeholderBatchNo')"
+            maxlength="64"
+          />
+        </el-form-item>
+        <el-form-item :label="t('qualityInspection.fieldInspectionType')" required>
+          <el-select
+            v-model="newForm.inspection_type"
+            :placeholder="t('qualityInspection.placeholderInspectionType')"
+            style="width: 100%"
+          >
+            <el-option :label="t('qualityInspection.typeIncoming')" value="进料检验" />
+            <el-option :label="t('qualityInspection.typeProcess')" value="过程检验" />
+            <el-option :label="t('qualityInspection.typeFinished')" value="成品检验" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('qualityInspection.fieldResult')" required>
+          <el-radio-group v-model="newForm.result">
+            <el-radio value="合格">{{ t('qualityInspection.filterPass') }}</el-radio>
+            <el-radio value="不合格">{{ t('qualityInspection.filterFail') }}</el-radio>
+            <el-radio value="待判定">待判定</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item :label="t('qualityInspection.fieldInspector')" required>
+          <el-input
+            v-model="newForm.inspector"
+            :placeholder="t('qualityInspection.placeholderInspector')"
+            maxlength="32"
+          />
+        </el-form-item>
+        <el-form-item :label="t('qualityInspection.fieldNotes')">
+          <el-input
+            v-model="newForm.notes"
+            type="textarea"
+            :rows="2"
+            :placeholder="t('qualityInspection.placeholderNotes')"
+            maxlength="200"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="newDialogVisible = false">
+          {{ t('qualityInspection.btnCancel') }}
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="newDialogSubmitting"
+          @click="submitInspection"
+        >
+          {{ t('qualityInspection.btnSubmit') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 检测详情弹窗 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="t('qualityInspection.dialogDetailTitle')"
+      width="520px"
+    >
+      <div v-loading="detailLoading" style="min-height: 200px">
+        <template v-if="detailData">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item :label="t('qualityInspection.fieldInspectionNo')">
+              {{ detailData.inspection_no }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('qualityInspection.fieldInspectionType')">
+              {{ detailData.inspection_type }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('qualityInspection.colBatch')">
+              {{ detailData.batch_no }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('qualityInspection.fieldResult')">
+              <el-tag :type="resultTagType(detailData.result)" size="small" effect="light">
+                {{ detailData.result }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('qualityInspection.fieldInspector')">
+              {{ detailData.inspector }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('qualityInspection.fieldNotes')">
+              {{ detailData.notes || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('qualityInspection.fieldCreatedAt')">
+              {{ detailData.created_at }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </template>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">
+          {{ t('qualityInspection.btnCancel') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -157,13 +265,23 @@ const { t } = useI18n()
 // ========================= 类型定义 =========================
 interface InspectionRecord {
   id: string | number
-  product_name: string
-  batch: string
+  inspection_no: string
+  batch_no: string
+  inspection_type: string
   result: string
   inspector: string
+  notes?: string | null
   created_at: string
-  remark?: string
   updated_at?: string
+}
+
+/** 新建检测表单数据。 */
+interface InspectionForm {
+  batch_no: string
+  inspection_type: string
+  result: string
+  inspector: string
+  notes: string
 }
 
 interface StatsCard {
@@ -181,6 +299,22 @@ const resultFilter = ref('all')
 
 const records = ref<InspectionRecord[]>([])
 const statsData = ref({ total: 0, pass: 0, fail: 0, pass_rate: 0 })
+
+// 新建检测弹窗
+const newDialogVisible = ref(false)
+const newDialogSubmitting = ref(false)
+const newForm = ref<InspectionForm>({
+  batch_no: '',
+  inspection_type: '',
+  result: '',
+  inspector: '',
+  notes: '',
+})
+
+// 详情弹窗
+const detailDialogVisible = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<InspectionRecord | null>(null)
 
 // ========================= 计算属性 =========================
 const statsCards = computed<StatsCard[]>(() => {
@@ -202,9 +336,16 @@ function resultTagType(result: string): 'success' | 'danger' | 'warning' {
 
 async function fetchStats() {
   try {
-    const res = await http.get(API_CONFIG.QUALITY + '/stats/summary')
+    // 后端实际路径 /api/v1/quality/stats/，返回 { today_count, pass_rate, anomaly_count, ... }
+    const res = await http.get(API_CONFIG.QUALITY + '/stats/')
     if (res.data.code === 0 && res.data.data) {
-      statsData.value = res.data.data
+      const s = res.data.data
+      statsData.value = {
+        total: s.today_count ?? 0,
+        pass: s.pass_count ?? 0,
+        fail: s.anomaly_count ?? 0,
+        pass_rate: s.pass_rate ?? 0,
+      }
     }
   } catch (e: unknown) {
     // 统计加载失败不影响记录列表，但需记录便于排查
@@ -221,11 +362,13 @@ async function fetchRecords() {
       params.result = resultFilter.value === 'pass' ? t('qualityInspection.filterPass') : t('qualityInspection.filterFail')
     }
     if (searchKeyword.value.trim()) {
+      // 后端列表接口按 keyword 匹配批次号/检验类型/检测员
       params.keyword = searchKeyword.value.trim()
     }
-    const res = await http.get(API_CONFIG.QUALITY + '/inspections', { params })
+    // 后端实际路径 /api/v1/quality/，返回 { records, total, limit, offset }
+    const res = await http.get(API_CONFIG.QUALITY + '/', { params })
     if (res.data.code === 0 && res.data.data) {
-      records.value = res.data.data
+      records.value = res.data.data.records ?? []
     } else {
       records.value = []
       loadError.value = true
@@ -238,12 +381,62 @@ async function fetchRecords() {
   }
 }
 
+/** 打开新建检测弹窗。 */
 function handleNewInspection() {
-  ElMessage.success(t('qualityInspection.msgNewInspectionWip'))
+  newForm.value = { batch_no: '', inspection_type: '', result: '', inspector: '', notes: '' }
+  newDialogVisible.value = true
 }
 
-function handleViewDetail(row: InspectionRecord) {
-  ElMessage.info(t('qualityInspection.msgViewDetail', { id: row.id }))
+/** 提交新建检测记录。 */
+async function submitInspection() {
+  const f = newForm.value
+  if (!f.batch_no.trim() || !f.inspection_type || !f.result || !f.inspector.trim()) {
+    ElMessage.warning(t('qualityInspection.msgFormIncomplete'))
+    return
+  }
+  newDialogSubmitting.value = true
+  try {
+    const res = await http.post(API_CONFIG.QUALITY + '/', {
+      batch_no: f.batch_no.trim(),
+      inspection_type: f.inspection_type,
+      result: f.result,
+      inspector: f.inspector.trim(),
+      notes: f.notes.trim() || null,
+    })
+    if (res.data.code === 0) {
+      ElMessage.success(t('qualityInspection.msgCreateSuccess'))
+      newDialogVisible.value = false
+      fetchRecords()
+      fetchStats()
+    } else {
+      ElMessage.error(res.data.message || t('qualityInspection.msgCreateFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[QualityInspection] create failed:', e)
+    ElMessage.error(t('qualityInspection.msgCreateFailed'))
+  } finally {
+    newDialogSubmitting.value = false
+  }
+}
+
+/** 查看检测详情（GET /api/v1/quality/{id}）。 */
+async function handleViewDetail(row: InspectionRecord) {
+  detailDialogVisible.value = true
+  detailLoading.value = true
+  detailData.value = null
+  try {
+    const res = await http.get(API_CONFIG.QUALITY + `/${row.id}`)
+    if (res.data.code === 0 && res.data.data) {
+      detailData.value = res.data.data
+    } else {
+      ElMessage.error(res.data.message || t('qualityInspection.msgDetailLoadFailed'))
+    }
+  } catch (e: unknown) {
+    console.warn('[QualityInspection] fetch detail failed:', e)
+    ElMessage.error(t('qualityInspection.msgDetailLoadFailed'))
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 // ========================= 防抖处理 =========================

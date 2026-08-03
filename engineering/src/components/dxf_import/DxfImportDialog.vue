@@ -215,10 +215,10 @@
           v-if="store.parseResult.warnings && store.parseResult.warnings.length > 0"
           class="warning-section"
         >
-          <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
+          <!-- 警告列表（只读），用警告文本作为 key -->
           <el-alert
             v-for="(w, i) in store.parseResult.warnings"
-            :key="i"
+            :key="`warn-${i}`"
             :title="w"
             type="warning"
             :closable="false"
@@ -433,7 +433,7 @@ function initPreview(result: DxfParseResponse) {
       gridDivisions: PREVIEW_GRID_DIVISIONS,
     })
 
-    const { scene, camera, renderer, controls, addLight } = threeScene
+    const { scene, camera, addLight } = threeScene
 
     // Z 轴向上，更符合工程图习惯
     camera.up.set(0, 0, 1)
@@ -537,28 +537,6 @@ function createDxfGroup(result: DxfParseResponse): THREE.Group {
   }
 
   return group
-}
-
-function animate() {
-  if (!threeScene) return
-  // Animation is handled by threeScene.startAnimation(), this function is kept for potential future use
-  const { scene, camera, renderer, controls } = threeScene
-  controls?.update()
-  if (renderer && scene && camera) {
-    renderer.render(scene, camera)
-  }
-}
-
-function onPreviewResize() {
-  if (!previewContainer.value || !threeScene) return
-  const { renderer, camera } = threeScene
-  if (!renderer || !camera) return
-  const w = previewContainer.value.clientWidth
-  const h = previewContainer.value.clientHeight
-  if (w === 0 || h === 0) return
-  renderer.setSize(w, h)
-  camera.aspect = w / h
-  camera.updateProjectionMatrix()
 }
 
 function resetView() {

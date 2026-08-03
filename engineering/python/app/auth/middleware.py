@@ -30,7 +30,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 # Re-export path/permission constants and helpers from sibling modules so that
 # code importing them from ``unified_auth`` still resolves via the shim.
-from app.auth.permissions import (  # noqa: F401 (re-exported via unified_auth shim)
+from app.auth.permissions import (
     AUTH_PUBLIC_PATHS,
     AUTH_PUBLIC_PREFIXES,
     AGENT_ENDPOINT_PERMISSIONS,
@@ -43,16 +43,16 @@ from app.auth.permissions import (  # noqa: F401 (re-exported via unified_auth s
     _JWT_PUBLIC_PREFIXES,
     _PUBLIC_ENDPOINTS_LNN,
 )
-from app.auth.audit import (  # noqa: F401 (re-exported via unified_auth shim)
+from app.auth.audit import (
     AgentAuditEntry,
     AgentAuditLog,
     agent_audit_log,
 )
-from app.auth.rate_limiter import (  # noqa: F401 (re-exported via unified_auth shim)
+from app.auth.rate_limiter import (
     AgentRateLimiter,
     agent_rate_limiter,
 )
-from app.auth.idempotency import (  # noqa: F401 (re-exported via unified_auth shim)
+from app.auth.idempotency import (
     IdempotencyStore,
     idempotency_store,
 )
@@ -179,7 +179,7 @@ def _get_token_ban_list() -> Optional["_TokenBanList"]:
     """Get token ban list (from security module)."""
     # 使用 TYPE_CHECKING 解决循环导入：运行时延迟导入，类型检查时可用具体类型
     try:
-        from app.auth.security import get_token_ban_list
+        from app.dependencies import get_token_ban_list
         return get_token_ban_list()
     except (ImportError, AttributeError) as e:
         logger.warning("获取 token 黑名单失败: %s", e, exc_info=True)

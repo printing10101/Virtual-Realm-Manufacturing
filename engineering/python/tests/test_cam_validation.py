@@ -1188,7 +1188,10 @@ class TestCamValidationGCodeLoader:
         from app.cam_validation import GCodeLoader
 
         report_path = _build_minimal_gcode_report_json(tmp_path)
-        loader = GCodeLoader()
+        # T45 修复：pytest 默认 tmp_path 位于系统 Temp，不在项目根（engineering/）
+        # 之下，会被 GCodeLoader 的路径遍历安全策略拒绝。将 tmp_path 显式声明为
+        # loader 的项目根：既保留安全策略（策略逻辑不变），又使用例可运行。
+        loader = GCodeLoader(project_root=str(tmp_path))
         # GCodeLoader 实际方法名是 load_from_report（非 load）
         result = loader.load_from_report(report_path)
 

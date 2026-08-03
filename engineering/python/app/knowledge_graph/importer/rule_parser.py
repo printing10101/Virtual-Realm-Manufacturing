@@ -172,7 +172,7 @@ class RuleParser:
         for raw in rules:
             try:
                 parsed = self.parse_single_rule(raw)
-            except (ValueError, TypeError, KeyError) as exc:  # noqa: BLE001 - 单条规则异常不影响其他
+            except (ValueError, TypeError, KeyError) as exc:
                 # 跳过异常规则，保持容错
                 logger.warning("rule parse error: %s", exc)
                 continue

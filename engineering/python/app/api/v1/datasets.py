@@ -33,7 +33,7 @@ from pydantic import BaseModel, Field
 from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
 from app.contracts.dataset import DatasetSchema, DatasetStatus, LineageRecord
-from app.data.dataset_store import get_dataset_store
+from app.dependencies import get_dataset_store
 from app.data.lineage_store import get_lineage_store, make_lineage_record
 
 logger = logging.getLogger(__name__)

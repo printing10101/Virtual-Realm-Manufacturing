@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from app.auth.permissions import require_permission, require_role
 from app.core.response import ErrorCode, error, success
-from app.service import production_service
+from app.services import production_service
 
 
 # ---------------------------------------------------------------------------
@@ -130,6 +130,19 @@ async def get_production_lines():
     """获取产线列表及各班次数据。"""
     try:
         data = await production_service.get_production_lines()
+    except RuntimeError:
+        return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
+
+    return success(data=data)
+
+
+@router.get("/stats")
+async def get_daily_stats(
+    days: int = Query(7, ge=1, le=90, description="统计天数（1-90）"),
+):
+    """按天聚合生产统计（近 N 天计划/实际产量、良品率、设备利用率、达成率）。"""
+    try:
+        data = await production_service.get_daily_stats(days=days)
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
 

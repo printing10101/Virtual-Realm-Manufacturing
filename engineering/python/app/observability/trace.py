@@ -354,7 +354,7 @@ class LogSink(ILogSink):
                 trace_id=entry.trace_id,
                 span_id=entry.span_id,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("LogSink: 脱敏失败（原样保留）: %s", e)
             return entry
 
@@ -507,7 +507,7 @@ def _load_sanitizer():
         from app.utils.log_sanitizer import LogSanitizer  # type: ignore
 
         return LogSanitizer()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 

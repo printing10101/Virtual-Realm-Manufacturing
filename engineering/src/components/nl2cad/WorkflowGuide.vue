@@ -1,39 +1,10 @@
 <template>
   <div class="workflow-guide">
-    <!-- 步骤指示器 -->
-    <div class="steps-indicator">
-      <!-- 静态列表，index 作为 key 可接受 -->
-      <div
-        v-for="(step, index) in steps"
-        :key="index"
-        class="step-item"
-        :class="{
-          'is-active': currentStep === index,
-          'is-completed': currentStep > index,
-          'is-clickable': step.clickable
-        }"
-        @click="handleStepClick(index)"
-      >
-        <div class="step-icon">
-          <el-icon v-if="currentStep > index">
-            <Check />
-          </el-icon>
-          <span v-else>{{ index + 1 }}</span>
-        </div>
-        <div class="step-info">
-          <div class="step-title">
-            {{ step.title }}
-          </div>
-          <div class="step-desc">
-            {{ step.description }}
-          </div>
-        </div>
-        <div
-          v-if="index < steps.length - 1"
-          class="step-connector"
-        />
-      </div>
-    </div>
+    <WorkflowGuideStepsIndicator
+      :steps="steps"
+      :current-step="currentStep"
+      @step-click="handleStepClick"
+    />
 
     <!-- 步骤内容区域 -->
     <div class="step-content">
@@ -51,8 +22,8 @@
         <div class="panel-body">
           <div class="example-cards">
             <div
-              v-for="(example, idx) in examples"
-              :key="idx"
+              v-for="example in examples"
+              :key="example.text"
               class="example-card"
               @click="fillExample(example.text)"
             >
@@ -522,7 +493,6 @@ import { ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import {
-  Check,
   ArrowRight,
   ArrowLeft,
   Document,
@@ -536,6 +506,7 @@ import {
   RefreshRight,
   CircleCheck,
 } from '@element-plus/icons-vue'
+import WorkflowGuideStepsIndicator from './WorkflowGuideStepsIndicator.vue'
 import {
   extractParams as apiExtractParams,
   generateModel as apiGenerateModel,
@@ -547,7 +518,6 @@ import type {
   CADParams,
   ProcessConfig,
   ProcessPlan,
-  SimulationResult,
   CADDimensions,
 } from '@/types/nl2cad'
 
@@ -570,12 +540,12 @@ const { t } = useI18n()
 
 // Steps definition
 const steps = computed(() => [
-  { title: t('workflowGuide.step1Title'), description: t('workflowGuide.step1Desc'), clickable: true },
-  { title: t('workflowGuide.step2Title'), description: t('workflowGuide.step2Desc'), clickable: true },
-  { title: t('workflowGuide.step3Title'), description: t('workflowGuide.step3Desc'), clickable: false },
-  { title: t('workflowGuide.step4Title'), description: t('workflowGuide.step4Desc'), clickable: true },
-  { title: t('workflowGuide.step5Title'), description: t('workflowGuide.step5Desc'), clickable: false },
-  { title: t('workflowGuide.step6Title'), description: t('workflowGuide.step6Desc'), clickable: false },
+  { id: 'select-model', title: t('workflowGuide.step1Title'), description: t('workflowGuide.step1Desc'), clickable: true },
+  { id: 'config-params', title: t('workflowGuide.step2Title'), description: t('workflowGuide.step2Desc'), clickable: true },
+  { id: 'generate-cad', title: t('workflowGuide.step3Title'), description: t('workflowGuide.step3Desc'), clickable: false },
+  { id: 'output-nc', title: t('workflowGuide.step4Title'), description: t('workflowGuide.step4Desc'), clickable: true },
+  { id: 'validate', title: t('workflowGuide.step5Title'), description: t('workflowGuide.step5Desc'), clickable: false },
+  { id: 'review', title: t('workflowGuide.step6Title'), description: t('workflowGuide.step6Desc'), clickable: false },
 ])
 
 // Examples
@@ -603,18 +573,6 @@ const processConfig = reactive({
 })
 const ncCodeGenerated = ref(false)
 const ncCode = ref('')
-const simulationResult = reactive<SimulationResult>({
-  status: 'idle', // idle, running, completed, failed
-  task_id: '',
-  collision_detected: false,
-  collision_positions: [],
-  collision_severity: 'none',
-  voxel_count: 0,
-  removed_voxel_count: 0,
-  duration_seconds: 0,
-  stock_stl_url: '',
-  error: '',
-})
 
 // Methods
 function handleStepClick(index: number) {

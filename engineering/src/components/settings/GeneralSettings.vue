@@ -14,7 +14,7 @@
         <ul v-if="versionStore.inconsistencyDetails">
           <li
             v-for="(detail, idx) in versionStore.inconsistencyDetails"
-            :key="idx"
+            :key="`det-${idx}`"
           >
             {{ detail }}
           </li>

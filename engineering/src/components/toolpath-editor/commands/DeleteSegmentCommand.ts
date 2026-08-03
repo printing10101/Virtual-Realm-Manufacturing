@@ -15,7 +15,7 @@ export class DeleteSegmentCommand extends BaseCommand {
     this.segmentId = segmentId
   }
 
-  execute(): void {
+  override execute(): void {
     this.deletedIndex = this.segments.findIndex((s) => s.id === this.segmentId)
     if (this.deletedIndex === -1) return
     this.deletedSegment = { ...this.segments[this.deletedIndex] }
@@ -23,13 +23,13 @@ export class DeleteSegmentCommand extends BaseCommand {
     this.onUpdate()
   }
 
-  undo(): void {
+  override undo(): void {
     if (this.deletedIndex === -1 || !this.deletedSegment) return
     this.segments[this.deletedIndex] = { ...this.deletedSegment }
     this.onUpdate()
   }
 
-  getDescription(): string {
+  override getDescription(): string {
     return `Delete segment ${this.segmentId.slice(0, 8)}`
   }
 }

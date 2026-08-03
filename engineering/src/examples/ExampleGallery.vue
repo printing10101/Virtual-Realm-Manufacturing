@@ -376,7 +376,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Download, Clock, Search, Grid, List, View, CopyDocument } from '@element-plus/icons-vue'
+import { Download, Clock } from '@element-plus/icons-vue'
 import type { ExampleProject, ExampleFilter, ExampleCategory, ExampleDifficulty } from './types'
 import { exampleProjects, getCategories, getDifficulties } from './data'
 

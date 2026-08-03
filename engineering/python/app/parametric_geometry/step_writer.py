@@ -500,7 +500,7 @@ class TemplateStepWriter(StepWriterEngine):
             "(template engine - degraded)'),'2;1');"
         )
         lines.append(
-            f"FILE_NAME('{shapes[0].shape_id if shapes else "output"}.step',"
+            f"FILE_NAME('{shapes[0].shape_id if shapes else 'output'}.step',"
             f"'{timestamp}',('Lingjing'),('Lingjing'),"
             "'Lingjing v2.5','Lingjing','None');"
         )

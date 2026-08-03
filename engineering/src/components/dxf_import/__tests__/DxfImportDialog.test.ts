@@ -84,7 +84,6 @@ vi.mock('@/stores/project', () => ({
 
 describe('DxfImportDialog.vue', () => {
   let wrapper: VueWrapper<any>
-  let store: any
 
   beforeEach(() => {
     setActivePinia(createPinia())

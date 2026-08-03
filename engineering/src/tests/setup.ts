@@ -38,7 +38,7 @@ Object.defineProperty(globalThis, 'localStorage', {
 
 // Mock scrollIntoView for happy-dom environment
 if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
-  Element.prototype.scrollIntoView = function(options?: ScrollIntoViewOptions) {
+  Element.prototype.scrollIntoView = function(_options?: ScrollIntoViewOptions) {
     // No-op in test environment
   }
 }

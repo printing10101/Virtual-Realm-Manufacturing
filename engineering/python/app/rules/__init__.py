@@ -1,3 +1,3 @@
 """工艺规则管理模块"""
 
-from app.rules.api import router  # noqa: F401
+from app.rules.api import router

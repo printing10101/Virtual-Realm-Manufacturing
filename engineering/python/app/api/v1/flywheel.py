@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -235,3 +236,83 @@ async def get_metric_definitions() -> MetricDefinitionsResponse:
     ]
 
     return MetricDefinitionsResponse(metrics=definitions)
+
+
+# ---------------------------------------------------------------------------
+# 模型热更新部署记录
+# ---------------------------------------------------------------------------
+
+# 候选模型存储目录（相对工作目录），依次扫描
+_MODEL_STORAGE_CANDIDATES: tuple[Path, ...] = (
+    Path("models/lnn"),
+    Path("data/models"),
+    Path("output/models"),
+    Path("output/models/finetuned"),
+)
+
+# 识别为已部署模型的文件后缀
+_MODEL_FILE_SUFFIXES: frozenset[str] = frozenset(
+    {".pt", ".pth", ".onnx", ".bin", ".safetensors", ".ckpt"}
+)
+
+
+@router.get(
+    "/deployments",
+    summary="获取模型热更新部署记录",
+    description=(
+        "扫描本地模型存储目录（models/lnn、data/models、output/models 等），"
+        "返回已部署模型产物的真实文件记录（名称、路径、大小、更新时间、状态）。"
+    ),
+)
+async def get_flywheel_deployments() -> dict[str, Any]:
+    """获取已部署模型记录。
+
+    数据来源为本地模型存储目录的真实文件系统扫描（非写死数据）。
+    目录不存在或为空时返回空列表（兼容全新安装环境）。
+    """
+    records: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for base in _MODEL_STORAGE_CANDIDATES:
+        if not base.is_dir():
+            continue
+        try:
+            for path in sorted(base.rglob("*")):
+                if not path.is_file():
+                    continue
+                if path.suffix.lower() not in _MODEL_FILE_SUFFIXES:
+                    continue
+                rel = str(path)
+                if rel in seen:
+                    continue
+                seen.add(rel)
+                stat = path.stat()
+                records.append(
+                    {
+                        "model_name": path.stem,
+                        "path": rel,
+                        "size_bytes": stat.st_size,
+                        "size_human": _format_size(stat.st_size),
+                        "updated_at": datetime.fromtimestamp(
+                            stat.st_mtime
+                        ).isoformat(timespec="seconds"),
+                        "status": "active",
+                        "version": path.stem,
+                    }
+                )
+        except OSError as e:
+            logger.warning("扫描模型目录失败 %s: %s", base, e)
+            continue
+
+    # 按更新时间倒序（最新部署在前）
+    records.sort(key=lambda r: r.get("updated_at", ""), reverse=True)
+    return {"deployments": records, "count": len(records)}
+
+
+def _format_size(num_bytes: int) -> str:
+    """将字节数格式化为可读字符串。"""
+    size = float(num_bytes)
+    for unit in ("B", "KB", "MB", "GB"):
+        if size < 1024 or unit == "GB":
+            return f"{size:.1f} {unit}" if unit != "B" else f"{int(size)} B"
+        size /= 1024
+    return f"{size:.1f} TB"

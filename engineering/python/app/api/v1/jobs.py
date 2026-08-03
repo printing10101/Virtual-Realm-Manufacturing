@@ -11,6 +11,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
 from app.core.response import ErrorCode, error, success
 from app.tasks.task_manager import TaskType, TaskStatus
@@ -30,6 +31,43 @@ router = APIRouter(
     dependencies=[Depends(require_permission("job:read"))],
 )
 task_manager = AsyncTaskManager()
+
+
+class CreateJobRequest(BaseModel):
+    """通用任务创建请求体。"""
+
+    task_type: str = Field(..., description="任务类型（lnn_training/lnn_inference/data_processing 等）")
+    params: dict = Field(default_factory=dict, description="任务参数")
+    name: Optional[str] = Field(None, max_length=128, description="任务名称（并入 params.name）")
+    idempotency_key: Optional[str] = Field(None, max_length=128, description="幂等键")
+
+
+@router.post("", dependencies=[Depends(require_permission("job:manage"))])
+async def create_job(body: CreateJobRequest):
+    """创建通用任务（真实落库到任务管理器，返回 job_id 供轮询/SSE 跟踪）。"""
+    try:
+        tt = TaskType(body.task_type)
+    except ValueError:
+        valid_types = [t.value for t in TaskType]
+        return error(
+            code=ErrorCode.INVALID_REQUEST,
+            message=f"Invalid task_type '{body.task_type}'. Valid values: {valid_types}",
+        )
+
+    try:
+        params = dict(body.params)
+        if body.name:
+            params.setdefault("name", body.name)
+        record = await task_manager.create_task(
+            task_type=tt,
+            params=params,
+            idempotency_key=body.idempotency_key,
+        )
+    except RuntimeError as e:
+        logger.error("创建任务失败: %s", e, exc_info=True)
+        return error(code=ErrorCode.INTERNAL_ERROR, message=str(e))
+
+    return success(data=record.to_dict(), message="任务创建成功")
 
 
 @router.get("/{job_id}")

@@ -11,12 +11,10 @@ import logging
 import re
 import time
 
-from app.budget.approval_workflow import (
-    get_approval_engine,
-)
-from app.risk.risk_identifier import (
-    get_risk_identifier,
-)
+from app.dependencies import get_approval_engine
+
+from app.dependencies import get_risk_identifier
+
 from app.models.governance import (
     ApprovalStatus,
     AgentRole,

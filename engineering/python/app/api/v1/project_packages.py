@@ -43,36 +43,9 @@ from pydantic import BaseModel, Field
 from app.auth.permissions import require_permission
 from app.config import config
 from app.config.limits import STREAM_CHUNK_SIZE
-from app.contracts.project_package import (
-    ConflictStrategy,
-    ContentPolicy,
-    DEFAULT_MAX_FILE_SIZE_BYTES,
-    ExportOptions,
-    ImportOptions,
-    PackageFormatVersion,
-    PackageTaskStatus,
-)
 from app.core.response import ErrorCode, error, success
-from app.services.project_package_service import (
-    ExportRecordNotFoundError,
-    ImportRecordNotFoundError,
-    PackageChecksumError,
-    PackageConflictError,
-    PackageFormatError,
-    PackageNotFoundError,
-    ProjectNotFoundError,
-    ProjectPackageError,
-    get_project_package_service,
-)
+from app.dependencies import get_project_package_service
 
-logger = logging.getLogger(__name__)
-
-
-router = APIRouter(
-    prefix="/api/v1/project-packages",
-    tags=["Project Packages"],
-    dependencies=[Depends(require_permission("project_package:read"))],
-)
 
 
 # ---------------------------------------------------------------------------

@@ -8,17 +8,9 @@ from enum import Enum
 from typing import Any, Dict, Optional
 from dataclasses import dataclass
 
-
-class TaskType(str, Enum):
-    """Task types supported by the system"""
-
-    LNN_TRAINING = "lnn_training"
-    LNN_INFERENCE = "lnn_inference"
-    LNN_BATCH_INFERENCE = "lnn_batch_inference"
-    DATA_PROCESSING = "data_processing"
-    MODEL_EXPORT = "model_export"
-    MODEL_QUANTIZATION = "model_quantization"
-    UNKNOWN = "unknown"
+# TaskType 已提升到 contracts/task.py 以避免 models → tasks 循环依赖
+# 此处保留 re-import 以兼容历史代码
+from app.contracts.task import TaskType
 
 
 class TaskStatus(str, Enum):

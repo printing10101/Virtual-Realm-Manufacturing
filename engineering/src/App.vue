@@ -283,7 +283,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, inject, ref, reactive, watch, type Ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useVersionStore } from '@/stores/version'
 import { useProjectStore } from '@/stores/project'
@@ -301,11 +300,9 @@ import type { TourStep } from '@/components/Onboarding/Tour.vue'
 import { useBackendStatus } from '@/composables/useBackendStatus'
 import { Loading, UploadFilled } from '@element-plus/icons-vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import en from 'element-plus/es/locale/lang/en'
 import type { ProjectSummary } from '@/types'
 import type { UploadUserFile } from 'element-plus'
 
-const router = useRouter()
 const authStore = useAuthStore()
 const { t } = useI18n()
 
@@ -382,7 +379,6 @@ function handleReplayTour() {
 }
 
 const versionStore = useVersionStore()
-const frontendVersion = computed(() => versionStore.frontendVersion)
 const projectStore = useProjectStore()
 const stepImportStore = useStepImportStore()
 const dxfImportStore = useDxfImportStore()

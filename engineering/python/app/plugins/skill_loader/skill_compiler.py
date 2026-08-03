@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+import time
 from typing import Any, Callable, Dict, List, Optional
 
 from .sandbox_executor import SecurityError, _SubprocessSkillExecutor
@@ -105,9 +106,22 @@ class SkillCompilerMixin:
     def _compile_code_in_process(self, code: str, skill_id: str) -> Optional[Callable]:
         """备用编译方法：当 RestrictedPython 不可用时使用受限 builtins。
 
-        注意：此方法不提供与 compile_restricted 相同级别的安全保护，
-        仅通过限制 __builtins__ 来降低风险。生产环境应优先使用 RestrictedPython。
+        安全警告：此方法不提供与 compile_restricted 相同级别的安全保护，
+        仅通过限制 __builtins__ 和 AST 审计来降低风险。
+        
+        P0 修复要求：
+        - RestrictedPython 已列为生产强制依赖（requirements.txt），此降级路径
+          仅在极端异常情况下触发（如 Python 版本不兼容 RestrictedPython）
+        - 每次触发时记录 WARNING 日志 + 审计时间戳
+        - 生产环境应在监控中对此 WARNING 设置告警
         """
+        # P0 修复: 降级路径触发时必须显式警告，便于运维发现
+        logger.warning(
+            "SECURITY: RestrictedPython unavailable, using downgraded execution for skill '%s'. "
+            "This is less secure. Install RestrictedPython: pip install RestrictedPython",
+            skill_id,
+        )
+        
         # 安全修复 [P0-1]：降级路径同样必须经过 AST 审计，
         # 与主路径 _compile_code 保持一致的安全基线。
         # 防止攻击者通过直接调用本方法绕过 _audit_code_security。
@@ -129,6 +143,12 @@ class SkillCompilerMixin:
                 "Skill '%s' execution error: %s", skill_id, e, exc_info=True,
             )
             return None
+
+        # P0 修复: 记录降级路径使用，包含时间戳用于审计追踪
+        logger.warning(
+            "Skill '%s' executed via downgraded path at %s — audit this periodically",
+            skill_id, time.strftime("%Y-%m-%dT%H:%M:%S"),
+        )
 
         return self._extract_callable(namespace, skill_id)
 

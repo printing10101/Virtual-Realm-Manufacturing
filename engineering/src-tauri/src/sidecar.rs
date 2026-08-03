@@ -1,8 +1,15 @@
 //! Python 后端 Sidecar 进程管理模块
 //!
-//! 负责启动、监控、重启和优雅终止打包后的 Python 后端进程。
-//! 该模块使用 Tauri 2.x 的 `tauri-plugin-shell` 提供的 Sidecar API，
-//! 并通过共享状态 (Arc<RwLock<...>>) 维护进程运行状态。
+//! 负责启动、监控、重启和优雅终止 Python 后端进程。
+//!
+//! 实现说明（P0 修复）：
+//! 原实现通过 `tauri-plugin-shell` 的 sidecar API 启动 PyInstaller 打包的
+//! `lingjing-backend` 二进制。但由于 binaries 目录为空（旧二进制过时已删除），
+//! sidecar spawn 始终失败，导致应用永远卡在"启动中"界面。
+//!
+//! 现改为直接使用 `tokio::process::Command` 运行 Python 解释器，
+//! 执行 `start_server.py` 脚本，绕过 PyInstaller 二进制依赖。
+//! 这样在开发模式下可以直接使用最新修复的 Python 源码。
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -11,8 +18,8 @@ use chrono::{DateTime, Utc};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
-use tauri_plugin_shell::process::{CommandChild, CommandEvent};
-use tauri_plugin_shell::ShellExt;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
@@ -35,8 +42,6 @@ pub enum BackendStatus {
     /// 已被用户终止
     Stopped,
 }
-
-impl BackendStatus {}
 
 /// 后端进程状态信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,7 +76,7 @@ impl BackendState {
 pub struct SidecarManager {
     state: Arc<RwLock<BackendState>>,
     /// 当前正在运行的子进程句柄
-    child: Arc<Mutex<Option<CommandChild>>>,
+    child: Arc<Mutex<Option<Child>>>,
     /// 健康检查客户端
     http: reqwest::Client,
     /// 是否在用户主动关闭过程中（用于抑制崩溃事件）
@@ -133,10 +138,6 @@ impl SidecarManager {
     ///   - progress: 0-100 进度数值
     ///   - description: 人类可读的描述文本
     ///   - status: "loading" | "success" | "error" | "complete"
-    ///
-    /// 之前 splashscreen 设计了真实进度接收逻辑但 Rust 端从未 emit，
-    /// 导致进度条永远走模拟值。此方法在 sidecar 生命周期关键节点调用，
-    /// 让 splashscreen 显示真实启动进度。
     fn emit_launch_progress<R: Runtime>(
         &self,
         app: &AppHandle<R>,
@@ -154,7 +155,7 @@ impl SidecarManager {
         let _ = app.emit("launch-progress", &payload);
     }
 
-    /// 启动 Python 后端 Sidecar
+    /// 启动 Python 后端
     pub async fn start<R: Runtime>(&self, app: &AppHandle<R>) -> Result<(), String> {
         {
             let current = self.state.read().status.clone();
@@ -167,17 +168,11 @@ impl SidecarManager {
         }
 
         // 动态端口分配（端口冲突修复）：
-        // 首选端口（默认 8765）可能被其他进程占用——典型场景是 Docker Desktop
-        // 将 lnn-api 容器映射到宿主 8765，导致桌面版 sidecar 无法绑定端口、
-        // 健康检查 45s 超时、前端永远卡在"启动中"界面。
-        // 此处在 spawn 之前探测端口可用性：被占用则从首选端口向后递增寻找空闲端口，
-        // 并将实际端口写回 state.port，保证后续 --port 参数、LNN_PORT 环境变量、
-        // wait_ready 健康检查 URL、emit_state 推送给前端的端口全程一致。
         let preferred_port = self.state.read().port;
         let port = find_available_port(preferred_port);
         if port != preferred_port {
             log::warn!(
-                "[sidecar] 首选端口 {preferred_port} 已被占用（可能被 Docker 或其他服务占用），自动切换到空闲端口 {port}"
+                "[sidecar] 首选端口 {preferred_port} 已被占用，自动切换到空闲端口 {port}"
             );
         }
         {
@@ -193,113 +188,129 @@ impl SidecarManager {
             "loading",
         );
 
-        // 清理上一次启动的 sidecar.json 和后端日志文件，避免读到旧状态干扰诊断
+        // 清理上一次启动的 sidecar.json 和后端日志文件
         {
             let log_dir_path = self.log_dir(app);
             let log_dir = std::path::Path::new(&log_dir_path);
             let state_file = log_dir.join("sidecar.json");
             if state_file.exists() {
-                let _ = std::fs::remove_file(&state_file);
+                if let Err(e) = std::fs::remove_file(&state_file) {
+                    log::warn!("[sidecar] failed to remove old state file: {e}");
+                }
             }
-            // 清空旧的后端 stdout/stderr 日志（覆盖写入）
             for name in ["backend.stdout.log", "backend.stderr.log"] {
                 let p = log_dir.join(name);
                 if p.exists() {
-                    let _ = std::fs::remove_file(&p);
+                    if let Err(e) = std::fs::remove_file(&p) {
+                        log::warn!("[sidecar] failed to remove old log file {}: {e}", name);
+                    }
                 }
             }
         }
 
-        // P0-11 修复：显式传 --state-file 参数，确保 Python 端写入的 sidecar.json
-        // 路径与 Rust 端 wait_ready 读取的路径完全一致（都是 log_dir/sidecar.json）。
-        // 同时通过 LNN_LOG_DIR / LNN_STATE_FILE 两个环境变量传递，作为命令行参数缺失时的兜底。
+        // 准备状态文件路径
         let log_dir_for_sidecar = self.log_dir(app);
         let state_file_arg = std::path::Path::new(&log_dir_for_sidecar)
             .join("sidecar.json")
             .to_string_lossy()
             .to_string();
 
-        let sidecar_command = app
-            .shell()
-            .sidecar("lingjing-backend")
-            .map_err(|e| format!("无法创建 sidecar 命令: {e}"))?
-            .args([
-                "--host".to_string(),
-                "127.0.0.1".to_string(),
-                "--port".to_string(),
-                port.to_string(),
-                "--state-file".to_string(),
-                state_file_arg.clone(),
-            ])
+        // === 核心：直接运行 Python 脚本 ===
+        let python_path = resolve_python_path();
+        let (script_path, python_dir) = resolve_python_script_and_dir();
+
+        log::info!(
+            "[sidecar] 启动 Python 后端: python={} script={} cwd={}",
+            python_path,
+            script_path,
+            python_dir.display()
+        );
+
+        let mut command = Command::new(&python_path);
+        command
+            .arg(&script_path)
+            .current_dir(&python_dir)
+            .env("SERVER_HOST", "127.0.0.1")
+            .env("SERVER_PORT", port.to_string())
             .env("LNN_HOST", "127.0.0.1")
             .env("LNN_PORT", port.to_string())
-            .env("LNN_LOG_DIR", log_dir_for_sidecar.clone())
-            .env("LNN_STATE_FILE", state_file_arg)
+            .env("LNN_ENV", "dev")
+            .env("LNN_LOG_DIR", &log_dir_for_sidecar)
+            .env("LNN_STATE_FILE", &state_file_arg)
             .env("PYTHONUNBUFFERED", "1")
-            .env("PYTHONIOENCODING", "utf-8");
+            .env("PYTHONIOENCODING", "utf-8")
+            // Windows 下禁用 Python 的 IO 读缓冲，确保日志实时输出
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            // Windows 下不创建控制台窗口
+            ;
+        #[cfg(target_os = "windows")]
+        {
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
 
-        let (mut rx, child) = sidecar_command
-            .spawn()
-            .map_err(|e| {
-                let msg = format!("Sidecar 启动失败: {e}");
-                self.set_error(app, &msg);
-                msg
-            })?;
+        let mut child = command.spawn().map_err(|e| {
+            let msg = format!(
+                "Python 后端启动失败: {e}\n  python={}\n  script={}\n  cwd={}",
+                python_path,
+                script_path,
+                python_dir.display()
+            );
+            self.set_error(app, &msg);
+            msg
+        })?;
 
-        let pid = child.pid();
+        let pid = child.id().unwrap_or(0);
         {
             let mut s = self.state.write();
-            s.pid = Some(pid);
+            s.pid = if pid > 0 { Some(pid) } else { None };
             s.started_at = Some(Utc::now());
             s.last_error = None;
         }
+
+        // 取出 stdout/stderr 用于异步读取
+        let stdout = child.stdout.take();
+        let stderr = child.stderr.take();
         *self.child.lock().await = Some(child);
         self.emit_state(app);
 
         // 启动子任务：读取 stdout/stderr 并发出日志事件
-        // 同时将 stdout/stderr 写入文件，便于 release 模式下排查后端启动失败原因
-        let app_clone = app.clone();
-        let state_clone = self.state.clone();
         let log_dir_for_io = self.log_dir(app).to_string();
-        tokio::spawn(async move {
-            let stdout_path = std::path::Path::new(&log_dir_for_io).join("backend.stdout.log");
-            let stderr_path = std::path::Path::new(&log_dir_for_io).join("backend.stderr.log");
-            while let Some(event) = rx.recv().await {
-                match event {
-                    CommandEvent::Stdout(line_bytes) => {
-                        let line = String::from_utf8_lossy(&line_bytes).to_string();
-                        let _ = app_clone.emit("sidecar://stdout", &line);
-                        append_log_line(&stdout_path, &line);
-                    }
-                    CommandEvent::Stderr(line_bytes) => {
-                        let line = String::from_utf8_lossy(&line_bytes).to_string();
-                        let _ = app_clone.emit("sidecar://stderr", &line);
-                        log::warn!("[sidecar] {}", line);
-                        append_log_line(&stderr_path, &line);
-                    }
-                    CommandEvent::Terminated(payload) => {
-                        log::info!(
-                            "Sidecar 进程已退出: code={:?}, signal={:?}",
-                            payload.code, payload.signal
-                        );
-                        let mut s = state_clone.write();
-                        s.pid = None;
-                        let _ = app_clone.emit(
-                            "sidecar://terminated",
-                            &serde_json::json!({
-                                "code": payload.code,
-                                "signal": payload.signal,
-                            }),
-                        );
-                    }
-                    CommandEvent::Error(err) => {
-                        log::error!("Sidecar 错误: {err}");
-                        let _ = app_clone.emit("sidecar://error", &err);
-                    }
-                    _ => {}
+
+        // stdout 读取任务
+        if let Some(stdout) = stdout {
+            let app_for_stdout = app.clone();
+            let log_dir_for_stdout = log_dir_for_io.clone();
+            tokio::spawn(async move {
+                let stdout_path =
+                    std::path::Path::new(&log_dir_for_stdout).join("backend.stdout.log");
+                let reader = BufReader::new(stdout);
+                let mut lines = reader.lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    let _ = app_for_stdout.emit("sidecar://stdout", &line);
+                    append_log_line(&stdout_path, &line);
                 }
-            }
-        });
+            });
+        }
+
+        // stderr 读取任务
+        if let Some(stderr) = stderr {
+            let app_for_stderr = app.clone();
+            let log_dir_for_stderr = log_dir_for_io.clone();
+            tokio::spawn(async move {
+                let stderr_path =
+                    std::path::Path::new(&log_dir_for_stderr).join("backend.stderr.log");
+                let reader = BufReader::new(stderr);
+                let mut lines = reader.lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    let _ = app_for_stderr.emit("sidecar://stderr", &line);
+                    log::warn!("[sidecar] {}", line);
+                    append_log_line(&stderr_path, &line);
+                }
+                log::info!("[sidecar] stderr 流已结束，进程可能已退出");
+            });
+        }
 
         // 健康检查轮询：等待后端就绪
         self.wait_ready(app).await
@@ -315,6 +326,64 @@ impl SidecarManager {
         for attempt in 0..max_attempts {
             if *self.shutdown_in_progress.read() {
                 return Err("应用关闭中，已取消启动".to_string());
+            }
+            // 检测进程是否已退出（try_wait 是同步的，不会阻塞 async 运行时）
+            {
+                let mut guard = self.child.lock().await;
+                if let Some(child) = guard.as_mut() {
+                    match child.try_wait() {
+                        Ok(Some(status)) => {
+                            // 进程已退出
+                            let code = status.code();
+                            log::error!(
+                                "[sidecar] wait_ready 检测到进程已退出: code={:?}",
+                                code
+                            );
+                            *guard = None; // 清空 child
+                            drop(guard); // 释放锁
+
+                            let err_msg = format!(
+                                "后端进程意外退出 (code={:?})",
+                                code
+                            );
+                            let mut s = self.state.write();
+                            s.status = BackendStatus::Crashed;
+                            s.pid = None;
+                            s.message = err_msg.clone();
+                            s.last_error = Some(err_msg.clone());
+                            drop(s);
+
+                            self.emit_state(app);
+                            self.emit_launch_progress(
+                                app,
+                                "backend_crashed",
+                                last_progress,
+                                &err_msg,
+                                "error",
+                            );
+                            return Err(err_msg);
+                        }
+                        Ok(None) => {
+                            // 仍在运行，继续
+                        }
+                        Err(e) => {
+                            log::warn!("[sidecar] try_wait 失败: {e}");
+                        }
+                    }
+                } else {
+                    // child 已被清空（进程已退出）
+                    let current_status = self.state.read().status.clone();
+                    if matches!(current_status, BackendStatus::Crashed | BackendStatus::Failed) {
+                        let err = self
+                            .state
+                            .read()
+                            .last_error
+                            .clone()
+                            .unwrap_or_else(|| "后端进程已退出".to_string());
+                        log::error!("[sidecar] wait_ready: child 已清空，状态={:?}, err={}", current_status, err);
+                        return Err(err);
+                    }
+                }
             }
             // 检测 sidecar.json 文件：如果 Python 端已写入 failed/stopped，立即返回
             if state_file_path.exists() {
@@ -342,8 +411,8 @@ impl SidecarManager {
                                     &format!("后端启动失败: {err}"),
                                     "error",
                                 );
-                                if let Some(child) = self.child.lock().await.take() {
-                                    let _ = child.kill();
+                                if let Some(mut child) = self.child.lock().await.take() {
+                                    let _ = child.start_kill();
                                 }
                                 return Err(format!("后端启动失败: {err}"));
                             }
@@ -362,18 +431,14 @@ impl SidecarManager {
                                     "后端进程意外停止",
                                     "error",
                                 );
-                                if let Some(child) = self.child.lock().await.take() {
-                                    let _ = child.kill();
+                                if let Some(mut child) = self.child.lock().await.take() {
+                                    let _ = child.start_kill();
                                 }
                                 return Err("后端进程意外停止".to_string());
                             }
                         }
                     }
                 }
-            }
-            if let Some(child) = self.child.lock().await.as_ref() {
-                // 简单地通过 pid 存活检测子进程
-                let _ = child.pid();
             }
             match self.http.get(&url).send().await {
                 Ok(resp) if resp.status().is_success() => {
@@ -398,7 +463,6 @@ impl SidecarManager {
                             progress,
                             desc.as_str(),
                         );
-                        // 节流：每 5 次尝试才发射一次 launch-progress，避免事件洪流
                         if attempt % 5 == 0 {
                             self.emit_launch_progress(
                                 app,
@@ -424,24 +488,13 @@ impl SidecarManager {
             "后端启动超时，请检查日志",
             "error",
         );
-        // 杀死可能仍在运行的子进程
-        if let Some(child) = self.child.lock().await.take() {
-            let _ = child.kill();
+        if let Some(mut child) = self.child.lock().await.take() {
+            let _ = child.start_kill();
         }
         Err(format!("后端在 {} 秒内未响应健康检查", max_attempts / 2))
     }
 
     /// 优雅停止后端进程
-    ///
-    /// P1-4 修复：采用"HTTP 通知 → 等待 → fallback kill"三层关闭策略：
-    /// 1. 先 POST /api/v1/admin/shutdown 通知 Python 端触发 graceful shutdown，
-    ///    让其执行 shutdown_event（释放 ring_log/sse_manager/Redis/DB/ChromaDB）
-    /// 2. 固定等待 5 秒（足够 SQLite WAL checkpoint 和资源释放）
-    /// 3. 然后 child.kill() 兜底（若进程已退出则无副作用）
-    ///
-    /// 注：Tauri 2.0 的 CommandChild 不暴露 try_wait()，无法轮询进程状态，
-    ///     故采用固定等待策略。5 秒是 SQLite WAL checkpoint + asyncio 任务
-    ///     完成的经验值（实测通常 1-2 秒内完成）。
     pub async fn stop<R: Runtime>(&self, app: &AppHandle<R>) -> Result<(), String> {
         *self.shutdown_in_progress.write() = true;
         self.update_status(app, BackendStatus::Stopping, 100, "正在关闭后端服务...");
@@ -465,8 +518,7 @@ impl SidecarManager {
                         graceful_succeeded = true;
                     }
                     Err(e) => {
-                        // 端点不存在（非桌面模式）或后端已停止，进入 fallback
-                        log::debug!("[stop] HTTP shutdown 通知失败（可能后端已停止或非桌面模式）: {e}");
+                        log::debug!("[stop] HTTP shutdown 通知失败: {e}");
                     }
                 }
             }
@@ -475,19 +527,14 @@ impl SidecarManager {
             }
         }
 
-        // H17 bug 修复：原代码在 `self.child.lock().await` 持锁状态下 sleep 5 秒，
-        // 导致所有其他需要访问 child 的请求排队等待。改为先 take 出 child（短暂持锁），
-        // 释放锁后再 sleep + kill。
+        // 第 2 步：take child 并 kill
         let child_opt = self.child.lock().await.take();
-        if let Some(child) = child_opt {
+        if let Some(mut child) = child_opt {
             if graceful_succeeded {
-                // 第 2 步：固定等待 5 秒，让 Python 端完成 graceful shutdown
-                // （足够 SQLite WAL checkpoint + asyncio 任务完成）
                 sleep(Duration::from_secs(5)).await;
                 log::info!("[stop] 等待 5s 完成，调用 kill 兜底");
             }
-            // 第 3 步：kill 兜底（若进程已退出则无副作用）
-            if let Err(e) = child.kill() {
+            if let Err(e) = child.kill().await {
                 log::debug!("[stop] kill 返回错误（进程可能已退出）: {e}");
             }
         }
@@ -509,9 +556,9 @@ impl SidecarManager {
             let mut s = self.state.write();
             s.restart_count = s.restart_count.saturating_add(1);
         }
-        // 先尽力停止
-        let _ = self.stop(app).await;
-        // 短暂等待端口释放
+        if let Err(e) = self.stop(app).await {
+            log::warn!("[sidecar] stop() before restart failed: {e}; attempting start anyway");
+        }
         sleep(Duration::from_millis(800)).await;
         self.start(app).await
     }
@@ -519,14 +566,12 @@ impl SidecarManager {
     /// 同步强制终止后端进程（用于 RunEvent::Exit 等无法 await 的场景）
     ///
     /// 使用 `try_lock` 非阻塞获取子进程锁，避免在进程退出阶段死锁 tokio 运行时。
-    /// - 若锁被占用（例如正在 restart/stop 中），则跳过并依赖 OS 进程组清理
-    /// - Windows 下 Tauri sidecar 默认绑定 Job Object，父进程退出时子进程会被强制终止
-    /// - Unix 下若 try_lock 失败，子进程可能短暂残留，但通常会在端口释放后被 systemd/launchd 回收
+    /// `start_kill()` 是同步方法，发送 TerminateProcess (Windows) 或 SIGKILL (Unix)。
     pub fn force_kill_sync(&self) {
         match self.child.try_lock() {
             Ok(mut guard) => {
-                if let Some(child) = guard.take() {
-                    match child.kill() {
+                if let Some(child) = guard.as_mut() {
+                    match child.start_kill() {
                         Ok(()) => log::info!("[force_kill_sync] 后端子进程已终止"),
                         Err(e) => log::warn!("[force_kill_sync] 终止子进程失败: {e}"),
                     }
@@ -542,29 +587,28 @@ impl SidecarManager {
 
     fn log_dir<R: Runtime>(&self, app: &AppHandle<R>) -> String {
         if let Ok(dir) = app.path().app_log_dir() {
-            return dir.to_string_lossy().to_string();
+            if dir.exists() {
+                return dir.to_string_lossy().to_string();
+            }
+            if std::fs::create_dir_all(&dir).is_ok() {
+                return dir.to_string_lossy().to_string();
+            }
+            log::warn!("[sidecar] app_log_dir 创建失败，回退到 temp 目录");
         }
-        std::env::temp_dir()
-            .join("lingjing")
-            .to_string_lossy()
-            .to_string()
+        let temp_logs = std::env::temp_dir().join("lingjing-logs");
+        if let Err(e) = std::fs::create_dir_all(&temp_logs) {
+            log::warn!("[sidecar] 创建日志目录失败（含 temp 回退）: {e}");
+        }
+        temp_logs.to_string_lossy().to_string()
     }
 }
 
 /// 探测指定端口是否空闲（能否在 127.0.0.1 上绑定）
-///
-/// 注意存在 TOCTOU 窗口：探测成功后到 Python 子进程真正 bind 之间，
-/// 端口理论上可能被其他进程抢占。但该窗口极小（毫秒级），且即便发生，
-/// wait_ready 健康检查会超时报错，用户重启应用即可重新分配，风险可接受。
 fn port_is_free(port: u16) -> bool {
     std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
 }
 
-/// 寻找可用端口：
-/// 1. 优先尝试首选端口（默认 8765）
-/// 2. 被占用则向后递增探测（最多 +20，即 8765~8785）
-/// 3. 全部被占用则请求 OS 随机分配一个空闲端口（bind 端口 0）
-/// 4. 连 OS 分配都失败（几乎不可能）则回退首选端口，由 wait_ready 超时兜底报错
+/// 寻找可用端口
 fn find_available_port(preferred: u16) -> u16 {
     for offset in 0..=20u16 {
         let candidate = preferred.saturating_add(offset);
@@ -586,12 +630,16 @@ fn find_available_port(preferred: u16) -> u16 {
     preferred
 }
 
-/// 将一行日志追加写入文件，用于持久化后端 stdout/stderr
-/// 在 release 模式下，前端可能尚未加载无法接收事件，此时文件日志是排查后端启动失败的关键
+/// 将一行日志追加写入文件
 fn append_log_line(path: &std::path::Path, line: &str) {
     use std::io::Write;
     let ts = chrono::Utc::now().format("%H:%M:%S%.3f");
     let content = format!("[{ts}] {line}\n");
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+    }
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -599,4 +647,90 @@ fn append_log_line(path: &std::path::Path, line: &str) {
     {
         let _ = f.write_all(content.as_bytes());
     }
+}
+
+/// 解析 Python 解释器路径
+///
+/// 优先级：
+/// 1. 环境变量 `LINGJING_PYTHON_PATH`（用户自定义，推荐打包分发时使用）
+/// 2. 系统级 Python 安装路径（ProgramData、C:\Python3xx）
+/// 3. 用户级 Python 安装路径（通过 %LOCALAPPDATA% 动态获取）
+/// 4. 回退到 `python`（依赖 PATH）
+///
+/// 安全修复 (P0): 原有代码硬编码了 `C:\Users\Lenovo` 路径，分发到其他用户机器
+/// 会自动失败。现已移除所有硬编码个人路径，改用环境变量动态获取。
+fn resolve_python_path() -> String {
+    if let Ok(p) = std::env::var("LINGJING_PYTHON_PATH") {
+        if std::path::Path::new(&p).exists() {
+            return p;
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // 系统级路径（所有用户共享）
+        let system_candidates = [
+            r"C:\ProgramData\anaconda3\python.exe",
+            r"C:\Python313\python.exe",
+            r"C:\Python312\python.exe",
+            r"C:\Python311\python.exe",
+        ];
+        for c in &system_candidates {
+            if std::path::Path::new(c).exists() {
+                return c.to_string();
+            }
+        }
+
+        // 用户级路径（通过 %LOCALAPPDATA% 动态获取，避免硬编码用户名）
+        if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
+            let local_programs = std::path::Path::new(&local_appdata)
+                .join("Programs")
+                .join("Python");
+            for ver in ["Python313", "Python312", "Python311"] {
+                let candidate = local_programs.join(ver).join("python.exe");
+                if candidate.exists() {
+                    return candidate.to_string_lossy().to_string();
+                }
+            }
+        }
+    }
+    "python".to_string()
+}
+
+/// 解析 Python 脚本路径和工作目录
+///
+/// 优先级：
+/// 1. 环境变量 `LINGJING_PYTHON_SCRIPT`（脚本路径）
+/// 2. 编译时 `CARGO_MANIFEST_DIR` 推导（开发模式：src-tauri/../python/start_server.py）
+/// 3. 回退到当前目录下的 `start_server.py`
+fn resolve_python_script_and_dir() -> (String, std::path::PathBuf) {
+    // 1. 环境变量
+    if let Ok(p) = std::env::var("LINGJING_PYTHON_SCRIPT") {
+        let path = std::path::Path::new(&p);
+        if path.exists() {
+            let dir = path
+                .parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+            return (p, dir);
+        }
+    }
+    // 2. 编译时路径推导（开发模式）
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let python_dir = std::path::Path::new(manifest_dir).join("..").join("python");
+    let script = python_dir.join("start_server.py");
+    if script.exists() {
+        return (
+            script.to_string_lossy().to_string(),
+            python_dir.clone(),
+        );
+    }
+    // 3. 回退
+    log::warn!(
+        "[sidecar] 无法定位 start_server.py (尝试过: {})，回退到当前目录",
+        script.display()
+    );
+    (
+        "start_server.py".to_string(),
+        std::env::current_dir().unwrap_or_default(),
+    )
 }

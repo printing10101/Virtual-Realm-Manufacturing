@@ -56,7 +56,7 @@ vi.mock('../DecisionActions.vue', () => ({
 
 // Mock utils
 vi.mock('@/utils/formatters', () => ({
-  formatTimestamp: vi.fn((ts: number) => '2024-01-01 12:00:00'),
+  formatTimestamp: vi.fn((_ts: number) => '2024-01-01 12:00:00'),
 }))
 
 vi.mock('@/utils/statusHelpers', () => ({

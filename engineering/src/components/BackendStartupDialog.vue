@@ -15,7 +15,7 @@ const emit = defineEmits<{
   (e: 'retry'): void
 }>()
 
-const { state, restart, stop, tauriMode, loading } = useBackendStatus()
+const { state, restart, stop, loading } = useBackendStatus()
 
 const visible = computed({
   get: () => props.modelValue,
@@ -27,10 +27,6 @@ const isError = computed(
 )
 
 const isStarting = computed(() => state.status === 'starting')
-
-const shouldShow = computed(
-  () => tauriMode.value && (isError.value || isStarting.value),
-)
 
 const errorTitle = computed(() => {
   if (state.status === 'crashed') return t('backendStartup.crashed')

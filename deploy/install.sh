@@ -93,11 +93,12 @@ info "依赖安装完成"
 # ------------------------------------------------------------------
 echo
 echo "[4/5] 初始化数据库..."
-cd python
+# P0-2 修复：阶段2解耦后后端代码位于 engineering/python（原 python/ 已不存在）
+cd engineering/python
 $PYTHON_CMD -c "
-from app.database import engine
-from app.models import Base
-Base.metadata.create_all(bind=engine)
+import asyncio
+from app.database.models import init_db
+asyncio.run(init_db())
 print('数据库初始化完成')
 " 2>/dev/null && info "数据库初始化完成" || warn "数据库初始化失败，请检查 .env 文件中的数据库配置"
 cd "$PROJECT_ROOT"
@@ -118,9 +119,9 @@ After=network.target postgresql.service redis.service
 [Service]
 Type=simple
 User=$(whoami)
-WorkingDirectory=$PROJECT_ROOT/python
+WorkingDirectory=$PROJECT_ROOT/engineering/python
 Environment=PATH=$PROJECT_ROOT/venv/bin:/usr/local/bin:/usr/bin
-ExecStart=$PROJECT_ROOT/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8765 --log-level info
+ExecStart=$PROJECT_ROOT/venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8765 --log-level info
 Restart=on-failure
 RestartSec=5
 
@@ -156,7 +157,7 @@ echo " 安装完成！"
 echo "========================================"
 echo
 echo " 启动方式："
-echo "   手动启动:  cd $PROJECT_ROOT/python && ../venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8765"
+echo "   手动启动:  cd $PROJECT_ROOT/engineering/python && ../venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8765"
 echo "   服务地址:  http://localhost:8765"
 echo "   API 文档:  http://localhost:8765/docs"
 echo

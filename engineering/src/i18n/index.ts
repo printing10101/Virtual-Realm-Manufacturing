@@ -1,4 +1,4 @@
-import { createI18n, type I18n, type Composer } from 'vue-i18n'
+import { createI18n, type Composer } from 'vue-i18n'
 import zhCN from '@/locales/zh-CN'
 import en from '@/locales/en'
 

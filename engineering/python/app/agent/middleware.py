@@ -524,42 +524,69 @@ class AgentRateLimiter:
 class IdempotencyStore:
     """Store idempotency keys for W/B/T requests.
 
-    优化：惰性清理——仅在超过清理间隔时才执行 cleanup，
-    避免每次 check_and_set 都全表扫描。
+    P2 整改合并：本实现原位于 ``app.auth.idempotency``，带 max_entries 上限
+    保护和 _maybe_cleanup_locked 惰性清理；现迁移至本模块作为单一真相源，
+    ``app.auth.idempotency`` 已改为 re-export shim。
+
+    修复点:
+    1) 内存泄漏：每次 ``check_and_set`` / ``store`` 都会按时间窗口清理过期条目；
+       即使在低流量情况下也保证条目不会无限累积。
+    2) 竞态条件：使用线程锁序列化 check-and-set，避免并发请求同时通过校验。
+    3) 上限保护：max_entries 强制上限，防止极端场景下内存膨胀（OOM）。
     """
 
-    # 清理间隔（秒）：仅在距上次清理超过此间隔时才触发清理
-    _CLEANUP_INTERVAL = 60
-
-    def __init__(self):
+    def __init__(self, max_age: int = 3600, max_entries: int = 10000):
         self._keys: dict[str, dict] = {}
-        self._last_cleanup = 0.0
+        self._max_age = max_age
+        self._max_entries = max_entries
+        self._lock = threading.Lock()
+        self._last_cleanup = time.time()
+        self._cleanup_interval = min(300, max_age // 4 or 60)
 
     def check_and_set(self, key: str, agent_id: str) -> Optional[dict]:
         """Returns cached result if key exists, None if new."""
-        # 惰性清理：仅在间隔到期时才清理，避免每次都全表扫描
-        now = time.time()
-        if now - self._last_cleanup > self._CLEANUP_INTERVAL:
-            self.cleanup()
-            self._last_cleanup = now
-        if key in self._keys:
-            entry = self._keys[key]
-            if entry["agent_id"] == agent_id:
+        with self._lock:
+            self._maybe_cleanup_locked()
+            entry = self._keys.get(key)
+            if entry is not None and entry["agent_id"] == agent_id:
                 return entry.get("result")
-        return None
+            return None
 
     def store(self, key: str, agent_id: str, result: dict):
-        self._keys[key] = {
-            "agent_id": agent_id,
-            "result": result,
-            "created_at": time.time(),
-        }
+        with self._lock:
+            self._maybe_cleanup_locked()
+            # 强制上限保护，防止极端场景下内存膨胀
+            if len(self._keys) >= self._max_entries and key not in self._keys:
+                # 按 created_at 淘汰最旧条目
+                oldest_key = min(
+                    self._keys,
+                    key=lambda k: self._keys[k].get("created_at", 0.0),
+                )
+                self._keys.pop(oldest_key, None)
+            self._keys[key] = {
+                "agent_id": agent_id,
+                "result": result,
+                "created_at": time.time(),
+            }
 
-    def cleanup(self, max_age: int = 3600):
+    def _maybe_cleanup_locked(self):
         now = time.time()
-        expired = [k for k, v in self._keys.items() if now - v["created_at"] > max_age]
+        if now - self._last_cleanup < self._cleanup_interval:
+            return
+        self._last_cleanup = now
+        expired = [k for k, v in self._keys.items() if now - v["created_at"] > self._max_age]
         for k in expired:
             del self._keys[k]
+
+    def cleanup(self, max_age: Optional[int] = None):
+        """兼容旧接口：显式调用以立即清理过期条目。"""
+        threshold = max_age if max_age is not None else self._max_age
+        with self._lock:
+            now = time.time()
+            expired = [k for k, v in self._keys.items() if now - v["created_at"] > threshold]
+            for k in expired:
+                del self._keys[k]
+            self._last_cleanup = now
 
 
 # Singletons
@@ -628,14 +655,3 @@ async def get_permission_class(method: str, path: str) -> PermissionLevel:
         "DELETE": PermissionLevel.C,
     }
     return defaults.get(method, PermissionLevel.R)
-
-
-def check_scope(token_scopes: list[str], required: PermissionLevel) -> bool:
-    """Check if token has the required scope."""
-    if required.value in token_scopes:
-        return True
-    # Hierarchical: T includes B, B includes W, W includes R
-    hierarchy = PERMISSION_HIERARCHY
-    token_max = max((hierarchy.get(s, 0) for s in token_scopes), default=0)
-    required_value = hierarchy.get(required.value, 0)
-    return token_max >= required_value

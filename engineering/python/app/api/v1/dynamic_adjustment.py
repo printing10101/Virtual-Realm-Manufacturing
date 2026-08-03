@@ -22,7 +22,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from app.core.response import success, error, ErrorCode
-from app.core.safe_errors import safe_error_message
+from app.core.endpoint_handler import safe_endpoint
+from app.core.safe_errors import safe_error_message  # rewrite_nc_code 内层 try/except 仍需要
 from app.auth.permissions import require_permission
 from app.toolpath.dynamic_adjustment import (
     CurrentParameters,
@@ -256,60 +257,54 @@ def _machine_caps_to_dict(
 
 
 @router.post("/decide", dependencies=[Depends(require_permission("adjust:read"))])
+@safe_endpoint(context="dynamic_adjustment.decide_adjustment", fallback="决策失败")
 async def decide_adjustment(req: DecideRequest):
     """根据刀具磨损状态生成切削参数调整决策。
 
     链路：磨损 → ToolWearPredictor 补偿建议 → FeedRateOptimizer 进给优化
         → 后处理器机床能力限幅 → 决策结果
     """
-    try:
-        orchestrator = get_dynamic_adjustment_orchestrator()
-        wear = _to_wear_state(req.wear)
-        current = _to_current_params(req.current)
-        caps = _machine_caps_to_dict(req.machine_capabilities)
+    orchestrator = get_dynamic_adjustment_orchestrator()
+    wear = _to_wear_state(req.wear)
+    current = _to_current_params(req.current)
+    caps = _machine_caps_to_dict(req.machine_capabilities)
 
-        # 集成点 1：可选实时校正入参 → EWMA 校正闭环
-        calibration_kwargs: dict[str, Any] = {}
-        if req.calibration is not None:
-            calibration_kwargs = {
-                "real_time_wear": req.calibration.real_time_wear,
-                "sensor_features": req.calibration.sensor_features,
-                "elapsed_time": req.calibration.elapsed_time,
-            }
+    # 集成点 1：可选实时校正入参 → EWMA 校正闭环
+    calibration_kwargs: dict[str, Any] = {}
+    if req.calibration is not None:
+        calibration_kwargs = {
+            "real_time_wear": req.calibration.real_time_wear,
+            "sensor_features": req.calibration.sensor_features,
+            "elapsed_time": req.calibration.elapsed_time,
+        }
 
-        decision = orchestrator.decide_adjustment(
-            wear=wear,
-            current=current,
-            machine_capabilities=caps,
-            optimization_goal=req.optimization_goal,
-            **calibration_kwargs,
-        )
+    decision = orchestrator.decide_adjustment(
+        wear=wear,
+        current=current,
+        machine_capabilities=caps,
+        optimization_goal=req.optimization_goal,
+        **calibration_kwargs,
+    )
 
-        return success(
-            data={
-                "decision": decision.to_dict(),
-                "wear_state": {
-                    "tool_id": wear.tool_id,
-                    "wear_amount": wear.wear_amount,
-                    "wear_ratio": wear.wear_ratio,
-                    "tool_wear_factor": wear.tool_wear_factor,
-                },
-                "original_parameters": {
-                    "cutting_speed": current.cutting_speed,
-                    "feed_rate": current.feed_rate,
-                    "depth_of_cut": current.depth_of_cut,
-                },
-                "calibration_enabled": bool(calibration_kwargs),
+    return success(
+        data={
+            "decision": decision.to_dict(),
+            "wear_state": {
+                "tool_id": wear.tool_id,
+                "wear_amount": wear.wear_amount,
+                "wear_ratio": wear.wear_ratio,
+                "tool_wear_factor": wear.tool_wear_factor,
             },
-            message=f"调整策略: {decision.strategy}（紧急度: {decision.urgency}）",
-        )
-    except Exception as e:
-        safe = safe_error_message(e, context="dynamic_adjustment.decide_adjustment", fallback="决策失败")
-        return error(
-            ErrorCode.INTERNAL_ERROR,
-            message=safe["message"],
-            detail={"error_id": safe["error_id"]},
-        )
+            "original_parameters": {
+                "cutting_speed": current.cutting_speed,
+                "feed_rate": current.feed_rate,
+                "depth_of_cut": current.depth_of_cut,
+            },
+            "calibration_enabled": bool(calibration_kwargs),
+        },
+        message=f"调整策略: {decision.strategy}（紧急度: {decision.urgency}）",
+    )
+
 
 
 # =====================================================================
@@ -318,59 +313,52 @@ async def decide_adjustment(req: DecideRequest):
 
 
 @router.post("/rewrite-nc", dependencies=[Depends(require_permission("adjust:write"))])
+@safe_endpoint(context="dynamic_adjustment.rewrite_nc_code", fallback="NC改写失败")
 async def rewrite_nc_code(req: RewriteNCRequest):
     """按调整决策改写 NC 代码中的主轴转速与进给速度。
 
     仅改写切削进给段（G01/G02/G03）的 F 字段和所有运动段的 S 字段，
     保留原代码结构与注释。
     """
+    orchestrator = get_dynamic_adjustment_orchestrator()
+
+    # P2-批次2 修复：decision 现在是 AdjustmentDecisionInput 强类型模型，
+    # 无需从 dict 重建，直接属性访问即可。Pydantic 已完成类型校验。
+    from app.toolpath.dynamic_adjustment import AdjustmentDecision
+
     try:
-        orchestrator = get_dynamic_adjustment_orchestrator()
-
-        # P2-批次2 修复：decision 现在是 AdjustmentDecisionInput 强类型模型，
-        # 无需从 dict 重建，直接属性访问即可。Pydantic 已完成类型校验。
-        from app.toolpath.dynamic_adjustment import AdjustmentDecision
-
-        try:
-            decision = AdjustmentDecision(
-                strategy=req.decision.strategy,
-                urgency=req.decision.urgency,
-                new_cutting_speed=req.decision.new_cutting_speed,
-                new_feed_rate=req.decision.new_feed_rate,
-                new_depth_of_cut=req.decision.new_depth_of_cut,
-                new_spindle_rpm=req.decision.new_spindle_rpm,
-                new_feed_rate_mm_min=req.decision.new_feed_rate_mm_min,
-                life_extension_pct=req.decision.life_extension_pct,
-                suggestions=req.decision.suggestions,
-                warnings=req.decision.warnings,
-                reasoning=req.decision.reasoning,
-            )
-        except (KeyError, ValueError, TypeError) as e:
-            safe = safe_error_message(e, context="dynamic_adjustment.rewrite_nc_code.decision", fallback="决策字段类型错误")
-            return error(
-                ErrorCode.INVALID_REQUEST,
-                message=safe["message"],
-                detail={"error_id": safe["error_id"]},
-            )
-
-        result = orchestrator.rewrite_nc_code(
-            gcode_text=req.nc_code,
-            decision=decision,
-            controller_type=req.controller_type,
-            apply_to_motion_only=req.apply_to_motion_only,
+        decision = AdjustmentDecision(
+            strategy=req.decision.strategy,
+            urgency=req.decision.urgency,
+            new_cutting_speed=req.decision.new_cutting_speed,
+            new_feed_rate=req.decision.new_feed_rate,
+            new_depth_of_cut=req.decision.new_depth_of_cut,
+            new_spindle_rpm=req.decision.new_spindle_rpm,
+            new_feed_rate_mm_min=req.decision.new_feed_rate_mm_min,
+            life_extension_pct=req.decision.life_extension_pct,
+            suggestions=req.decision.suggestions,
+            warnings=req.decision.warnings,
+            reasoning=req.decision.reasoning,
         )
-
-        return success(
-            data=result.to_dict(),
-            message=f"已改写 {result.segments_adjusted}/{result.segments_total} 段",
-        )
-    except Exception as e:
-        safe = safe_error_message(e, context="dynamic_adjustment.rewrite_nc_code", fallback="改写失败")
+    except (KeyError, ValueError, TypeError) as e:
+        safe = safe_error_message(e, context="dynamic_adjustment.rewrite_nc_code.decision", fallback="决策字段类型错误")
         return error(
-            ErrorCode.INTERNAL_ERROR,
+            ErrorCode.INVALID_REQUEST,
             message=safe["message"],
             detail={"error_id": safe["error_id"]},
         )
+
+    result = orchestrator.rewrite_nc_code(
+        gcode_text=req.nc_code,
+        decision=decision,
+        controller_type=req.controller_type,
+        apply_to_motion_only=req.apply_to_motion_only,
+    )
+
+    return success(
+        data=result.to_dict(),
+        message=f"已改写 {result.segments_adjusted}/{result.segments_total} 段",
+    )
 
 
 # =====================================================================
@@ -379,67 +367,60 @@ async def rewrite_nc_code(req: RewriteNCRequest):
 
 
 @router.post("/closed-loop", dependencies=[Depends(require_permission("adjust:write"))])
+@safe_endpoint(context="dynamic_adjustment.closed_loop_adjustment", fallback="闭环失败")
 async def closed_loop_adjustment(req: ClosedLoopRequest):
     """端到端闭环：磨损 → 决策 → NC 改写（单次调用完成全链路）。
 
     适用于在线监测系统直接触发闭环调整的场景。
     """
-    try:
-        orchestrator = get_dynamic_adjustment_orchestrator()
-        wear = _to_wear_state(req.wear)
-        current = _to_current_params(req.current)
-        caps = _machine_caps_to_dict(req.machine_capabilities)
+    orchestrator = get_dynamic_adjustment_orchestrator()
+    wear = _to_wear_state(req.wear)
+    current = _to_current_params(req.current)
+    caps = _machine_caps_to_dict(req.machine_capabilities)
 
-        # 集成点 1：可选实时校正入参 → EWMA 校正闭环
-        calibration_kwargs: dict[str, Any] = {}
-        if req.calibration is not None:
-            calibration_kwargs = {
-                "real_time_wear": req.calibration.real_time_wear,
-                "sensor_features": req.calibration.sensor_features,
-                "elapsed_time": req.calibration.elapsed_time,
-            }
+    # 集成点 1：可选实时校正入参 → EWMA 校正闭环
+    calibration_kwargs: dict[str, Any] = {}
+    if req.calibration is not None:
+        calibration_kwargs = {
+            "real_time_wear": req.calibration.real_time_wear,
+            "sensor_features": req.calibration.sensor_features,
+            "elapsed_time": req.calibration.elapsed_time,
+        }
 
-        # Step 1: 决策（含可选 EWMA 校正）
-        decision = orchestrator.decide_adjustment(
-            wear=wear,
-            current=current,
-            machine_capabilities=caps,
-            optimization_goal=req.optimization_goal,
-            **calibration_kwargs,
-        )
+    # Step 1: 决策（含可选 EWMA 校正）
+    decision = orchestrator.decide_adjustment(
+        wear=wear,
+        current=current,
+        machine_capabilities=caps,
+        optimization_goal=req.optimization_goal,
+        **calibration_kwargs,
+    )
 
-        # Step 2: NC 改写
-        rewrite = orchestrator.rewrite_nc_code(
-            gcode_text=req.nc_code,
-            decision=decision,
-            controller_type=req.controller_type,
-            apply_to_motion_only=req.apply_to_motion_only,
-        )
+    # Step 2: NC 改写
+    rewrite = orchestrator.rewrite_nc_code(
+        gcode_text=req.nc_code,
+        decision=decision,
+        controller_type=req.controller_type,
+        apply_to_motion_only=req.apply_to_motion_only,
+    )
 
-        return success(
-            data={
-                "decision": decision.to_dict(),
-                "rewrite": rewrite.to_dict(),
-                "wear_state": {
-                    "tool_id": wear.tool_id,
-                    "wear_amount": wear.wear_amount,
-                    "wear_ratio": wear.wear_ratio,
-                    "tool_wear_factor": wear.tool_wear_factor,
-                },
-                "calibration_enabled": bool(calibration_kwargs),
+    return success(
+        data={
+            "decision": decision.to_dict(),
+            "rewrite": rewrite.to_dict(),
+            "wear_state": {
+                "tool_id": wear.tool_id,
+                "wear_amount": wear.wear_amount,
+                "wear_ratio": wear.wear_ratio,
+                "tool_wear_factor": wear.tool_wear_factor,
             },
-            message=(
-                f"闭环完成：策略={decision.strategy}, "
-                f"改写={rewrite.segments_adjusted}/{rewrite.segments_total} 段"
-            ),
-        )
-    except Exception as e:
-        safe = safe_error_message(e, context="dynamic_adjustment.closed_loop_adjustment", fallback="闭环失败")
-        return error(
-            ErrorCode.INTERNAL_ERROR,
-            message=safe["message"],
-            detail={"error_id": safe["error_id"]},
-        )
+            "calibration_enabled": bool(calibration_kwargs),
+        },
+        message=(
+            f"闭环完成：策略={decision.strategy}, "
+            f"改写={rewrite.segments_adjusted}/{rewrite.segments_total} 段"
+        ),
+    )
 
 
 # =====================================================================
@@ -448,31 +429,24 @@ async def closed_loop_adjustment(req: ClosedLoopRequest):
 
 
 @router.post("/calibrate-wear", dependencies=[Depends(require_permission("adjust:write"))])
+@safe_endpoint(context="dynamic_adjustment.calibrate_wear", fallback="校准失败")
 async def calibrate_wear(req: CalibrateWearRequest):
     """使用实时传感器数据 EWMA 校正磨损预测。
 
     链路：实测磨损 + 传感器特征 → ToolWearPredictor.calibrate_with_real_time_data
         → 校正后的磨损值 + 不确定度
     """
-    try:
-        orchestrator = get_dynamic_adjustment_orchestrator()
-        result = orchestrator.wear_predictor.calibrate_with_real_time_data(
-            real_time_wear=req.real_time_wear,
-            sensor_features=req.sensor_features,
-            elapsed_time=req.elapsed_time,
-            input_parameters=req.input_parameters,
-        )
-        return success(
-            data=result,
-            message="磨损预测已基于实时数据 EWMA 校正",
-        )
-    except Exception as e:
-        safe = safe_error_message(e, context="dynamic_adjustment.calibrate_wear", fallback="校正失败")
-        return error(
-            ErrorCode.INTERNAL_ERROR,
-            message=safe["message"],
-            detail={"error_id": safe["error_id"]},
-        )
+    orchestrator = get_dynamic_adjustment_orchestrator()
+    result = orchestrator.wear_predictor.calibrate_with_real_time_data(
+        real_time_wear=req.real_time_wear,
+        sensor_features=req.sensor_features,
+        elapsed_time=req.elapsed_time,
+        input_parameters=req.input_parameters,
+    )
+    return success(
+        data=result,
+        message="磨损预测已基于实时数据 EWMA 校正",
+    )
 
 
 # =====================================================================
@@ -481,28 +455,21 @@ async def calibrate_wear(req: CalibrateWearRequest):
 
 
 @router.get("/health")
+@safe_endpoint(context="dynamic_adjustment.health", fallback="健康检查失败")
 async def health():
     """动态调参闭环模块健康检查。"""
-    try:
-        orchestrator = get_dynamic_adjustment_orchestrator()
-        # 探测关键依赖是否可用
-        from app.postprocessor.registry import PostProcessorRegistry
+    orchestrator = get_dynamic_adjustment_orchestrator()
+    # 探测关键依赖是否可用
+    from app.postprocessor.registry import PostProcessorRegistry
 
-        registry = PostProcessorRegistry()
-        controllers = registry.list_controllers()
-        return success(
-            data={
-                "module": "dynamic_adjustment",
-                "status": "ok",
-                "available_controllers": controllers,
-                "wear_predictor": type(orchestrator.wear_predictor).__name__,
-                "feed_optimizer": type(orchestrator.feed_optimizer).__name__,
-            }
-        )
-    except Exception as e:
-        safe = safe_error_message(e, context="dynamic_adjustment.health", fallback="健康检查失败")
-        return error(
-            ErrorCode.INTERNAL_ERROR,
-            message=safe["message"],
-            detail={"error_id": safe["error_id"]},
-        )
+    registry = PostProcessorRegistry()
+    controllers = registry.list_controllers()
+    return success(
+        data={
+            "module": "dynamic_adjustment",
+            "status": "ok",
+            "available_controllers": controllers,
+            "wear_predictor": type(orchestrator.wear_predictor).__name__,
+            "feed_optimizer": type(orchestrator.feed_optimizer).__name__,
+        }
+    )

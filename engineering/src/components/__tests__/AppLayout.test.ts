@@ -109,8 +109,8 @@ describe('AppLayout.vue', () => {
       props,
       global: {
         stubs: {
-          router-link: { template: '<a class="router-link"><slot /></a>' },
-          router-view: { template: '<div class="router-view"></div>' },
+          'router-link': { template: '<a class="router-link"><slot /></a>' },
+          'router-view': { template: '<div class="router-view"></div>' },
         },
       },
     })

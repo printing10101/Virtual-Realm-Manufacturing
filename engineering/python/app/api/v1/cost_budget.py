@@ -9,14 +9,10 @@ from pydantic import BaseModel, Field
 from typing import Optional
 import logging
 
-from app.budget.budget_enforcer import (
-    get_budget_enforcer,
-    get_cost_optimizer,
-)
-from app.budget.cost_tracker import (
-    get_cost_tracker,
-    CostDimension,
-)
+from app.dependencies import get_budget_enforcer, get_cost_optimizer
+
+from app.dependencies import get_cost_tracker
+
 from app.models.budget import (
     BudgetLevel,
     BudgetPeriod,

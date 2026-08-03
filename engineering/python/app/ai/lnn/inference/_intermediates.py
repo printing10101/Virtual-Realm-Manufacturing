@@ -101,8 +101,9 @@ class _IntermediatesMixin:
                         captured_hidden.append(
                             output.detach().cpu().numpy()
                         )
-                except (RuntimeError, ValueError, TypeError):
-                    pass
+                except (RuntimeError, ValueError, TypeError) as hook_exc:
+                    # 隐状态捕获失败不应中断推理，但需可追踪（debug 级，不刷屏）
+                    logger.debug("LNN 隐状态 hook 捕获失败: %s", hook_exc)
 
             handle = cell.register_forward_hook(_hook)
             hook_handles.append(handle)
@@ -353,8 +354,9 @@ class _IntermediatesMixin:
                 for handle in hook_handles:
                     try:
                         handle.remove()
-                    except (RuntimeError, ValueError, AttributeError):
-                        pass
+                    except (RuntimeError, ValueError, AttributeError) as rm_exc:
+                        # hook 重复移除无害，但记录 debug 便于排查句柄泄漏
+                        logger.debug("LNN hook 移除失败: %s", rm_exc)
 
             inference_time = (time.perf_counter() - start_time) * 1000
             confidence = self._compute_confidence(output) if output is not None else 0.0

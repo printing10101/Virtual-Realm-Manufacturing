@@ -70,8 +70,8 @@ echo [√] 依赖安装完成
 :: 初始化数据库
 echo.
 echo [4/5] 初始化数据库...
-cd python
-python -c "from app.database import engine; from app.models import Base; Base.metadata.create_all(bind=engine); print('[√] 数据库初始化完成')" 2>nul
+cd engineering\python
+python -c "import asyncio; from app.database.models import init_db; asyncio.run(init_db()); print('[√] 数据库初始化完成')" 2>nul
 if errorlevel 1 (
     echo [警告] 数据库初始化失败，可能是首次运行或配置问题
     echo 请检查 .env 文件中的数据库配置
@@ -91,7 +91,7 @@ echo.
 echo 按 Ctrl+C 停止服务
 echo.
 
-cd python
+cd engineering\python
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8765 --log-level info
 
 pause

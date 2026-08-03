@@ -643,7 +643,7 @@ class ResourceCardService(BaseSingletonService):
         Raises:
             ValueError: 数据集不存在（透传 DatasetStore 异常）
         """
-        from app.data.dataset_store import get_dataset_store
+        from app.dependencies import get_dataset_store
         from app.data.lineage_store import get_lineage_store
 
         if lineage_depth < 1 or lineage_depth > 10:

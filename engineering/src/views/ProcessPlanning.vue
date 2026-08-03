@@ -235,10 +235,9 @@
             {{ t('processPlanning.routePage.stepListLabel') }}
           </div>
           <div class="step-list">
-            <!-- 动态列表，ProcessStep 无业务唯一 id，index 作为 key 可接受 -->
             <div
               v-for="(step, index) in selectedRoute.steps"
-              :key="index"
+              :key="step.name + (step.tool_id ?? '') + index"
               class="step-item"
             >
               <div class="step-number">
@@ -335,11 +334,6 @@ async function fetchRoutes() {
   } finally {
     loading.value = false
   }
-}
-
-/** 带服务器端筛选的搜索 */
-function searchRoutes() {
-  fetchRoutes()
 }
 
 // ========================= 筛选状态 =========================
