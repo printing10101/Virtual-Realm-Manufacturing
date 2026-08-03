@@ -61,7 +61,7 @@
 <table>
   <tr><th>指标</th><th>08-02 报告</th><th>本次实测</th><th>判定</th></tr>
   <tr><td>God 模块（&gt;1000 行）</td><td>8 个</td><td><b>14 个</b></td><td><span class="tag t-warn">报告低估</span></td></tr>
-  <tr><td>type:ignore</td><td>119 条</td><td><b>134 条（59 文件）</b></td><td><span class="tag t-warn">报告低估</span></td></tr>
+  <tr><td>type:ignore</td><td>119 条</td><td><b>134 条（59 文件）→ 已清 74</b></td><td><span class="tag t-warn">报告低估；清理中</span></td></tr>
   <tr><td>裸 print()</td><td>58–60 处</td><td><b>48 处</b></td><td><span class="tag t-info">相近</span></td></tr>
   <tr><td>前端 http 直连</td><td>19 视图直连</td><td><b>0 处</b></td><td><span class="tag t-ok">已迁移完成</span></td></tr>
   <tr><td>测试总量</td><td>“500+，核心路由稀疏”</td><td><b>5209 个</b>；tests/api 专项 127 个</td><td><span class="tag t-ok">远强于报告</span></td></tr>
@@ -112,6 +112,15 @@
   <li><b>测试体量 5209</b>：tests/api 专项 127 个（auth/gateway/jobs/lnn/rag/wear），测试安全网实际健全；“先筑测试网再重构”的前提已自然满足。</li>
 </ul>
 
+<h3>5. 任务 B：type:ignore 结构化清理（下午场）</h3>
+<ul>
+  <li><b>unused-ignore 74 条已删除</b>（37 文件，134→60）：mypy <code>warn_unused_ignores</code> 标出，删后零副作用（不改变任何运行行为）。</li>
+  <li><b>9 个文件 name-defined 清零（342 条）</b>，其中 3 处是真实缺陷：auth.py（鉴权路径缺 token/密码工具导入）、simulation/schemas.py（缺 pydantic 导入的僵尸文件）、plugins.py（缺骨架 + 8 处 <code>error(msg, code=404)</code> 位置参数误传 bug）；6 处是"缺骨架死路由文件"（project_packages/workflow_templates/rl_agent/project_sync/explainability/world_model）——补 router/logger/域符号导入，保持未接入。</li>
+  <li><b>mypy 全量基线：1894 → 1425 错误 / 314 → 283 文件</b>（−469 错误、−31 文件清零）；name-defined 478 → 88。</li>
+  <li><b>决策：rules/api.py 为残缺死路由</b>（4 个 Pydantic 请求类 + 辅助函数全仓不存在），在 mypy.ini exclude 并记录，待产品决策补全/删除。</li>
+  <li><b>重大教训：Edit 工具偶发写入丢失</b>（auth.py/project_packages.py 的 Edit 修改被还原）。已确立纪律：关键修改一律用 Python 脚本执行，改后立即验证落盘。</li>
+</ul>
+
 <!-- ============ 三、剩余分阶段任务 ============ -->
 <h2>三、剩余分阶段任务（按杠杆排序）</h2>
 
@@ -127,9 +136,9 @@
   <p><b>验收</b>：14 个文件全部 &lt;1000 行；对应测试套件全绿。</p>
 </div>
 
-<div class="phase"><div class="pn">B</div><b>type:ignore 134 条结构化清理</b><span class="tag t-warn">类型安全</span></div>
+<div class="phase"><div class="pn">B</div><b>type:ignore 清理 — 已完成 74/134，真实错误 1425 条待修</b><span class="tag t-warn">进行中</span></div>
 <div class="card">
-  <p>按包分批执行（每批跑 mypy 拿真实错误分布）：</p>
+  <p>已删 unused-ignore 74 条（134→60）；9 文件 name-defined 清零。剩余真实错误（attr-defined 371 / arg-type 253 / union-attr 163 等，283 文件）按包分批执行：</p>
   <pre>cd engineering/python
 python -m mypy app/api/v1/&lt;pkg&gt; --config-file mypy.ini --no-incremental
 # 修复方向（按错误码）：
@@ -194,7 +203,7 @@ python -m mypy app/api/v1/&lt;pkg&gt; --config-file mypy.ini --no-incremental
 <table>
   <tr><th>指标</th><th>当前（实测）</th><th>目标</th></tr>
   <tr><td>God 模块 &gt;1000 行</td><td>14</td><td>0</td></tr>
-  <tr><td>type:ignore</td><td>134</td><td>≤30（仅合理场景）</td></tr>
+  <tr><td>type:ignore</td><td>60（已删 74）</td><td>≤30（仅合理场景）</td></tr>
   <tr><td>mypy 真实错误</td><td>按包推进（cam_validation 已清零）</td><td>app 全包无真实错误</td></tr>
   <tr><td>裸 print（生产）</td><td>48</td><td>≤5</td></tr>
   <tr><td>前端死页面 / 巨型 .vue</td><td>待复核</td><td>0 / 0</td></tr>

@@ -216,8 +216,12 @@ impl SidecarManager {
             .to_string();
 
         // === 核心：直接运行 Python 脚本 ===
-        let python_path = resolve_python_path();
-        let (script_path, python_dir) = resolve_python_script_and_dir();
+        // 嵌入式优先：打包分发时使用 bundle.resources 内的自包含运行时
+        // （desktop_runtime/runtime/python.exe + desktop_runtime/backend/start_server.py），
+        // 目标机器无需预装 Python；开发模式回退宿主 Python。
+        let resource_dir = app.path().resource_dir().ok();
+        let python_path = resolve_python_path(resource_dir.as_deref());
+        let (script_path, python_dir) = resolve_python_script_and_dir(resource_dir.as_deref());
 
         log::info!(
             "[sidecar] 启动 Python 后端: python={} script={} cwd={}",
@@ -651,15 +655,27 @@ fn append_log_line(path: &std::path::Path, line: &str) {
 
 /// 解析 Python 解释器路径
 ///
-/// 优先级：
-/// 1. 环境变量 `LINGJING_PYTHON_PATH`（用户自定义，推荐打包分发时使用）
-/// 2. 系统级 Python 安装路径（ProgramData、C:\Python3xx）
-/// 3. 用户级 Python 安装路径（通过 %LOCALAPPDATA% 动态获取）
-/// 4. 回退到 `python`（依赖 PATH）
+/// 优先级（P2-2 嵌入式运行时改造）：
+/// 1. 资源目录内的嵌入式运行时 `desktop_runtime/runtime/python.exe`（打包分发，自包含）
+/// 2. 环境变量 `LINGJING_PYTHON_PATH`（用户自定义，推荐打包分发时使用）
+/// 3. 系统级 Python 安装路径（ProgramData、C:\Python3xx）
+/// 4. 用户级 Python 安装路径（通过 %LOCALAPPDATA% 动态获取）
+/// 5. 回退到 `python`（依赖 PATH）
 ///
 /// 安全修复 (P0): 原有代码硬编码了 `C:\Users\Lenovo` 路径，分发到其他用户机器
 /// 会自动失败。现已移除所有硬编码个人路径，改用环境变量动态获取。
-fn resolve_python_path() -> String {
+fn resolve_python_path(resource_dir: Option<&std::path::Path>) -> String {
+    // 1. 嵌入式运行时（自包含，目标机器无需 Python）
+    if let Some(rd) = resource_dir {
+        let embedded = rd
+            .join("desktop_runtime")
+            .join("runtime")
+            .join(if cfg!(windows) { "python.exe" } else { "bin/python3" });
+        if embedded.exists() {
+            log::info!("[sidecar] 使用嵌入式运行时: {}", embedded.display());
+            return embedded.to_string_lossy().to_string();
+        }
+    }
     if let Ok(p) = std::env::var("LINGJING_PYTHON_PATH") {
         if std::path::Path::new(&p).exists() {
             return p;
@@ -698,12 +714,26 @@ fn resolve_python_path() -> String {
 
 /// 解析 Python 脚本路径和工作目录
 ///
-/// 优先级：
-/// 1. 环境变量 `LINGJING_PYTHON_SCRIPT`（脚本路径）
-/// 2. 编译时 `CARGO_MANIFEST_DIR` 推导（开发模式：src-tauri/../python/start_server.py）
-/// 3. 回退到当前目录下的 `start_server.py`
-fn resolve_python_script_and_dir() -> (String, std::path::PathBuf) {
-    // 1. 环境变量
+/// 优先级（P2-2 嵌入式运行时改造）：
+/// 1. 资源目录内的嵌入式后端 `desktop_runtime/backend/start_server.py`（打包分发）
+/// 2. 环境变量 `LINGJING_PYTHON_SCRIPT`（脚本路径）
+/// 3. 编译时 `CARGO_MANIFEST_DIR` 推导（开发模式：src-tauri/../python/start_server.py）
+/// 4. 回退到当前目录下的 `start_server.py`
+fn resolve_python_script_and_dir(
+    resource_dir: Option<&std::path::Path>,
+) -> (String, std::path::PathBuf) {
+    // 1. 嵌入式后端（与运行时同目录打包）
+    if let Some(rd) = resource_dir {
+        let script = rd.join("desktop_runtime").join("backend").join("start_server.py");
+        if script.exists() {
+            let dir = script
+                .parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+            return (script.to_string_lossy().to_string(), dir);
+        }
+    }
+    // 2. 环境变量
     if let Ok(p) = std::env::var("LINGJING_PYTHON_SCRIPT") {
         let path = std::path::Path::new(&p);
         if path.exists() {

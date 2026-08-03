@@ -14,7 +14,6 @@
     snapshot:reproduce —— 触发一键复现
 """
 
-from __future__ import annotations
 
 import logging
 from typing import Any, Optional

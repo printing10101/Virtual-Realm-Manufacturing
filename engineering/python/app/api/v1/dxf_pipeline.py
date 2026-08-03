@@ -7,7 +7,6 @@
 
 用于：CI、研发自测、研究模块的 shadow mode 触发。
 """
-from __future__ import annotations
 
 import logging
 import os

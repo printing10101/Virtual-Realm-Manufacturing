@@ -35,6 +35,23 @@ from pydantic import BaseModel, Field
 from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
 from app.dependencies import get_workflow_template_service
+from app.plugins.workflow_template_loader import (
+    TemplateValidationError,
+    load_template_from_dict,
+)
+from app.services.workflow_template_service import (
+    InvalidVersionError,
+    TemplateAlreadyExistsError,
+    TemplateNotFoundError,
+    VersionAlreadyExistsError,
+)
+
+logger = logging.getLogger(__name__)
+
+# 骨架修复（2026-08-03 任务B）：原文件缺失 router/logger/域符号导入。
+# 补齐骨架但保持未接入（main/router_registry 未引用本文件）。
+router = APIRouter(prefix="/api/v1/workflow-templates", tags=["Workflow Templates"])
+
 
 
 

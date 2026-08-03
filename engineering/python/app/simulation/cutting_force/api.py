@@ -16,7 +16,6 @@
 端点前缀：/api/cutting-force
 """
 
-from __future__ import annotations
 
 import asyncio
 import logging

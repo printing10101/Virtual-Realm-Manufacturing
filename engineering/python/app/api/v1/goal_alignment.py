@@ -5,7 +5,6 @@ Endpoints for goal hierarchy management, task goal association,
 alignment verification, and progress tracking.
 """
 
-from __future__ import annotations
 
 import time
 import uuid

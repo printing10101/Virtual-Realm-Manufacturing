@@ -13,7 +13,9 @@
 5. GET  /health           健康检查
 """
 
-from __future__ import annotations
+# 注意：不可加 from __future__ import annotations！
+# 该 import + @safe_endpoint 装饰器 + 本地 Pydantic 模型参数 → Pydantic 前向引用
+# 解析失败（PydanticUndefinedAnnotation: name 'X' is not defined），详见运维手册。
 
 import logging
 from typing import Any, Literal, Optional

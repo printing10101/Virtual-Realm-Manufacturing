@@ -307,6 +307,9 @@ def _extract_query_entities(query: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+# 独立于 rag_retrieval.py 的模块常量（避免循环依赖：本模块被 rag_retrieval 先 import）
+RESULT_CACHE_ENABLED = os.getenv("RESULT_CACHE_ENABLED", "1") == "1"
+
 class _ResultCache:
     """线程安全的 LRU 检索结果缓存。
 
@@ -314,7 +317,11 @@ class _ResultCache:
     缓存值：retrieve() 返回的 dict。
     """
 
-    def __init__(self, max_size: int = RESULT_CACHE_SIZE):
+    # 独立于 rag_retrieval.py 的模块常量（避免循环依赖：本模块被 rag_retrieval 先 import，
+    # 若引用其模块级 RESULT_CACHE_SIZE 会在类定义时 NameError——2026-08-03 安装验证发现）
+    DEFAULT_MAX_SIZE = int(os.getenv("RESULT_CACHE_SIZE", "200"))
+
+    def __init__(self, max_size: int = DEFAULT_MAX_SIZE):
         self._max_size = max_size
         self._cache: dict[str, dict] = {}
         self._keys: list[str] = []
@@ -345,7 +352,7 @@ class _ResultCache:
         n_results: int,
         override_source: str | None,
     ) -> dict | None:
-        if not ENABLE_RESULT_CACHE:
+        if not RESULT_CACHE_ENABLED:
             return None
         key = self._make_key(query, intent, n_results, override_source)
         with self._lock:
@@ -366,7 +373,7 @@ class _ResultCache:
         override_source: str | None,
         value: dict,
     ) -> None:
-        if not ENABLE_RESULT_CACHE:
+        if not RESULT_CACHE_ENABLED:
             return
         key = self._make_key(query, intent, n_results, override_source)
         with self._lock:

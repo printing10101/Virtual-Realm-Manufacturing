@@ -4,7 +4,6 @@
 提供生产记录查询、工单 CRUD、仪表盘 KPI、产线数据及演示数据填充功能。
 """
 
-from __future__ import annotations
 
 from datetime import date
 from typing import Optional

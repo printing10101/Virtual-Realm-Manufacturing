@@ -23,7 +23,6 @@
     - **统一异常包装**：所有端点用 try-except 把内部异常转为 503，
       避免堆栈信息泄露，与项目其他 API 风格一致。
 """
-from __future__ import annotations
 
 import logging
 import re

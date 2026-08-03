@@ -1123,6 +1123,7 @@ async def confirm_task(
     "/tasks/{task_id}/report/download",
     summary="下载 CAM 校验报告 JSON",
     dependencies=[Depends(require_permission("cam_validation:download"))],
+    response_model=None,  # 修复：FileResponse|JSONResponse 联合注解（2026-08-03 安装验证发现）
 )
 async def download_cam_report(task_id: str) -> FileResponse | JSONResponse:
     """下载 CAM 校验报告 JSON（链路最终产物，供审计追溯）。
@@ -1171,6 +1172,7 @@ async def download_cam_report(task_id: str) -> FileResponse | JSONResponse:
     "/tasks/{task_id}/internal_report/download",
     summary="下载内部预校验详细报告 JSON",
     dependencies=[Depends(require_permission("cam_validation:download"))],
+    response_model=None,  # 修复：FileResponse|JSONResponse 联合注解（2026-08-03 安装验证发现）
 )
 async def download_internal_report(task_id: str) -> FileResponse | JSONResponse:
     """下载内部预校验详细报告 JSON（供前端可视化）。

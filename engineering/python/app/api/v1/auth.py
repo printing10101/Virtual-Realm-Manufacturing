@@ -15,13 +15,21 @@ from app.auth.dependencies import get_current_user, security_scheme
 from app.dependencies import get_token_ban_list
 
 from app.dependencies import get_config
-from app.dependencies import get_config
 from app.config import AppConfig
 from typing import Any
 from app.middleware.rate_limiter import limiter
 from app.core.request_id import get_request_id as _get_request_id
 from app.core.safe_errors import safe_error_message
 from app.audit.audit_log import get_audit_log, OperationStatus
+# 修复（2026-08-03 任务B）：补 token/密码工具导入（原缺失，mypy 报 8 条 name-defined，
+# 且为真实运行时缺陷——登录/刷新/鉴权路径调用这些工具）。
+from app.auth.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token_strict,
+    hash_password,
+    verify_password,
+)
 
 
 logger = logging.getLogger(__name__)

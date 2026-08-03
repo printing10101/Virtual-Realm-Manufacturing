@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import socket
 from typing import Any
+import time
 
 from app.ai.llm.provider_base import (
     LLMProvider,
@@ -113,4 +114,3 @@ class OllamaProvider(LLMProvider):
             "finish_reason": "stop",
             "usage": data.get("usage", {}),
         }
-

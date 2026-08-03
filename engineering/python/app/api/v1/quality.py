@@ -4,7 +4,6 @@
 提供质量检验记录的 CRUD、统计汇总、异常管理及演示数据填充功能。
 """
 
-from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional

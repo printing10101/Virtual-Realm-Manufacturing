@@ -1,6 +1,5 @@
 """A/B Testing API Routes."""
 
-from __future__ import annotations
 
 import logging
 from typing import Optional
