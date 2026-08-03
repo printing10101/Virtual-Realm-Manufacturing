@@ -61,6 +61,8 @@ __all__ = [
     "EffectivenessMetricsCollector",
     "RollbackManager",
     "ClosedLoop",
+    "ClosedLoopDecision",
+    "RuleOutcomeRecord",
     # 便捷函数
     "get_audit_recorder",
     "register_default_dreaming_task",
@@ -142,6 +144,14 @@ def __getattr__(name: str):  # PEP 562 延迟导入
         from app.dreaming.closed_loop import ClosedLoop
 
         return ClosedLoop
+    if name == "ClosedLoopDecision":
+        from app.dreaming._closed_loop_models import ClosedLoopDecision
+
+        return ClosedLoopDecision
+    if name == "RuleOutcomeRecord":
+        from app.dreaming._closed_loop_models import RuleOutcomeRecord
+
+        return RuleOutcomeRecord
     # 便捷函数
     if name == "get_audit_recorder":
         from app.dreaming.audit_integration import get_audit_recorder
