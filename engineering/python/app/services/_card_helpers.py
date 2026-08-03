@@ -30,7 +30,7 @@ def _json_loads(value: Optional[str], default: Any) -> Any:
     except (json.JSONDecodeError, TypeError):
         return default
 
-def _orm_to_model_artifact(orm: ModelArtifactORM) -> ModelArtifact:  # type: ignore[arg-type]
+def _orm_to_model_artifact(orm: ModelArtifactORM) -> ModelArtifact:
     """ORM → dataclass."""
     return ModelArtifact(
         model_id=orm.id,
@@ -50,7 +50,7 @@ def _orm_to_model_artifact(orm: ModelArtifactORM) -> ModelArtifact:  # type: ign
         updated_at=orm.updated_at,
     )
 
-def _orm_to_dataset_readme(orm: DatasetReadmeORM) -> DatasetReadme:  # type: ignore[arg-type]
+def _orm_to_dataset_readme(orm: DatasetReadmeORM) -> DatasetReadme:
     """ORM → dataclass."""
     return DatasetReadme(
         readme_id=orm.id,
