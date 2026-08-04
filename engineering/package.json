@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "type-check": "vue-tsc --noEmit",
-    "lint": "eslint src/**/*.{ts,vue} --fix",
+    "lint": "eslint src/**/*.{ts,vue}",
     "format": "prettier --write src/**/*.{ts,vue,css}",
     "prepare": "husky"
   },

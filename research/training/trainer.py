@@ -1,22 +1,7 @@
-﻿"""LNN Model Trainer.
+"""LNN 模型训练器。
 
-Implements the training loop for PyTorch-based LNN models with optimizer
-configuration, loss function selection, mixed precision training (AMP),
-GPU acceleration, gradient clipping, learning rate scheduling, and
-early stopping.
-
-Key components:
-    - LNNTrainer: Main training class with comprehensive training pipeline.
-
-Example:
-    >>> trainer = LNNTrainer(
-    ...     model=my_cfc_model,
-    ...     learning_rate=0.001,
-    ...     optimizer_type="adam",
-    ...     epochs=100,
-    ...     device="cuda",
-    ... )
-    >>> history = trainer.train(train_loader, val_loader)
+实现 PyTorch 训练循环，包含优化器、损失函数、混合精度训练 (AMP)、
+梯度裁剪、学习率调度、早停及 GPU 内存监控。
 """
 
 import torch
@@ -62,20 +47,7 @@ GPU_MEMORY_WARNING_THRESHOLD = 95.0  # GPU memory usage warning threshold (perce
 
 
 class LNNTrainer:
-    """
-    LNN训练器
-
-    包含：
-    - 优化器配置
-    - 损失函数选择
-    - 训练循环
-    - 检查点管理
-    - 早停机制
-    - 梯度裁剪
-    - 学习率调度
-    - 混合精度训练 (AMP)
-    - GPU内存监控
-    """
+    """LNN 训练器，封装训练循环与检查点管理。"""
 
     def __init__(
         self,

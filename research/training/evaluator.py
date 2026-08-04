@@ -1,16 +1,6 @@
-"""LNN Model Evaluator.
+"""LNN 模型评估器。
 
-Implements multi-metric evaluation for both classification and regression tasks,
-performance benchmarking (inference speed, throughput), feature importance
-analysis, and evaluation report generation with visualization.
-
-Key components:
-    - LNNEvaluator: Multi-metric evaluator with history tracking.
-
-Example:
-    >>> evaluator = LNNEvaluator(model=my_model, device="cuda")
-    >>> metrics = evaluator.evaluate(val_loader, task_type="classification")
-    >>> print(metrics["accuracy"])
+实现多指标评估（回归/分类）、性能基准测试、特征重要性分析与报告生成。
 """
 
 import torch
@@ -31,16 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class LNNEvaluator:
-    """
-    LNN评估器
-
-    实现：
-    - 多指标评估（回归：MAE, RMSE, MAPE, R²）
-    - 多指标评估（分类：Accuracy, Precision, Recall, F1, 混淆矩阵）
-    - 性能测试（推理速度、吞吐量）
-    - 特征重要性分析
-    - 结果记录与报告生成
-    """
+    """LNN 评估器，支持多指标评估与性能测试。"""
 
     def __init__(self, model: torch.nn.Module, device: str = "cpu"):
         """

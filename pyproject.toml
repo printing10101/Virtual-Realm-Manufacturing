@@ -30,7 +30,45 @@ ignore = [
 #   - quantization/quantizer.py 已迁移到 research/quantization/quantizer.py
 #     （工程侧不再持有训练相关代码，E203 规则由科研侧配置继承）
 "engineering/python/app/ai/lnn/engine.py" = ["E203"]
-"engineering/python/app/cad/cadquery_gen.py" = ["E203"]
+"engineering/python/app/cad/cadquery_gen.py" = ["E203", "E402"]
 "engineering/python/app/audit/audit_log.py" = ["E203"]
 "engineering/python/alembic/versions/be7e8d82d196_initial_schema.py" = ["E501", "W291"]
 "research/quantization/quantizer.py" = ["E203"]
+
+# F401 清理（2026-08-04）：__init__.py 聚合 re-export 是包导出惯例，显式列入而非全局忽略
+"**/__init__.py" = ["F401"]
+
+# E402 已知债务登记（2026-08-04 全量清理时逐项复核）：
+#   - sys.path 引导类（legacy 直跑入口/测试）：main.py、run_perf_benchmark.py、
+#     dreaming/cli.py（sys.platform 切换 hack）、4 个内嵌 tests/
+#   - D5 拆分残留类（logger/常量夹在导入块中间，运行时正常）：
+#     lnn/services.py、lnn/dependencies.py、lnn/routes_training.py、lnn/routes_system.py、
+#     cam_validation/routes.py、gcode_generator.py、simulation/api.py、
+#     cutting_parameters/routes.py、gcode_generation/routes.py、chatter_prediction/routes.py、
+#     dependencies.py、dxf_parser.py、rag/evaluation.py、rag_retrieval.py、
+#     tdengine_client.py、tasks/execution.py、fusion_trainer.py、chatter_store.py
+"engineering/python/app/main.py" = ["E402"]
+"engineering/python/app/benchmarks/performance/run_perf_benchmark.py" = ["E402"]
+"engineering/python/app/dreaming/cli.py" = ["E402"]
+"engineering/python/app/api/v1/lnn/services.py" = ["E402"]
+"engineering/python/app/api/v1/lnn/dependencies.py" = ["E402"]
+"engineering/python/app/api/v1/lnn/routes_training.py" = ["E402"]
+"engineering/python/app/api/v1/lnn/routes_system.py" = ["E402"]
+"engineering/python/app/api/v1/cam_validation/routes.py" = ["E402"]
+"engineering/python/app/process_planning/gcode_generator.py" = ["E402"]
+"engineering/python/app/simulation/api.py" = ["E402"]
+"engineering/python/app/api/v1/cutting_parameters/routes.py" = ["E402"]
+"engineering/python/app/api/v1/gcode_generation/routes.py" = ["E402"]
+"engineering/python/app/api/v1/chatter_prediction/routes.py" = ["E402"]
+"engineering/python/app/dependencies.py" = ["E402"]
+"engineering/python/app/dxf/dxf_parser.py" = ["E402"]
+"engineering/python/app/rag/evaluation.py" = ["E402"]
+"engineering/python/app/rag/rag_retrieval.py" = ["E402"]
+"engineering/python/app/services/tdengine_client.py" = ["E402"]
+"engineering/python/app/tasks/execution.py" = ["E402"]
+"engineering/python/app/plugins/world_model/training/fusion_trainer.py" = ["E402"]
+"engineering/python/app/chatter_prediction/chatter_store.py" = ["E402"]
+"engineering/python/app/integrations/mtconnect/tests/test_adapter.py" = ["E402"]
+"engineering/python/app/pipelines/tests/test_collector.py" = ["E402"]
+"engineering/python/app/simulation/chatter/tests/test_predictor.py" = ["E402"]
+"engineering/python/app/services/tests/test_tdengine_client.py" = ["E402"]

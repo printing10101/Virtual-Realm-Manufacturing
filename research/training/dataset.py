@@ -1,17 +1,6 @@
-﻿"""LNN Dataset Processing Module.
+"""LNN 数据集处理模块。
 
-Provides multi-source data loading (CSV, JSON, HDF5, NumPy) with preprocessing,
-transform functions, and dataset caching support. Compatible with PyTorch's
-Dataset interface for seamless DataLoader integration.
-
-Key components:
-    - LNNDataset: PyTorch-compatible dataset wrapper.
-
-Example:
-    >>> dataset = LNNDataset(data=X, labels=y, metadata={"source": "sensor"})
-    >>> len(dataset)
-    1000
-    >>> sample, label = dataset[0]
+提供多源数据加载（CSV、JSON、HDF5、NumPy）、预处理、变换及缓存支持。
 """
 
 import time
@@ -30,15 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class LNNDataset(Dataset):
-    """
-    LNN数据集类
-
-    支持：
-    - 多源数据加载
-    - 自定义预处理
-    - 数据增强
-    - 批次管理
-    """
+    """LNN 数据集类，支持多源数据加载与自定义预处理。"""
 
     def __init__(
         self,

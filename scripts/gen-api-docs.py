@@ -560,13 +560,16 @@ class APIDocumentGenerator:
         return "\n\n".join(sections) + "\n"
 
     def _generate_header(self) -> str:
+        # 版本号与 VERSION / app/version.py 保持一致（version_sync CI 门禁保障）
         return """# API 参考文档
 
 > **自动生成**: 本文档由 `scripts/gen-api-docs.py` 自动生成
 > 
 > **最后更新**: 自动填充
 > 
-> **适用版本**: 灵境制造平台 v1.x"""
+> **适用版本**: 灵境制造平台 v2.7.0
+
+> **交叉引用**: 本文档为 API 端点总览，完整的请求/响应示例、错误码详解与认证流程见 [`docs/api/README.md`](./api/README.md)。两份文档遵循同一响应格式约定（见下文"响应格式约定"小节）。"""
 
     def _generate_overview(self) -> str:
         return """## 概述
@@ -589,15 +592,29 @@ class APIDocumentGenerator:
 Content-Type: application/json
 ```
 
+### 响应格式约定
+
+所有 API 响应遵循统一格式，字段定义与 `python/app/core/response.py` 实现保持一致：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `code` | `number` | 数值状态码，`0` 表示成功，非 `0` 表示错误（如 `1001`、`2001`） |
+| `message` | `string` | 人类可读的状态描述 |
+| `data` | `any` | 成功时为业务数据，错误时通常省略或为 `null` |
+| `request_id` | `string` | 请求追踪标识，对应客户端 `X-Request-ID` |
+
+> **注意**：代码内部 `ErrorCode` 保留字符串枚举（如 `SUCCESS`、`NOT_FOUND`）以保持向后兼容，但通过 `code_to_numeric()` 映射表统一转换为数值后返回给客户端。客户端应始终以数值 `code` 判断响应状态，不应依赖字符串枚举值。
+
 ### 通用响应格式
 
-所有 API 响应遵循统一格式：
+成功响应示例：
 
 ```json
 {
-  "code": "SUCCESS",
+  "code": 0,
   "message": "操作成功",
-  "data": { ... }
+  "data": { ... },
+  "request_id": "uuid-string"
 }
 ```
 
@@ -605,9 +622,10 @@ Content-Type: application/json
 
 ```json
 {
-  "code": "NOT_FOUND",
-  "message": "错误描述信息",
-  "data": null,
+  "code": 1001,
+  "message": "资源未找到",
+  "request_id": "uuid-string",
+  "detail": "附加详情（可选）",
   "suggestion": "建议操作（可选）"
 }
 ```"""
@@ -620,16 +638,18 @@ Content-Type: application/json
     def _generate_error_codes(self) -> str:
         return """## 错误码参考
 
-| 错误码 | 说明 | 解决建议 |
-|--------|------|----------|
-| `SUCCESS` | 操作成功 | - |
-| `INTERNAL_ERROR` | 服务器内部错误 | 检查服务器日志，联系技术支持 |
-| `NOT_FOUND` | 资源未找到 | 检查请求路径或资源标识是否正确 |
-| `INVALID_REQUEST` | 请求参数错误 | 检查请求参数格式和取值范围 |
-| `UNAUTHORIZED` | 未授权访问 | 检查认证凭据是否有效 |
-| `FILE_NOT_FOUND` | 文件不存在 | 检查文件路径是否正确 |
-| `CAD_GENERATION_ERROR` | CAD 生成失败 | 检查输入参数和模板配置 |
-| `SERVICE_UNAVAILABLE` | 服务不可用 | 检查服务状态，稍后重试 |"""
+下表列出 `ErrorCode` 枚举与对应数值码的映射关系。客户端应以 `code`（数值）列为准。
+
+| `ErrorCode` 枚举 | `code`（数值） | 说明 | 解决建议 |
+|------------------|---------------|------|----------|
+| `SUCCESS` | `0` | 操作成功 | - |
+| `NOT_FOUND` | `1001` | 资源未找到 | 检查请求路径或资源标识是否正确 |
+| `INVALID_REQUEST` | `1002` | 请求参数错误 | 检查请求参数格式和取值范围 |
+| `UNAUTHORIZED` | `1003` | 未授权访问 | 检查认证凭据是否有效 |
+| `FILE_NOT_FOUND` | `1008` | 文件不存在 | 检查文件路径是否正确 |
+| `INTERNAL_ERROR` | `2001` | 服务器内部错误 | 检查服务器日志，联系技术支持 |
+| `SERVICE_UNAVAILABLE` | `2002` | 服务不可用 | 检查服务状态，稍后重试 |
+| `CAD_GENERATION_ERROR` | `7001` | CAD 生成失败 | 检查输入参数和模板配置 |"""
 
     def _generate_lnn_endpoints(self) -> str:
         """生成 LNN 相关端点文档"""
@@ -863,7 +883,8 @@ def generate_document(
     use_template: bool = True,
 ) -> str:
     """生成完整 API 文档"""
-    api_dir = project_root / "python" / "app" / "api" / "v1"
+    # V2.7.0 解耦：工程侧代码位于 engineering/python/（原 python/）
+    api_dir = project_root / "engineering" / "python" / "app" / "api" / "v1"
     
     if not api_dir.exists():
         raise FileNotFoundError(f"API 目录不存在: {api_dir}")

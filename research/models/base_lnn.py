@@ -1,20 +1,6 @@
-﻿"""Base LNN (Liquid Neural Network) Model Interface.
+"""LNN (Liquid Neural Network) 模型基类接口。
 
-Defines the unified interface and base functionality for all LNN model implementations.
-Provides abstract methods for building, training, and evaluating models, along with
-concrete utility methods for confidence calculation, uncertainty estimation, and
-performance measurement.
-
-Key components:
-    - BaseLNNModel: Abstract base class defining the LNN model contract.
-
-Example:
-    >>> class MyLNNModel(BaseLNNModel):
-    ...     def build(self): pass
-    ...     def forward(self, x): return x
-    ...     def predict(self, x): return self.forward(x)
-    ...     def _train_step(self, data, labels, batch_size, lr): return 0.0
-    ...     def _validate(self, val_data, val_labels): return 0.0
+定义所有 LNN 模型实现的统一接口：build、forward、predict、训练与评估。
 """
 
 from abc import ABC, abstractmethod
@@ -31,33 +17,18 @@ DEFAULT_WEIGHT_DECAY: float = 1e-5
 
 
 class BaseLNNModel(ABC):
-    """Abstract base class defining the LNN model contract.
+    """LNN 模型抽象基类。
 
-    All LNN model implementations must inherit from this class and implement
-    the abstract methods: build(), forward(), predict(), _train_step(), and _validate().
-
-    Provides concrete methods for:
-    - Confidence-based prediction (predict_with_confidence)
-    - Uncertainty calculation (calculate_uncertainty)
-    - Training loop orchestration (train)
-    - Model evaluation with multiple metrics (evaluate)
-    - Model serialization (save/load)
-    - Inference time benchmarking (measure_inference_time)
+    子类需实现 build()、forward()、predict()、_train_step()、_validate()。
 
     Attributes:
-        model_name: Human-readable model name.
-        input_dim: Input feature dimension.
-        output_dim: Output prediction dimension.
-        device: Computation device ('cpu', 'cuda').
-        is_trained: Whether the model has been trained.
-        training_history: Dictionary tracking loss and accuracy over epochs.
-        config: Additional model configuration parameters.
-
-    Example:
-        >>> model = CFCModel(model_name="Test", input_dim=10, output_dim=2)
-        >>> model.build()
-        >>> model.input_dim
-        10
+        model_name: 模型名称。
+        input_dim: 输入维度。
+        output_dim: 输出维度。
+        device: 计算设备 ('cpu', 'cuda')。
+        is_trained: 是否已训练。
+        training_history: 训练历史（loss/accuracy）。
+        config: 其他配置参数。
     """
 
     def __init__(
@@ -205,10 +176,7 @@ class BaseLNNModel(ABC):
         **kwargs,
     ) -> Dict[str, List[float]]:
         """
-        训练模型 - 使用PyTorch自动微分进行精确梯度计算
-
-        将NumPy数据转换为PyTorch张量，利用PyTorch自动微分机制
-        实现正确的反向传播，替代原有的数值梯度近似方法。
+        训练模型。
 
         Args:
             train_data: 训练数据
@@ -218,13 +186,12 @@ class BaseLNNModel(ABC):
             epochs: 训练轮数
             batch_size: 批次大小
             learning_rate: 学习率
-            seed: 随机种子，确保训练可复现（默认42）
+            seed: 随机种子（默认42）
 
         Returns:
             训练历史记录
         """
-        # 学术诚信：训练前设置全局随机种子，确保实验可复现
-        # 必须在 DataLoader 创建、权重初始化、np.random.choice 等随机操作之前调用
+        # 设置全局随机种子确保可复现性
         # 延迟导入避免 models ↔ training 循环依赖
         from research.training.reproducibility import set_global_seed
 
@@ -424,9 +391,7 @@ class BaseLNNModel(ABC):
             评估结果字典
         """
         if not self.is_trained:
-            raise RuntimeError(
-                "LNN 模型评估失败：模型尚未完成训练，无法执行评估。评估操作只能在模型训练完成后进行。请先调用 train() 方法完成模型训练，或加载已训练的检查点。"
-            )
+            raise RuntimeError("模型尚未训练，请先调用 train() 或加载已训练的检查点。")
 
         predictions = self.predict(test_data)
 
@@ -523,12 +488,7 @@ class BaseLNNModel(ABC):
         }
 
     def save(self, path: str) -> None:
-        """
-        保存模型
-
-        Args:
-            path: 保存路径
-        """
+        """保存模型到文件。"""
         np.savez(
             path,
             model_name=self.model_name,
@@ -538,12 +498,7 @@ class BaseLNNModel(ABC):
         )
 
     def load(self, path: str) -> None:
-        """
-        加载模型
-
-        Args:
-            path: 模型路径
-        """
+        """从文件加载模型。"""
         data = np.load(path)
         self.model_name = str(data["model_name"])
         self.input_dim = int(data["input_dim"])
