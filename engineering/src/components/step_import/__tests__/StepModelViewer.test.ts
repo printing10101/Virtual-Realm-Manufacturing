@@ -30,7 +30,7 @@ vi.mock('@/utils/formatters', () => ({
 }))
 
 // Mock three
-const mockThreeScene = {
+const mockThreeScene = vi.hoisted(() => ({
   scene: {
     add: vi.fn(),
     remove: vi.fn(),
@@ -44,14 +44,14 @@ const mockThreeScene = {
     shadowMap: { enabled: false },
   },
   controls: {
-    target: { copy: vi.fn() },
+    target: { copy: vi.fn(), clone: vi.fn(() => ({ copy: vi.fn() })) },
     position: { set: vi.fn() },
     update: vi.fn(),
   },
   addLight: vi.fn(),
   startAnimation: vi.fn(),
   cleanup: vi.fn(),
-}
+}))
 
 vi.mock('three', () => {
   class MockVector3 {
@@ -93,7 +93,7 @@ vi.mock('three', () => {
     setAttribute = vi.fn()
   }
   class MockFloat32BufferAttribute {
-    constructor(public array: any, public itemSize: number) {}
+    constructor(public array: number[], public itemSize: number) {}
   }
   class MockMeshStandardMaterial {
     color = 0
@@ -110,12 +110,12 @@ vi.mock('three', () => {
     clone = vi.fn(() => new MockMaterial())
   }
   class MockMesh {
-    geometry: any
-    material: any
+    geometry: { attributes: Record<string, unknown> }
+    material: unknown
     castShadow = false
     receiveShadow = false
-    constructor(geometry?: any, material?: any) {
-      this.geometry = geometry
+    constructor(geometry?: { attributes: Record<string, unknown> }, material?: unknown) {
+      this.geometry = geometry!
       this.material = material
     }
   }
@@ -148,7 +148,7 @@ vi.mock('three', () => {
 
 // Mock STLLoader
 vi.mock('three/examples/jsm/loaders/STLLoader.js', () => {
-  const MockGeometry: any = {
+  const MockGeometry: Record<string, unknown> = {
     computeVertexNormals: vi.fn(),
     center: vi.fn(),
     attributes: {
@@ -161,9 +161,9 @@ vi.mock('three/examples/jsm/loaders/STLLoader.js', () => {
   }
   return {
     STLLoader: vi.fn().mockImplementation(() => ({
-      load: vi.fn((_url: string, onSuccess: (geo: any) => void, _onProgress: any, _onError: any) => {
+      load: vi.fn((_url: string, onSuccess: (geo: { attributes: Record<string, unknown> }) => void, _onProgress: unknown, _onError: unknown) => {
         // 异步触发成功回调
-        onSuccess(MockGeometry)
+        onSuccess(MockGeometry as unknown as { attributes: Record<string, unknown> })
       }),
     })),
   }
@@ -298,7 +298,8 @@ describe('StepModelViewer.vue', () => {
     })
 
     it('应设置 modelStats', () => {
-      mountComponent({ vertexCount: 100, faceCount: 50, fileSize: 1024 })
+      // modelUrl 为空：避免 loadModel 用模型对象统计覆盖 props 统计
+      mountComponent({ modelUrl: undefined, vertexCount: 100, faceCount: 50, fileSize: 1024 })
       wrapper.vm.initViewer()
       expect(wrapper.vm.modelStats).not.toBeNull()
       expect(wrapper.vm.modelStats.vertexCount).toBe(100)
@@ -307,7 +308,7 @@ describe('StepModelViewer.vue', () => {
     })
 
     it('无 vertexCount/faceCount/fileSize 时 modelStats 应为 0', () => {
-      mountComponent({ vertexCount: undefined, faceCount: undefined, fileSize: undefined })
+      mountComponent({ modelUrl: undefined, vertexCount: undefined, faceCount: undefined, fileSize: undefined })
       wrapper.vm.initViewer()
       expect(wrapper.vm.modelStats.vertexCount).toBe(0)
       expect(wrapper.vm.modelStats.faceCount).toBe(0)
@@ -316,9 +317,10 @@ describe('StepModelViewer.vue', () => {
 
     it('有 modelUrl 时应调用 loadModel', () => {
       mountComponent({ modelUrl: 'http://example.com/model.stl' })
-      const spy = vi.spyOn(wrapper.vm, 'loadModel')
       wrapper.vm.initViewer()
-      expect(spy).toHaveBeenCalledWith('http://example.com/model.stl')
+      // spyOn(vm) 不拦截 setup 内部调用；loadModel 通过 STLLoader.load 同步回调
+      // 更新 modelStats（MockGeometry position.count=9），以此验证链路生效
+      expect(wrapper.vm.modelStats.vertexCount).toBe(9)
     })
 
     it('应启动动画循环', () => {
@@ -476,9 +478,11 @@ describe('StepModelViewer.vue', () => {
   describe('组件卸载', () => {
     it('卸载时应调用 disposeViewer', () => {
       mountComponent()
-      const spy = vi.spyOn(wrapper.vm, 'disposeViewer')
+      // initViewer 由 el-dialog @opened 触发（测试中手动调用以初始化 threeScene）
+      wrapper.vm.initViewer()
       wrapper.unmount()
-      expect(spy).toHaveBeenCalled()
+      // disposeViewer 副作用：threeScene.cleanup()（spyOn(vm) 不拦截 setup 内部调用）
+      expect(mockThreeScene.cleanup).toHaveBeenCalled()
     })
   })
 })

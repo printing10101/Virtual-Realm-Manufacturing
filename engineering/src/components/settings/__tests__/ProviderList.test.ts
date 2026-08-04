@@ -19,7 +19,7 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock @/api/llmProviders
-const mockProviderTypeMeta = {
+const mockProviderTypeMeta = vi.hoisted(() => ({
   ollama: {
     value: 'ollama',
     label: 'Ollama',
@@ -38,16 +38,16 @@ const mockProviderTypeMeta = {
     default_capabilities: ['chat'],
     needs_api_key: true,
   },
-}
+}))
 vi.mock('@/api/llmProviders', () => ({
   PROVIDER_TYPE_META: mockProviderTypeMeta,
 }))
 
 // Mock @/stores/llmProviders
-const mockStore = {
+const mockStore = vi.hoisted(() => ({
   providers: [] as any[],
   healthChecking: {} as Record<string, boolean>,
-}
+}))
 vi.mock('@/stores/llmProviders', () => ({
   useLLMProvidersStore: () => mockStore,
 }))
@@ -131,13 +131,13 @@ describe('ProviderList.vue', () => {
 
     it('无供应商且非加载中时应渲染空状态提示', () => {
       mountComponent({ loading: false })
-      expect(wrapper.find('.alert').exists()).toBe(true)
+      expect(wrapper.find('.el-alert').exists()).toBe(true)
     })
 
     it('有供应商时不应渲染空状态提示', () => {
       mockStore.providers = [buildProvider()]
       mountComponent({ loading: false })
-      expect(wrapper.find('.alert').exists()).toBe(false)
+      expect(wrapper.find('.el-alert').exists()).toBe(false)
     })
 
     it('加载中且有供应商时不应渲染空状态提示', () => {

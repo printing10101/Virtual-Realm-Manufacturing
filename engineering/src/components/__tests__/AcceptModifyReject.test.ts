@@ -14,12 +14,13 @@ vi.mock('vue-i18n', () => ({
 }))
 
 // Mock Element Plus
-const mockElMessage = {
+// vi.hoisted：vi.mock 工厂被提升到文件顶部执行，普通 const 会 TDZ 报错
+const mockElMessage = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
   info: vi.fn(),
   warning: vi.fn(),
-}
+}))
 vi.mock('element-plus', () => ({
   ElMessage: mockElMessage,
   ElCard: {

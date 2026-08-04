@@ -118,12 +118,12 @@ export async function getSimulationResult(
     // 转换为可视化数据格式
     const visualizationData = convertToVisualizationData(result)
 
-    // 更新缓存
-    cleanupCache()
+    // 更新缓存（先写入再清理，保证新条目不会被误删且 size 不超过上限）
     cache.set(taskId, {
       data: visualizationData,
       timestamp: Date.now(),
     })
+    cleanupCache()
 
     return visualizationData
   } catch {

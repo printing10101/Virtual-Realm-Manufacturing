@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -65,9 +65,14 @@ describe('ApprovalDashboard.vue', () => {
   })
 
   const mountApprovalDashboard = (options = {}) => {
-    return shallowMount(ApprovalDashboard, {
+    return mount(ApprovalDashboard, {
       global: {
         plugins: [pinia, router],
+        stubs: {
+          // 弹窗组件在测试环境渲染崩溃（emitsOptions null），且非断言目标
+          ApprovalReportDialog: true,
+          ApprovalDetailDialog: true,
+        },
         mocks: {
           $t: (key: string) => key,
         },
@@ -86,7 +91,7 @@ describe('ApprovalDashboard.vue', () => {
   it('渲染页面标题', async () => {
     const wrapper = mountApprovalDashboard()
     await flushPromises()
-    expect(wrapper.find('.dashboard-header h2').text()).toBe('approvalDashboard.pageTitle')
+    expect(wrapper.find('.dashboard-header h2').text()).toBe('审批看板')
   })
 
   it('渲染刷新与治理报告按钮', async () => {
@@ -127,7 +132,7 @@ describe('ApprovalDashboard.vue', () => {
     // 通过点击刷新按钮触发 loadDashboard 校验
     const refreshBtn = wrapper
       .findAll('.dashboard-header button')
-      .find((b) => b.text().includes('approvalDashboard.btnRefresh'))
+      .find((b) => b.text().includes('刷新'))
     expect(refreshBtn).toBeDefined()
   })
 
@@ -148,7 +153,7 @@ describe('ApprovalDashboard.vue', () => {
     const initialCallCount = httpMock.get.mock.calls.length
     const refreshBtn = wrapper
       .findAll('.dashboard-header button')
-      .find((b) => b.text().includes('approvalDashboard.btnRefresh'))
+      .find((b) => b.text().includes('刷新'))
     await refreshBtn?.trigger('click')
     await flushPromises()
     expect(httpMock.get.mock.calls.length).toBeGreaterThan(initialCallCount)
@@ -159,7 +164,7 @@ describe('ApprovalDashboard.vue', () => {
     await flushPromises()
     const reportBtn = wrapper
       .findAll('.dashboard-header button')
-      .find((b) => b.text().includes('approvalDashboard.btnGovernanceReport'))
+      .find((b) => b.text().includes('治理报告'))
     await reportBtn?.trigger('click')
     await flushPromises()
     // showReport 切换为 true，会触发 loadReport 接口

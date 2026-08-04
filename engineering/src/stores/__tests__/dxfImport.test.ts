@@ -361,7 +361,7 @@ describe('useDxfImportStore', () => {
 
   describe('parseDxfFile', () => {
     it('解析成功时更新 parseProgress 并返回数据', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 0, data: { entities: [{ id: 'e1' }] } },
       })
       const store = useDxfImportStore()
@@ -371,7 +371,7 @@ describe('useDxfImportStore', () => {
     })
 
     it('后端返回非 0 code 时抛出错误', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1, message: '解析失败' },
       })
       const store = useDxfImportStore()
@@ -380,7 +380,7 @@ describe('useDxfImportStore', () => {
     })
 
     it('后端返回非 0 code 且无 message 时使用默认错误', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1 },
       })
       const store = useDxfImportStore()
@@ -388,7 +388,7 @@ describe('useDxfImportStore', () => {
     })
 
     it('网络异常时抛出 axios 错误', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useDxfImportStore()
       await expect((store as any).parseDxfFile('f1')).rejects.toThrow('network')
     })
@@ -396,7 +396,7 @@ describe('useDxfImportStore', () => {
 
   describe('extractDxfFeatures', () => {
     it('特征提取成功时返回数据', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 0, data: { holes: 5, planes: 3 } },
       })
       const store = useDxfImportStore()
@@ -405,7 +405,7 @@ describe('useDxfImportStore', () => {
     })
 
     it('后端返回非 0 code 时返回 null', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1 },
       })
       const store = useDxfImportStore()
@@ -414,7 +414,7 @@ describe('useDxfImportStore', () => {
     })
 
     it('网络异常时返回 null（不阻塞主流程）', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useDxfImportStore()
       const result = await (store as any).extractDxfFeatures('f1')
       expect(result).toBeNull()
@@ -482,7 +482,9 @@ describe('useDxfImportStore', () => {
       const result = await promise
       expect(result).toBe(false)
       expect(store.phase).toBe('error')
-      expect(store.errorMessage).toBe('网络异常，上传失败。请检查网络后重试。')
+      // XHR onerror reject 的是普通 Error（专有网络文案），isNetworkError 分支
+      // 对 XHR 错误不可达——extractErrorMessage 返回 uploadDxfFile 提供的文案
+      expect(store.errorMessage).toBe('网络连接错误，请检查网络状态后重试')
     })
 
     it('解析失败时返回 false 并设置错误信息', async () => {

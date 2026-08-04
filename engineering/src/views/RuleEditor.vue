@@ -7,160 +7,20 @@
       </p>
     </div>
 
-    <el-row
-      :gutter="16"
-      class="stats-cards"
-    >
-      <el-col
-        :xs="12"
-        :sm="8"
-        :md="4"
-      >
-        <el-card
-          shadow="hover"
-          class="stat-card"
-        >
-          <div class="stat-value">
-            {{ ruleStore.stats?.total_rules || 0 }}
-          </div>
-          <div class="stat-label">
-            {{ $t('ruleEditor.totalRules') }}
-          </div>
-        </el-card>
-      </el-col>
-      <el-col
-        :xs="12"
-        :sm="8"
-        :md="4"
-      >
-        <el-card
-          shadow="hover"
-          class="stat-card active"
-        >
-          <div class="stat-value">
-            {{ ruleStore.stats?.active_rules || 0 }}
-          </div>
-          <div class="stat-label">
-            {{ $t('ruleEditor.activeRules') }}
-          </div>
-        </el-card>
-      </el-col>
-      <el-col
-        :xs="12"
-        :sm="8"
-        :md="4"
-      >
-        <el-card
-          shadow="hover"
-          class="stat-card draft"
-        >
-          <div class="stat-value">
-            {{ ruleStore.stats?.draft_rules || 0 }}
-          </div>
-          <div class="stat-label">
-            {{ $t('ruleEditor.draftRules') }}
-          </div>
-        </el-card>
-      </el-col>
-      <el-col
-        :xs="12"
-        :sm="8"
-        :md="4"
-      >
-        <el-card
-          shadow="hover"
-          class="stat-card groups"
-        >
-          <div class="stat-value">
-            {{ ruleStore.stats?.total_groups || 0 }}
-          </div>
-          <div class="stat-label">
-            {{ $t('ruleEditor.ruleGroups') }}
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+    <RuleEditorStats :stats="ruleStore.stats!" />
 
-    <el-card class="toolbar-card">
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <el-input
-            v-model="searchKeyword"
-            :placeholder="$t('ruleEditor.searchPlaceholder')"
-            prefix-icon="Search"
-            clearable
-            style="width: 280px"
-            @keyup.enter="handleSearch"
-            @clear="handleSearch"
-          />
-          <el-select
-            v-model="filterGroup"
-            :placeholder="$t('ruleEditor.filterByGroup')"
-            clearable
-            style="width: 180px; margin-left: 12px"
-            @change="handleSearch"
-          >
-            <el-option
-              v-for="g in ruleStore.groups"
-              :key="g.id"
-              :label="g.name"
-              :value="g.id"
-            />
-          </el-select>
-          <el-select
-            v-model="filterStatus"
-            :placeholder="$t('ruleEditor.filterByStatus')"
-            clearable
-            style="width: 140px; margin-left: 12px"
-            @change="handleSearch"
-          >
-            <el-option
-              :label="$t('ruleEditor.statusActive')"
-              value="active"
-            />
-            <el-option
-              :label="$t('ruleEditor.statusInactive')"
-              value="inactive"
-            />
-            <el-option
-              :label="$t('ruleEditor.statusDraft')"
-              value="draft"
-            />
-          </el-select>
-        </div>
-        <div class="toolbar-right">
-          <el-button
-            type="primary"
-            @click="ruleStore.openCreateDialog()"
-          >
-            <el-icon><Plus /></el-icon>
-            {{ $t('ruleEditor.newRule') }}
-          </el-button>
-          <el-button @click="ruleStore.openCreateGroupDialog()">
-            <el-icon><FolderAdd /></el-icon>
-            {{ $t('ruleEditor.newGroup') }}
-          </el-button>
-          <el-button @click="handleExport">
-            <el-icon><Download /></el-icon>
-            {{ $t('common.export') }}
-          </el-button>
-          <el-upload
-            :show-file-list="false"
-            :before-upload="handleImport"
-            accept=".json"
-          >
-            <el-button>
-              <el-icon><Upload /></el-icon>
-              {{ $t('common.import') }}
-            </el-button>
-          </el-upload>
-          <el-button @click="handleBackup">
-            <el-icon><CopyDocument /></el-icon>
-            {{ $t('common.backup') }}
-          </el-button>
-        </div>
-      </div>
-    </el-card>
+    <RuleEditorToolbar
+      v-model:search-keyword="searchKeyword"
+      v-model:filter-group="filterGroup"
+      v-model:filter-status="filterStatus"
+      :groups="ruleStore.groups"
+      @search="handleSearch"
+      @create-rule="ruleStore.openCreateDialog()"
+      @create-group="ruleStore.openCreateGroupDialog()"
+      @export="handleExport"
+      @import="handleImport"
+      @backup="handleBackup"
+    />
 
     <el-card class="table-card">
       <el-table
@@ -304,121 +164,19 @@
       @saved="ruleStore.refreshAll()"
     />
 
-    <el-dialog
-      v-model="detailDialogVisible"
-      :title="$t('ruleEditor.detailTitle')"
-      width="700px"
-    >
-      <div
-        v-if="currentDetailRule"
-        class="rule-detail"
-      >
-        <el-descriptions
-          :column="2"
-          border
-        >
-          <el-descriptions-item :label="$t('ruleEditor.ruleId')">
-            {{ currentDetailRule.id }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('ruleEditor.ruleName')">
-            {{ currentDetailRule.name }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('ruleEditor.status')">
-            <el-tag :type="getRuleStatusTagType(currentDetailRule.status)">
-              {{ getRuleStatusLabel(currentDetailRule.status) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('ruleEditor.priority')">
-            {{ currentDetailRule.priority }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('ruleEditor.group')">
-            {{ getGroupName(currentDetailRule.group_id) }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('ruleEditor.logicOperator')">
-            {{ currentDetailRule.logic_operator }}
-          </el-descriptions-item>
-        </el-descriptions>
-
-        <h4 class="section-title">
-          {{ $t('ruleEditor.conditions') }}
-        </h4>
-        <el-table
-          :data="currentDetailRule.conditions"
-          border
-          size="small"
-        >
-          <el-table-column
-            prop="parameter"
-            :label="$t('ruleEditor.parameter')"
-          />
-          <el-table-column
-            prop="operator"
-            :label="$t('ruleEditor.operator')"
-            width="100"
-          />
-          <el-table-column
-            prop="value"
-            :label="$t('ruleEditor.value')"
-          />
-          <el-table-column
-            prop="unit"
-            :label="$t('ruleEditor.unit')"
-            width="80"
-          />
-        </el-table>
-
-        <h4 class="section-title">
-          {{ $t('ruleEditor.result') }}
-        </h4>
-        <el-descriptions
-          :column="4"
-          border
-          size="small"
-        >
-          <el-descriptions-item :label="$t('ruleEditor.parameter')">
-            {{ currentDetailRule.result?.parameter }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('ruleEditor.operator')">
-            {{ currentDetailRule.result?.operator }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('ruleEditor.value')">
-            {{ currentDetailRule.result?.value }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="$t('ruleEditor.unit')">
-            {{ currentDetailRule.result?.unit || '-' }}
-          </el-descriptions-item>
-        </el-descriptions>
-
-        <h4 class="section-title">
-          {{ $t('ruleEditor.rulePreview') }}
-        </h4>
-        <el-alert
-          :title="currentDetailRule.preview_text"
-          type="info"
-          :closable="false"
-        />
-
-        <p
-          v-if="currentDetailRule.description"
-          class="description"
-        >
-          <strong>{{ $t('ruleEditor.description') }}：</strong>{{ currentDetailRule.description }}
-        </p>
-        <p class="time-info">
-          {{ $t('ruleEditor.timeInfo', { created: currentDetailRule.created_at, updated: currentDetailRule.updated_at }) }}
-        </p>
-      </div>
-    </el-dialog>
+    <RuleDetailDialog v-model:visible="detailDialogVisible" :rule="currentDetailRule" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Plus, FolderAdd, Download, Upload, CopyDocument } from '@element-plus/icons-vue'
 import { useRuleStore } from '@/stores/rules'
 import type { ProcessRule } from '@/types'
 import RuleEditDialog from '@/components/rule_editor/RuleEditDialog.vue'
 import GroupManagerDialog from '@/components/rule_editor/GroupManagerDialog.vue'
+import RuleEditorStats from '@/components/rule_editor/RuleEditorStats.vue'
+import RuleEditorToolbar from '@/components/rule_editor/RuleEditorToolbar.vue'
+import RuleDetailDialog from '@/components/rule_editor/RuleDetailDialog.vue'
 import { getRuleStatusTagType, getRuleStatusLabel } from '@/utils/statusHelpers'
 
 const ruleStore = useRuleStore()
@@ -525,73 +283,6 @@ function getGroupName(groupId?: number): string {
   font-size: 14px;
 }
 
-.stats-cards {
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  text-align: center;
-  padding: 8px 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  transition: all var(--transition-fast);
-}
-
-.stat-card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--accent-primary);
-}
-
-.stat-card.active .stat-value {
-  color: var(--success);
-}
-
-.stat-card.draft .stat-value {
-  color: var(--warning);
-}
-
-.stat-card.groups .stat-value {
-  color: var(--text-tertiary);
-}
-
-.stat-label {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-top: 4px;
-}
-
-.toolbar-card {
-  margin-bottom: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-}
-
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.toolbar-left {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .preview-text {
   font-size: 12px;
   color: var(--text-secondary);
@@ -606,32 +297,5 @@ function getGroupName(groupId?: number): string {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
-}
-
-.rule-detail {
-  padding: 12px 0;
-}
-
-.section-title {
-  margin: 20px 0 12px 0;
-  font-size: 16px;
-  color: var(--text-primary);
-  border-left: 3px solid var(--accent-primary);
-  padding-left: 8px;
-  font-weight: 600;
-}
-
-.description {
-  margin-top: 16px;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.time-info {
-  margin-top: 16px;
-  color: var(--text-tertiary);
-  font-size: 12px;
-  text-align: right;
 }
 </style>

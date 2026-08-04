@@ -142,7 +142,7 @@ describe('useProjectStore', () => {
     })
 
     it('后端返回非 0 code 时设置 error 并返回 false', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1, message: '工程名已存在' },
       })
       const store = useProjectStore()
@@ -153,7 +153,7 @@ describe('useProjectStore', () => {
     })
 
     it('后端未返回 message 时使用默认错误信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1 },
       })
       const store = useProjectStore()
@@ -163,7 +163,7 @@ describe('useProjectStore', () => {
     })
 
     it('网络异常时通过 extractErrorMessage 提取错误并返回 false', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
         response: { data: { message: '服务不可用' } },
       })
       const store = useProjectStore()
@@ -174,7 +174,8 @@ describe('useProjectStore', () => {
     })
 
     it('未知异常时使用默认错误信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue('unknown')
+      // 用 {}（无法提取任何信息）触发默认值；字符串异常会被 extractErrorMessage 原样返回
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue({})
       const store = useProjectStore()
       const result = await store.createProject({ name: 'x' } as never)
       expect(result).toBe(false)
@@ -241,7 +242,7 @@ describe('useProjectStore', () => {
     })
 
     it('后端返回非 0 code 时设置 error 并返回 false', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1, message: '文件不存在' },
       })
       const store = useProjectStore()
@@ -251,7 +252,7 @@ describe('useProjectStore', () => {
     })
 
     it('网络异常时提取错误信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('timeout'))
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('timeout'))
       const store = useProjectStore()
       const result = await store.openProject('/x.vrm')
       expect(result).toBe(false)
@@ -261,7 +262,7 @@ describe('useProjectStore', () => {
 
   describe('saveProject', () => {
     it('保存成功时更新 currentFilePath 并清除 isModified', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 0, data: { file_path: '/saved/project.vrm' } },
       })
       const store = useProjectStore()
@@ -274,7 +275,7 @@ describe('useProjectStore', () => {
     })
 
     it('保存时传入 outputName 参数', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 0, data: { file_path: '/saved/custom.vrm' } },
       })
       const store = useProjectStore()
@@ -286,7 +287,7 @@ describe('useProjectStore', () => {
     })
 
     it('后端返回非 0 code 时设置 error', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1, message: '磁盘空间不足' },
       })
       const store = useProjectStore()
@@ -296,7 +297,7 @@ describe('useProjectStore', () => {
     })
 
     it('网络异常时使用默认错误信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue({})
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue({})
       const store = useProjectStore()
       const result = await store.saveProject()
       expect(result).toBe(false)
@@ -306,7 +307,7 @@ describe('useProjectStore', () => {
 
   describe('saveAsProject', () => {
     it('另存为成功时更新文件路径和工程名', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 0, data: { file_path: '/new/as-save.vrm' } },
       })
       const store = useProjectStore()
@@ -318,7 +319,7 @@ describe('useProjectStore', () => {
     })
 
     it('后端返回非 0 code 时设置 error', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1, message: '权限不足' },
       })
       const store = useProjectStore()
@@ -328,7 +329,7 @@ describe('useProjectStore', () => {
     })
 
     it('网络异常时提取错误信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
         response: { data: { detail: '服务器错误' } },
       })
       const store = useProjectStore()
@@ -355,7 +356,7 @@ describe('useProjectStore', () => {
     })
 
     it('后端返回非 0 code 时不更新列表', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1 },
       })
       const store = useProjectStore()
@@ -366,7 +367,7 @@ describe('useProjectStore', () => {
     })
 
     it('网络异常时设置 error', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
+      (http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
       const store = useProjectStore()
       await store.fetchProjectList()
       expect(store.error).toBe('网络错误')
@@ -376,7 +377,7 @@ describe('useProjectStore', () => {
 
   describe('deleteProject', () => {
     it('删除成功时返回 true', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 0 },
       })
       const store = useProjectStore()
@@ -386,7 +387,7 @@ describe('useProjectStore', () => {
     })
 
     it('后端返回非 0 code 时返回 false', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1 },
       })
       const store = useProjectStore()
@@ -395,7 +396,7 @@ describe('useProjectStore', () => {
     })
 
     it('网络异常时返回 false', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
+      (http.delete as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useProjectStore()
       const result = await store.deleteProject('target')
       expect(result).toBe(false)

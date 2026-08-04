@@ -32,45 +32,47 @@ export async function listProviders(): Promise<LLMProvider[]> {
 }
 
 /** 注册表状态摘要 */
-export async function getRegistryStatus(): Promise<RegistryStatus> {
+export async function getRegistryStatus(): Promise<RegistryStatus | null> {
   const resp = await http.get(`${BASE}/status`)
-  return resp.data?.data ?? resp.data
+  return unwrapData<RegistryStatus | null>(resp.data, null)
 }
 
 /** 当前激活 Provider */
 export async function getActiveProvider(): Promise<LLMProvider | null> {
   const resp = await http.get(`${BASE}/active`)
-  return resp.data?.data ?? resp.data
+  return unwrapData<LLMProvider | null>(resp.data, null)
 }
 
 /** 支持的 Provider 类型列表 */
 export async function getProviderTypes(): Promise<ProviderTypeInfo[]> {
   const resp = await http.get(`${BASE}/types`)
-  return resp.data?.data ?? resp.data
+  return unwrapData<ProviderTypeInfo[]>(resp.data, [])
 }
 
 /** 能力标签列表 */
 export async function getCapabilities(): Promise<ProviderCapability[]> {
   const resp = await http.get(`${BASE}/capabilities`)
-  return resp.data?.data ?? resp.data
+  return unwrapData<ProviderCapability[]>(resp.data, [])
 }
 
 /** 获取指定 Provider */
 export async function getProvider(providerId: string): Promise<LLMProvider | null> {
   const resp = await http.get(`${BASE}/${encodeURIComponent(providerId)}`)
-  return resp.data?.data ?? resp.data
+  return unwrapData<LLMProvider | null>(resp.data, null)
 }
 
 /** 列出指定 Provider 的可用模型 */
 export async function listProviderModels(providerId: string): Promise<ModelInfo[]> {
   const resp = await http.get(`${BASE}/${encodeURIComponent(providerId)}/models`)
-  return resp.data?.data ?? resp.data ?? []
+  // 后端可能返回 { data: [] } / 直接数组 / 空对象——统一规整为数组
+  const models = unwrapData<ModelInfo[] | Record<string, unknown>>(resp.data, [])
+  return Array.isArray(models) ? models : []
 }
 
 /** 健康检查指定 Provider */
 export async function checkProviderHealth(providerId: string): Promise<HealthCheckResult> {
   const resp = await http.get(`${BASE}/${encodeURIComponent(providerId)}/health`)
-  return resp.data?.data ?? resp.data
+  return unwrapData<HealthCheckResult>(resp.data, {} as HealthCheckResult)
 }
 
 /** 自动探测预览（不写库） */
@@ -153,6 +155,22 @@ function normalizeList(raw: unknown): LLMProvider[] {
     if (Array.isArray(obj.providers)) return obj.providers as LLMProvider[]
   }
   return []
+}
+
+/**
+ * 统一解包后端响应：优先 { data: T } 包装，兼容旧形状（resp.data 直接是数据）。
+ * 与 `?? resp.data` 的区别：data 字段为 null 时（后端明确表示无数据）返回
+ * null/默认值，而不是误把整个 { data: null } 包装对象当数据返回。
+ */
+function unwrapData<T>(respData: unknown, fallback: T): T {
+  if (respData && typeof respData === 'object') {
+    const obj = respData as Record<string, unknown>
+    if ('data' in obj) {
+      const d = obj.data
+      return d === null || d === undefined ? fallback : (d as T)
+    }
+  }
+  return (respData ?? fallback) as T
 }
 
 /**

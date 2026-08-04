@@ -15,7 +15,7 @@ interface HttpAxiosLike {
 
 /** hoisted mock 集合类型（消除自引用导致的隐式 any）。 */
 interface HttpMocks extends HttpAxiosLike {
-  create: (...args: unknown[]) => HttpAxiosLike
+  create: ReturnType<typeof vi.fn>
   elMessage: {
     error: ReturnType<typeof vi.fn>
     success: ReturnType<typeof vi.fn>
@@ -60,7 +60,7 @@ const mocks = vi.hoisted<HttpMocks>(() => {
     // 错误处理器
     isNetworkError: vi.fn(() => false) as unknown as ReturnType<typeof vi.fn>,
     shouldShowConflictDialog: vi.fn(() => false) as unknown as ReturnType<typeof vi.fn>,
-  }
+  } as HttpMocks
 })
 
 vi.mock('axios', () => ({
@@ -84,6 +84,15 @@ vi.mock('@/utils/error-handler', () => ({
 
 // 导入被测模块（在所有 mock 注册之后）
 import http, { createCancelToken, setHttpReady } from '@/utils/http'
+
+// 模块加载时捕获 axios.create 与拦截器注册的调用记录（http.ts 在 import 时
+// 即创建实例；beforeEach 的 clearAllMocks 会清掉这些记录，需提前快照）
+const createCallsAtLoad = mocks.create.mock.calls.length
+const createConfigAtLoad = mocks.create.mock.calls[0]?.[0] as
+  | { timeout?: number; headers?: Record<string, unknown> }
+  | undefined
+const requestInterceptorCallsAtLoad = mocks.interceptors.request.use.mock.calls.length
+const responseInterceptorCallsAtLoad = mocks.interceptors.response.use.mock.calls.length
 
 describe('http', () => {
   beforeEach(() => {
@@ -117,17 +126,15 @@ describe('http', () => {
 
   describe('axios 实例创建', () => {
     it('调用 axios.create 创建实例', () => {
-      expect(mocks.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          timeout: 30000,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
+      // 模块加载时已调用（快照在 clearAllMocks 前捕获）
+      expect(createCallsAtLoad).toBeGreaterThan(0)
+      expect(createConfigAtLoad?.timeout).toBe(30000)
+      expect(createConfigAtLoad?.headers?.['Content-Type']).toBe('application/json')
     })
 
     it('注册请求与响应拦截器', () => {
-      expect(mocks.interceptors.request.use).toHaveBeenCalled()
-      expect(mocks.interceptors.response.use).toHaveBeenCalled()
+      expect(requestInterceptorCallsAtLoad).toBeGreaterThan(0)
+      expect(responseInterceptorCallsAtLoad).toBeGreaterThan(0)
     })
 
     it('导出默认 http 实例包含常用方法', () => {

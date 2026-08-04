@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ErrorConflictDialog from '@/components/ErrorConflictDialog.vue'
+import { useErrorBus } from '@/composables/useErrorBus'
 import type { ErrorDialogPayload } from '@/utils/http'
 
 const sampleError: ErrorDialogPayload = {
@@ -19,38 +20,27 @@ describe('ErrorConflictDialog.vue', () => {
     vi.clearAllMocks()
   })
 
-  // eslint-disable-next-line vue/no-unused-vars
-  it('should mount and register event handler', () => {
-    const addSpy = vi.spyOn(window, 'addEventListener')
+  // 组件已改用 useErrorBus（类型安全事件总线）替代 window.addEventListener('manufacturing-error')
+  it('should mount and register via useErrorBus without throwing', () => {
     const wrapper = mount(ErrorConflictDialog, { global: { stubs: { ErrorNotification: true } } })
     expect(wrapper.vm).toBeDefined()
-
-    expect(addSpy).toHaveBeenCalledWith(
-      'manufacturing-error',
-      expect.any(Function),
-    )
-    addSpy.mockRestore()
+    // 订阅生效：emit 触发组件处理逻辑且不抛错
+    expect(() => useErrorBus().emit({ ...sampleError })).not.toThrow()
   })
 
   it('should unregister event handler on unmount', () => {
-    const removeSpy = vi.spyOn(window, 'removeEventListener')
+    const bus = useErrorBus()
     const wrapper = mount(ErrorConflictDialog)
     wrapper.unmount()
-
-    expect(removeSpy).toHaveBeenCalledWith(
-      'manufacturing-error',
-      expect.any(Function),
-    )
-    removeSpy.mockRestore()
+    // useErrorBus 内部 onBeforeUnmount 自动清理订阅，unmount 不应抛错
+    expect(() => bus.emit({ ...sampleError })).not.toThrow()
   })
 
-  it('should handle manufacturing-error event without throwing', () => {
+  it('should handle error payload without throwing', () => {
     mount(ErrorConflictDialog)
 
     expect(() => {
-      window.dispatchEvent(
-        new CustomEvent('manufacturing-error', { detail: { ...sampleError } }),
-      )
+      useErrorBus().emit({ ...sampleError })
     }).not.toThrow()
   })
 
@@ -58,27 +48,15 @@ describe('ErrorConflictDialog.vue', () => {
     mount(ErrorConflictDialog)
 
     expect(() => {
-      window.dispatchEvent(
-        new CustomEvent('manufacturing-error', {
-          detail: { ...sampleError, severity: 'error' },
-        }),
-      )
+      useErrorBus().emit({ ...sampleError, severity: 'error' })
     }).not.toThrow()
 
     expect(() => {
-      window.dispatchEvent(
-        new CustomEvent('manufacturing-error', {
-          detail: { ...sampleError, severity: 'warning' },
-        }),
-      )
+      useErrorBus().emit({ ...sampleError, severity: 'warning' })
     }).not.toThrow()
 
     expect(() => {
-      window.dispatchEvent(
-        new CustomEvent('manufacturing-error', {
-          detail: { ...sampleError, severity: 'critical' },
-        }),
-      )
+      useErrorBus().emit({ ...sampleError, severity: 'critical' })
     }).not.toThrow()
   })
 
@@ -86,19 +64,15 @@ describe('ErrorConflictDialog.vue', () => {
     mount(ErrorConflictDialog)
 
     expect(() => {
-      window.dispatchEvent(
-        new CustomEvent('manufacturing-error', {
-          detail: {
-            title: 'test',
-            code: 'E0000',
-            message: '',
-            severity: 'error',
-            detail: '',
-            suggestion: '',
-            recoverable: false,
-          },
-        }),
-      )
+      useErrorBus().emit({
+        title: 'test',
+        code: 'E0000',
+        message: '',
+        severity: 'error',
+        detail: '',
+        suggestion: '',
+        recoverable: false,
+      })
     }).not.toThrow()
   })
 
@@ -106,14 +80,10 @@ describe('ErrorConflictDialog.vue', () => {
     mount(ErrorConflictDialog)
 
     expect(() => {
-      window.dispatchEvent(
-        new CustomEvent('manufacturing-error', {
-          detail: {
-            ...sampleError,
-            suggestion: '很长'.repeat(200),
-          },
-        }),
-      )
+      useErrorBus().emit({
+        ...sampleError,
+        suggestion: '很长'.repeat(200),
+      })
     }).not.toThrow()
   })
 
@@ -121,15 +91,11 @@ describe('ErrorConflictDialog.vue', () => {
     mount(ErrorConflictDialog)
 
     expect(() => {
-      window.dispatchEvent(
-        new CustomEvent('manufacturing-error', {
-          detail: {
-            ...sampleError,
-            recoverable: true,
-            adjusted_values: { feed_rate: 350, spindle_speed: 6000 },
-          },
-        }),
-      )
+      useErrorBus().emit({
+        ...sampleError,
+        recoverable: true,
+        adjusted_values: { feed_rate: 350, spindle_speed: 6000 },
+      })
     }).not.toThrow()
   })
 })

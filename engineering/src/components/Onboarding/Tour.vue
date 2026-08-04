@@ -86,7 +86,6 @@
               >
                 {{ t('onboardingTour.finish') }}
               </el-button>
-
             </div>
           </div>
         </Transition>

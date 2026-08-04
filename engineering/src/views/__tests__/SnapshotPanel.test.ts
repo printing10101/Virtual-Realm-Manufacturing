@@ -1,17 +1,17 @@
 /**
  * SnapshotPanel.vue 组件测试
  *
- * 覆盖范围：
- *   1. 组件挂载与基础渲染（页面标题、双栏布局、列表/详情面板、筛选区、分页）
- *   2. 快照列表交互（空列表 el-empty、卡片渲染、点击选中、active 高亮、刷新、重置筛选、筛选 change）
- *   3. 详情面板（空状态、详情内容、操作按钮可见性、关闭详情）
- *   4. 创建对话框（打开、取消、表单校验、提交成功/失败）
- *   5. 复现交互（确认/取消、成功、不支持复现 warning、其他错误 error）
+ * 覆盖范围（行为级——组件已子组件化，列表/详情/创建对话框 UI 移入
+ * SnapshotListPanel / SnapshotDetailPanel / SnapshotCreateDialog）：
+ *   1. 组件挂载与初始化（挂载即 loadSnapshots）
+ *   2. 面板行为（刷新/筛选变更/重置筛选/分页变更/选择快照/关闭详情）
+ *   3. 创建快照（提交成功/失败）
+ *   4. 复现交互（确认/取消/成功/不支持 warning/其他错误/无选中）
  *
  * 对应 ADR-005 阶段 2 验收标准（前端"实验快照"视图 + "一键复现"按钮）。
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { shallowMount, flushPromises, VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import type { ExperimentSnapshot } from '@/contracts/observability'
@@ -45,69 +45,20 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Mock: element-plus（ElMessage / ElMessageBox + 组件存根）
+// Mock: element-plus（ElMessage / ElMessageBox）
 // ---------------------------------------------------------------------------
-const mockElMessage = {
+const mockElMessage = vi.hoisted(() => ({
   success: vi.fn(),
   warning: vi.fn(),
   error: vi.fn(),
   info: vi.fn(),
-}
-const mockElMessageBox = {
+}))
+const mockElMessageBox = vi.hoisted(() => ({
   confirm: vi.fn(() => Promise.resolve('confirm')),
-}
+}))
 vi.mock('element-plus', () => ({
   ElMessage: mockElMessage,
   ElMessageBox: mockElMessageBox,
-  // shallowMount 存根：保留 v-model / slot / 关键事件转发
-  ElDialog: {
-    template:
-      '<div class="el-dialog" v-if="modelValue"><slot /><slot name="footer" /></div>',
-    props: ['modelValue', 'title', 'width'],
-    emits: ['update:modelValue'],
-  },
-  ElForm: {
-    template: '<form class="el-form"><slot /></form>',
-    props: ['model', 'labelWidth', 'labelPosition'],
-  },
-  ElFormItem: {
-    template: '<div class="el-form-item"><slot /></div>',
-    props: ['label'],
-  },
-  ElInput: {
-    template:
-      '<input class="el-input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @change="$emit(\'change\', $event.target.value)" />',
-    props: ['modelValue', 'type', 'rows', 'placeholder', 'size', 'clearable'],
-    emits: ['update:modelValue', 'change'],
-  },
-  ElButton: {
-    template:
-      '<button class="el-button" :class="{ \'el-button--primary\': type === \'primary\', \'el-button--danger\': type === \'danger\', \'el-button--warning\': type === \'warning\' }" @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
-    props: ['type', 'size', 'loading', 'icon', 'link'],
-    emits: ['click'],
-  },
-  ElTag: {
-    template: '<span class="el-tag"><slot /></span>',
-    props: ['type', 'size', 'effect'],
-  },
-  ElEmpty: {
-    template: '<div class="el-empty"><slot /></div>',
-    props: ['description', 'imageSize'],
-  },
-  ElPagination: {
-    template: '<div class="el-pagination" />',
-    props: ['currentPage', 'pageSize', 'total', 'layout', 'small'],
-    emits: ['update:currentPage', 'current-change'],
-  },
-  ElDescriptions: {
-    template: '<div class="el-descriptions"><slot /></div>',
-    props: ['column', 'border'],
-  },
-  ElDescriptionsItem: {
-    template:
-      '<div class="el-descriptions-item"><span class="el-descriptions-item__label">{{ label }}</span><span class="el-descriptions-item__content"><slot /></span></div>',
-    props: ['label'],
-  },
 }))
 
 // ---------------------------------------------------------------------------
@@ -203,7 +154,7 @@ describe('SnapshotPanel.vue', () => {
     vi.restoreAllMocks()
   })
 
-  const mountPanel = (options = {}) => {
+  const mountPanel = (options = {}): VueWrapper<any> => {
     return shallowMount(SnapshotPanel, {
       global: {
         plugins: [pinia, router],
@@ -213,9 +164,9 @@ describe('SnapshotPanel.vue', () => {
   }
 
   // =========================================================================
-  // 1. 组件挂载与基础渲染
+  // 1. 组件挂载与初始化
   // =========================================================================
-  describe('基础渲染', () => {
+  describe('组件挂载', () => {
     it('组件能正确挂载', async () => {
       const wrapper = mountPanel()
       await flushPromises()
@@ -223,493 +174,158 @@ describe('SnapshotPanel.vue', () => {
       expect(wrapper.find('.snapshot-panel-page').exists()).toBe(true)
     })
 
-    it('渲染页面标题与副标题', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      expect(wrapper.find('.page-header__title h1').text()).toBe(
-        'snapshotPanel.pageTitle',
-      )
-      expect(wrapper.find('.page-header__subtitle').text()).toBe(
-        'snapshotPanel.pageSubtitle',
-      )
-    })
-
-    it('渲染顶部操作按钮（刷新、创建）', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      const actions = wrapper.find('.page-header__actions')
-      expect(actions.exists()).toBe(true)
-      const buttons = actions.findAll('button')
-      expect(buttons.length).toBe(2)
-    })
-
     it('挂载时调用 loadSnapshots', async () => {
       mountPanel()
       await flushPromises()
       expect(mockUseSnapshots.loadSnapshots).toHaveBeenCalled()
     })
-
-    it('渲染主布局（列表 + 详情）', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      expect(wrapper.find('.snapshot-main').exists()).toBe(true)
-      expect(wrapper.find('.snapshot-list-panel').exists()).toBe(true)
-      expect(wrapper.find('.snapshot-detail-panel').exists()).toBe(true)
-    })
-
-    it('渲染筛选区（3 个 el-input）', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      const filters = wrapper.find('.panel-filters')
-      expect(filters.exists()).toBe(true)
-      expect(filters.findAll('.el-input').length).toBe(3)
-    })
-
-    it('渲染分页组件', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      expect(wrapper.find('.panel-pagination .el-pagination').exists()).toBe(
-        true,
-      )
-    })
   })
 
   // =========================================================================
-  // 2. 快照列表
+  // 2. 面板行为
   // =========================================================================
-  describe('快照列表', () => {
-    it('列表为空时渲染 el-empty', async () => {
+  describe('面板行为', () => {
+    it('点击刷新调用 loadSnapshots', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
-      expect(wrapper.find('.snapshot-list-body .el-empty').exists()).toBe(true)
-    })
-
-    it('列表有数据时渲染 snapshot-card', async () => {
-      mockUseSnapshots.snapshots.value = [
-        makeSnapshot({ snapshot_id: 'snap-001' }),
-        makeSnapshot({ snapshot_id: 'snap-002' }),
-      ]
-      const wrapper = mountPanel()
-      await flushPromises()
-      const cards = wrapper.findAll('.snapshot-card')
-      expect(cards.length).toBe(2)
-      expect(cards[0].find('.snapshot-id').text()).toBe('snap-001')
-    })
-
-    it('点击 snapshot-card 触发 selectSnapshot', async () => {
-      mockUseSnapshots.snapshots.value = [
-        makeSnapshot({ snapshot_id: 'snap-001abcdefgh' }),
-      ]
-      const wrapper = mountPanel()
-      await flushPromises()
-      await wrapper.find('.snapshot-card').trigger('click')
-      await flushPromises()
-      expect(mockUseSnapshots.selectSnapshot).toHaveBeenCalledWith(
-        'snap-001abcdefgh',
-      )
-    })
-
-    it('当前选中的 snapshot-card 带 active 类', async () => {
-      mockUseSnapshots.snapshots.value = [
-        makeSnapshot({ snapshot_id: 'snap-001' }),
-        makeSnapshot({ snapshot_id: 'snap-002' }),
-      ]
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot({
-        snapshot_id: 'snap-002',
-      })
-      const wrapper = mountPanel()
-      await flushPromises()
-      const cards = wrapper.findAll('.snapshot-card')
-      expect(cards[0].classes()).not.toContain('active')
-      expect(cards[1].classes()).toContain('active')
-    })
-
-    it('点击刷新按钮调用 loadSnapshots', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      mockUseSnapshots.loadSnapshots.mockClear()
-      const buttons = wrapper.findAll('.page-header__actions button')
-      const refreshBtn = buttons[0]
-      await refreshBtn.trigger('click')
-      await flushPromises()
+      await wrapper.vm.handleRefresh()
       expect(mockUseSnapshots.loadSnapshots).toHaveBeenCalled()
     })
 
-    it('点击重置筛选调用 resetFilters', async () => {
+    it('筛选变更回到第 1 页并调用 loadSnapshots', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
-      const resetBtn = wrapper.find('.panel-header button')
-      expect(resetBtn.exists()).toBe(true)
-      await resetBtn.trigger('click')
-      await flushPromises()
-      expect(mockUseSnapshots.resetFilters).toHaveBeenCalled()
-    })
-
-    it('筛选 input change 触发 loadSnapshots 并回到第 1 页', async () => {
       mockUseSnapshots.currentPage.value = 3
-      const wrapper = mountPanel()
-      await flushPromises()
-      mockUseSnapshots.loadSnapshots.mockClear()
-      const inputs = wrapper.findAll('.panel-filters .el-input')
-      await inputs[0].trigger('change')
-      await flushPromises()
+      await wrapper.vm.handleFilterChange()
       expect(mockUseSnapshots.currentPage.value).toBe(1)
       expect(mockUseSnapshots.loadSnapshots).toHaveBeenCalled()
     })
 
-    it('渲染 code_dirty 标签（clean/dirty）', async () => {
-      mockUseSnapshots.snapshots.value = [
-        makeSnapshot({ snapshot_id: 'snap-001', code_dirty: false }),
-        makeSnapshot({ snapshot_id: 'snap-002', code_dirty: true }),
-      ]
+    it('重置筛选调用 resetFilters', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
-      const tags = wrapper.findAll('.snapshot-card .el-tag')
-      expect(tags.length).toBe(2)
-      // clean → snapshotPanel.dirtyClean, dirty → snapshotPanel.dirtyDirty
-      expect(tags[0].text()).toBe('snapshotPanel.dirtyClean')
-      expect(tags[1].text()).toBe('snapshotPanel.dirtyDirty')
-    })
-  })
-
-  // =========================================================================
-  // 3. 详情面板
-  // =========================================================================
-  describe('详情面板', () => {
-    it('未选中快照时渲染 el-empty', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      const detailBody = wrapper.find('.snapshot-detail-body')
-      expect(detailBody.exists()).toBe(true)
-      expect(detailBody.find('.el-empty').exists()).toBe(true)
+      await wrapper.vm.handleResetFilters()
+      expect(mockUseSnapshots.resetFilters).toHaveBeenCalled()
     })
 
-    it('未选中快照时不渲染操作按钮', async () => {
+    it('分页变更调用 loadSnapshots', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
-      expect(wrapper.find('.panel-header-actions').exists()).toBe(false)
+      await wrapper.vm.handlePageChange()
+      expect(mockUseSnapshots.loadSnapshots).toHaveBeenCalled()
     })
 
-    it('选中快照时渲染详情内容', async () => {
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot({
-        snapshot_id: 'snap-001-abcdefgh',
-        notes: 'baseline',
-      })
+    it('选择快照调用 selectSnapshot', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
-      expect(wrapper.find('.snapshot-detail-content').exists()).toBe(true)
-      // 渲染 el-descriptions
-      expect(wrapper.find('.el-descriptions').exists()).toBe(true)
-      // 渲染 config 块
-      expect(wrapper.find('.config-section').exists()).toBe(true)
+      await wrapper.vm.handleSelectSnapshot('snap-001-abcdefgh')
+      expect(mockUseSnapshots.selectSnapshot).toHaveBeenCalledWith(
+        'snap-001-abcdefgh',
+      )
     })
 
-    it('选中快照时渲染操作按钮（复现/关闭）', async () => {
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot()
+    it('关闭详情调用 clearCurrent', () => {
       const wrapper = mountPanel()
-      await flushPromises()
-      const actions = wrapper.find('.panel-header-actions')
-      expect(actions.exists()).toBe(true)
-      expect(actions.findAll('button').length).toBe(2)
-    })
-
-    it('点击关闭按钮调用 clearCurrent', async () => {
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot()
-      const wrapper = mountPanel()
-      await flushPromises()
-      const actions = wrapper.find('.panel-header-actions')
-      const buttons = actions.findAll('button')
-      // 关闭按钮是第 2 个（第 1 个是复现）
-      await buttons[1].trigger('click')
+      wrapper.vm.handleCloseDetail()
       expect(mockUseSnapshots.clearCurrent).toHaveBeenCalled()
     })
-
-    it('渲染 dataset_versions 列表', async () => {
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot({
-        dataset_versions: ['dataset://phm2010/v1', 'dataset://industrial/v2'],
-      })
-      const wrapper = mountPanel()
-      await flushPromises()
-      const uriItems = wrapper.findAll('.uri-item')
-      expect(uriItems.length).toBe(2)
-      expect(uriItems[0].text()).toBe('dataset://phm2010/v1')
-    })
-
-    it('lineage_record_id 存在时渲染对应 descriptions-item', async () => {
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot({
-        lineage_record_id: 'lin-001',
-      })
-      const wrapper = mountPanel()
-      await flushPromises()
-      // descriptions-item 包含 lineage record label
-      const items = wrapper.findAll('.el-descriptions-item')
-      items.find(i =>
-        i.find('.el-descriptions-item__label').text().includes('LineageRecord'),
-      )
-      // 至少不抛错；具体渲染依赖 mock label
-      expect(items.length).toBeGreaterThan(0)
-    })
   })
 
   // =========================================================================
-  // 4. 创建对话框
+  // 3. 创建快照
   // =========================================================================
-  describe('创建对话框', () => {
-    it('点击创建按钮打开对话框', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      expect(wrapper.find('.el-dialog').exists()).toBe(false)
-      const buttons = wrapper.findAll('.page-header__actions button')
-      // 第 2 个按钮是创建
-      await buttons[1].trigger('click')
-      await flushPromises()
-      expect(wrapper.find('.el-dialog').exists()).toBe(true)
-    })
-
-    it('打开对话框时清空表单（metricsStr 默认 {}）', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      const buttons = wrapper.findAll('.page-header__actions button')
-      await buttons[1].trigger('click')
-      await flushPromises()
-      // 对话框中的输入框数量（6 个 form-item）
-      const inputs = wrapper.findAll('.el-dialog .el-input')
-      expect(inputs.length).toBeGreaterThanOrEqual(2) // 至少 modelUri + createdBy
-    })
-
-    it('校验 config 为空时提示 warning 且不提交', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      const buttons = wrapper.findAll('.page-header__actions button')
-      await buttons[1].trigger('click')
-      await flushPromises()
-
-      // 找到 footer 中的确认按钮（最后一个 button）
-      const dialogButtons = wrapper.findAll('.el-dialog button')
-      const confirmBtn = dialogButtons[dialogButtons.length - 1]
-      await confirmBtn.trigger('click')
-      await flushPromises()
-
-      expect(mockElMessage.warning).toHaveBeenCalledWith(
-        'snapshotPanel.msgConfigEmpty',
-      )
-      expect(mockUseSnapshots.submitSnapshot).not.toHaveBeenCalled()
-    })
-
-    it('校验 config 非法 JSON 时提示 warning', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      const buttons = wrapper.findAll('.page-header__actions button')
-      await buttons[1].trigger('click')
-      await flushPromises()
-
-      // 模拟输入 config 非法 JSON：触发 el-input 的 update:modelValue
-      const inputs = wrapper.findAll('.el-dialog .el-input')
-      // 第 1 个 input 是 config（textarea）
-      await inputs[0].setValue('{ invalid json')
-      // trigger change 让 v-model 生效
-      await inputs[0].trigger('input')
-
-      const dialogButtons = wrapper.findAll('.el-dialog button')
-      const confirmBtn = dialogButtons[dialogButtons.length - 1]
-      await confirmBtn.trigger('click')
-      await flushPromises()
-
-      expect(mockElMessage.warning).toHaveBeenCalledWith(
-        'snapshotPanel.msgConfigInvalid',
-      )
-      expect(mockUseSnapshots.submitSnapshot).not.toHaveBeenCalled()
-    })
-
-    it('校验 metrics 非法 JSON 时提示 warning', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      const buttons = wrapper.findAll('.page-header__actions button')
-      await buttons[1].trigger('click')
-      await flushPromises()
-
-      const inputs = wrapper.findAll('.el-dialog .el-input')
-      // config 合法 + metrics 非法
-      await inputs[0].setValue('{"lr": 0.001}')
-      // metrics 是第 4 个 input
-      await inputs[3].setValue('{ invalid')
-      await inputs[3].trigger('input')
-
-      const dialogButtons = wrapper.findAll('.el-dialog button')
-      const confirmBtn = dialogButtons[dialogButtons.length - 1]
-      await confirmBtn.trigger('click')
-      await flushPromises()
-
-      expect(mockElMessage.warning).toHaveBeenCalledWith(
-        'snapshotPanel.msgMetricsInvalid',
-      )
-      expect(mockUseSnapshots.submitSnapshot).not.toHaveBeenCalled()
-    })
-
-    it('校验 dataset_versions 为空时提示 warning', async () => {
-      const wrapper = mountPanel()
-      await flushPromises()
-      const buttons = wrapper.findAll('.page-header__actions button')
-      await buttons[1].trigger('click')
-      await flushPromises()
-
-      const inputs = wrapper.findAll('.el-dialog .el-input')
-      // config 合法 + metrics 合法（默认 {}）+ dataset_versions 空
-      await inputs[0].setValue('{"lr": 0.001}')
-
-      const dialogButtons = wrapper.findAll('.el-dialog button')
-      const confirmBtn = dialogButtons[dialogButtons.length - 1]
-      await confirmBtn.trigger('click')
-      await flushPromises()
-
-      expect(mockElMessage.warning).toHaveBeenCalledWith(
-        'snapshotPanel.msgDatasetVersionsEmpty',
-      )
-      expect(mockUseSnapshots.submitSnapshot).not.toHaveBeenCalled()
-    })
-
+  describe('创建快照', () => {
     it('提交成功 → ElMessage.success + 关闭对话框 + selectSnapshot', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
-      const buttons = wrapper.findAll('.page-header__actions button')
-      await buttons[1].trigger('click')
-      await flushPromises()
-
-      const inputs = wrapper.findAll('.el-dialog .el-input')
-      await inputs[0].setValue('{"lr": 0.001}')
-      // dataset_versions 是第 2 个 input（textarea）
-      await inputs[1].setValue('dataset://phm2010/v1')
-
       mockUseSnapshots.submitSnapshot.mockResolvedValueOnce('snap_new_001')
-      mockUseSnapshots.selectSnapshot.mockClear()
-
-      const dialogButtons = wrapper.findAll('.el-dialog button')
-      const confirmBtn = dialogButtons[dialogButtons.length - 1]
-      await confirmBtn.trigger('click')
-      await flushPromises()
-
-      expect(mockUseSnapshots.submitSnapshot).toHaveBeenCalled()
+      await wrapper.vm.handleCreateConfirm({
+        config: { lr: 0.001 },
+        dataset_versions: ['dataset://phm2010/v1'],
+      })
+      expect(mockUseSnapshots.submitSnapshot).toHaveBeenCalledWith({
+        config: { lr: 0.001 },
+        dataset_versions: ['dataset://phm2010/v1'],
+      })
       expect(mockElMessage.success).toHaveBeenCalledWith(
         'snapshotPanel.msgCreateSuccess',
       )
       expect(mockUseSnapshots.selectSnapshot).toHaveBeenCalledWith(
         'snap_new_001',
       )
-      // 对话框关闭
-      expect(wrapper.find('.el-dialog').exists()).toBe(false)
+      expect(wrapper.vm.createDialogVisible).toBe(false)
     })
 
-    it('提交失败 → ElMessage.error', async () => {
+    it('提交失败 → ElMessage.error 并显示错误信息', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
-      const buttons = wrapper.findAll('.page-header__actions button')
-      await buttons[1].trigger('click')
-      await flushPromises()
-
-      const inputs = wrapper.findAll('.el-dialog .el-input')
-      await inputs[0].setValue('{"lr": 0.001}')
-      await inputs[1].setValue('dataset://phm2010/v1')
-
-      const err = new Error('网络错误')
-      Object.assign(err, {
-        response: { data: { message: '服务器内部错误' } },
+      const apiErr = new Error('创建失败') as Error & { response?: unknown }
+      apiErr.response = { data: { message: '存储空间不足' } }
+      mockUseSnapshots.submitSnapshot.mockRejectedValueOnce(apiErr)
+      await wrapper.vm.handleCreateConfirm({
+        config: {},
+        dataset_versions: [],
       })
-      mockUseSnapshots.submitSnapshot.mockRejectedValueOnce(err)
+      expect(mockElMessage.error).toHaveBeenCalledWith('存储空间不足')
+    })
 
-      const dialogButtons = wrapper.findAll('.el-dialog button')
-      const confirmBtn = dialogButtons[dialogButtons.length - 1]
-      await confirmBtn.trigger('click')
-      await flushPromises()
-
-      expect(mockElMessage.error).toHaveBeenCalledWith('服务器内部错误')
-      // 对话框保持打开
-      expect(wrapper.find('.el-dialog').exists()).toBe(true)
+    it('提交失败（无 response 信息）→ 显示原始错误', async () => {
+      const wrapper = mountPanel()
+      mockUseSnapshots.submitSnapshot.mockRejectedValueOnce(
+        new Error('boom'),
+      )
+      await wrapper.vm.handleCreateConfirm({ config: {}, dataset_versions: [] })
+      expect(mockElMessage.error).toHaveBeenCalledWith('Error: boom')
     })
   })
 
   // =========================================================================
-  // 5. 复现交互
+  // 4. 复现交互
   // =========================================================================
   describe('复现交互', () => {
-    it('点击复现 → ElMessageBox.confirm 确认 → reproduce → ElMessage.success', async () => {
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot({
-        snapshot_id: 'snap-001',
-      })
+    it('点击复现 → confirm 确认 → reproduce → ElMessage.success', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
-
-      const actions = wrapper.find('.panel-header-actions')
-      const reproduceBtn = actions.findAll('button')[0]
-      await reproduceBtn.trigger('click')
-      await flushPromises()
-
+      mockUseSnapshots.currentSnapshot.value = makeSnapshot()
+      mockElMessageBox.confirm.mockResolvedValueOnce('confirm')
+      await wrapper.vm.handleReproduce()
       expect(mockElMessageBox.confirm).toHaveBeenCalled()
-      expect(mockUseSnapshots.reproduce).toHaveBeenCalledWith('snap-001')
-      expect(mockElMessage.success).toHaveBeenCalledWith(
-        'snapshotPanel.msgReproduceSuccess',
+      expect(mockUseSnapshots.reproduce).toHaveBeenCalledWith(
+        'snap-001-abcdefgh',
       )
+      expect(mockElMessage.success).toHaveBeenCalled()
     })
 
     it('用户取消确认时不调用 reproduce', async () => {
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot()
-      mockElMessageBox.confirm.mockRejectedValueOnce(new Error('cancel'))
       const wrapper = mountPanel()
-      await flushPromises()
-
-      const actions = wrapper.find('.panel-header-actions')
-      const reproduceBtn = actions.findAll('button')[0]
-      await reproduceBtn.trigger('click')
-      await flushPromises()
-
+      mockUseSnapshots.currentSnapshot.value = makeSnapshot()
+      mockElMessageBox.confirm.mockRejectedValueOnce('cancel')
+      await wrapper.vm.handleReproduce()
       expect(mockUseSnapshots.reproduce).not.toHaveBeenCalled()
     })
 
-    it('reproduce 失败（不支持复现） → ElMessage.warning', async () => {
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot()
-      const err = new Error('invalid')
-      Object.assign(err, {
-        response: { data: { message: '该快照不支持一键复现' } },
-      })
-      mockUseSnapshots.reproduce.mockRejectedValueOnce(err)
+    it('currentSnapshot 为 null 时复现按钮不触发任何调用', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
+      mockUseSnapshots.currentSnapshot.value = null
+      await wrapper.vm.handleReproduce()
+      expect(mockElMessageBox.confirm).not.toHaveBeenCalled()
+      expect(mockUseSnapshots.reproduce).not.toHaveBeenCalled()
+    })
 
-      const actions = wrapper.find('.panel-header-actions')
-      const reproduceBtn = actions.findAll('button')[0]
-      await reproduceBtn.trigger('click')
-      await flushPromises()
-
+    it('reproduce 失败（不支持复现）→ ElMessage.warning', async () => {
+      const wrapper = mountPanel()
+      mockUseSnapshots.currentSnapshot.value = makeSnapshot()
+      mockUseSnapshots.reproduce.mockRejectedValueOnce(
+        new Error('该快照不支持一键复现'),
+      )
+      await wrapper.vm.handleReproduce()
       expect(mockElMessage.warning).toHaveBeenCalledWith(
         'snapshotPanel.msgReproduceNotSupported',
       )
     })
 
-    it('reproduce 失败（其他错误） → ElMessage.error', async () => {
-      mockUseSnapshots.currentSnapshot.value = makeSnapshot()
-      const err = new Error('server error')
-      Object.assign(err, {
-        response: { data: { message: '工作流执行失败' } },
-      })
-      mockUseSnapshots.reproduce.mockRejectedValueOnce(err)
+    it('reproduce 失败（其他错误）→ ElMessage.error', async () => {
       const wrapper = mountPanel()
-      await flushPromises()
-
-      const actions = wrapper.find('.panel-header-actions')
-      const reproduceBtn = actions.findAll('button')[0]
-      await reproduceBtn.trigger('click')
-      await flushPromises()
-
+      mockUseSnapshots.currentSnapshot.value = makeSnapshot()
+      mockUseSnapshots.reproduce.mockRejectedValueOnce(
+        new Error('workflow 服务不可用'),
+      )
+      await wrapper.vm.handleReproduce()
       expect(mockElMessage.error).toHaveBeenCalledWith(
         'snapshotPanel.msgReproduceFailed',
       )
-    })
-
-    it('currentSnapshot 为 null 时复现按钮不触发任何调用', async () => {
-      // 由于按钮本身在 currentSnapshot 为 null 时不存在，此用例验证守卫逻辑
-      const wrapper = mountPanel()
-      await flushPromises()
-      expect(wrapper.find('.panel-header-actions').exists()).toBe(false)
-      expect(mockUseSnapshots.reproduce).not.toHaveBeenCalled()
     })
   })
 })

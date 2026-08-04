@@ -12,10 +12,19 @@
  * 对应 ADR-005 阶段 1 验收标准（前端 DAG 可视化 + SSE 实时状态更新）。
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import type { WorkflowSpec, TaskStatus } from '@/contracts/task'
+
+// ---------------------------------------------------------------------------
+// Helper: 创建带 __v_isRef 标记的伪 ref 对象（使模板 _unref 能正确解包）
+// 由于 vi.mock 工厂不能引用 import，使用 vi.hoisted 创建 plain object
+// 但需要 __v_isRef 标记让 Vue 模板编译器解包 .value
+// ---------------------------------------------------------------------------
+function pseudoRef<T>(val: T): { value: T; __v_isRef: true; __v_isShallow: false } {
+  return { value: val, __v_isRef: true, __v_isShallow: false }
+}
 
 // ---------------------------------------------------------------------------
 // Mock: vue-i18n（useI18n composition API）
@@ -49,20 +58,19 @@ vi.mock('@element-plus/icons-vue', () => ({
 // ---------------------------------------------------------------------------
 // Mock: element-plus（ElMessage / ElMessageBox）
 // ---------------------------------------------------------------------------
-const mockElMessage = {
+const mockElMessage = vi.hoisted(() => ({
   success: vi.fn(),
   warning: vi.fn(),
   error: vi.fn(),
   info: vi.fn(),
-}
-const mockElMessageBox = {
+}))
+const mockElMessageBox = vi.hoisted(() => ({
   confirm: vi.fn(() => Promise.resolve('confirm')),
-}
+}))
 vi.mock('element-plus', () => ({
   ElMessage: mockElMessage,
   ElMessageBox: mockElMessageBox,
-  // 组件测试用 shallowMount，element-plus 组件会被存根，这里仅提供 ElDialog 等的关键行为
-  ElDialog: { template: '<div class="el-dialog" v-if="modelValue"><slot /><slot name="footer" /></div>', props: ['modelValue', 'title', 'width'] },
+  ElDialog: { template: '<div class="el-dialog" :class="{ \'is-visible\': modelValue }"><div class="el-dialog__title">{{ title }}</div><slot /><slot name="footer" /></div>', props: ['modelValue', 'title', 'width'] },
   ElForm: { template: '<form class="el-form"><slot /></form>', props: ['model', 'labelWidth'] },
   ElFormItem: { template: '<div class="el-form-item"><slot /></div>', props: ['label'] },
   ElInput: { template: '<input class="el-input" />', props: ['modelValue', 'type', 'rows', 'placeholder'] },
@@ -80,16 +88,17 @@ vi.mock('element-plus', () => ({
 
 // ---------------------------------------------------------------------------
 // Mock: @/composables/useWorkflow
+// 使用 pseudoRef 创建带 __v_isRef 标记的对象，使模板 _unref 能正确解包
 // ---------------------------------------------------------------------------
 // 构造可控制的 mock stream 与状态
 function createMockStream() {
   return {
-    events: { value: [] as any[] },
-    isConnected: { value: false },
-    isDone: { value: false },
-    currentStatus: { value: '' as string },
-    nodeStatuses: { value: {} as Record<string, TaskStatus> },
-    error: { value: null as string | null },
+    events: pseudoRef<any[]>([]),
+    isConnected: pseudoRef(false),
+    isDone: pseudoRef(false),
+    currentStatus: pseudoRef(''),
+    nodeStatuses: pseudoRef<Record<string, TaskStatus>>({}),
+    error: pseudoRef<string | null>(null),
     connect: vi.fn(),
     close: vi.fn(),
     reset: vi.fn(),
@@ -98,25 +107,31 @@ function createMockStream() {
 
 let mockStream: ReturnType<typeof createMockStream>
 
-const mockUseWorkflow = vi.hoisted(() => ({
-  workflows: { value: [] as any[] },
-  loading: { value: false },
-  totalCount: { value: 0 },
-  currentPage: { value: 1 },
-  pageSize: { value: 20 },
-  statusFilter: { value: '' as string },
-  loadWorkflows: vi.fn(() => Promise.resolve()),
-  removeWorkflow: vi.fn((_id: string) => Promise.resolve()),
-  currentRunId: { value: null as string | null },
-  currentStatus: { value: null as any },
-  submitWorkflow: vi.fn((_payload: any) => Promise.resolve('wf_new_001')),
-  resumeCurrentWorkflow: vi.fn((_id: string, _payload: any) => Promise.resolve('wf_new_002')),
-  cancelCurrent: vi.fn(() => Promise.resolve()),
-  refreshCurrentStatus: vi.fn(() => Promise.resolve()),
-  selectWorkflow: vi.fn((_id: string) => Promise.resolve()),
-  stream: null as any,
-  validate: vi.fn((_spec: WorkflowSpec) => Promise.resolve({ valid: true, node_count: 4, edge_count: 3 })),
-}))
+const mockUseWorkflow = vi.hoisted(() => {
+  // 使用 pseudoRef 创建带 __v_isRef 标记的伪 ref
+  // 这样 Vue 模板的 _unref 能正确解包，使 :workflows="workflows" 传递实际数组
+  const pRef = <T>(val: T) => ({ value: val, __v_isRef: true as const, __v_isShallow: false as const })
+
+  return {
+    workflows: pRef<any[]>([]),
+    loading: pRef(false),
+    totalCount: pRef(0),
+    currentPage: pRef(1),
+    pageSize: pRef(20),
+    statusFilter: pRef(''),
+    loadWorkflows: vi.fn(() => Promise.resolve()),
+    removeWorkflow: vi.fn((_id: string) => Promise.resolve()),
+    currentRunId: pRef<string | null>(null),
+    currentStatus: pRef<any>(null),
+    submitWorkflow: vi.fn((_payload: any) => Promise.resolve('wf_new_001')),
+    resumeCurrentWorkflow: vi.fn((_id: string, _payload: any) => Promise.resolve('wf_new_002')),
+    cancelCurrent: vi.fn(() => Promise.resolve()),
+    refreshCurrentStatus: vi.fn(() => Promise.resolve()),
+    selectWorkflow: vi.fn((_id: string) => Promise.resolve()),
+    stream: null as any,
+    validate: vi.fn((_spec: WorkflowSpec) => Promise.resolve({ valid: true, node_count: 4, edge_count: 3 })),
+  }
+})
 
 vi.mock('@/composables/useWorkflow', () => ({
   useWorkflow: () => mockUseWorkflow,
@@ -147,7 +162,7 @@ function makeSpec(overrides: Partial<WorkflowSpec> = {}): WorkflowSpec {
   }
 }
 
-function makeWorkflowRun(overrides: Partial<any> = {}): any {
+function makeWorkflowRun(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     id: 'wf_001_abcdefghij',
     name: 'test_workflow',
@@ -203,13 +218,48 @@ describe('WorkflowPanel.vue', () => {
   })
 
   const mountPanel = (options = {}) => {
-    return shallowMount(WorkflowPanel, {
-      global: {
-        plugins: [pinia, router],
-        ...options,
+  return mount(WorkflowPanel, {
+    global: {
+      plugins: [pinia, router],
+      // 注册全局指令 stub（避免 v-loading 解析失败）
+      directives: {
+        loading: {
+          mounted: () => {},
+          updated: () => {},
+        },
       },
-    })
-  }
+      // 将 Element Plus 组件注册为全局 stub，使其在整棵组件树中可用
+      components: {
+        'el-dialog': {
+          template: '<div class="el-dialog" :class="{ \'is-visible\': modelValue }"><div class="el-dialog__title">{{ title }}</div><slot /><slot name="footer" /></div>',
+          props: ['modelValue', 'title', 'width'],
+        },
+        'el-form': { template: '<form class="el-form"><slot /></form>', props: ['model', 'labelWidth'] },
+        'el-form-item': { template: '<div class="el-form-item"><slot /></div>', props: ['label'] },
+        'el-input': { template: '<input class="el-input" />', props: ['modelValue', 'type', 'rows', 'placeholder'] },
+        'el-select': { template: '<div class="el-select"><slot /></div>', props: ['modelValue', 'placeholder', 'clearable'] },
+        'el-option': { template: '<div class="el-option" />', props: ['label', 'value'] },
+        'el-button': {
+          template: '<button class="el-button" :class="{ \'el-button--primary\': type === \'primary\', \'el-button--danger\': type === \'danger\', \'el-button--warning\': type === \'warning\' }" @click="$emit(\'click\')"><slot /></button>',
+          props: ['type', 'size', 'loading', 'icon'],
+          emits: ['click'],
+        },
+        'el-tag': { template: '<span class="el-tag"><slot /></span>', props: ['type', 'size', 'effect'] },
+        'el-empty': { template: '<div class="el-empty"><slot /></div>', props: ['description', 'imageSize'] },
+        'el-pagination': { template: '<div class="el-pagination" />', props: ['currentPage', 'pageSize', 'total', 'layout'] },
+      },
+      stubs: {
+        // 新拆分子组件不 stub，让测试能访问其内部元素
+        WorkflowPageHeader: false,
+        WorkflowListPanel: false,
+        WorkflowDag: false,
+        WorkflowEventLog: false,
+        WorkflowSubmitDialog: false,
+      },
+      ...options,
+    },
+  })
+}
 
   // =========================================================================
   // 1. 组件挂载与基础渲染

@@ -182,7 +182,8 @@ describe('RecommendationCard.vue', () => {
       await wrapper.vm.$nextTick()
 
       const content = wrapper.find('.reasoning-content')
-      expect(content.isVisible()).toBe(false)
+      // v-show 折叠：happy-dom 下 isVisible() 不可靠，直接检查 display 样式
+      expect((content.element as HTMLElement).style.display).toBe('none')
     })
 
     it('应该显示决策依据文本', () => {

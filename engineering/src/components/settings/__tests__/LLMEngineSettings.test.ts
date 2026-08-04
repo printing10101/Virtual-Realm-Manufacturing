@@ -16,10 +16,10 @@ vi.mock('vue-i18n', () => ({
 }))
 
 // Mock element-plus ElMessageBox
-const confirmMock = vi.fn()
+const confirmMock = vi.hoisted(() => vi.fn())
 vi.mock('element-plus', () => ({
   ElMessageBox: {
-    confirm: (...args: any[]) => confirmMock(...args),
+    confirm: (...args: unknown[]) => confirmMock(...args),
   },
 }))
 
@@ -32,13 +32,12 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock @/stores/llmProviders
-const loadAllMock = vi.fn()
-const deleteProviderMock = vi.fn()
-const checkHealthMock = vi.fn()
-const activateProviderMock = vi.fn()
-const setEnabledMock = vi.fn()
-
-const storeState = {
+const loadAllMock = vi.hoisted(() => vi.fn())
+const deleteProviderMock = vi.hoisted(() => vi.fn())
+const checkHealthMock = vi.hoisted(() => vi.fn())
+const activateProviderMock = vi.hoisted(() => vi.fn())
+const setEnabledMock = vi.hoisted(() => vi.fn())
+const storeState = vi.hoisted(() => ({
   loading: false,
   hasActiveProvider: false,
   encryptionAvailable: false,
@@ -53,7 +52,7 @@ const storeState = {
   checkHealth: checkHealthMock,
   activateProvider: activateProviderMock,
   setEnabled: setEnabledMock,
-}
+}))
 
 vi.mock('@/stores/llmProviders', () => ({
   useLLMProvidersStore: () => storeState,
@@ -244,7 +243,7 @@ describe('LLMEngineSettings.vue', () => {
     it('点击应调用 store.loadAll', async () => {
       mountComponent()
       // 状态卡片头部有刷新按钮（circle）
-      const buttons = wrapper.findAll('.btn')
+      const buttons = wrapper.findAll('.el-button')
       // 找到 circle 的刷新按钮
       const refreshBtn = buttons[0]
       await refreshBtn.trigger('click')
@@ -255,7 +254,7 @@ describe('LLMEngineSettings.vue', () => {
   describe('新增 Provider 按钮', () => {
     it('点击应打开创建对话框', async () => {
       mountComponent()
-      const buttons = wrapper.findAll('.btn')
+      const buttons = wrapper.findAll('.el-button')
       // Provider 列表卡片头部有"新增"按钮
       // 找到 type=primary 的按钮（最后一个）
       const addBtn = buttons[buttons.length - 1]
@@ -299,7 +298,7 @@ describe('LLMEngineSettings.vue', () => {
       mountComponent()
       const provider = { provider_id: 'p1' } as any
       wrapper.vm.openEditDialog(provider)
-      expect(wrapper.vm.editingProvider).toBe(provider)
+      expect(wrapper.vm.editingProvider).toStrictEqual(provider)
     })
 
     it('应设置 formDialogVisible 为 true', () => {
@@ -315,7 +314,7 @@ describe('LLMEngineSettings.vue', () => {
       mountComponent()
       const provider = { provider_id: 'p1' } as any
       wrapper.vm.openModelsDialog(provider)
-      expect(wrapper.vm.modelsProvider).toBe(provider)
+      expect(wrapper.vm.modelsProvider).toStrictEqual(provider)
     })
 
     it('应设置 modelsDialogVisible 为 true', () => {
@@ -331,7 +330,7 @@ describe('LLMEngineSettings.vue', () => {
       mountComponent()
       const provider = { provider_id: 'p1' } as any
       wrapper.vm.openTestDialog(provider)
-      expect(wrapper.vm.testProvider).toBe(provider)
+      expect(wrapper.vm.testProvider).toStrictEqual(provider)
     })
 
     it('应设置 testDialogVisible 为 true', () => {
@@ -392,19 +391,18 @@ describe('LLMEngineSettings.vue', () => {
     it('edit 事件应调用 openEditDialog', async () => {
       mountComponent()
       const provider = { provider_id: 'p1' } as any
-      const spy = vi.spyOn(wrapper.vm, 'openEditDialog')
       wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('edit', provider)
       await wrapper.vm.$nextTick()
-      expect(spy).toHaveBeenCalledWith(provider)
+      expect(wrapper.vm.editingProvider).toStrictEqual(provider)
+      expect(wrapper.vm.formMode).toBe('edit')
     })
 
     it('test 事件应调用 openTestDialog', async () => {
       mountComponent()
       const provider = { provider_id: 'p1' } as any
-      const spy = vi.spyOn(wrapper.vm, 'openTestDialog')
       wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('test', provider)
       await wrapper.vm.$nextTick()
-      expect(spy).toHaveBeenCalledWith(provider)
+      expect(wrapper.vm.testProvider).toStrictEqual(provider)
     })
 
     it('health 事件应调用 store.checkHealth', async () => {
@@ -431,19 +429,18 @@ describe('LLMEngineSettings.vue', () => {
     it('delete 事件应调用 handleDelete', async () => {
       mountComponent()
       const provider = { provider_id: 'p1', name: 'Test' } as any
-      const spy = vi.spyOn(wrapper.vm, 'handleDelete')
       wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('delete', provider)
       await wrapper.vm.$nextTick()
-      expect(spy).toHaveBeenCalledWith(provider)
+      // handleDelete 会调用 ElMessageBox.confirm（副作用）
+      expect(confirmMock).toHaveBeenCalled()
     })
 
     it('view-models 事件应调用 openModelsDialog', async () => {
       mountComponent()
       const provider = { provider_id: 'p1' } as any
-      const spy = vi.spyOn(wrapper.vm, 'openModelsDialog')
       wrapper.findComponent({ name: 'ProviderList' }).vm.$emit('view-models', provider)
       await wrapper.vm.$nextTick()
-      expect(spy).toHaveBeenCalledWith(provider)
+      expect(wrapper.vm.modelsProvider).toStrictEqual(provider)
     })
   })
 })

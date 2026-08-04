@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -53,7 +53,7 @@ describe('Home.vue', () => {
   })
 
   const mountHome = (options = {}) => {
-    return shallowMount(Home, {
+    return mount(Home, {
       global: {
         plugins: [pinia, router],
         mocks: {
@@ -74,7 +74,7 @@ describe('Home.vue', () => {
   it('渲染页面标题', async () => {
     const wrapper = mountHome()
     await flushPromises()
-    expect(wrapper.find('.page-header__title h1').text()).toBe('home.pageTitle')
+    expect(wrapper.find('.home-page h1').text()).toBe('生产总览')
   })
 
   it('渲染欢迎横幅', async () => {
@@ -118,21 +118,21 @@ describe('Home.vue', () => {
     const wrapper = mountHome()
     await flushPromises()
     expect(wrapper.find('.content-card').exists()).toBe(true)
-    expect(wrapper.find('.content-card__title').text()).toBe('home.cardProductionProgress')
+    expect(wrapper.find('.content-card__title').text()).toBe('生产进度')
   })
 
   it('渲染实时告警面板', async () => {
     const wrapper = mountHome()
     await flushPromises()
     expect(wrapper.find('.panel-alerts').exists()).toBe(true)
-    expect(wrapper.find('.panel-title').text()).toBe('home.cardRealTimeAlerts')
+    expect(wrapper.find('.panel-title').text()).toBe('实时告警')
   })
 
   it('渲染快捷操作区域', async () => {
     const wrapper = mountHome()
     await flushPromises()
     expect(wrapper.find('.quick-actions').exists()).toBe(true)
-    expect(wrapper.find('.section-title').text()).toBe('home.cardQuickActions')
+    expect(wrapper.find('.section-title').text()).toBe('快捷操作')
     // 4 个快捷操作按钮
     const actionButtons = wrapper.findAll('.action-btn')
     expect(actionButtons.length).toBe(4)
@@ -160,7 +160,7 @@ describe('Home.vue', () => {
     httpMock.get.mockImplementationOnce(() => new Promise(() => {}))
     const wrapper = mountHome()
     await flushPromises()
-    expect(wrapper.find('.alert-empty').text()).toBe('home.msgAlertsLoading')
+    expect(wrapper.find('.alert-empty').text()).toBe('告警数据加载中…')
   })
 
   it('告警接口返回空列表时显示无告警提示', async () => {
@@ -172,7 +172,7 @@ describe('Home.vue', () => {
     })
     const wrapper = mountHome()
     await flushPromises()
-    expect(wrapper.find('.alert-empty').text()).toBe('home.msgNoAlerts')
+    expect(wrapper.find('.alert-empty').text()).toBe('暂无告警')
   })
 
   it('告警接口返回数据时渲染告警列表', async () => {

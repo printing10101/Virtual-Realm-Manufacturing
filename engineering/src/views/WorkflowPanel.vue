@@ -1,356 +1,111 @@
 <template>
+  <!-- TODO: 巨型组件拆分 — 工作流编排功能已拆分为 WorkflowPageHeader / WorkflowListPanel / WorkflowDag / WorkflowEventLog / WorkflowSubmitDialog 五个子组件 -->
   <div class="workflow-panel-page">
     <!-- ===== Page Header ===== -->
-    <div class="page-header">
-      <div class="page-header__title">
-        <h1>{{ t('workflowPanel.pageTitle') }}</h1>
-        <span class="page-header__subtitle">
-          {{ t('workflowPanel.pageSubtitle') }}
-        </span>
-      </div>
-      <div class="page-header__actions">
-        <el-button
-          size="small"
-          :icon="Refresh"
-          :loading="loading"
-          @click="handleRefresh"
-        >
-          {{ t('workflowPanel.btnRefresh') }}
-        </el-button>
-        <el-button
-          type="primary"
-          size="small"
-          :icon="Plus"
-          @click="openSubmitDialog"
-        >
-          {{ t('workflowPanel.btnSubmit') }}
-        </el-button>
-        <el-button
-          v-if="canCancel"
-          size="small"
-          :icon="CircleClose"
-          @click="handleCancelCurrent"
-        >
-          {{ t('workflowPanel.btnCancel') }}
-        </el-button>
-        <el-button
-          v-if="canResume"
-          size="small"
-          type="warning"
-          :icon="VideoPlay"
-          @click="openResumeDialog"
-        >
-          {{ t('workflowPanel.btnResume') }}
-        </el-button>
-        <el-button
-          v-if="currentRunId"
-          size="small"
-          type="danger"
-          :icon="Delete"
-          @click="handleDeleteCurrent"
-        >
-          {{ t('workflowPanel.btnDelete') }}
-        </el-button>
-      </div>
-    </div>
+    <WorkflowPageHeader
+      :loading="loading"
+      :can-cancel="canCancel"
+      :can-resume="canResume"
+      :current-run-id="currentRunId"
+      @refresh="handleRefresh"
+      @open-submit="openSubmitDialog"
+      @cancel-current="handleCancelCurrent"
+      @open-resume="openResumeDialog"
+      @delete-current="handleDeleteCurrent"
+    />
 
     <!-- ===== Main Layout: List | DAG + Events ===== -->
     <div class="workflow-main">
       <!-- ===== Left: Workflow List ===== -->
-      <div class="workflow-list-panel">
-        <div class="panel-header">
-          <span class="panel-title">{{ t('workflowPanel.listTitle') }}</span>
-          <div class="panel-filter">
-            <el-select
-              v-model="statusFilter"
-              size="small"
-              :placeholder="t('workflowPanel.filterStatusPlaceholder')"
-              clearable
-              style="width: 120px"
-              @change="handleFilterChange"
-            >
-              <el-option
-                v-for="opt in statusOptions"
-                :key="opt.value"
-                :label="opt.label"
-                :value="opt.value"
-              />
-            </el-select>
-          </div>
-        </div>
-
-        <div
-          v-loading="loading"
-          class="workflow-list-body"
-        >
-          <el-empty
-            v-if="!loading && workflows.length === 0"
-            :description="t('workflowPanel.emptyNoWorkflows')"
-            :image-size="60"
-          />
-          <div
-            v-for="wf in workflows"
-            :key="wf.id"
-            class="workflow-card"
-            :class="{ active: wf.id === currentRunId }"
-            @click="handleSelectWorkflow(wf.id)"
-          >
-            <div class="workflow-card-header">
-              <span class="workflow-name">{{ wf.name }}</span>
-              <el-tag
-                :type="statusTagType(wf.status)"
-                size="small"
-                effect="light"
-              >
-                {{ statusLabel(wf.status) }}
-              </el-tag>
-            </div>
-            <div class="workflow-card-meta">
-              <span class="meta-item mono">{{ wf.id.slice(0, 12) }}…</span>
-              <span class="meta-item">v{{ wf.version }}</span>
-            </div>
-            <div class="workflow-card-footer">
-              <span class="meta-item">
-                {{ t('workflowPanel.nodesCount') }}: {{ wf.spec?.nodes?.length ?? 0 }}
-              </span>
-              <span
-                v-if="wf.created_at"
-                class="meta-item"
-              >
-                {{ formatTime(wf.created_at) }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="workflow-list-footer">
-          <el-pagination
-            v-model:current-page="currentPage"
-            :page-size="pageSize"
-            :total="totalCount"
-            layout="prev, pager, next"
-            small
-            @current-change="handlePageChange"
-          />
-        </div>
-      </div>
+      <WorkflowListPanel
+        :workflows="workflows"
+        :loading="loading"
+        :status-filter="statusFilter"
+        :status-options="statusOptions"
+        :current-page="currentPage"
+        :page-size="pageSize"
+        :total-count="totalCount"
+        :current-run-id="currentRunId"
+        @update:status-filter="handleFilterChange"
+        @select="handleSelectWorkflow"
+        @update:current-page="handlePageChange"
+      />
 
       <!-- ===== Right: DAG Visualization + Event Log ===== -->
+      <!-- TODO: 已拆分到 WorkflowDag / WorkflowEventLog 子组件 -->
       <div class="workflow-detail-panel">
-        <!-- DAG Visualization -->
-        <div class="dag-section">
-          <div class="panel-header">
-            <span class="panel-title">{{ t('workflowPanel.dagTitle') }}</span>
-            <div
-              v-if="currentRunId"
-              class="dag-status"
-            >
-              <el-tag
-                :type="statusTagType(currentDisplayStatus)"
-                size="small"
-              >
-                {{ statusLabel(currentDisplayStatus) }}
-              </el-tag>
-              <span
-                class="stream-indicator"
-                :class="{ connected: stream.isConnected.value, done: stream.isDone.value }"
-              >
-                {{ streamStatusText }}
-              </span>
-            </div>
-          </div>
+        <WorkflowDag
+          :nodes="dagLayout.nodes"
+          :edges="dagLayout.edges"
+          :width="dagLayout.width"
+          :height="dagLayout.height"
+          :selected-node-id="selectedNodeId"
+          :node-width="nodeWidth"
+          :node-height="nodeHeight"
+          :spec="currentSpec"
+          :title="t('workflowPanel.dagTitle')"
+          :empty-text="t('workflowPanel.emptyNoSelection')"
+          :current-display-status="currentDisplayStatus"
+          :stream-status-text="streamStatusText"
+          :is-stream-connected="stream.isConnected.value"
+          :is-stream-done="stream.isDone.value"
+          :current-run-id="currentRunId"
+          :node-statuses="nodeStatusMap"
+          @update:selected-node-id="selectedNodeId = $event"
+          @node-click="handleNodeClick"
+        />
 
-          <div class="dag-canvas-wrapper">
-            <el-empty
-              v-if="!currentSpec"
-              :description="t('workflowPanel.emptyNoSelection')"
-              :image-size="80"
-            />
-            <svg
-              v-else
-              :viewBox="`0 0 ${dagLayout.width} ${dagLayout.height}`"
-              class="dag-svg"
-              preserveAspectRatio="xMidYMid meet"
-            >
-              <!-- Edges -->
-              <path
-                v-for="(edge, idx) in dagLayout.edges"
-                :key="`edge-${idx}`"
-                :d="edge.path"
-                :class="['dag-edge', { active: isEdgeActiveLocal(edge) }]"
-                fill="none"
-              />
-              <!-- Nodes -->
-              <g
-                v-for="node in dagLayout.nodes"
-                :key="node.node_id"
-                :transform="`translate(${node.x}, ${node.y})`"
-                class="dag-node-group"
-                @click="selectedNodeId = node.node_id"
-              >
-                <rect
-                  :width="nodeWidth"
-                  :height="nodeHeight"
-                  :rx="6"
-                  :class="['dag-node-rect', `status-${getNodeStatus(node.node_id)}`]"
-                />
-                <text
-                  :x="nodeWidth / 2"
-                  :y="22"
-                  text-anchor="middle"
-                  class="dag-node-title"
-                >
-                  {{ node.node_id }}
-                </text>
-                <text
-                  :x="nodeWidth / 2"
-                  :y="42"
-                  text-anchor="middle"
-                  class="dag-node-type"
-                >
-                  {{ node.task_type }}
-                </text>
-                <text
-                  :x="nodeWidth / 2"
-                  :y="62"
-                  text-anchor="middle"
-                  class="dag-node-status"
-                >
-                  {{ statusLabel(getNodeStatus(node.node_id)) }}
-                </text>
-              </g>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Event Log -->
-        <div class="event-log-section">
-          <div class="panel-header">
-            <span class="panel-title">{{ t('workflowPanel.eventLogTitle') }}</span>
-            <el-button
-              v-if="stream.events.value.length > 0"
-              text
-              size="small"
-              @click="stream.reset"
-            >
-              {{ t('workflowPanel.btnClearEvents') }}
-            </el-button>
-          </div>
-          <div
-            ref="eventLogEl"
-            class="event-log-body"
-          >
-            <div
-              v-if="stream.events.value.length === 0"
-              class="event-log-empty"
-            >
-              {{ t('workflowPanel.emptyNoEvents') }}
-            </div>
-            <div
-              v-for="(ev, idx) in stream.events.value"
-              :key="`ev-${idx}`"
-              class="event-log-entry"
-              :class="`event-${ev.event_type}`"
-            >
-              <span class="event-time">{{ formatEventTime(ev.timestamp) }}</span>
-              <span class="event-type">{{ ev.event_type }}</span>
-              <span
-                v-if="ev.node_id"
-                class="event-node"
-              >[{{ ev.node_id }}]</span>
-              <span
-                v-if="getEventMessage(ev)"
-                class="event-msg"
-              >{{ getEventMessage(ev) }}</span>
-            </div>
-          </div>
-        </div>
+        <WorkflowEventLog
+          :events="stream.events.value"
+          :title="t('workflowPanel.eventLogTitle')"
+          :empty-text="t('workflowPanel.emptyNoEvents')"
+          :btn-clear-text="t('workflowPanel.btnClearEvents')"
+          @clear="stream.reset"
+        />
       </div>
     </div>
 
     <!-- ===== Submit / Resume Dialog ===== -->
-    <el-dialog
-      v-model="submitDialogVisible"
+    <!-- TODO: 已拆分到 WorkflowSubmitDialog 子组件 -->
+    <WorkflowSubmitDialog
+      :visible="submitDialogVisible"
+      :mode="submitMode"
       :title="submitDialogTitle"
-      width="720px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        ref="submitFormRef"
-        :model="submitForm"
-        label-width="100px"
-      >
-        <el-form-item :label="t('workflowPanel.formTemplateName')">
-          <el-select
-            v-model="submitForm.templateName"
-            :placeholder="t('workflowPanel.formTemplatePlaceholder')"
-            clearable
-            style="width: 100%"
-            @change="handleTemplateSelect"
-          >
-            <el-option
-              v-for="tpl in builtinTemplates"
-              :key="tpl.name"
-              :label="`${tpl.name} (v${tpl.version})`"
-              :value="tpl.name"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="t('workflowPanel.formSpec')">
-          <el-input
-            v-model="submitForm.specYaml"
-            type="textarea"
-            :rows="14"
-            :placeholder="t('workflowPanel.formSpecPlaceholder')"
-            class="spec-editor"
-          />
-        </el-form-item>
-        <el-form-item :label="t('workflowPanel.formOwnerId')">
-          <el-input
-            v-model="submitForm.ownerId"
-            :placeholder="t('workflowPanel.formOwnerPlaceholder')"
-            clearable
-          />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="submitDialogVisible = false">
-          {{ t('workflowPanel.btnCancelDialog') }}
-        </el-button>
-        <el-button
-          :loading="validating"
-          @click="handleValidate"
-        >
-          {{ t('workflowPanel.btnValidate') }}
-        </el-button>
-        <el-button
-          type="primary"
-          :loading="submitting"
-          @click="handleSubmit"
-        >
-          {{ submitConfirmButtonText }}
-        </el-button>
-      </template>
-    </el-dialog>
+      :confirm-button-text="submitConfirmButtonText"
+      :form="submitForm"
+      :builtin-templates="builtinTemplates"
+      :validating="validating"
+      :submitting="submitting"
+      :form-template-label="t('workflowPanel.formTemplateName')"
+      :form-template-placeholder="t('workflowPanel.formTemplatePlaceholder')"
+      :form-spec-label="t('workflowPanel.formSpec')"
+      :form-spec-placeholder="t('workflowPanel.formSpecPlaceholder')"
+      :form-owner-label="t('workflowPanel.formOwnerId')"
+      :form-owner-placeholder="t('workflowPanel.formOwnerPlaceholder')"
+      :btn-cancel-text="t('workflowPanel.btnCancelDialog')"
+      :btn-validate-text="t('workflowPanel.btnValidate')"
+      @update:visible="submitDialogVisible = $event"
+      @submit="handleSubmit"
+      @cancel="submitDialogVisible = false"
+      @validate="handleValidate"
+      @template-select="handleTemplateSelect"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Refresh,
-  Plus,
-  CircleClose,
-  VideoPlay,
-  Delete,
-} from '@element-plus/icons-vue'
 import { useWorkflow } from '@/composables/useWorkflow'
-import type { WorkflowSpec, TaskStatus, WorkflowEvent } from '@/contracts/task'
-import { useDagLayout, type LayoutEdge } from '@/composables/useDagLayout'
-import { getTaskStatusTagType, getTaskStatusLabel } from '@/utils/statusHelpers'
+// 子组件
+import WorkflowPageHeader from '@/components/workflow/WorkflowPageHeader.vue'
+import WorkflowListPanel from '@/components/workflow/WorkflowListPanel.vue'
+import WorkflowDag from '@/components/workflow/WorkflowDag.vue'
+import WorkflowEventLog from '@/components/workflow/WorkflowEventLog.vue'
+import WorkflowSubmitDialog from '@/components/workflow/WorkflowSubmitDialog.vue'
+import type { WorkflowSpec, TaskStatus } from '@/contracts/task'
+import { useDagLayout } from '@/composables/useDagLayout'
 
 const { t } = useI18n()
 
@@ -390,9 +145,6 @@ const statusOptions = [
   { value: 'skipped', label: t('workflowPanel.statusSkipped') },
 ]
 
-function statusTagType(s?: string | null) { return getTaskStatusTagType(s ?? '') }
-function statusLabel(s?: string | null): string { return getTaskStatusLabel(s ?? '') || '-' }
-
 // ---------------------------------------------------------------------------
 // 内置模板（与后端 python/app/workflow/templates/builtin/*.yaml 对应）
 // 提供下拉选择，用户选择后填充 spec 编辑器
@@ -428,12 +180,12 @@ const currentDisplayStatus = computed<string>(() => {
 
 const canCancel = computed(() => {
   const s = currentDisplayStatus.value
-  return currentRunId.value && (s === 'running' || s === 'queued' || s === 'pending')
+  return Boolean(currentRunId.value && (s === 'running' || s === 'queued' || s === 'pending'))
 })
 
 const canResume = computed(() => {
   const s = currentDisplayStatus.value
-  return currentRunId.value && (s === 'failed' || s === 'cancelled')
+  return Boolean(currentRunId.value && (s === 'failed' || s === 'cancelled'))
 })
 
 const streamStatusText = computed(() => {
@@ -446,15 +198,23 @@ const streamStatusText = computed(() => {
 // ---------------------------------------------------------------------------
 // 节点状态：合并 SSE nodeStatuses + 持久化 node_statuses
 // ---------------------------------------------------------------------------
-function getNodeStatus(nodeId: string): TaskStatus {
-  // SSE 优先
-  const sseStatus = stream.nodeStatuses.value[nodeId]
-  if (sseStatus) return sseStatus
-  // 持久化兜底
-  const persisted = currentStatus.value?.node_statuses?.[nodeId]
-  if (persisted) return persisted
-  return 'pending'
-}
+// TODO: 合并节点状态映射，供 WorkflowDag 子组件使用
+const nodeStatusMap = computed<Record<string, TaskStatus>>(() => {
+  const map: Record<string, TaskStatus> = {}
+  // SSE 节点状态（高优先级）
+  if (stream.nodeStatuses.value) {
+    for (const [k, v] of Object.entries(stream.nodeStatuses.value)) {
+      map[k] = v as TaskStatus
+    }
+  }
+  // 持久化节点状态（兜底）
+  if (currentStatus.value?.node_statuses) {
+    for (const [k, v] of Object.entries(currentStatus.value.node_statuses)) {
+      if (!(k in map)) map[k] = v as TaskStatus
+    }
+  }
+  return map
+})
 
 // ---------------------------------------------------------------------------
 // DAG 分层布局（自实现，避免引入 dagre 依赖）
@@ -465,50 +225,7 @@ const nodeHeight = 76
 
 const dagLayout = useDagLayout(() => currentSpec.value)
 
-function isEdgeActiveLocal(edge: LayoutEdge): boolean {
-  const u = getNodeStatus(edge.upstream)
-  const d = getNodeStatus(edge.downstream)
-  return u === 'completed' && d !== 'pending'
-}
-
-// ---------------------------------------------------------------------------
-// 事件日志：自动滚动到底部
-// ---------------------------------------------------------------------------
-const eventLogEl = ref<HTMLElement | null>(null)
-
-watch(
-  () => stream.events.value.length,
-  async () => {
-    await nextTick()
-    if (eventLogEl.value) {
-      eventLogEl.value.scrollTop = eventLogEl.value.scrollHeight
-    }
-  },
-)
-
-function getEventMessage(ev: WorkflowEvent): string {
-  const payload = ev.payload as unknown as Record<string, unknown>
-  if (typeof payload?.error === 'string') return payload.error
-  if (typeof payload?.message === 'string') return payload.message
-  if (typeof payload?.progress === 'number') return `${Math.round(payload.progress * 100)}%`
-  return ''
-}
-
-function formatEventTime(ts: number): string {
-  if (!ts) return '--:--:--'
-  const d = new Date(ts * 1000)
-  return d.toLocaleTimeString('zh-CN', { hour12: false })
-}
-
-function formatTime(s: string | null): string {
-  if (!s) return '-'
-  try {
-    const d = new Date(s)
-    return d.toLocaleString('zh-CN', { hour12: false })
-  } catch {
-    return s
-  }
-}
+// 子组件已内置 isEdgeActive / getNodeStatus 逻辑
 
 // ---------------------------------------------------------------------------
 // 列表交互
@@ -518,12 +235,14 @@ function handleRefresh() {
   if (currentRunId.value) refreshCurrentStatus()
 }
 
-function handleFilterChange() {
+function handleFilterChange(value: string) {
+  statusFilter.value = value
   currentPage.value = 1
   loadWorkflows()
 }
 
-function handlePageChange() {
+function handlePageChange(page: number) {
+  currentPage.value = page
   loadWorkflows()
 }
 
@@ -578,7 +297,6 @@ async function handleDeleteCurrent() {
 // ---------------------------------------------------------------------------
 const submitDialogVisible = ref(false)
 const submitMode = ref<'submit' | 'resume'>('submit')
-const submitFormRef = ref()
 const submitForm = ref({
   templateName: '',
   specYaml: '',
@@ -587,6 +305,10 @@ const submitForm = ref({
 const validating = ref(false)
 const submitting = ref(false)
 const selectedNodeId = ref<string>('')
+
+function handleNodeClick(nodeId: string) {
+  selectedNodeId.value = nodeId
+}
 
 const submitDialogTitle = computed(() =>
   submitMode.value === 'submit'
@@ -730,6 +452,7 @@ watch(
 </script>
 
 <style scoped>
+/* TODO: 巨型组件拆分 — 样式已迁移到子组件中 */
 .workflow-panel-page {
   padding: 16px;
   height: 100%;
@@ -737,32 +460,6 @@ watch(
   flex-direction: column;
   gap: 12px;
   overflow: hidden;
-}
-
-/* ===== Page Header ===== */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  flex-shrink: 0;
-}
-.page-header__title h1 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-.page-header__subtitle {
-  display: block;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  margin-top: 4px;
-}
-.page-header__actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 /* ===== Main Layout ===== */
@@ -774,248 +471,11 @@ watch(
   min-height: 0;
 }
 
-/* ===== List Panel ===== */
-.workflow-list-panel {
-  display: flex;
-  flex-direction: column;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  background: var(--el-fill-color-light);
-}
-.panel-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-.workflow-list-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-.workflow-card {
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--radius-xs);
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.workflow-card:hover {
-  border-color: var(--brand-300);
-  background: var(--el-fill-color-light);
-}
-.workflow-card.active {
-  border-color: var(--accent-primary);
-  background: var(--accent-light);
-}
-.workflow-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-}
-.workflow-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.workflow-card-meta,
-.workflow-card-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--el-text-color-secondary);
-}
-.meta-item {
-  font-size: 11px;
-  color: var(--el-text-color-secondary);
-}
-.mono {
-  font-family: var(--font-mono);
-}
-.workflow-list-footer {
-  padding: 6px 8px;
-  border-top: 1px solid var(--el-border-color-lighter);
-  display: flex;
-  justify-content: center;
-}
-
 /* ===== Detail Panel ===== */
 .workflow-detail-panel {
   display: grid;
   grid-template-rows: 1fr 200px;
   gap: 12px;
   min-height: 0;
-}
-
-/* ===== DAG Section ===== */
-.dag-section {
-  display: flex;
-  flex-direction: column;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-.dag-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.stream-indicator {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: var(--radius-2xs);
-  background: var(--el-fill-color);
-  color: var(--el-text-color-secondary);
-}
-.stream-indicator.connected {
-  background: var(--state-success-bg);
-  color: var(--state-success);
-}
-.stream-indicator.done {
-  background: var(--el-fill-color-dark);
-  color: var(--el-text-color-regular);
-}
-.dag-canvas-wrapper {
-  flex: 1;
-  overflow: auto;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.dag-svg {
-  width: 100%;
-  height: 100%;
-  min-height: 300px;
-}
-.dag-edge {
-  stroke: var(--el-border-color);
-  stroke-width: 1.5;
-  fill: none;
-  transition: stroke 0.3s;
-}
-.dag-edge.active {
-  stroke: var(--accent-primary);
-  stroke-width: 2;
-}
-.dag-node-group {
-  cursor: pointer;
-}
-.dag-node-rect {
-  stroke-width: 1.5;
-  stroke: var(--el-border-color);
-  fill: var(--el-bg-color);
-  transition: fill 0.3s, stroke 0.3s;
-}
-.dag-node-rect.status-pending {
-  fill: var(--el-fill-color-light);
-  stroke: var(--el-border-color);
-}
-.dag-node-rect.status-running {
-  fill: var(--accent-light);
-  stroke: var(--accent-primary);
-}
-.dag-node-rect.status-completed {
-  fill: var(--state-success-bg);
-  stroke: var(--state-success);
-}
-.dag-node-rect.status-failed {
-  fill: var(--state-error-bg);
-  stroke: var(--state-error);
-}
-.dag-node-rect.status-skipped,
-.dag-node-rect.status-cancelled {
-  fill: var(--el-fill-color-dark);
-  stroke: var(--el-text-color-disabled);
-}
-.dag-node-title {
-  font-size: 12px;
-  font-weight: 600;
-  fill: var(--el-text-color-primary);
-}
-.dag-node-type {
-  font-size: 10px;
-  fill: var(--el-text-color-secondary);
-}
-.dag-node-status {
-  font-size: 10px;
-  font-weight: 500;
-  fill: var(--el-text-color-regular);
-}
-
-/* ===== Event Log ===== */
-.event-log-section {
-  display: flex;
-  flex-direction: column;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-.event-log-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  background: var(--el-fill-color-blank);
-}
-.event-log-empty {
-  color: var(--el-text-color-secondary);
-  text-align: center;
-  padding: 20px 0;
-}
-.event-log-entry {
-  padding: 3px 0;
-  border-bottom: 1px dashed var(--el-border-color-lighter);
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-}
-.event-time {
-  color: var(--el-text-color-secondary);
-  flex-shrink: 0;
-}
-.event-type {
-  font-weight: 600;
-  flex-shrink: 0;
-  min-width: 110px;
-}
-.event-node {
-  color: var(--accent-primary);
-  flex-shrink: 0;
-}
-.event-msg {
-  color: var(--el-text-color-regular);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.event-node_started .event-type { color: var(--accent-primary); }
-.event-node_completed .event-type { color: var(--state-success); }
-.event-node_failed .event-type { color: var(--state-error); }
-.event-node_skipped .event-type { color: var(--el-text-color-secondary); }
-.event-workflow_completed .event-type { color: var(--state-success); }
-.event-workflow_failed .event-type { color: var(--state-error); }
-
-/* ===== Spec Editor ===== */
-:deep(.spec-editor .el-textarea__inner) {
-  font-family: var(--font-mono);
-  font-size: 12px;
 }
 </style>

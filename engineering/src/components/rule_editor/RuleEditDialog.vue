@@ -52,312 +52,19 @@
         />
       </el-form-item>
 
-      <el-form-item :label="t('ruleEditDialog.labelLogicOperator')">
-        <el-radio-group
-          v-model="form.logic_operator"
-          @change="updatePreview"
-        >
-          <el-radio-button value="AND">
-            {{ t('ruleEditDialog.radioAnd') }}
-          </el-radio-button>
-          <el-radio-button value="OR">
-            {{ t('ruleEditDialog.radioOr') }}
-          </el-radio-button>
-        </el-radio-group>
-      </el-form-item>
+      <ConditionEditor
+        :conditions="form.conditions"
+        :logic-operator="form.logic_operator"
+        @update:conditions="onConditionsUpdate"
+        @update:logic-operator="onLogicOperatorUpdate"
+        @add-condition="addCondition"
+        @remove-condition="removeCondition"
+      />
 
-      <el-form-item :label="t('ruleEditDialog.labelConditions')">
-        <div class="conditions-container">
-          <el-table
-            :data="form.conditions"
-            border
-            size="small"
-          >
-            <el-table-column
-              :label="t('ruleEditDialog.labelParameter')"
-              width="180"
-            >
-              <template #default="{ row }">
-                <el-select
-                  v-model="row.parameter"
-                  :placeholder="t('ruleEditDialog.placeholderParameter')"
-                  @change="updatePreview"
-                >
-                  <el-option-group :label="t('ruleEditDialog.groupMaterial')">
-                    <el-option
-                      :label="t('ruleEditDialog.paramMaterial')"
-                      value="材料"
-                    />
-                    <el-option
-                      :label="t('ruleEditDialog.paramMaterialHardness')"
-                      value="材料硬度"
-                    />
-                  </el-option-group>
-                  <el-option-group :label="t('ruleEditDialog.groupProcess')">
-                    <el-option
-                      :label="t('ruleEditDialog.paramProcess')"
-                      value="工序"
-                    />
-                    <el-option
-                      :label="t('ruleEditDialog.paramMachiningPrecision')"
-                      value="加工精度"
-                    />
-                    <el-option
-                      :label="t('ruleEditDialog.paramSurfaceRoughness')"
-                      value="表面粗糙度"
-                    />
-                  </el-option-group>
-                  <el-option-group :label="t('ruleEditDialog.groupTool')">
-                    <el-option
-                      :label="t('ruleEditDialog.paramToolType')"
-                      value="刀具类型"
-                    />
-                    <el-option
-                      :label="t('ruleEditDialog.paramToolDiameter')"
-                      value="刀具直径"
-                    />
-                  </el-option-group>
-                  <el-option-group :label="t('ruleEditDialog.groupCutting')">
-                    <el-option
-                      :label="t('ruleEditDialog.paramCuttingSpeed')"
-                      value="切削速度"
-                    />
-                    <el-option
-                      :label="t('ruleEditDialog.paramFeedRate')"
-                      value="进给量"
-                    />
-                    <el-option
-                      :label="t('ruleEditDialog.paramCutDepth')"
-                      value="切深"
-                    />
-                    <el-option
-                      :label="t('ruleEditDialog.paramCutWidth')"
-                      value="切宽"
-                    />
-                    <el-option
-                      :label="t('ruleEditDialog.paramSpindleSpeed')"
-                      value="主轴转速"
-                    />
-                  </el-option-group>
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column
-              :label="t('ruleEditDialog.labelOperator')"
-              width="110"
-            >
-              <template #default="{ row }">
-                <el-select
-                  v-model="row.operator"
-                  @change="updatePreview"
-                >
-                  <el-option
-                    label="="
-                    value="="
-                  />
-                  <el-option
-                    label="<"
-                    value="<"
-                  />
-                  <el-option
-                    label=">"
-                    value=">"
-                  />
-                  <el-option
-                    label="<="
-                    value="<="
-                  />
-                  <el-option
-                    label=">="
-                    value=">="
-                  />
-                  <el-option
-                    label="!="
-                    value="!="
-                  />
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column
-              :label="t('ruleEditDialog.labelValue')"
-              width="140"
-            >
-              <template #default="{ row }">
-                <el-input
-                  v-model="row.value"
-                  :placeholder="t('ruleEditDialog.placeholderValue')"
-                  @input="updatePreview"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column
-              :label="t('ruleEditDialog.labelUnit')"
-              width="100"
-            >
-              <template #default="{ row }">
-                <el-select
-                  v-model="row.unit"
-                  :placeholder="t('ruleEditDialog.placeholderNone')"
-                  clearable
-                  @change="updatePreview"
-                >
-                  <el-option
-                    label="mm"
-                    value="mm"
-                  />
-                  <el-option
-                    label="m/min"
-                    value="m/min"
-                  />
-                  <el-option
-                    label="mm/rev"
-                    value="mm/rev"
-                  />
-                  <el-option
-                    label="rpm"
-                    value="rpm"
-                  />
-                  <el-option
-                    label="HB"
-                    value="HB"
-                  />
-                  <el-option
-                    label="μm"
-                    value="μm"
-                  />
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column
-              :label="t('ruleEditDialog.labelActions')"
-              width="80"
-            >
-              <template #default="{ $index }">
-                <el-button
-                  size="small"
-                  type="danger"
-                  link
-                  :disabled="form.conditions.length <= 1"
-                  @click="removeCondition($index)"
-                >
-                  {{ t('ruleEditDialog.btnDelete') }}
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <el-button
-            size="small"
-            type="primary"
-            style="margin-top: 8px"
-            @click="addCondition"
-          >
-            <el-icon><Plus /></el-icon>
-            {{ t('ruleEditDialog.btnAddCondition') }}
-          </el-button>
-        </div>
-      </el-form-item>
-
-      <el-form-item
-        :label="t('ruleEditDialog.labelResult')"
-        prop="result"
-      >
-        <el-row
-          :gutter="8"
-          style="width: 100%"
-        >
-          <el-col :span="6">
-            <el-select
-              v-model="form.result.parameter"
-              :placeholder="t('ruleEditDialog.placeholderResultParameter')"
-              @change="updatePreview"
-            >
-              <el-option
-                :label="t('ruleEditDialog.paramCutDepth')"
-                value="切深"
-              />
-              <el-option
-                :label="t('ruleEditDialog.paramCutWidth')"
-                value="切宽"
-              />
-              <el-option
-                :label="t('ruleEditDialog.paramCuttingSpeed')"
-                value="切削速度"
-              />
-              <el-option
-                :label="t('ruleEditDialog.paramFeedRate')"
-                value="进给量"
-              />
-              <el-option
-                :label="t('ruleEditDialog.paramSpindleSpeed')"
-                value="主轴转速"
-              />
-            </el-select>
-          </el-col>
-          <el-col :span="4">
-            <el-select
-              v-model="form.result.operator"
-              @change="updatePreview"
-            >
-              <el-option
-                label="="
-                value="="
-              />
-              <el-option
-                label="<="
-                value="<="
-              />
-              <el-option
-                label=">="
-                value=">="
-              />
-              <el-option
-                label="<"
-                value="<"
-              />
-              <el-option
-                label=">"
-                value=">"
-              />
-              <el-option
-                label="!="
-                value="!="
-              />
-            </el-select>
-          </el-col>
-          <el-col :span="6">
-            <el-input
-              v-model="form.result.value"
-              :placeholder="t('ruleEditDialog.placeholderResultValue')"
-              @input="updatePreview"
-            />
-          </el-col>
-          <el-col :span="4">
-            <el-select
-              v-model="form.result.unit"
-              :placeholder="t('ruleEditDialog.placeholderNone')"
-              clearable
-              @change="updatePreview"
-            >
-              <el-option
-                label="mm"
-                value="mm"
-              />
-              <el-option
-                label="m/min"
-                value="m/min"
-              />
-              <el-option
-                label="mm/rev"
-                value="mm/rev"
-              />
-              <el-option
-                label="rpm"
-                value="rpm"
-              />
-            </el-select>
-          </el-col>
-        </el-row>
-      </el-form-item>
+      <ResultEditor
+        :result="form.result"
+        @update:result="onResultUpdate"
+      />
 
       <el-form-item :label="t('ruleEditDialog.labelStatus')">
         <el-select
@@ -416,10 +123,11 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
 import type { ProcessRule, RuleCondition, RuleResult, RuleCreateRequest, RuleUpdateRequest } from '@/types'
 import { useRuleStore } from '@/stores/rules'
 import type { FormInstance, FormRules } from 'element-plus'
+import ConditionEditor from '@/components/rule_edit/ConditionEditor.vue'
+import ResultEditor from '@/components/rule_edit/ResultEditor.vue'
 
 const { t } = useI18n()
 
@@ -526,6 +234,21 @@ function removeCondition(index: number) {
   }
 }
 
+function onConditionsUpdate(conditions: RuleCondition[]) {
+  form.value.conditions = conditions
+  updatePreview()
+}
+
+function onLogicOperatorUpdate(val: 'AND' | 'OR') {
+  form.value.logic_operator = val
+  updatePreview()
+}
+
+function onResultUpdate(result: RuleResult) {
+  form.value.result = result
+  updatePreview()
+}
+
 function updatePreview() {
   const validConditions = form.value.conditions.filter((c) => c.parameter && c.value)
   if (validConditions.length === 0) {
@@ -615,10 +338,6 @@ function handleClose() {
 </script>
 
 <style scoped>
-.conditions-container {
-  width: 100%;
-}
-
 .preview_empty :deep(.el-alert__title) {
   color: var(--text-tertiary);
 }

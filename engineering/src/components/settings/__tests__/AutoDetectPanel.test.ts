@@ -15,10 +15,10 @@ vi.mock('vue-i18n', () => ({
 }))
 
 // Mock element-plus ElMessageBox
-const confirmMock = vi.fn()
+const confirmMock = vi.hoisted(() => vi.fn())
 vi.mock('element-plus', () => ({
   ElMessageBox: {
-    confirm: (...args: any[]) => confirmMock(...args),
+    confirm: (...args: unknown[]) => confirmMock(...args),
   },
 }))
 
@@ -39,14 +39,14 @@ vi.mock('@/api/llmProviders', () => ({
 }))
 
 // Mock @/stores/llmProviders
-const importDetectedMock = vi.fn()
-const storeState = {
+const importDetectedMock = vi.hoisted(() => vi.fn())
+const storeState = vi.hoisted(() => ({
   detecting: false,
   detected: [] as any[],
   lastDetectDuration: 0,
   previewDetect: vi.fn(),
   importDetectedProviders: importDetectedMock,
-}
+}))
 vi.mock('@/stores/llmProviders', () => ({
   useLLMProvidersStore: () => storeState,
 }))
@@ -71,19 +71,19 @@ describe('AutoDetectPanel.vue', () => {
     wrapper = mount(AutoDetectPanel, {
       global: {
         stubs: {
-          'el-icon': { template: '<span><slot /></span>' },
-          'el-button': {
+          ElIcon: { template: '<span><slot /></span>' },
+          ElButton: {
             template: '<button class="btn" @click="$emit(\'click\')"><slot /></button>',
             props: ['size', 'loading', 'type'],
             emits: ['click'],
           },
-          'el-alert': { template: '<div class="alert" />', props: ['title', 'type', 'closable', 'showIcon'] },
-          'el-tag': { template: '<span class="tag"><slot /></span>', props: ['type', 'size', 'effect'] },
-          'el-table': {
+          ElAlert: { template: '<div class="alert" />', props: ['title', 'type', 'closable', 'showIcon'] },
+          ElTag: { template: '<span class="tag"><slot /></span>', props: ['type', 'size', 'effect'] },
+          ElTable: {
             template: '<div class="table"><div v-for="row in data" :key="row.provider_id"><slot name="default" :row="row" /></div></div>',
             props: ['data', 'stripe', 'size'],
           },
-          'el-table-column': { template: '<div class="col" />' },
+          ElTableColumn: { template: '<div class="col" />' },
         },
       },
     })

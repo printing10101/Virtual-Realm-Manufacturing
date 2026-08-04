@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -76,7 +76,7 @@ describe('Workspace.vue', () => {
   })
 
   const mountWorkspace = (options = {}) => {
-    return shallowMount(Workspace, {
+    return mount(Workspace, {
       global: {
         plugins: [pinia, router],
         mocks: {
@@ -139,7 +139,8 @@ describe('Workspace.vue', () => {
     const wrapper = mountWorkspace()
     await flushPromises()
     // 通过按钮 loading 状态验证（stub 中将 loading 映射到 attribute）
-    const predictBtn = wrapper.findAll('button').find((b) => b.text().includes('workspace.startInference'))
+    // $t mock 返回 key（mountWorkspace 的 mocks.$t）
+    const predictBtn = wrapper.findAll('button').find((b) => b.text().includes('workspace.runPredict'))
     expect(predictBtn).toBeDefined()
     expect(predictBtn?.attributes('loading')).toBeFalsy()
   })

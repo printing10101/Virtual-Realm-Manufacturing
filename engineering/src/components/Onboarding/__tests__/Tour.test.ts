@@ -534,17 +534,29 @@ describe('Tour.vue', () => {
   describe('handleResize 方法', () => {
     it('visible 为 true 时应调用 updateTargetRect', () => {
       mountComponent()
+      // spyOn(vm) 不拦截 setup 内部调用；用 updateTargetRect 的副作用
+      // （scrollIntoView）验证 handleResize → updateTargetRect 链路
+      const scrollSpy = vi.fn()
+      vi.spyOn(document, 'querySelector').mockReturnValue({
+        getBoundingClientRect: () => ({ top: 0, left: 0, width: 100, height: 50 }),
+        scrollIntoView: scrollSpy,
+      } as unknown as Element)
       wrapper.vm.start()
-      const spy = vi.spyOn(wrapper.vm, 'updateTargetRect')
       wrapper.vm.handleResize()
-      expect(spy).toHaveBeenCalled()
+      expect(scrollSpy).toHaveBeenCalled()
+      vi.restoreAllMocks()
     })
 
     it('visible 为 false 时不应调用 updateTargetRect', () => {
       mountComponent()
-      const spy = vi.spyOn(wrapper.vm, 'updateTargetRect')
+      const scrollSpy = vi.fn()
+      vi.spyOn(document, 'querySelector').mockReturnValue({
+        getBoundingClientRect: () => ({ top: 0, left: 0, width: 100, height: 50 }),
+        scrollIntoView: scrollSpy,
+      } as unknown as Element)
       wrapper.vm.handleResize()
-      expect(spy).not.toHaveBeenCalled()
+      expect(scrollSpy).not.toHaveBeenCalled()
+      vi.restoreAllMocks()
     })
   })
 

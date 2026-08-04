@@ -13,7 +13,7 @@ vi.mock('vue-i18n', () => ({
 }))
 
 // Mock @/api/llmProviders
-const mockProviderTypeMeta = {
+const mockProviderTypeMeta = vi.hoisted(() => ({
   ollama: {
     value: 'ollama',
     label: 'Ollama',
@@ -50,21 +50,21 @@ const mockProviderTypeMeta = {
     default_capabilities: ['chat', 'streaming'],
     needs_api_key: true,
   },
-}
+}))
 vi.mock('@/api/llmProviders', () => ({
   PROVIDER_TYPE_META: mockProviderTypeMeta,
 }))
 
 // Mock @/stores/llmProviders
-const mockStore = {
+const mockStore = vi.hoisted(() => ({
   createProvider: vi.fn(),
   updateProvider: vi.fn(),
-}
+}))
 vi.mock('@/stores/llmProviders', () => ({
   useLLMProvidersStore: () => mockStore,
 }))
 
-const mockProvider = {
+const mockProvider = vi.hoisted(() => ({
   provider_id: 'test-1',
   name: '测试供应商',
   provider_type: 'ollama',
@@ -79,7 +79,7 @@ const mockProvider = {
   enabled: true,
   created_at: '',
   updated_at: '',
-}
+}))
 
 describe('ProviderFormDialog.vue', () => {
   let wrapper: VueWrapper<any>
@@ -106,25 +106,26 @@ describe('ProviderFormDialog.vue', () => {
       },
       global: {
         stubs: {
-          'el-dialog': {
+          // 注意：必须用 PascalCase 键（ElDialog/ElForm/...）才能覆盖 setup.ts 的全局 stub
+          ElDialog: {
             template: '<div><slot /><slot name="footer" /></div>',
             props: ['modelValue', 'title', 'width', 'closeOnClickModal'],
             emits: ['update:modelValue', 'open'],
           },
-          'el-form': { template: '<form><slot /></form>' },
-          'el-form-item': { template: '<div class="form-item"><slot /></div>' },
-          'el-input': { template: '<input />' },
-          'el-select': { template: '<select><slot /></select>' },
-          'el-option-group': { template: '<optgroup><slot /></optgroup>' },
-          'el-option': { template: '<option />' },
-          'el-button': {
+          ElForm: { template: '<form><slot /></form>' },
+          ElFormItem: { template: '<div class="form-item"><slot /></div>' },
+          ElInput: { template: '<input />' },
+          ElSelect: { template: '<select><slot /></select>' },
+          ElOptionGroup: { template: '<optgroup><slot /></optgroup>' },
+          ElOption: { template: '<option />' },
+          ElButton: {
             template: '<button @click="$emit(\'click\')"><slot /></button>',
             emits: ['click'],
           },
-          'el-slider': { template: '<input type="range" />' },
-          'el-input-number': { template: '<input type="number" />' },
-          'el-switch': { template: '<button class="switch" />' },
-          'el-divider': { template: '<hr />' },
+          ElSlider: { template: '<input type="range" />' },
+          ElInputNumber: { template: '<input type="number" />' },
+          ElSwitch: { template: '<button class="switch" />' },
+          ElDivider: { template: '<hr />' },
         },
       },
     })

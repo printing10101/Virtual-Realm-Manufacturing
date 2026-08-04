@@ -14,9 +14,9 @@
       class="empty-state"
     >
       <el-empty
-          :description="t('settings.testDialog.emptyProvider')"
-          :image-size="60"
-        />
+        :description="t('settings.testDialog.emptyProvider')"
+        :image-size="60"
+      />
     </div>
 
     <template v-else>

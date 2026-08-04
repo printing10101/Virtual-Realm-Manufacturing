@@ -248,6 +248,11 @@ export const useDxfImportStore = defineStore('dxfImport', () => {
     isActive,
     reset,
     importDxfFile,
+    // 内部阶段函数（上传/解析/特征提取）暴露供测试与高级调用；
+    // 常规使用请走 importDxfFile 全流程
+    uploadDxfFile,
+    parseDxfFile,
+    extractDxfFeatures,
     openDialog,
     closeDialog,
   }

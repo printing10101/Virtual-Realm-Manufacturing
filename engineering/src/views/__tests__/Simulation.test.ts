@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -69,7 +69,7 @@ describe('Simulation.vue', () => {
   })
 
   const mountSimulation = (options = {}) => {
-    return shallowMount(Simulation, {
+    return mount(Simulation, {
       global: {
         plugins: [pinia, router],
         mocks: {
@@ -100,8 +100,8 @@ describe('Simulation.vue', () => {
   it('渲染页面标题与副标题', async () => {
     const wrapper = mountSimulation()
     await flushPromises()
-    expect(wrapper.find('.page-title').text()).toBe('simulationPage.pageTitle')
-    expect(wrapper.find('.page-subtitle').text()).toBe('simulationPage.pageSubtitle')
+    expect(wrapper.find('.page-title').text()).toBe('仿真模拟')
+    expect(wrapper.find('.page-subtitle').text()).toBe('NC 代码仿真验证与碰撞检测')
   })
 
   it('渲染顶部操作按钮（刷新历史、新建仿真）', async () => {
@@ -179,7 +179,8 @@ describe('Simulation.vue', () => {
       if (url.includes('history')) {
         return Promise.resolve({
           data: {
-            data: [
+            data: {
+              items: [
               {
                 task_id: 'task-001',
                 project_id: 'p1',
@@ -197,6 +198,7 @@ describe('Simulation.vue', () => {
                 segment_count: 80,
               },
             ],
+              },
           },
         })
       }
@@ -214,10 +216,12 @@ describe('Simulation.vue', () => {
       if (url.includes('history')) {
         return Promise.resolve({
           data: {
-            data: [
+            data: {
+              items: [
               { task_id: 't1', project_id: 'p', duration_seconds: 10, collision_collided: false, voxel_size: 1, segment_count: 1 },
               { task_id: 't2', project_id: 'p', duration_seconds: 20, collision_collided: true, voxel_size: 1, segment_count: 1 },
             ],
+              },
           },
         })
       }

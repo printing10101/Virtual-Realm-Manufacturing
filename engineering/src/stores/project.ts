@@ -5,7 +5,7 @@
  * 负责前端状态与后端 project.json 之间的双向同步。
  */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, toRaw } from 'vue'
 import http from '@/utils/http'
 import { extractErrorMessage } from '@/utils/error-handler'
 import { API_CONFIG, buildApiPath } from '@/config/api'
@@ -118,7 +118,9 @@ export const useProjectStore = defineStore('project', () => {
     error.value = null
     try {
       const payload: SaveProjectRequest = {
-        manifest: structuredClone(manifest.value),
+        // toRaw：Vue ref 深响应把 manifest.value 包成 reactive proxy，
+        // structuredClone 对 Proxy 抛 "could not be cloned"——保存/另存为会全炸
+        manifest: structuredClone(toRaw(manifest.value)),
         project_id: projectId.value || 'default',
         output_name: outputName || 'project',
       }
@@ -143,7 +145,7 @@ export const useProjectStore = defineStore('project', () => {
     error.value = null
     try {
       const payload: SaveProjectRequest = {
-        manifest: structuredClone(manifest.value),
+        manifest: structuredClone(toRaw(manifest.value)),
         project_id: projectId.value,
         output_name: outputName,
       }

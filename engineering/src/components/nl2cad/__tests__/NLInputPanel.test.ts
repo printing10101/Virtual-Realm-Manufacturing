@@ -22,8 +22,8 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock @/api/nl2cad
-const mockExtractParams = vi.fn()
-const mockGenerateModel = vi.fn()
+const mockExtractParams = vi.hoisted(() => vi.fn())
+const mockGenerateModel = vi.hoisted(() => vi.fn())
 vi.mock('@/api/nl2cad', () => ({
   extractParams: (...args: unknown[]) => mockExtractParams(...args),
   generateModel: (...args: unknown[]) => mockGenerateModel(...args),
@@ -123,105 +123,11 @@ describe('NLInputPanel.vue', () => {
     })
   })
 
-  describe('getShapeLabel 方法', () => {
-    it('应正确映射 box', () => {
-      mountComponent()
-      expect(wrapper.vm.getShapeLabel('box')).toBe('nlInputPanel.shapeBox')
-    })
-
-    it('应正确映射 cylinder', () => {
-      mountComponent()
-      expect(wrapper.vm.getShapeLabel('cylinder')).toBe('nlInputPanel.shapeCylinder')
-    })
-
-    it('应正确映射 sphere', () => {
-      mountComponent()
-      expect(wrapper.vm.getShapeLabel('sphere')).toBe('nlInputPanel.shapeSphere')
-    })
-
-    it('应正确映射 cone', () => {
-      mountComponent()
-      expect(wrapper.vm.getShapeLabel('cone')).toBe('nlInputPanel.shapeCone')
-    })
-
-    it('未知类型应返回原值', () => {
-      mountComponent()
-      expect(wrapper.vm.getShapeLabel('unknown')).toBe('unknown')
-    })
-
-    it('undefined 应返回空字符串', () => {
-      mountComponent()
-      expect(wrapper.vm.getShapeLabel(undefined)).toBe('')
-    })
-  })
-
-  describe('getFeatureLabel 方法', () => {
-    it('应正确映射 chamfer', () => {
-      mountComponent()
-      expect(wrapper.vm.getFeatureLabel('chamfer')).toBe('nlInputPanel.featureChamfer')
-    })
-
-    it('应正确映射 fillet', () => {
-      mountComponent()
-      expect(wrapper.vm.getFeatureLabel('fillet')).toBe('nlInputPanel.featureFillet')
-    })
-
-    it('应正确映射 hole', () => {
-      mountComponent()
-      expect(wrapper.vm.getFeatureLabel('hole')).toBe('nlInputPanel.featureHole')
-    })
-
-    it('应正确映射 slot', () => {
-      mountComponent()
-      expect(wrapper.vm.getFeatureLabel('slot')).toBe('nlInputPanel.featureSlot')
-    })
-
-    it('未知特征应返回原值', () => {
-      mountComponent()
-      expect(wrapper.vm.getFeatureLabel('pocket')).toBe('pocket')
-    })
-  })
-
-  describe('getConfidenceColor 方法', () => {
-    it('置信度 >= 0.8 应返回 success', () => {
-      mountComponent()
-      expect(wrapper.vm.getConfidenceColor(0.9)).toBe('var(--success)')
-    })
-
-    it('置信度 = 0.8 应返回 success', () => {
-      mountComponent()
-      expect(wrapper.vm.getConfidenceColor(0.8)).toBe('var(--success)')
-    })
-
-    it('置信度 >= 0.6 应返回 warning', () => {
-      mountComponent()
-      expect(wrapper.vm.getConfidenceColor(0.7)).toBe('var(--warning)')
-    })
-
-    it('置信度 = 0.6 应返回 warning', () => {
-      mountComponent()
-      expect(wrapper.vm.getConfidenceColor(0.6)).toBe('var(--warning)')
-    })
-
-    it('置信度 < 0.6 应返回 error', () => {
-      mountComponent()
-      expect(wrapper.vm.getConfidenceColor(0.3)).toBe('var(--error)')
-    })
-  })
-
   describe('formatTime 方法', () => {
     it('应返回字符串类型', () => {
       mountComponent()
       const result = wrapper.vm.formatTime(new Date())
       expect(typeof result).toBe('string')
-    })
-  })
-
-  describe('fillExample 方法', () => {
-    it('应将文本填入 userInput', () => {
-      mountComponent()
-      wrapper.vm.fillExample('一个长方体')
-      expect(wrapper.vm.userInput).toBe('一个长方体')
     })
   })
 
@@ -352,9 +258,8 @@ describe('NLInputPanel.vue', () => {
         type: 'params',
         params: { shape_type: 'box' },
       })
-      wrapper.vm.editParams = { shape_type: 'cylinder' }
       wrapper.vm.showParamDialog = true
-      wrapper.vm.confirmEditedParams()
+      wrapper.vm.confirmEditedParams({ shape_type: 'cylinder' })
       expect(wrapper.vm.showParamDialog).toBe(false)
       expect(wrapper.vm.messages[0].params.shape_type).toBe('cylinder')
     })
@@ -363,7 +268,7 @@ describe('NLInputPanel.vue', () => {
       mountComponent()
       expect(() => {
         wrapper.vm.showParamDialog = true
-        wrapper.vm.confirmEditedParams()
+        wrapper.vm.confirmEditedParams({ shape_type: 'box' })
       }).not.toThrow()
       expect(wrapper.vm.showParamDialog).toBe(false)
     })

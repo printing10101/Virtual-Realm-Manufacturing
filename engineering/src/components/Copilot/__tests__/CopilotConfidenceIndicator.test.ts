@@ -97,8 +97,8 @@ describe('ConfidenceIndicator.vue', () => {
         props: { confidence: 0.9 },
       })
       const value = wrapper.find('.confidence-value')
-      const style = value.attributes('style')
-      expect(style).toContain('#67c23a')
+      // 组件用 confidenceClass 表达颜色（scoped CSS），非 inline style
+      expect(value.classes()).toContain('confidence-high')
     })
 
     it('中置信度(0.5-0.8)应该使用橙色', () => {
@@ -106,8 +106,7 @@ describe('ConfidenceIndicator.vue', () => {
         props: { confidence: 0.6 },
       })
       const value = wrapper.find('.confidence-value')
-      const style = value.attributes('style')
-      expect(style).toContain('#e6a23c')
+      expect(value.classes()).toContain('confidence-medium')
     })
 
     it('低置信度(<0.5)应该使用红色', () => {
@@ -115,8 +114,7 @@ describe('ConfidenceIndicator.vue', () => {
         props: { confidence: 0.3 },
       })
       const value = wrapper.find('.confidence-value')
-      const style = value.attributes('style')
-      expect(style).toContain('#f56c6c')
+      expect(value.classes()).toContain('confidence-low')
     })
   })
 
@@ -168,8 +166,7 @@ describe('ConfidenceIndicator.vue', () => {
         props: { confidence: 0.8 },
       })
       const value = wrapper.find('.confidence-value')
-      const style = value.attributes('style')
-      expect(style).toContain('#67c23a')
+      expect(value.classes()).toContain('confidence-high')
     })
 
     it('应该处理边界值0.5', () => {
@@ -177,8 +174,7 @@ describe('ConfidenceIndicator.vue', () => {
         props: { confidence: 0.5 },
       })
       const value = wrapper.find('.confidence-value')
-      const style = value.attributes('style')
-      expect(style).toContain('#e6a23c')
+      expect(value.classes()).toContain('confidence-medium')
     })
   })
 })

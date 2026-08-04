@@ -20,7 +20,7 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock @/api/llmProviders
-const mockRoutingStrategyMeta = [
+const mockRoutingStrategyMeta = vi.hoisted(() => ([
   {
     value: 'round_robin',
     label: '轮询',
@@ -36,17 +36,17 @@ const mockRoutingStrategyMeta = [
     label: '延迟优先',
     description: '延迟优先策略描述',
   },
-]
+]))
 vi.mock('@/api/llmProviders', () => ({
   ROUTING_STRATEGY_META: mockRoutingStrategyMeta,
 }))
 
 // Mock @/stores/llmProviders
-const mockStore = {
+const mockStore = vi.hoisted(() => ({
   loading: false,
   routerStatus: null as any,
   refreshStatus: vi.fn(),
-}
+}))
 vi.mock('@/stores/llmProviders', () => ({
   useLLMProvidersStore: () => mockStore,
 }))

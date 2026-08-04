@@ -13,7 +13,7 @@
  * 对应 ADR-005 阶段 4 验收标准（前端飞轮看板接入真实数据）。
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import type {
@@ -55,6 +55,8 @@ vi.mock('@element-plus/icons-vue', () => ({
 vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
   ElMessageBox: { confirm: vi.fn(() => Promise.resolve('confirm')) },
+  // v-loading 指令（AutoImport/ElementPlusResolver 自动注入）
+  ElLoadingDirective: { mounted: vi.fn(), unmounted: vi.fn() },
   ElTabs: {
     template: '<div class="el-tabs"><slot /></div>',
     props: ['modelValue', 'type'],
@@ -66,7 +68,7 @@ vi.mock('element-plus', () => ({
   },
   ElButton: {
     template:
-      '<button class="el-button" :class="{ \'el-button--primary\': type === \'primary\', \'el-button--danger\': type === \'danger\' }" @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
+      '<button class="el-button" :class="{ \'el-button--primary\': type === \'primary\', \'el-button--danger\': type === \'danger\', \'is-loading\': loading }" @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
     props: ['type', 'size', 'loading', 'icon', 'link'],
     emits: ['click'],
   },
@@ -111,8 +113,11 @@ vi.mock('element-plus', () => ({
     props: ['data', 'size', 'stripe', 'maxHeight', 'emptyText'],
   },
   ElTableColumn: {
-    template: '<td class="el-table-column"><slot /></td>',
+    // slot 提供 row 默认值：真实 el-table 会传行数据，mock 里防止
+    // 模板 #default="{ row }" 解构 undefined（row.status 崩溃）
+    template: '<td class="el-table-column"><slot :row="row" /></td>',
     props: ['prop', 'label', 'width', 'showOverflowTooltip'],
+    data: () => ({ row: {} }),
   },
   ElInput: {
     template:
@@ -331,7 +336,7 @@ describe('FlywheelDashboard.vue', () => {
   })
 
   const mountDashboard = (options = {}) => {
-    return shallowMount(FlywheelDashboard, {
+    return mount(FlywheelDashboard, {
       global: {
         plugins: [pinia, router],
         ...options,
@@ -880,15 +885,15 @@ describe('FlywheelDashboard.vue', () => {
       const wrapper = mountDashboard()
       await flushPromises()
       const refreshBtn = wrapper.find('.page-header__actions button')
-      // ElButton stub 的 loading prop 通过 props 传递
-      expect((refreshBtn as any).props('loading')).toBe(true)
+      // ElButton mock 通过 is-loading class 表达 loading 状态
+      expect(refreshBtn.classes('is-loading')).toBe(true)
     })
 
     it('anyLoading 为 false 时刷新按钮非 loading 状态', async () => {
       const wrapper = mountDashboard()
       await flushPromises()
       const refreshBtn = wrapper.find('.page-header__actions button')
-      expect((refreshBtn as any).props('loading')).toBe(false)
+      expect(refreshBtn.classes('is-loading')).toBe(false)
     })
   })
 })

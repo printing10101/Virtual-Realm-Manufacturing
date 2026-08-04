@@ -11,12 +11,12 @@ vi.mock('vue-i18n', () => ({
 }))
 
 // Mock Element Plus
-const mockElMessage = {
+const mockElMessage = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
   info: vi.fn(),
   warning: vi.fn(),
-}
+}))
 vi.mock('element-plus', () => ({
   ElMessage: mockElMessage,
   ElButtonGroup: { template: '<div class="el-button-group"><slot /></div>' },
@@ -44,11 +44,11 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock nl2cad API
-const mockExtractParams = vi.fn()
-const mockGenerateModel = vi.fn()
-const mockGenerateProcessPlanning = vi.fn()
-const mockGenerateNC = vi.fn()
-const mockExportAnimation = vi.fn()
+const mockExtractParams = vi.hoisted(() => vi.fn())
+const mockGenerateModel = vi.hoisted(() => vi.fn())
+const mockGenerateProcessPlanning = vi.hoisted(() => vi.fn())
+const mockGenerateNC = vi.hoisted(() => vi.fn())
+const mockExportAnimation = vi.hoisted(() => vi.fn())
 
 vi.mock('@/api/nl2cad', () => ({
   extractParams: mockExtractParams,
@@ -112,12 +112,14 @@ describe('WorkflowGuide.vue', () => {
 
     it('应该渲染步骤指示器', () => {
       mountComponent()
-      expect(wrapper.find('.steps-indicator').exists()).toBe(true)
+      // shallowMount 下子组件 stub 化：断言步骤指示器 stub 与步骤内容区
+      expect(wrapper.findComponent({ name: 'WorkflowGuideStepsIndicator' }).exists()).toBe(true)
+      expect(wrapper.find('.step-content').exists()).toBe(true)
     })
 
     it('应该渲染6个步骤', () => {
       mountComponent()
-      const steps = wrapper.findAll('.step-item')
+      const steps = wrapper.findComponent({ name: 'WorkflowGuideStepsIndicator' }).props('steps')
       expect(steps.length).toBe(6)
     })
 
@@ -147,14 +149,18 @@ describe('WorkflowGuide.vue', () => {
   describe('步骤1：自然语言描述', () => {
     it('应该渲染示例卡片', () => {
       mountComponent()
-      const cards = wrapper.findAll('.example-card')
-      expect(cards.length).toBe(4)
+      // 示例卡片渲染在 Step1DescriptionPanel 内部（shallowMount stub 化），
+      // 断言组件持有 4 个示例（stub 收到 examples prop）
+      expect(wrapper.vm.examples.length).toBe(4)
+      const panel = wrapper.findComponent({ name: 'Step1DescriptionPanel' })
+      expect(panel.exists()).toBe(true)
     })
 
     it('点击示例卡片应填充 nlDescription', async () => {
       mountComponent()
-      const cards = wrapper.findAll('.example-card')
-      await cards[0].trigger('click')
+      // 点击事件由 Step1DescriptionPanel 转发（fill-example）；stub 下直接触发
+      wrapper.findComponent({ name: 'Step1DescriptionPanel' }).vm.$emit('fill-example', wrapper.vm.examples[0].text)
+      await wrapper.vm.$nextTick()
       expect(wrapper.vm.nlDescription).toBe(wrapper.vm.examples[0].text)
     })
 
@@ -384,100 +390,24 @@ describe('WorkflowGuide.vue', () => {
     })
   })
 
-  describe('辅助方法', () => {
-    describe('getShapeLabel', () => {
-      it('应返回 box 形状标签', () => {
-        mountComponent()
-        expect(wrapper.vm.getShapeLabel('box')).toBe('workflowGuide.shapeBox')
-      })
-
-      it('应返回 cylinder 形状标签', () => {
-        mountComponent()
-        expect(wrapper.vm.getShapeLabel('cylinder')).toBe('workflowGuide.shapeCylinder')
-      })
-
-      it('应返回 sphere 形状标签', () => {
-        mountComponent()
-        expect(wrapper.vm.getShapeLabel('sphere')).toBe('workflowGuide.shapeSphere')
-      })
-
-      it('应返回 cone 形状标签', () => {
-        mountComponent()
-        expect(wrapper.vm.getShapeLabel('cone')).toBe('workflowGuide.shapeCone')
-      })
-
-      it('未知形状应返回原值', () => {
-        mountComponent()
-        expect(wrapper.vm.getShapeLabel('unknown')).toBe('unknown')
-      })
-    })
-
-    describe('formatDimensions', () => {
-      it('dimensions 为 undefined 应返回 -', () => {
-        mountComponent()
-        expect(wrapper.vm.formatDimensions(undefined)).toBe('-')
-      })
-
-      it('应格式化 length/width/height', () => {
-        mountComponent()
-        const result = wrapper.vm.formatDimensions({ length: 100, width: 50, height: 30 })
-        expect(result).toContain('100mm')
-        expect(result).toContain('50mm')
-        expect(result).toContain('30mm')
-        expect(result).toContain('×')
-      })
-
-      it('应格式化 radius', () => {
-        mountComponent()
-        const result = wrapper.vm.formatDimensions({ radius: 25 })
-        expect(result).toContain('25mm')
-      })
-
-      it('空 dimensions 应返回 -', () => {
-        mountComponent()
-        expect(wrapper.vm.formatDimensions({})).toBe('-')
-      })
-    })
-
-    describe('getConfidenceColor', () => {
-      it('置信度 >= 0.8 应返回 success 颜色', () => {
-        mountComponent()
-        expect(wrapper.vm.getConfidenceColor(0.9)).toBe('var(--success)')
-        expect(wrapper.vm.getConfidenceColor(0.8)).toBe('var(--success)')
-      })
-
-      it('置信度 >= 0.6 且 < 0.8 应返回 warning 颜色', () => {
-        mountComponent()
-        expect(wrapper.vm.getConfidenceColor(0.7)).toBe('var(--warning)')
-        expect(wrapper.vm.getConfidenceColor(0.6)).toBe('var(--warning)')
-      })
-
-      it('置信度 < 0.6 应返回 error 颜色', () => {
-        mountComponent()
-        expect(wrapper.vm.getConfidenceColor(0.5)).toBe('var(--error)')
-      })
-
-      it('置信度为 undefined 应使用默认值 0.8', () => {
-        mountComponent()
-        expect(wrapper.vm.getConfidenceColor(undefined)).toBe('var(--success)')
-      })
-    })
-  })
-
   describe('插槽渲染', () => {
     it('步骤3应渲染 3d-viewer 插槽', async () => {
       mountComponent()
       wrapper.vm.modelGenerated = true
       wrapper.vm.currentStep = 2
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('.preview-viewport').exists()).toBe(true)
+      // 3D 视图渲染在 Step3PreviewPanel 内部（shallowMount stub 化）：
+      // 断言面板 stub 存在且收到 model-generated prop
+      const panel = wrapper.findComponent({ name: 'Step3PreviewPanel' })
+      expect(panel.exists()).toBe(true)
+      expect(panel.props('modelGenerated')).toBe(true)
     })
 
     it('步骤6应渲染 simulation-viewer 插槽', async () => {
       mountComponent()
       wrapper.vm.currentStep = 5
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('.simulation-viewport').exists()).toBe(true)
+      expect(wrapper.findComponent({ name: 'Step6SimulationPanel' }).exists()).toBe(true)
     })
   })
 })

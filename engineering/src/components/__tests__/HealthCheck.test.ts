@@ -24,8 +24,8 @@ vi.mock('@element-plus/icons-vue', () => ({
   WarningFilled: { name: 'WarningFilled', template: '<i />' },
 }))
 
-const elMessageError = vi.fn()
-const elMessageSuccess = vi.fn()
+const elMessageError = vi.hoisted(() => vi.fn())
+const elMessageSuccess = vi.hoisted(() => vi.fn())
 // Mock element-plus
 vi.mock('element-plus', () => ({
   ElMessage: {
@@ -69,7 +69,7 @@ describe('HealthCheck.vue', () => {
     return wrapper
   }
 
-  const setItems = (items: any[]) => {
+  const setItems = (items: unknown[]) => {
     wrapper.vm.items = items
   }
 

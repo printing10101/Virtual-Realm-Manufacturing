@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
 // mock 工艺理解 API 模块
-const queryMock = vi.fn()
-const checkHealthMock = vi.fn()
-const getStatsMock = vi.fn()
+const queryMock = vi.hoisted(() => vi.fn())
+const checkHealthMock = vi.hoisted(() => vi.fn())
+const getStatsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/api/processUnderstanding', () => ({
   query: (...args: unknown[]) => queryMock(...args),
@@ -17,6 +17,8 @@ vi.mock('@/api/processUnderstanding', () => ({
 vi.mock('@/utils/error-handler', () => ({
   extractErrorMessage: vi.fn((err: unknown, fallback = '操作失败') => {
     if (!err) return fallback
+    // 与生产实现对齐：字符串直接返回
+    if (typeof err === 'string') return err
     const e = err as Record<string, unknown>
     const resp = e.response as Record<string, unknown> | undefined
     const data = resp?.data as Record<string, unknown> | undefined

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, VueWrapper } from '@vue/test-utils'
+import { mount, flushPromises, VueWrapper } from '@vue/test-utils'
 import ModelsDialog from '@/components/settings/ModelsDialog.vue'
 import type { LLMProvider, ModelInfo } from '@/types/llmProvider'
 
@@ -16,8 +16,8 @@ vi.mock('vue-i18n', () => ({
 }))
 
 // Mock element-plus ElMessage
-const elMessageSuccess = vi.fn()
-const elMessageWarning = vi.fn()
+const elMessageSuccess = vi.hoisted(() => vi.fn())
+const elMessageWarning = vi.hoisted(() => vi.fn())
 vi.mock('element-plus', () => ({
   ElMessage: {
     success: (...args: any[]) => elMessageSuccess(...args),
@@ -37,9 +37,7 @@ Object.defineProperty(globalThis.navigator, 'clipboard', {
   value: { writeText: writeTextMock },
   configurable: true,
 })
-
-// Mock @/stores/llmProviders
-const listModelsMock = vi.fn()
+const listModelsMock = vi.hoisted(() => vi.fn())
 vi.mock('@/stores/llmProviders', () => ({
   useLLMProvidersStore: () => ({
     listModels: listModelsMock,
@@ -84,24 +82,24 @@ describe('ModelsDialog.vue', () => {
       },
       global: {
         stubs: {
-          'el-dialog': {
+          ElDialog: {
             template: '<div><slot /><slot name="footer" /></div>',
             props: ['modelValue', 'title', 'width', 'closeOnClickModal', 'appendToBody'],
             emits: ['update:modelValue', 'open'],
           },
-          'el-descriptions': { template: '<div class="descriptions"><slot /></div>' },
-          'el-descriptions-item': { template: '<div class="desc-item"><slot /></div>', props: ['label', 'span'] },
-          'el-tag': { template: '<span class="tag"><slot /></span>', props: ['type', 'size', 'effect'] },
-          'el-input': { template: '<input class="filter-input" />', props: ['modelValue', 'size', 'clearable', 'placeholder'] },
-          'el-button': { template: '<button class="btn"><slot /></button>', props: ['size', 'loading', 'type', 'text'] },
-          'el-icon': { template: '<span><slot /></span>' },
-          'el-empty': { template: '<div class="empty" />', props: ['description', 'imageSize'] },
-          'el-table': {
+          ElDescriptions: { template: '<div class="descriptions"><slot /></div>' },
+          ElDescriptionsItem: { template: '<div class="desc-item"><slot /></div>', props: ['label', 'span'] },
+          ElTag: { template: '<span class="tag"><slot /></span>', props: ['type', 'size', 'effect'] },
+          ElInput: { template: '<input class="filter-input" />', props: ['modelValue', 'size', 'clearable', 'placeholder'] },
+          ElButton: { template: '<button class="btn"><slot /></button>', props: ['size', 'loading', 'type', 'text'] },
+          ElIcon: { template: '<span><slot /></span>' },
+          ElEmpty: { template: '<div class="empty" />', props: ['description', 'imageSize'] },
+          ElTable: {
             template: '<div class="table"><slot /><div v-for="row in data" :key="row.id"><slot name="default" :row="row" /></div></div>',
             props: ['data', 'size', 'stripe', 'maxHeight', 'emptyText'],
           },
-          'el-table-column': { template: '<div class="col" />' },
-          'el-alert': { template: '<div class="alert" />', props: ['title', 'type', 'closable', 'showIcon'] },
+          ElTableColumn: { template: '<div class="col" />' },
+          ElAlert: { template: '<div class="alert" />', props: ['title', 'type', 'closable', 'showIcon'] },
         },
       },
     })
@@ -303,7 +301,7 @@ describe('ModelsDialog.vue', () => {
     })
 
     it('加载过程中 loading 应为 true', async () => {
-      let resolveFn: (v: any) => void = () => {}
+      let resolveFn: (v: unknown) => void = () => {}
       listModelsMock.mockReturnValue(new Promise((r) => (resolveFn = r)))
       mountComponent()
       const promise = wrapper.vm.loadModels()
@@ -327,11 +325,11 @@ describe('ModelsDialog.vue', () => {
       expect(wrapper.vm.filter).toBe('')
     })
 
-    it('有 provider 时应调用 loadModels', () => {
+    it('有 provider 时应调用 loadModels', async () => {
       mountComponent()
-      const spy = vi.spyOn(wrapper.vm, 'loadModels')
       wrapper.vm.onOpen()
-      expect(spy).toHaveBeenCalled()
+      await flushPromises()
+      expect(listModelsMock).toHaveBeenCalled()
     })
 
     it('无 provider 时不应调用 loadModels', () => {
@@ -369,7 +367,8 @@ describe('ModelsDialog.vue', () => {
 
     it('成功时应调用 ElMessage.success', async () => {
       mountComponent()
-      await wrapper.vm.copyModelId('llama3')
+      wrapper.vm.copyModelId('llama3')
+      await flushPromises()
       expect(elMessageSuccess).toHaveBeenCalled()
       expect(elMessageSuccess.mock.calls[0][0]).toContain('llama3')
     })
@@ -377,7 +376,8 @@ describe('ModelsDialog.vue', () => {
     it('clipboard 不可用时应调用 ElMessage.warning', async () => {
       writeTextMock.mockRejectedValueOnce(new Error('denied'))
       mountComponent()
-      await wrapper.vm.copyModelId('llama3')
+      wrapper.vm.copyModelId('llama3')
+      await flushPromises()
       expect(elMessageWarning).toHaveBeenCalled()
     })
   })
@@ -385,11 +385,11 @@ describe('ModelsDialog.vue', () => {
   describe('watch provider', () => {
     it('provider_id 变化且 visible 时应调用 loadModels', async () => {
       mountComponent()
-      const spy = vi.spyOn(wrapper.vm, 'loadModels')
       await wrapper.setProps({
         provider: { ...baseProvider, provider_id: 'p2' } as any,
       })
-      expect(spy).toHaveBeenCalled()
+      await flushPromises()
+      expect(listModelsMock).toHaveBeenCalled()
     })
 
     it('provider_id 变化但不可见时不应调用 loadModels', async () => {

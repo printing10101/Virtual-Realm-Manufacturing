@@ -107,7 +107,7 @@ declare module 'vue' {
     RuleEditDialog: typeof import('./components/rule_editor/RuleEditDialog.vue')['default']
     SimulationExportTab: typeof import('./components/simulation/SimulationExportTab.vue')['default']
     SimulationFemTab: typeof import('./components/simulation/SimulationFemTab.vue')['default']
-    SimulationSimTab: typeof import('./components/simulation/SimulationSimTab.vue')['default']
+    SimulationNcTab: typeof import('./components/simulation/SimulationNcTab.vue')['default']
     SimulationViewer: typeof import('./components/simulation/SimulationViewer.vue')['default']
     SplashScreen: typeof import('./components/SplashScreen.vue')['default']
     StepImportDialog: typeof import('./components/step_import/StepImportDialog.vue')['default']

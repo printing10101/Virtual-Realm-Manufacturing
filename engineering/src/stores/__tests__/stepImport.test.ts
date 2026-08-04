@@ -18,12 +18,12 @@ vi.mock('@/utils/error-handler', async () => {
 })
 
 // mock ElMessage
-const elMessageMock = {
+const elMessageMock = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
   warning: vi.fn(),
   info: vi.fn(),
-}
+}))
 vi.mock('element-plus', () => ({
   ElMessage: elMessageMock,
 }))
@@ -237,7 +237,7 @@ describe('useStepImportStore', () => {
     })
 
     it('导入成功但无 STL 文件时不设置 activeStlUrl', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: {
           code: 0,
           data: {
@@ -259,7 +259,7 @@ describe('useStepImportStore', () => {
     })
 
     it('后端返回非 0 code 时设置错误信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1, message: '文件格式不支持' },
       })
       const store = useStepImportStore()
@@ -270,7 +270,7 @@ describe('useStepImportStore', () => {
     })
 
     it('后端返回非 0 code 且无 message 时使用默认错误', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1 },
       })
       const store = useStepImportStore()
@@ -280,7 +280,7 @@ describe('useStepImportStore', () => {
     })
 
     it('文件过大 (413) 时返回友好提示', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
         response: { status: 413 },
       })
       const store = useStepImportStore()
@@ -291,7 +291,7 @@ describe('useStepImportStore', () => {
     })
 
     it('请求超时 (ECONNABORTED) 时返回超时提示', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
         code: 'ECONNABORTED',
       })
       const store = useStepImportStore()
@@ -301,7 +301,7 @@ describe('useStepImportStore', () => {
     })
 
     it('网络异常时通过 extractErrorMessage 提取错误', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
         response: { data: { message: '服务器内部错误' } },
       })
       const store = useStepImportStore()
@@ -311,7 +311,8 @@ describe('useStepImportStore', () => {
     })
 
     it('未知异常时使用默认错误信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue('unknown')
+      // 用 {}（无法提取任何信息）触发默认值；字符串异常会被 extractErrorMessage 原样返回
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue({})
       const store = useStepImportStore()
       const result = await store.importStepFile(makeFile())
       expect(result).toBe(false)
@@ -397,7 +398,7 @@ describe('useStepImportStore', () => {
     })
 
     it('后端返回空 history 时降级为空数组', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 0, data: { history: null, total: 0 } },
       })
       const store = useStepImportStore()
@@ -406,7 +407,7 @@ describe('useStepImportStore', () => {
     })
 
     it('网络异常时降级为空列表', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
+      (http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useStepImportStore()
       await store.fetchImportHistory()
       expect(store.importHistory).toEqual([])
@@ -416,7 +417,7 @@ describe('useStepImportStore', () => {
 
   describe('deleteHistoryFile', () => {
     it('删除成功后刷新历史列表', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 0 } })
+      (http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 0 } })
       ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 0, data: { history: [], total: 0 } },
       })
@@ -427,7 +428,7 @@ describe('useStepImportStore', () => {
     })
 
     it('删除失败时显示错误提示', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
+      (http.delete as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useStepImportStore()
       await store.deleteHistoryFile('old.step')
       expect(elMessageMock.error).toHaveBeenCalledWith('删除历史文件失败，请稍后重试')
@@ -436,7 +437,7 @@ describe('useStepImportStore', () => {
 
   describe('clearCache', () => {
     it('清理缓存成功时不显示错误', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 0 } })
+      (http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 0 } })
       const store = useStepImportStore()
       await store.clearCache()
       expect(http.delete).toHaveBeenCalledWith(expect.stringContaining('/step/cache'))
@@ -444,7 +445,7 @@ describe('useStepImportStore', () => {
     })
 
     it('清理缓存失败时显示错误提示', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
+      (http.delete as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useStepImportStore()
       await store.clearCache()
       expect(elMessageMock.error).toHaveBeenCalledWith('清理缓存失败，请稍后重试')

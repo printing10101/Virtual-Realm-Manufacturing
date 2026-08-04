@@ -27,7 +27,7 @@ describe('formatters', () => {
 
   describe('formatDuration', () => {
     it('格式化分钟（无小时）', () => {
-      expect(formatDuration(30)).toBe('30分钟')
+      expect(formatDuration(30 * 60)).toBe('30分钟')
       expect(formatDuration(0)).toBe('0分钟')
     })
 
@@ -37,7 +37,7 @@ describe('formatters', () => {
     })
 
     it('简写格式', () => {
-      expect(formatDuration(30, true)).toBe('30m')
+      expect(formatDuration(30 * 60, true)).toBe('30m')
       expect(formatDuration(3600 + 1800, true)).toBe('1h 30m')
     })
   })

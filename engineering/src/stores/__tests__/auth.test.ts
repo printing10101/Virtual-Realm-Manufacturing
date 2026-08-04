@@ -6,7 +6,6 @@ import { useAuthStore } from '@/stores/auth'
 vi.mock('@/utils/http', () => ({
   default: {
     post: vi.fn(),
-    get: vi.fn(),
   },
 }))
 
@@ -15,135 +14,107 @@ import http from '@/utils/http'
 describe('useAuthStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    sessionStorage.clear()
     vi.clearAllMocks()
+    sessionStorage.clear()
   })
 
   describe('initial state', () => {
-    it('未登录时 token 为 null', () => {
+    it('sessionStorage 无数据时 token 为 null', () => {
       const store = useAuthStore()
       expect(store.token).toBeNull()
     })
 
-    it('未登录时 user 为 null', () => {
+    it('sessionStorage 无数据时 user 为 null', () => {
       const store = useAuthStore()
       expect(store.user).toBeNull()
     })
 
-    it('未登录时 isAuthenticated 为 false', () => {
+    it('isAuthenticated 为 false', () => {
       const store = useAuthStore()
       expect(store.isAuthenticated).toBe(false)
     })
 
-    it('未登录时 userRole 降级为 viewer', () => {
+    it('userRole 默认为 viewer', () => {
       const store = useAuthStore()
       expect(store.userRole).toBe('viewer')
     })
 
-    it('未登录时 permissions 为空数组', () => {
+    it('permissions 默认为空数组', () => {
       const store = useAuthStore()
       expect(store.permissions).toEqual([])
     })
 
-    it('sessionStorage 存在 token 时恢复 token', () => {
-      sessionStorage.setItem('auth_token', 'persisted_token')
+    it('sessionStorage 有 token 时恢复 token', () => {
+      sessionStorage.setItem('auth_token', 'test_token')
       const store = useAuthStore()
-      expect(store.token).toBe('persisted_token')
+      expect(store.token).toBe('test_token')
+      expect(store.isAuthenticated).toBe(true)
     })
 
-    it('sessionStorage 存在合法用户时恢复用户', () => {
-      const userInfo = {
+    it('sessionStorage 有合法用户信息时恢复 user', () => {
+      sessionStorage.setItem('auth_user', JSON.stringify({
         id: 'u1',
-        username: 'alice',
+        username: 'admin',
         role: 'admin',
-        permissions: ['read'],
-      }
-      sessionStorage.setItem('auth_user', JSON.stringify(userInfo))
+        permissions: ['all'],
+      }))
       const store = useAuthStore()
-      expect(store.user).toMatchObject({ username: 'alice', role: 'admin' })
+      expect(store.user).not.toBeNull()
+      expect(store.user?.username).toBe('admin')
       expect(store.userRole).toBe('admin')
     })
 
-    it('sessionStorage 用户数据损坏时降级为 null 并清理', () => {
-      sessionStorage.setItem('auth_user', '{invalid json}')
+    it('sessionStorage 有非法 role 时降级为 viewer', () => {
+      sessionStorage.setItem('auth_user', JSON.stringify({
+        id: 'u1',
+        username: 'hacker',
+        role: 'superadmin',
+        permissions: ['all'],
+      }))
+      const store = useAuthStore()
+      expect(store.userRole).toBe('viewer')
+    })
+
+    it('sessionStorage 损坏的数据被清理且 user 为 null', () => {
+      sessionStorage.setItem('auth_user', 'invalid json{{{')
       const store = useAuthStore()
       expect(store.user).toBeNull()
       expect(sessionStorage.getItem('auth_user')).toBeNull()
     })
-
-    it('sessionStorage 用户 role 非法时降级为 viewer', () => {
-      const userInfo = {
-        id: 'u1',
-        username: 'bob',
-        role: 'superadmin',
-        permissions: [],
-      }
-      sessionStorage.setItem('auth_user', JSON.stringify(userInfo))
-      const store = useAuthStore()
-      expect(store.userRole).toBe('viewer')
-    })
   })
 
   describe('computed', () => {
-    it('token 存在时 isAuthenticated 为 true', () => {
+    it('isAdmin 在 admin 角色时返回 true', () => {
       const store = useAuthStore()
-      store.$patch({ token: 'abc' })
-      expect(store.isAuthenticated).toBe(true)
-    })
-
-    it('user 存在时 userRole 反映用户角色', () => {
-      const store = useAuthStore()
-      store.$patch({
-        user: { id: '1', username: 'op', role: 'operator', permissions: [] },
-      })
-      expect(store.userRole).toBe('operator')
-    })
-
-    it('user 存在时 permissions 反映用户权限', () => {
-      const store = useAuthStore()
-      store.$patch({
-        user: { id: '1', username: 'op', role: 'operator', permissions: ['read', 'write'] },
-      })
-      expect(store.permissions).toEqual(['read', 'write'])
-    })
-  })
-
-  describe('isAdmin', () => {
-    it('role 为 admin 时返回 true', () => {
-      const store = useAuthStore()
-      store.$patch({
-        user: { id: '1', username: 'admin', role: 'admin', permissions: [] },
-      })
+      store.$patch({ user: { id: 'u1', username: 'admin', role: 'admin', permissions: ['all'] } })
       expect(store.isAdmin()).toBe(true)
     })
 
-    it('role 非 admin 时返回 false', () => {
+    it('isAdmin 在 operator 角色时返回 false', () => {
       const store = useAuthStore()
-      store.$patch({
-        user: { id: '1', username: 'op', role: 'operator', permissions: [] },
-      })
+      store.$patch({ user: { id: 'u1', username: 'op', role: 'operator', permissions: ['read'] } })
       expect(store.isAdmin()).toBe(false)
     })
-  })
 
-  describe('hasPermission', () => {
-    it('拥有指定权限时返回 true', () => {
+    it('isAdmin 在 viewer 角色时返回 false', () => {
       const store = useAuthStore()
-      store.$patch({
-        user: { id: '1', username: 'op', role: 'operator', permissions: ['read', 'write'] },
-      })
+      expect(store.isAdmin()).toBe(false)
+    })
+
+    it('hasPermission 包含权限时返回 true', () => {
+      const store = useAuthStore()
+      store.$patch({ user: { id: 'u1', username: 'op', role: 'operator', permissions: ['read', 'write'] } })
+      expect(store.hasPermission('read')).toBe(true)
       expect(store.hasPermission('write')).toBe(true)
     })
 
-    it('未拥有指定权限时返回 false', () => {
+    it('hasPermission 不包含权限时返回 false', () => {
       const store = useAuthStore()
-      store.$patch({
-        user: { id: '1', username: 'op', role: 'operator', permissions: ['read'] },
-      })
+      store.$patch({ user: { id: 'u1', username: 'op', role: 'operator', permissions: ['read'] } })
       expect(store.hasPermission('delete')).toBe(false)
     })
 
-    it('未登录时返回 false', () => {
+    it('hasPermission 无用户时返回 false', () => {
       const store = useAuthStore()
       expect(store.hasPermission('read')).toBe(false)
     })
@@ -151,126 +122,116 @@ describe('useAuthStore', () => {
 
   describe('login', () => {
     it('登录成功时保存 token 和用户信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: {
           code: 0,
           data: {
-            access_token: 'token_123',
-            user: {
-              username: 'alice',
-              role: 'admin',
-              permissions: ['read', 'write'],
-            },
+            access_token: 'jwt_token',
+            user: { username: 'testuser', role: 'operator', permissions: ['read'] },
           },
         },
       })
       const store = useAuthStore()
-      const result = await store.login('alice', 'password')
+      const result = await store.login('testuser', 'pass123')
       expect(result.success).toBe(true)
-      expect(store.token).toBe('token_123')
-      expect(store.user).toMatchObject({ username: 'alice', role: 'admin' })
-      expect(sessionStorage.getItem('auth_token')).toBe('token_123')
-      expect(JSON.parse(sessionStorage.getItem('auth_user')!)).toMatchObject({
-        username: 'alice',
-        role: 'admin',
-      })
+      expect(store.token).toBe('jwt_token')
+      expect(store.user?.username).toBe('testuser')
+      expect(store.userRole).toBe('operator')
+      expect(sessionStorage.getItem('auth_token')).toBe('jwt_token')
     })
 
-    it('后端返回非 0 code 时登录失败', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: { code: 1, message: '密码错误' },
+    it('登录成功时 user.id 使用 username 回退', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          code: 0,
+          data: {
+            access_token: 't',
+            user: { username: 'noid_user', role: 'viewer', permissions: [] },
+          },
+        },
       })
       const store = useAuthStore()
-      const result = await store.login('alice', 'wrong')
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('密码错误')
+      await store.login('noid_user', 'p')
+      expect(store.user?.id).toBe('noid_user')
     })
 
-    it('后端未返回 message 时使用默认错误信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+    it('后端返回非 0 code 时返回错误信息', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { code: 1, message: '用户名或密码错误' },
+      })
+      const store = useAuthStore()
+      const result = await store.login('baduser', 'wrong')
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('用户名或密码错误')
+      expect(store.token).toBeNull()
+    })
+
+    it('后端返回非 0 code 且无 message 时使用默认信息', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { code: 1 },
       })
       const store = useAuthStore()
-      const result = await store.login('alice', 'wrong')
+      const result = await store.login('x', 'y')
       expect(result.success).toBe(false)
       expect(result.error).toBe('登录失败')
     })
 
     it('网络异常时返回错误信息', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
-        response: { data: { message: '服务不可用' } },
-      })
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
       const store = useAuthStore()
-      const result = await store.login('alice', 'password')
+      const result = await store.login('u', 'p')
       expect(result.success).toBe(false)
-      expect(result.error).toBe('服务不可用')
+      expect(result.error).toBe('网络错误')
     })
 
-    it('网络异常无 response.message 时降级为 error.message', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('timeout'))
+    it('网络异常无 Error 对象时使用默认信息', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue('unknown')
       const store = useAuthStore()
-      const result = await store.login('alice', 'password')
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('timeout')
-    })
-
-    it('未知异常时返回网络错误提示', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue('unknown')
-      const store = useAuthStore()
-      const result = await store.login('alice', 'password')
+      const result = await store.login('u', 'p')
       expect(result.success).toBe(false)
       expect(result.error).toBe('网络错误，登录失败')
     })
 
-    it('后端返回非法 role 时降级为 viewer', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+    it('后端返回未知 role 时降级为 viewer', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: {
           code: 0,
           data: {
-            access_token: 'tk',
-            user: { username: 'bob', role: 'hacker', permissions: [] },
+            access_token: 't',
+            user: { username: 'u', role: 'superadmin', permissions: ['all'] },
           },
         },
       })
       const store = useAuthStore()
-      await store.login('bob', 'pwd')
+      await store.login('u', 'p')
       expect(store.userRole).toBe('viewer')
-    })
-
-    it('后端未返回 user 时使用 username 参数', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: {
-          code: 0,
-          data: { access_token: 'tk', user: undefined },
-        },
-      })
-      const store = useAuthStore()
-      await store.login('charlie', 'pwd')
-      expect(store.user?.username).toBe('charlie')
-      expect(store.user?.id).toBe('')
     })
   })
 
   describe('logout', () => {
-    it('登出时清空 token、user 和 sessionStorage', () => {
+    it('清除 token 和 user', () => {
+      sessionStorage.setItem('auth_token', 't')
+      sessionStorage.setItem('auth_user', JSON.stringify({ id: 'u1', username: 'u', role: 'admin', permissions: [] }))
       const store = useAuthStore()
-      store.$patch({
-        token: 'old',
-        user: { id: '1', username: 'x', role: 'admin', permissions: [] },
-      })
-      sessionStorage.setItem('auth_token', 'old')
-      sessionStorage.setItem('auth_user', '{}')
-
+      expect(store.isAuthenticated).toBe(true)
       store.logout()
       expect(store.token).toBeNull()
       expect(store.user).toBeNull()
+      expect(store.isAuthenticated).toBe(false)
+    })
+
+    it('同步清理 sessionStorage', () => {
+      sessionStorage.setItem('auth_token', 't')
+      sessionStorage.setItem('auth_user', '{"id":"u1","username":"u","role":"admin","permissions":[]}')
+      const store = useAuthStore()
+      store.logout()
       expect(sessionStorage.getItem('auth_token')).toBeNull()
       expect(sessionStorage.getItem('auth_user')).toBeNull()
     })
   })
 
   describe('setToken', () => {
-    it('设置 token 并持久化到 sessionStorage', () => {
+    it('设置 token 并持久化', () => {
       const store = useAuthStore()
       store.setToken('new_token')
       expect(store.token).toBe('new_token')
@@ -279,13 +240,13 @@ describe('useAuthStore', () => {
   })
 
   describe('setUser', () => {
-    it('设置 user 并持久化到 sessionStorage', () => {
+    it('设置用户信息并持久化', () => {
       const store = useAuthStore()
-      store.setUser({ id: '9', username: 'dan', role: 'admin', permissions: ['all'] })
-      expect(store.user).toMatchObject({ username: 'dan', role: 'admin' })
-      expect(JSON.parse(sessionStorage.getItem('auth_user')!)).toMatchObject({
-        username: 'dan',
-      })
+      store.setUser({ id: 'u1', username: 'test', role: 'operator', permissions: ['read'] })
+      expect(store.user?.username).toBe('test')
+      expect(store.userRole).toBe('operator')
+      const stored = JSON.parse(sessionStorage.getItem('auth_user')!)
+      expect(stored.username).toBe('test')
     })
   })
 })

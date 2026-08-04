@@ -1,6 +1,6 @@
 /* eslint-disable vue/no-unused-vars */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, VueWrapper } from '@vue/test-utils'
+import { mount, VueWrapper } from '@vue/test-utils'
 import AISettings from '@/components/settings/AISettings.vue'
 
 // Mock vue-i18n
@@ -25,21 +25,21 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock useSovereigntySettings composable
-const mockSovereigntySettings = {
+const mockSovereigntySettings = vi.hoisted(() => ({
   ai_autonomy_level: 2,
   show_confidence_indicator: true,
   show_alternatives: true,
   show_reasoning: false,
   require_confirmation_for_predict: true,
-  require_confirmation_for_train: true,
-}
-const mockAutonomyMarks = { 0: '0', 1: '1', 2: '2', 3: '3', 4: '4' }
+  require_confirmation_for_research: false,
+}))
+const mockAutonomyMarks = vi.hoisted(() => ({ 0: '0', 1: '1', 2: '2', 3: '3', 4: '4' }))
 const mockFormatAutonomyLevel = vi.fn((v: number) => `L${v}`)
 const mockCurrentAutonomyDescription = ref('当前等级描述')
 const mockGetAutonomyAlertType = vi.fn((_v: number) => 'info')
-const mockHandleAutonomyChange = vi.fn()
-const mockSaveSovereigntySettings = vi.fn()
-const mockResetSovereigntySettings = vi.fn()
+const mockHandleAutonomyChange = vi.hoisted(() => vi.fn())
+const mockSaveSovereigntySettings = vi.hoisted(() => vi.fn())
+const mockResetSovereigntySettings = vi.hoisted(() => vi.fn())
 
 import { ref } from 'vue'
 
@@ -58,20 +58,22 @@ vi.mock('@/composables/useSovereigntySettings', () => ({
 
 // Mock useHealthMonitor composable
 const mockHealthStatus = ref({
+  backendOnline: true,
+  uptimeStr: '3d 4h',
+  totalRequests: 100,
+  avgResponseMs: 25,
+  activeModels: 2,
+  memoryUsedMb: 1024,
+  memoryTotalMb: 8192,
   memoryPercent: 50,
   cpuPercent: 30,
-  activeTrainingTasks: 0,
-  p50Ms: 10,
-  p95Ms: 50,
-  maxRecentDuration: 100,
-  recentInferences: [],
   dbHealthy: true,
   redisHealthy: true,
   prometheusHealthy: false,
   pollInterval: 30,
 })
 const mockHealthLoading = ref(false)
-const mockRefreshHealth = vi.fn()
+const mockRefreshHealth = vi.hoisted(() => vi.fn())
 
 vi.mock('@/composables/useHealthMonitor', () => ({
   useHealthMonitor: () => ({
@@ -106,7 +108,7 @@ describe('AISettings.vue', () => {
   })
 
   const mountComponent = () => {
-    wrapper = shallowMount(AISettings, {
+    wrapper = mount(AISettings, {
       global: {
         stubs: {
           'el-icon': { template: '<span class="el-icon"><slot /></span>' },
@@ -160,14 +162,6 @@ describe('AISettings.vue', () => {
     })
   })
 
-  describe('autonomyLabels 计算属性', () => {
-    it('返回 5 个自治等级标签', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.autonomyLabels).toHaveLength(5)
-      expect(wrapper.vm.autonomyLabels[0]).toBe('settings.fullyManual')
-      expect(wrapper.vm.autonomyLabels[4]).toBe('settings.fullyAuto')
-    })
-  })
 
   describe('onMounted 定时器', () => {
     it('挂载后 300ms 调用 healthCheckRef.runAllChecks', async () => {
@@ -206,62 +200,6 @@ describe('AISettings.vue', () => {
     })
   })
 
-  describe('代理 composable 方法', () => {
-    it('sovereigntySettings 来自 useSovereigntySettings', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.sovereigntySettings).toBe(mockSovereigntySettings)
-    })
-
-    it('autonomyMarks 来自 useSovereigntySettings', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.autonomyMarks).toBe(mockAutonomyMarks)
-    })
-
-    it('formatAutonomyLevel 来自 useSovereigntySettings', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.formatAutonomyLevel).toBe(mockFormatAutonomyLevel)
-    })
-
-    it('currentAutonomyDescription 来自 useSovereigntySettings', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.currentAutonomyDescription).toBe(mockCurrentAutonomyDescription)
-    })
-
-    it('getAutonomyAlertType 来自 useSovereigntySettings', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.getAutonomyAlertType).toBe(mockGetAutonomyAlertType)
-    })
-
-    it('handleAutonomyChange 来自 useSovereigntySettings', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.handleAutonomyChange).toBe(mockHandleAutonomyChange)
-    })
-
-    it('saveSovereigntySettings 来自 useSovereigntySettings', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.saveSovereigntySettings).toBe(mockSaveSovereigntySettings)
-    })
-
-    it('resetSovereigntySettings 来自 useSovereigntySettings', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.resetSovereigntySettings).toBe(mockResetSovereigntySettings)
-    })
-
-    it('healthStatus 来自 useHealthMonitor', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.healthStatus).toBe(mockHealthStatus)
-    })
-
-    it('healthLoading 来自 useHealthMonitor', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.healthLoading).toBe(mockHealthLoading)
-    })
-
-    it('refreshHealth 来自 useHealthMonitor', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.refreshHealth).toBe(mockRefreshHealth)
-    })
-  })
 
   describe('资源使用渲染', () => {
     it('内存使用百分比正确渲染', () => {

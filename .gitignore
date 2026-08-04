@@ -76,6 +76,9 @@ pytest_cache/
 .pytest_cache/
 .coverage
 .coverage.*
+coverage-unit.json
+coverage-unit.xml
+coverage-unit-html/
 noxfile.py
 htmlcov/
 .hypothesis/
@@ -411,3 +414,12 @@ engineering/output/chatter_tasks/
 engineering/output/gcode_generation_tasks/
 
 # 桌面嵌入式 Python 运行时构建产物（可重新生成）
+/engineering/python/desktop_runtime/
+/engineering/python/desktop_runtime_new/
+
+# 构建前的 git 备份目录（build 脚本自动生成，可重新生成）
+output/_git_backup_*/
+
+# 本地凭据/账号数据与个人工作记忆（不入库）
+.lnn_users.json
+.hermes-memory.md

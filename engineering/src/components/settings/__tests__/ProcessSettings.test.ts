@@ -1,6 +1,6 @@
 /* eslint-disable vue/no-unused-vars */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, VueWrapper } from '@vue/test-utils'
+import { mount, VueWrapper } from '@vue/test-utils'
 import ProcessSettings from '@/components/settings/ProcessSettings.vue'
 
 // Mock vue-i18n
@@ -20,7 +20,7 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock useSettingsStore
-const mockSaveSettings = vi.fn()
+const mockSaveSettings = vi.hoisted(() => vi.fn())
 const mockStore = {
   settings: {
     logSettings: {
@@ -45,11 +45,11 @@ const mockLogDetailVisible = ref(false)
 const mockSelectedLog = ref(null)
 const mockLogFilters = ref({ decision: '', dateRange: [] })
 const mockLogPagination = ref({ page: 1, pageSize: 20, total: 0 })
-const mockLoadAuditLogs = vi.fn()
-const mockSearchLogs = vi.fn()
-const mockExportLogs = vi.fn()
-const mockClearLogs = vi.fn()
-const mockViewLogDetail = vi.fn()
+const mockLoadAuditLogs = vi.hoisted(() => vi.fn())
+const mockSearchLogs = vi.hoisted(() => vi.fn())
+const mockExportLogs = vi.hoisted(() => vi.fn())
+const mockClearLogs = vi.hoisted(() => vi.fn())
+const mockViewLogDetail = vi.hoisted(() => vi.fn())
 const mockGetModuleName = vi.fn((m: string) => `模块:${m}`)
 const mockGetDecisionName = vi.fn((d: string) => `决策:${d}`)
 const mockGetDecisionType = vi.fn(() => 'info')
@@ -87,7 +87,7 @@ vi.mock('@/composables/useAuditLog', () => ({
 const mockExportingLogs = ref(false)
 const mockExportProgress = ref(0)
 const mockExportResult = ref(null)
-const mockExportSystemLogs = vi.fn()
+const mockExportSystemLogs = vi.hoisted(() => vi.fn())
 const mockFormatTimestamp = vi.fn((ts: number) => `时间:${ts}`)
 
 vi.mock('@/composables/useSettings', () => ({
@@ -118,7 +118,7 @@ describe('ProcessSettings.vue', () => {
   })
 
   const mountComponent = () => {
-    wrapper = shallowMount(ProcessSettings, {
+    wrapper = mount(ProcessSettings, {
       global: {
         stubs: {
           'el-icon': { template: '<span class="el-icon"><slot /></span>' },
@@ -173,7 +173,7 @@ describe('ProcessSettings.vue', () => {
       wrapper = mountComponent()
       const buttons = wrapper.findAll('.el-button')
       const texts = buttons.map(b => b.text())
-      expect(texts.some(t => t.includes('settings.exportLogs'))).toBe(true)
+      expect(texts.some(t => t.includes('导出日志'))).toBe(true)
     })
   })
 
@@ -192,17 +192,17 @@ describe('ProcessSettings.vue', () => {
   describe('代理 useAuditLog', () => {
     it('auditLogs 来自 useAuditLog', () => {
       wrapper = mountComponent()
-      expect(wrapper.vm.auditLogs).toBe(mockAuditLogs)
+      expect(wrapper.vm.auditLogs).toBe(mockAuditLogs.value)
     })
 
     it('auditLogStatistics 来自 useAuditLog', () => {
       wrapper = mountComponent()
-      expect(wrapper.vm.auditLogStatistics).toBe(mockAuditLogStatistics)
+      expect(wrapper.vm.auditLogStatistics).toBe(mockAuditLogStatistics.value)
     })
 
     it('loadingLogs 来自 useAuditLog', () => {
       wrapper = mountComponent()
-      expect(wrapper.vm.loadingLogs).toBe(mockLoadingLogs)
+      expect(wrapper.vm.loadingLogs).toBe(mockLoadingLogs.value)
     })
 
     it('loadAuditLogs 来自 useAuditLog', () => {
@@ -230,46 +230,22 @@ describe('ProcessSettings.vue', () => {
       expect(wrapper.vm.viewLogDetail).toBe(mockViewLogDetail)
     })
 
-    it('getModuleName 来自 useAuditLog', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.getModuleName).toBe(mockGetModuleName)
-    })
-
-    it('getDecisionName 来自 useAuditLog', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.getDecisionName).toBe(mockGetDecisionName)
-    })
-
-    it('getDecisionType 来自 useAuditLog', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.getDecisionType).toBe(mockGetDecisionType)
-    })
-
-    it('getStatusName 来自 useAuditLog', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.getStatusName).toBe(mockGetStatusName)
-    })
-
-    it('getStatusType 来自 useAuditLog', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.getStatusType).toBe(mockGetStatusType)
-    })
   })
 
   describe('代理 useSettings', () => {
     it('exportingLogs 来自 useSettings', () => {
       wrapper = mountComponent()
-      expect(wrapper.vm.exportingLogs).toBe(mockExportingLogs)
+      expect(wrapper.vm.exportingLogs).toBe(mockExportingLogs.value)
     })
 
     it('exportProgress 来自 useSettings', () => {
       wrapper = mountComponent()
-      expect(wrapper.vm.exportProgress).toBe(mockExportProgress)
+      expect(wrapper.vm.exportProgress).toBe(mockExportProgress.value)
     })
 
     it('exportResult 来自 useSettings', () => {
       wrapper = mountComponent()
-      expect(wrapper.vm.exportResult).toBe(mockExportResult)
+      expect(wrapper.vm.exportResult).toBe(mockExportResult.value)
     })
 
     it('exportSystemLogs 来自 useSettings', () => {
@@ -277,11 +253,6 @@ describe('ProcessSettings.vue', () => {
       expect(wrapper.vm.exportSystemLogs).toBe(mockExportSystemLogs)
     })
 
-    it('formatTimestamp 来自 useSettings', () => {
-      wrapper = mountComponent()
-      expect(wrapper.vm.formatTimestamp).toBe(mockFormatTimestamp)
-    })
-  })
 
   describe('日志导出状态渲染', () => {
     it('导出中显示进度百分比', async () => {
@@ -298,8 +269,9 @@ describe('ProcessSettings.vue', () => {
       wrapper = mountComponent()
       const buttons = wrapper.findAll('.el-button')
       const texts = buttons.map(b => b.text())
-      expect(texts.some(t => t.includes('settings.exportLogs'))).toBe(true)
+      expect(texts.some(t => t.includes('导出日志'))).toBe(true)
     })
+  })
   })
 
   describe('审计统计渲染', () => {

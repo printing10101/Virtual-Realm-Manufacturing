@@ -536,26 +536,27 @@ describe('useSnapshots - 聚合 composable', () => {
   // onUnmounted 生命周期
   // -------------------------------------------------------------------------
   describe('onUnmounted 生命周期', () => {
-    it('组件卸载时清空 currentSnapshot（通过 withScope 模拟）', async () => {
-      // Vue 的 onUnmounted 必须在组件 setup 内注册；
-      // 这里通过 effectScope 模拟组件作用域，确保 onUnmounted 钩子被触发。
-      const { effectScope } = await import('vue')
-      const scope = effectScope()
-
-      let api: ReturnType<typeof useSnapshots> | null = null
-      await scope.run(async () => {
-        api = useSnapshots()
-        // 模拟 selectSnapshot 填充 currentSnapshot
-        api!.currentSnapshot.value = makeSnapshot({ snapshot_id: 'snap-001' })
-        expect(api!.currentSnapshot.value).not.toBeNull()
+    it('组件卸载时清空 currentSnapshot（通过真实组件挂载验证）', async () => {
+      // onUnmounted 只在组件实例作用域生效；effectScope 无 currentInstance，
+      // 回调不会注册。用真实组件挂载/卸载触发。
+      const { defineComponent } = await import('vue')
+      const { mount } = await import('@vue/test-utils')
+      const TestHost = defineComponent({
+        setup() {
+          return useSnapshots()
+        },
+        template: '<div />',
       })
 
-      // 卸载作用域 → 触发 onUnmounted
-      scope.stop()
+      const wrapper = mount(TestHost)
+      // 模拟 selectSnapshot 填充 currentSnapshot（vm proxy 赋值写入 ref.value）
+      wrapper.vm.currentSnapshot = makeSnapshot({ snapshot_id: 'snap-001' })
+      expect(wrapper.vm.currentSnapshot).not.toBeNull()
 
-      // 作用域停止后，currentSnapshot 应被清空
-      // 注：ref 仍在 scope 内，但 onUnmounted 回调会置 null
-      expect(api!.currentSnapshot.value).toBeNull()
+      wrapper.unmount()
+
+      // 卸载后 onUnmounted 回调置 null
+      expect(wrapper.vm.currentSnapshot).toBeNull()
     })
   })
 })

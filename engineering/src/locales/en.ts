@@ -205,6 +205,7 @@ export default {
     inputDataPlaceholder: "Enter numerical data, comma-separated",
     returnConfidence: "Return Confidence",
     startInference: "Start Inference",
+    runPredict: "Run Prediction",
     inferenceResult: "Inference Result",
     predictedValue: "Predicted Value:",
     aiReasoning: "AI Reasoning Process",
@@ -2989,6 +2990,32 @@ export default {
     importDxf: "Import DXF",
     unsaved: "Unsaved",
   },
+  // === Copilot components (RecommendationCard / DecisionActions / CopilotConfidenceIndicator) ===
+  copilot: {
+    card: {
+      title: 'AI Recommendation',
+      recommendation: 'Recommendation',
+      reasoning: 'Reasoning',
+      alternatives: 'Alternatives',
+    },
+    actions: {
+      accept: 'Accept',
+      modify: 'Request Changes',
+      reject: 'Reject',
+    },
+    confidence: {
+      label: 'Confidence',
+      high: 'High',
+      medium: 'Medium',
+      low: 'Low',
+    },
+    messages: {
+      accepted: 'Accepted',
+      modifyRequested: 'Changes Requested',
+      rejected: 'Rejected',
+    },
+  },
+
   // === CommandPalette.vue Command Palette ===
   commandPalette: {
     inputPlaceholder: "Enter command name or description...",

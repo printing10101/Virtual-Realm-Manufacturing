@@ -23,12 +23,14 @@ const mocks = vi.hoisted(() => {
       post: vi.fn(),
       put: vi.fn(),
       delete: vi.fn(),
+      resolveBackendUrl: vi.fn((path: string) => path),
     },
   }
 })
 
 vi.mock('@/utils/http', () => ({
   default: mocks.http,
+  resolveBackendUrl: mocks.http.resolveBackendUrl,
 }))
 
 // EventSource mock：允许测试触发 onopen/onerror/addEventListener 回调

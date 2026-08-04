@@ -175,6 +175,8 @@ describe('SplashScreen.vue', () => {
       wrapper.vm.progress = 99
       vi.advanceTimersByTime(80)
       expect(wrapper.vm.progress).toBe(100)
+      // 下一个 interval tick（progress=100 的 else 分支）才注册隐藏 timeout
+      vi.advanceTimersByTime(80)
       // 再前进 500ms 触发 visible = false
       vi.advanceTimersByTime(500)
       expect(wrapper.vm.visible).toBe(false)

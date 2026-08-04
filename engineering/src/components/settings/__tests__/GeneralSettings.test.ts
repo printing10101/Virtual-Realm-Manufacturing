@@ -25,17 +25,17 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock element-plus
-const mockElMessageBox = { alert: vi.fn().mockResolvedValue(undefined) }
-const mockElMessage = { success: vi.fn(), error: vi.fn() }
+const mockElMessageBox = vi.hoisted(() => ({ alert: vi.fn().mockResolvedValue(undefined) }))
+const mockElMessage = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
 vi.mock('element-plus', () => ({
   ElMessageBox: mockElMessageBox,
   ElMessage: mockElMessage,
 }))
 
 // Mock useSettingsStore
-const mockSaveSettings = vi.fn()
-const mockResetSettings = vi.fn()
-const mockStore = {
+const mockSaveSettings = vi.hoisted(() => vi.fn())
+const mockResetSettings = vi.hoisted(() => vi.fn())
+const mockStore = vi.hoisted(() => ({
   settings: {
     aiMode: 'local',
     localModel: 'qwen2.5:7b',
@@ -46,15 +46,15 @@ const mockStore = {
   },
   saveSettings: mockSaveSettings,
   resetSettings: mockResetSettings,
-}
+}))
 vi.mock('@/stores/settings', () => ({
   useSettingsStore: () => mockStore,
 }))
 
 // Mock useVersionStore
-const mockFetchVersionInfo = vi.fn()
-const mockCheckConsistency = vi.fn()
-const mockVersionStore = {
+const mockFetchVersionInfo = vi.hoisted(() => vi.fn())
+const mockCheckConsistency = vi.hoisted(() => vi.fn())
+const mockVersionStore = vi.hoisted(() => ({
   frontendVersion: '4.0.0',
   frontendCommit: 'abc123',
   rustVersion: '4.0.0',
@@ -66,13 +66,13 @@ const mockVersionStore = {
   isLoading: false,
   fetchVersionInfo: mockFetchVersionInfo,
   checkConsistency: mockCheckConsistency,
-}
+}))
 vi.mock('@/stores/version', () => ({
   useVersionStore: () => mockVersionStore,
 }))
 
 // Mock useSettings composable
-const mockHandleLocaleChange = vi.fn()
+const mockHandleLocaleChange = vi.hoisted(() => vi.fn())
 vi.mock('@/composables/useSettings', () => ({
   useSettings: () => ({
     currentLocale: { value: 'zh-CN' },

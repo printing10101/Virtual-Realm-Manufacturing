@@ -19,18 +19,17 @@ vi.mock('@/utils/error-handler', async () => {
 })
 
 // mock triggerFileDownload
-const triggerFileDownloadMock = vi.fn()
+const triggerFileDownloadMock = vi.hoisted(() => vi.fn())
 vi.mock('@/utils/download', () => ({
   triggerFileDownload: triggerFileDownloadMock,
 }))
 
-// mock ElMessage
-const elMessageMock = {
+const elMessageMock = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
   warning: vi.fn(),
   info: vi.fn(),
-}
+}))
 vi.mock('element-plus', () => ({
   ElMessage: elMessageMock,
 }))
@@ -126,7 +125,7 @@ describe('useRuleStore', () => {
 
   describe('fetchRules', () => {
     it('获取规则列表成功时更新 rules 和分页信息', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: {
           data: {
             rules: [{ id: 1, name: 'r1' }, { id: 2, name: 'r2' }],
@@ -148,7 +147,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时显示错误提示', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockRejectedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockRejectedValue({
         response: { data: { message: '服务不可用' } },
       })
       const store = useRuleStore()
@@ -160,7 +159,7 @@ describe('useRuleStore', () => {
 
   describe('fetchGroups', () => {
     it('获取分组列表成功时更新 groups', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: {
           data: {
             groups: [{ id: 1, name: 'g1' }, { id: 2, name: 'g2' }],
@@ -173,7 +172,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时显示错误提示', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
+      (http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
       const store = useRuleStore()
       await store.fetchGroups()
       expect(elMessageMock.error).toHaveBeenCalledWith('网络错误')
@@ -182,7 +181,7 @@ describe('useRuleStore', () => {
 
   describe('fetchStats', () => {
     it('获取统计信息成功时更新 stats', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { total_rules: 10, active_rules: 8 } },
       })
       const store = useRuleStore()
@@ -191,7 +190,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时不抛出错误（静默降级）', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
+      (http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useRuleStore()
       await expect(store.fetchStats()).resolves.toBeUndefined()
       expect(store.stats).toBeNull()
@@ -200,7 +199,7 @@ describe('useRuleStore', () => {
 
   describe('createRule', () => {
     it('创建成功时显示成功提示并刷新列表', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { message: '创建成功', data: { id: 10, name: 'new' } },
       })
       ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -215,7 +214,7 @@ describe('useRuleStore', () => {
     })
 
     it('后端未返回 message 时使用默认成功提示', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { id: 10 } },
       })
       ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -227,7 +226,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时显示错误提示并抛出', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue({
         response: { data: { message: '权限不足' } },
       })
       const store = useRuleStore()
@@ -238,7 +237,7 @@ describe('useRuleStore', () => {
 
   describe('updateRule', () => {
     it('更新成功时显示成功提示', async () => {
-      ;(http.put as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.put as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { message: '更新成功', data: { id: 1 } },
       })
       ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -251,7 +250,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时显示错误提示并抛出', async () => {
-      ;(http.put as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('timeout'))
+      (http.put as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('timeout'))
       const store = useRuleStore()
       await expect(store.updateRule(1, {} as never)).rejects.toBeDefined()
       expect(elMessageMock.error).toHaveBeenCalledWith('timeout')
@@ -260,7 +259,7 @@ describe('useRuleStore', () => {
 
   describe('deleteRule', () => {
     it('删除成功时显示成功提示', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { message: '删除成功' },
       })
       ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -272,7 +271,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时显示错误提示并抛出', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockRejectedValue({
+      (http.delete as ReturnType<typeof vi.fn>).mockRejectedValue({
         response: { data: { message: '规则不存在' } },
       })
       const store = useRuleStore()
@@ -283,7 +282,7 @@ describe('useRuleStore', () => {
 
   describe('getRule', () => {
     it('获取规则详情成功时保存到 currentRule', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { id: 1, name: 'detail' } },
       })
       const store = useRuleStore()
@@ -293,7 +292,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时显示错误提示并抛出', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
+      (http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
       const store = useRuleStore()
       await expect(store.getRule(1)).rejects.toBeDefined()
       expect(elMessageMock.error).toHaveBeenCalledWith('network')
@@ -302,7 +301,7 @@ describe('useRuleStore', () => {
 
   describe('createGroup', () => {
     it('创建分组成功时显示成功提示并刷新分组列表', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { message: '分组创建成功', data: { id: 1 } },
       })
       ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -315,7 +314,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时显示错误提示并抛出', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
       const store = useRuleStore()
       await expect(store.createGroup({ name: 'x' } as never)).rejects.toBeDefined()
       expect(elMessageMock.error).toHaveBeenCalledWith('网络错误')
@@ -324,7 +323,7 @@ describe('useRuleStore', () => {
 
   describe('updateGroup', () => {
     it('更新分组成功时显示成功提示', async () => {
-      ;(http.put as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.put as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { id: 1, name: 'updated' } },
       })
       ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -337,7 +336,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时显示错误提示并抛出', async () => {
-      ;(http.put as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('失败'))
+      (http.put as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('失败'))
       const store = useRuleStore()
       await expect(store.updateGroup(1, {} as never)).rejects.toBeDefined()
       expect(elMessageMock.error).toHaveBeenCalledWith('失败')
@@ -346,7 +345,7 @@ describe('useRuleStore', () => {
 
   describe('deleteGroup', () => {
     it('删除分组成功时显示成功提示', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { message: '分组删除成功' },
       })
       ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -358,7 +357,7 @@ describe('useRuleStore', () => {
     })
 
     it('网络异常时显示错误提示并抛出', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('失败'))
+      (http.delete as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('失败'))
       const store = useRuleStore()
       await expect(store.deleteGroup(1)).rejects.toBeDefined()
       expect(elMessageMock.error).toHaveBeenCalledWith('失败')
@@ -367,7 +366,7 @@ describe('useRuleStore', () => {
 
   describe('exportRules', () => {
     it('导出成功时触发文件下载', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: new Blob(['{}']),
         headers: { 'content-disposition': 'attachment; filename="rules.json"' },
       })
@@ -378,7 +377,7 @@ describe('useRuleStore', () => {
     })
 
     it('导出时无 content-disposition 时使用默认文件名', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: new Blob(['{}']),
         headers: {},
       })
@@ -388,7 +387,7 @@ describe('useRuleStore', () => {
     })
 
     it('导出时 content-disposition 含无引号文件名时正确解析', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: new Blob(['{}']),
         headers: { 'content-disposition': 'attachment; filename=custom.json' },
       })
@@ -398,7 +397,7 @@ describe('useRuleStore', () => {
     })
 
     it('导出失败时显示错误提示并抛出', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('导出失败'))
+      (http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('导出失败'))
       const store = useRuleStore()
       await expect(store.exportRules()).rejects.toBeDefined()
       expect(elMessageMock.error).toHaveBeenCalledWith('导出失败')
@@ -407,7 +406,7 @@ describe('useRuleStore', () => {
 
   describe('importRules', () => {
     it('导入成功时显示成功提示并刷新列表', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: {
           message: '导入完成',
           data: { imported_rules: 5, imported_groups: 2 },
@@ -424,7 +423,7 @@ describe('useRuleStore', () => {
     })
 
     it('后端未返回 message 时使用默认提示', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { imported_rules: 3, imported_groups: 1 } },
       })
       ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -437,7 +436,7 @@ describe('useRuleStore', () => {
     })
 
     it('导入失败时显示错误提示并抛出', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('文件格式错误'))
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('文件格式错误'))
       const store = useRuleStore()
       const file = new File(['{}'], 'rules.json', { type: 'application/json' })
       await expect(store.importRules(file)).rejects.toBeDefined()
@@ -447,7 +446,7 @@ describe('useRuleStore', () => {
 
   describe('backupDatabase', () => {
     it('备份成功时显示成功提示并返回数据', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { message: '备份成功', data: { backup_path: '/backup/db.sqlite' } },
       })
       const store = useRuleStore()
@@ -457,7 +456,7 @@ describe('useRuleStore', () => {
     })
 
     it('后端未返回 message 时使用默认提示', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { backup_path: '/x' } },
       })
       const store = useRuleStore()
@@ -466,7 +465,7 @@ describe('useRuleStore', () => {
     })
 
     it('备份失败时显示错误提示并抛出', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('磁盘满'))
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('磁盘满'))
       const store = useRuleStore()
       await expect(store.backupDatabase()).rejects.toBeDefined()
       expect(elMessageMock.error).toHaveBeenCalledWith('磁盘满')
@@ -523,7 +522,7 @@ describe('useRuleStore', () => {
 
   describe('refreshAll', () => {
     it('调用时触发 fetchRules、fetchGroups、fetchStats', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: {} },
       })
       const store = useRuleStore()

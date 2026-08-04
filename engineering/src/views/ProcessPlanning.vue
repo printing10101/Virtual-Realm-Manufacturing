@@ -20,67 +20,11 @@
       </div>
     </div>
 
-    <!-- 筛选栏 -->
-    <div class="filter-bar">
-      <el-input
-        v-model="searchKeyword"
-        :placeholder="t('processPlanning.routePage.searchPlaceholder')"
-        clearable
-        size="small"
-        class="filter-search"
-        :prefix-icon="Search"
-      />
-      <el-select
-        v-model="filterType"
-        :placeholder="t('processPlanning.routePage.filterTypePlaceholder')"
-        size="small"
-        class="filter-select"
-      >
-        <el-option
-          :label="t('processPlanning.routePage.typeAll')"
-          value="all"
-        />
-        <el-option
-          :label="t('processPlanning.routePage.typeMachining')"
-          value="machining"
-        />
-        <el-option
-          :label="t('processPlanning.routePage.typeAssembly')"
-          value="assembly"
-        />
-        <el-option
-          :label="t('processPlanning.routePage.typeWelding')"
-          value="welding"
-        />
-        <el-option
-          :label="t('processPlanning.routePage.typeHeatTreatment')"
-          value="heattreatment"
-        />
-      </el-select>
-      <el-select
-        v-model="filterStatus"
-        :placeholder="t('processPlanning.routePage.filterStatusPlaceholder')"
-        size="small"
-        class="filter-select"
-      >
-        <el-option
-          :label="t('processPlanning.routePage.statusAll')"
-          value="all"
-        />
-        <el-option
-          :label="t('processPlanning.routePage.statusPublished')"
-          value="published"
-        />
-        <el-option
-          :label="t('processPlanning.routePage.statusDraft')"
-          value="draft"
-        />
-        <el-option
-          :label="t('processPlanning.routePage.statusArchived')"
-          value="archived"
-        />
-      </el-select>
-    </div>
+    <ProcessPlanningFilters
+      v-model:search-keyword="searchKeyword"
+      v-model:filter-type="filterType"
+      v-model:filter-status="filterStatus"
+    />
 
     <!-- 工艺路线卡片列表 -->
     <div
@@ -193,69 +137,11 @@
       </div>
     </div>
 
-    <!-- 详情侧滑面板 -->
-    <transition name="slide-panel">
-      <div
-        v-if="selectedRoute"
-        class="detail-overlay"
-        @click.self="closeDetail"
-      >
-        <div class="detail-panel">
-          <div class="detail-header">
-            <h3 class="detail-title">
-              {{ selectedRoute.name }}
-            </h3>
-            <el-button
-              text
-              circle
-              @click="closeDetail"
-            >
-              <el-icon :size="18">
-                <Close />
-              </el-icon>
-            </el-button>
-          </div>
-
-          <div class="detail-status-row">
-            <el-tag
-              :type="statusTagType(selectedRoute.status)"
-              size="small"
-              effect="light"
-            >
-              {{ selectedRoute.status }}
-            </el-tag>
-            <span class="detail-version">{{ selectedRoute.version }}</span>
-          </div>
-
-          <p class="detail-description">
-            {{ selectedRoute.description }}
-          </p>
-
-          <div class="detail-section-label">
-            {{ t('processPlanning.routePage.stepListLabel') }}
-          </div>
-          <div class="step-list">
-            <div
-              v-for="(step, index) in selectedRoute.steps"
-              :key="step.name + (step.tool_id ?? '') + index"
-              class="step-item"
-            >
-              <div class="step-number">
-                {{ index + 1 }}
-              </div>
-              <div class="step-content">
-                <div class="step-name">
-                  {{ step.name }}
-                </div>
-                <div class="step-duration">
-                  {{ step.duration }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </transition>
+    <ProcessRouteDetail
+      :visible="!!selectedRoute"
+      :route="selectedRoute"
+      @close="closeDetail"
+    />
   </div>
 </template>
 
@@ -265,12 +151,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import {
   Plus,
-  Search,
   Operation,
   Document,
   Clock,
-  Close,
 } from '@element-plus/icons-vue'
+import ProcessPlanningFilters from '@/components/process_planning/ProcessPlanningFilters.vue'
+import ProcessRouteDetail from '@/components/process_planning/ProcessRouteDetail.vue'
 import http from '@/utils/http'
 import { API_CONFIG } from '@/config/api'
 
@@ -477,15 +363,6 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-/* 筛选栏内控件宽度 */
-.filter-search {
-  width: 280px;
-}
-
-.filter-select {
-  width: 160px;
-}
-
 /* 卡片网格 */
 .card-grid {
   display: grid;
@@ -570,149 +447,6 @@ onMounted(() => {
   border-top: 1px solid var(--border-light);
 }
 
-/* 侧滑详情面板 */
-.detail-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-  background: var(--bg-overlay-light);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.detail-panel {
-  width: 400px;
-  max-width: 90vw;
-  height: 100%;
-  background: var(--bg-primary);
-  box-shadow: var(--shadow-xl);
-  padding: 28px 24px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.detail-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-right: 8px;
-}
-
-.detail-status-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.detail-version {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-.detail-description {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.7;
-}
-
-.detail-section-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-accent);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 8px;
-}
-
-.step-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.step-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.step-item:last-child {
-  border-bottom: none;
-}
-
-.step-number {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--accent-light);
-  color: var(--accent-primary);
-  font-size: 13px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.step-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.step-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.step-duration {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-/* 侧滑动画 */
-.slide-panel-enter-active,
-.slide-panel-leave-active {
-  transition: opacity var(--transition-normal);
-}
-
-.slide-panel-enter-active .detail-panel,
-.slide-panel-leave-active .detail-panel {
-  transition: transform var(--transition-normal);
-}
-
-.slide-panel-enter-from,
-.slide-panel-leave-to {
-  opacity: 0;
-}
-
-.slide-panel-enter-from .detail-panel,
-.slide-panel-leave-to .detail-panel {
-  transform: translateX(100%);
-}
-
 /* 加载与空状态 */
 .loading-state,
 .empty-state {
@@ -741,15 +475,6 @@ onMounted(() => {
   .card-grid {
     grid-template-columns: 1fr;
   }
-
-  .filter-search {
-    width: 100%;
-  }
-
-  .filter-select {
-    flex: 1;
-    min-width: 120px;
-  }
 }
 
 @media (max-width: 600px) {
@@ -761,16 +486,6 @@ onMounted(() => {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
-  }
-
-  .filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filter-search,
-  .filter-select {
-    width: 100%;
   }
 }
 </style>

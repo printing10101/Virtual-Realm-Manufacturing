@@ -20,63 +20,7 @@
       </div>
     </div>
 
-    <el-row
-      :gutter="16"
-      class="stats-row"
-    >
-      <el-col :span="6">
-        <el-card
-          shadow="hover"
-          class="stat-card stat-pending"
-        >
-          <div class="stat-value">
-            {{ counts.pending }}
-          </div>
-          <div class="stat-label">
-            {{ t('approvalDashboard.statPending') }}
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card
-          shadow="hover"
-          class="stat-card stat-review"
-        >
-          <div class="stat-value">
-            {{ counts.under_review }}
-          </div>
-          <div class="stat-label">
-            {{ t('approvalDashboard.statUnderReview') }}
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card
-          shadow="hover"
-          class="stat-card stat-approved"
-        >
-          <div class="stat-value">
-            {{ counts.approved }}
-          </div>
-          <div class="stat-label">
-            {{ t('approvalDashboard.statApproved') }}
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card
-          shadow="hover"
-          class="stat-card stat-rejected"
-        >
-          <div class="stat-value">
-            {{ counts.rejected }}
-          </div>
-          <div class="stat-label">
-            {{ t('approvalDashboard.statRejected') }}
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+    <ApprovalStatsCards :counts="counts" />
 
     <el-tabs
       v-model="activeTab"
@@ -247,282 +191,47 @@
         :label="t('approvalDashboard.tabHistory')"
         name="history"
       >
-        <div
-          v-loading="historyLoading"
-          class="tab-content"
-        >
-          <el-table
-            :data="history"
-            stripe
-          >
-            <el-table-column
-              prop="request_id"
-              :label="t('approvalDashboard.colRequestId')"
-              width="150"
-            />
-            <el-table-column
-              prop="task_id"
-              :label="t('approvalDashboard.colTaskId')"
-              width="120"
-            />
-            <el-table-column
-              prop="requester"
-              :label="t('approvalDashboard.colRequester')"
-              width="100"
-            />
-            <el-table-column
-              prop="status"
-              :label="t('approvalDashboard.colStatus')"
-              width="100"
-            >
-              <template #default="{ row }">
-                <el-tag
-                  :type="getApprovalStatusTagType(row.status)"
-                  size="small"
-                >
-                  {{ getApprovalStatusLabel(row.status) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column
-              prop="risk_score"
-              :label="t('approvalDashboard.colRiskScore')"
-              width="100"
-            >
-              <template #default="{ row }">
-                {{ row.risk_score.toFixed(2) }}
-              </template>
-            </el-table-column>
-            <el-table-column
-              prop="requested_at"
-              :label="t('approvalDashboard.colRequestedAt')"
-              width="160"
-            >
-              <template #default="{ row }">
-                {{ formatSecondsTimestamp(row.requested_at) }}
-              </template>
-            </el-table-column>
-            <el-table-column
-              :label="t('approvalDashboard.colActions')"
-              fixed="right"
-            >
-              <template #default="{ row }">
-                <el-button
-                  size="small"
-                  @click="viewDetail(row as ApprovalRequest)"
-                >
-                  {{ t('approvalDashboard.btnView') }}
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
+        <ApprovalTable
+          :items="history"
+          :loading="historyLoading"
+          type="history"
+          @view="viewDetail"
+        />
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog
-      v-model="detailDialogVisible"
-      :title="t('approvalDashboard.detailDialogTitle')"
-      width="800px"
-      destroy-on-close
-    >
-      <div
-        v-if="selectedRequest"
-        class="detail-content"
-      >
-        <el-descriptions
-          :column="2"
-          border
-        >
-          <el-descriptions-item
-            :label="t('approvalDashboard.detailRequestId')"
-            :span="2"
-          >
-            {{ selectedRequest.request_id }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="t('approvalDashboard.detailTaskId')">
-            {{ selectedRequest.task_id }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="t('approvalDashboard.detailStatus')">
-            <el-tag :type="getApprovalStatusTagType(selectedRequest.status)">
-              {{ getApprovalStatusLabel(selectedRequest.status) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item :label="t('approvalDashboard.detailRequester')">
-            {{ selectedRequest.requester }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="t('approvalDashboard.detailPriority')">
-            <el-tag :type="getPriorityTagType(selectedRequest.priority)">
-              {{ getPriorityLabel(selectedRequest.priority) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item :label="t('approvalDashboard.detailRiskScore')">
-            {{ selectedRequest.risk_score.toFixed(2) }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="t('approvalDashboard.detailSuggestedDecision')">
-            {{ selectedRequest.suggested_decision }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="t('approvalDashboard.detailRequestedAt')">
-            {{ formatSecondsTimestamp(selectedRequest.requested_at) }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="t('approvalDashboard.detailExpiresAt')">
-            {{ formatSecondsTimestamp(selectedRequest.expires_at) }}
-          </el-descriptions-item>
-        </el-descriptions>
+    <ApprovalDetailDialog
+      :visible="detailDialogVisible"
+      :item="selectedRequest"
+      @update:visible="detailDialogVisible = $event"
+      @submit="handleDetailSubmit"
+    />
 
-        <el-divider content-position="left">
-          {{ t('approvalDashboard.detailOperationContext') }}
-        </el-divider>
-        <pre class="context-json">{{ formatContext(selectedRequest.context) }}</pre>
-
-        <el-divider
-          v-if="selectedRequest.decisions.length"
-          content-position="left"
-        >
-          {{ t('approvalDashboard.detailDecisionHistory') }}
-        </el-divider>
-        <el-table
-          v-if="selectedRequest.decisions.length"
-          :data="selectedRequest.decisions"
-          size="small"
-        >
-          <el-table-column
-            prop="approver_id"
-            :label="t('approvalDashboard.colApprover')"
-            width="150"
-          />
-          <el-table-column
-            prop="decision"
-            :label="t('approvalDashboard.colDecision')"
-            width="100"
-          >
-            <template #default="{ row }">
-              <el-tag
-                :type="row.decision === 'approved' ? 'success' : row.decision === 'rejected' ? 'danger' : 'warning'"
-                size="small"
-              >
-                {{ row.decision }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column
-            prop="comment"
-            :label="t('approvalDashboard.colComment')"
-            min-width="200"
-          />
-          <el-table-column
-            prop="decided_at"
-            :label="t('approvalDashboard.colDecidedAt')"
-            width="160"
-          >
-            <template #default="{ row }">
-              {{ formatSecondsTimestamp(row.decided_at) }}
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <el-divider content-position="left">
-          {{ t('approvalDashboard.detailDecisionActions') }}
-        </el-divider>
-        <div class="decision-actions">
-          <el-input
-            v-model="decisionComment"
-            type="textarea"
-            :rows="3"
-            :placeholder="t('approvalDashboard.decisionCommentPlaceholder')"
-            style="margin-bottom: 12px;"
-          />
-          <el-button
-            type="success"
-            @click="submitDecision('approved')"
-          >
-            {{ t('approvalDashboard.btnApprove') }}
-          </el-button>
-          <el-button
-            type="danger"
-            @click="submitDecision('rejected')"
-          >
-            {{ t('approvalDashboard.btnReject') }}
-          </el-button>
-          <el-button
-            type="warning"
-            @click="submitDecision('request_info')"
-          >
-            {{ t('approvalDashboard.btnRequestInfo') }}
-          </el-button>
-          <el-button
-            type="info"
-            @click="submitDecision('escalated')"
-          >
-            {{ t('approvalDashboard.btnEscalate') }}
-          </el-button>
-        </div>
-      </div>
-    </el-dialog>
-
-    <el-dialog
-      v-model="showReport"
-      :title="t('approvalDashboard.reportDialogTitle')"
-      width="900px"
-      destroy-on-close
-    >
-      <div
-        v-loading="reportLoading"
-        class="report-content"
-      >
-        <template v-if="report">
-          <el-descriptions
-            :column="3"
-            border
-          >
-            <el-descriptions-item :label="t('approvalDashboard.reportTotalRequests')">
-              {{ report.total_requests }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('approvalDashboard.reportApprovedCount')">
-              {{ report.approved_count }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('approvalDashboard.reportRejectedCount')">
-              {{ report.rejected_count }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('approvalDashboard.reportEscalatedCount')">
-              {{ report.escalated_count }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('approvalDashboard.reportEmergencyCount')">
-              {{ report.emergency_count }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('approvalDashboard.reportAvgApprovalTime')">
-              {{ report.avg_approval_time_hours.toFixed(2) }}h
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('approvalDashboard.reportRejectionRate')">
-              {{ (report.rejection_rate * 100).toFixed(2) }}%
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('approvalDashboard.reportEscalationRate')">
-              {{ (report.escalation_rate * 100).toFixed(2) }}%
-            </el-descriptions-item>
-          </el-descriptions>
-          <el-button
-            type="primary"
-            style="margin-top: 16px;"
-            @click="exportAuditLog"
-          >
-            {{ t('approvalDashboard.btnExportAuditLog') }}
-          </el-button>
-        </template>
-      </div>
-    </el-dialog>
+    <ApprovalReportDialog
+      :visible="showReport"
+      :report-data="report"
+      @update:visible="showReport = $event"
+      @export="exportAuditLog"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+// TODO: 已拆分子组件 — ApprovalStatsCards, ApprovalTable, ApprovalDetailDialog, ApprovalReportDialog
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh, Document } from '@element-plus/icons-vue'
 import http from '@/utils/http'
 import { triggerFileDownload } from '@/utils/download'
 import { formatSecondsTimestamp } from '@/utils/formatters'
-import { getPriorityTagType, getPriorityLabel, getApprovalStatusTagType, getApprovalStatusLabel } from '@/utils/statusHelpers'
+import { getPriorityTagType, getPriorityLabel } from '@/utils/statusHelpers'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 import { useI18n } from 'vue-i18n'
+
+import ApprovalStatsCards from '@/components/approval/ApprovalStatsCards.vue'
+import ApprovalTable from '@/components/approval/ApprovalTable.vue'
+import ApprovalDetailDialog from '@/components/approval/ApprovalDetailDialog.vue'
+import ApprovalReportDialog from '@/components/approval/ApprovalReportDialog.vue'
 
 const { t } = useI18n()
 
@@ -584,7 +293,6 @@ const dashboard = ref<DashboardData>({
 const history = ref<ApprovalRequest[]>([])
 const selectedRequest = ref<ApprovalRequest | null>(null)
 const detailDialogVisible = ref(false)
-const decisionComment = ref('')
 const showReport = ref(false)
 const reportLoading = ref(false)
 const report = ref<GovernanceReport | null>(null)
@@ -598,7 +306,12 @@ async function loadDashboard() {
   loading.value = true
   try {
     const res = await http.get(buildApiPath(API_CONFIG.GOVERNANCE, '/approval-dashboard'))
-    dashboard.value = res.data?.data || dashboard.value
+    // 形状防护：接口返回空数组/异常形状时保持原状态（否则 dashboard.value 被替换
+    // 为数组，pending/approved 等 computed 全部 undefined，模板渲染崩溃）
+    const payload = res.data?.data
+    if (payload && !Array.isArray(payload) && typeof payload === 'object') {
+      dashboard.value = payload
+    }
   } catch (e: unknown) {
     const errorMsg = e instanceof Error ? e.message : String(e)
     ElMessage.error(t('approvalDashboard.msgLoadDashboardFailed', { error: errorMsg }))
@@ -624,7 +337,6 @@ async function loadHistory() {
 
 function viewDetail(request: ApprovalRequest) {
   selectedRequest.value = request
-  decisionComment.value = ''
   detailDialogVisible.value = true
 }
 
@@ -644,13 +356,13 @@ async function quickApprove(request: ApprovalRequest, decision: string) {
   }
 }
 
-async function submitDecision(decision: string) {
+async function submitDecision(decision: string, comment: string) {
   if (!selectedRequest.value) return
   try {
     await http.post(buildApiPath(API_CONFIG.GOVERNANCE, `/approval-requests/${selectedRequest.value.request_id}/decide`), {
       approver_id: 'current_user',
       decision,
-      comment: decisionComment.value,
+      comment,
     })
     ElMessage.success(t('approvalDashboard.msgSubmitDecisionSuccess', { decision }))
     detailDialogVisible.value = false
@@ -659,6 +371,10 @@ async function submitDecision(decision: string) {
     const errorMsg = e instanceof Error ? e.message : String(e)
     ElMessage.error(t('approvalDashboard.msgSubmitDecisionFailed', { error: errorMsg }))
   }
+}
+
+function handleDetailSubmit(payload: { decision: string; comment: string }) {
+  submitDecision(payload.decision, payload.comment)
 }
 
 async function loadReport() {
@@ -697,14 +413,6 @@ function getRiskTagType(score: number): 'primary' | 'success' | 'warning' | 'inf
   return 'success'
 }
 
-function formatContext(context: Record<string, unknown>): string {
-  try {
-    return JSON.stringify(context, null, 2)
-  } catch {
-    return String(context)
-  }
-}
-
 onMounted(() => {
   loadDashboard()
   loadHistory()
@@ -736,31 +444,6 @@ onMounted(() => {
   display: flex;
   gap: 8px;
 }
-
-.stats-row {
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  text-align: center;
-  padding: 16px 0;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--text-tertiary);
-}
-
-.stat-pending .stat-value { color: var(--warning); }
-.stat-review .stat-value { color: var(--info); }
-.stat-approved .stat-value { color: var(--success); }
-.stat-rejected .stat-value { color: var(--error); }
 
 .approval-tabs {
   margin-top: 16px;
@@ -811,39 +494,7 @@ onMounted(() => {
   padding-top: 12px;
 }
 
-.detail-content {
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-.context-json {
-  background: var(--bg-secondary);
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  max-height: 200px;
-  overflow: auto;
-  margin: 0;
-}
-
-.decision-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.decision-actions .el-button {
-  align-self: flex-start;
-}
-
-.report-content {
-  min-height: 200px;
-}
-
 @media (max-width: 768px) {
-  .stats-row .el-col {
-    margin-bottom: 12px;
-  }
   .request-card {
     margin-bottom: 8px;
   }

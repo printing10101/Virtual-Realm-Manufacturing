@@ -218,6 +218,7 @@ export default {
     inputDataPlaceholder: "输入数值数据，逗号分隔",
     returnConfidence: "返回置信度",
     startInference: "开始推理",
+    runPredict: "开始预测",
     inferenceResult: "推理结果",
     predictedValue: "预测值:",
     aiReasoning: "AI推理过程",
@@ -2984,6 +2985,32 @@ export default {
     btnViewModels: "查看模型",
     btnTestCall: "调用测试",
     btnDelete: "删除",
+  },
+
+  // === Copilot 组件（RecommendationCard / DecisionActions / CopilotConfidenceIndicator） ===
+  copilot: {
+    card: {
+      title: 'AI 推荐',
+      recommendation: '推荐内容',
+      reasoning: '决策依据',
+      alternatives: '备选方案',
+    },
+    actions: {
+      accept: '采纳',
+      modify: '请求修改',
+      reject: '拒绝',
+    },
+    confidence: {
+      label: '置信度',
+      high: '高',
+      medium: '中',
+      low: '低',
+    },
+    messages: {
+      accepted: '已采纳',
+      modifyRequested: '已请求修改',
+      rejected: '已拒绝',
+    },
   },
 
   // === CommandPalette.vue 命令面板 ===

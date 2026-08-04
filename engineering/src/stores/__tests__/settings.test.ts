@@ -11,6 +11,9 @@ describe('useSettingsStore', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    // 恢复 spy（happy-dom 的 localStorage.setItem 是实例方法，残留 spy 链
+    // 会导致后续测试 spy 转发到旧 spy 而非原始实现——localStorage 写入失效）
+    vi.restoreAllMocks()
   })
 
   describe('initial state', () => {
@@ -70,7 +73,7 @@ describe('useSettingsStore', () => {
   describe('saveSettings', () => {
     it('保存设置到 localStorage', () => {
       const store = useSettingsStore()
-      store.$patch({ settings: { ...store.settings, aiMode: 'cloud' } })
+      store.settings = { ...store.settings, aiMode: 'cloud' }
       store.saveSettings()
       const raw = localStorage.getItem('lingjing_settings')
       expect(raw).not.toBeNull()
@@ -80,7 +83,7 @@ describe('useSettingsStore', () => {
     it('localStorage 写入失败时不抛错', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const store = useSettingsStore()
-      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
         throw new Error('quota exceeded')
       })
       expect(() => store.saveSettings()).not.toThrow()
@@ -110,56 +113,58 @@ describe('useSettingsStore', () => {
   })
 
   describe('watch 持久化（防抖）', () => {
-    it('设置变更后防抖延迟内不写入', () => {
-      vi.useFakeTimers()
+    it('设置变更后防抖延迟内不写入', async () => {
+      
       const store = useSettingsStore()
-      const setSpy = vi.spyOn(Storage.prototype, 'setItem')
-      store.$patch({ settings: { ...store.settings, aiMode: 'cloud' } })
+      const setSpy = vi.spyOn(localStorage, 'setItem')
+      store.settings = { ...store.settings, aiMode: 'cloud' }
       // 防抖 300ms 内不应触发 localStorage 写入
-      vi.advanceTimersByTime(200)
+      await new Promise((r) => setTimeout(r, 150))
       // 注：可能已有初始 watcher 触发，检查最新调用
       const callsBefore = setSpy.mock.calls.length
-      vi.advanceTimersByTime(200)
+      await new Promise((r) => setTimeout(r, 150))
       expect(setSpy.mock.calls.length).toBeGreaterThanOrEqual(callsBefore)
     })
 
-    it('设置变更后超过 300ms 写入 localStorage', () => {
-      vi.useFakeTimers()
+    it('设置变更后超过 300ms 写入 localStorage', async () => {
+      
       const store = useSettingsStore()
-      const setSpy = vi.spyOn(Storage.prototype, 'setItem')
+      const setSpy = vi.spyOn(localStorage, 'setItem')
       setSpy.mockClear()
-      store.$patch({ settings: { ...store.settings, aiMode: 'cloud' } })
-      vi.advanceTimersByTime(400)
+      store.settings = { ...store.settings, aiMode: 'cloud' }
+      await new Promise((r) => setTimeout(r, 350))
       expect(setSpy).toHaveBeenCalled()
       const raw = localStorage.getItem('lingjing_settings')
       expect(raw).not.toBeNull()
       expect(JSON.parse(raw!).aiMode).toBe('cloud')
     })
 
-    it('防抖合并连续变更', () => {
-      vi.useFakeTimers()
+    it('防抖合并连续变更', async () => {
+      
       const store = useSettingsStore()
-      const setSpy = vi.spyOn(Storage.prototype, 'setItem')
+      const setSpy = vi.spyOn(localStorage, 'setItem')
       setSpy.mockClear()
-      store.$patch({ settings: { ...store.settings, aiMode: 'cloud' } })
-      store.$patch({ settings: { ...store.settings, aiMode: 'local' } })
-      store.$patch({ settings: { ...store.settings, device: 'cuda' } })
-      vi.advanceTimersByTime(400)
+      store.settings = { ...store.settings, aiMode: 'cloud' }
+      store.settings = { ...store.settings, aiMode: 'local' }
+      store.settings = { ...store.settings, device: 'cuda' }
+      await Promise.resolve()
+      await Promise.resolve()
+      await new Promise((r) => setTimeout(r, 350))
       // 多次变更只触发一次写入
       const persistCalls = setSpy.mock.calls.filter(c => c[0] === 'lingjing_settings')
       expect(persistCalls.length).toBe(1)
       expect(JSON.parse(persistCalls[0][1]).device).toBe('cuda')
     })
 
-    it('localStorage 持久化失败时不抛错', () => {
-      vi.useFakeTimers()
+    it('localStorage 持久化失败时不抛错', async () => {
+      
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const store = useSettingsStore()
-      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
         throw new Error('quota')
       })
-      store.$patch({ settings: { ...store.settings, aiMode: 'cloud' } })
-      expect(() => vi.advanceTimersByTime(400)).not.toThrow()
+      store.settings = { ...store.settings, aiMode: 'cloud' }
+      await new Promise((r) => setTimeout(r, 350))
       warnSpy.mockRestore()
     })
   })

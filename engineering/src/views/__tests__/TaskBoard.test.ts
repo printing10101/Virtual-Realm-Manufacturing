@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -39,7 +39,7 @@ describe('TaskBoard.vue', () => {
   })
 
   const mountTaskBoard = (options = {}) => {
-    return shallowMount(TaskBoard, {
+    return mount(TaskBoard, {
       global: {
         plugins: [pinia, router],
         mocks: {
@@ -60,7 +60,7 @@ describe('TaskBoard.vue', () => {
   it('渲染页面标题', async () => {
     const wrapper = mountTaskBoard()
     await flushPromises()
-    expect(wrapper.find('.page-header__title h1').text()).toBe('taskBoard.pageTitle')
+    expect(wrapper.find('.page-header__title h1').text()).toBe('任务看板')
   })
 
   it('渲染视图切换按钮组（看板/列表）', async () => {
@@ -77,7 +77,7 @@ describe('TaskBoard.vue', () => {
     await flushPromises()
     // kanban 按钮应带 primary 样式
     const buttons = wrapper.findAll('.page-header__actions button')
-    const kanbanBtn = buttons.find((b) => b.text().includes('taskBoard.btnKanban'))
+    const kanbanBtn = buttons.find((b) => b.text().includes('看板'))
     expect(kanbanBtn?.classes()).toContain('el-button--primary')
   })
 
@@ -85,7 +85,7 @@ describe('TaskBoard.vue', () => {
     const wrapper = mountTaskBoard()
     await flushPromises()
     const buttons = wrapper.findAll('.page-header__actions button')
-    const listBtn = buttons.find((b) => b.text().includes('taskBoard.btnList'))
+    const listBtn = buttons.find((b) => b.text().includes('列表'))
     await listBtn?.trigger('click')
     expect(listBtn?.classes()).toContain('el-button--primary')
   })
@@ -109,7 +109,7 @@ describe('TaskBoard.vue', () => {
     await flushPromises()
     const filterBtn = wrapper
       .findAll('.page-header__actions button')
-      .find((b) => b.text().includes('taskBoard.btnFilter'))
+      .find((b) => b.text().includes('筛选'))
     await filterBtn?.trigger('click')
     expect(wrapper.find('.filter-panel-wrapper').classes()).toContain('collapsed')
   })
@@ -149,7 +149,7 @@ describe('TaskBoard.vue', () => {
     await flushPromises()
     const createBtn = wrapper
       .findAll('.page-header__actions button')
-      .find((b) => b.text().includes('taskBoard.btnCreateTask'))
+      .find((b) => b.text().includes('新建任务'))
     expect(createBtn).toBeDefined()
     expect(createBtn?.classes()).toContain('el-button--primary')
   })
@@ -159,7 +159,7 @@ describe('TaskBoard.vue', () => {
     await flushPromises()
     const createBtn = wrapper
       .findAll('.page-header__actions button')
-      .find((b) => b.text().includes('taskBoard.btnCreateTask'))
+      .find((b) => b.text().includes('新建任务'))
     await createBtn?.trigger('click')
     // 弹窗 visibility 通过 detailVisible 控制
     // 这里仅校验点击不抛错

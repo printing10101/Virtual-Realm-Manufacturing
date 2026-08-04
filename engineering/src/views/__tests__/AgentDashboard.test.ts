@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -13,6 +13,9 @@ const mockAgentStore = vi.hoisted(() => ({
   statusFilter: null as string | null,
   fetchAgents: vi.fn(() => Promise.resolve()),
   fetchAgentDetail: vi.fn(() => Promise.resolve()),
+  statusTagType: (status: string) => (status === 'busy' ? 'warning' : status === 'error' ? 'danger' : 'success'),
+  statusLabel: (status: string) => status,
+  formatTime: (ts: string | number | null | undefined) => (ts ? String(ts) : '-'),
 }))
 
 vi.mock('@/stores/agents', () => ({
@@ -45,7 +48,7 @@ describe('AgentDashboard.vue', () => {
   })
 
   const mountAgentDashboard = (options = {}) => {
-    return shallowMount(AgentDashboard, {
+    return mount(AgentDashboard, {
       global: {
         plugins: [pinia, router],
         mocks: {
@@ -66,8 +69,8 @@ describe('AgentDashboard.vue', () => {
   it('渲染页面标题与副标题', async () => {
     const wrapper = mountAgentDashboard()
     await flushPromises()
-    expect(wrapper.find('.page-header__title h1').text()).toBe('agentDashboard.pageTitle')
-    expect(wrapper.find('.subtitle').text()).toBe('agentDashboard.pageSubtitle')
+    expect(wrapper.find('.page-header__title h1').text()).toBe('智能体管理')
+    expect(wrapper.find('.subtitle').text()).toBe('管理和监控智能体运行状态')
   })
 
   it('渲染统计概览卡片（总数/活跃/空闲/错误）', async () => {
@@ -75,7 +78,7 @@ describe('AgentDashboard.vue', () => {
     await flushPromises()
     const cards = wrapper.findAll('.stat-card')
     expect(cards.length).toBe(4)
-    expect(wrapper.find('.stat-card__label').text()).toBe('agentDashboard.statTotal')
+    expect(wrapper.find('.stat-card__label').text()).toBe('总智能体')
   })
 
   it('渲染部署新代理按钮', async () => {
@@ -83,7 +86,7 @@ describe('AgentDashboard.vue', () => {
     await flushPromises()
     const deployBtn = wrapper
       .findAll('.page-header__actions button')
-      .find((b) => b.text().includes('agentDashboard.btnDeployNew'))
+      .find((b) => b.text().includes('部署新智能体'))
     expect(deployBtn).toBeDefined()
     expect(deployBtn?.classes()).toContain('el-button--primary')
   })
@@ -152,7 +155,7 @@ describe('AgentDashboard.vue', () => {
     await flushPromises()
     const deployBtn = wrapper
       .findAll('.page-header__actions button')
-      .find((b) => b.text().includes('agentDashboard.btnDeployNew'))
+      .find((b) => b.text().includes('部署新智能体'))
     await deployBtn?.trigger('click')
     // deployDialogVisible 切换为 true
     expect(wrapper.find('.agent-dashboard').exists()).toBe(true)

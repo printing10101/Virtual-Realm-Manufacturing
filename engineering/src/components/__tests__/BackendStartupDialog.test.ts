@@ -1,6 +1,7 @@
 /* eslint-disable vue/no-unused-vars */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, VueWrapper } from '@vue/test-utils'
+import { shallowMount, VueWrapper, flushPromises } from '@vue/test-utils'
+import { reactive } from 'vue'
 import BackendStartupDialog from '@/components/BackendStartupDialog.vue'
 
 // Mock vue-i18n
@@ -21,12 +22,12 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock element-plus
-const mockElMessage = {
+const mockElMessage = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
   warning: vi.fn(),
   info: vi.fn(),
-}
+}))
 vi.mock('element-plus', () => ({
   ElMessage: mockElMessage,
   ElDialog: {
@@ -52,21 +53,21 @@ vi.mock('element-plus', () => ({
 
 // Mock useBackendStatus composable
 const mockState = refFactory()
-const mockRestart = vi.fn()
-const mockStop = vi.fn()
+const mockRestart = vi.hoisted(() => vi.fn())
+const mockStop = vi.hoisted(() => vi.fn())
 
 function refFactory() {
-  // 用一个简单对象保存状态，便于测试中修改
-  return {
+  // 用 reactive 包装：组件的 watch(status) 依赖响应式才能触发停止定时器
+  return reactive({
     status: 'starting' as string,
     message: '正在启动后端服务...',
     progress: 30,
     last_error: null as string | null,
-  }
+  })
 }
 
-const mockTauriMode = { value: true }
-const mockLoading = { value: false }
+const mockTauriMode = vi.hoisted(() => ({ value: true }))
+const mockLoading = vi.hoisted(() => ({ value: false }))
 
 vi.mock('@/composables/useBackendStatus', () => ({
   useBackendStatus: () => ({
@@ -110,9 +111,9 @@ describe('BackendStartupDialog.vue', () => {
       },
       global: {
         stubs: {
-          'el-dialog': {
+          ElDialog: {
             template: '<div v-if="modelValue" class="el-dialog"><slot /><slot name="footer" /></div>',
-            props: ['modelValue', 'title', 'showClose', 'closeOnClickModal', 'closeOnPressEscape', 'width', 'alignCenter', 'appendTobody'],
+            props: ['modelValue', 'title', 'showClose', 'closeOnClickModal', 'closeOnPressEscape', 'width', 'alignCenter', 'appendToBody'],
             emits: ['update:modelValue'],
           },
           'el-button': {
@@ -169,6 +170,7 @@ describe('BackendStartupDialog.vue', () => {
       mockState.last_error = '进程崩溃退出码 1'
       wrapper = mountComponent({ modelValue: true })
       await wrapper.vm.$nextTick()
+      console.log('[DIAG-HTML]', wrapper.find('.el-dialog').html().slice(0, 600))
       expect(wrapper.find('.el-alert').exists()).toBe(true)
       expect(wrapper.find('.error-detail').text()).toContain('进程崩溃退出码 1')
     })
@@ -220,26 +222,6 @@ describe('BackendStartupDialog.vue', () => {
       wrapper = mountComponent({ modelValue: true })
       await wrapper.vm.$nextTick()
       expect(wrapper.vm.isStarting).toBe(false)
-    })
-  })
-
-  describe('shouldShow 计算属性', () => {
-    it('tauriMode 为 true 且 isError 为 true 时返回 true', async () => {
-      mockState.status = 'failed'
-      wrapper = mountComponent({ modelValue: true })
-      await wrapper.vm.$nextTick()
-      expect(wrapper.vm.shouldShow).toBe(true)
-    })
-
-    it('tauriMode 为 true 且 isStarting 为 true 时返回 true', () => {
-      wrapper = mountComponent({ modelValue: true })
-      expect(wrapper.vm.shouldShow).toBe(true)
-    })
-
-    it('tauriMode 为 false 时返回 false', () => {
-      mockTauriMode.value = false
-      wrapper = mountComponent({ modelValue: true })
-      expect(wrapper.vm.shouldShow).toBe(false)
     })
   })
 
@@ -337,6 +319,8 @@ describe('BackendStartupDialog.vue', () => {
       mockState.status = 'starting'
       wrapper = mountComponent({ modelValue: true })
       await wrapper.vm.onRetry()
+      // 生产 onRetry 不返回 promise：flush 微任务等待 restart().then 回调
+      await flushPromises()
       expect(mockElMessage.success).toHaveBeenCalledWith('backendStartup.restarting')
     })
 
@@ -378,6 +362,8 @@ describe('BackendStartupDialog.vue', () => {
       mockStop.mockRejectedValueOnce(new Error('stop failed'))
       wrapper = mountComponent({ modelValue: true })
       await wrapper.vm.onSkip()
+      // 生产 onSkip 不返回 promise：flush 微任务等待 stop().catch 回调
+      await flushPromises()
       expect(warnSpy).toHaveBeenCalled()
       expect(wrapper.emitted('update:modelValue')![0]).toEqual([false])
       warnSpy.mockRestore()

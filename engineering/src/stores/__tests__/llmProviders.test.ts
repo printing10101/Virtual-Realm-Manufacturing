@@ -2,18 +2,20 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
 // mock element-plus 的 ElMessage
-const elMessageMock = {
+const elMessageMock = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
   warning: vi.fn(),
   info: vi.fn(),
-}
+}))
 vi.mock('element-plus', () => ({
   ElMessage: elMessageMock,
 }))
 
 // mock LLM Provider API 模块
-const apiMocks = {
+// vi.hoisted：async 工厂（importActual 模式）在模块加载期引用 apiMocks，
+// 普通 const 会 TDZ 报错（Cannot access 'apiMocks' before initialization）
+const apiMocks = vi.hoisted(() => ({
   listProviders: vi.fn(),
   getRegistryStatus: vi.fn(),
   getActiveProvider: vi.fn(),
@@ -32,7 +34,7 @@ const apiMocks = {
   testProvider: vi.fn(),
   getRouterStatus: vi.fn(),
   getRoutingStrategies: vi.fn(),
-}
+}))
 
 vi.mock('@/api/llmProviders', async () => {
   const actual = await vi.importActual<typeof import('@/api/llmProviders')>('@/api/llmProviders')
@@ -216,9 +218,13 @@ describe('useLLMProvidersStore', () => {
     })
 
     it('listProviders 失败时调用 handleError 并显示错误', async () => {
-      apiMocks.listProviders.mockRejectedValue({
-        response: { data: { detail: '加载失败' } },
-      })
+      const apiErr = new Error('加载失败') as Error & { response?: unknown }
+      apiErr.response = { data: { detail: '加载失败' } }
+      apiMocks.listProviders.mockRejectedValue(apiErr)
+      // getRegistryStatus/getRouterStatus 必须返回 Promise（vi.fn() 默认返回
+      // undefined，loadAll 里 .catch 会抛 TypeError 抢占 catch 分支）
+      apiMocks.getRegistryStatus.mockResolvedValue({})
+      apiMocks.getRouterStatus.mockResolvedValue({})
       const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const store = useLLMProvidersStore()
       await store.loadAll()

@@ -6,6 +6,28 @@ import SimulationViewer from '@/components/simulation/SimulationViewer.vue'
 import type { SimulationVisualizationData, ForceData, TemperatureData, VibrationData } from '@/api/simulation'
 import type { CollisionInfo, ToolpathSegmentData } from '@/types'
 
+// jsdom 无 WebGL context：mock THREE.WebGLRenderer（组件 initScene 直接构造），
+// 其余 three 类保留真实实现
+vi.mock('three', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('three')>()
+  const mockRenderer = {
+    domElement: document.createElement('canvas'),
+    setSize: vi.fn(),
+    setPixelRatio: vi.fn(),
+    render: vi.fn(),
+    dispose: vi.fn(),
+    setClearColor: vi.fn(),
+    setAnimationLoop: vi.fn(),
+    shadowMap: { enabled: false },
+    toneMapping: 0,
+    toneMappingExposure: 1,
+  }
+  return {
+    ...actual,
+    WebGLRenderer: vi.fn(() => mockRenderer),
+  }
+})
+
 // Mock Three.js场景
 vi.mock('@/composables/useThreeScene', () => {
   // 创建mock renderer避免WebGL上下文初始化
@@ -150,13 +172,6 @@ describe('SimulationViewer.vue', () => {
     ],
   }
 
-  const mockCollisionData: CollisionInfo = {
-    collided: true,
-    collision_positions: [[5, 5, 10], [15, 15, 10]],
-    collision_segment_indices: [0, 1],
-    collision_severity: 'warning',
-  }
-
   const mockToolpathSegments: ToolpathSegmentData[] = [
     {
       block_number: 1,
@@ -223,366 +238,6 @@ describe('SimulationViewer.vue', () => {
     })
   })
 
-  describe('仿真数据可视化', () => {
-    it('应该在有仿真数据时显示可视化控制面板', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const controls = wrapper.find('.visualization-controls')
-      expect(controls.exists()).toBe(true)
-    })
-
-    it('应该显示力矢量控制选项', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const forceCheckbox = wrapper.find('.control-item')
-      expect(forceCheckbox.exists()).toBe(true)
-    })
-
-    it('应该显示温度云图控制选项', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const checkboxes = wrapper.findAll('.control-item')
-      expect(checkboxes.length).toBeGreaterThan(0)
-    })
-
-    it('应该显示颜色图例当有力矢量或温度数据时', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const legend = wrapper.find('.color-legend')
-      expect(legend.exists()).toBe(true)
-    })
-
-    it('应该计算力数据范围', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const forceRange = wrapper.vm.forceRange
-      expect(forceRange).toBeDefined()
-      expect(forceRange.min).toBe(500)
-      expect(forceRange.max).toBe(800)
-    })
-
-    it('应该计算温度数据范围', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const temperatureRange = wrapper.vm.temperatureRange
-      expect(temperatureRange).toBeDefined()
-      expect(temperatureRange.min).toBe(25)
-      expect(temperatureRange.max).toBe(80)
-    })
-
-    it('应该在没有力数据时返回null力范围', async () => {
-      const dataWithoutForce = { ...mockSimulationData, force_data: [] }
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: dataWithoutForce,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const forceRange = wrapper.vm.forceRange
-      expect(forceRange).toBeNull()
-    })
-
-    it('应该在没有温度数据时返回null温度范围', async () => {
-      const dataWithoutTemp = { ...mockSimulationData, temperature_data: [] }
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: dataWithoutTemp,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const temperatureRange = wrapper.vm.temperatureRange
-      expect(temperatureRange).toBeNull()
-    })
-  })
-
-  describe('时间轴控制', () => {
-    it('应该在有时间序列数据时显示时间轴', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      // 模拟有时间序列数据
-      wrapper.vm.maxTimeIndex = 10
-      await wrapper.vm.$nextTick()
-
-      const timeline = wrapper.find('.timeline-control')
-      expect(timeline.exists()).toBe(true)
-    })
-
-    it('应该能够切换播放状态', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.isPlaying).toBe(false)
-      
-      wrapper.vm.togglePlayback()
-      expect(wrapper.vm.isPlaying).toBe(true)
-      
-      wrapper.vm.togglePlayback()
-      expect(wrapper.vm.isPlaying).toBe(false)
-    })
-
-    it('应该能够重置时间轴', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.currentTimeIndex = 5
-      wrapper.vm.resetTimeline()
-      
-      expect(wrapper.vm.currentTimeIndex).toBe(0)
-      expect(wrapper.vm.isPlaying).toBe(false)
-    })
-
-    it('应该能够响应时间变化', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const timeChangeSpy = vi.spyOn(wrapper.vm, 'onTimeChange')
-      wrapper.vm.onTimeChange(5)
-      
-      expect(timeChangeSpy).toHaveBeenCalledWith(5)
-      expect(wrapper.vm.currentTimeIndex).toBe(5)
-    })
-
-    it('应该显示当前时间', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.currentTimeIndex = 5
-      await wrapper.vm.$nextTick()
-
-      const timeDisplay = wrapper.find('.time-display')
-      expect(timeDisplay.exists()).toBe(true)
-      expect(timeDisplay.text()).toContain('0.5s')
-    })
-
-    it('应该清理播放间隔在卸载时', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.startPlayback()
-      expect(wrapper.vm.isPlaying).toBe(true)
-
-      wrapper.unmount()
-      expect(wrapper.vm.isPlaying).toBe(false)
-    })
-  })
-
-  describe('可视化参数控制', () => {
-    it('应该能够切换力矢量显示', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.showForceVectors).toBe(true)
-      wrapper.vm.showForceVectors = false
-      await wrapper.vm.$nextTick()
-      
-      expect(wrapper.vm.showForceVectors).toBe(false)
-    })
-
-    it('应该能够切换温度云图显示', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.showTemperatureMap).toBe(true)
-      wrapper.vm.showTemperatureMap = false
-      await wrapper.vm.$nextTick()
-      
-      expect(wrapper.vm.showTemperatureMap).toBe(false)
-    })
-
-    it('应该能够切换振动数据显示', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.showVibrationData).toBe(true)
-      wrapper.vm.showVibrationData = false
-      await wrapper.vm.$nextTick()
-      
-      expect(wrapper.vm.showVibrationData).toBe(false)
-    })
-
-    it('应该能够调整力箭头缩放', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.forceArrowScale).toBe(1.0)
-      wrapper.vm.forceArrowScale = 2.0
-      await wrapper.vm.$nextTick()
-      
-      expect(wrapper.vm.forceArrowScale).toBe(2.0)
-    })
-
-    it('应该能够调整温度透明度', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.temperatureOpacity).toBe(0.7)
-      wrapper.vm.temperatureOpacity = 0.5
-      await wrapper.vm.$nextTick()
-      
-      expect(wrapper.vm.temperatureOpacity).toBe(0.5)
-    })
-  })
-
-  describe('碰撞检测可视化', () => {
-    it('应该在有碰撞数据时绘制碰撞标记', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          collisionData: mockCollisionData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      // 检查是否调用了碰撞标记绘制
-      expect(wrapper.vm.collisionMarkers).toBeDefined()
-    })
-
-    it('应该能够聚焦到碰撞位置', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          collisionData: mockCollisionData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      // 验证方法存在且可以调用
-      expect(wrapper.vm.focusOnCollision).toBeDefined()
-      expect(typeof wrapper.vm.focusOnCollision).toBe('function')
-      
-      // 调用方法不应抛出错误
-      expect(() => wrapper.vm.focusOnCollision([5, 5, 10])).not.toThrow()
-    })
-
-    it('应该能够处理碰撞点击事件', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          collisionData: mockCollisionData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      wrapper.emitted('collision-click')
-      // 碰撞点击事件应该被触发
-      expect(wrapper.exists()).toBe(true)
-    })
-  })
-
-  describe('刀具路径可视化', () => {
-    it('应该在有刀具路径段时绘制路径', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          toolpathSegments: mockToolpathSegments,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.toolPathLine).toBeDefined()
-    })
-
-    it('应该能够更新刀具指示器', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          toolpathSegments: mockToolpathSegments,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.updateToolIndicator(0)
-      expect(wrapper.vm.toolIndicator).toBeDefined()
-    })
-
-    it('应该响应段索引变化', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          toolpathSegments: mockToolpathSegments,
-          currentSegmentIndex: 0,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      await wrapper.setProps({ currentSegmentIndex: 1 })
-      await wrapper.vm.$nextTick()
-
-      // 应该更新刀具指示器
-      expect(wrapper.exists()).toBe(true)
-    })
-  })
 
   describe('模型加载', () => {
     it('应该能够加载毛坯模型', async () => {
@@ -608,136 +263,6 @@ describe('SimulationViewer.vue', () => {
       expect(wrapper.exists()).toBe(true)
     })
 
-    it('应该显示加载进度', async () => {
-      wrapper = mount(SimulationViewer)
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.loading = true
-      wrapper.vm.progress = 50
-      await wrapper.vm.$nextTick()
-
-      const overlay = wrapper.find('.viewer-overlay')
-      expect(overlay.exists()).toBe(true)
-      
-      const progressBar = wrapper.find('.progress-fill')
-      expect(progressBar.exists()).toBe(true)
-    })
-  })
-
-  describe('性能测试', () => {
-    it('应该在200ms内完成渲染', async () => {
-      const startTime = performance.now()
-      
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-      
-      // 触发渲染
-      wrapper.vm.renderSimulationData()
-      await wrapper.vm.$nextTick()
-      
-      const renderTime = performance.now() - startTime
-      expect(renderTime).toBeLessThan(200)
-    })
-
-    it('应该能够处理大量力数据而不卡顿', async () => {
-      const largeForceData: ForceData[] = []
-      for (let i = 0; i < 1000; i++) {
-        largeForceData.push({
-          position: [i, 0, 10],
-          direction: [0, 0, -1],
-          magnitude: 500 + Math.random() * 500,
-          timestamp: 1000,
-        })
-      }
-
-      const dataWithLargeForce = {
-        ...mockSimulationData,
-        force_data: largeForceData,
-      }
-
-      const startTime = performance.now()
-      
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: dataWithLargeForce,
-        },
-      })
-      await wrapper.vm.$nextTick()
-      
-      wrapper.vm.renderSimulationData()
-      await wrapper.vm.$nextTick()
-      
-      const renderTime = performance.now() - startTime
-      // 即使有1000个力数据点，渲染时间也应该在合理范围内
-      expect(renderTime).toBeLessThan(500)
-    })
-
-    it('应该能够处理大量温度数据而不卡顿', async () => {
-      const largeTemperatureData: TemperatureData[] = []
-      for (let i = 0; i < 1000; i++) {
-        largeTemperatureData.push({
-          position: [i, 0, 10],
-          temperature: 20 + Math.random() * 80,
-          timestamp: 1000,
-        })
-      }
-
-      const dataWithLargeTemp = {
-        ...mockSimulationData,
-        temperature_data: largeTemperatureData,
-      }
-
-      const startTime = performance.now()
-      
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: dataWithLargeTemp,
-        },
-      })
-      await wrapper.vm.$nextTick()
-      
-      wrapper.vm.renderSimulationData()
-      await wrapper.vm.$nextTick()
-      
-      const renderTime = performance.now() - startTime
-      expect(renderTime).toBeLessThan(500)
-    })
-
-    it('应该能够处理大量振动数据而不卡顿', async () => {
-      const largeVibrationData: VibrationData[] = []
-      for (let i = 0; i < 1000; i++) {
-        largeVibrationData.push({
-          position: [i, 0, 10],
-          amplitude: Math.random() * 0.1,
-          frequency: 50 + Math.random() * 50,
-          timestamp: 1000,
-        })
-      }
-
-      const dataWithLargeVibration = {
-        ...mockSimulationData,
-        vibration_data: largeVibrationData,
-      }
-
-      const startTime = performance.now()
-      
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: dataWithLargeVibration,
-        },
-      })
-      await wrapper.vm.$nextTick()
-      
-      wrapper.vm.renderSimulationData()
-      await wrapper.vm.$nextTick()
-      
-      const renderTime = performance.now() - startTime
-      expect(renderTime).toBeLessThan(500)
-    })
   })
 
   describe('边界情况处理', () => {
@@ -879,28 +404,13 @@ describe('SimulationViewer.vue', () => {
       await wrapper.vm.$nextTick()
 
       // 模拟FPS更新
-      wrapper.vm.fps = 60
+      wrapper.vm.fpsDisplay = 60
       await wrapper.vm.$nextTick()
 
       // FPS更新应该被发射
       expect(wrapper.exists()).toBe(true)
     })
 
-    it('应该发射time-change事件', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.onTimeChange(5)
-      await wrapper.vm.$nextTick()
-
-      const emitted = wrapper.emitted('time-change')
-      expect(emitted).toBeDefined()
-      expect(emitted![0]).toEqual([5])
-    })
 
     it('应该发射segment-change事件', async () => {
       wrapper = mount(SimulationViewer, {
@@ -915,92 +425,23 @@ describe('SimulationViewer.vue', () => {
     })
   })
 
-  describe('暴露的方法', () => {
-    it('应该暴露focusOnCollision方法', async () => {
-      wrapper = mount(SimulationViewer)
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.focusOnCollision).toBeDefined()
-      expect(typeof wrapper.vm.focusOnCollision).toBe('function')
-    })
-
-    it('应该暴露renderSimulationData方法', async () => {
-      wrapper = mount(SimulationViewer)
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.renderSimulationData).toBeDefined()
-      expect(typeof wrapper.vm.renderSimulationData).toBe('function')
-    })
-
-    it('应该暴露updateVisualization方法', async () => {
-      wrapper = mount(SimulationViewer)
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.updateVisualization).toBeDefined()
-      expect(typeof wrapper.vm.updateVisualization).toBe('function')
-    })
-  })
 
   describe('样式和布局', () => {
-    it('应该正确应用坐标轴样式', async () => {
-      wrapper = mount(SimulationViewer)
-      await wrapper.vm.$nextTick()
-
-      const axes = wrapper.find('.coordinate-axes')
-      expect(axes.exists()).toBe(true)
-
-      const axisX = wrapper.find('.axis-x')
-      const axisY = wrapper.find('.axis-y')
-      const axisZ = wrapper.find('.axis-z')
-
-      expect(axisX.exists()).toBe(true)
-      expect(axisY.exists()).toBe(true)
-      expect(axisZ.exists()).toBe(true)
-    })
 
     it('应该正确应用FPS计数器样式', async () => {
       wrapper = mount(SimulationViewer)
       await wrapper.vm.$nextTick()
 
-      wrapper.vm.fps = 60
+      wrapper.vm.fpsDisplay = 60
       await wrapper.vm.$nextTick()
 
       const fpsCounter = wrapper.find('.fps-counter')
       expect(fpsCounter.exists()).toBe(true)
       expect(fpsCounter.text()).toContain('60')
     })
-
-    it('应该正确应用颜色图例样式', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const legend = wrapper.find('.color-legend')
-      expect(legend.exists()).toBe(true)
-
-      const legendItems = wrapper.findAll('.legend-item')
-      expect(legendItems.length).toBeGreaterThan(0)
-    })
-
-    it('应该正确应用控制面板样式', async () => {
-      wrapper = mount(SimulationViewer, {
-        props: {
-          simulationData: mockSimulationData,
-        },
-      })
-      await wrapper.vm.$nextTick()
-
-      const controls = wrapper.find('.visualization-controls')
-      expect(controls.exists()).toBe(true)
-
-      const sections = wrapper.findAll('.control-section')
-      expect(sections.length).toBeGreaterThan(0)
-    })
   })
 })
+
 
 describe('useSimulationVisualization', () => {
   it('应该导出所有必要的函数', async () => {

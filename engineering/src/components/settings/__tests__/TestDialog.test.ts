@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { reactive } from 'vue'
 import { mount, VueWrapper } from '@vue/test-utils'
 import TestDialog from '@/components/settings/TestDialog.vue'
 
@@ -19,11 +20,11 @@ vi.mock('@element-plus/icons-vue', () => ({
   RefreshLeft: { name: 'RefreshLeft', render: () => null },
 }))
 
-// Mock @/stores/llmProviders
-const mockStore = {
+// Mock @/stores/llmProviders（reactive：computed 依赖 store.testing 需要响应式追踪）
+const mockStore = reactive({
   testing: false,
   testChat: vi.fn(),
-}
+})
 vi.mock('@/stores/llmProviders', () => ({
   useLLMProvidersStore: () => mockStore,
 }))

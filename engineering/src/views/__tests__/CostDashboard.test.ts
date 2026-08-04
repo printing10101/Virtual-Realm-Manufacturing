@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -59,7 +59,7 @@ describe('CostDashboard.vue', () => {
   })
 
   const mountCostDashboard = (options = {}) => {
-    return shallowMount(CostDashboard, {
+    return mount(CostDashboard, {
       global: {
         plugins: [pinia, router],
         mocks: {
@@ -80,7 +80,7 @@ describe('CostDashboard.vue', () => {
   it('渲染页面标题', async () => {
     const wrapper = mountCostDashboard()
     await flushPromises()
-    expect(wrapper.find('.page-header__title h1').text()).toBe('costDashboard.pageTitle')
+    expect(wrapper.find('.page-header__title h1').text()).toBe('成本分析')
   })
 
   it('无预算超额告警时不渲染告警条', async () => {

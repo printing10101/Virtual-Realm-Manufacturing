@@ -15,7 +15,7 @@
           type="primary"
           size="small"
           :icon="Plus"
-          @click="handleStockIn"
+          @click="() => handleStockIn()"
         >
           {{ t('materialManagement.btnStockIn') }}
         </el-button>
@@ -23,24 +23,7 @@
     </div>
 
     <!-- 统计卡片 -->
-    <div class="stats-row">
-      <div
-        v-for="stat in statsCards"
-        :key="stat.label"
-        class="stat-card"
-        :class="'stat-card--' + stat.type"
-      >
-        <div class="stat-card__icon">
-          <el-icon :size="24">
-            <component :is="stat.icon" />
-          </el-icon>
-        </div>
-        <div class="stat-card__content">
-          <span class="stat-card__value">{{ stat.value }}</span>
-          <span class="stat-card__label">{{ stat.label }}</span>
-        </div>
-      </div>
-    </div>
+    <MaterialStatsCards :cards="statsCards" />
 
     <!-- 物料列表 -->
     <div class="content-card">
@@ -200,143 +183,30 @@
     </div>
 
     <!-- 入库登记弹窗 -->
-    <el-dialog
-      v-model="stockInDialogVisible"
-      :title="t('materialManagement.dialogStockInTitle')"
-      width="460px"
-      :close-on-click-modal="false"
-      destroy-on-close
-    >
-      <el-form label-width="90px" @submit.prevent>
-        <el-form-item :label="t('materialManagement.fieldMaterial')" required>
-          <el-select
-            v-model="stockInForm.material_id"
-            :placeholder="t('materialManagement.placeholderSelectMaterial')"
-            style="width: 100%"
-            filterable
-          >
-            <el-option
-              v-for="m in materials"
-              :key="m.id"
-              :label="`${m.code} - ${m.name}`"
-              :value="m.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="t('materialManagement.fieldQuantity')" required>
-          <el-input-number
-            v-model="stockInForm.quantity"
-            :min="1"
-            :max="100000"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item :label="t('materialManagement.fieldRemark')">
-          <el-input
-            v-model="stockInForm.remark"
-            :placeholder="t('materialManagement.placeholderRemark')"
-            maxlength="200"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="stockInDialogVisible = false">
-          {{ t('materialManagement.btnCancel') }}
-        </el-button>
-        <el-button type="primary" :loading="stockInSubmitting" @click="submitStockIn">
-          {{ t('materialManagement.btnSubmit') }}
-        </el-button>
-      </template>
-    </el-dialog>
+    <MaterialStockInDialog
+      v-model:visible="stockInDialogVisible"
+      :materials="materials"
+      :submitting="stockInSubmitting"
+      :initial-material-id="preselectedMaterialId"
+      @submit="submitStockIn"
+    />
 
     <!-- 采购申请弹窗 -->
-    <el-dialog
-      v-model="purchaseDialogVisible"
-      :title="t('materialManagement.dialogPurchaseTitle')"
-      width="460px"
-      :close-on-click-modal="false"
-      destroy-on-close
-    >
-      <el-form label-width="90px" @submit.prevent>
-        <el-form-item :label="t('materialManagement.fieldMaterial')" required>
-          <el-input :model-value="purchaseMaterialLabel" disabled />
-        </el-form-item>
-        <el-form-item :label="t('materialManagement.fieldQuantity')" required>
-          <el-input-number
-            v-model="purchaseForm.quantity"
-            :min="1"
-            :max="100000"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item :label="t('materialManagement.fieldSupplier')">
-          <el-input
-            v-model="purchaseForm.supplier"
-            :placeholder="t('materialManagement.placeholderSupplier')"
-            maxlength="128"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="purchaseDialogVisible = false">
-          {{ t('materialManagement.btnCancel') }}
-        </el-button>
-        <el-button type="primary" :loading="purchaseSubmitting" @click="submitPurchase">
-          {{ t('materialManagement.btnSubmit') }}
-        </el-button>
-      </template>
-    </el-dialog>
+    <MaterialPurchaseDialog
+      v-model:visible="purchaseDialogVisible"
+      :material-label="purchaseMaterialLabel"
+      :submitting="purchaseSubmitting"
+      :initial-material-id="purchaseMaterialId"
+      :initial-supplier="purchaseSupplier"
+      @submit="submitPurchase"
+    />
 
     <!-- 物料详情弹窗 -->
-    <el-dialog
-      v-model="detailDialogVisible"
-      :title="t('materialManagement.dialogDetailTitle')"
-      width="520px"
-    >
-      <div v-loading="detailLoading" style="min-height: 200px">
-        <template v-if="detailData">
-          <el-descriptions :column="1" border>
-            <el-descriptions-item :label="t('materialManagement.colMaterialCode')">
-              {{ detailData.code }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('materialManagement.colMaterialName')">
-              {{ detailData.name }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('materialManagement.fieldSpec')">
-              {{ detailData.spec || '—' }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('materialManagement.colCategory')">
-              {{ detailData.category }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('materialManagement.colQuantity')">
-              {{ detailData.quantity }} {{ detailData.unit || '' }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('materialManagement.fieldSafeQuantity')">
-              {{ detailData.safe_quantity }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('materialManagement.colStatus')">
-              <el-tag :type="stockStatusTagType(detailData.status)" size="small" effect="light">
-                {{ detailData.status }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('materialManagement.fieldLocation')">
-              {{ detailData.location || '—' }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('materialManagement.fieldSupplier')">
-              {{ detailData.supplier || '—' }}
-            </el-descriptions-item>
-            <el-descriptions-item :label="t('materialManagement.fieldUpdatedAt')">
-              {{ detailData.updated_at }}
-            </el-descriptions-item>
-          </el-descriptions>
-        </template>
-      </div>
-      <template #footer>
-        <el-button @click="detailDialogVisible = false">
-          {{ t('materialManagement.btnCancel') }}
-        </el-button>
-      </template>
-    </el-dialog>
+    <MaterialDetailDialog
+      v-model:visible="detailDialogVisible"
+      :loading="detailLoading"
+      :data="detailData"
+    />
   </div>
 </template>
 
@@ -347,6 +217,11 @@ import { ElMessage } from 'element-plus'
 import { Plus, Box, Warning, CircleClose, ShoppingCart } from '@element-plus/icons-vue'
 import http from '@/utils/http'
 import { API_CONFIG } from '@/config/api'
+
+import MaterialStatsCards from '@/components/material/MaterialStatsCards.vue'
+import MaterialStockInDialog from '@/components/material/MaterialStockInDialog.vue'
+import MaterialPurchaseDialog from '@/components/material/MaterialPurchaseDialog.vue'
+import MaterialDetailDialog from '@/components/material/MaterialDetailDialog.vue'
 
 const { t } = useI18n()
 
@@ -373,13 +248,6 @@ interface StatsSummary {
   out_of_stock: number
 }
 
-interface StatsCard {
-  label: string
-  value: number
-  icon: Component
-  type: string
-}
-
 // ========================= 状态 =========================
 const loading = ref(false)
 const loadError = ref(false)
@@ -391,12 +259,12 @@ const materials = ref<Material[]>([])
 const statsSummary = ref<StatsSummary>({ total: 0, low_stock: 0, out_of_stock: 0 })
 
 // ========================= 计算属性 =========================
-const statsCards = computed<StatsCard[]>(() => {
+const statsCards = computed(() => {
   return [
-    { label: t('materialManagement.statTotal'), value: statsSummary.value.total, icon: Box, type: 'default' },
-    { label: t('materialManagement.statLowStock'), value: statsSummary.value.low_stock, icon: Warning, type: 'warning' },
-    { label: t('materialManagement.statOutOfStock'), value: statsSummary.value.out_of_stock, icon: CircleClose, type: 'danger' },
-    { label: t('materialManagement.statPurchasing'), value: Math.min(statsSummary.value.out_of_stock + statsSummary.value.low_stock, 8), icon: ShoppingCart, type: 'info' },
+    { label: t('materialManagement.statTotal'), value: statsSummary.value.total, icon: Box as Component, type: 'default' },
+    { label: t('materialManagement.statLowStock'), value: statsSummary.value.low_stock, icon: Warning as Component, type: 'warning' },
+    { label: t('materialManagement.statOutOfStock'), value: statsSummary.value.out_of_stock, icon: CircleClose as Component, type: 'danger' },
+    { label: t('materialManagement.statPurchasing'), value: Math.min(statsSummary.value.out_of_stock + statsSummary.value.low_stock, 8), icon: ShoppingCart as Component, type: 'info' },
   ]
 })
 
@@ -440,39 +308,41 @@ async function fetchMaterials() {
 // ========================= 入库登记弹窗 =========================
 const stockInDialogVisible = ref(false)
 const stockInSubmitting = ref(false)
-const stockInForm = ref({
-  material_id: '' as number | '',
-  quantity: 1 as number,
-  remark: '',
-})
+const preselectedMaterialId = ref<number | ''>('')
 
 /** 打开入库登记弹窗（顶部按钮不传物料，行内按钮预选物料）。 */
-function handleStockIn(row?: Material | MouseEvent) {
-  if (row && typeof row === 'object' && 'id' in row) {
-    stockInForm.value = { material_id: row.id, quantity: 1, remark: '' }
+function handleStockIn(row?: Material) {
+  if (row) {
+    preselectedMaterialId.value = row.id
   } else {
-    stockInForm.value = { material_id: '', quantity: 1, remark: '' }
+    preselectedMaterialId.value = ''
   }
   stockInDialogVisible.value = true
 }
 
+interface StockInFormData {
+  material_id: number | ''
+  quantity: number
+  remark: string
+}
+
 /** 提交入库登记。 */
-async function submitStockIn() {
-  if (!stockInForm.value.material_id) {
+async function submitStockIn(formData: StockInFormData) {
+  if (!formData.material_id) {
     ElMessage.warning(t('materialManagement.msgMaterialRequired'))
     return
   }
-  if (!stockInForm.value.quantity || stockInForm.value.quantity <= 0) {
+  if (!formData.quantity || formData.quantity <= 0) {
     ElMessage.warning(t('materialManagement.msgQuantityInvalid'))
     return
   }
   stockInSubmitting.value = true
   try {
     const res = await http.post(
-      API_CONFIG.MATERIALS + `/${stockInForm.value.material_id}/stock-in`,
+      API_CONFIG.MATERIALS + `/${formData.material_id}/stock-in`,
       {
-        quantity: stockInForm.value.quantity,
-        remark: stockInForm.value.remark.trim() || null,
+        quantity: formData.quantity,
+        remark: formData.remark.trim() || null,
       },
     )
     if (res.data.code === 0) {
@@ -493,39 +363,39 @@ async function submitStockIn() {
 // ========================= 采购申请弹窗 =========================
 const purchaseDialogVisible = ref(false)
 const purchaseSubmitting = ref(false)
-const purchaseForm = ref({
-  material_id: '' as number | '',
-  quantity: 1 as number,
-  supplier: '',
-})
+const purchaseMaterialId = ref<number | ''>('')
+const purchaseSupplier = ref('')
 
 /** 打开采购申请弹窗。 */
 function handlePurchase(row: Material) {
-  purchaseForm.value = {
-    material_id: row.id,
-    quantity: 1,
-    supplier: row.supplier || '',
-  }
+  purchaseMaterialId.value = row.id
+  purchaseSupplier.value = row.supplier || ''
   purchaseDialogVisible.value = true
 }
 
+interface PurchaseFormData {
+  material_id: number | ''
+  quantity: number
+  supplier: string
+}
+
 /** 提交采购申请。 */
-async function submitPurchase() {
-  if (!purchaseForm.value.material_id) {
+async function submitPurchase(formData: PurchaseFormData) {
+  if (!formData.material_id) {
     ElMessage.warning(t('materialManagement.msgMaterialRequired'))
     return
   }
-  if (!purchaseForm.value.quantity || purchaseForm.value.quantity <= 0) {
+  if (!formData.quantity || formData.quantity <= 0) {
     ElMessage.warning(t('materialManagement.msgQuantityInvalid'))
     return
   }
   purchaseSubmitting.value = true
   try {
     const res = await http.post(
-      API_CONFIG.MATERIALS + `/${purchaseForm.value.material_id}/purchase`,
+      API_CONFIG.MATERIALS + `/${formData.material_id}/purchase`,
       {
-        quantity: purchaseForm.value.quantity,
-        supplier: purchaseForm.value.supplier.trim() || null,
+        quantity: formData.quantity,
+        supplier: formData.supplier.trim() || null,
       },
     )
     if (res.data.code === 0) {
@@ -570,7 +440,7 @@ async function handleViewDetail(row: Material) {
 
 /** 采购弹窗中当前选中物料的展示标签。 */
 const purchaseMaterialLabel = computed(() => {
-  const m = materials.value.find((x) => x.id === purchaseForm.value.material_id)
+  const m = materials.value.find((x) => x.id === purchaseMaterialId.value)
   return m ? `${m.code} - ${m.name}` : ''
 })
 
@@ -585,22 +455,6 @@ onMounted(() => {
   padding: var(--page-padding);
   max-width: var(--content-max-width);
   margin: 0 auto;
-}
-
-/* 统计卡片图标颜色 */
-.stat-card--warning .stat-card__icon {
-  background: var(--warning-bg);
-  color: var(--warning);
-}
-
-.stat-card--danger .stat-card__icon {
-  background: var(--error-bg);
-  color: var(--error);
-}
-
-.stat-card--info .stat-card__icon {
-  background: var(--info-bg);
-  color: var(--info);
 }
 
 /* 页面特有样式 */

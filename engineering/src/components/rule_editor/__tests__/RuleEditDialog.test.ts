@@ -16,27 +16,27 @@ vi.mock('@element-plus/icons-vue', () => ({
 }))
 
 // Mock element-plus
-const mockElMessage = {
+const mockElMessage = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
   warning: vi.fn(),
   info: vi.fn(),
-}
+}))
 vi.mock('element-plus', () => ({
   ElMessage: mockElMessage,
 }))
 
 // Mock rule store
-const mockCreateRule = vi.fn()
-const mockUpdateRule = vi.fn()
-const mockRuleStore = {
+const mockCreateRule = vi.hoisted(() => vi.fn())
+const mockUpdateRule = vi.hoisted(() => vi.fn())
+const mockRuleStore = vi.hoisted(() => ({
   groups: [
     { id: 1, name: '默认组' },
     { id: 2, name: '高级规则组' },
   ],
   createRule: mockCreateRule,
   updateRule: mockUpdateRule,
-}
+}))
 vi.mock('@/stores/rules', () => ({
   useRuleStore: () => mockRuleStore,
 }))
@@ -65,9 +65,10 @@ describe('RuleEditDialog.vue', () => {
       },
       global: {
         stubs: {
-          'el-dialog': {
+          ElDialog: {
             template: '<div v-if="modelValue" class="el-dialog"><slot /><slot name="footer" /></div>',
-            props: ['modelValue', 'title', 'width'],
+            // title 不声明为 prop：测试通过 attributes('title') 断言标题文本
+            props: ['modelValue', 'width'],
           },
           'el-form': { template: '<form class="el-form"><slot /></form>', props: ['model', 'rules', 'labelWidth'] },
           'el-form-item': { template: '<div class="el-form-item"><slot /></div>', props: ['label', 'prop'] },
@@ -167,7 +168,7 @@ describe('RuleEditDialog.vue', () => {
       wrapper.vm.form.logic_operator = 'OR'
       wrapper.vm.form.result = { parameter: '主轴转速', operator: '<=', value: '8000', unit: 'rpm' }
       wrapper.vm.updatePreview()
-      expect(wrapper.vm.previewText).toBe('IF 材料 = TC4 OR 材料硬度 >=50HRC THEN 主轴转速 <= 8000rpm')
+      expect(wrapper.vm.previewText).toBe('IF 材料 = TC4 OR 材料硬度 >= 50HRC THEN 主轴转速 <= 8000rpm')
     })
   })
 
@@ -307,13 +308,15 @@ describe('RuleEditDialog.vue', () => {
       expect(mockUpdateRule).toHaveBeenCalledWith(7, expect.any(Object))
     })
 
-    it('提交成功后显示成功消息', async () => {
+    it('提交成功后触发 saved 事件并关闭对话框', async () => {
       wrapper = mountComponent({ rule: null })
       wrapper.vm.formRef = { validate: vi.fn().mockResolvedValue(undefined) }
       wrapper.vm.form.conditions = [{ parameter: '材料', operator: '=', value: 'TC4', unit: undefined }]
       wrapper.vm.form.result = { parameter: '转速', operator: '<=', value: '8000', unit: 'rpm' }
       await wrapper.vm.handleSubmit()
-      expect(mockElMessage.success).toHaveBeenCalled()
+      // 成功消息由 store 内部提示；组件职责是触发 saved 并关闭对话框
+      expect(wrapper.emitted('saved')).toBeTruthy()
+      expect(wrapper.emitted('update:visible')![0]).toEqual([false])
     })
 
     it('提交过程中 submitting 状态正确切换', async () => {

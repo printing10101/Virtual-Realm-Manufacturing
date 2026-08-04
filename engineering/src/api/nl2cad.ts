@@ -70,12 +70,16 @@ export async function extractParams(
   payload: ExtractParamsRequest,
 ): Promise<ExtractParamsResponse> {
   const resp = await http.post(buildApiPath(BASE, 'extract-params'), payload)
-  // 兼容 { data: { params } } / { params } / 直接展开三种返回结构
-  const body = resp.data?.data ?? resp.data
+  // 兼容 { data: { params } } / { params } / 直接展开三种返回结构；
+  // 注意：data 字段为 null 时不能回退到整个 { data: null } 包装（null ?? 不生效）
+  let body: unknown = resp.data
+  if (body && typeof body === 'object' && 'data' in body) {
+    body = (body as Record<string, unknown>).data
+  }
   if (body && typeof body === 'object' && 'params' in body) {
     return body as ExtractParamsResponse
   }
-  return { params: body ?? {} }
+  return { params: (body as Record<string, unknown>) ?? {} }
 }
 
 /**

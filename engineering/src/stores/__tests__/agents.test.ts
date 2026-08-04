@@ -202,7 +202,7 @@ describe('useAgentStore', () => {
     })
 
     it('后端返回空 data 时降级为空数组', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: null },
       })
       const store = useAgentStore()
@@ -211,7 +211,7 @@ describe('useAgentStore', () => {
     })
 
     it('设置 statusFilter 时携带 status 参数', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: [] },
       })
       const store = useAgentStore()
@@ -221,7 +221,7 @@ describe('useAgentStore', () => {
     })
 
     it('网络异常时设置 error', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockRejectedValue({
+      (http.get as ReturnType<typeof vi.fn>).mockRejectedValue({
         response: { data: { message: '服务不可用' } },
       })
       const store = useAgentStore()
@@ -245,7 +245,7 @@ describe('useAgentStore', () => {
     })
 
     it('网络异常时设置 error 并返回 null', async () => {
-      ;(http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
+      (http.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
       const store = useAgentStore()
       const result = await store.fetchAgentDetail('a1')
       expect(result).toBeNull()
@@ -256,7 +256,7 @@ describe('useAgentStore', () => {
 
   describe('saveCheckpoint', () => {
     it('保存检查点成功时返回数据', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { checkpoint_id: 'cp1' } },
       })
       const store = useAgentStore()
@@ -268,7 +268,7 @@ describe('useAgentStore', () => {
 
   describe('rollbackCheckpoint', () => {
     it('回滚成功时返回数据', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { success: true } },
       })
       const store = useAgentStore()
@@ -283,7 +283,7 @@ describe('useAgentStore', () => {
 
   describe('cloneAgent', () => {
     it('克隆成功时返回数据', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { new_agent_id: 'a2' } },
       })
       const store = useAgentStore()
@@ -298,7 +298,7 @@ describe('useAgentStore', () => {
 
   describe('resumeAgent', () => {
     it('恢复成功时返回数据', async () => {
-      ;(http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { data: { status: 'idle' } },
       })
       const store = useAgentStore()
@@ -310,7 +310,7 @@ describe('useAgentStore', () => {
 
   describe('deleteAgent', () => {
     it('删除成功时从 agents 列表中移除', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 0 } })
+      (http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 0 } })
       const store = useAgentStore()
       store.$patch({
         agents: [
@@ -324,7 +324,7 @@ describe('useAgentStore', () => {
     })
 
     it('删除不存在的 agent 时列表不变', async () => {
-      ;(http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 0 } })
+      (http.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 0 } })
       const store = useAgentStore()
       store.$patch({
         agents: [{ agent_id: 'a1', status: 'idle' }] as never,
