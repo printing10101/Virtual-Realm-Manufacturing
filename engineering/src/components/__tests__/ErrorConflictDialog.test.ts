@@ -101,6 +101,7 @@ describe('ErrorConflictDialog.vue', () => {
 })
 
 describe('http utility', () => {
+  // 全量并行时 http.ts 模块加载链可能超过默认 5s 超时（顺序相关 flaky），显式放宽
   it('should export http client with full API', async () => {
     const mod = await import('@/utils/http')
     expect(mod.default).toBeDefined()
@@ -108,7 +109,9 @@ describe('http utility', () => {
     expect(typeof mod.default.post).toBe('function')
     expect(typeof mod.default.put).toBe('function')
     expect(typeof mod.default.delete).toBe('function')
-  })
+    expect(typeof mod.default.request).toBe('function')
+    expect(mod.default.interceptors).toBeDefined()
+  }, 15000)
 
   it('should define ErrorDialogPayload type structure', async () => {
     const payload: ErrorDialogPayload = {

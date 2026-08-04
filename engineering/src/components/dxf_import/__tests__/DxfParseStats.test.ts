@@ -24,14 +24,23 @@ import DxfParseStats from '@/components/dxf_import/DxfParseStats.vue'
 
 function makeParseResult(overrides: Partial<DxfParseResponse> = {}): DxfParseResponse {
   return {
+    file_id: 'f-001',
     file_name: 'drawing.dxf',
     file_size: 2048,
     lines_count: 120,
     arcs_count: 30,
     circles_count: 15,
+    texts_count: 0,
+    dimensions_count: 2,
     total_entities: 165,
     dxf_version: 'AC1015',
     parse_time_ms: 42,
+    entity_counts: {},
+    extents: { min_x: 0, min_y: 0, max_x: 10, max_y: 10 },
+    lines: [],
+    circles: [],
+    dimensions: [],
+    warnings: [],
     ...overrides,
   }
 }

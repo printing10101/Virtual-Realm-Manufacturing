@@ -122,7 +122,7 @@ describe('DxfFileUpload.vue', () => {
       })
       await input.trigger('change')
       expect(wrapper.emitted('file-selected')).toBeTruthy()
-      expect(wrapper.emitted('file-selected')![0][0].name).toBe('drawing.dxf')
+      expect((wrapper.emitted('file-selected')![0][0] as File).name).toBe('drawing.dxf')
     })
 
     it('没有文件时不触发 file-selected', async () => {
@@ -183,7 +183,7 @@ describe('DxfFileUpload.vue', () => {
         dataTransfer: { files: [makeFile('drop.dxf')] },
       })
       expect(wrapper.emitted('file-selected')).toBeTruthy()
-      expect(wrapper.emitted('file-selected')![0][0].name).toBe('drop.dxf')
+      expect((wrapper.emitted('file-selected')![0][0] as File).name).toBe('drop.dxf')
     })
 
     it('拖拽非 .dxf 文件报错', async () => {
